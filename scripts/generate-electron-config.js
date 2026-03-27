@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const schoolId = process.env.SCHOOL_ID || 'beano';
+const schoolId = process.env.SCHOOL_ID || 'eagles';
 const config = { schoolId };
 
 fs.writeFileSync(

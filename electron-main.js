@@ -3,7 +3,7 @@ const { app, BrowserWindow, Menu, protocol, session } = require("electron");
 const path = require("path");
 const fs = require("fs");
 
-let schoolId = process.env.SCHOOL_ID || "beano";
+let schoolId = process.env.SCHOOL_ID || "eagles";
 
 try {
   const configPath = path.join(__dirname, "electron-school-config.json");
@@ -36,9 +36,7 @@ const schools = {
   bms: { name: "BMS App", backgroundColor: "#dce099ff", authDomain: "bms-app-f4572.firebaseapp.com" },
 };
 
-const selected = schools[schoolId] || schools.beano;
-
-const BLOCKED_KEYWORDS = ["porn", "xxx", "adult", "sex", "nude", "bet", "casino"];
+const selected = schools[schoolId] || schools.eagles;
 
 protocol.registerSchemesAsPrivileged([
   { scheme: "app", privileges: { standard: true, secure: true, allowServiceWorkers: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
@@ -59,42 +57,30 @@ function createWindow() {
     },
   });
 
+  // FORCE CLEAR STORAGE ON STARTUP (Fixes IBS stickiness)
+  win.webContents.session.clearStorageData({
+    storages: ['localstorage', 'cookies', 'cachestorage']
+  }).then(() => {
+    console.log("[Electron] Storage cleared to ensure fresh branding.");
+  });
+
   session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const { requestHeaders } = details;
     const url = details.url.toLowerCase();
     const isFirebaseRequest = url.includes('firebase') || url.includes('googleapis.com');
     
-    if (BLOCKED_KEYWORDS.some(word => url.includes(word)) && !url.includes("bing.com")) {
-      return callback({ cancel: true });
-    }
-
     if (isFirebaseRequest) {
       const origin = `https://${selected.authDomain}`;
       requestHeaders['Origin'] = origin;
       requestHeaders['Referer'] = origin + '/';
-      requestHeaders['Sec-Fetch-Mode'] = 'cors';
-      requestHeaders['Sec-Fetch-Site'] = 'cross-site';
-      requestHeaders['Sec-Fetch-Dest'] = 'empty';
     }
-    
     callback({ requestHeaders });
   });
 
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    const { responseHeaders } = details;
-    const url = details.url;
-
-    if (url.includes("bing.com")) {
-      Object.keys(responseHeaders).forEach(header => {
-        if (header.toLowerCase() === 'x-frame-options' || header.toLowerCase() === 'content-security-policy') {
-          delete responseHeaders[header];
-        }
-      });
-    }
-
     callback({
       responseHeaders: {
-        ...responseHeaders,
+        ...details.responseHeaders,
         'Access-Control-Allow-Origin': ['*'],
         'Content-Security-Policy': ["default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';"]
       }
@@ -115,36 +101,7 @@ function createWindow() {
   }
 
   win.webContents.on("did-finish-load", () => {
-    win.webContents.executeJavaScript(`
-      window.isElectron = true;
-      if (!document.getElementById('electron-floating-nav')) {
-        const nav = document.createElement('div');
-        nav.id = 'electron-floating-nav';
-        nav.style.position = 'fixed';
-        nav.style.bottom = '25px';
-        nav.style.left = '25px';
-        nav.style.zIndex = '999999';
-        nav.style.display = 'flex';
-        nav.style.gap = '10px';
-        
-        nav.innerHTML = \`
-          <button style="background:#1e293b;color:white;border:1px solid #334155;padding:8px 16px;border-radius:12px;cursor:pointer;font-size:11px;font-weight:900;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)" onclick="window.history.back()">← BACK</button>
-          <button style="background:#ef4444;color:white;border:none;padding:8px 16px;border-radius:12px;cursor:pointer;font-size:11px;font-weight:900;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)" id="electron-exit-hub">EXIT TO HUB</button>
-        \`;
-        document.body.appendChild(nav);
-        
-        document.getElementById('electron-exit-hub').addEventListener('click', () => {
-          window.location.href = "/";
-        });
-
-        function syncNav() {
-          const isHome = window.location.pathname === '/' || window.location.pathname === '/index.html' || window.location.href.endsWith('/');
-          nav.style.display = isHome ? 'none' : 'flex';
-        }
-        setInterval(syncNav, 1000);
-        syncNav();
-      }
-    `);
+    win.webContents.executeJavaScript(`window.isElectron = true;`);
     win.show();
   });
 }
@@ -169,7 +126,7 @@ app.whenReady().then(() => {
     }
 
     const ext = path.extname(filePath).toLowerCase();
-    const mimeTypes = { ".js": "text/javascript", ".html": "text/html", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml", ".ttf": "font/ttf", ".woff": "font/woff", ".woff2": "font/woff2" };
+    const mimeTypes = { ".js": "text/javascript", ".html": "text/html", ".css": "text/css", ".png": "image/png", ".jpg": "image/jpeg", ".svg": "image/svg+xml" };
 
     try {
       return new Response(fs.readFileSync(filePath), {

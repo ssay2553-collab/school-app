@@ -1,0 +1,53 @@
+name: Build Android APKs
+on:
+  workflow_dispatch:
+    inputs:
+      school_profile:
+        description: 'Select the school profile to build'
+        required: true
+        default: 'eagles-prod'
+        type: choice
+        options:
+          - afahjoy-prod
+          - beano-prod
+          - ibs-prod
+          - eagles-prod
+          - morgis-prod
+          - perfect-prod
+          - model-prod
+          - cascom-prod
+          - bms-prod
+          - kent-prod
+          - bishops-prod
+          - clis-prod
+          - stone-prod
+          - jewel-prod
+          - brain-prod
+          - creation-prod
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        run: npm install
+
+      - name: 🛠 Build APK
+        run: |
+          # The profile name corresponds to the profiles in your eas.json
+          eas build --platform android --profile ${{ github.event.inputs.school_profile }} --non-interactive --no-wait

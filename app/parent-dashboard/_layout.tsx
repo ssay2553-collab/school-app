@@ -13,7 +13,7 @@ import {
     ActivityIndicator
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { SCHOOL_CONFIG } from "../../constants/Config";
+import { SCHOOL_CONFIG, useSchoolConfig } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { auth } from "../../firebaseConfig";
@@ -24,10 +24,12 @@ import Constants from 'expo-constants';
 export default function ParentDashboardLayout() {
   const router = useRouter();
   const { appUser, loading } = useAuth();
-  const schoolId = Constants.expoConfig?.extra?.schoolId || 'afahjoy';
+  const config = useSchoolConfig();
+  
+  const schoolId = config.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
-  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
-  const secondary = SCHOOL_CONFIG.secondaryColor;
+  const primary = config.primaryColor;
+  const secondary = config.secondaryColor;
 
   useEffect(() => {
     if (!loading && appUser && appUser.role !== "parent" && appUser.role !== "admin") {
@@ -95,7 +97,7 @@ export default function ParentDashboardLayout() {
             <View style={styles.schoolInfo}>
               <Image source={schoolLogo} style={styles.miniLogo} resizeMode="contain" />
               <View style={{ flex: 1 }}>
-                <Text style={styles.schoolName} numberOfLines={1}>{SCHOOL_CONFIG.fullName}</Text>
+                <Text style={styles.schoolName} numberOfLines={1}>{config.fullName}</Text>
                 <Text style={styles.portalTag}>Parent Portal 🏠</Text>
               </View>
             </View>

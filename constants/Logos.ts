@@ -10,6 +10,7 @@ export const SCHOOL_LOGOS: Record<string, any> = {
   perfect: require("../assets/perfect.png"),
   bishops: require("../assets/bishop.png"),
   ibs: require("../assets/ibs.png"),
+  IBS: require("../assets/ibs.png"), // Added uppercase key for consistency
   kent: require("../assets/Kent.png"),
   creation: require("../assets/creation.png"),
   eagles: require("../assets/aps.png"),
@@ -23,7 +24,7 @@ export const SCHOOL_LOGOS: Record<string, any> = {
 };
 
 export const getSchoolLogo = (schoolId?: string) => {
-  const id = (schoolId || SCHOOL_CONFIG.schoolId || "beano").toLowerCase();
-  // Return the specific logo or use the Beano logo as the ultimate fallback
-  return SCHOOL_LOGOS[id] || SCHOOL_LOGOS.beano;
+  const id = (schoolId || SCHOOL_CONFIG.schoolId || "eagles").toLowerCase();
+  // Return the specific logo or use the Adehyeemba logo as the ultimate fallback
+  return SCHOOL_LOGOS[id] || SCHOOL_LOGOS.eagles;
 };

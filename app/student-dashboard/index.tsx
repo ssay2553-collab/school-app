@@ -16,7 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
-import { SCHOOL_CONFIG } from "../../constants/Config";
+import { SCHOOL_CONFIG, useSchoolConfig } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 
@@ -26,10 +26,11 @@ const CARD_WIDTH = (width - 65) / 2;
 export default function StudentDashboard() {
   const { appUser } = useAuth();
   const router = useRouter();
+  const config = useSchoolConfig();
 
-  const brandPrimary = SCHOOL_CONFIG.brandPrimary;
-  const brandSecondary = SCHOOL_CONFIG.brandSecondary;
-  const surface = SCHOOL_CONFIG.surfaceColor;
+  const brandPrimary = config.brandPrimary;
+  const brandSecondary = config.brandSecondary;
+  const surface = config.surfaceColor;
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -41,7 +42,7 @@ export default function StudentDashboard() {
   const sections = [
     {
       title: "LEARNING HUB 📚",
-      color: "#FF6B6B",
+      color: brandPrimary,
       items: [
         { title: "Homework", subtitle: "Fun tasks!", icon: "document-text", color: "#FF6B6B", path: "/student-dashboard/assignments" },
         { title: "Submit Work", subtitle: "Magic upload", icon: "cloud-upload", color: "#4D96FF", path: "/student-dashboard/submit-assignment" },
@@ -71,10 +72,8 @@ export default function StudentDashboard() {
     }
   ];
 
-  // Logic to ensure cards are visible against the surface color
-  const isSurfaceLight = surface.toLowerCase() === "#ffffff" || surface.toLowerCase() === "white" || surface.toLowerCase() === "#fafafa";
   const cardBg = "#FFFFFF"; 
-  const cardBorder = isSurfaceLight ? "#F1F5F9" : "rgba(0,0,0,0.05)";
+  const cardBorder = "#F1F5F9";
 
   const renderItem = (item: any, index: number) => (
     <Animatable.View
@@ -117,7 +116,7 @@ export default function StudentDashboard() {
         >
           <View style={styles.headerRow}>
             <View>
-              <Text style={styles.welcomeText}>STUDENT PORTAL</Text>
+              <Text style={styles.welcomeText}>{config.name.toUpperCase()} PORTAL</Text>
               <Text style={styles.studentName}>{appUser?.profile?.firstName || "Student"}</Text>
             </View>
             <TouchableOpacity onPress={() => router.push("/student-dashboard/settings")} style={styles.profileBtn}>
@@ -132,7 +131,7 @@ export default function StudentDashboard() {
 
         <View style={styles.content}>
           {sections.map((section, sIndex) => (
-            <View key={section.title} style={styles.section}>
+            <View key={section.title} style={section.title.includes("HUB") ? styles.section : { marginBottom: 30 }}>
               <View style={styles.sectionHeader}>
                 <Text style={[styles.sectionTitle, { color: section.color }]}>{section.title}</Text>
                 <View style={[styles.sectionLine, { backgroundColor: section.color + '30' }]} />

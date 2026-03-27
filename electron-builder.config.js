@@ -1,5 +1,5 @@
 require("dotenv").config();
-const schoolId = process.env.SCHOOL_ID || "beano";
+const schoolId = process.env.SCHOOL_ID || "eagles";
 
 const schools = {
   afahjoy: {
@@ -84,7 +84,7 @@ const schools = {
   },
 };
 
-const selected = schools[schoolId] || schools.beano;
+const selected = schools[schoolId] || schools.eagles;
 
 console.log(`[Electron Config] Building for: ${selected.productName} (${schoolId})`);
 

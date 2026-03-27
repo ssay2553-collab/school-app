@@ -13,6 +13,7 @@ import SVGIcon from "../components/SVGIcon";
 import { SHADOWS } from "../constants/theme";
 
 const SCHOOLS = [
+  { id: "eagles", name: "Adehyeemba", color: "#2c0964" },
   { id: "afahjoy", name: "Gilead App", color: "#F07F13" },
   { id: "beano", name: "Beano App", color: "#6A1B9A" },
   { id: "morgis", name: "Great Legacy", color: "#FBC02D" },
@@ -22,7 +23,6 @@ const SCHOOLS = [
   { id: "clis", name: "CLIS App", color: "#3cca48" },
   { id: "jewel", name: "Jewel App", color: "#f0bf5e" },
   { id: "stone", name: "Stepping Stone", color: "#7a0b1a" },
-  { id: "eagles", name: "Adehyeemba", color: "#2c0964" },
   { id: "kent", name: "KIS App", color: "#006B3F" },
   { id: "bishops", name: "Bishop App", color: "#1E4D8C" },
   { id: "bms", name: "BMS App", color: "#FEDD00" },
@@ -38,7 +38,7 @@ export default function DevSchoolSwitcher() {
   useEffect(() => {
     const loadId = async () => {
       const id = await AsyncStorage.getItem("DEV_SCHOOL_ID");
-      setCurrentId(id || "beano");
+      setCurrentId(id || "eagles");
     };
     loadId();
   }, []);
@@ -100,7 +100,7 @@ export default function DevSchoolSwitcher() {
                 style={styles.resetBtn} 
                 onPress={async () => {
                     await AsyncStorage.removeItem("DEV_SCHOOL_ID");
-                    setCurrentId("beano");
+                    setCurrentId("eagles");
                     alert("Reset to default. Reload app.");
                 }}
             >

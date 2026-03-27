@@ -4,6 +4,7 @@ import * as Animatable from "react-native-animatable";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 
 export default function UpgradeScreen() {
   const router = useRouter();
@@ -28,7 +29,7 @@ export default function UpgradeScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={SCHOOL_CONFIG.primaryColor || COLORS.primary} />
       </SafeAreaView>
     );
   }
@@ -39,15 +40,15 @@ export default function UpgradeScreen() {
       
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
+          <SVGIcon name="arrow-back" size={24} color={SCHOOL_CONFIG.primaryColor || COLORS.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>App Updates 🚀</Text>
       </View>
 
       <View style={styles.content}>
         <View style={styles.card}>
-          <View style={[styles.iconCircle, { backgroundColor: COLORS.primary + '10' }]}>
-             <SVGIcon name={hasUpdate ? "cloud-download" : "checkmark-done-circle"} size={60} color={COLORS.primary} />
+          <View style={[styles.iconCircle, { backgroundColor: (SCHOOL_CONFIG.primaryColor || COLORS.primary) + '10' }]}>
+             <SVGIcon name={hasUpdate ? "cloud-download" : "checkmark-done-circle"} size={60} color={SCHOOL_CONFIG.primaryColor || COLORS.primary} />
           </View>
 
           {hasUpdate ? (
@@ -61,7 +62,7 @@ export default function UpgradeScreen() {
                 style={{ width: "100%", alignItems: "center" }}
               >
                 <TouchableOpacity
-                  style={[styles.button, { backgroundColor: COLORS.primary }]}
+                  style={[styles.button, { backgroundColor: SCHOOL_CONFIG.primaryColor || COLORS.primary }]}
                   onPress={() => Alert.alert("Upgrade", "Redirecting to store...")}
                 >
                   <Text style={styles.buttonText}>Upgrade Now</Text>
@@ -71,7 +72,7 @@ export default function UpgradeScreen() {
           ) : (
             <>
               <Text style={styles.title}>You're All Set! ✅</Text>
-              <Text style={styles.message}>You are using the latest and greatest version of the IBS App.</Text>
+              <Text style={styles.message}>You are using the latest version of the {SCHOOL_CONFIG.name}.</Text>
               <View style={styles.statusLine}>
                  <Text style={styles.statusLabel}>Version 1.0.0 (Latest)</Text>
               </View>

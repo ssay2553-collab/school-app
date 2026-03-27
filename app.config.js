@@ -1,7 +1,11 @@
 require("dotenv").config();
 
 module.exports = ({ config }) => {
-  const schoolId = process.env.SCHOOL_ID || "eagles";
+  // We prioritize eagles (Adehyeemba) as the default.
+  // Normalize to lowercase to prevent case-sensitivity issues during lookup.
+  const rawId = process.env.SCHOOL_ID || "eagles";
+  // Maintain casing for school object keys (IBS is uppercase in the dictionary)
+  const schoolId = rawId.toLowerCase() === "ibs" ? "IBS" : rawId; 
 
   const schools = {
     afahjoy: {
@@ -106,6 +110,32 @@ module.exports = ({ config }) => {
         storageBucket: "jei-river.firebasestorage.app",
         messagingSenderId: "925332921968",
         appId: "1:925332921968:web:f84f98cb9d9d017cc6deb5",
+      },
+    },
+    eagles: {
+      name: "Adehyeemba",
+      slug: "eagles",
+      package: "com.saysmanage.eagleapp",
+      scheme: "eagle",
+      logo: "./assets/icon-aps.png",
+      hotline: "+233545404397",
+      fullName: "Adehyeemba Preparatory School",
+      motto: "Edwumaden Ho Wo Mfaso",
+      address: "Awutu Bawjiase",
+      email: "",
+      primaryColor: "#2c0964ff",
+      secondaryColor: "#dd4364ff",
+      surfaceColor: "#dcabf3ff",
+      brandPrimary: "#cc315fff",
+      brandSecondary: "#140e53ff",
+      easProjectId: null,
+      firebase: {
+        apiKey: "AIzaSyBl_YXsJMsWHVDZkMKHk7HGxghp_XAM4L4",
+        authDomain: "royal-lisben.firebaseapp.com",
+        projectId: "royal-lisben",
+        storageBucket: "royal-lisben.firebasestorage.app",
+        messagingSenderId: "449092727389",
+        appId: "1:449092727389:web:b5c7f563fadede614053b4",
       },
     },
     perfect: {
@@ -345,32 +375,6 @@ module.exports = ({ config }) => {
         appId: "1:705991105475:web:d103e15b1399f38e003b76",
       },
     },
-    eagles: {
-      name: "Adehyeemba",
-      slug: "eagles",
-      package: "com.saysmanage.eagleapp",
-      scheme: "eagle",
-      logo: "./assets/icon-aps.png",
-      hotline: "+233545404397",
-      fullName: "Adehyeemba Preparatory School",
-      motto: "Edwumaden Ho Wo Mfaso",
-      address: "Awutu Bawjiase",
-      email: "",
-      primaryColor: "#2c0964ff",
-      secondaryColor: "#dd4364ff",
-      surfaceColor: "#dcabf3ff",
-      brandPrimary: "#cc315fff",
-      brandSecondary: "#140e53ff",
-      easProjectId: null,
-      firebase: {
-        apiKey: "AIzaSyBl_YXsJMsWHVDZkMKHk7HGxghp_XAM4L4",
-        authDomain: "royal-lisben.firebaseapp.com",
-        projectId: "royal-lisben",
-        storageBucket: "royal-lisben.firebasestorage.app",
-        messagingSenderId: "449092727389",
-        appId: "1:449092727389:web:b5c7f563fadede614053b4",
-      },
-    },
     kent: {
       name: "KIS App",
       slug: "kent",
@@ -473,8 +477,7 @@ module.exports = ({ config }) => {
       ],
     ],
     extra: {
-      schoolId,
-      // INJECT ALL SCHOOLS FOR DEV HUB (Only if not production build)
+      schoolId: selected.slug,
       schoolData: process.env.NODE_ENV === "production" ? null : schools,
       schoolFullName: selected.fullName,
       schoolHotline: selected.hotline,
@@ -487,7 +490,6 @@ module.exports = ({ config }) => {
       brandPrimary: selected.brandPrimary || selected.primaryColor,
       brandSecondary: selected.brandSecondary || selected.secondaryColor,
       firebase: selected.firebase,
-      // Fixed: Only include eas object if easProjectId is present
       ...(selected.easProjectId
         ? { eas: { projectId: selected.easProjectId } }
         : {}),

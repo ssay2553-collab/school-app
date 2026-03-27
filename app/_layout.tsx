@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { Image, Platform, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import * as Notifications from "expo-notifications";
 
@@ -83,9 +84,17 @@ function MainLayout() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Extended splash time to 3 seconds
-    const timer = setTimeout(() => setReady(true), 3000);
-    return () => clearTimeout(timer);
+    const init = async () => {
+      // NUCLEAR RESET: Run this once to clear the IBS stickiness
+      if (__DEV__) {
+        console.log("[System] Performing memory reset to clear old school data...");
+        await AsyncStorage.removeItem("DEV_SCHOOL_ID");
+      }
+      
+      // Extended splash time to 3 seconds
+      setTimeout(() => setReady(true), 3000);
+    };
+    init();
   }, []);
 
   if (!ready) return <SplashScreen />;
@@ -94,7 +103,6 @@ function MainLayout() {
     <>
       <StatusBar style="dark" />
       <RouteGuard />
-      {/* Dev Switcher is hidden internally in non-dev builds */}
       <DevSchoolSwitcher />
     </>
   );

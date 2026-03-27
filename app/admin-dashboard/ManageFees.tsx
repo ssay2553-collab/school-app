@@ -45,7 +45,7 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
-import { SHADOWS } from "../../constants/theme";
+import { SHADOWS, COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
@@ -98,6 +98,10 @@ export default function ManageFees() {
   const canView = isSuperAdmin || feePermission === "full" || feePermission === "view" || feePermission === "edit";
   const canEdit = isSuperAdmin || feePermission === "full" || feePermission === "edit";
 
+  // Brand Fallbacks
+  const primaryBrand = SCHOOL_CONFIG.primaryColor || COLORS.primary || VIBE.primary;
+  const secondaryBrand = SCHOOL_CONFIG.secondaryColor || primaryBrand;
+
   useEffect(() => {
     if (appUser && !canView) {
       Alert.alert("Access Denied", "You do not have permission to view fees management.");
@@ -109,7 +113,7 @@ export default function ManageFees() {
   const [fetchingMore, setFetchingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeMode, setActiveMode] = useState<"billing" | "payment">("payment");
+  const [activeMode, setActiveMode] = useState<"billing" | "payment" | "ledger">("payment");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "debt" | "cleared">("all");
@@ -137,8 +141,8 @@ export default function ManageFees() {
 
   useEffect(() => {
     if (!acadConfig.loading) {
-      setAcademicYear(acadConfig.academicYear);
-      setTerm(acadConfig.currentTerm);
+      setAcademicYear(acadConfig.academicYear || "");
+      setTerm(acadConfig.currentTerm || "");
     }
   }, [acadConfig]);
 
@@ -148,8 +152,8 @@ export default function ManageFees() {
     let expected = 0;
     let received = 0;
     students.forEach((s) => {
-      expected += s.termBill + s.previousBalance;
-      received += s.amountPaid;
+      expected += (s.termBill || 0) + (s.previousBalance || 0);
+      received += (s.amountPaid || 0);
     });
     return { expected, received, balance: expected - received };
   }, [students]);
@@ -157,10 +161,10 @@ export default function ManageFees() {
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
       const searchLower = searchQuery.toLowerCase();
-      const matchesName = s.fullName.toLowerCase().includes(searchLower);
+      const matchesName = (s.fullName || "").toLowerCase().includes(searchLower);
       const matchesSerial = s.payments?.some(p => (p.receiptNo?.toLowerCase().includes(searchLower)) || (p.createdAt?.toLowerCase().includes(searchLower)));
       const matchesSearch = matchesName || matchesSerial;
-      const matchesStatus = statusFilter === "all" ? true : statusFilter === "cleared" ? s.currentBalance <= 0 : s.currentBalance > 0;
+      const matchesStatus = statusFilter === "all" ? true : statusFilter === "cleared" ? (s.currentBalance || 0) <= 0 : (s.currentBalance || 0) > 0;
       return matchesSearch && matchesStatus;
     });
   }, [students, searchQuery, statusFilter]);
@@ -182,8 +186,11 @@ export default function ManageFees() {
       if (saved) {
         try {
           const { classId } = JSON.parse(saved);
-          setSelectedClassId(classId || (list.length > 0 ? list[0].id : ""));
-        } catch {}
+          if (classId) setSelectedClassId(classId);
+          else if (list.length > 0) setSelectedClassId(list[0].id);
+        } catch {
+            if (list.length > 0) setSelectedClassId(list[0].id);
+        }
       } else if (list.length > 0) {
         setSelectedClassId(list[0].id);
       }
@@ -219,7 +226,10 @@ export default function ManageFees() {
       if (studentIds.length > 0) {
         const chunks = [];
         for (let i = 0; i < studentIds.length; i += 10) chunks.push(studentIds.slice(i, i + 10));
-        const feesSnaps = await Promise.all(chunks.map(chunk => getDocsCacheFirst(query(collection(db, "studentFeeRecords"), where("studentUid", "in", chunk), where("academicYear", "==", academicYear), where("term", "==", term)) as any)));
+        
+        // Safety check for Firestore 'in' query
+        const validChunks = chunks.filter(c => c.length > 0);
+        const feesSnaps = await Promise.all(validChunks.map(chunk => getDocsCacheFirst(query(collection(db, "studentFeeRecords"), where("studentUid", "in", chunk), where("academicYear", "==", academicYear), where("term", "==", term)) as any)));
         feesSnaps.forEach(fsnap => fsnap.docs.forEach(d => feesMap.set(d.data().studentUid, d.data())));
       }
 
@@ -246,7 +256,9 @@ export default function ManageFees() {
       setStudents(prev => isFirstLoad ? batch : [...prev, ...batch]);
       
       AsyncStorage.setItem(FILTERS_PERSISTENCE_KEY, JSON.stringify({ classId: selectedClassId }));
-    } catch (e) { console.error("Fetch error:", e); } finally { 
+    } catch (e) { 
+      console.error("Fetch students error:", e); 
+    } finally { 
       isFetchingRef.current = false; 
       setLoading(false); 
       setFetchingMore(false); 
@@ -254,7 +266,11 @@ export default function ManageFees() {
     }
   }, [selectedClassId, academicYear, term, classes]);
 
-  useEffect(() => { if (selectedClassId && academicYear && term) fetchStudents(true); }, [selectedClassId, academicYear, term, fetchStudents]);
+  useEffect(() => { 
+    if (selectedClassId && academicYear && term) {
+        fetchStudents(true);
+    } 
+  }, [selectedClassId, academicYear, term]); // Dependencies reduced for stability
 
   const handleRefresh = () => { setRefreshing(true); fetchStudents(true); };
 
@@ -284,10 +300,10 @@ export default function ManageFees() {
               ${filteredStudents.map(s => `
                 <tr>
                   <td>${s.fullName}</td>
-                  <td>${s.previousBalance.toFixed(2)}</td>
-                  <td>${s.termBill.toFixed(2)}</td>
-                  <td>${s.amountPaid.toFixed(2)}</td>
-                  <td style="color: ${s.currentBalance > 0 ? 'red' : 'green'}">${s.currentBalance.toFixed(2)}</td>
+                  <td>${(s.previousBalance || 0).toFixed(2)}</td>
+                  <td>${(s.termBill || 0).toFixed(2)}</td>
+                  <td>${(s.amountPaid || 0).toFixed(2)}</td>
+                  <td style="color: ${(s.currentBalance || 0) > 0 ? 'red' : 'green'}">${(s.currentBalance || 0).toFixed(2)}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -322,7 +338,7 @@ export default function ManageFees() {
         if (isNaN(bill)) continue;
         const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
         const totalPaid = s.hasRecordInTerm ? s.amountPaid : 0;
-        const newBalance = s.previousBalance + bill - totalPaid;
+        const newBalance = (s.previousBalance || 0) + bill - totalPaid;
 
         batch.set(doc(db, "studentFeeRecords", recordId), {
           studentUid: uid,
@@ -393,11 +409,11 @@ export default function ManageFees() {
           const recordId = `${selectedStudent.uid}_${academicYear.replace(/\//g, "-")}_${term.replace(/\s+/g, "")}`;
           const batch = writeBatch(db);
           batch.update(doc(db, "studentFeeRecords", recordId), { 
-            amountPaid: increment(-payment.amount), 
-            balance: increment(payment.amount), 
+            amountPaid: increment(-(payment.amount || 0)), 
+            balance: increment(payment.amount || 0), 
             payments: arrayRemove(payment) 
           });
-          batch.update(doc(db, "users", selectedStudent.uid), { walletBalance: increment(payment.amount) });
+          batch.update(doc(db, "users", selectedStudent.uid), { walletBalance: increment(payment.amount || 0) });
           await batch.commit();
           fetchStudents(true);
           setPaymentModalVisible(false);
@@ -409,7 +425,7 @@ export default function ManageFees() {
 
   const renderStudentItem = ({ item }: { item: StudentDraft }) => {
     const isSelected = selectedStudentUids.has(item.uid);
-    const hasDebt = item.currentBalance > 0;
+    const hasDebt = (item.currentBalance || 0) > 0;
     const currentBillValue = individualBillOverrides[item.uid] || termBillAmount || "";
     const hasActiveBill = !!currentBillValue && parseFloat(currentBillValue) > 0;
     const hasOverride = !!individualBillOverrides[item.uid];
@@ -436,13 +452,13 @@ export default function ManageFees() {
           <View style={styles.cardContent}>
             <View style={styles.leftSection}>
               <View style={[styles.avatar, { backgroundColor: hasDebt ? VIBE.danger + '10' : VIBE.success + '10' }]}>
-                 <Text style={[styles.avatarText, { color: hasDebt ? VIBE.danger : VIBE.success }]}>{item.fullName.charAt(0)}</Text>
+                 <Text style={[styles.avatarText, { color: hasDebt ? VIBE.danger : VIBE.success }]}>{(item.fullName || "S").charAt(0)}</Text>
               </View>
               <View style={styles.mainInfo}>
                  <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
                  <View style={styles.debtBox}>
                     <Text style={[styles.debtLabel, { color: hasDebt ? VIBE.danger : VIBE.success }]}>{hasDebt ? "Outstanding: " : "Cleared"}</Text>
-                    <Text style={[styles.debtValue, { color: hasDebt ? VIBE.danger : VIBE.success }]}>₵{Math.abs(item.currentBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</Text>
+                    <Text style={[styles.debtValue, { color: hasDebt ? VIBE.danger : VIBE.success }]}>₵{Math.abs(item.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</Text>
                  </View>
               </View>
             </View>
@@ -479,10 +495,10 @@ export default function ManageFees() {
   if (!appUser || !canView) return null;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <LinearGradient colors={[SCHOOL_CONFIG.brandPrimary, SCHOOL_CONFIG.brandSecondary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerTop}>
+        <LinearGradient colors={[primaryBrand, secondaryBrand]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.headerTop}>
            <View style={styles.navBar}>
               <TouchableOpacity onPress={() => router.replace("/admin-dashboard")} style={styles.headerIconBtn}><SVGIcon name="arrow-back" size={24} color="#fff" /></TouchableOpacity>
               <View style={styles.titleCenter}>
@@ -506,7 +522,7 @@ export default function ManageFees() {
             <View style={styles.searchStrip}>
               <View style={styles.searchBar}>
                   <SVGIcon name="search" size={18} color={VIBE.muted} />
-                  <TextInput placeholder="Search name or receipt..." style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} />
+                  <TextInput placeholder="Search name or receipt..." style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} placeholderTextColor={VIBE.muted} />
               </View>
               <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound}><SVGIcon name="refresh" size={18} color={VIBE.primary} /></TouchableOpacity>
             </View>
@@ -592,6 +608,7 @@ export default function ManageFees() {
             renderItem={renderStudentItem}
             contentContainerStyle={styles.flatListContent}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[VIBE.primary]} />}
+            removeClippedSubviews={Platform.OS === 'android'}
             ListEmptyComponent={!loading ? (
               <View style={styles.emptyWrap}>
                   <SVGIcon name="people" size={64} color="#CBD5E1" />
@@ -634,13 +651,13 @@ export default function ManageFees() {
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.overlay}>
            <View style={styles.paymentModal}>
               <View style={styles.modalTopRow}>
-                 <Text style={styles.modalStudentName}>{selectedStudent?.fullName}</Text>
+                 <Text style={styles.modalStudentName}>{selectedStudent?.fullName || "Student Profile"}</Text>
                  <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeRound}><SVGIcon name="close" size={24} color={VIBE.muted} /></TouchableOpacity>
               </View>
               <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
                  <View style={styles.modalInputs}>
-                    <TextInput style={styles.pillInput} placeholder="Amount (₵)" keyboardType="numeric" value={paymentAmount} onChangeText={setPaymentAmount} editable={canEdit} />
-                    <TextInput style={styles.pillInput} placeholder="Received From" value={receivedFrom} onChangeText={setReceivedFrom} editable={canEdit} />
+                    <TextInput style={styles.pillInput} placeholder="Amount (₵)" keyboardType="numeric" value={paymentAmount} onChangeText={setPaymentAmount} editable={canEdit} placeholderTextColor={VIBE.muted} />
+                    <TextInput style={styles.pillInput} placeholder="Received From" value={receivedFrom} onChangeText={setReceivedFrom} editable={canEdit} placeholderTextColor={VIBE.muted} />
                  </View>
                  <View style={styles.methodGrid}>
                     {["Cash", "Cheque", "Momo", "E-cash"].map(m => <TouchableOpacity key={m} style={[styles.methodBtn, paymentMethod === m && { backgroundColor: VIBE.primary }]} onPress={() => setPaymentMethod(m as any)} disabled={!canEdit}><Text style={[styles.methodText, paymentMethod === m && { color: '#fff' }]}>{m}</Text></TouchableOpacity>)}
@@ -661,13 +678,13 @@ export default function ManageFees() {
                          <View style={{ flex: 1 }}>
                             <View style={styles.tileHeader}>
                               <View>
-                                <Text style={styles.tileAmt}>₵{p.amount.toFixed(2)}</Text>
+                                <Text style={styles.tileAmt}>₵{(p.amount || 0).toFixed(2)}</Text>
                                 <Text style={{fontSize: 9, fontWeight: '800', color: VIBE.muted}}>{p.receiptNo || 'N/A'}</Text>
                               </View>
                               <TouchableOpacity onPress={() => handleDeletePayment(p)}><SVGIcon name="trash" size={16} color={VIBE.danger} /></TouchableOpacity>
                             </View>
                             <Text style={styles.tileDetail}>{p.method} • Received from {p.receivedFrom}</Text>
-                            <Text style={styles.tileDate}>{new Date(p.createdAt).toLocaleDateString()} at {new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                            <Text style={styles.tileDate}>{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "N/A"} at {p.createdAt ? new Date(p.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}</Text>
                          </View>
                       </View>
                     )) : <Text style={styles.noHistory}>No payments recorded this term.</Text>}

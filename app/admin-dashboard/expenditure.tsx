@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   addDoc,
@@ -12,7 +11,7 @@ import {
   where,
   getDocsFromServer
 } from "firebase/firestore";
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -29,6 +28,7 @@ import {
   Platform,
   RefreshControl
 } from "react-native";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -37,6 +37,7 @@ import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 
 const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 Hours
 
@@ -57,13 +58,18 @@ export default function ExpenditureScreen() {
   const router = useRouter();
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
+  const insets = useSafeAreaInsets();
   
   // Access Control
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = ["proprietor", "headmaster"].includes(currentUserRole);
+  const isSuperAdmin = ["proprietor", "headmaster", "ceo"].includes(currentUserRole);
   const expPermission = appUser?.permissions?.["expenditure"] || "deny";
   const canView = isSuperAdmin || expPermission === "full" || expPermission === "view" || expPermission === "edit";
   const canEdit = isSuperAdmin || expPermission === "full" || expPermission === "edit";
+
+  // Brand Fallbacks
+  const primaryBrand = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
+  const secondaryBrand = SCHOOL_CONFIG.secondaryColor || primaryBrand;
 
   useEffect(() => {
     if (appUser && !canView) {
@@ -86,11 +92,10 @@ export default function ExpenditureScreen() {
   const [amount, setAmount] = useState("");
   const [itemDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Sync with global academic config
   useEffect(() => {
     if (!acadConfig.loading) {
-      setSelectedYear(acadConfig.academicYear);
-      setSelectedTerm(acadConfig.currentTerm);
+      setSelectedYear(acadConfig.academicYear || "");
+      setSelectedTerm(acadConfig.currentTerm || "");
       if (!acadConfig.academicYear || !acadConfig.currentTerm) {
         setLoading(false);
       }
@@ -110,17 +115,20 @@ export default function ExpenditureScreen() {
     const cacheKey = `EXP_CACHE_V4_${selectedYear}_${selectedTerm}`;
 
     try {
-      const cached = await AsyncStorage.getItem(cacheKey);
-      if (cached && !isRefresh) {
-        try {
-            const { list, total, timestamp } = JSON.parse(cached);
-            if (Date.now() - timestamp < CACHE_EXPIRY) {
-              setExpenditures(list || []);
-              setServerTotal(total || 0);
-              setLoading(false);
-              return;
-            }
-        } catch (e) {}
+      if (!isRefresh) {
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                const { list, total, timestamp } = parsed;
+                if (timestamp && Date.now() - timestamp < CACHE_EXPIRY) {
+                  setExpenditures(list || []);
+                  setServerTotal(total || 0);
+                  setLoading(false);
+                  return;
+                }
+            } catch (e) {}
+        }
       }
 
       const q = query(
@@ -130,21 +138,24 @@ export default function ExpenditureScreen() {
         orderBy("createdAt", "desc")
       );
 
-      const [aggSnap, docSnap] = await Promise.all([
-        getAggregateFromServer(q, { total: sum("amount") }),
-        isRefresh ? getDocsFromServer(q) : getDocsCacheFirst(q as any)
-      ]);
+      // Wrapper for aggregate server calls which can fail on Android network drops
+      let totalValue = 0;
+      try {
+          const aggSnap = await getAggregateFromServer(q, { total: sum("amount") });
+          totalValue = aggSnap.data().total || 0;
+      } catch (e) { console.warn("Aggregate fail:", e); }
 
-      const total = aggSnap.data().total || 0;
+      const docSnap = isRefresh ? await getDocsFromServer(q) : await getDocsCacheFirst(q as any);
+
       const list = docSnap.docs.map(d => ({ id: d.id, ...d.data() } as Expenditure));
       const uniqueList = Array.from(new Map(list.map(item => [item.id, item])).values());
       
-      setServerTotal(total);
+      setServerTotal(totalValue);
       setExpenditures(uniqueList);
 
       await AsyncStorage.setItem(cacheKey, JSON.stringify({
         list: uniqueList,
-        total,
+        total: totalValue,
         timestamp: Date.now()
       }));
 
@@ -166,7 +177,6 @@ export default function ExpenditureScreen() {
     if (!canEdit) return Alert.alert("Denied", "You don't have permission to add entries.");
     if (!itemName.trim() || !amount.trim()) return Alert.alert("Required", "Please fill all fields");
     if (!appUser) return Alert.alert("Auth Error", "Session expired.");
-    if (!selectedYear || !selectedTerm) return Alert.alert("Config Missing", "Please set academic year and term.");
     
     setSaving(true);
     try {
@@ -201,10 +211,10 @@ export default function ExpenditureScreen() {
   const isConfigMissing = !selectedYear || !selectedTerm;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" />
       
-      <LinearGradient colors={[COLORS.primary, "#1E293B"]} style={styles.headerGradient}>
+      <LinearGradient colors={[primaryBrand, "#1E293B"]} style={styles.headerGradient}>
         <View style={styles.headerTop}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                <SVGIcon name="arrow-back" size={24} color="#fff" />
@@ -217,7 +227,7 @@ export default function ExpenditureScreen() {
             <Text style={styles.summaryLabel}>TOTAL PERIOD SPENDING</Text>
             <Text style={styles.summaryValue}>₵{(serverTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</Text>
             {!isConfigMissing && (
-              <Animatable.View animation="pulse" iterationCount="infinite" style={[styles.periodBadge, { backgroundColor: COLORS.secondary }]}>
+              <Animatable.View animation="pulse" iterationCount="infinite" style={[styles.periodBadge, { backgroundColor: secondaryBrand }]}>
                   <Text style={styles.periodText}>{selectedYear} • {selectedTerm}</Text>
               </Animatable.View>
             )}
@@ -240,7 +250,7 @@ export default function ExpenditureScreen() {
           <SVGIcon name="settings-outline" size={80} color="#CBD5E1" />
           <Text style={styles.emptyTitle}>Configuration Required</Text>
           <TouchableOpacity 
-            style={[styles.saveBtn, { backgroundColor: COLORS.primary, width: 200, marginTop: 20 }]} 
+            style={[styles.saveBtn, { backgroundColor: primaryBrand, width: 200, marginTop: 20 }]} 
             onPress={() => router.push("/academic-calendar")}
           >
             <Text style={styles.saveBtnText}>Go to Calendar</Text>
@@ -250,8 +260,9 @@ export default function ExpenditureScreen() {
         <FlatList
           data={expenditures}
           keyExtractor={item => item.id}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchExpenditures(true)} colors={[COLORS.primary]} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchExpenditures(true)} colors={[primaryBrand]} />}
           contentContainerStyle={styles.listContent}
+          removeClippedSubviews={Platform.OS === 'android'}
           ListEmptyComponent={
               <View style={styles.emptyContainer}>
                   <SVGIcon name="receipt" size={80} color="#CBD5E1" />
@@ -264,7 +275,7 @@ export default function ExpenditureScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.itemTitle}>{item.item || "Unnamed Expense"}</Text>
                   <View style={styles.dateRow}>
-                      <SVGIcon name="calendar" size={12} color={COLORS.gray} />
+                      <SVGIcon name="calendar" size={12} color={COLORS.gray || "#9ca3af"} />
                       <Text style={styles.dateText}>{item.date || "N/A"}</Text>
                   </View>
                 </View>
@@ -282,7 +293,7 @@ export default function ExpenditureScreen() {
 
       {canEdit && !isConfigMissing && (
         <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-          <LinearGradient colors={[COLORS.secondary, "#d97706"]} style={styles.fabGradient}>
+          <LinearGradient colors={[secondaryBrand, "#d97706"]} style={styles.fabGradient}>
               <SVGIcon name="create" size={30} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
@@ -297,19 +308,19 @@ export default function ExpenditureScreen() {
             </View>
             <View style={styles.modalInputWrapper}>
                 <Text style={styles.modalInputLabel}>WHAT WAS PURCHASED?</Text>
-                <TextInput style={styles.modalInput} placeholder="e.g. Printer Toner" value={itemName} onChangeText={setItemName} />
+                <TextInput style={styles.modalInput} placeholder="e.g. Printer Toner" value={itemName} onChangeText={setItemName} placeholderTextColor="#94A3B8" />
             </View>
             <View style={styles.modalInputWrapper}>
                 <Text style={styles.modalInputLabel}>AMOUNT (₵)</Text>
-                <TextInput style={styles.modalInput} placeholder="0.00" keyboardType="numeric" value={amount} onChangeText={setAmount} />
+                <TextInput style={styles.modalInput} placeholder="0.00" keyboardType="numeric" value={amount} onChangeText={setAmount} placeholderTextColor="#94A3B8" />
             </View>
-            <TouchableOpacity style={styles.saveBtn} onPress={addExpenditure} disabled={saving}>
+            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: secondaryBrand }]} onPress={addExpenditure} disabled={saving}>
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Entry</Text>}
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -335,7 +346,7 @@ const styles = StyleSheet.create({
   itemTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
   dateRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   dateText: { fontSize: 12, color: '#64748B', marginLeft: 4 },
-  itemAmount: { fontSize: 18, fontWeight: '800', color: COLORS.primary },
+  itemAmount: { fontSize: 18, fontWeight: '800', color: COLORS.primary || "#2e86de" },
   adminBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
   adminText: { fontSize: 10, color: '#64748B', fontWeight: '600' },
   fab: { position: 'absolute', bottom: 30, right: 30, width: 65, height: 65, borderRadius: 32.5, ...SHADOWS.medium },
@@ -350,7 +361,7 @@ const styles = StyleSheet.create({
   modalInputWrapper: { marginBottom: 20 },
   modalInputLabel: { fontSize: 11, fontWeight: '800', color: '#94A3B8', marginBottom: 8, letterSpacing: 0.5 },
   modalInput: { backgroundColor: '#F1F5F9', borderRadius: 12, padding: 16, fontSize: 16, color: '#1E293B' },
-  saveBtn: { backgroundColor: COLORS.secondary, height: 55, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  saveBtn: { height: 55, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 });

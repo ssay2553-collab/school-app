@@ -27,6 +27,9 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Platform,
+  Modal,
+  FlatList
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -54,6 +57,7 @@ const getSubjectColor = (subject: string) => SUBJECT_COLORS[subject] || SUBJECT_
 type Period = { id: string; subject: string; startTime: string; endTime: string; isCustom: boolean; };
 type ClassData = { id: string; name: string; curriculum?: CurriculumType };
 
+// Robust ID generation for Android stability
 function generateId() { return Date.now().toString() + Math.random().toString(36).substring(2, 9); }
 
 const COLUMN_WIDTH = 150;
@@ -68,14 +72,15 @@ export default function CreateLessonTimetable() {
   const [selectedClass, setSelectedClass] = useState("");
   const [curriculum, setCurriculum] = useState<CurriculumType>("GES");
   const [timetableDays, setTimetableDays] = useState<Record<string, Period[]>>({});
-  const [otherActivities, setOtherActivities] = useState<Period[]>([]);
   const [numColumns, setNumColumns] = useState(6);
 
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const brandColor = COLORS.brandPrimary || COLORS.primary;
+  const [pickerModal, setPickerModal] = useState<{ day: string; col: number } | null>(null);
+
+  const brandColor = COLORS.brandPrimary || COLORS.primary || "#2e86de";
   const neutralDark = "#1E293B";
 
   const availableSubjects = useMemo(() => {
@@ -87,10 +92,8 @@ export default function CreateLessonTimetable() {
     if (!appUser) return false;
     const role = (appUser.role || "").toLowerCase();
     const adminRole = (appUser.adminRole || "").toLowerCase();
-    
     const adminRoles = ["admin", "headmaster", "proprietor", "secretary", "assistant", "ceo"];
     const isFullAdmin = adminRoles.some(r => role.includes(r) || adminRole.includes(r));
-    
     if (isFullAdmin) return true;
     return appUser.classTeacherOf === selectedClass;
   }, [appUser, selectedClass]);
@@ -117,13 +120,13 @@ export default function CreateLessonTimetable() {
       if (!mounted.current) return;
       setClasses(sorted);
       
-      setSelectedClass(prev => {
-        if (prev) return prev;
+      if (!selectedClass) {
         if (appUser?.classTeacherOf && sorted.find(c => c.id === appUser.classTeacherOf)) {
-          return appUser.classTeacherOf;
+          setSelectedClass(appUser.classTeacherOf);
+        } else if (sorted.length > 0) {
+          setSelectedClass(sorted[0].id);
         }
-        return sorted.length > 0 ? sorted[0].id : "";
-      });
+      }
     } catch (e) { 
       console.error("Load Classes Error:", e); 
     } finally { 
@@ -148,7 +151,6 @@ export default function CreateLessonTimetable() {
       if (!snap.exists()) {
         if (mounted.current) { 
           setTimetableDays({}); 
-          setOtherActivities([]); 
           setNumColumns(6); 
         }
         return;
@@ -156,7 +158,6 @@ export default function CreateLessonTimetable() {
 
       const data = snap.data();
       const days = data?.timetableDays || {};
-      const others = data?.otherActivities || [];
       let maxCols = 6;
       Object.values(days).forEach((pArr: any) => { 
         if (Array.isArray(pArr) && pArr.length > maxCols) maxCols = pArr.length; 
@@ -164,7 +165,6 @@ export default function CreateLessonTimetable() {
 
       if (mounted.current) {
         setTimetableDays(days);
-        setOtherActivities(others);
         setNumColumns(maxCols);
         if (data.curriculum) setCurriculum(data.curriculum);
       }
@@ -174,7 +174,7 @@ export default function CreateLessonTimetable() {
     } finally { 
       if (mounted.current) setLoadingData(false); 
     }
-  }, [selectedClass]); // Reduced dependencies to avoid loops
+  }, [selectedClass]);
 
   useEffect(() => { 
     if (selectedClass) loadTimetable(); 
@@ -215,7 +215,6 @@ export default function CreateLessonTimetable() {
       const ref = doc(db, "timetables", selectedClass);
       await setDoc(ref, { 
         timetableDays, 
-        otherActivities, 
         numColumns, 
         curriculum,
         updatedAt: serverTimestamp() 
@@ -230,29 +229,23 @@ export default function CreateLessonTimetable() {
     const bgColor = getSubjectColor(subject);
     
     return (
-      <View key={`${day}-${colIndex}`} style={[styles.tableCell, { backgroundColor: bgColor }]}>
+      <TouchableOpacity 
+        key={`${day}-${colIndex}`} 
+        style={[styles.tableCell, { backgroundColor: bgColor }]}
+        onPress={() => canEdit && setPickerModal({ day, col: colIndex })}
+        disabled={!canEdit}
+      >
         <View style={styles.cellContent}>
           <Text style={styles.cellSubjectText} numberOfLines={2}>
             {subject || "---"}
           </Text>
-          {canEdit && (
-            <Picker
-              enabled={canEdit}
-              selectedValue={subject}
-              onValueChange={(val) => updateCell(day, colIndex, { subject: val })}
-              style={styles.absPicker}
-              dropdownIconColor="rgba(0,0,0,0)"
-            >
-              <Picker.Item label="---" value="" color="#94A3B8" />
-              {availableSubjects.map(s => <Picker.Item key={s} label={s} value={s} />)}
-            </Picker>
-          )}
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
   const renderColumnHeader = (index: number) => {
+    // Safety check for array access
     const refPeriod = timetableDays["Monday"]?.[index] || { startTime: "", endTime: "" };
     return (
       <View key={`header-${index}`} style={styles.columnHeader}>
@@ -271,8 +264,22 @@ export default function CreateLessonTimetable() {
             </TouchableOpacity>
           )}
         </View>
-        <TextInput editable={canEdit} style={styles.timeInput} placeholder="Start" value={refPeriod.startTime} onChangeText={(t) => syncColumnTime(index, t, refPeriod.endTime)} />
-        <TextInput editable={canEdit} style={styles.timeInput} placeholder="End" value={refPeriod.endTime} onChangeText={(t) => syncColumnTime(index, refPeriod.startTime, t)} />
+        <TextInput 
+          editable={canEdit} 
+          style={styles.timeInput} 
+          placeholder="Start" 
+          value={refPeriod.startTime || ""} 
+          onChangeText={(t) => syncColumnTime(index, t, refPeriod.endTime || "")} 
+          placeholderTextColor="#94A3B8"
+        />
+        <TextInput 
+          editable={canEdit} 
+          style={styles.timeInput} 
+          placeholder="End" 
+          value={refPeriod.endTime || ""} 
+          onChangeText={(t) => syncColumnTime(index, refPeriod.startTime || "", t)} 
+          placeholderTextColor="#94A3B8"
+        />
       </View>
     );
   };
@@ -335,6 +342,33 @@ export default function CreateLessonTimetable() {
         )}
       </ScrollView>
 
+      {/* REPLACED MANY PICKERS WITH SINGLE MODAL LIST FOR STABILITY */}
+      <Modal visible={!!pickerModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+            <View style={styles.pickerSheet}>
+                <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetTitle}>Select Subject</Text>
+                    <TouchableOpacity onPress={() => setPickerModal(null)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
+                </View>
+                <FlatList
+                    data={["---", ...availableSubjects]}
+                    keyExtractor={item => item}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity 
+                            style={styles.subjectOption} 
+                            onPress={() => {
+                                if (pickerModal) updateCell(pickerModal.day, pickerModal.col, { subject: item === "---" ? "" : item });
+                                setPickerModal(null);
+                            }}
+                        >
+                            <Text style={[styles.optionText, item === "---" && { color: '#94A3B8' }]}>{item}</Text>
+                        </TouchableOpacity>
+                    )}
+                />
+            </View>
+        </View>
+      </Modal>
+
       {canEdit && !loadingData && selectedClass !== "" && (
         <View style={styles.footer}>
           <TouchableOpacity style={[styles.saveBtn, { backgroundColor: brandColor }]} onPress={save} disabled={saving}>
@@ -367,15 +401,20 @@ const styles = StyleSheet.create({
   columnHeader: { width: COLUMN_WIDTH, height: 90, padding: 8, backgroundColor: '#F1F5F9', borderBottomWidth: 1, borderBottomColor: '#E2E8F0', borderLeftWidth: 1, borderLeftColor: '#E2E8F0' },
   columnHeaderTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
   columnHeaderText: { fontSize: 11, fontWeight: '900', color: '#1E293B' },
-  timeInput: { backgroundColor: '#fff', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 6, fontSize: 10, marginBottom: 2, borderWidth: 1, borderColor: '#CBD5E1' },
+  timeInput: { backgroundColor: '#fff', borderRadius: 4, paddingVertical: 2, paddingHorizontal: 6, fontSize: 10, marginBottom: 2, borderWidth: 1, borderColor: '#CBD5E1', color: '#1E293B' },
   dayCell: { height: 60, justifyContent: 'center', paddingLeft: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', backgroundColor: '#fff' },
   dayText: { fontSize: 12, fontWeight: '800', color: '#475569' },
   tableCell: { width: COLUMN_WIDTH, height: 60, borderLeftWidth: 1, borderLeftColor: '#F1F5F9', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   cellContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 4 },
   cellSubjectText: { fontSize: 11, fontWeight: '700', color: '#1E293B', textAlign: 'center' },
-  absPicker: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0 },
   addColumnBtn: { width: 60, justifyContent: 'center', alignItems: 'center' },
   footer: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#fff", padding: 20, borderTopWidth: 1, borderTopColor: "#F1F5F9", ...SHADOWS.large },
   saveBtn: { height: 60, borderRadius: 18, flexDirection: "row", justifyContent: "center", alignItems: "center", ...SHADOWS.medium },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "900" },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  pickerSheet: { backgroundColor: '#fff', width: '100%', maxWidth: 400, borderRadius: 25, maxHeight: '80%', padding: 20 },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  sheetTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B' },
+  subjectOption: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
+  optionText: { fontSize: 16, fontWeight: '600', color: '#475569', textAlign: 'center' }
 });

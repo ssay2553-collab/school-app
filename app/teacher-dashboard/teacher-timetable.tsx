@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, doc, getDocFromCache, getDocFromServer } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
@@ -60,11 +60,11 @@ const LessonCard = React.memo(({ lesson, brandColor, type = 'lesson' }: { lesson
       isOther && { borderStyle: 'dashed' }
     ]}>
       <View style={[styles.timeColumn, { borderRightColor: 'rgba(0,0,0,0.05)' }]}>
-        <Text style={styles.startTime}>{lesson.startTime.split(' ')[0]}</Text>
-        <Text style={styles.amPm}>{lesson.startTime.split(' ')[1]}</Text>
+        <Text style={styles.startTime}>{lesson.startTime?.split(' ')[0] || "--"}</Text>
+        <Text style={styles.amPm}>{lesson.startTime?.split(' ')[1] || ""}</Text>
       </View>
       <View style={styles.lessonInfo}>
-        <Text style={[styles.lessonSubject, isOther && { color: '#64748B' }]}>{item.subject}</Text>
+        <Text style={[styles.lessonSubject, isOther && { color: '#64748B' }]}>{lesson.subject}</Text>
         <View style={styles.durationRow}>
           <SVGIcon name="time-outline" size={12} color={isOther ? "#94A3B8" : "#64748B"} />
           <Text style={styles.durationText}>{lesson.startTime} – {lesson.endTime}</Text>
@@ -83,8 +83,8 @@ export default function TeacherTimetable() {
   const [selectedDay, setSelectedDay] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const brandColor = COLORS.brandPrimary || COLORS.primary;
-  const secondaryColor = COLORS.brandSecondary || COLORS.secondary;
+  const brandColor = COLORS.brandPrimary || COLORS.primary || "#2e86de";
+  const secondaryColor = COLORS.brandSecondary || COLORS.secondary || "#1E293B";
 
   const isClassTeacher = useMemo(() => {
     return appUser?.assignedRoles?.includes("Class Teacher") || !!appUser?.classTeacherOf;
@@ -158,7 +158,7 @@ export default function TeacherTimetable() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[brandColor, "#1E293B"]} style={styles.headerGradient}>
         <View style={styles.headerTitleRow}>
@@ -192,7 +192,7 @@ export default function TeacherTimetable() {
       <ScrollView 
         showsVerticalScrollIndicator={false} 
         contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
-        removeClippedSubviews={true}
+        removeClippedSubviews={Platform.OS === 'android'}
       >
         {isClassTeacher && (
              <TouchableOpacity 

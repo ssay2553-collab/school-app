@@ -2,7 +2,6 @@ import { Slot, useRouter } from "expo-router";
 import { useEffect } from "react";
 import {
   ActivityIndicator,
-  SafeAreaView,
   StyleSheet,
   View,
   Text,
@@ -10,11 +9,12 @@ import {
   Alert,
   Platform
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { useAuth } from "../../contexts/AuthContext";
 import { auth } from "../../firebaseConfig";
 import { signOut } from "firebase/auth";
-import { SHADOWS } from "../../constants/theme";
+import { SHADOWS, COLORS } from "../../constants/theme";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import SVGIcon from "../../components/SVGIcon";
 
@@ -22,8 +22,8 @@ export default function DashboardLayout() {
   const { appUser, loading } = useAuth();
   const router = useRouter();
 
-  const primary = SCHOOL_CONFIG.primaryColor;
-  const secondary = SCHOOL_CONFIG.secondaryColor;
+  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
+  const secondary = SCHOOL_CONFIG.secondaryColor || primary;
   const headerText = '#fff';
   const portalTagColor = 'rgba(255,255,255,0.8)';
 
@@ -90,7 +90,7 @@ export default function DashboardLayout() {
   return (
     <View style={styles.container}>
       <LinearGradient colors={[primary, secondary]} style={styles.headerGradient}>
-        <SafeAreaView>
+        <SafeAreaView edges={['top', 'left', 'right']}>
           <View style={styles.header}>
             <View style={styles.schoolInfo}>
               <View style={{ flex: 1 }}>
@@ -143,7 +143,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 15,
-    paddingTop: Platform.OS === 'android' ? 40 : 10,
   },
   schoolInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 15 },
   schoolName: { fontSize: 14, fontWeight: '900' },

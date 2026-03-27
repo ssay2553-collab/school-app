@@ -4,13 +4,13 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
   Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
@@ -18,7 +18,7 @@ import * as Animatable from "react-native-animatable";
 import SVGIcon from "../components/SVGIcon";
 import { useSchoolConfig } from "../constants/Config";
 import { getSchoolLogo } from "../constants/Logos";
-import { SHADOWS } from "../constants/theme";
+import { SHADOWS, COLORS } from "../constants/theme";
 import { useAuth } from "../contexts/AuthContext";
 
 const { width, height } = Dimensions.get("window");
@@ -33,15 +33,15 @@ export default function WelcomeScreen() {
     schoolId,
     primaryColor,
     secondaryColor,
-    brandPrimary,
-    brandSecondary,
     surfaceColor,
     fullName,
     motto,
   } = config;
 
-  const finalPrimary = primaryColor;
-  const finalSecondary = secondaryColor || primaryColor;
+  // Added safety fallbacks to prevent Android native crashes on null/undefined colors
+  const finalPrimary = primaryColor || COLORS.primary || "#2e86de";
+  const finalSecondary = secondaryColor || finalPrimary;
+  const finalSurface = surfaceColor || "#FFFFFF";
 
   const logo = getSchoolLogo(schoolId);
 
@@ -62,7 +62,7 @@ export default function WelcomeScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: surfaceColor }]}>
+      <View style={[styles.center, { backgroundColor: finalSurface }]}>
         <ActivityIndicator size="large" color={finalPrimary} />
       </View>
     );
@@ -88,7 +88,7 @@ export default function WelcomeScreen() {
             style={styles.logoContainer}
           >
             <View style={[styles.glassLogo, { borderColor: 'rgba(255,255,255,0.3)' }]}>
-              <View style={[styles.innerLogo, { backgroundColor: surfaceColor }]}>
+              <View style={[styles.innerLogo, { backgroundColor: finalSurface }]}>
                 <Image source={logo} style={styles.logo} resizeMode="contain" />
               </View>
             </View>

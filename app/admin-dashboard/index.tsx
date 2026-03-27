@@ -36,8 +36,10 @@ export default function AdminDashboard() {
   const { appUser, loading: authLoading } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
 
-  const primary = SCHOOL_CONFIG.primaryColor;
-  const surface = SCHOOL_CONFIG.surfaceColor;
+  // Added fallbacks for Android stability
+  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
+  const secondary = SCHOOL_CONFIG.secondaryColor || primary;
+  const surface = SCHOOL_CONFIG.surfaceColor || "#FFFFFF";
 
   const [stats, setStats] = useState(dashboardStatsMemoryCache || {
     totalStudents: 0,
@@ -49,10 +51,9 @@ export default function AdminDashboard() {
   // Restore scroll position on mount
   useEffect(() => {
     if (lastDashboardScrollY > 0) {
-      // Small timeout ensures the ScrollView has content before scrolling
       const timer = setTimeout(() => {
         scrollRef.current?.scrollTo({ y: lastDashboardScrollY, animated: false });
-      }, 50);
+      }, 100);
       return () => clearTimeout(timer);
     }
   }, []);
@@ -70,11 +71,14 @@ export default function AdminDashboard() {
       const cached = await AsyncStorage.getItem(STATS_CACHE_KEY);
       if (cached) {
         try {
-          const { data } = JSON.parse(cached);
-          const newStats = { ...data, loading: false };
-          setStats(newStats);
-          dashboardStatsMemoryCache = newStats;
-          return; 
+          const parsed = JSON.parse(cached);
+          const data = parsed?.data;
+          if (data) {
+            const newStats = { ...data, loading: false };
+            setStats(newStats);
+            dashboardStatsMemoryCache = newStats;
+            return; 
+          }
         } catch (e) {
           console.log("Cache parse error", e);
         }
@@ -96,8 +100,8 @@ export default function AdminDashboard() {
       ]);
 
       const data = {
-        totalStudents: studentsSnap.data().count,
-        totalStaff: teacherSnap.data().count + ntSnap.data().count,
+        totalStudents: studentsSnap.data().count || 0,
+        totalStaff: (teacherSnap.data().count || 0) + (ntSnap.data().count || 0),
       };
 
       const finalStats = { ...data, loading: false };
@@ -164,7 +168,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: surface }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: surface }]} edges={['bottom', 'left', 'right']}>
       <StatusBar barStyle="light-content" />
       <ScrollView
         ref={scrollRef}
@@ -172,12 +176,13 @@ export default function AdminDashboard() {
         onScroll={handleScroll}
         scrollEventThrottle={16}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={primary} colors={[primary]} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" colors={[primary]} />
         }
         contentContainerStyle={styles.scrollContent}
+        removeClippedSubviews={Platform.OS === 'android'}
       >
         <LinearGradient
-          colors={[SCHOOL_CONFIG.brandPrimary, SCHOOL_CONFIG.brandSecondary]}
+          colors={[primary, secondary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.header}
@@ -215,12 +220,12 @@ export default function AdminDashboard() {
                 duration={800} 
                 style={[styles.statCard, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
              >
-                <View style={[styles.statIconBox, { backgroundColor: COLORS.yellow }]}>
+                <View style={[styles.statIconBox, { backgroundColor: COLORS.yellow || "#f1c40f" }]}>
                    <SVGIcon name="people" size={20} color="#fff" />
                 </View>
                 <View>
                    <Text style={styles.statLabel}>STUDENTS</Text>
-                   <Text style={styles.statValue}>{stats.loading && !refreshing ? "--" : stats.totalStudents}</Text>
+                   <Text style={styles.statValue}>{stats.loading && !refreshing ? "--" : (stats.totalStudents || 0)}</Text>
                 </View>
              </Animatable.View>
              <Animatable.View 
@@ -228,12 +233,12 @@ export default function AdminDashboard() {
                 duration={800} 
                 style={[styles.statCard, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
              >
-                <View style={[styles.statIconBox, { backgroundColor: COLORS.success }]}>
+                <View style={[styles.statIconBox, { backgroundColor: COLORS.success || "#05ac5b" }]}>
                    <SVGIcon name="briefcase" size={20} color="#fff" />
                 </View>
                 <View>
                    <Text style={styles.statLabel}>STAFF</Text>
-                   <Text style={styles.statValue}>{stats.loading && !refreshing ? "--" : stats.totalStaff}</Text>
+                   <Text style={styles.statValue}>{stats.loading && !refreshing ? "--" : (stats.totalStaff || 0)}</Text>
                 </View>
              </Animatable.View>
           </View>
@@ -257,7 +262,7 @@ export default function AdminDashboard() {
                       onPress={() => router.push(item.route as any)}
                       activeOpacity={0.7}
                     >
-                      <View style={[styles.itemIconBox, { backgroundColor: item.color + '10' }]}>
+                      <View style={[styles.itemIconBox, { backgroundColor: (item.color || "#000") + '10' }]}>
                         <SVGIcon name={item.icon} size={26} color={item.color} />
                       </View>
                       <Text style={styles.itemTitle} numberOfLines={1}>{item.title}</Text>
@@ -310,11 +315,11 @@ const styles = StyleSheet.create({
   statValue: { color: '#fff', fontSize: 18, fontWeight: '900' },
   mainContent: { paddingHorizontal: 20, paddingTop: 30 },
   section: { marginBottom: 30 },
-  sectionTitle: { fontSize: 14, fontWeight: '900', color: COLORS.text, marginBottom: 15, letterSpacing: 1, opacity: 0.6 },
+  sectionTitle: { fontSize: 14, fontWeight: '900', color: COLORS.text || "#1f2937", marginBottom: 15, letterSpacing: 1, opacity: 0.6 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -8 },
   gridItemWrapper: { width: '50%', padding: 8 },
   gridItem: { backgroundColor: '#fff', borderRadius: 24, padding: 20, alignItems: 'center', ...SHADOWS.small },
   itemIconBox: { width: 56, height: 56, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  itemTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text },
+  itemTitle: { fontSize: 13, fontWeight: '700', color: COLORS.text || "#1f2937" },
   footerSpace: { height: 40 },
 });

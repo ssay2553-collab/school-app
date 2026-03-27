@@ -91,22 +91,24 @@ function MainLayout() {
   if (!ready) return <SplashScreen />;
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#fff" }}>
+    <>
       <StatusBar style="dark" />
       <RouteGuard />
       {/* Dev Switcher is hidden internally in non-dev builds */}
       <DevSchoolSwitcher />
-    </GestureHandlerRootView>
+    </>
   );
 }
 
 export default function Layout() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <MainLayout />
-      </ThemeProvider>
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <AuthProvider>
+        <ThemeProvider>
+          <MainLayout />
+        </ThemeProvider>
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }
 

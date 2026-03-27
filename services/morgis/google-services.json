@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "629555287836",
+    "project_id": "morgis-app",
+    "storage_bucket": "morgis-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:629555287836:android:6a54059d73d7a2e9d8ccd9",
+        "android_client_info": {
+          "package_name": "com.saysmanage.morgisapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBcwe68xp1qgBmzb3bGb41q6y5ZPR-TVrc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "705991105475",
+    "project_id": "bms-app-f4572",
+    "storage_bucket": "bms-app-f4572.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:705991105475:android:62e13ac6825e44bb003b76",
+        "android_client_info": {
+          "package_name": "com.saysmanage.bms"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBudquau4CzL_RM_4LA_2S81g4ce70hEmc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

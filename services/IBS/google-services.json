@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "925332921968",
+    "project_id": "jei-river",
+    "storage_bucket": "jei-river.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:925332921968:android:0136e3860c9c432fc6deb5",
+        "android_client_info": {
+          "package_name": "com.saysmanage.jeiriver"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDyeRRyzfKYrbqp3HifQYNkmYsH7Ux4Jks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

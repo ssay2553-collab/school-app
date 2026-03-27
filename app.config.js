@@ -5,7 +5,7 @@ module.exports = ({ config }) => {
   // Normalize to lowercase to prevent case-sensitivity issues during lookup.
   const rawId = process.env.SCHOOL_ID || "eagles";
   // Maintain casing for school object keys (IBS is uppercase in the dictionary)
-  const schoolId = rawId.toLowerCase() === "ibs" ? "IBS" : rawId; 
+  const schoolId = rawId.toLowerCase() === "ibs" ? "IBS" : rawId;
 
   const schools = {
     afahjoy: {
@@ -50,7 +50,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#f3e7c1ff",
       brandPrimary: "#F57C00",
       brandSecondary: "#6A1B9A",
-      easProjectId: null,
+      easProjectId: "501ec013-9c98-43a8-8c4e-40af921e2bf2",
       firebase: {
         apiKey: "AIzaSyD5a6vaZoU3W2B99AJetvqXTNjcbCk4dAM",
         authDomain: "beano-app-a9c38.firebaseapp.com",
@@ -102,7 +102,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#ecfcb1ff",
       brandPrimary: "#DAA520",
       brandSecondary: "#006400",
-      easProjectId: null,
+      easProjectId: "d2a2165f-d4d4-4924-8c33-82c254823ddc",
       firebase: {
         apiKey: "AIzaSyBcc6WCDNaUoRloASa2aZt4hPAvFZorK98",
         authDomain: "jei-river.firebaseapp.com",
@@ -128,7 +128,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#dcabf3ff",
       brandPrimary: "#cc315fff",
       brandSecondary: "#140e53ff",
-      easProjectId: null,
+      easProjectId: "7cb0033f-318b-4aed-9879-8f1af372b5ce",
       firebase: {
         apiKey: "AIzaSyBl_YXsJMsWHVDZkMKHk7HGxghp_XAM4L4",
         authDomain: "royal-lisben.firebaseapp.com",
@@ -154,7 +154,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#d3e6a1ff",
       brandPrimary: "#C1272D",
       brandSecondary: "#313030ff",
-      easProjectId: null,
+      easProjectId: "36819eb3-b12b-459a-b92c-e421fafb421b",
       firebase: {
         apiKey: "AIzaSyAEXlKLEDedM1jHnngwRQ2FG7wYy8libzg",
         authDomain: "clis-app-f89b8.firebaseapp.com",
@@ -180,7 +180,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#FDF7FF",
       brandPrimary: "#686764ff",
       brandSecondary: "#f5cb78ff",
-      easProjectId: null,
+      easProjectId: "f894dcf0-0116-41b1-a48d-ab3f4e6c1bf6",
       firebase: {
         apiKey: "AIzaSyCj2_msgZVcreaNUkM8q2M8VkOWRd1Rgww",
         authDomain: "vince-app-c49a2.firebaseapp.com",
@@ -207,7 +207,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#d671b8ff",
       brandPrimary: "#5e67eeff",
       brandSecondary: "#f5c35eff",
-      easProjectId: null,
+      easProjectId: "b76b4b94-fc26-46f0-b7ff-932fa1afac61",
       firebase: {
         apiKey: "AIzaSyBWAaIywN-rJyDUipU89yutw8bnIN5pr6I",
         authDomain: "jewels-app-17a30.firebaseapp.com",
@@ -234,7 +234,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#96d494ff",
       brandPrimary: "#3cca48ff",
       brandSecondary: "#2a552dff",
-      easProjectId: null,
+      easProjectId: "37d1169e-86ee-4661-8ca4-1fe7d916161b",
       firebase: {
         apiKey: "AIzaSyD8R5rncXH135QyTdoyuxHCLUvqf2O0_d0",
         authDomain: "clis-app-e39e8.firebaseapp.com",
@@ -260,7 +260,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#FDF7FF",
       brandPrimary: "#D4AF37",
       brandSecondary: "#000000",
-      easProjectId: null,
+      easProjectId: "b19bf821-a509-49dd-909e-ca094b5a5718",
       firebase: {
         apiKey: "AIzaSyBlWYOx1I_u8VwJf7puo8I0uFvktAo3yl8",
         authDomain: "model-power-430de.firebaseapp.com",
@@ -287,7 +287,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#f7f6d1ff",
       brandPrimary: "#2c5af1ff",
       brandSecondary: "#7a0b1aff",
-      easProjectId: null,
+      easProjectId: "793eba0d-180b-4d26-8211-9028c85f5529",
       firebase: {
         apiKey: "AIzaSyAfaTh7LCjUnO50-8XrRpuzj4_GzMJiSzc",
         authDomain: "stepping-stone-90720.firebaseapp.com",
@@ -313,7 +313,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#FDF7FF",
       brandPrimary: "#7B2CBF",
       brandSecondary: "#3333d8ff",
-      easProjectId: null,
+      easProjectId: "bae08918-f134-4384-8bf3-d73659186b60",
       firebase: {
         apiKey: "AIzaSyBrRD_azmsbS1cbsmMA9YCI2QZFVHmkvlE",
         authDomain: "bright-brain-99daa.firebaseapp.com",
@@ -339,7 +339,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#8aa3f5ff",
       brandPrimary: "#D32F2F",
       brandSecondary: "#0D47A1",
-      easProjectId: null,
+      easProjectId: "e992a566-d79e-4699-90a4-d365fafe3f8b",
       firebase: {
         apiKey: "AIzaSyDlWpkZokwVwr_drW1Q1y4t529cnpre9lM",
         authDomain: "cascom-59b61.firebaseapp.com",
@@ -365,7 +365,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#dce099ff",
       brandPrimary: "#1A237E",
       brandSecondary: "#FEDD00",
-      easProjectId: null,
+      easProjectId: "36d4c0b6-eab9-462b-8adf-5c1333971451",
       firebase: {
         apiKey: "AIzaSyCy1yDrktbt2eeiV5Qvvm1sXNwHcZtvY78",
         authDomain: "bms-app-f4572.firebaseapp.com",
@@ -391,7 +391,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#edeeb0ff",
       brandPrimary: "#C62828",
       brandSecondary: "#006B3F",
-      easProjectId: null,
+      easProjectId: "519d7269-db07-4f97-99ce-abffca39451b",
       firebase: {
         apiKey: "AIzaSyAahcHdPoNvPEsfKfiSGcmu7_D6OQnE-Zs",
         authDomain: "golden-rock-16bf8.firebaseapp.com",
@@ -417,7 +417,7 @@ module.exports = ({ config }) => {
       surfaceColor: "#FAFAFA",
       brandPrimary: "#D4AF37",
       brandSecondary: "#1E4D8C",
-      easProjectId: null,
+      easProjectId: "b92d65b9-e472-4898-a6a7-3baff3698c98",
       firebase: {
         apiKey: "AIzaSyBiFvOQZ0Rvao6NnhH42CtRqtfGpVAuvzE",
         authDomain: "thess-app.firebaseapp.com",

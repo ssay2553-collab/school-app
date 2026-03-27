@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "121225001260",
+    "project_id": "cascom-59b61",
+    "storage_bucket": "cascom-59b61.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:121225001260:android:4996ae624446d742389489",
+        "android_client_info": {
+          "package_name": "com.saysmanage.cascom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAH9gIO_3POZGHDaLqHs6RrMKHa9xK3LXE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

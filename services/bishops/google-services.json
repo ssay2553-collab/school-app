@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "151847614946",
+    "project_id": "thess-app",
+    "storage_bucket": "thess-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:151847614946:android:bb7c2eab5b5c3d9ed761bb",
+        "android_client_info": {
+          "package_name": "com.saysmanage.firstapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBiFvOQZ0Rvao6NnhH42CtRqtfGpVAuvzE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

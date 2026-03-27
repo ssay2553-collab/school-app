@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "605761169592",
+    "project_id": "clis-app-e39e8",
+    "storage_bucket": "clis-app-e39e8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:605761169592:android:cd71f0d7cd814a126aec4d",
+        "android_client_info": {
+          "package_name": "com.saysmanage.clis"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAjWWo43jknRJDxE2xu1gI9CJBuSvgaN4k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

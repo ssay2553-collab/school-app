@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "623470853110",
+    "project_id": "golden-rock-16bf8",
+    "storage_bucket": "golden-rock-16bf8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:623470853110:android:caac37b515d239b52525d7",
+        "android_client_info": {
+          "package_name": "com.saysmanage.martbeck"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAgxYcgGl4zG_3AAhTucoZfjDLdjOqRu5k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "735827883706",
+    "project_id": "model-power-430de",
+    "storage_bucket": "model-power-430de.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:735827883706:android:80b1729ffbc85879f13483",
+        "android_client_info": {
+          "package_name": "com.saysmanage.modelpower"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbvIBR7hqgCe2aiu-cDsAgTwuq-5YGxeE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

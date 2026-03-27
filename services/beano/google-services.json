@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "505764175188",
+    "project_id": "beano-app-a9c38",
+    "storage_bucket": "beano-app-a9c38.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:505764175188:android:a86652004ae083c2d87cc1",
+        "android_client_info": {
+          "package_name": "com.saysmanage.beanoapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtMLQAyZofxIMlG1ZYjbHArTUWLudwIzE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

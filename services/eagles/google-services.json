@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "449092727389",
+    "project_id": "royal-lisben",
+    "storage_bucket": "royal-lisben.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:449092727389:android:0c9772fec5be5cc44053b4",
+        "android_client_info": {
+          "package_name": "com.saysmanage.eagleapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD-cJouArBViuvOwwA2WtE6rjgNUyYXM3I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

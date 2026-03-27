@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "173597685845",
+    "project_id": "jewels-app-17a30",
+    "storage_bucket": "jewels-app-17a30.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:173597685845:android:aaf826feeea63683d97cdc",
+        "android_client_info": {
+          "package_name": "com.saysmanage.jewel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDxtiufSG0BT2KFCnP1A9NuZT5mXl24_20"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

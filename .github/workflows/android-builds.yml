@@ -28,6 +28,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: 🏗 Checkout repository
         uses: actions/checkout@v4
@@ -35,7 +37,7 @@ jobs:
       - name: 🏗 Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: 🏗 Setup EAS
@@ -49,5 +51,8 @@ jobs:
 
       - name: 🛠 Build APK
         run: |
-          # The profile name corresponds to the profiles in your eas.json
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "Error: EXPO_TOKEN is not set in GitHub Secrets."
+            exit 1
+          fi
           eas build --platform android --profile ${{ github.event.inputs.school_profile }} --non-interactive --no-wait

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "592128740440",
+    "project_id": "bright-brain-99daa",
+    "storage_bucket": "bright-brain-99daa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:592128740440:android:4c805ff4983ed5c9248e2d",
+        "android_client_info": {
+          "package_name": "com.saysmanage.cascom"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAs5c9Z2mfexMwfGyRRlIpddV548W7UCK8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "42632915971",
+    "project_id": "stepping-stone-90720",
+    "storage_bucket": "stepping-stone-90720.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:42632915971:android:6d4eac13036c3723297236",
+        "android_client_info": {
+          "package_name": "com.saysmanage.stone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfDozvKVK_seyk0v5x8qfmdMa2wAPNjbM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

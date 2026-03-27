@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "232909106721",
+    "project_id": "vince-app-c49a2",
+    "storage_bucket": "vince-app-c49a2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:232909106721:android:698eff39556df6d761fd60",
+        "android_client_info": {
+          "package_name": "com.saysmanage.creation"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB6isps46k5QjNLdVk7wGeC1YVCH5h38aY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,0 +1,80 @@
+name: Build Android APKs
+on:
+  workflow_dispatch:
+    inputs:
+      school_profile:
+        description: 'Select the school profile to build'
+        required: true
+        default: 'all-prod'
+        type: choice
+        options:
+          - all-prod
+          - afahjoy-prod
+          - beano-prod
+          - bishops-prod
+          - bms-prod
+          - brain-prod
+          - cascom-prod
+          - creation-prod
+          - eagles-prod
+          - ibs-prod
+          - kent-prod
+          - model-prod
+          - morgis-prod
+          - perfect-prod
+          - clis-prod
+          - stone-prod
+          - jewel-prod
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      profiles: ${{ steps.set-profiles.outputs.profiles }}
+    steps:
+      - id: set-profiles
+        run: |
+          if [ "${{ github.event.inputs.school_profile }}" == "all-prod" ]; then
+            # List all profiles from your eas.json
+            echo 'profiles=["afahjoy-prod", "beano-prod", "bishops-prod", "bms-prod", "brain-prod", "cascom-prod", "creation-prod", "eagles-prod", "ibs-prod", "kent-prod", "model-prod", "morgis-prod", "perfect-prod", "clis-prod", "stone-prod", "jewel-prod"]' >> $GITHUB_OUTPUT
+          else
+            echo 'profiles=["${{ github.event.inputs.school_profile }}"]' >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJson(needs.setup.outputs.profiles) }}
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📦 Install dependencies
+        run: npm install
+
+      - name: 🛠 Build APK
+        run: |
+          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
+            echo "::error::EXPO_TOKEN is missing! Please add it to GitHub Secrets."
+            exit 1
+          fi
+
+          # Extract school ID from the profile name (e.g., afahjoy-prod -> afahjoy)
+          export SCHOOL_ID=$(echo "${{ matrix.profile }}" | cut -d'-' -f1)
+          echo "Building for School ID: $SCHOOL_ID using profile: ${{ matrix.profile }}"
+          
+          eas build --platform android --profile ${{ matrix.profile }} --non-interactive --no-wait

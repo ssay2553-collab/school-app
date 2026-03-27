@@ -29,13 +29,13 @@ const { width } = Dimensions.get("window");
 
 export default function GuestDashboard() {
   const router = useRouter();
-  const schoolId = Constants.expoConfig?.extra?.schoolId || "afahjoy";
+  const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
-  const schoolName = SCHOOL_CONFIG.name || "School";
+  const schoolName = SCHOOL_CONFIG.name;
   
-  const brandPrimary = SCHOOL_CONFIG.brandPrimary || COLORS.primary;
-  const brandSecondary = SCHOOL_CONFIG.brandSecondary || COLORS.secondary;
-  const surface = SCHOOL_CONFIG.surfaceColor || "#F8FAFC";
+  const brandPrimary = SCHOOL_CONFIG.brandPrimary;
+  const brandSecondary = SCHOOL_CONFIG.brandSecondary;
+  const surface = SCHOOL_CONFIG.surfaceColor;
 
   const [refreshing, setRefreshing] = useState(false);
 

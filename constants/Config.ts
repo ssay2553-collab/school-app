@@ -14,26 +14,26 @@ const schoolData = extra.schoolData || {};
 // This handles both the build-time 'extra' object keys and individual school object keys
 const mapConfig = (id: string, data: any) => ({
   schoolId: id,
-  name: data.name || Constants.expoConfig?.name || "School Management",
-  fullName: data.fullName || data.schoolFullName || "EduEase School Management System",
-  motto: data.motto || "",
-  hotline: data.hotline || data.schoolHotline || "",
-  address: data.address || data.schoolAddress || "",
+  name: data.name || Constants.expoConfig?.name || "Adehyeemba",
+  fullName: data.fullName || data.schoolFullName || "Adehyeemba Preparatory School",
+  motto: data.motto || "Edwumaden Ho Wo Mfaso",
+  hotline: data.hotline || data.schoolHotline || "+233545404397",
+  address: data.address || data.schoolAddress || "Awutu Bawjiase",
   email: data.email || data.schoolEmail || "",
 
   // Brand Colors
-  primaryColor: data.primaryColor || "#0F172A",
-  secondaryColor: data.secondaryColor || data.primaryColor || "#64748B",
-  surfaceColor: data.surfaceColor || "#F8FAFC",
+  primaryColor: data.primaryColor || "#2c0964",
+  secondaryColor: data.secondaryColor || data.primaryColor || "#dd4364",
+  surfaceColor: data.surfaceColor || "#dcabf3",
 
-  brandPrimary: data.brandPrimary || data.primaryColor || "#0F172A",
-  brandSecondary: data.brandSecondary || data.secondaryColor || data.primaryColor || "#64748B",
+  brandPrimary: data.brandPrimary || data.primaryColor || "#cc315f",
+  brandSecondary: data.brandSecondary || data.secondaryColor || data.primaryColor || "#140e53",
 
   firebase: data.firebase || {},
 });
 
 // Initial config based on build-time injection
-export const SCHOOL_CONFIG = mapConfig(extra.schoolId || "beano", extra);
+export const SCHOOL_CONFIG = mapConfig(extra.schoolId || "eagles", extra);
 
 /**
  * Helper to get the current school ID.
@@ -44,7 +44,7 @@ export const getActiveSchoolId = async () => {
     const override = await AsyncStorage.getItem("DEV_SCHOOL_ID");
     if (override) return override;
   }
-  return extra.schoolId || "beano";
+  return extra.schoolId || "eagles";
 };
 
 /**
@@ -62,7 +62,7 @@ export const useSchoolConfig = () => {
           setConfig(mapConfig(overrideId, schoolData[overrideId]));
         } else {
             // If no override, ensure we are using the build-time default
-            setConfig(mapConfig(extra.schoolId || "beano", extra));
+            setConfig(mapConfig(extra.schoolId || "eagles", extra));
         }
       }
     };

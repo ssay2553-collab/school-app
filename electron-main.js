@@ -2,7 +2,6 @@
 const { app, BrowserWindow, Menu, protocol, session } = require("electron");
 const path = require("path");
 const fs = require("fs");
-require("dotenv").config();
 
 let schoolId = process.env.SCHOOL_ID || "beano";
 
@@ -25,9 +24,16 @@ const schools = {
   perfect: { name: "PEI End", backgroundColor: "#d3e6a1ff", authDomain: "clis-app-f89b8.firebaseapp.com" },
   IBS: { name: "IBS App", backgroundColor: "#ecfcb1ff", authDomain: "jei-river.firebaseapp.com" },
   creation: { name: "Creation Star", backgroundColor: "#FDF7FF", authDomain: "vince-app-c49a2.firebaseapp.com" },
-  eagles: { name: "Eagle Nest", backgroundColor: "#e1b1f1ff", authDomain: "royal-lisben.firebaseapp.com" },
+  eagles: { name: "Adehyeemba", backgroundColor: "#e1b1f1ff", authDomain: "royal-lisben.firebaseapp.com" },
   kent: { name: "KIS App", backgroundColor: "#edeeb0ff", authDomain: "golden-rock-16bf8.firebaseapp.com" },
   bishops: { name: "Bishop App", backgroundColor: "#FAFAFA", authDomain: "thess-app.firebaseapp.com" },
+  jewel: { name: "Jewel Star", backgroundColor: "#d671b8ff", authDomain: "jewels-app-17a30.firebaseapp.com" },
+  clis: { name: "CLIS App", backgroundColor: "#96d494ff", authDomain: "clis-app-e39e8.firebaseapp.com" },
+  model: { name: "Model Power", backgroundColor: "#FDF7FF", authDomain: "model-power-430de.firebaseapp.com" },
+  stone: { name: "Stepping Stone", backgroundColor: "#f7f6d1ff", authDomain: "stepping-stone-90720.firebaseapp.com" },
+  brain: { name: "Bright Brain", backgroundColor: "#FDF7FF", authDomain: "bright-brain-99daa.firebaseapp.com" },
+  cascom: { name: "CASCOM App", backgroundColor: "#8aa3f5ff", authDomain: "cascom-59b61.firebaseapp.com" },
+  bms: { name: "BMS App", backgroundColor: "#dce099ff", authDomain: "bms-app-f4572.firebaseapp.com" },
 };
 
 const selected = schools[schoolId] || schools.beano;
@@ -53,15 +59,12 @@ function createWindow() {
     },
   });
 
-  // Intercept and fix headers for Firebase to prevent 400 Bad Request in Electron
   session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const { requestHeaders } = details;
     const url = details.url.toLowerCase();
     const isFirebaseRequest = url.includes('firebase') || url.includes('googleapis.com');
     
-    // Safety filtering at network level
     if (BLOCKED_KEYWORDS.some(word => url.includes(word)) && !url.includes("bing.com")) {
-      console.log("Blocking restricted URL:", url);
       return callback({ cancel: true });
     }
 
@@ -69,7 +72,6 @@ function createWindow() {
       const origin = `https://${selected.authDomain}`;
       requestHeaders['Origin'] = origin;
       requestHeaders['Referer'] = origin + '/';
-      
       requestHeaders['Sec-Fetch-Mode'] = 'cors';
       requestHeaders['Sec-Fetch-Site'] = 'cross-site';
       requestHeaders['Sec-Fetch-Dest'] = 'empty';
@@ -78,12 +80,10 @@ function createWindow() {
     callback({ requestHeaders });
   });
 
-  // Allow Framing for Bing search and other educational resources
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const { responseHeaders } = details;
     const url = details.url;
 
-    // Strip frame restrictions for Bing to allow search to work in iframe
     if (url.includes("bing.com")) {
       Object.keys(responseHeaders).forEach(header => {
         if (header.toLowerCase() === 'x-frame-options' || header.toLowerCase() === 'content-security-policy') {

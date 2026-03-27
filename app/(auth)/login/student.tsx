@@ -34,7 +34,7 @@ export default function StudentLoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const schoolId = Constants.expoConfig?.extra?.schoolId || "school";
+  const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
   
   const primary = SCHOOL_CONFIG.primaryColor;

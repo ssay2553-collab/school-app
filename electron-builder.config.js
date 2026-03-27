@@ -35,7 +35,7 @@ const schools = {
   eagles: {
     appId: "com.saysmanage.eagleapp",
     productName: "Adehyeemba",
-    icon: "assets/icon-eagles.png",
+    icon: "assets/icon-aps.png",
   },
   kent: {
     appId: "com.saysmanage.martbeck",
@@ -99,6 +99,13 @@ module.exports = {
     "package.json",
     "electron-school-config.json",
     selected.icon,
+    "!node_modules/${" + "/*" + "}",
+    "!app${" + "/*" + "}",
+    "!backend${" + "/*" + "}",
+    "!scripts${" + "/*" + "}",
+    "!release${" + "/*" + "}",
+    "!.github${" + "/*" + "}",
+    "!android${" + "/*" + "}",
   ],
   directories: {
     buildResources: "assets",

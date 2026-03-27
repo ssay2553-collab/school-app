@@ -36,7 +36,7 @@ export default function ParentLoginScreen() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const emailInputRef = useRef<TextInput>(null);
 
-  const schoolId = Constants.expoConfig?.extra?.schoolId || "school";
+  const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
   
   const primary = SCHOOL_CONFIG.primaryColor;

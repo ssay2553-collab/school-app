@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 module.exports = ({ config }) => {
-  const schoolId = process.env.SCHOOL_ID || "beano";
+  const schoolId = process.env.SCHOOL_ID || "eagles";
 
   const schools = {
     afahjoy: {
@@ -425,7 +425,7 @@ module.exports = ({ config }) => {
     },
   };
 
-  const selected = schools[schoolId] || schools["beano"];
+  const selected = schools[schoolId] || schools["eagles"];
   const googleFile = `./services/${schoolId}/google-services.json`;
 
   return {

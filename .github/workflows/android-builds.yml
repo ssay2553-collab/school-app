@@ -28,8 +28,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: 🏗 Checkout repository
         uses: actions/checkout@v4
@@ -38,7 +36,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          # Caching is disabled to avoid the "Cache service responded with 400" error
+          # cache: 'npm' 
 
       - name: 🏗 Setup EAS
         uses: expo/expo-github-action@v8
@@ -52,7 +51,7 @@ jobs:
       - name: 🛠 Build APK
         run: |
           if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
-            echo "Error: EXPO_TOKEN is not set in GitHub Secrets."
+            echo "::error::EXPO_TOKEN is missing! Please add it to GitHub Secrets."
             exit 1
           fi
           eas build --platform android --profile ${{ github.event.inputs.school_profile }} --non-interactive --no-wait

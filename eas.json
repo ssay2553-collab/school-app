@@ -1,0 +1,113 @@
+{
+  "cli": {
+    "version": ">= 10.28.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": { "buildType": "apk" }
+    },
+    "afahjoy-dev": { "extends": "development", "env": { "SCHOOL_ID": "afahjoy" } },
+    "beano-dev": { "extends": "development", "env": { "SCHOOL_ID": "beano" } },
+    "bishops-dev": { "extends": "development", "env": { "SCHOOL_ID": "bishops" } },
+    "bms-dev": { "extends": "development", "env": { "SCHOOL_ID": "bms" } },
+    "brain-dev": { "extends": "development", "env": { "SCHOOL_ID": "brain" } },
+    "cascom-dev": { "extends": "development", "env": { "SCHOOL_ID": "cascom" } },
+    "creation-dev": { "extends": "development", "env": { "SCHOOL_ID": "creation" } },
+    "eagles-dev": { "extends": "development", "env": { "SCHOOL_ID": "eagles" } },
+    "ibs-dev": { "extends": "development", "env": { "SCHOOL_ID": "IBS" } },
+    "kent-dev": { "extends": "development", "env": { "SCHOOL_ID": "kent" } },
+    "model-dev": { "extends": "development", "env": { "SCHOOL_ID": "model" } },
+    "morgis-dev": { "extends": "development", "env": { "SCHOOL_ID": "morgis" } },
+    "perfect-dev": { "extends": "development", "env": { "SCHOOL_ID": "perfect" } },
+    "clis-dev": { "extends": "development", "env": { "SCHOOL_ID": "clis" } },
+    "stone-dev": { "extends": "development", "env": { "SCHOOL_ID": "stone" } },
+    "jewel-dev": { "extends": "development", "env": { "SCHOOL_ID": "jewel" } },
+
+    "afahjoy-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "afahjoy", "NODE_ENV": "production" }
+    },
+    "beano-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "beano", "NODE_ENV": "production" }
+    },
+    "bishops-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "bishops", "NODE_ENV": "production" }
+    },
+    "bms-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "bms", "NODE_ENV": "production" }
+    },
+    "brain-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "brain", "NODE_ENV": "production" }
+    },
+    "cascom-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "cascom", "NODE_ENV": "production" }
+    },
+    "creation-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "creation", "NODE_ENV": "production" }
+    },
+    "eagles-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "eagles", "NODE_ENV": "production" }
+    },
+    "ibs-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "IBS", "NODE_ENV": "production" }
+    },
+    "kent-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "kent", "NODE_ENV": "production" }
+    },
+    "model-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "model", "NODE_ENV": "production" }
+    },
+    "morgis-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "morgis", "NODE_ENV": "production" }
+    },
+    "perfect-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "perfect", "NODE_ENV": "production" }
+    },
+    "clis-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "clis", "NODE_ENV": "production" }
+    },
+    "stone-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "stone", "NODE_ENV": "production" }
+    },
+    "jewel-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "jewel", "NODE_ENV": "production" }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

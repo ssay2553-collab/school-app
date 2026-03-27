@@ -1,0 +1,632 @@
+rules_version = '2';
+
+/* =========================================================
+   FIRESTORE RULES - EduEaz
+========================================================= */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /* ===============================
+       AUTH HELPERS
+    =============================== */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function userDoc() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(uid()))
+        ? get(/databases/$(database)/documents/users/$(uid()))
+        : null;
+    }
+
+    function userData() {
+      return userDoc() != null ? userDoc().data : null;
+    }
+
+    /* ===============================
+       ROLE & PERMISSION CHECKS (Dynamic)
+    =============================== */
+    
+ function isAdmin() {
+  return userData() != null
+    && userData().role == "admin";
+}
+
+   function isSuperAdmin() {
+  return userData() != null
+    && userData().role == "admin"
+    && (
+      userData().adminRole == "proprietor" ||
+      userData().adminRole == "headmaster" ||
+      userData().adminRole == "Proprietor" ||
+      userData().adminRole == "Headmaster" ||
+      userData().adminRole == "HEADMASTER" ||
+      userData().adminRole == "PROPRIETOR"
+    );
+}
+
+    function getPermission(screen) {
+      return userData() != null
+        && ("permissions" in userData())
+        && (screen in userData().permissions)
+        ? userData().permissions[screen]
+        : "deny";
+    }
+    
+   function hasPermission(screen, level) {
+  return isAdmin() &&
+    (
+      isSuperAdmin() ||
+      hasScreenPermission(screen, level)
+    );
+}
+
+function hasScreenPermission(screen, level) {
+  return
+    (getPermission(screen) == "full") ||
+    (getPermission(screen) == "edit" && (level == "edit" || level == "view")) ||
+    (getPermission(screen) == "view" && level == "view");
+}
+
+
+    function isTeacher() {
+      return userData() != null && userData().role == 'teacher';
+    }
+
+    function isStudent() {
+      return userData() != null && userData().role == 'student';
+    }
+
+    function isParent() {
+      return userData() != null && userData().role == 'parent';
+    }
+
+    function isClassTeacher(classId) {
+      return isSignedIn() && isTeacher() && (
+        userData().classTeacherOf == classId ||
+        (
+          ('assignedRoles' in userData()) &&
+          userData().assignedRoles != null &&
+          ("Class Teacher" in userData().assignedRoles) &&
+          userData().classTeacherOf == classId
+        )
+      );
+    }
+
+    function canCreateNews() {
+      return isAdmin() || (isTeacher() && userData() != null && userData().canCreateNews == true);
+    }
+     function canGenerateCode() {
+      return isAdmin() || isTeacher();
+    }
+
+    function isEventOrganiser() {
+      return isTeacher();
+    }
+
+    /* =========================================================================
+       USERS COLLECTION
+    ========================================================================= */
+
+    match /users/{userId} {
+      allow read: if isSignedIn() && (
+        isAdmin()
+        || uid() == userId
+        || (isTeacher() && resource.data.role == 'student')
+        || (isParent() && resource.data.role == 'teacher')
+        || (isParent() && userId in userData().childrenIds)
+        || (isTeacher() && resource.data.role == 'parent')
+        || (request.auth == null
+            && resource.data.role == 'student'
+            && 'parentLinkCode' in resource.data
+            && request.query.limit <= 1
+           )
+      );
+
+      allow create: if isSignedIn() && uid() == userId && (
+          (request.resource.data.role == 'admin' && request.resource.data.adminRole is string)
+          || (
+            request.resource.data.role in ['teacher', 'student']
+            && exists(/databases/$(database)/documents/signupCodes/$(request.resource.data.secretCode))
+          )
+          || (request.resource.data.role == 'parent' && request.resource.data.childrenIds is list)
+      );
+
+      allow update: if
+        isSuperAdmin()
+        || hasPermission('manage-users', 'full')
+        || (
+          isSignedIn() && uid() == userId
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'role', 'adminRole', 'uid', 'isAnonymous', 'createdAt', 'permissions'
+          ])
+        )
+        || (
+          isTeacher() && resource.data.role == 'student'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['classId'])
+          && resource.data.classId in userData().classes
+        )
+        || (
+          isSignedIn() && resource.data.role == 'student'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentUids'])
+          && uid() in request.resource.data.parentUids
+          && (resource.data.parentUids.size() <= 2)
+        );
+
+      allow delete: if isSuperAdmin();
+    }
+
+    /* ===============================
+   ADMIN ROLES UNIQUENESS
+=============================== */
+match /adminRoles/{roleName} {
+  // Allow read so signup screen can check if role is taken
+  allow read: if true;
+
+  // Allow creation if authenticated
+  // Uniqueness is naturally enforced by the document ID {roleName}
+  allow create: if isSignedIn() 
+    && request.resource.data.uid == uid()
+    && request.resource.data.roleName == roleName;
+
+  allow update, delete: if isSuperAdmin();
+}
+    /* ===============================
+       FINANCE & PAYROLL
+    =============================== */
+    
+    match /studentFeeRecords/{id} {
+      allow read: if hasPermission('manage-fees', 'view')
+        || (isParent() && resource.data.studentUid in userData().childrenIds);
+      allow write: if hasPermission('manage-fees', 'edit');
+    }
+
+    match /expenditures/{id} {
+      allow read: if hasPermission('expenditure', 'view');
+      allow create: if hasPermission('expenditure', 'edit') && 
+        request.resource.data.status == 'open' &&
+        request.resource.data.amount > 0;
+      allow update: if hasPermission('expenditure', 'edit') && 
+        (resource.data.status == 'open' || request.resource.data.status == 'closed');
+      allow delete: if false; 
+    }
+
+   match /nonTeachingStaff/{staffId} {
+  allow read: if hasPermission('staff-payroll', 'view');
+  allow create: if hasPermission('staff-payroll', 'edit');
+  allow update: if hasPermission('staff-payroll', 'edit');
+  allow delete: if hasPermission('staff-payroll', 'edit');
+}
+
+   match /payroll/{id} {
+  allow read: if hasPermission('staff-payroll', 'view');
+  allow create: if hasPermission('staff-payroll', 'edit');
+  allow update: if hasPermission('staff-payroll', 'edit');
+  allow delete: if hasPermission('staff-payroll', 'edit');
+}
+
+    /* ===============================
+       OTHER COLLECTIONS
+    =============================== */
+
+    match /signupCodes/{codeId} {
+      allow read: if true;
+      allow create: if isAdmin() || (isTeacher() && request.resource.data.intendedForRole == 'student');
+      allow update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /news/{id} {
+      allow read: if true;
+      allow write: if canCreateNews();
+    }
+
+    match /school_settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    match /timetables/{classId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || isClassTeacher(classId);
+    }
+
+    /* ===============================
+       FALLBACK
+    =============================== */
+    match /{path=**} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+
+match /metadata/schoolStats {
+  allow read, write: if false; // Only accessible via Cloud Functions and Firebase Console
+}
+}
+
+    /* ===============================
+       DIRECT MESSAGES COLLECTION & SUBCOLLECTION
+    =============================== */
+    match /directMessages/{chatId} {
+      function isParticipant() {
+        return isSignedIn()
+          && chatId.matches('^' + uid() + '_.*|.*_' + uid() + '$');
+      }
+
+      allow read: if isAdmin() || isParticipant();
+
+      match /messages/{messageId} {
+        allow read: if isAdmin() || isParticipant();
+
+        allow create: if
+          isAdmin()
+          || (
+            isParticipant()
+            && request.resource.data.senderId == uid()
+            && request.resource.data.text is string
+            && request.resource.data.createdAt is timestamp
+          );
+
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    /* ===============================
+       CLASSES COLLECTION
+    =============================== */
+    match /classes/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+ /* ===============================
+       ACADEMIC CALENDAR
+    =============================== */
+    match /academic_calendar/{eventId} {
+      // 1. READ: Logic for selective visibility
+      allow read: if isSignedIn() && (
+        isAdmin() || 
+        resource.data.visibility == 'all' ||
+        (userData().role == 'teacher' && resource.data.visibility == 'teachers') ||
+        ((userData().role == 'parent' || userData().role == 'student') && resource.data.visibility == 'parents')
+      );
+
+      // 2. WRITE: Restricted to Admins or Teachers assigned as Event Organisers
+      allow create, update, delete: if isAdmin() || isEventOrganiser();
+    }
+
+    /* ===============================
+       SCHOOL SETTINGS (Term/Year Config)
+    =============================== */
+    match /school_settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+
+    /* ===============================
+       CHATS COLLECTION (Admin-Parent)
+    =============================== */
+    match /chats/{userId} {
+      allow read, write: if isAdmin() || (isSignedIn() && uid() == userId);
+    }
+
+// Rule for Personal Timetables
+match /personal_timetables/{userId} {
+  allow read, write: if request.auth != null && request.auth.uid == userId;
+		}
+    /* ===============================
+       SUBJECTS COLLECTION
+    =============================== */
+    match /subjects/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    /* ===============================
+       ATTENDANCE COLLECTION
+    =============================== */
+         match /attendance/{id} {
+      // Extract classId from the document ID (e.g., "classId_todayKey")
+      function getClassIdFromAttendanceId(attendanceId) {
+        return attendanceId.split('_')[0];
+      }
+
+      allow read: if
+        isAdmin()
+      
+        || (
+          isTeacher()
+          && (
+            (resource.data.classId in userData().classes) // For existing documents
+            || (getClassIdFromAttendanceId(id) in userData().classes) // For potentially non-existent documents
+          )
+        )
+       
+        || (
+          isStudent()
+          && resource.data.classId == userData().classId // The document's classId must match the student's classId
+        )
+        // Also allow parents to read attendance for their children
+        || (
+          isParent()
+          && exists(/databases/$(database)/documents/users/$(uid())) // Check if parent user doc exists
+          && (
+            resource.data.students.keys().hasAny(userData().childrenIds) // Does the attendance doc contain any of the parent's children?
+          )
+        );
+      
+       // Only the official Class Teacher can create or update attendance
+      allow write: if request.auth != null 
+                   && isTeacher() 
+                   && isClassTeacher(request.resource.data.classId);
+      allow delete: if false;
+    }
+
+    /* ===============================
+       ASSIGNMENTS COLLECTION
+    =============================== */
+    match /assignments/{id} {
+      allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == uid());
+      allow create, update: if isTeacher() && request.resource.data.teacherId == uid();
+      allow delete: if isAdmin();
+    }
+
+      /* ===============================
+       SUBMISSIONS COLLECTION
+    =============================== */
+    match /submissions/{submissionId} {
+      allow read: if isAdmin() 
+        || isTeacher() 
+        || (isStudent() && resource.data.studentId == uid());
+
+      allow create: if isStudent() && request.resource.data.studentId == uid();
+
+      // Teachers can update marks, marked status, feedback, and scores
+      allow update: if isAdmin() || (
+        isTeacher() 
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores'])
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    /* ===============================
+       ADMIN ROLES UNIQUENESS COLLECTION
+    =============================== */
+    match /adminRoles/{roleName} {
+      allow read: if isSignedIn();
+
+      allow create: if
+        isSignedIn()
+        && request.resource.data.uid == uid()
+        && request.resource.data.roleName == roleName
+        && !exists(/databases/$(database)/documents/adminRoles/$(roleName));
+
+      allow update, delete: if false;
+    }
+    
+     /* ===============================
+       NOTIFICATIONS COLLECTION (NEW)
+    =============================== */
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.recipientId == uid());
+      // Allow Admins and Teachers to create notifications for students/parents
+      allow create: if isAdmin() || isTeacher();
+      allow update: if uid() == resource.data.recipientId && request.resource.data.diff(resource.data).changedKeys().hasOnly(['read']); // Assumed isUser(resource.data.recipientId)
+      allow delete: if isAdmin() || uid() == resource.data.recipientId; // Assumed isUser(resource.data.recipientId)
+    }
+
+    /* ===============================
+       SIGNUP CODES COLLECTION
+    =============================== */
+    match /signupCodes/{codeId} {
+      allow read: if isSignedIn();
+      allow create, delete: if canGenerateCode();
+      allow update: if
+        isSignedIn()
+        && !resource.data.used
+        && request.resource.data.used == true
+        && request.resource.data.usedBy == uid();
+    }
+
+    /* ===============================
+       TIMETABLES COLLECTION
+    =============================== */
+match /timetables/{classId} {
+  allow read: if isSignedIn();
+  allow write: if isAdmin() || isClassTeacher(classId);
+    }
+
+   
+    /* =====================================================
+       ACTIVITY LOGS (FIXES THE LOGGING ERROR)
+    ===================================================== */
+    match /activity_logs/{logId} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin();
+    }
+
+
+    /* ===============================
+       GALLERY COLLECTION
+    =============================== */
+    match /gallery/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ===============================
+       GALLERY METADATA COLLECTION
+    =============================== */
+    match /gallery_metadata/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ===============================
+       ACADEMIC YEARS COLLECTION
+    =============================== */
+    match /academicYears/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+       /* ===============================
+       CATEGORIES COLLECTION
+    =============================== */
+    // Renamed from 'categories' to 'newscategories' as per newsFetcher.ts
+    match /newscategories/{id} {
+      allow read: if true;
+    }
+    
+ /* =====================================================
+       STUDENT GROUPS & MESSAGES (UPDATED)
+    ===================================================== */
+    match /studentGroups/{groupId} {
+      
+      // Allow reading if Admin, the Teacher who owns it, or a Student in the group
+      allow read: if isAdmin() 
+                  || (isTeacher() && resource.data.teacherId == uid())
+                  || (isStudent() && uid() in resource.data.studentIds)
+                  || (isParent() && userData().childrenIds.hasAny(resource.data.studentIds));
+      
+      // Ensure only teachers can create groups and they must list themselves as teacherId
+      allow create: if isTeacher() && request.resource.data.teacherId == uid();
+      
+      // Allow updates if the teacher owns the group
+      allow update: if isTeacher() && resource.data.teacherId == uid();
+      
+      // FIX: Allow the owning teacher OR Admin to delete
+      allow delete: if isAdmin() || (isTeacher() && resource.data.teacherId == uid());
+
+      match /messages/{messageId} {
+        
+        // Helper to check if user belongs to the parent group
+        function isGroupMember() {
+          let group = get(/databases/$(database)/documents/studentGroups/$(groupId)).data;
+          return isAdmin() || group.teacherId == uid() || uid() in group.studentIds;
+        }
+
+        // Restrict reading to members + enforce your query limits
+        allow read: if isSignedIn() 
+                    && isGroupMember()
+                    && request.query.limit <= 50
+                    && request.query.orderBy[0].field == "timestamp";
+
+        // Allow creating messages if member and senderId is verified
+        allow create: if isSignedIn() 
+                      && isGroupMember()
+                      && request.resource.data.senderId == uid()
+                      && request.resource.data.timestamp is timestamp;
+      }
+    }
+
+
+       /* ===============================
+       GUEST TICKETS COLLECTION & SUBCOLLECTION
+    =============================== */
+    match /guestTickets/{ticketId} {
+      // 1. Allow any signed-in user (including anonymous guests) to create a ticket
+      allow create: if isSignedIn();
+
+      // 2. Allow reading only if you are an admin OR the guest who owns the ticket
+      allow read: if
+        isAdmin()
+        || (isSignedIn() && resource.data.guestUid == uid());
+
+      // 3. Only admins can update (claim) or delete tickets
+      allow update, delete: if isAdmin();
+
+      /* --- MESSAGES SUB-COLLECTION --- */
+      match /messages/{messageId} {
+        // Admins can do everything
+        allow read, create: if isAdmin();
+
+        // Guests can create messages only if they own the parent ticket
+        allow create: if
+          isSignedIn()
+          && get(/databases/$(database)/documents/guestTickets/$(ticketId))
+            .data.guestUid == uid()
+          && request.resource.data.sender == 'guest';
+
+        // Guests can read messages only if they own the parent ticket
+        allow read: if
+          isSignedIn()
+          && get(/databases/$(database)/documents/guestTickets/$(ticketId))
+            .data.guestUid == uid();
+
+        allow update, delete: if isAdmin();
+      }
+    }
+    
+    /* ===============================
+       FAQS COLLECTION
+    =============================== */
+    match /faqs/{key} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    /* ===============================
+       SCORES COLLECTION
+    =============================== */
+    match /scores/{scoreId} {
+      allow read: if
+        isAdmin()
+        || (isTeacher() && resource.data.classId in userData().classes)
+        || (isStudent() && uid() == resource.data.studentId)
+        || (isParent() && resource.data.studentId in userData().childrenIds);
+
+      allow write: if
+        isAdmin()
+        || (isTeacher() && request.resource.data.classId in userData().classes);
+
+      allow delete: if isAdmin();
+    }
+
+    /* ===============================
+       STUDENT REPORTS COLLECTION
+    =============================== */
+    match /student-reports/{reportId} {
+      allow read: if
+        isAdmin()
+        || (isTeacher() && resource.data.classId in userData().classes)
+        || (isStudent() && uid() == resource.data.studentId)
+        || (isParent() && resource.data.studentId in userData().childrenIds);
+
+      allow write: if
+        isAdmin()
+        || (isTeacher() && request.resource.data.classId in userData().classes);
+
+      allow delete: if isAdmin();
+    }
+
+    /* ===============================
+       ACADEMIC RECORDS COLLECTION
+    =============================== */
+   match /academicRecords/{recordId} {
+      allow read: if request.auth != null;
+      
+      // Only the Class Teacher can submit behavioral data
+      // (This prevents subject teachers from overwriting conduct/remarks)
+      allow write: if request.auth != null 
+                   && isTeacher()
+                   && (
+                     // If it contains behavioral data, user MUST be the class teacher
+                     (!request.resource.data.containsBehavioralData) || 
+                     isClassTeacher(request.resource.data.classId)
+                  
+                  );
+    }
+
+    /* ===============================
+       DEFAULT DENY
+    =============================== */
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

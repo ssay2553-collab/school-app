@@ -1,0 +1,11 @@
+{
+  "projects": {
+    "default": "afahjoy-7cc03",
+    "beano": "beano-app-a9c38",
+    "morgis": "morgis-app",
+    "first": "thess-app",
+    "perfect": "clis-app-f89b8"
+  },
+  "targets": {},
+  "etags": {}
+}

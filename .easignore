@@ -1,0 +1,18 @@
+node_modules/
+.expo/
+.idea/
+.vscode/
+electron-school-config.json
+preload.js
+electron-main.js
+electron-builder.config.js
+webpack.config.js
+backend/
+scripts/
+firebase/
+services/*/google-services.json
+!services/${SCHOOL_ID}/google-services.json
+C:/Users/Administrator/MY APP/EduEaz/node_modules
+C:/Users/Administrator/MY APP/EduEaz/.expo
+C:/Users/Administrator/MY APP/EduEaz/.git
+C:/Users/Administrator/MY APP/EduEaz/assets/video-back.mp4

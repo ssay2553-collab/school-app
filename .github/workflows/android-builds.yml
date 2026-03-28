@@ -35,7 +35,6 @@ jobs:
       - id: set-profiles
         run: |
           if [ "${{ github.event.inputs.school_profile }}" == "all-prod" ]; then
-            # List all profiles from your eas.json
             echo 'profiles=["afahjoy-prod", "beano-prod", "bishops-prod", "bms-prod", "brain-prod", "cascom-prod", "creation-prod", "eagles-prod", "ibs-prod", "kent-prod", "model-prod", "morgis-prod", "perfect-prod", "clis-prod", "stone-prod", "jewel-prod"]' >> $GITHUB_OUTPUT
           else
             echo 'profiles=["${{ github.event.inputs.school_profile }}"]' >> $GITHUB_OUTPUT
@@ -57,24 +56,45 @@ jobs:
         with:
           node-version: 22
 
-      - name: 🏗 Setup EAS
-        uses: expo/expo-github-action@v8
+      - name: ⚙️ Setup Java
+        uses: actions/setup-java@v4
         with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🤖 Setup Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: 📦 Install dependencies
         run: npm install
 
+      - name: 🏗 Prebuild Expo
+        run: |
+          # Extract school ID (e.g., afahjoy from afahjoy-prod)
+          export SCHOOL_ID=$(echo "${{ matrix.profile }}" | cut -d'-' -f1)
+          echo "Prebuilding for School ID: $SCHOOL_ID"
+          
+          # Clean any existing native folders to ensure a fresh start
+          rm -rf android
+          
+          # Generate the native android folder dynamically
+          npx expo prebuild --platform android --no-install
+        env:
+          SCHOOL_ID: ${{ steps.set-profiles.outputs.school_id }} # This line is handled by the export above
+
       - name: 🛠 Build APK
         run: |
-          if [ -z "${{ secrets.EXPO_TOKEN }}" ]; then
-            echo "::error::EXPO_TOKEN is missing! Please add it to GitHub Secrets."
-            exit 1
-          fi
-
-          # Extract school ID from the profile name (e.g., afahjoy-prod -> afahjoy)
           export SCHOOL_ID=$(echo "${{ matrix.profile }}" | cut -d'-' -f1)
-          echo "Building for School ID: $SCHOOL_ID using profile: ${{ matrix.profile }}"
-          
-          eas build --platform android --profile ${{ matrix.profile }} --non-interactive --no-wait
+          cd android
+          chmod +x gradlew
+          # assembleRelease creates the production-ready APK
+          ./gradlew assembleRelease
+        env:
+          SCHOOL_ID: ${{ steps.set-profiles.outputs.school_id }}
+
+      - name: 📤 Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.profile }}-apk
+          # We use a wildcard to find the APK regardless of internal naming
+          path: android/app/build/outputs/apk/release/*.apk

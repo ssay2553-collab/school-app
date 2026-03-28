@@ -1,29 +1,36 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Picker } from "@react-native-picker/picker";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, serverTimestamp, writeBatch, getCountFromServer, collection, getDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getCountFromServer,
+  getDoc,
+  serverTimestamp,
+  writeBatch,
+} from "firebase/firestore";
 import React, { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Picker } from "@react-native-picker/picker";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../../components/SVGIcon";
-import { COLORS, SHADOWS } from "../../../constants/theme";
-import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
+import { SHADOWS } from "../../../constants/theme";
+import { auth, db } from "../../../firebaseConfig";
 
 export default function AdminSignup() {
   const router = useRouter();
@@ -51,8 +58,8 @@ export default function AdminSignup() {
 
   const notify = (title: string, message: string) => {
     setErrorMessage(`${title}: ${message}`);
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined') {
+    if (Platform.OS === "web") {
+      if (typeof window !== "undefined") {
         window.alert(`${title}\n\n${message}`);
       }
     } else {
@@ -86,10 +93,15 @@ export default function AdminSignup() {
     setLoading(true);
     try {
       // 1. Check Global Admin Limit (Max 4)
-      const adminCountSnap = await getCountFromServer(collection(db, "adminRoles"));
+      const adminCountSnap = await getCountFromServer(
+        collection(db, "adminRoles"),
+      );
       if (adminCountSnap.data().count >= 4) {
         setLoading(false);
-        return notify("Limit Reached", "This school has reached the maximum number of administrator accounts (4).");
+        return notify(
+          "Limit Reached",
+          "This school has reached the maximum number of administrator accounts (4).",
+        );
       }
 
       // 2. Check Role Uniqueness (Case-Insensitive)
@@ -98,17 +110,32 @@ export default function AdminSignup() {
       const roleSnap = await getDoc(roleRef);
       if (roleSnap.exists()) {
         setLoading(false);
-        return notify("Role Taken", `The role "${adminRole}" is already assigned to another user.`);
+        return notify(
+          "Role Taken",
+          `The role "${adminRole}" is already assigned to another user.`,
+        );
       }
 
       const cleanEmail = email.trim().toLowerCase();
-      const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        cleanEmail,
+        password,
+      );
       const userId = userCredential.user.uid;
+
+      // Ensure the newly created user has a fresh ID token before making
+      // Firestore writes that depend on request.auth in security rules.
+      // Without this, Firestore may evaluate the write as unauthenticated
+      // (race condition) and reject the creation of /users/{uid}.
+      await userCredential.user.getIdToken(true);
 
       const batch = writeBatch(db);
 
       // Default permissions for Proprietor/Headmaster
-      const isSuperAdmin = ["proprietor", "headmaster"].includes(normalizedRole);
+      const isSuperAdmin = ["proprietor", "headmaster"].includes(
+        normalizedRole,
+      );
       const defaultPermission = isSuperAdmin ? "full" : "deny";
 
       // User Profile
@@ -126,7 +153,7 @@ export default function AdminSignup() {
         permissions: {
           "manage-fees": defaultPermission,
           "staff-payroll": defaultPermission,
-          "expenditure": defaultPermission,
+          expenditure: defaultPermission,
           "manage-users": defaultPermission,
         },
         status: "active",
@@ -136,7 +163,7 @@ export default function AdminSignup() {
       // Unique role check (using normalized ID)
       batch.set(roleRef, {
         uid: userId,
-        roleName: adminRole.trim(),
+        roleName: normalizedRole,
         assignedAt: serverTimestamp(),
       });
 
@@ -164,10 +191,19 @@ export default function AdminSignup() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          <Animatable.View animation="fadeInDown" duration={800} style={styles.header}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <Animatable.View
+            animation="fadeInDown"
+            duration={800}
+            style={styles.header}
+          >
             <Text style={styles.title}>{schoolName} Admin</Text>
-            <Text style={styles.subtitle}>Register as a school administrator (Max 4)</Text>
+            <Text style={styles.subtitle}>
+              Register as a school administrator (Max 4)
+            </Text>
           </Animatable.View>
 
           {errorMessage && (
@@ -176,7 +212,11 @@ export default function AdminSignup() {
             </Animatable.View>
           )}
 
-          <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
+          <Animatable.View
+            animation="fadeInUp"
+            duration={800}
+            style={styles.card}
+          >
             <View style={styles.inputGroup}>
               <Text style={styles.label}>FIRST NAME</Text>
               <TextInput
@@ -244,7 +284,9 @@ export default function AdminSignup() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>OFFICIAL ROLE (e.g. Proprietor, Bursar)</Text>
+              <Text style={styles.label}>
+                OFFICIAL ROLE (e.g. Proprietor, Bursar)
+              </Text>
               <TextInput
                 style={styles.input}
                 placeholder="Type your role..."
@@ -267,8 +309,15 @@ export default function AdminSignup() {
                   secureTextEntry={!showPassword}
                   editable={!loading}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
-                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#94A3B8" />
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                    size={22}
+                    color="#94A3B8"
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -285,14 +334,27 @@ export default function AdminSignup() {
                   secureTextEntry={!showConfirmPassword}
                   editable={!loading}
                 />
-                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
-                  <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={22} color="#94A3B8" />
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={styles.eyeIcon}
+                >
+                  <Ionicons
+                    name={
+                      showConfirmPassword ? "eye-off-outline" : "eye-outline"
+                    }
+                    size={22}
+                    color="#94A3B8"
+                  />
                 </TouchableOpacity>
               </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: primary }, loading && { opacity: 0.7 }]}
+              style={[
+                styles.button,
+                { backgroundColor: primary },
+                loading && { opacity: 0.7 },
+              ]}
               onPress={handleSignup}
               disabled={loading}
             >
@@ -301,7 +363,12 @@ export default function AdminSignup() {
               ) : (
                 <>
                   <Text style={styles.buttonText}>Complete Registration</Text>
-                  <SVGIcon name="arrow-forward" size={18} color="#fff" style={{ marginLeft: 8 }} />
+                  <SVGIcon
+                    name="arrow-forward"
+                    size={18}
+                    color="#fff"
+                    style={{ marginLeft: 8 }}
+                  />
                 </>
               )}
             </TouchableOpacity>
@@ -319,16 +386,56 @@ const styles = StyleSheet.create({
   header: { marginBottom: 30, alignItems: "center" },
   title: { fontSize: 28, fontWeight: "800", color: "#1E293B" },
   subtitle: { fontSize: 16, color: "#64748B", marginTop: 5 },
-  errorBox: { backgroundColor: "#FEE2E2", padding: 12, borderRadius: 12, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: "#EF4444" },
+  errorBox: {
+    backgroundColor: "#FEE2E2",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: "#EF4444",
+  },
   errorText: { color: "#991B1B", fontWeight: "600", fontSize: 14 },
-  card: { backgroundColor: "#fff", borderRadius: 24, padding: 24, ...SHADOWS.medium },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 24,
+    ...SHADOWS.medium,
+  },
   inputGroup: { marginBottom: 20 },
-  label: { fontSize: 12, fontWeight: "700", color: "#64748B", marginBottom: 8, letterSpacing: 1 },
-  input: { backgroundColor: "#F1F5F9", borderRadius: 12, padding: 16, fontSize: 16, color: "#1E293B" },
-  pickerContainer: { backgroundColor: "#F1F5F9", borderRadius: 12, overflow: "hidden" },
-  passwordWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: "#F1F5F9", borderRadius: 12 },
+  label: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  input: {
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: "#1E293B",
+  },
+  pickerContainer: {
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  passwordWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+  },
   passwordInput: { flex: 1, padding: 16, fontSize: 16, color: "#1E293B" },
   eyeIcon: { padding: 10 },
-  button: { height: 60, borderRadius: 16, flexDirection: "row", alignItems: "center", justifyContent: "center", marginTop: 10 },
+  button: {
+    height: 60,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
   buttonText: { color: "#fff", fontSize: 18, fontWeight: "700" },
 });

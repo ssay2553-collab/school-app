@@ -1,46 +1,46 @@
+import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocsFromServer,
-  onSnapshot,
-  query,
-  where,
-  setDoc,
-  updateDoc,
-  serverTimestamp,
+    collection,
+    doc,
+    getDoc,
+    getDocsFromServer,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    setDoc,
+    updateDoc,
+    where,
 } from "firebase/firestore";
+import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Platform,
-  ScrollView,
-  RefreshControl,
-  TextInput,
-  Modal,
-  KeyboardAvoidingView,
-  Image
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    RefreshControl,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
-import * as ImagePicker from "expo-image-picker";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
-import { SHADOWS, COLORS } from "../../constants/theme";
+import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
-import { sortClasses } from "../../lib/classHelpers";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { sortClasses } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 const storage = getStorage();
@@ -79,7 +79,11 @@ const StudentItem = React.memo(
     onEditMetadata: () => void;
     primary: string;
   }) => (
-    <Animatable.View animation="fadeInUp" duration={400} style={styles.studentCard}>
+    <Animatable.View
+      animation="fadeInUp"
+      duration={400}
+      style={styles.studentCard}
+    >
       <TouchableOpacity
         style={styles.cardInner}
         onPress={onPress}
@@ -94,7 +98,9 @@ const StudentItem = React.memo(
           <Text style={styles.name}>{item.fullName}</Text>
           <Text style={styles.idSub}>ID: {item.studentId.substring(0, 8)}</Text>
           {item.teacherRemarks ? (
-            <Text style={styles.remarkPreview} numberOfLines={1}>Teacher: {item.teacherRemarks}</Text>
+            <Text style={styles.remarkPreview} numberOfLines={1}>
+              Teacher: {item.teacherRemarks}
+            </Text>
           ) : null}
         </View>
         <View style={styles.scoreInfo}>
@@ -104,7 +110,7 @@ const StudentItem = React.memo(
           </View>
         </View>
         <TouchableOpacity style={styles.editBtn} onPress={onEditMetadata}>
-           <SVGIcon name="create-outline" color={primary} size={22} />
+          <SVGIcon name="create-outline" color={primary} size={22} />
         </TouchableOpacity>
         <SVGIcon name="chevron-forward" color="#CBD5E1" size={18} />
       </TouchableOpacity>
@@ -117,21 +123,23 @@ export default function ViewAcademicRecords() {
   const router = useRouter();
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
-  
+
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [fetchingSubjects, setFetchingSubjects] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [savingMetadata, setSavingMetadata] = useState(false);
   const [uploadingSig, setUploadingSig] = useState(false);
-  const [signatureUrl, setSignatureUrl] = useState(appUser?.profile?.signatureUrl || "");
-  
+  const [signatureUrl, setSignatureUrl] = useState<string>(
+    (appUser?.profile as any)?.signatureUrl || "",
+  );
+
   const [classes, setClasses] = useState<any[]>([]);
   const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
 
   const primary = SCHOOL_CONFIG.primaryColor || "#2e86de";
   const secondary = SCHOOL_CONFIG.secondaryColor || "#c53b59";
-  
+
   const availableYears = useMemo(() => {
     const start = 2024;
     const currentYear = new Date().getFullYear();
@@ -149,8 +157,9 @@ export default function ViewAcademicRecords() {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [term, setTerm] = useState("");
-  const [selectedReportType, setSelectedReportType] = useState<ReportType>("End of Term");
-  
+  const [selectedReportType, setSelectedReportType] =
+    useState<ReportType>("End of Term");
+
   const [studentScores, setStudentScores] = useState<ScoreData[]>([]);
   const [stats, setStats] = useState<ClassStats | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
@@ -177,7 +186,7 @@ export default function ViewAcademicRecords() {
   // Use onSnapshot for real-time subject list updates
   useEffect(() => {
     if (!selectedClassId || !selectedYear || !term) return;
-    
+
     setFetchingSubjects(true);
     const q = query(
       collection(db, "academicRecords"),
@@ -185,34 +194,41 @@ export default function ViewAcademicRecords() {
       where("academicYear", "==", selectedYear),
       where("term", "==", term),
       where("reportType", "==", selectedReportType),
-      where("status", "==", "approved")
+      where("status", "==", "approved"),
     );
-    
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const subs = snap.docs.map(d => d.data().subject).sort();
-      setAvailableSubjects(subs);
-      
-      if (subs.length > 0) {
-        if (!selectedSubject || !subs.includes(selectedSubject)) {
-          setSelectedSubject(subs[0]);
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        const subs = snap.docs.map((d) => d.data().subject).sort();
+        setAvailableSubjects(subs);
+
+        if (subs.length > 0) {
+          if (!selectedSubject || !subs.includes(selectedSubject)) {
+            setSelectedSubject(subs[0]);
+          }
+        } else {
+          setSelectedSubject("");
         }
-      } else {
-        setSelectedSubject("");
-      }
-      setFetchingSubjects(false);
-      setRefreshing(false);
-    }, (error) => {
-      console.error("onSnapshot Error:", error);
-      setFetchingSubjects(false);
-      setRefreshing(false);
-    });
+        setFetchingSubjects(false);
+        setRefreshing(false);
+      },
+      (error) => {
+        console.error("onSnapshot Error:", error);
+        setFetchingSubjects(false);
+        setRefreshing(false);
+      },
+    );
 
     return () => unsubscribe();
   }, [selectedClassId, selectedYear, term, selectedReportType]);
 
   const loadData = useCallback(async () => {
     if (!selectedClassId || !selectedSubject) {
-      return Alert.alert("Selection Required", "Please select a class and an approved subject.");
+      return Alert.alert(
+        "Selection Required",
+        "Please select a class and an approved subject.",
+      );
     }
 
     setListLoading(true);
@@ -222,45 +238,59 @@ export default function ViewAcademicRecords() {
       const yearSlug = selectedYear.replace(/\//g, "-");
       const reportSlug = selectedReportType.replace(/\s+/g, "");
       const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
-      
-      const finalSnap = await getDocsFromServer(query(collection(db, "academicRecords"), where("__name__", "==", docId)));
-      
+
+      const finalSnap = await getDocsFromServer(
+        query(
+          collection(db, "academicRecords"),
+          where("__name__", "==", docId),
+        ),
+      );
+
       if (!finalSnap.empty) {
         const data = finalSnap.docs[0].data();
         const students = data.students || [];
-        
-        const processed = students.map((s: any) => {
+
+        const processed = students
+          .map((s: any) => {
             let total = 0;
             if (selectedReportType === "End of Term") {
-                total = parseFloat(s.finalScore || (parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)).toFixed(2));
+              total = parseFloat(
+                s.finalScore ||
+                  (
+                    parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)
+                  ).toFixed(2),
+              );
             } else {
-                total = parseFloat(s.examsMark || 0);
+              total = parseFloat(s.examsMark || 0);
             }
 
             return {
-                id: s.studentId,
-                studentId: s.studentId,
-                fullName: s.fullName || "Unknown",
-                total: total,
-                grade: s.grade || "N/A",
-                conduct: s.conduct,
-                attitude: s.attitude,
-                interest: s.interest,
-                teacherRemarks: s.teacherRemarks
+              id: s.studentId,
+              studentId: s.studentId,
+              fullName: s.fullName || "Unknown",
+              total: total,
+              grade: s.grade || "N/A",
+              conduct: s.conduct,
+              attitude: s.attitude,
+              interest: s.interest,
+              teacherRemarks: s.teacherRemarks,
             };
-        })
-        .sort((a: any, b: any) => b.total - a.total)
-        .map((s: any, i: number) => ({ ...s, position: i + 1 }));
+          })
+          .sort((a: any, b: any) => b.total - a.total)
+          .map((s: any, i: number) => ({ ...s, position: i + 1 }));
 
         setStudentScores(processed);
 
         if (processed.length > 0) {
-            const sumValue = processed.reduce((acc: number, curr: any) => acc + curr.total, 0);
-            setStats({
-                average: parseFloat((sumValue / processed.length).toFixed(2)),
-                studentCount: processed.length,
-                passRate: 100 
-            });
+          const sumValue = processed.reduce(
+            (acc: number, curr: any) => acc + curr.total,
+            0,
+          );
+          setStats({
+            average: parseFloat((sumValue / processed.length).toFixed(2)),
+            studentCount: processed.length,
+            passRate: 100,
+          });
         }
       } else {
         setStudentScores([]);
@@ -272,16 +302,28 @@ export default function ViewAcademicRecords() {
     } finally {
       setListLoading(false);
     }
-  }, [selectedClassId, selectedSubject, selectedYear, term, selectedReportType]);
+  }, [
+    selectedClassId,
+    selectedSubject,
+    selectedYear,
+    term,
+    selectedReportType,
+  ]);
 
   const loadClassesList = async () => {
     try {
       const snap = await getDocsCacheFirst(collection(db, "classes") as any);
-      const list = snap.docs.map((d) => ({ id: d.id, name: d.data()?.name || d.id }));
+      const list = snap.docs.map((d) => ({
+        id: d.id,
+        name: d.data()?.name || d.id,
+      }));
       const sorted = sortClasses(list);
       setClasses(sorted);
-      if (sorted.length > 0 && !selectedClassId) setSelectedClassId(sorted[0].id);
-    } catch (e) { console.error(e); }
+      if (sorted.length > 0 && !selectedClassId)
+        setSelectedClassId(sorted[0].id);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   useEffect(() => {
@@ -299,7 +341,7 @@ export default function ViewAcademicRecords() {
 
   const handleEditMetadata = async (student: ScoreData) => {
     setEditingStudent(student);
-    
+
     // Default values from teacher submission if they exist
     setConduct(student.conduct || "Excellent");
     setAttitude(student.attitude || "Very Positive");
@@ -310,10 +352,14 @@ export default function ViewAcademicRecords() {
     setAdminRemarks("");
 
     setMetadataModalVisible(true);
-    
+
     // Fetch existing metadata from student-reports if it exists (overrides teacher defaults)
     try {
-      const reportId = `${student.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(/\//g, "-");
+      const reportId =
+        `${student.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
+          /\//g,
+          "-",
+        );
       const snap = await getDoc(doc(db, "student-reports", reportId));
       if (snap.exists()) {
         const d = snap.data();
@@ -334,28 +380,39 @@ export default function ViewAcademicRecords() {
     if (!editingStudent) return;
     setSavingMetadata(true);
     try {
-      const reportId = `${editingStudent.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(/\//g, "-");
-      await setDoc(doc(db, "student-reports", reportId), {
-        studentId: editingStudent.studentId,
-        studentName: editingStudent.fullName,
-        academicYear: selectedYear,
-        term: term,
-        reportType: selectedReportType,
-        classId: selectedClassId,
-        assessment: {
-          conduct: mConduct,
-          attitude: mAttitude,
-          interest: mInterest
+      const reportId =
+        `${editingStudent.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
+          /\//g,
+          "-",
+        );
+      await setDoc(
+        doc(db, "student-reports", reportId),
+        {
+          studentId: editingStudent.studentId,
+          studentName: editingStudent.fullName,
+          academicYear: selectedYear,
+          term: term,
+          reportType: selectedReportType,
+          classId: selectedClassId,
+          assessment: {
+            conduct: mConduct,
+            attitude: mAttitude,
+            interest: mInterest,
+          },
+          promotedTo: mPromotedTo,
+          nextTermBegins: mNextTermBegins,
+          adminRemarks: mAdminRemarks,
+          teacherRemarks: mTeacherRemarks,
+          updatedAt: serverTimestamp(),
         },
-        promotedTo: mPromotedTo,
-        nextTermBegins: mNextTermBegins,
-        adminRemarks: mAdminRemarks,
-        teacherRemarks: mTeacherRemarks,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      
+        { merge: true },
+      );
+
       setMetadataModalVisible(false);
-      Alert.alert("Success", "Terminal metadata saved for " + editingStudent.fullName);
+      Alert.alert(
+        "Success",
+        "Terminal metadata saved for " + editingStudent.fullName,
+      );
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to save metadata.");
@@ -367,7 +424,7 @@ export default function ViewAcademicRecords() {
   const handleUploadSignature = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [2, 1],
         quality: 0.5,
@@ -381,8 +438,10 @@ export default function ViewAcademicRecords() {
         const storageRef = ref(storage, `signatures/${appUser?.uid}`);
         await uploadBytes(storageRef, blob);
         const downloadURL = await getDownloadURL(storageRef);
-        
-        await updateDoc(doc(db, "users", appUser!.uid), { "profile.signatureUrl": downloadURL });
+
+        await updateDoc(doc(db, "users", appUser!.uid), {
+          "profile.signatureUrl": downloadURL,
+        });
         setSignatureUrl(downloadURL);
         Alert.alert("Success", "Institution signature updated successfully!");
       }
@@ -409,24 +468,38 @@ export default function ViewAcademicRecords() {
               classId: selectedClassId,
               academicYear: selectedYear,
               subject: selectedSubject,
-              reportType: selectedReportType
+              reportType: selectedReportType,
             },
           })
         }
       />
     ),
-    [primary, term, selectedClassId, selectedYear, selectedSubject, selectedReportType, router]
+    [
+      primary,
+      term,
+      selectedClassId,
+      selectedYear,
+      selectedSubject,
+      selectedReportType,
+      router,
+    ],
   );
 
-  const ListHeader = useMemo(() => (
+  const ListHeader = useMemo(
+    () => (
       <View>
         <LinearGradient colors={[primary, secondary]} style={styles.header}>
           <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.miniBackBtn}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.miniBackBtn}
+            >
               <SVGIcon name="arrow-back" color="#fff" size={24} />
             </TouchableOpacity>
             <View style={styles.titleContainer}>
-              <Text style={styles.schoolNameMini} numberOfLines={1}>{SCHOOL_CONFIG.fullName}</Text>
+              <Text style={styles.schoolNameMini} numberOfLines={1}>
+                {SCHOOL_CONFIG.fullName}
+              </Text>
               <Text style={styles.mottoMini}>Approved Academic Ledger</Text>
             </View>
             <View style={{ width: 44 }} />
@@ -438,57 +511,163 @@ export default function ViewAcademicRecords() {
             <SVGIcon name="brush-outline" size={20} color={primary} />
             <Text style={styles.sigTitle}>Institution's Digital Signature</Text>
           </View>
-          <Text style={styles.sigSubtitle}>Used for Head of Institution's section on reports</Text>
+          <Text style={styles.sigSubtitle}>
+            Used for Head of Institution's section on reports
+          </Text>
           <View style={styles.sigContent}>
             {signatureUrl ? (
-              <Image source={{ uri: signatureUrl }} style={styles.sigImage} resizeMode="contain" />
+              <Image
+                source={{ uri: signatureUrl }}
+                style={styles.sigImage}
+                resizeMode="contain"
+              />
             ) : (
               <View style={styles.sigPlaceholder}>
                 <SVGIcon name="image-outline" size={32} color="#94A3B8" />
-                <Text style={styles.sigPlaceholderText}>No Signature Uploaded</Text>
+                <Text style={styles.sigPlaceholderText}>
+                  No Signature Uploaded
+                </Text>
               </View>
             )}
-            <TouchableOpacity style={[styles.sigUploadBtn, { backgroundColor: primary }]} onPress={handleUploadSignature} disabled={uploadingSig}>
-              {uploadingSig ? <ActivityIndicator color="#fff" /> : <Text style={styles.sigUploadBtnText}>{signatureUrl ? "Replace Signature" : "Upload Signature"}</Text>}
+            <TouchableOpacity
+              style={[styles.sigUploadBtn, { backgroundColor: primary }]}
+              onPress={handleUploadSignature}
+              disabled={uploadingSig}
+            >
+              {uploadingSig ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.sigUploadBtnText}>
+                  {signatureUrl ? "Replace Signature" : "Upload Signature"}
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </Animatable.View>
 
         <Animatable.View animation="fadeInDown" style={styles.filterCard}>
           <Text style={styles.sectionLabel}>LEDGER SCOPE</Text>
-          
-          <Text style={styles.bubbleLabel}>ACADEMIC YEAR {selectedYear === acadConfig.academicYear && "(CURRENT)"}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-            {availableYears.map(y => (
-              <TouchableOpacity key={y} onPress={() => setSelectedYear(y)} style={[styles.bubble, selectedYear === y && { backgroundColor: primary, borderColor: primary }]}>
-                <Text style={[styles.bubbleText, selectedYear === y && { color: '#fff' }]}>{y}</Text>
+
+          <Text style={styles.bubbleLabel}>
+            ACADEMIC YEAR{" "}
+            {selectedYear === acadConfig.academicYear && "(CURRENT)"}
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bubbleRow}
+          >
+            {availableYears.map((y) => (
+              <TouchableOpacity
+                key={y}
+                onPress={() => setSelectedYear(y)}
+                style={[
+                  styles.bubble,
+                  selectedYear === y && {
+                    backgroundColor: primary,
+                    borderColor: primary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    selectedYear === y && { color: "#fff" },
+                  ]}
+                >
+                  {y}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <Text style={styles.bubbleLabel}>TERM {term === acadConfig.currentTerm && "(CURRENT)"}</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-            {["Term 1", "Term 2", "Term 3"].map(t => (
-              <TouchableOpacity key={t} onPress={() => setTerm(t as any)} style={[styles.bubble, term === t && { backgroundColor: primary, borderColor: primary }]}>
-                <Text style={[styles.bubbleText, term === t && { color: '#fff' }]}>{t}</Text>
+          <Text style={styles.bubbleLabel}>
+            TERM {term === acadConfig.currentTerm && "(CURRENT)"}
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bubbleRow}
+          >
+            {["Term 1", "Term 2", "Term 3"].map((t) => (
+              <TouchableOpacity
+                key={t}
+                onPress={() => setTerm(t as any)}
+                style={[
+                  styles.bubble,
+                  term === t && {
+                    backgroundColor: primary,
+                    borderColor: primary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.bubbleText, term === t && { color: "#fff" }]}
+                >
+                  {t}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           <Text style={styles.bubbleLabel}>REPORT TYPE</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-            {(["End of Term", "Mid-Term", "Mock Exams"] as ReportType[]).map(type => (
-              <TouchableOpacity key={type} onPress={() => setSelectedReportType(type)} style={[styles.bubble, selectedReportType === type && { backgroundColor: primary, borderColor: primary }]}>
-                <Text style={[styles.bubbleText, selectedReportType === type && { color: '#fff' }]}>{type}</Text>
-              </TouchableOpacity>
-            ))}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bubbleRow}
+          >
+            {(["End of Term", "Mid-Term", "Mock Exams"] as ReportType[]).map(
+              (type) => (
+                <TouchableOpacity
+                  key={type}
+                  onPress={() => setSelectedReportType(type)}
+                  style={[
+                    styles.bubble,
+                    selectedReportType === type && {
+                      backgroundColor: primary,
+                      borderColor: primary,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.bubbleText,
+                      selectedReportType === type && { color: "#fff" },
+                    ]}
+                  >
+                    {type}
+                  </Text>
+                </TouchableOpacity>
+              ),
+            )}
           </ScrollView>
 
           <Text style={styles.bubbleLabel}>CLASSROOM</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-            {classes.map(cls => (
-              <TouchableOpacity key={cls.id} onPress={() => setSelectedClassId(cls.id)} style={[styles.bubble, selectedClassId === cls.id && { backgroundColor: primary, borderColor: primary }]}>
-                <Text style={[styles.bubbleText, selectedClassId === cls.id && { color: '#fff' }]}>{cls.name}</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bubbleRow}
+          >
+            {classes.map((cls) => (
+              <TouchableOpacity
+                key={cls.id}
+                onPress={() => setSelectedClassId(cls.id)}
+                style={[
+                  styles.bubble,
+                  selectedClassId === cls.id && {
+                    backgroundColor: primary,
+                    borderColor: primary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    selectedClassId === cls.id && { color: "#fff" },
+                  ]}
+                >
+                  {cls.name}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -498,17 +677,43 @@ export default function ViewAcademicRecords() {
             {fetchingSubjects ? (
               <ActivityIndicator color={primary} size="small" />
             ) : availableSubjects.length > 0 ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-                {availableSubjects.map(sub => (
-                  <TouchableOpacity key={sub} onPress={() => setSelectedSubject(sub)} style={[styles.subBubble, selectedSubject === sub && { backgroundColor: "#f0f9ff", borderColor: primary }]}>
-                    <Text style={[styles.subBubbleText, selectedSubject === sub && { color: primary, fontWeight: 'bold' }]}>{sub}</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.bubbleRow}
+              >
+                {availableSubjects.map((sub) => (
+                  <TouchableOpacity
+                    key={sub}
+                    onPress={() => setSelectedSubject(sub)}
+                    style={[
+                      styles.subBubble,
+                      selectedSubject === sub && {
+                        backgroundColor: "#f0f9ff",
+                        borderColor: primary,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.subBubbleText,
+                        selectedSubject === sub && {
+                          color: primary,
+                          fontWeight: "bold",
+                        },
+                      ]}
+                    >
+                      {sub}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             ) : (
               <View style={styles.noApprovedBox}>
                 <SVGIcon name="alert-circle" size={20} color="#94A3B8" />
-                <Text style={styles.noApprovedText}>No approved records for this selection.</Text>
+                <Text style={styles.noApprovedText}>
+                  No approved records for this selection.
+                </Text>
               </View>
             )}
           </View>
@@ -516,7 +721,11 @@ export default function ViewAcademicRecords() {
           <TouchableOpacity
             onPress={loadData}
             disabled={listLoading || !selectedSubject}
-            style={[styles.searchBtn, { backgroundColor: primary }, (!selectedSubject || listLoading) && { opacity: 0.6 }]}
+            style={[
+              styles.searchBtn,
+              { backgroundColor: primary },
+              (!selectedSubject || listLoading) && { opacity: 0.6 },
+            ]}
           >
             {listLoading ? (
               <ActivityIndicator color="#fff" />
@@ -548,7 +757,26 @@ export default function ViewAcademicRecords() {
           </Animatable.View>
         )}
       </View>
-    ), [primary, secondary, selectedYear, term, selectedReportType, selectedClassId, classes, availableSubjects, selectedSubject, fetchingSubjects, listLoading, stats, studentScores, acadConfig, signatureUrl, uploadingSig]);
+    ),
+    [
+      primary,
+      secondary,
+      selectedYear,
+      term,
+      selectedReportType,
+      selectedClassId,
+      classes,
+      availableSubjects,
+      selectedSubject,
+      fetchingSubjects,
+      listLoading,
+      stats,
+      studentScores,
+      acadConfig,
+      signatureUrl,
+      uploadingSig,
+    ],
+  );
 
   if (loading) {
     return (
@@ -568,69 +796,135 @@ export default function ViewAcademicRecords() {
         ListHeaderComponent={ListHeader}
         contentContainerStyle={{ paddingBottom: 100 }}
         refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={primary}
+          />
         }
         ListEmptyComponent={
           hasSearched && !listLoading ? (
             <View style={styles.emptyContainer}>
               <SVGIcon name="document-text" size={64} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No scores recorded for this subject.</Text>
+              <Text style={styles.emptyText}>
+                No scores recorded for this subject.
+              </Text>
             </View>
           ) : null
         }
       />
 
       <Modal visible={metadataModalVisible} animationType="slide" transparent>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View>
                 <Text style={styles.modalTitle}>Terminal Metadata</Text>
-                <Text style={styles.modalSubtitle}>{editingStudent?.fullName}</Text>
+                <Text style={styles.modalSubtitle}>
+                  {editingStudent?.fullName}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setMetadataModalVisible(false)} style={styles.closeBtn}>
+              <TouchableOpacity
+                onPress={() => setMetadataModalVisible(false)}
+                style={styles.closeBtn}
+              >
                 <SVGIcon name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
-            
-            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              style={styles.modalScroll}
+            >
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>CONDUCT</Text>
-                <TextInput style={styles.textInput} value={mConduct} onChangeText={setConduct} placeholder="e.g. Excellent" />
+                <TextInput
+                  style={styles.textInput}
+                  value={mConduct}
+                  onChangeText={setConduct}
+                  placeholder="e.g. Excellent"
+                />
               </View>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>ATTITUDE</Text>
-                <TextInput style={styles.textInput} value={mAttitude} onChangeText={setAttitude} placeholder="e.g. Very Positive" />
+                <TextInput
+                  style={styles.textInput}
+                  value={mAttitude}
+                  onChangeText={setAttitude}
+                  placeholder="e.g. Very Positive"
+                />
               </View>
-              
+
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>INTEREST</Text>
-                <TextInput style={styles.textInput} value={mInterest} onChangeText={setInterest} placeholder="e.g. High" />
+                <TextInput
+                  style={styles.textInput}
+                  value={mInterest}
+                  onChangeText={setInterest}
+                  placeholder="e.g. High"
+                />
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>PROMOTED / REPEATED TO</Text>
-                <TextInput style={styles.textInput} value={mPromotedTo} onChangeText={setPromotedTo} placeholder="e.g. Promoted to Basic 5" />
+                <TextInput
+                  style={styles.textInput}
+                  value={mPromotedTo}
+                  onChangeText={setPromotedTo}
+                  placeholder="e.g. Promoted to Basic 5"
+                />
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>NEXT TERM BEGINS</Text>
-                <TextInput style={styles.textInput} value={mNextTermBegins} onChangeText={setNextTermBegins} placeholder="e.g. 15th Jan, 2025" />
+                <TextInput
+                  style={styles.textInput}
+                  value={mNextTermBegins}
+                  onChangeText={setNextTermBegins}
+                  placeholder="e.g. 15th Jan, 2025"
+                />
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>TEACHER'S REMARKS</Text>
-                <TextInput style={[styles.textInput, styles.textArea]} multiline numberOfLines={3} value={mTeacherRemarks} onChangeText={setTeacherRemarks} placeholder="Enter class teacher assessment..." />
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  multiline
+                  numberOfLines={3}
+                  value={mTeacherRemarks}
+                  onChangeText={setTeacherRemarks}
+                  placeholder="Enter class teacher assessment..."
+                />
               </View>
 
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>ADMINISTRATIVE REMARKS</Text>
-                <TextInput style={[styles.textInput, styles.textArea]} multiline numberOfLines={3} value={mAdminRemarks} onChangeText={setAdminRemarks} placeholder="Enter official school remarks..." />
+                <TextInput
+                  style={[styles.textInput, styles.textArea]}
+                  multiline
+                  numberOfLines={3}
+                  value={mAdminRemarks}
+                  onChangeText={setAdminRemarks}
+                  placeholder="Enter official school remarks..."
+                />
               </View>
 
-              <TouchableOpacity style={[styles.saveMetadataBtn, { backgroundColor: primary }]} onPress={saveMetadata} disabled={savingMetadata}>
-                {savingMetadata ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveMetadataBtnText}>Save Final Metadata</Text>}
+              <TouchableOpacity
+                style={[styles.saveMetadataBtn, { backgroundColor: primary }]}
+                onPress={saveMetadata}
+                disabled={savingMetadata}
+              >
+                {savingMetadata ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveMetadataBtnText}>
+                    Save Final Metadata
+                  </Text>
+                )}
               </TouchableOpacity>
               <View style={{ height: 40 }} />
             </ScrollView>
@@ -645,7 +939,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   loadingCenter: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
+    paddingTop: Platform.OS === "android" ? 40 : 20,
     paddingHorizontal: 20,
     paddingBottom: 60,
   },
@@ -664,7 +958,12 @@ const styles = StyleSheet.create({
   },
   titleContainer: { alignItems: "center", flex: 1 },
   schoolNameMini: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  mottoMini: { color: "rgba(255,255,255,0.8)", fontSize: 11, fontWeight: "600", marginTop: 2 },
+  mottoMini: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 2,
+  },
   filterCard: {
     backgroundColor: "#fff",
     marginHorizontal: 20,
@@ -673,8 +972,20 @@ const styles = StyleSheet.create({
     padding: 20,
     ...SHADOWS.medium,
   },
-  sectionLabel: { fontSize: 10, fontWeight: "900", color: "#64748B", letterSpacing: 1.5, marginBottom: 15 },
-  bubbleLabel: { fontSize: 9, fontWeight: "800", color: "#94A3B8", marginBottom: 8, marginTop: 5 },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#64748B",
+    letterSpacing: 1.5,
+    marginBottom: 15,
+  },
+  bubbleLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#94A3B8",
+    marginBottom: 8,
+    marginTop: 5,
+  },
   bubbleRow: { paddingBottom: 12, gap: 10 },
   bubble: {
     paddingHorizontal: 16,
@@ -685,7 +996,7 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
   },
   bubbleText: { fontSize: 12, fontWeight: "700", color: "#475569" },
-  subjectSelectBox: { minHeight: 60, justifyContent: 'center' },
+  subjectSelectBox: { minHeight: 60, justifyContent: "center" },
   subBubble: {
     paddingHorizontal: 16,
     paddingVertical: 10,
@@ -696,7 +1007,14 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   subBubbleText: { fontSize: 13, color: "#64748B" },
-  noApprovedBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, gap: 8 },
+  noApprovedBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    padding: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
   noApprovedText: { fontSize: 12, color: "#94A3B8", fontWeight: "600" },
   searchBtn: {
     height: 56,
@@ -706,7 +1024,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     ...SHADOWS.small,
   },
-  btnRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  btnRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   searchBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
   statsContainer: {
     flexDirection: "row",
@@ -720,7 +1038,12 @@ const styles = StyleSheet.create({
   },
   statItem: { alignItems: "center" },
   statVal: { fontSize: 18, fontWeight: "900", color: "#1E293B" },
-  statLabel: { fontSize: 10, color: "#94A3B8", fontWeight: "700", marginTop: 4 },
+  statLabel: {
+    fontSize: 10,
+    color: "#94A3B8",
+    fontWeight: "700",
+    marginTop: 4,
+  },
   statDivider: { width: 1, height: 30, backgroundColor: "#F1F5F9" },
   studentCard: {
     backgroundColor: "#fff",
@@ -730,42 +1053,164 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
   },
   cardInner: { flexDirection: "row", alignItems: "center", padding: 15 },
-  posBadge: { width: 40, height: 40, borderRadius: 12, justifyContent: "center", alignItems: "center" },
+  posBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   posText: { fontSize: 16, fontWeight: "900" },
   name: { fontSize: 15, fontWeight: "800", color: "#1E293B" },
   idSub: { fontSize: 11, color: "#94A3B8", marginTop: 2, fontWeight: "600" },
-  remarkPreview: { fontSize: 10, color: "#64748B", marginTop: 4, fontStyle: 'italic' },
+  remarkPreview: {
+    fontSize: 10,
+    color: "#64748B",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
   scoreInfo: { alignItems: "flex-end", marginRight: 15 },
   score: { fontSize: 17, fontWeight: "900" },
-  gradeBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
+  gradeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
+  },
   gradeText: { fontSize: 10, fontWeight: "800", color: "#64748B" },
-  editBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  editBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
   emptyContainer: { alignItems: "center", marginTop: 60 },
-  emptyText: { color: "#94A3B8", fontSize: 15, fontWeight: "600", marginTop: 15 },
-  
-  signatureCard: { backgroundColor: "#fff", margin: 20, padding: 20, borderRadius: 24, ...SHADOWS.small, borderWidth: 1, borderColor: "#E2E8F0", marginTop: -40 },
-  sigHeader: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 4 },
+  emptyText: {
+    color: "#94A3B8",
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 15,
+  },
+
+  signatureCard: {
+    backgroundColor: "#fff",
+    margin: 20,
+    padding: 20,
+    borderRadius: 24,
+    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginTop: -40,
+  },
+  sigHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
   sigTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
-  sigSubtitle: { fontSize: 12, color: "#64748B", marginBottom: 15, fontWeight: "600" },
+  sigSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginBottom: 15,
+    fontWeight: "600",
+  },
   sigContent: { alignItems: "center" },
-  sigImage: { width: "100%", height: 80, backgroundColor: "#F8FAFC", borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0" },
-  sigPlaceholder: { width: "100%", height: 80, backgroundColor: "#F1F5F9", borderRadius: 12, borderStyle: "dashed", borderWidth: 2, borderColor: "#CBD5E1", justifyContent: "center", alignItems: "center" },
-  sigPlaceholderText: { fontSize: 12, color: "#94A3B8", marginTop: 8, fontWeight: "700" },
-  sigUploadBtn: { marginTop: 15, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 12 },
+  sigImage: {
+    width: "100%",
+    height: 80,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  sigPlaceholder: {
+    width: "100%",
+    height: 80,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    borderStyle: "dashed",
+    borderWidth: 2,
+    borderColor: "#CBD5E1",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sigPlaceholderText: {
+    fontSize: 12,
+    color: "#94A3B8",
+    marginTop: 8,
+    fontWeight: "700",
+  },
+  sigUploadBtn: {
+    marginTop: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
   sigUploadBtnText: { color: "#fff", fontWeight: "800", fontSize: 13 },
 
   // Modal Styles
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 25, paddingTop: 25, maxHeight: '90%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 15 },
-  modalTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B' },
-  modalSubtitle: { fontSize: 14, fontWeight: '700', color: COLORS.primary || "#2e86de", marginTop: 2 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    paddingHorizontal: 25,
+    paddingTop: 25,
+    maxHeight: "90%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 15,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "900", color: "#1E293B" },
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.primary || "#2e86de",
+    marginTop: 2,
+  },
   modalScroll: { paddingTop: 10 },
-  closeBtn: { width: 40, height: 40, alignItems: 'flex-end' },
+  closeBtn: { width: 40, height: 40, alignItems: "flex-end" },
   inputGroup: { marginBottom: 15 },
-  inputLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', marginBottom: 8, letterSpacing: 1 },
-  textInput: { backgroundColor: '#F8FAFC', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#E2E8F0', fontSize: 14, color: '#1E293B', fontWeight: '600' },
-  textArea: { textAlignVertical: 'top', minHeight: 80 },
-  saveMetadataBtn: { padding: 18, borderRadius: 16, alignItems: 'center', marginTop: 15, ...SHADOWS.small },
-  saveMetadataBtnText: { color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 }
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#94A3B8",
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  textInput: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    fontSize: 14,
+    color: "#1E293B",
+    fontWeight: "600",
+  },
+  textArea: { textAlignVertical: "top", minHeight: 80 },
+  saveMetadataBtn: {
+    padding: 18,
+    borderRadius: 16,
+    alignItems: "center",
+    marginTop: 15,
+    ...SHADOWS.small,
+  },
+  saveMetadataBtnText: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
 });

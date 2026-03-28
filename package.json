@@ -26,7 +26,7 @@
     "ios": "expo run:ios",
     "web": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" expo start --web",
     "build:web": "cross-env NODE_ENV=production NODE_OPTIONS=\"--max-old-space-size=4096\" npx expo export --platform web",
-    "build": "npm run build:web && electron-builder --config electron-builder.config.js",
+    "build": "node scripts/prepare-electron-config.js && npm run build:web && electron-builder --config electron-builder.config.js",
     "electron:dev:beano": "cross-env SCHOOL_ID=beano node scripts/generate-electron-config.js && cross-env SCHOOL_ID=beano concurrently \"npm run web\" \"wait-on http://localhost:8081 && NODE_ENV=development SCHOOL_ID=beano electron electron-main.js\"",
     "electron:dev:morgis": "cross-env SCHOOL_ID=morgis node scripts/generate-electron-config.js && cross-env SCHOOL_ID=morgis concurrently \"npm run web\" \"wait-on http://localhost:8081 && NODE_ENV=development SCHOOL_ID=morgis electron electron-main.js\"",
     "electron:dev:afahjoy": "cross-env SCHOOL_ID=afahjoy node scripts/generate-electron-config.js && cross-env SCHOOL_ID=afahjoy concurrently \"npm run web\" \"wait-on http://localhost:8081 && NODE_ENV=development SCHOOL_ID=afahjoy electron electron-main.js\"",

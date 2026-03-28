@@ -5,43 +5,43 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Sharing from "expo-sharing";
 import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  limit as fLimit,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
+    addDoc,
+    collection,
+    deleteDoc,
+    doc,
+    limit as fLimit,
+    onSnapshot,
+    orderBy,
+    query,
+    serverTimestamp,
 } from "firebase/firestore";
 import {
-  deleteObject,
-  getDownloadURL,
-  ref as sRef,
-  uploadBytesResumable,
+    deleteObject,
+    getDownloadURL,
+    ref as sRef,
+    uploadBytesResumable,
 } from "firebase/storage";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  Platform,
-  StatusBar,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    Platform,
+    StatusBar,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from "react-native";
 import {
-  PanGestureHandler,
-  PinchGestureHandler,
+    PanGestureHandler,
+    PinchGestureHandler,
 } from "react-native-gesture-handler";
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
@@ -58,12 +58,22 @@ type GalleryItem = {
 };
 const MAX_FILE_SIZE = 30 * 1024 * 1024;
 
-const uriToBlob = async (uri) => {
+const uriToBlob = async (uri: string) => {
   const response = await fetch(uri);
   return await response.blob();
 };
 
-const FullScreenItem = ({
+type FullScreenItemProps = {
+  item: GalleryItem;
+  width: number;
+  height: number;
+  onClose: () => void;
+  onShare: (item: GalleryItem) => void;
+  onDelete: (item: GalleryItem) => void;
+  canManageGallery: boolean;
+};
+
+const FullScreenItem: React.FC<FullScreenItemProps> = ({
   item,
   width,
   height,
@@ -178,27 +188,30 @@ export default function AdminGalleryUpload() {
   const { appUser } = useAuth();
   const { width, height } = useWindowDimensions();
 
-  const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedFile, setSelectedFile] =
+    useState<ImagePicker.ImagePickerAsset | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sharingId, setSharingId] = useState(null);
+  const [sharingId, setSharingId] = useState<string | null>(null);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const flatListRef = useRef(null);
+  const flatListRef = useRef<FlatList<GalleryItem> | null>(null);
 
-  const canManageGallery = useMemo(
+  const canManageGallery: boolean = useMemo(
     () =>
-      appUser &&
-      [
-        "Proprietor",
-        "Headmaster",
-        "Assistant Headmaster",
-        "CEO",
-        "Secretary",
-      ].includes(appUser.adminRole ?? ""),
+      !!(
+        appUser &&
+        [
+          "Proprietor",
+          "Headmaster",
+          "Assistant Headmaster",
+          "CEO",
+          "Secretary",
+        ].includes(appUser.adminRole ?? "")
+      ),
     [appUser],
   );
 
@@ -230,8 +243,11 @@ export default function AdminGalleryUpload() {
     });
 
     if (!result.canceled && result.assets?.length) {
-      const file = result.assets[0];
-      if (file.fileSize && file.fileSize > MAX_FILE_SIZE) {
+      const file = result.assets[0] as ImagePicker.ImagePickerAsset;
+      if (
+        (file.fileSize as number | undefined) &&
+        (file.fileSize as number) > MAX_FILE_SIZE
+      ) {
         return Alert.alert("File Too Large");
       }
       setSelectedFile(file);
@@ -244,10 +260,14 @@ export default function AdminGalleryUpload() {
 
     try {
       const timestamp = Date.now();
-      const ext = selectedFile.uri.split(".").pop() || "jpg";
-      const fileType = selectedFile?.mimeType?.startsWith("video")
-        ? "video"
-        : "image";
+      const ext =
+        (selectedFile as ImagePicker.ImagePickerAsset).uri.split(".").pop() ||
+        "jpg";
+      const fileType =
+        (selectedFile as any)?.type === "video" ||
+        (selectedFile as any)?.mediaType === "video"
+          ? "video"
+          : "image";
       const mainPath = `gallery/${timestamp}.${ext}`;
       const mainRef = sRef(storage, mainPath);
       const mainBlob = await uriToBlob(selectedFile.uri);
@@ -283,7 +303,7 @@ export default function AdminGalleryUpload() {
   };
 
   // ✅ FULLY FIXED SHARE
-  const shareToSocial = async (item) => {
+  const shareToSocial = async (item: GalleryItem) => {
     if (sharingId) return;
     setSharingId(item.id);
 
@@ -334,7 +354,7 @@ export default function AdminGalleryUpload() {
       setSharingId(null);
     }
   };
-  const openModal = (index) => {
+  const openModal = (index: number) => {
     setCurrentIndex(index);
     setModalVisible(true);
     setTimeout(() => {
@@ -342,7 +362,7 @@ export default function AdminGalleryUpload() {
     }, 100);
   };
 
-  const deleteItem = (item) => {
+  const deleteItem = (item: GalleryItem) => {
     if (!canManageGallery) return;
 
     Alert.alert("Delete Post", "Remove this from the gallery?", [
@@ -368,7 +388,7 @@ export default function AdminGalleryUpload() {
     ]);
   };
 
-  const renderFullItem = ({ item }) => (
+  const renderFullItem = ({ item }: { item: GalleryItem }) => (
     <FullScreenItem
       item={item}
       width={width}

@@ -10,6 +10,7 @@ export interface UserProfile {
   email?: string;
   phone?: string;
   profileImage?: string;
+  signatureUrl?: string;
 }
 
 export interface AppUser {
@@ -28,26 +29,26 @@ export interface AppUser {
 
   // Permissions
   canCreateNews?: boolean;
-  
+
   // Updated: Flexible admin roles and permission mapping
   adminRole?: string;
   permissions?: Record<string, PermissionLevel>;
 
   // Teacher only
-  classes?: string[]; 
-  subjects?: string[]; 
-  departments?: string[]; 
-  classTeacherOf?: string; 
-  assignedRoles?: string[]; 
+  classes?: string[];
+  subjects?: string[];
+  departments?: string[];
+  classTeacherOf?: string;
+  assignedRoles?: string[];
 
   // Student only
-  classId?: string; 
-  parentUids?: string[]; 
-  parentLinkCode?: string; 
+  classId?: string;
+  parentUids?: string[];
+  parentLinkCode?: string;
 
   // Parent only
-  childrenIds?: string[]; 
-  childrenClassIds?: string[]; 
+  childrenIds?: string[];
+  childrenClassIds?: string[];
 
   // Metadata
   createdAt?: any;

@@ -1,4 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import {
     addDoc,
     collection,
@@ -35,8 +36,6 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
-import { useRouter } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 
 /* ---------------- TYPES ---------------- */
 
@@ -96,7 +95,9 @@ export default function MarkAssignment() {
   const [standardMarksInput, setStandardMarksInput] = useState<
     Record<string, string>
   >({});
-  const [feedbackInputs, setFeedbackInputs] = useState<Record<string, string>>({});
+  const [feedbackInputs, setFeedbackInputs] = useState<Record<string, string>>(
+    {},
+  );
 
   const [loading, setLoading] = useState(false);
   const [, setLoadingMore] = useState(false);
@@ -142,8 +143,9 @@ export default function MarkAssignment() {
   }, [appUser]);
 
   useEffect(() => {
-    if (appUser?.subjects?.length > 0) {
-        setSelectedSubject(appUser.subjects[0]);
+    const firstSub = appUser?.subjects?.[0];
+    if (firstSub) {
+      setSelectedSubject(firstSub);
     }
   }, [appUser]);
 
@@ -236,7 +238,7 @@ export default function MarkAssignment() {
         const q = query(
           collection(db, "submissions"),
           where("assignmentId", "==", selectedAssignment.id),
-          where("marked", "==", false)
+          where("marked", "==", false),
         );
 
         const snap = await getDocs(q);
@@ -245,7 +247,10 @@ export default function MarkAssignment() {
           ...d.data(),
         })) as Submission[];
 
-        fetchedSubmissions.sort((a, b) => (b.submittedAt?.toMillis() || 0) - (a.submittedAt?.toMillis() || 0));
+        fetchedSubmissions.sort(
+          (a, b) =>
+            (b.submittedAt?.toMillis() || 0) - (a.submittedAt?.toMillis() || 0),
+        );
 
         setSubmissions(fetchedSubmissions);
 
@@ -355,7 +360,13 @@ export default function MarkAssignment() {
     );
   };
 
-  const renderSubmission = ({ item, index }: { item: Submission, index: number }) => (
+  const renderSubmission = ({
+    item,
+    index,
+  }: {
+    item: Submission;
+    index: number;
+  }) => (
     <Animatable.View
       animation="fadeInUp"
       duration={500}
@@ -476,7 +487,9 @@ export default function MarkAssignment() {
           placeholder="Add comments or feedback for the student/parent..."
           multiline
           value={feedbackInputs[item.id] || ""}
-          onChangeText={(t) => setFeedbackInputs(prev => ({ ...prev, [item.id]: t }))}
+          onChangeText={(t) =>
+            setFeedbackInputs((prev) => ({ ...prev, [item.id]: t }))
+          }
         />
       </View>
 
@@ -502,10 +515,10 @@ export default function MarkAssignment() {
 
       <View style={styles.headerArea}>
         <LinearGradient
-            colors={[COLORS.primary, "#1E293B"]}
-            style={StyleSheet.absoluteFill}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          colors={[COLORS.primary, "#1E293B"]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         />
         <View style={styles.headerTop}>
           <TouchableOpacity
@@ -519,58 +532,113 @@ export default function MarkAssignment() {
         </View>
 
         <Animatable.View animation="fadeInDown" style={styles.configCard}>
-           <Text style={styles.sectionLabel}>GRADING CONFIGURATION</Text>
+          <Text style={styles.sectionLabel}>GRADING CONFIGURATION</Text>
 
-           <Text style={styles.label}>TARGET CLASS</Text>
-           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-              {availableClasses.map((cls) => (
-                <TouchableOpacity
-                  key={cls.id}
-                  onPress={() => {
-                    setSelectedClass(cls.id);
-                    setSelectedAssignment(null);
-                  }}
-                  style={[styles.bubble, selectedClass === cls.id && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+          <Text style={styles.label}>TARGET CLASS</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bubbleRow}
+          >
+            {availableClasses.map((cls) => (
+              <TouchableOpacity
+                key={cls.id}
+                onPress={() => {
+                  setSelectedClass(cls.id);
+                  setSelectedAssignment(null);
+                }}
+                style={[
+                  styles.bubble,
+                  selectedClass === cls.id && {
+                    backgroundColor: COLORS.primary,
+                    borderColor: COLORS.primary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    selectedClass === cls.id && { color: "#fff" },
+                  ]}
                 >
-                  <Text style={[styles.bubbleText, selectedClass === cls.id && { color: '#fff' }]}>{cls.name}</Text>
-                </TouchableOpacity>
-              ))}
-           </ScrollView>
+                  {cls.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-           <Text style={styles.label}>SUBJECT</Text>
-           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-              {(appUser?.subjects || []).map((s: string) => (
-                <TouchableOpacity
-                  key={s}
-                  onPress={() => {
-                    setSelectedSubject(s);
-                    setSelectedAssignment(null);
-                  }}
-                  style={[styles.bubble, selectedSubject === s && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+          <Text style={styles.label}>SUBJECT</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bubbleRow}
+          >
+            {(appUser?.subjects || []).map((s: string) => (
+              <TouchableOpacity
+                key={s}
+                onPress={() => {
+                  setSelectedSubject(s);
+                  setSelectedAssignment(null);
+                }}
+                style={[
+                  styles.bubble,
+                  selectedSubject === s && {
+                    backgroundColor: COLORS.primary,
+                    borderColor: COLORS.primary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    selectedSubject === s && { color: "#fff" },
+                  ]}
                 >
-                  <Text style={[styles.bubbleText, selectedSubject === s && { color: '#fff' }]}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-           </ScrollView>
+                  {s}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-           <Text style={styles.label}>ASSIGNMENT TITLE</Text>
-           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-              {loading ? (
-                 <ActivityIndicator size="small" color={COLORS.primary} style={{ marginLeft: 10 }} />
-              ) : assignments.length > 0 ? (
-                assignments.map((a) => (
-                    <TouchableOpacity
-                      key={a.id}
-                      onPress={() => setSelectedAssignment(a)}
-                      style={[styles.bubble, selectedAssignment?.id === a.id && { backgroundColor: COLORS.secondary, borderColor: COLORS.secondary }]}
-                    >
-                      <Text style={[styles.bubbleText, selectedAssignment?.id === a.id && { color: '#fff' }]}>{a.title}</Text>
-                    </TouchableOpacity>
-                  ))
-              ) : (
-                <Text style={styles.emptyHint}>No assignments found</Text>
-              )}
-           </ScrollView>
+          <Text style={styles.label}>ASSIGNMENT TITLE</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bubbleRow}
+          >
+            {loading ? (
+              <ActivityIndicator
+                size="small"
+                color={COLORS.primary}
+                style={{ marginLeft: 10 }}
+              />
+            ) : assignments.length > 0 ? (
+              assignments.map((a) => (
+                <TouchableOpacity
+                  key={a.id}
+                  onPress={() => setSelectedAssignment(a)}
+                  style={[
+                    styles.bubble,
+                    selectedAssignment?.id === a.id && {
+                      backgroundColor: COLORS.secondary,
+                      borderColor: COLORS.secondary,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.bubbleText,
+                      selectedAssignment?.id === a.id && { color: "#fff" },
+                    ]}
+                  >
+                    {a.title}
+                  </Text>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.emptyHint}>No assignments found</Text>
+            )}
+          </ScrollView>
         </Animatable.View>
       </View>
 
@@ -618,7 +686,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
     ...SHADOWS.medium,
-    overflow: 'hidden'
+    overflow: "hidden",
   },
   headerTop: {
     flexDirection: "row",
@@ -627,9 +695,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 15,
     marginBottom: 20,
-    zIndex: 1
+    zIndex: 1,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   headerTitle: { fontSize: 22, fontWeight: "900", color: "#fff" },
   configCard: {
     backgroundColor: "#fff",
@@ -640,21 +715,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#F1F5F9",
   },
-  sectionLabel: { fontSize: 10, fontWeight: "900", color: COLORS.primary, letterSpacing: 1.5, marginBottom: 15, opacity: 0.8 },
-  label: { fontSize: 9, fontWeight: "900", color: "#64748B", marginBottom: 6, marginTop: 10, textTransform: "uppercase" },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: COLORS.primary,
+    letterSpacing: 1.5,
+    marginBottom: 15,
+    opacity: 0.8,
+  },
+  label: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#64748B",
+    marginBottom: 6,
+    marginTop: 10,
+    textTransform: "uppercase",
+  },
   bubbleRow: { paddingVertical: 5 },
   bubble: {
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: '#F1F5F9',
-    backgroundColor: '#F8FAFC',
+    borderColor: "#F1F5F9",
+    backgroundColor: "#F8FAFC",
     marginRight: 10,
-    ...SHADOWS.small
+    ...SHADOWS.small,
   },
-  bubbleText: { fontSize: 13, fontWeight: '800', color: '#64748B' },
-  emptyHint: { fontSize: 12, color: '#94A3B8', fontStyle: 'italic', marginLeft: 10, marginTop: 5 },
+  bubbleText: { fontSize: 13, fontWeight: "800", color: "#64748B" },
+  emptyHint: {
+    fontSize: 12,
+    color: "#94A3B8",
+    fontStyle: "italic",
+    marginLeft: 10,
+    marginTop: 5,
+  },
   listContent: { padding: 15, paddingBottom: 40 },
   subCard: {
     backgroundColor: "#fff",
@@ -698,7 +793,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#F1F5F9'
+    borderColor: "#F1F5F9",
   },
   fileIconBox: {
     width: 38,
@@ -720,7 +815,7 @@ const styles = StyleSheet.create({
     paddingTop: 15,
     borderTopWidth: 1.5,
     borderTopColor: "#F1F5F9",
-    borderStyle: 'dashed'
+    borderStyle: "dashed",
   },
   scoreLabelHeader: { fontSize: 15, fontWeight: "800", color: "#1E293B" },
   scoreSubLabel: { fontSize: 11, color: "#94A3B8", marginTop: 2 },
@@ -790,8 +885,24 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginLeft: 10,
   },
-  feedbackSection: { marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
-  feedbackInput: { backgroundColor: '#F8FAFC', borderRadius: 15, padding: 15, fontSize: 14, color: '#1E293B', height: 80, textAlignVertical: 'top', marginTop: 10, borderWidth: 1, borderColor: '#E2E8F0' },
+  feedbackSection: {
+    marginTop: 20,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  feedbackInput: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 15,
+    padding: 15,
+    fontSize: 14,
+    color: "#1E293B",
+    height: 80,
+    textAlignVertical: "top",
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
   saveSubmitBtn: {
     borderRadius: 20,
     marginTop: 20,

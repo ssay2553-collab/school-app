@@ -5,9 +5,10 @@ export interface NewsItem {
   title: string;
   content: string;
   audience: Audience;
+  author?: string;
   category?: string;
   createdAt?: any; // Firestore timestamp
   expiryDate?: any; // Firestore timestamp for when the news should expire
-  mediaUrl?: string | null;    // optional media URL
+  mediaUrl?: string | null; // optional media URL
   mediaType?: "image" | "video" | null; // optional media type
 }

@@ -1,12 +1,12 @@
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
 import React, {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useState,
-  useRef,
+    createContext,
+    ReactNode,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
 } from "react";
 import { auth, db } from "../firebaseConfig";
 import { AppUser } from "../types/users";
@@ -24,11 +24,13 @@ const AuthContext = createContext<AuthContextValue>({
   loading: true,
 });
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const lastSyncedUid = useRef<string | null>(null);
 
   useEffect(() => {
@@ -38,10 +40,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const token = await registerForPushNotificationsAsync();
           if (token) {
             const userRef = doc(db, "users", firebaseUser.uid);
-            await setDoc(userRef, { 
-              fcmToken: token,
-              tokenLastActive: serverTimestamp() 
-            }, { merge: true });
+            await setDoc(
+              userRef,
+              {
+                fcmToken: token,
+                tokenLastActive: serverTimestamp(),
+              },
+              { merge: true },
+            );
           }
           lastSyncedUid.current = firebaseUser.uid;
         } catch (err) {
@@ -57,7 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setFirebaseUser(user);
-      
+
       if (!user) {
         lastSyncedUid.current = null;
         setAppUser(null);
@@ -90,6 +96,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               email: data.profile?.email,
               phone: data.profile?.phone,
               profileImage: data.profile?.profileImage,
+              signatureUrl: data.profile?.signatureUrl,
             },
             classes: data.classes ?? [],
             subjects: data.subjects ?? [],
@@ -107,7 +114,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         (error) => {
           console.error("Profile Listener Error:", error);
           setLoading(false);
-        }
+        },
       );
     });
 

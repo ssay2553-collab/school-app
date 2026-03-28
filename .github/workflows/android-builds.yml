@@ -82,7 +82,8 @@ jobs:
           export SCHOOL_ID=$(echo "${{ matrix.profile }}" | cut -d'-' -f1)
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease
+          # Increase memory for the Gradle Daemon to prevent Metaspace errors
+          ./gradlew assembleRelease -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
         env:
           SCHOOL_ID: $(echo "${{ matrix.profile }}" | cut -d'-' -f1)
 

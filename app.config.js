@@ -300,7 +300,7 @@ module.exports = ({ config }) => {
     brain: {
       name: "Bright Brain",
       slug: "brain",
-      package: "com.saysmanage.brain",
+      package: "com.saysmanage.cascom",
       scheme: "brain",
       logo: "./assets/icon-brain.png",
       hotline: "0552530930",

@@ -75,8 +75,8 @@ jobs:
           npx expo export --platform web
           
           # Build the Electron installer
-          # Using --config.publish=never to avoid the previous error
-          npx electron-builder --config electron-builder.config.js --win nsis --config.publish=never
+          # Using --publish never to correctly disable publishing
+          npx electron-builder --config electron-builder.config.js --win nsis --publish never
         shell: powershell
 
       - name: 📤 Upload Installer

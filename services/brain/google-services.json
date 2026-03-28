@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "592128740440",
-    "project_id": "bright-brain-99daa",
-    "storage_bucket": "bright-brain-99daa.firebasestorage.app"
+    "project_number": "214741402500",
+    "project_id": "bright-brains-ed4d7",
+    "storage_bucket": "bright-brains-ed4d7.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:592128740440:android:4c805ff4983ed5c9248e2d",
+        "mobilesdk_app_id": "1:214741402500:android:8cff0d8572551f05ea13d1",
         "android_client_info": {
-          "package_name": "com.saysmanage.cascom"
+          "package_name": "com.saysmanage.brain"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAs5c9Z2mfexMwfGyRRlIpddV548W7UCK8"
+          "current_key": "AIzaSyDJnSQ6VIbVDVlytOMuPKClo5fyB0bPQxc"
         }
       ],
       "services": {

@@ -300,7 +300,7 @@ module.exports = ({ config }) => {
     brain: {
       name: "Bright Brain",
       slug: "brain",
-      package: "com.saysmanage.cascom",
+      package: "com.saysmanage.brain",
       scheme: "brain",
       logo: "./assets/icon-brain.png",
       hotline: "0552530930",
@@ -315,12 +315,12 @@ module.exports = ({ config }) => {
       brandSecondary: "#3333d8ff",
       easProjectId: "bae08918-f134-4384-8bf3-d73659186b60",
       firebase: {
-        apiKey: "AIzaSyBrRD_azmsbS1cbsmMA9YCI2QZFVHmkvlE",
-        authDomain: "bright-brain-99daa.firebaseapp.com",
-        projectId: "bright-brain-99daa",
-        storageBucket: "bright-brain-99daa.firebasestorage.app",
-        messagingSenderId: "592128740440",
-        appId: "1:592128740440:web:5a2d6f6c3f26fd0b248e2d",
+        apiKey: "AIzaSyCQTEjChLg7i-pG0GhvHjq7R5C_Hli_qfY",
+        authDomain: "bright-brains-ed4d7.firebaseapp.com",
+        projectId: "bright-brains-ed4d7",
+        storageBucket: "bright-brains-ed4d7.firebasestorage.app",
+        messagingSenderId: "214741402500",
+        appId: "1:214741402500:web:d290bb530e858c1fea13d1",
       },
     },
     cascom: {

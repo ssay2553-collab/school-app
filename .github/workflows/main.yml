@@ -1,0 +1,25 @@
+- name: ⚙️ Setup Java
+  uses: actions/setup-java@v4
+  with:
+    distribution: 'temurin'
+    java-version: '17'
+
+- name: 🤖 Setup Android SDK
+  uses: android-actions/setup-android@v3
+
+- name: 🏗 Prebuild Expo
+  run: npx expo prebuild
+
+- name: 📦 Build APK
+  run: |
+    export SCHOOL_ID=$(echo "${{ matrix.profile }}" | cut -d'-' -f1)
+    echo "Building for School ID: $SCHOOL_ID"
+
+    cd android
+    ./gradlew assembleRelease
+
+- name: 📤 Upload APK
+  uses: actions/upload-artifact@v4
+  with:
+    name: ${{ matrix.profile }}-apk
+    path: android/app/build/outputs/apk/release/app-release.apk

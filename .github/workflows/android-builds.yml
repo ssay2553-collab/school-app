@@ -70,31 +70,24 @@ jobs:
 
       - name: 🏗 Prebuild Expo
         run: |
-          # Extract school ID (e.g., afahjoy from afahjoy-prod)
           export SCHOOL_ID=$(echo "${{ matrix.profile }}" | cut -d'-' -f1)
           echo "Prebuilding for School ID: $SCHOOL_ID"
-          
-          # Clean any existing native folders to ensure a fresh start
           rm -rf android
-          
-          # Generate the native android folder dynamically
           npx expo prebuild --platform android --no-install
         env:
-          SCHOOL_ID: ${{ steps.set-profiles.outputs.school_id }} # This line is handled by the export above
+          SCHOOL_ID: $(echo "${{ matrix.profile }}" | cut -d'-' -f1)
 
       - name: 🛠 Build APK
         run: |
           export SCHOOL_ID=$(echo "${{ matrix.profile }}" | cut -d'-' -f1)
           cd android
           chmod +x gradlew
-          # assembleRelease creates the production-ready APK
           ./gradlew assembleRelease
         env:
-          SCHOOL_ID: ${{ steps.set-profiles.outputs.school_id }}
+          SCHOOL_ID: $(echo "${{ matrix.profile }}" | cut -d'-' -f1)
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.profile }}-apk
-          # We use a wildcard to find the APK regardless of internal naming
           path: android/app/build/outputs/apk/release/*.apk

@@ -1,0 +1,85 @@
+name: Build Electron Installers
+on:
+  workflow_dispatch:
+    inputs:
+      school_profile:
+        description: 'Select the school profile to build'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - afahjoy
+          - beano
+          - bishops
+          - bms
+          - brain
+          - cascom
+          - creation
+          - eagles
+          - ibs
+          - kent
+          - model
+          - morgis
+          - perfect
+          - clis
+          - stone
+          - jewel
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      schools: ${{ steps.set-schools.outputs.schools }}
+    steps:
+      - id: set-schools
+        run: |
+          if [ "${{ github.event.inputs.school_profile }}" == "all" ]; then
+            echo 'schools=["afahjoy", "beano", "bishops", "bms", "brain", "cascom", "creation", "eagles", "ibs", "kent", "model", "morgis", "perfect", "clis", "stone", "jewel"]' >> $GITHUB_OUTPUT
+          else
+            echo 'schools=["${{ github.event.inputs.school_profile }}"]' >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: setup
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        school: ${{ fromJson(needs.setup.outputs.schools) }}
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm install
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"
+
+      - name: 🛠 Build Web and Electron
+        run: |
+          $env:SCHOOL_ID = "${{ matrix.school }}"
+          $env:NODE_ENV = "production"
+          $env:NODE_OPTIONS = "--max-old-space-size=4096"
+          
+          # Generate the specific config for this school
+          node scripts/generate-electron-config.js
+          
+          # Export Expo to web
+          npx expo export --platform web
+          
+          # Build the Electron installer
+          npx electron-builder --config electron-builder.config.js --win nsis
+        shell: powershell
+
+      - name: 📤 Upload Installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.school }}-windows-installer
+          path: release/*.exe

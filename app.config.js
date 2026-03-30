@@ -325,7 +325,7 @@ module.exports = ({ config }) => {
     },
     cascom: {
       name: "CASCOM App",
-      slug: "cascon",
+      slug: "cascom",
       package: "com.saysmanage.cascom",
       scheme: "cascom",
       logo: "./assets/icon-cascom.png",

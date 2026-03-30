@@ -71,6 +71,9 @@ export default function DashboardLayout() {
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
+    } else {
+      // Fallback to dashboard home if no history exists (prevents the 'GO_BACK' error)
+      router.replace("/admin-dashboard");
     }
   };
 

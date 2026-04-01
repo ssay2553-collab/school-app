@@ -42,8 +42,9 @@ Optional improvements (low-risk)
 
 If you want, I can:
 
-- Add a minimal `web/manifest.webmanifest` and simple `web/service-worker.js` to the repo for development.
 - Update `app/index.tsx` to register the service worker on web (safe code path: only runs on web and only if navigator.serviceWorker is available).
 - Run `npm run build:web` and `npm run serve:web` here and report the generated manifest & service worker files.
+
+Note: starter templates were added to `web/` in this repo: `web/manifest.webmanifest`, `web/service-worker.js`, and `web/offline.html`. Use these as a base for local testing (they can be copied to the exported `web-build` folder or used by your static host).
 
 Next step: tell me which optional improvements you'd like me to implement (add templates, register SW in code, or run an export now).

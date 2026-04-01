@@ -1,10 +1,22 @@
 {
   "projects": {
     "default": "afahjoy-7cc03",
+    "afahjoy": "afahjoy-7cc03",
     "beano": "beano-app-a9c38",
     "morgis": "morgis-app",
-    "first": "thess-app",
-    "perfect": "clis-app-f89b8"
+    "ibs": "jei-river",
+    "eagles": "royal-lisben",
+    "perfect": "clis-app-f89b8",
+    "creation": "vince-app-c49a2",
+    "jewel": "jewels-app-17a30",
+    "clis": "clis-app-e39e8",
+    "model": "model-power-430de",
+    "stone": "stepping-stone-90720",
+    "brain": "bright-brains-ed4d7",
+    "cascom": "cascom-59b61",
+    "bms": "bms-app-f4572",
+    "kent": "golden-rock-16bf8",
+    "bishops": "thess-app"
   },
   "targets": {},
   "etags": {}

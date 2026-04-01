@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import { Image, Platform, StyleSheet, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import * as Notifications from "expo-notifications";
@@ -110,17 +111,24 @@ function MainLayout() {
 
 export default function Layout() {
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <AuthProvider>
-        <ThemeProvider>
-          <MainLayout />
-        </ThemeProvider>
-      </AuthProvider>
-    </GestureHandlerRootView>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={styles.root}>
+        <AuthProvider>
+          <ThemeProvider>
+            <MainLayout />
+          </ThemeProvider>
+        </AuthProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { 
+    flex: 1, 
+    backgroundColor: "#fff",
+    height: Platform.OS === 'web' ? '100vh' : '100%',
+  },
   splashContainer: { flex: 1, backgroundColor: "#FFFFFF", justifyContent: "center", alignItems: "center" },
   splashImage: { width: "70%", height: "70%" },
 });

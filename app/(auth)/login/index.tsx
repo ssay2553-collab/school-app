@@ -3,7 +3,6 @@ import React from "react";
 import {
   Dimensions,
   Image,
-  SafeAreaView,
   StatusBar,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { getSchoolLogo } from "../../../constants/Logos";
@@ -23,6 +23,7 @@ const { height } = Dimensions.get("window");
 
 export default function LoginSelectionScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
 
@@ -45,29 +46,40 @@ export default function LoginSelectionScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: surface }]}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.headerWrapper}>
+      <StatusBar barStyle="light-content" />
+      <View style={[styles.headerWrapper, { height: Math.max(height * 0.38, 280) }]}>
         <LinearGradient 
           colors={[brandPrimary, brandSecondary]} 
           style={styles.heroGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
         >
-          <SafeAreaView style={styles.safeHeader}>
-            <TouchableOpacity onPress={navigateToHub} style={styles.backBtn}>
+          <View style={[styles.safeHeader, { paddingTop: insets.top + 10 }]}>
+            <TouchableOpacity 
+              onPress={navigateToHub} 
+              style={[styles.backBtn, { top: insets.top > 20 ? insets.top : 20 }]}
+              activeOpacity={0.8}
+            >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
+            
             <Animatable.View animation="fadeInDown" duration={1000} style={styles.logoCircle}>
               <View style={[styles.innerLogo, { backgroundColor: surface }]}>
                 <Image source={schoolLogo} style={styles.logo} resizeMode="contain" />
               </View>
             </Animatable.View>
+            
             <Animatable.Text animation="fadeInUp" delay={300} style={styles.heroTitle}>IDENTITY GATEWAY</Animatable.Text>
             <Animatable.Text animation="fadeInUp" delay={400} style={styles.heroSubtitle}>SELECT YOUR PORTAL TO CONTINUE</Animatable.Text>
-          </SafeAreaView>
+          </View>
         </LinearGradient>
       </View>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+
+      <ScrollView 
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]} 
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
         <View style={styles.mainWrapper}>
           <Animatable.View animation="fadeInUp" delay={500} style={styles.grid}>
             {options.map((opt) => (
@@ -90,6 +102,7 @@ export default function LoginSelectionScreen() {
               </TouchableOpacity>
             ))}
           </Animatable.View>
+
           <Animatable.View animation="fadeIn" delay={1000} style={styles.footer}>
             <Text style={styles.guestPrompt}>Visitor or Applicant?</Text>
             <TouchableOpacity 
@@ -102,7 +115,7 @@ export default function LoginSelectionScreen() {
             </TouchableOpacity>
 
             <View style={styles.brandFooter}>
-              <Text style={styles.footerBrandText}>EDUEAZE CORE</Text>
+              <Text style={styles.footerBrandText}>EDUEAZ CORE</Text>
             </View>
           </Animatable.View>
         </View>
@@ -112,18 +125,31 @@ export default function LoginSelectionScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  headerWrapper: { height: height * 0.38, overflow: 'hidden' },
+  container: { 
+    flex: 1,
+    height: Platform.OS === 'web' ? '100vh' : '100%',
+  },
+  headerWrapper: { overflow: 'hidden' },
   heroGradient: { flex: 1, borderBottomLeftRadius: 40, borderBottomRightRadius: 40 },
-  safeHeader: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: Platform.OS === 'android' ? 40 : 0 },
-  backBtn: { position: 'absolute', top: Platform.OS === 'android' ? 50 : 20, left: 20, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  safeHeader: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  backBtn: { 
+    position: 'absolute', 
+    left: 20, 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    backgroundColor: 'rgba(255,255,255,0.2)', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    zIndex: 10,
+  },
   logoCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, marginBottom: 20, ...SHADOWS.medium },
   innerLogo: { width: '100%', height: '100%', borderRadius: 42, padding: 15, justifyContent: 'center', alignItems: 'center' },
   logo: { width: '100%', height: '100%' },
-  heroTitle: { fontSize: 22, fontWeight: '900', color: '#fff', letterSpacing: 2, textTransform: 'uppercase' },
-  heroSubtitle: { fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: '700', marginTop: 8, letterSpacing: 1.5 },
+  heroTitle: { fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: 2, textTransform: 'uppercase' },
+  heroSubtitle: { fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: '700', marginTop: 8, letterSpacing: 1.5, textAlign: 'center' },
   scrollContent: { flexGrow: 1 },
-  mainWrapper: { paddingHorizontal: 25, paddingTop: 30, paddingBottom: 40 },
+  mainWrapper: { paddingHorizontal: 25, paddingTop: 30 },
   grid: { gap: 16 },
   portalCard: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 24, borderWidth: 1, borderColor: '#f1f5f9', ...SHADOWS.small },
   iconBox: { width: 60, height: 60, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
@@ -146,6 +172,6 @@ const styles = StyleSheet.create({
     ...SHADOWS.small 
   },
   guestButtonText: { fontSize: 15, fontWeight: '800' },
-  brandFooter: { marginTop: 20, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#f1f5f9', borderRadius: 10 },
+  brandFooter: { marginTop: 20, marginBottom: 10, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: '#f1f5f9', borderRadius: 10 },
   footerBrandText: { fontSize: 10, fontWeight: '900', color: '#94a3b8', letterSpacing: 2 },
 });

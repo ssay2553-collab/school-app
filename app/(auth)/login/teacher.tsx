@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View,
     ScrollView,
+    useWindowDimensions
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../../components/SVGIcon";
@@ -23,23 +24,25 @@ import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { getSchoolLogo } from "../../../constants/Logos";
 import { SHADOWS, COLORS } from "../../../constants/theme";
 import { auth, db } from "../../../firebaseConfig";
-import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 
 export default function TeacherLoginScreen() {
   const router = useRouter();
+  const { height, width } = useWindowDimensions();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const schoolId = Constants.expoConfig?.extra?.schoolId || "school";
+  const schoolId = SCHOOL_CONFIG.schoolId || "school";
   const schoolLogo = getSchoolLogo(schoolId);
   
-  const primary = SCHOOL_CONFIG.primaryColor;
-  const secondary = SCHOOL_CONFIG.secondaryColor;
-  const surface = SCHOOL_CONFIG.surfaceColor;
+  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#6366F1";
+  const secondary = SCHOOL_CONFIG.secondaryColor || primary;
+  const surface = SCHOOL_CONFIG.surfaceColor || "#FFFFFF";
+
+  const isWeb = Platform.OS === 'web';
 
   const handleLogin = async () => {
     setErrorMessage(null);
@@ -65,24 +68,26 @@ export default function TeacherLoginScreen() {
         message = "Invalid email or password.";
       }
       setErrorMessage(message);
-      if (Platform.OS !== 'web') Alert.alert("Login Error", message);
+      if (!isWeb) Alert.alert("Login Error", message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isWeb && { height: '100vh', width: '100vw' }]}>
       <StatusBar barStyle="light-content" />
       
-      <LinearGradient
-        colors={[primary, secondary]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+      <View style={StyleSheet.absoluteFill}>
+        <LinearGradient
+          colors={[primary, secondary]}
+          style={{ flex: 1 }}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+      </View>
 
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
           <View style={styles.topHeader}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backIconButton}>
@@ -90,13 +95,17 @@ export default function TeacherLoginScreen() {
             </TouchableOpacity>
             <TouchableOpacity onPress={() => router.replace("/")} style={styles.homeShortcut}>
                 <SVGIcon name="home-outline" size={20} color="#fff" />
-                <Text style={styles.homeShortcutText}>Welcome Hub</Text>
+                <Text style={styles.homeShortcutText}>Hub</Text>
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            <Animatable.View animation="fadeInDown" duration={800} style={styles.header}>
-              <View style={[styles.logoContainer, { backgroundColor: surface }]}>
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            <Animatable.View 
+              animation={isWeb ? undefined : "fadeInDown"} 
+              duration={800} 
+              style={[styles.header, isWeb && { opacity: 1 }]}
+            >
+              <View style={[styles.logoContainer, { backgroundColor: '#fff' }]}>
                 <Image source={schoolLogo} style={styles.logo} resizeMode="contain" />
               </View>
               <Text style={styles.title}>Teacher Portal</Text>
@@ -113,7 +122,11 @@ export default function TeacherLoginScreen() {
               </Animatable.View>
             )}
 
-            <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
+            <Animatable.View 
+              animation={isWeb ? undefined : "fadeInUp"} 
+              duration={800} 
+              style={[styles.card, isWeb && { opacity: 1 }]}
+            >
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>TEACHER EMAIL</Text>
                 <TextInput
@@ -131,7 +144,7 @@ export default function TeacherLoginScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>PASSWORD</Text>
-                <View style={styles.passwordContainer}>
+                <View style={{ position: 'relative' }}>
                   <TextInput
                     style={styles.passwordInput}
                     placeholder="••••••••"
@@ -161,16 +174,13 @@ export default function TeacherLoginScreen() {
               </TouchableOpacity>
             </Animatable.View>
 
-            <Animatable.View animation="fadeIn" delay={500} style={styles.footer}>
+            <View style={styles.footer}>
               <TouchableOpacity onPress={() => router.push("/(auth)/signup/teacher")} style={styles.signupBtn}>
                 <Text style={styles.signupText}>
-                  Need an account? <Text style={[styles.signupLink, { color: primary }]}>Register as Teacher</Text>
+                  Need an account? <Text style={[styles.signupLink, { color: primary }]}>Register here</Text>
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                <Text style={styles.backText}>Switch Portal</Text>
-              </TouchableOpacity>
-            </Animatable.View>
+            </View>
             <View style={{ height: 40 }} />
           </ScrollView>
         </KeyboardAvoidingView>
@@ -181,37 +191,10 @@ export default function TeacherLoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: { flex: 1 },
-  topHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    height: 60,
-  },
-  backIconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  homeShortcut: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  homeShortcutText: {
-    marginLeft: 8,
-    fontWeight: '800',
-    fontSize: 13,
-    color: '#fff'
-  },
+  topHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, height: 70 },
+  backIconButton: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+  homeShortcut: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12 },
+  homeShortcutText: { marginLeft: 8, fontWeight: '800', fontSize: 13, color: '#fff' },
   scrollContent: { padding: 24, paddingTop: 10, flexGrow: 1, justifyContent: "center" },
   header: { marginBottom: 30, alignItems: "center" },
   logoContainer: { width: 80, height: 80, marginBottom: 16, borderRadius: 40, padding: 10, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
@@ -220,13 +203,12 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 16, color: "rgba(255,255,255,0.8)", marginTop: 4, textAlign: 'center' },
   errorBanner: { backgroundColor: "#EF4444", flexDirection: "row", alignItems: "center", padding: 15, borderRadius: 12, marginBottom: 20 },
   errorText: { color: "#fff", flex: 1, marginHorizontal: 10, fontSize: 14, fontWeight: "600" },
-  card: { backgroundColor: "rgba(255,255,255,0.9)", borderRadius: 24, padding: 24, ...SHADOWS.medium },
+  card: { backgroundColor: "rgba(255,255,255,0.95)", borderRadius: 24, padding: 24, ...SHADOWS.medium },
   inputGroup: { marginBottom: 20 },
   label: { fontSize: 11, fontWeight: "800", color: "#475569", marginBottom: 8, letterSpacing: 1 },
   input: { backgroundColor: "#F1F5F9", borderRadius: 14, padding: 14, fontSize: 16, color: "#1E293B" },
-  passwordContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#F1F5F9", borderRadius: 14 },
-  passwordInput: { flex: 1, padding: 14, fontSize: 16, color: "#1E293B" },
-  eyeIcon: { paddingHorizontal: 14 },
+  passwordInput: { backgroundColor: "#F1F5F9", borderRadius: 14, padding: 14, paddingRight: 50, fontSize: 16, color: "#1E293B", width: '100%' },
+  eyeIcon: { position: 'absolute', right: 14, top: 12 },
   button: { padding: 18, borderRadius: 16, alignItems: "center", marginTop: 10, ...SHADOWS.medium },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
   forgotBtn: { marginTop: 20, alignItems: "center" },
@@ -235,6 +217,4 @@ const styles = StyleSheet.create({
   signupBtn: { paddingVertical: 14, paddingHorizontal: 20, borderRadius: 100, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#E2E8F0", ...SHADOWS.small },
   signupText: { color: "#64748B", fontSize: 14 },
   signupLink: { fontWeight: "bold" },
-  backBtn: { marginTop: 20, padding: 10 },
-  backText: { color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: "600" },
 });

@@ -12,25 +12,29 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator,
+  Platform,
+  useWindowDimensions,
+  Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
-import { SCHOOL_CONFIG, useSchoolConfig } from "../../constants/Config";
-import { SHADOWS } from "../../constants/theme";
+import { useSchoolConfig } from "../../constants/Config";
+import { SHADOWS, COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
-
-const { width } = Dimensions.get("window");
-const CARD_WIDTH = (width - 65) / 2;
+import { signOut } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 
 export default function StudentDashboard() {
-  const { appUser } = useAuth();
+  const { appUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const config = useSchoolConfig();
+  const { width: windowWidth } = useWindowDimensions();
 
-  const brandPrimary = config.brandPrimary;
-  const brandSecondary = config.brandSecondary;
-  const surface = config.surfaceColor;
+  const brandPrimary = config.brandPrimary || COLORS.primary || "#6366F1";
+  const brandSecondary = config.brandSecondary || config.secondaryColor || "#4338ca";
+  const surface = config.surfaceColor || "#F8FAFC";
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -38,6 +42,28 @@ export default function StudentDashboard() {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
+
+  const handleLogout = () => {
+    const performLogout = async () => {
+      try {
+        await signOut(auth);
+        router.replace("/");
+      } catch (err) {
+        Alert.alert("Error", "Logout failed.");
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm("Are you sure you want to sign out of the student portal?")) {
+        performLogout();
+      }
+    } else {
+      Alert.alert("Logout", "Are you sure you want to sign out?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Log Out", style: "destructive", onPress: performLogout }
+      ]);
+    }
+  };
 
   const sections = [
     {
@@ -72,112 +98,178 @@ export default function StudentDashboard() {
     }
   ];
 
-  const cardBg = "#FFFFFF"; 
-  const cardBorder = "#F1F5F9";
+  if (authLoading || !appUser) {
+    return (
+      <View style={[styles.center, { backgroundColor: surface }]}>
+        <ActivityIndicator size="large" color={brandPrimary} />
+      </View>
+    );
+  }
+
+  const isDesktop = Platform.OS === 'web' || Platform.OS === 'windows' || Platform.OS === 'macos';
+  const linkedParentsCount = appUser.parentUids?.length || 0;
+  const isCodeLocked = linkedParentsCount >= 2;
 
   const renderItem = (item: any, index: number) => (
-    <Animatable.View
-      key={item.title}
-      animation="zoomIn"
-      duration={500}
-      delay={index * 50}
-      style={styles.cardWrapper}
-    >
+    <View key={item.title} style={[styles.cardWrapper, { width: windowWidth > 768 ? (Math.min(1100, windowWidth) - 100) / 4 : (windowWidth - 55) / 2 }]}>
       <TouchableOpacity
-        style={[styles.menuCard, { backgroundColor: cardBg, borderColor: cardBorder }]}
+        style={styles.menuCard}
         onPress={() => router.push(item.path as any)}
         activeOpacity={0.7}
       >
         <View style={[styles.iconBox, { backgroundColor: item.color + "15" }]}>
-          <SVGIcon name={item.icon} size={28} color={item.color} />
+          <SVGIcon name={item.icon} size={windowWidth > 768 ? 32 : 28} color={item.color} />
         </View>
         <View style={styles.cardInfo}>
           <Text style={styles.menuText}>{item.title}</Text>
           <Text style={styles.menuSubtitle} numberOfLines={1}>{item.subtitle}</Text>
         </View>
       </TouchableOpacity>
-    </Animatable.View>
+    </View>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: surface }]}>
+    <View style={[styles.container, { backgroundColor: surface }]}>
       <StatusBar barStyle="light-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40 }}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        <LinearGradient
-          colors={[brandPrimary, brandSecondary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.header}
-        >
-          <View style={styles.headerRow}>
-            <View>
-              <Text style={styles.welcomeText}>{config.name.toUpperCase()} PORTAL</Text>
-              <Text style={styles.studentName}>{appUser?.profile?.firstName || "Student"}</Text>
+        <LinearGradient colors={[brandPrimary, brandSecondary]} style={styles.header}>
+          <SafeAreaView edges={['top']}>
+            <View style={styles.headerRow}>
+                <View style={styles.studentInfo}>
+                    <TouchableOpacity onPress={() => router.push("/student-dashboard/settings")} style={styles.profileBtn}>
+                    {appUser?.profile?.profileImage ? (
+                        <Image source={{ uri: appUser.profile.profileImage }} style={styles.profileImg} />
+                    ) : (
+                        <View style={styles.profilePlaceholder}><Text style={styles.profilePlaceholderText}>{appUser?.profile?.firstName?.[0] || 'S'}</Text></View>
+                    )}
+                    </TouchableOpacity>
+                    <View style={{ marginLeft: 15 }}>
+                        <Text style={styles.welcomeText}>{config.name.toUpperCase()} STUDENT</Text>
+                        <Text style={styles.studentName}>{appUser?.profile?.firstName || "Student"}</Text>
+                        
+                        {/* AUTO-HIDE LOGIC: Hide code if 2 parents are linked */}
+                        {!isCodeLocked ? (
+                            <Animatable.View animation="pulse" iterationCount="infinite" style={styles.codeBadge}>
+                                <Text style={styles.codeLabel}>FAMILY CODE: </Text>
+                                <Text style={styles.codeValue}>{appUser?.parentLinkCode || "------"}</Text>
+                            </Animatable.View>
+                        ) : (
+                            <View style={[styles.codeBadge, { backgroundColor: '#10B98130', borderColor: '#10B98150' }]}>
+                                <SVGIcon name="checkmark-circle" size={12} color="#10B981" />
+                                <Text style={[styles.codeValue, { color: '#10B981', marginLeft: 5 }]}>FAMILY LINK SECURED</Text>
+                            </View>
+                        )}
+                    </View>
+                </View>
+                <View style={styles.headerActions}>
+                   {isDesktop && (
+                     <>
+                       <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace("/")} style={styles.actionBtn}>
+                         <SVGIcon name="arrow-back" size={20} color="#fff" />
+                         <Text style={styles.btnText}>BACK</Text>
+                       </TouchableOpacity>
+                       <TouchableOpacity onPress={handleLogout} style={[styles.actionBtn, styles.exitBtn]}>
+                         <SVGIcon name="log-out-outline" size={20} color="#fff" />
+                         <Text style={styles.btnText}>EXIT</Text>
+                       </TouchableOpacity>
+                     </>
+                   )}
+                </View>
             </View>
-            <TouchableOpacity onPress={() => router.push("/student-dashboard/settings")} style={styles.profileBtn}>
-              {appUser?.profile?.profileImage ? (
-                <Image source={{ uri: appUser.profile.profileImage }} style={styles.profileImg} />
-              ) : (
-                <Image source={require("../../assets/default-avatar.png")} style={styles.profileImg} />
-              )}
-            </TouchableOpacity>
-          </View>
+          </SafeAreaView>
         </LinearGradient>
 
-        <View style={styles.content}>
-          {sections.map((section, sIndex) => (
-            <View key={section.title} style={section.title.includes("HUB") ? styles.section : { marginBottom: 30 }}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: section.color }]}>{section.title}</Text>
-                <View style={[styles.sectionLine, { backgroundColor: section.color + '30' }]} />
-              </View>
-              <View style={styles.grid}>
-                {section.items.map((item, iIndex) => renderItem(item, sIndex * 4 + iIndex))}
-              </View>
+        <View style={styles.contentContainer}>
+            <View style={styles.content}>
+            {sections.map((section, sIndex) => (
+                <View key={section.title} style={{ marginBottom: 35 }}>
+                <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionTitle, { color: section.color }]}>{section.title}</Text>
+                    <View style={[styles.sectionLine, { backgroundColor: section.color + '30' }]} />
+                </View>
+                <View style={styles.grid}>
+                    {section.items.map((item, iIndex) => renderItem(item, sIndex * 4 + iIndex))}
+                </View>
+                </View>
+            ))}
             </View>
-          ))}
         </View>
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  scrollContent: { flexGrow: 1 },
   header: {
-    paddingTop: 20,
     paddingHorizontal: 25,
-    paddingBottom: 40,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
+    paddingBottom: 45,
+    borderBottomLeftRadius: 45,
+    borderBottomRightRadius: 45,
     ...SHADOWS.medium,
   },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  welcomeText: { fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: "900", letterSpacing: 2 },
-  studentName: { fontSize: 26, fontWeight: "900", color: "#fff", marginTop: 4 },
-  profileBtn: { width: 50, height: 50, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.2)", overflow: "hidden", borderWidth: 2, borderColor: "rgba(255,255,255,0.3)" },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingTop: Platform.OS === 'web' ? 20 : 0 },
+  studentInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  welcomeText: { fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: "900", letterSpacing: 1.5 },
+  studentName: { fontSize: 24, fontWeight: "900", color: "#fff", marginTop: 2 },
+  codeBadge: { 
+    flexDirection: 'row', 
+    backgroundColor: 'rgba(255,255,255,0.25)', 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 10, 
+    marginTop: 8,
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)'
+  },
+  codeLabel: { fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: '800' },
+  codeValue: { fontSize: 12, color: '#fff', fontWeight: '900', letterSpacing: 2 },
+  profileBtn: { width: 65, height: 65, borderRadius: 24, backgroundColor: "rgba(255,255,255,0.2)", overflow: "hidden", borderWidth: 2, borderColor: "rgba(255,255,255,0.3)" },
   profileImg: { width: "100%", height: "100%" },
-  content: { paddingHorizontal: 20, marginTop: 25 },
-  section: { marginBottom: 30 },
+  profilePlaceholder: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.3)' },
+  profilePlaceholderText: { color: '#fff', fontWeight: 'bold', fontSize: 24 },
+  headerActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  actionBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: 'rgba(255,255,255,0.15)', 
+    paddingHorizontal: 12, 
+    paddingVertical: 8, 
+    borderRadius: 10, 
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)'
+  },
+  exitBtn: { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: 'rgba(255,255,255,0.3)' },
+  btnText: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  contentContainer: { alignItems: 'center', width: '100%' },
+  content: { paddingHorizontal: 20, marginTop: 25, width: '100%', maxWidth: 1100 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 10 },
   sectionTitle: { fontSize: 12, fontWeight: "900", letterSpacing: 1 },
   sectionLine: { flex: 1, height: 1, borderRadius: 1 },
-  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 15 },
-  cardWrapper: { width: CARD_WIDTH, marginBottom: 5 },
+  grid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-start", gap: 15 },
+  cardWrapper: { marginBottom: 5 },
   menuCard: {
-    width: '100%',
+    backgroundColor: '#fff',
     borderRadius: 25,
     padding: 16,
     alignItems: "center",
     justifyContent: "center",
     ...SHADOWS.small,
     borderWidth: 1,
-    minHeight: 130
+    borderColor: '#F1F5F9',
+    minHeight: 130,
+    width: '100%'
   },
   iconBox: { width: 50, height: 50, borderRadius: 18, justifyContent: "center", alignItems: "center", marginBottom: 12 },
   cardInfo: { alignItems: 'center' },

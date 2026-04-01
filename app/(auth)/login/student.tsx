@@ -9,13 +9,14 @@ import {
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
-    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
+    ScrollView,
+    useWindowDimensions
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { LinearGradient } from "expo-linear-gradient";
@@ -24,10 +25,10 @@ import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { getSchoolLogo } from "../../../constants/Logos";
 import { SHADOWS, COLORS } from "../../../constants/theme";
 import { auth, db } from "../../../firebaseConfig";
-import Constants from "expo-constants";
 
 export default function StudentLoginScreen() {
   const router = useRouter();
+  const { height, width } = useWindowDimensions();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -37,9 +38,11 @@ export default function StudentLoginScreen() {
   const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
   
-  const primary = SCHOOL_CONFIG.primaryColor;
-  const secondary = SCHOOL_CONFIG.secondaryColor;
-  const surface = SCHOOL_CONFIG.surfaceColor;
+  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#6366F1";
+  const secondary = SCHOOL_CONFIG.secondaryColor || primary;
+  const surface = SCHOOL_CONFIG.surfaceColor || "#FFFFFF";
+
+  const isWeb = Platform.OS === 'web';
 
   const handleLogin = async () => {
     setErrorMessage(null);
@@ -72,17 +75,19 @@ export default function StudentLoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isWeb && { height: '100vh', width: '100vw' }]}>
       <StatusBar barStyle="light-content" />
       
-      <LinearGradient
-        colors={[primary, secondary]}
-        style={StyleSheet.absoluteFill}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-      />
+      <View style={StyleSheet.absoluteFill}>
+        <LinearGradient
+          colors={[primary, secondary]}
+          style={{ flex: 1 }}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+      </View>
 
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
           <View style={styles.topHeader}>
              <TouchableOpacity onPress={() => router.back()} style={styles.backIconButton}>
@@ -95,7 +100,11 @@ export default function StudentLoginScreen() {
           </View>
 
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Animatable.View animation="bounceInDown" duration={1000} style={styles.header}>
+            <Animatable.View 
+              animation={isWeb ? undefined : "bounceInDown"} 
+              duration={1000} 
+              style={[styles.header, isWeb && { opacity: 1 }]}
+            >
               <View style={[styles.logoContainer, { backgroundColor: '#fff' }]}>
                 <Image source={schoolLogo} style={styles.logo} resizeMode="contain" />
               </View>
@@ -113,7 +122,11 @@ export default function StudentLoginScreen() {
               </Animatable.View>
             )}
 
-            <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
+            <Animatable.View 
+              animation={isWeb ? undefined : "fadeInUp"} 
+              duration={800} 
+              style={[styles.card, isWeb && { opacity: 1 }]}
+            >
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>MY EMAIL</Text>
                 <TextInput style={styles.input} placeholder="me@school.com" placeholderTextColor="#94A3B8" autoCapitalize="none" value={email} onChangeText={setEmail} keyboardType="email-address" editable={!loading} autoComplete="off" />
@@ -163,7 +176,6 @@ export default function StudentLoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  safeArea: { flex: 1 },
   topHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

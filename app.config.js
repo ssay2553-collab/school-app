@@ -1,10 +1,7 @@
 require("dotenv").config();
 
 module.exports = ({ config }) => {
-  // We prioritize eagles (Adehyeemba) as the default.
-  // Normalize to lowercase to prevent case-sensitivity issues during lookup.
   const rawId = process.env.SCHOOL_ID || "eagles";
-  // Maintain casing for school object keys (IBS is uppercase in the dictionary)
   const schoolId = rawId.toLowerCase() === "ibs" ? "IBS" : rawId;
 
   const schools = {
@@ -246,7 +243,7 @@ module.exports = ({ config }) => {
     },
     model: {
       name: "Model Power",
-      slug: "modelpower",
+      slug: "model",
       package: "com.saysmanage.modelpower",
       scheme: "modelpower",
       logo: "./assets/icon-modelpower.png",
@@ -438,7 +435,7 @@ module.exports = ({ config }) => {
     slug: selected.slug,
     scheme: selected.scheme,
     version: "1.0.0",
-    orientation: "portrait",
+    orientation: "default",
     icon: selected.logo,
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
@@ -454,11 +451,23 @@ module.exports = ({ config }) => {
         backgroundColor: "#ffffff",
       },
       edgeToEdgeEnabled: true,
+      softwareKeyboardLayoutMode: "pan",
     },
     web: {
       bundler: "metro",
       output: "static",
       baseUrl: "./",
+      pwa: {
+        name: selected.fullName,
+        shortName: selected.name,
+        description: selected.motto,
+        themeColor: selected.primaryColor,
+        backgroundColor: selected.surfaceColor,
+        display: "standalone",
+        orientation: "any",
+        icon: selected.logo,
+        startUrl: "/",
+      }
     },
     plugins: [
       "expo-router",

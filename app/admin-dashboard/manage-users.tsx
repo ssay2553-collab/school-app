@@ -1,5 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import {
     arrayRemove,
     arrayUnion,
@@ -18,7 +18,7 @@ import {
     writeBatch,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -34,7 +34,9 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View
+    View,
+    KeyboardAvoidingView,
+    Platform
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -171,61 +173,63 @@ export default function ManageUsers() {
     fetchClasses();
   }, []);
 
-  useEffect(() => {
-    if (!selectedRole || !hasManageUsersAccess) {
-      setUsers([]);
-      return;
-    }
-    setLoading(true);
-    let q = query(
-      collection(db, "users"),
-      where("role", "==", selectedRole),
-      where("status", "==", showArchived ? "archived" : "active"),
-      limit(100),
-    );
-
-    if (selectedRole === "student" && selectedClassId !== "all") {
-      q = query(
+  useFocusEffect(
+    useCallback(() => {
+      if (!selectedRole || !hasManageUsersAccess) {
+        setUsers([]);
+        return;
+      }
+      setLoading(true);
+      let q = query(
         collection(db, "users"),
-        where("role", "==", "student"),
-        where("classId", "==", selectedClassId),
+        where("role", "==", selectedRole),
         where("status", "==", showArchived ? "archived" : "active"),
         limit(100),
       );
-    }
 
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const fetchedList = snap.docs.map(
-          (d: any) => ({ uid: d.id, ...d.data() }) as User,
+      if (selectedRole === "student" && selectedClassId !== "all") {
+        q = query(
+          collection(db, "users"),
+          where("role", "==", "student"),
+          where("classId", "==", selectedClassId),
+          where("status", "==", showArchived ? "archived" : "active"),
+          limit(100),
         );
-        if (selectedRole === "student") {
-          fetchedList.sort((a, b) => {
-            const classA = a.classId || "";
-            const classB = b.classId || "";
-            if (classA !== classB) return classA.localeCompare(classB);
-            return (a.profile?.firstName || "").localeCompare(
-              b.profile?.firstName || "",
-            );
-          });
-        } else {
-          fetchedList.sort((a, b) =>
-            (a.profile?.firstName || "").localeCompare(
-              b.profile?.firstName || "",
-            ),
+      }
+
+      const unsub = onSnapshot(
+        q,
+        (snap) => {
+          const fetchedList = snap.docs.map(
+            (d: any) => ({ uid: d.id, ...d.data() }) as User,
           );
-        }
-        setUsers(fetchedList);
-        setLoading(false);
-      },
-      (err) => {
-        console.error("ManageUsers Snapshot Error:", err);
-        setLoading(false);
-      },
-    );
-    return () => unsub();
-  }, [selectedRole, selectedClassId, hasManageUsersAccess, showArchived]);
+          if (selectedRole === "student") {
+            fetchedList.sort((a, b) => {
+              const classA = a.classId || "";
+              const classB = b.classId || "";
+              if (classA !== classB) return classA.localeCompare(classB);
+              return (a.profile?.firstName || "").localeCompare(
+                b.profile?.firstName || "",
+              );
+            });
+          } else {
+            fetchedList.sort((a, b) =>
+              (a.profile?.firstName || "").localeCompare(
+                b.profile?.firstName || "",
+              ),
+            );
+          }
+          setUsers(fetchedList);
+          setLoading(false);
+        },
+        (err) => {
+          console.error("ManageUsers Snapshot Error:", err);
+          setLoading(false);
+        },
+      );
+      return () => unsub();
+    }, [selectedRole, selectedClassId, hasManageUsersAccess, showArchived])
+  );
 
   const filteredUsers = useMemo(() => {
     const low = searchQuery.toLowerCase();
@@ -249,7 +253,6 @@ export default function ManageUsers() {
         idsToFetch = user.parentUids;
 
       if (idsToFetch.length > 0) {
-        // Safe check for empty arrays or invalid IDs
         const q = query(
           collection(db, "users"),
           where(documentId(), "in", idsToFetch),
@@ -271,6 +274,32 @@ export default function ManageUsers() {
       console.error(err);
     } finally {
       setLoadingLinks(false);
+    }
+  };
+
+  const handleUnlinkParent = async (parentUid: string) => {
+    if (!viewingUser) return;
+    setUpdating(true);
+    try {
+        const batch = writeBatch(db);
+        // Remove parent from student's array
+        batch.update(doc(db, "users", viewingUser.uid), {
+            parentUids: arrayRemove(parentUid)
+        });
+        // Remove student from parent's array
+        batch.update(doc(db, "users", parentUid), {
+            childrenIds: arrayRemove(viewingUser.uid)
+        });
+        await batch.commit();
+        
+        // Refresh local UI state
+        setLinkedUsers(prev => prev.filter(u => u.uid !== parentUid));
+        setViewingUser(prev => prev ? { ...prev, parentUids: prev.parentUids?.filter(id => id !== parentUid) } : null);
+        Alert.alert("Success", "Parent unlinked from student record.");
+    } catch (err) {
+        Alert.alert("Error", "Failed to unlink parent.");
+    } finally {
+        setUpdating(false);
     }
   };
 
@@ -402,7 +431,6 @@ export default function ManageUsers() {
             setUpdating(true);
             try {
               const currentYear = acadConfig.academicYear || "Unknown Year";
-              // CHUNKED BATCHES: Firestore limit is 500 per batch. We chunk by 100 to be safe.
               const chunks = [];
               for (let i = 0; i < basic9Students.length; i += 100) {
                 chunks.push(basic9Students.slice(i, i + 100));
@@ -790,6 +818,7 @@ export default function ManageUsers() {
             <ScrollView
               style={{ flex: 1 }}
               showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40 }}
             >
               {viewingUser && (
                 <View style={{ padding: 20 }}>
@@ -921,7 +950,7 @@ export default function ManageUsers() {
                               }
                               style={styles.linkedAvatar}
                             />
-                            <View>
+                            <View style={{ flex: 1 }}>
                               <Text style={styles.linkedName}>
                                 {u.profile.firstName} {u.profile.lastName}
                               </Text>
@@ -931,6 +960,20 @@ export default function ManageUsers() {
                                   "Contact linked"}
                               </Text>
                             </View>
+                            {/* UNLINK BUTTON FOR ADMINS */}
+                            {viewingUser.role === "student" && (
+                                <TouchableOpacity 
+                                    style={styles.unlinkBtn}
+                                    onPress={() => {
+                                        Alert.alert("Unlink Parent", `Remove ${u.profile.firstName} from this student's records?`, [
+                                            { text: "Cancel", style: "cancel" },
+                                            { text: "Unlink", style: "destructive", onPress: () => handleUnlinkParent(u.uid) }
+                                        ]);
+                                    }}
+                                >
+                                    <Text style={styles.unlinkBtnText}>UNLINK</Text>
+                                </TouchableOpacity>
+                            )}
                           </View>
                         ))}
                       </View>
@@ -1024,7 +1067,10 @@ export default function ManageUsers() {
         transparent
         animationType="slide"
       >
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
           <View style={styles.assignmentSheet}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
@@ -1038,7 +1084,10 @@ export default function ManageUsers() {
                 <SVGIcon name="close" size={24} color="#94A3B8" />
               </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={{ padding: 25 }}>
+            <ScrollView 
+              contentContainerStyle={{ padding: 25, paddingBottom: 60 }}
+              showsVerticalScrollIndicator={false}
+            >
               {assignmentModal.type === "assign_as" && (
                 <>
                   <View style={styles.switchRow}>
@@ -1175,7 +1224,7 @@ export default function ManageUsers() {
               )}
             </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
@@ -1293,13 +1342,18 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(15, 23, 42, 0.6)",
-    justifyContent: "flex-end",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
   modalContent: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    maxHeight: "92%",
+    borderRadius: 30,
+    width: "100%",
+    maxWidth: 500,
+    maxHeight: "90%",
+    overflow: 'hidden',
+    ...SHADOWS.large,
   },
   modalHeader: {
     flexDirection: "row",
@@ -1375,6 +1429,8 @@ const styles = StyleSheet.create({
   linkedAvatar: { width: 35, height: 35, borderRadius: 10, marginRight: 12 },
   linkedName: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
   linkedSub: { fontSize: 11, color: "#94A3B8" },
+  unlinkBtn: { backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  unlinkBtnText: { color: '#EF4444', fontSize: 9, fontWeight: '900' },
   btnStack: { paddingBottom: 40 },
   actionButton: {
     height: 55,
@@ -1388,7 +1444,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    maxHeight: "85%",
+    maxHeight: "95%",
   },
   switchRow: {
     flexDirection: "row",

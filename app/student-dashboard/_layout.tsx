@@ -1,13 +1,12 @@
 import { Tabs } from "expo-router";
 import React from "react";
-import { Platform, View, Text, StyleSheet } from "react-native";
+import { Platform, View, StyleSheet } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 
 export default function StudentLayout() {
-  const primary = SCHOOL_CONFIG.primaryColor;
-  const surface = SCHOOL_CONFIG.surfaceColor;
+  const primary = SCHOOL_CONFIG.primaryColor || "#6366F1";
 
   return (
     <Tabs
@@ -42,9 +41,9 @@ export default function StudentLayout() {
         }}
       />
       <Tabs.Screen
-        name="timetable"
+        name="personal-timetable"
         options={{
-          title: "Schedule",
+          title: "My Plan",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && { backgroundColor: primary + '10' }]}>
                <SVGIcon name={focused ? "calendar" : "calendar-outline"} size={22} color={color} />
@@ -53,7 +52,7 @@ export default function StudentLayout() {
         }}
       />
       <Tabs.Screen
-        name="attendance"
+        name="daily-attendance"
         options={{
           title: "Attendance",
           tabBarIcon: ({ color, focused }) => (
@@ -64,29 +63,41 @@ export default function StudentLayout() {
         }}
       />
       <Tabs.Screen
-        name="academic-records"
+        name="assignment-scores"
         options={{
-          title: "Records",
+          title: "Stars",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && { backgroundColor: primary + '10' }]}>
-               <SVGIcon name={focused ? "book" : "book-outline"} size={22} color={color} />
+               <SVGIcon name={focused ? "star" : "star-outline"} size={22} color={color} />
             </View>
           ),
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="settings"
         options={{
-          title: "Profile",
+          title: "Settings",
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.iconContainer, focused && { backgroundColor: primary + '10' }]}>
-               <SVGIcon name={focused ? "person" : "person-outline"} size={22} color={color} />
+               <SVGIcon name={focused ? "settings" : "settings-outline"} size={22} color={color} />
             </View>
           ),
         }}
       />
+      
+      {/* Utility screens that should not appear in the tab bar */}
+      <Tabs.Screen name="note" options={{ href: null }} />
+      <Tabs.Screen name="games" options={{ href: null }} />
+      <Tabs.Screen name="search" options={{ href: null }} />
       <Tabs.Screen name="upgrade" options={{ href: null }} />
-      <Tabs.Screen name="assignment-details" options={{ href: null }} />
+      <Tabs.Screen name="NewsScreen" options={{ href: null }} />
+      <Tabs.Screen name="assignments" options={{ href: null }} />
+      <Tabs.Screen name="create-note" options={{ href: null }} />
+      <Tabs.Screen name="StudentGroups" options={{ href: null }} />
+      <Tabs.Screen name="StudentTimetable" options={{ href: null }} />
+      <Tabs.Screen name="submit-assignment" options={{ href: null }} />
+      <Tabs.Screen name="logout" options={{ href: null }} />
+      <Tabs.Screen name="GroupChat" options={{ href: null }} />
     </Tabs>
   );
 }

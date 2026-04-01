@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { signOut } from "firebase/auth";
+import { signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
 import { doc, updateDoc, Timestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -17,6 +17,8 @@ import {
   TouchableOpacity,
   View,
   Image,
+  Modal,
+  TextInput,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -31,11 +33,17 @@ export default function StudentSettings() {
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   
-  // Local state for optional items
   const [dob, setDob] = useState<Date | null>(
     appUser?.dateOfBirth ? appUser.dateOfBirth.toDate() : null
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Password change state
+  const [pwModalVisible, setPwModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwUpdating, setPwUpdating] = useState(false);
 
   const handleLogout = () => {
     const performLogout = async () => {
@@ -63,6 +71,44 @@ export default function StudentSettings() {
         { text: "Cancel", style: "cancel" },
         { text: "Sign Out", style: "destructive", onPress: performLogout },
       ]);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return Alert.alert("Required", "Please fill in all password fields.");
+    }
+    if (newPassword !== confirmPassword) {
+      return Alert.alert("Mismatch", "New passwords do not match.");
+    }
+    if (newPassword.length < 6) {
+      return Alert.alert("Short Password", "New password must be at least 6 characters.");
+    }
+
+    setPwUpdating(true);
+    try {
+      const user = auth.currentUser;
+      if (!user || !user.email) throw new Error("No user session found.");
+
+      // Re-authenticate first (Firebase security requirement for sensitive operations)
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Now update the password
+      await updatePassword(user, newPassword);
+      
+      Alert.alert("Success", "Password updated successfully!");
+      setPwModalVisible(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error(error);
+      let msg = "Failed to update password.";
+      if (error.code === 'auth/wrong-password') msg = "The current password you entered is incorrect.";
+      Alert.alert("Error", msg);
+    } finally {
+      setPwUpdating(false);
     }
   };
 
@@ -134,7 +180,7 @@ export default function StudentSettings() {
         {updating && <ActivityIndicator size="small" color={COLORS.primary} style={{marginLeft: 'auto'}} />}
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <Animatable.View animation="fadeInUp" duration={800} style={styles.profileSection}>
           <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
             {appUser?.profile?.profileImage ? (
@@ -188,8 +234,36 @@ export default function StudentSettings() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>MY ACCOUNT</Text>
-          
+          <Text style={styles.sectionTitle}>SECURITY & ACCESS</Text>
+          <View style={styles.settingsCard}>
+             <TouchableOpacity style={styles.settingItem} onPress={() => setPwModalVisible(true)}>
+                <View style={[styles.settingIconBox, { backgroundColor: '#EEF2FF' }]}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#4F46E5" />
+                </View>
+                <View style={styles.settingTextContent}>
+                  <Text style={styles.settingLabel}>Security</Text>
+                  <Text style={[styles.settingValue, { color: '#4F46E5' }]}>Change Login Password</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+             </TouchableOpacity>
+             <View style={styles.divider} />
+             <View style={styles.settingItem}>
+                <View style={styles.settingIconBox}>
+                  <Ionicons name="key-outline" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.settingTextContent}>
+                  <Text style={styles.settingLabel}>Family Link Code</Text>
+                  <Text style={[styles.settingValue, { letterSpacing: 2, color: COLORS.secondary }]}>{appUser?.parentLinkCode || "------"}</Text>
+                </View>
+                <TouchableOpacity onPress={() => Alert.alert("Parent Link", "Provide this code to your parents so they can link their account to your profile.")}>
+                    <Ionicons name="information-circle-outline" size={20} color="#94A3B8" />
+                </TouchableOpacity>
+             </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>MY INFO</Text>
           <View style={styles.settingsCard}>
              <SettingItem 
                 icon="person-outline" 
@@ -201,12 +275,6 @@ export default function StudentSettings() {
                 icon="mail-outline" 
                 title="Email Address" 
                 value={appUser?.profile?.email || "Not set"} 
-             />
-             <View style={styles.divider} />
-             <SettingItem 
-                icon="key-outline" 
-                title="Secret Family Code" 
-                value={appUser?.parentLinkCode || "------"} 
              />
           </View>
         </View>
@@ -229,10 +297,61 @@ export default function StudentSettings() {
         </View>
 
         <View style={styles.footer}>
-           <Text style={styles.footerText}>EduEaze App v1.2.0</Text>
+           <Text style={styles.footerText}>EduEaz App v1.2.0</Text>
            <Text style={styles.footerSubText}>Secure Student Portal Node</Text>
         </View>
       </ScrollView>
+
+      {/* PASSWORD CHANGE MODAL */}
+      <Modal visible={pwModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Change Password</Text>
+              <TouchableOpacity onPress={() => setPwModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalBody}>
+              <Text style={styles.modalLabel}>CURRENT PASSWORD</Text>
+              <TextInput 
+                style={styles.modalInput} 
+                secureTextEntry 
+                placeholder="Required for security" 
+                value={currentPassword} 
+                onChangeText={setCurrentPassword} 
+              />
+
+              <Text style={styles.modalLabel}>NEW PASSWORD</Text>
+              <TextInput 
+                style={styles.modalInput} 
+                secureTextEntry 
+                placeholder="At least 6 characters" 
+                value={newPassword} 
+                onChangeText={setNewPassword} 
+              />
+
+              <Text style={styles.modalLabel}>CONFIRM NEW PASSWORD</Text>
+              <TextInput 
+                style={styles.modalInput} 
+                secureTextEntry 
+                placeholder="Repeat new password" 
+                value={confirmPassword} 
+                onChangeText={setConfirmPassword} 
+              />
+
+              <TouchableOpacity 
+                style={[styles.modalBtn, { backgroundColor: COLORS.primary }]} 
+                onPress={handleUpdatePassword}
+                disabled={pwUpdating}
+              >
+                {pwUpdating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Update My Password</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -359,5 +478,14 @@ const styles = StyleSheet.create({
   logoutText: { flex: 1, fontSize: 15, fontWeight: '800', color: '#1E293B' },
   footer: { alignItems: 'center', marginTop: 20, marginBottom: 40 },
   footerText: { fontSize: 12, fontWeight: '800', color: '#CBD5E1' },
-  footerSubText: { fontSize: 10, fontWeight: '700', color: '#E2E8F0', marginTop: 4 }
+  footerSubText: { fontSize: 10, fontWeight: '700', color: '#E2E8F0', marginTop: 4 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B' },
+  modalBody: { gap: 15 },
+  modalLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
+  modalInput: { backgroundColor: '#F1F5F9', height: 55, borderRadius: 15, paddingHorizontal: 15, fontSize: 16, fontWeight: '600' },
+  modalBtn: { height: 55, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  modalBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' }
 });

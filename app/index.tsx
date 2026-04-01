@@ -10,7 +10,7 @@ import {
   View,
   Platform,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
@@ -27,6 +27,7 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { appUser, loading } = useAuth();
   const config = useSchoolConfig();
+  const insets = useSafeAreaInsets();
 
   // Extract all brand colors
   const {
@@ -69,7 +70,7 @@ export default function WelcomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: finalSurface }]}>
       <StatusBar style="light" />
       
       <LinearGradient
@@ -79,7 +80,7 @@ export default function WelcomeScreen() {
         end={{ x: 1, y: 1 }}
       />
 
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.mainWrapper, { paddingTop: insets.top, paddingBottom: insets.bottom + 20 }]}>
         <View style={styles.mainContent}>
           
           <Animatable.View 
@@ -161,19 +162,24 @@ export default function WelcomeScreen() {
           </Text>
           <Text style={styles.versionText}>v1.2.0</Text>
         </Animatable.View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { 
+    flex: 1,
+    height: Platform.OS === 'web' ? '100vh' : '100%',
+  },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  safeArea: { flex: 1 },
+  mainWrapper: {
+    flex: 1,
+  },
   mainContent: {
     flex: 1,
     justifyContent: 'center',
@@ -266,7 +272,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  footer: { paddingBottom: 30, alignItems: 'center' },
+  footer: { paddingBottom: 10, alignItems: 'center' },
   footerText: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.7)',

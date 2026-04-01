@@ -41,6 +41,7 @@ interface ChildDetail {
   className: string | null;
   isVerifying: boolean;
   isValid: boolean;
+  error?: string;
 }
 
 export default function ParentSignup() {
@@ -64,7 +65,6 @@ export default function ParentSignup() {
   const [isLoading, setIsLoading] = useState(false);
   const firstInputRef = useRef<TextInput>(null);
 
-  // Focus first input on mount for Electron/Web
   useEffect(() => {
     const timer = setTimeout(() => {
         firstInputRef.current?.focus();
@@ -78,6 +78,7 @@ export default function ParentSignup() {
 
     const newChildren = [...children];
     newChildren[index].isVerifying = true;
+    newChildren[index].error = undefined;
     setChildren(newChildren);
 
     try {
@@ -92,9 +93,18 @@ export default function ParentSignup() {
       const updatedChildren = [...children];
       if (!snap.empty) {
         const data = snap.docs[0].data();
-        updatedChildren[index].name = `${data.profile?.firstName} ${data.profile?.lastName}`;
-        updatedChildren[index].isValid = true;
-        updatedChildren[index].className = data.classId || "Assigned Class";
+        
+        // LIMIT CHECK: Only allow link if student has < 2 parents
+        const existingParents = data.parentUids || [];
+        if (existingParents.length >= 2) {
+            updatedChildren[index].name = "Code Locked";
+            updatedChildren[index].error = "Maximum (2) parents already linked.";
+            updatedChildren[index].isValid = false;
+        } else {
+            updatedChildren[index].name = `${data.profile?.firstName} ${data.profile?.lastName}`;
+            updatedChildren[index].isValid = true;
+            updatedChildren[index].className = data.classId || "Assigned Class";
+        }
       } else {
         updatedChildren[index].name = "Student not found";
         updatedChildren[index].isValid = false;
@@ -122,6 +132,7 @@ export default function ParentSignup() {
     if (cleanText === "") {
         newChildren[index].name = null;
         newChildren[index].isValid = false;
+        newChildren[index].error = undefined;
     }
     
     setChildren(newChildren);
@@ -193,12 +204,7 @@ export default function ParentSignup() {
 
       await batch.commit();
       
-      if (Platform.OS === 'web') {
-          router.replace("/(auth)/login/parent");
-      } else {
-          Alert.alert("Welcome!", "Parent account created successfully!");
-          router.replace("/(auth)/login/parent");
-      }
+      router.replace("/(auth)/login/parent");
     } catch (err: any) {
       console.error("Signup error:", err);
       Alert.alert("Signup Failed", err.message);
@@ -217,13 +223,12 @@ export default function ParentSignup() {
         <ScrollView 
             contentContainerStyle={styles.scrollContent} 
             keyboardShouldPersistTaps="handled"
-            importantForAccessibility="yes"
         >
           <Animatable.View animation="fadeInDown" duration={800} style={styles.schoolHeader}>
             <Image source={schoolLogo} style={styles.schoolLogo} resizeMode="contain" />
             <View>
               <Text style={styles.schoolName}>{schoolName}</Text>
-              <Text style={[styles.portalTag, { color: primary }]}>Account Creation</Text>
+              <Text style={[styles.portalTag, { color: primary }]}>Parent Registration</Text>
             </View>
           </Animatable.View>
 
@@ -238,7 +243,6 @@ export default function ParentSignup() {
                         value={firstName} 
                         onChangeText={setFirstName} 
                         placeholder="John" 
-                        importantForAccessibility="yes"
                     />
                 </View>
                 <View style={[styles.inputGroup, { flex: 1 }]}>
@@ -248,7 +252,6 @@ export default function ParentSignup() {
                         value={lastName} 
                         onChangeText={setLastName} 
                         placeholder="Doe" 
-                        importantForAccessibility="yes"
                     />
                 </View>
             </View>
@@ -262,8 +265,6 @@ export default function ParentSignup() {
                 placeholder="parent@example.com" 
                 keyboardType="email-address" 
                 autoCapitalize="none" 
-                autoComplete="email"
-                importantForAccessibility="yes"
               />
             </View>
             
@@ -276,8 +277,6 @@ export default function ParentSignup() {
                   onChangeText={setPassword} 
                   placeholder="••••••••" 
                   secureTextEntry={!showPassword} 
-                  autoComplete="password"
-                  importantForAccessibility="yes"
                 />
                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
                   <SVGIcon name={showPassword ? "eye-off" : "eye"} size={22} color="#94A3B8" />
@@ -294,7 +293,6 @@ export default function ParentSignup() {
                   onChangeText={setConfirmPassword} 
                   placeholder="••••••••" 
                   secureTextEntry={!showConfirmPassword} 
-                  importantForAccessibility="yes"
                 />
                 <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.eyeIcon}>
                   <SVGIcon name={showConfirmPassword ? "eye-off" : "eye"} size={22} color="#94A3B8" />
@@ -305,7 +303,7 @@ export default function ParentSignup() {
             <View style={styles.divider} />
 
             <Text style={[styles.sectionTitle, { color: primary, marginTop: 10 }]}>Student Linking</Text>
-            <Text style={styles.infoText}>Enter your child&apos;s link code to automatically connect accounts.</Text>
+            <Text style={styles.infoText}>Link up to 2 parents per student.</Text>
             
             {children.map((child, index) => (
               <View key={index} style={styles.childEntry}>
@@ -315,18 +313,17 @@ export default function ParentSignup() {
                     {child.isVerifying && <ActivityIndicator size="small" color={primary} />}
                   </View>
                   <TextInput
-                    style={[styles.inputField, child.isValid && styles.validInput]}
+                    style={[styles.inputField, child.isValid && styles.validInput, child.error && styles.errorInput]}
                     value={child.linkCode}
                     onChangeText={(text) => handleChildLinkCodeChange(text, index)}
                     placeholder="6-CHARACTER CODE"
                     maxLength={6}
                     autoCapitalize="characters"
-                    importantForAccessibility="yes"
                   />
                 </View>
 
                 {child.name && (
-                  <Animatable.View animation="fadeIn" style={[styles.childFoundBox, !child.isValid && styles.childErrorBox]}>
+                  <View style={[styles.childFoundBox, !child.isValid && styles.childErrorBox]}>
                     <SVGIcon 
                         name={child.isValid ? "checkmark-circle" : "alert-circle"} 
                         size={18} 
@@ -336,9 +333,13 @@ export default function ParentSignup() {
                         <Text style={[styles.studentName, !child.isValid && { color: '#EF4444' }]}>
                             {child.name}
                         </Text>
-                        {child.isValid && <Text style={styles.studentClass}>Found in {child.className}</Text>}
+                        {child.isValid ? (
+                            <Text style={styles.studentClass}>Found in {child.className}</Text>
+                        ) : (
+                            <Text style={styles.errorText}>{child.error || "Invalid code"}</Text>
+                        )}
                     </View>
-                  </Animatable.View>
+                  </View>
                 )}
               </View>
             ))}
@@ -365,7 +366,7 @@ export default function ParentSignup() {
             </TouchableOpacity>
             
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-               <Text style={styles.backText}>Already have an account? <Text style={{ color: primary, fontWeight: '800' }}>Login</Text></Text>
+               <Text style={styles.backText}>Return to Portal Selection</Text>
             </TouchableOpacity>
           </Animatable.View>
           <View style={{ height: 40 }} />
@@ -377,17 +378,9 @@ export default function ParentSignup() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
-  keyboardView: { flex: 1, pointerEvents: 'auto' } as any,
+  keyboardView: { flex: 1 } as any,
   scrollContent: { padding: 20 },
-  schoolHeader: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    marginBottom: 20, 
-    backgroundColor: "#fff", 
-    padding: 15, 
-    borderRadius: 20, 
-    ...SHADOWS.small 
-  },
+  schoolHeader: { flexDirection: "row", alignItems: "center", marginBottom: 20, backgroundColor: "#fff", padding: 15, borderRadius: 20, ...SHADOWS.small },
   schoolLogo: { width: 44, height: 44, marginRight: 15 },
   schoolName: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
   portalTag: { fontSize: 13, fontWeight: "800", textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -399,54 +392,23 @@ const styles = StyleSheet.create({
   label: { fontSize: 10, fontWeight: "800", color: "#64748B", letterSpacing: 1 },
   inputField: { backgroundColor: "#F8FAFC", borderRadius: 14, padding: 14, fontSize: 15, color: "#1E293B", borderWidth: 1, borderColor: '#E2E8F0' },
   validInput: { borderColor: '#10B981', backgroundColor: '#F0FDF4' },
-  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: "#F8FAFC", borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0' },
+  errorInput: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
+  passwordContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#F8FAFC", borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0' },
   passwordInput: { flex: 1, padding: 14, fontSize: 15, color: "#1E293B" },
   eyeIcon: { paddingHorizontal: 14 },
   infoText: { fontSize: 13, color: "#94A3B8", marginBottom: 20, fontWeight: '500' },
   divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 20 },
   childEntry: { marginBottom: 20 },
-  childFoundBox: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#F0FDF4', 
-    padding: 15, 
-    borderRadius: 14, 
-    marginTop: -8,
-    borderWidth: 1,
-    borderColor: '#DCFCE7'
-  },
+  childFoundBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F0FDF4', padding: 15, borderRadius: 14, marginTop: -8, borderWidth: 1, borderColor: '#DCFCE7' },
   childErrorBox: { backgroundColor: '#FEF2F2', borderColor: '#FEE2E2' },
-  childFoundText: { marginLeft: 10 },
+  childFoundText: { marginLeft: 10, flex: 1 },
   studentName: { fontSize: 15, fontWeight: '800', color: '#065F46' },
   studentClass: { fontSize: 11, color: '#059669', fontWeight: '700', textTransform: 'uppercase' },
-  addChildButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 15,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#E2E8F0',
-    marginBottom: 25,
-  },
-  addChildButtonText: {
-    fontWeight: '800',
-    marginLeft: 10,
-    fontSize: 14,
-  },
-  submitButton: { 
-    padding: 20, 
-    borderRadius: 20, 
-    ...SHADOWS.medium,
-    marginTop: 10,
-  },
-  btnContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12
-  },
+  errorText: { fontSize: 11, color: '#B91C1C', fontWeight: '700' },
+  addChildButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 15, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed', borderColor: '#E2E8F0', marginBottom: 25 },
+  addChildButtonText: { fontWeight: '800', marginLeft: 10, fontSize: 14 },
+  submitButton: { padding: 20, borderRadius: 20, ...SHADOWS.medium, marginTop: 10 },
+  btnContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
   submitButtonText: { color: "#fff", fontSize: 18, fontWeight: "900" },
   backBtn: { marginTop: 25, alignItems: 'center' },
   backText: { color: "#94A3B8", fontSize: 14, fontWeight: '700' }

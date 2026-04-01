@@ -4,13 +4,46 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Offline - EduEaz</title>
-    <style>body{font-family:system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;margin:0;display:flex;align-items:center;justify-content:center;height:calc(var(--vh)*100);background:#f7f7f7;color:#333}</style>
-    <script>(function(){try{var setVh=function(){document.documentElement.style.setProperty('--vh', (window.innerHeight*0.01)+'px');};setVh();window.addEventListener('resize',setVh);window.addEventListener('orientationchange',setVh);}catch(e){}})();</script>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          Segoe UI,
+          Roboto,
+          "Helvetica Neue",
+          Arial;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: calc(var(--vh) * 100);
+        background: #f7f7f7;
+        color: #333;
+      }
+    </style>
+    <script>
+      (function () {
+        try {
+          var setVh = function () {
+            document.documentElement.style.setProperty(
+              "--vh",
+              window.innerHeight * 0.01 + "px",
+            );
+          };
+          setVh();
+          window.addEventListener("resize", setVh);
+          window.addEventListener("orientationchange", setVh);
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <main>
       <h1>You are offline</h1>
-      <p>The app is not connected to the network. Some features may be unavailable.</p>
+      <p>
+        The app is not connected to the network. Some features may be
+        unavailable.
+      </p>
     </main>
   </body>
 </html>

@@ -17,6 +17,7 @@ import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { ThemeProvider } from "../contexts/ThemeContext";
 
 import DevSchoolSwitcher from "./DevSchoolSwitcher";
+import { PWAInstallPrompt } from "../components/PWAInstallPrompt";
 
 if (Platform.OS !== "web") {
   Notifications.setNotificationHandler({
@@ -142,6 +143,7 @@ function MainLayout() {
       <StatusBar style="dark" />
       <RouteGuard />
       <DevSchoolSwitcher />
+      <PWAInstallPrompt />
     </>
   );
 }

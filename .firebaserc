@@ -18,6 +18,119 @@
     "kent": "golden-rock-16bf8",
     "bishops": "thess-app"
   },
-  "targets": {},
+  "targets": {
+    "afahjoy-7cc03": {
+      "hosting": {
+        "afahjoy": [
+          "afahjoy-7cc03"
+        ]
+      }
+    },
+    "beano-app-a9c38": {
+      "hosting": {
+        "beano": [
+          "beano-app-a9c38"
+        ]
+      }
+    },
+    "morgis-app": {
+      "hosting": {
+        "morgis": [
+          "morgis-app"
+        ]
+      }
+    },
+    "jei-river": {
+      "hosting": {
+        "ibs": [
+          "jei-river"
+        ]
+      }
+    },
+    "royal-lisben": {
+      "hosting": {
+        "eagles": [
+          "royal-lisben"
+        ]
+      }
+    },
+    "clis-app-f89b8": {
+      "hosting": {
+        "perfect": [
+          "clis-app-f89b8"
+        ]
+      }
+    },
+    "vince-app-c49a2": {
+      "hosting": {
+        "creation": [
+          "vince-app-c49a2"
+        ]
+      }
+    },
+    "jewels-app-17a30": {
+      "hosting": {
+        "jewel": [
+          "jewels-app-17a30"
+        ]
+      }
+    },
+    "clis-app-e39e8": {
+      "hosting": {
+        "clis": [
+          "clis-app-e39e8"
+        ]
+      }
+    },
+    "model-power-430de": {
+      "hosting": {
+        "model": [
+          "model-power-430de"
+        ]
+      }
+    },
+    "stepping-stone-90720": {
+      "hosting": {
+        "stone": [
+          "stepping-stone-90720"
+        ]
+      }
+    },
+    "bright-brains-ed4d7": {
+      "hosting": {
+        "brain": [
+          "bright-brains-ed4d7"
+        ]
+      }
+    },
+    "cascom-59b61": {
+      "hosting": {
+        "cascom": [
+          "cascom-59b61"
+        ]
+      }
+    },
+    "bms-app-f4572": {
+      "hosting": {
+        "bms": [
+          "bms-app-f4572"
+        ]
+      }
+    },
+    "golden-rock-16bf8": {
+      "hosting": {
+        "kent": [
+          "golden-rock-16bf8"
+        ]
+      }
+    },
+    "thess-app": {
+      "hosting": {
+        "bishops": [
+          "thess-app"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

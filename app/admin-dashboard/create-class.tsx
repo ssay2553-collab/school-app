@@ -106,7 +106,11 @@ export default function ClassManagementScreen() {
       setClasses(merged.sort((a, b) => getLevelValue(a.level) - getLevelValue(b.level)));
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to load class data.");
+      if (Platform.OS === 'web') {
+        alert("Failed to load class data.");
+      } else {
+        Alert.alert("Error", "Failed to load class data.");
+      }
     } finally {
       setLoading(false);
     }
@@ -130,12 +134,21 @@ export default function ClassManagementScreen() {
       setEditingClass(null);
       setNewClassName("");
     } catch {
-      Alert.alert("Error", "Update failed");
+      if (Platform.OS === 'web') {
+        alert("Update failed");
+      } else {
+        Alert.alert("Error", "Update failed");
+      }
     }
   };
 
   const addClass = async () => {
-    if (!newClassNameInput.trim() || !newClassLevel) return Alert.alert("Validation Error", "Please enter a name and select a level.");
+    if (!newClassNameInput.trim() || !newClassLevel) {
+      const msg = "Please enter a name and select a level.";
+      if (Platform.OS === 'web') alert(msg);
+      else Alert.alert("Validation Error", msg);
+      return;
+    }
     setLoading(true);
     try {
       const department = resolveDepartmentByLevel(newClassLevel);
@@ -160,27 +173,38 @@ export default function ClassManagementScreen() {
       setShowAddModal(false);
       setNewClassLevel(null);
       setNewClassNameInput("");
-      Alert.alert("Success", "Class created.");
+      if (Platform.OS === 'web') alert("Class created.");
+      else Alert.alert("Success", "Class created.");
     } catch {
-      Alert.alert("Error", "Failed to create class.");
+      if (Platform.OS === 'web') alert("Failed to create class.");
+      else Alert.alert("Error", "Failed to create class.");
     } finally {
       setLoading(false);
     }
   };
 
   const deleteClass = async (cls: ClassItem) => {
-    Alert.alert("Confirm Delete", `Delete ${cls.name}?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => {
-          try {
-            await deleteDoc(doc(db, "classes", cls.id));
-            setClasses((p) => p.filter((c) => c.id !== cls.id));
-          } catch {
-            Alert.alert("Error", "Delete failed");
-          }
-        },
-      },
-    ]);
+    const performDelete = async () => {
+      try {
+        await deleteDoc(doc(db, "classes", cls.id));
+        setClasses((p) => p.filter((c) => c.id !== cls.id));
+      } catch (e) {
+        console.error("Delete failed:", e);
+        if (Platform.OS === 'web') alert("Delete failed");
+        else Alert.alert("Error", "Delete failed");
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Are you sure you want to delete ${cls.name}?`)) {
+        performDelete();
+      }
+    } else {
+      Alert.alert("Confirm Delete", `Delete ${cls.name}?`, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: performDelete },
+      ]);
+    }
   };
 
   const departmentsOrder = ["Pre-School", "Lower Primary", "Upper Primary", "JHS"];

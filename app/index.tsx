@@ -41,7 +41,6 @@ export default function WelcomeScreen() {
   const finalSurface = surfaceColor || "#FFFFFF";
 
   const logo = getSchoolLogo(schoolId);
-
   const isWeb = Platform.OS === "web";
 
   const handleGetStarted = () => {
@@ -77,9 +76,26 @@ export default function WelcomeScreen() {
     <View style={[styles.container, { backgroundColor: finalSurface }]}>
       <StatusBar style="light" />
 
+      {/* Dynamic Brand Background */}
       <LinearGradient
         colors={[finalPrimary, finalSecondary]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
+      />
+
+      {/* Decorative Elements */}
+      <View
+        style={[
+          styles.circleDecorator,
+          { top: -100, right: -100, backgroundColor: "rgba(255,255,255,0.1)" },
+        ]}
+      />
+      <View
+        style={[
+          styles.circleDecorator,
+          { bottom: -150, left: -150, backgroundColor: "rgba(0,0,0,0.05)" },
+        ]}
       />
 
       <ScrollView
@@ -92,70 +108,100 @@ export default function WelcomeScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.headerSpacer} />
+
         <View style={styles.mainContent}>
           <Animatable.View
             animation={isWeb ? undefined : "zoomIn"}
-            duration={1000}
+            duration={1200}
             style={styles.logoContainer}
           >
             <View style={styles.glassLogo}>
-              <View
-                style={[styles.innerLogo, { backgroundColor: finalSurface }]}
-              >
+              <View style={[styles.innerLogo, { backgroundColor: "#FFFFFF" }]}>
                 <Image source={logo} style={styles.logo} resizeMode="contain" />
               </View>
             </View>
           </Animatable.View>
 
           <View style={styles.textSection}>
-            <Animatable.Text
-              animation={isWeb ? undefined : "fadeInUp"}
-              delay={300}
-              style={styles.welcomeText}
+            <Animatable.View
+              animation={isWeb ? undefined : "fadeInDown"}
+              delay={200}
+              style={styles.badge}
             >
-              WELCOME TO
-            </Animatable.Text>
+              <Text style={styles.badgeText}>OFFICIAL PORTAL</Text>
+            </Animatable.View>
 
             <Animatable.Text
               animation={isWeb ? undefined : "fadeInUp"}
-              delay={500}
+              delay={400}
               style={styles.schoolName}
             >
               {fullName}
             </Animatable.Text>
 
-            <View style={styles.mottoContainer}>
-              <View style={styles.dot} />
-              <Text style={styles.mottoText}>{motto}</Text>
-              <View style={styles.dot} />
-            </View>
+            <Animatable.View
+              animation={isWeb ? undefined : "fadeInUp"}
+              delay={600}
+              style={styles.platformBadge}
+            >
+              <Text style={styles.platformText}>
+                Multi-function Academic Management Platform
+              </Text>
+            </Animatable.View>
+
+            <Animatable.View
+              animation={isWeb ? undefined : "fadeInUp"}
+              delay={800}
+              style={styles.mottoContainer}
+            >
+              <View style={styles.mottoLine} />
+              <Text style={styles.mottoText}>{motto?.toUpperCase()}</Text>
+              <View style={styles.mottoLine} />
+            </Animatable.View>
           </View>
 
-          <View style={styles.buttonWrapper}>
+          <Animatable.View
+            animation={isWeb ? undefined : "fadeInUp"}
+            delay={1000}
+            style={styles.buttonWrapper}
+          >
             <TouchableOpacity
-              style={styles.primaryBtn}
+              style={[styles.primaryBtn, { backgroundColor: finalSurface }]}
               onPress={handleGetStarted}
-              activeOpacity={0.9}
+              activeOpacity={0.8}
             >
               <View style={styles.btnContent}>
                 <Text style={[styles.primaryBtnText, { color: finalPrimary }]}>
                   ENTER CAMPUS
                 </Text>
-                <View
-                  style={[styles.iconCircle, { backgroundColor: finalPrimary }]}
+                <LinearGradient
+                  colors={[finalPrimary, finalSecondary]}
+                  style={styles.iconCircle}
                 >
-                  <SVGIcon name="chevron-forward" size={18} color="#fff" />
-                </View>
+                  <SVGIcon name="arrow-forward" size={18} color="#fff" />
+                </LinearGradient>
               </View>
             </TouchableOpacity>
-          </View>
+
+            <Text style={styles.secureText}>
+              <SVGIcon
+                name="lock-closed"
+                size={10}
+                color="rgba(255,255,255,0.6)"
+              />{" "}
+              SECURE CLOUD ACCESS
+            </Text>
+          </Animatable.View>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Powered by <Text style={styles.footerBrand}>EduEaz</Text>
+            POWERED BY <Text style={styles.footerBrand}>EduEaz</Text>
           </Text>
-          <Text style={styles.versionText}>v1.2.0</Text>
+          <View style={styles.versionBadge}>
+            <Text style={styles.versionText}>v1.2.0 • PRO</Text>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -171,105 +217,168 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  circleDecorator: {
+    position: "absolute",
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: "space-between",
+  },
+  headerSpacer: {
+    height: 40,
   },
   mainContent: {
     alignItems: "center",
     paddingHorizontal: 30,
   },
-  logoContainer: { marginBottom: 30 },
+  logoContainer: {
+    marginBottom: 40,
+    ...Platform.select({
+      web: { cursor: "default" },
+    }),
+  },
   glassLogo: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 170,
+    height: 170,
+    borderRadius: 85,
+    backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.2)",
   },
   innerLogo: {
     width: "100%",
     height: "100%",
-    borderRadius: 70,
+    borderRadius: 75,
     justifyContent: "center",
     alignItems: "center",
-    ...SHADOWS.medium,
+    ...SHADOWS.large,
   },
-  logo: { width: "80%", height: "80%" },
+  logo: { width: "75%", height: "75%" },
 
-  textSection: { alignItems: "center", marginBottom: 40 },
-  welcomeText: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.8)",
-    letterSpacing: 3,
+  textSection: { alignItems: "center", marginBottom: 50 },
+  badge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 15,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "bold",
+    color: "#fff",
+    letterSpacing: 1.5,
   },
   schoolName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "900",
     color: "#fff",
     textAlign: "center",
-    marginTop: 10,
+    letterSpacing: 0.5,
+    textShadowColor: "rgba(0, 0, 0, 0.1)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  platformBadge: {
+    marginTop: 15,
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "rgba(0,0,0,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
+  },
+  platformText: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "600",
+    textAlign: "center",
   },
   mottoContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 20,
   },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#fff",
-    marginHorizontal: 5,
+  mottoLine: {
+    width: 20,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.3)",
+    marginHorizontal: 10,
   },
   mottoText: {
-    fontSize: 12,
-    color: "#fff",
+    fontSize: 11,
+    color: "rgba(255,255,255,0.8)",
+    fontWeight: "700",
+    letterSpacing: 1,
   },
 
   buttonWrapper: {
     width: "100%",
     maxWidth: 320,
+    alignItems: "center",
   },
   primaryBtn: {
-    height: 55,
-    borderRadius: 30,
-    backgroundColor: "#fff",
+    width: "100%",
+    height: 64,
+    borderRadius: 32,
     justifyContent: "center",
+    ...SHADOWS.medium,
   },
   btnContent: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
+    paddingHorizontal: 25,
     alignItems: "center",
   },
   primaryBtnText: {
+    fontSize: 16,
     fontWeight: "800",
+    letterSpacing: 1,
   },
   iconCircle: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
+    ...SHADOWS.small,
+  },
+  secureText: {
+    marginTop: 15,
+    fontSize: 10,
+    color: "rgba(255,255,255,0.6)",
+    fontWeight: "600",
+    letterSpacing: 1,
   },
 
   footer: {
     alignItems: "center",
-    marginBottom: 10,
+    paddingBottom: 20,
   },
   footerText: {
-    fontSize: 11,
+    fontSize: 12,
     color: "rgba(255,255,255,0.7)",
   },
   footerBrand: {
     color: "#fff",
-    fontWeight: "bold",
+    fontWeight: "800",
+  },
+  versionBadge: {
+    marginTop: 5,
+    backgroundColor: "rgba(0,0,0,0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   versionText: {
-    fontSize: 10,
-    color: "rgba(255,255,255,0.4)",
+    fontSize: 9,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.5)",
   },
 });

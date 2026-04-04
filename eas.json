@@ -25,6 +25,7 @@
     "clis-dev": { "extends": "development", "env": { "SCHOOL_ID": "clis" } },
     "stone-dev": { "extends": "development", "env": { "SCHOOL_ID": "stone" } },
     "jewel-dev": { "extends": "development", "env": { "SCHOOL_ID": "jewel" } },
+    "lilies-dev": { "extends": "development", "env": { "SCHOOL_ID": "lilies" } },
 
     "afahjoy-prod": {
       "distribution": "internal",
@@ -105,6 +106,11 @@
       "distribution": "internal",
       "android": { "buildType": "apk" },
       "env": { "SCHOOL_ID": "jewel", "NODE_ENV": "production" }
+    },
+    "lilies-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "lilies", "NODE_ENV": "production" }
     }
   },
   "submit": {

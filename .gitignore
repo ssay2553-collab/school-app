@@ -11,11 +11,9 @@ expo-env.d.ts
 .metro-health-check*
 
 # Firebase (Security)
-# Ignore root files, but allow them in services/ subdirectories
+# Ignore sensitive files globally to prevent accidental leaks
 google-services.json
-!services/**/google-services.json
 GoogleService-Info.plist
-!services/**/GoogleService-Info.plist
 
 # Local Environment (Security)
 .env

@@ -23,6 +23,7 @@
     "android:clis": "cross-env SCHOOL_ID=clis npx expo run:android",
     "android:stone": "cross-env SCHOOL_ID=stone npx expo run:android",
     "android:jewel": "cross-env SCHOOL_ID=jewel npx expo run:android",
+    "android:lilies": "cross-env SCHOOL_ID=lilies npx expo run:android",
     "ios": "expo run:ios",
     "web": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096\" expo start --web",
     "build:web": "cross-env NODE_ENV=production NODE_OPTIONS=\"--max-old-space-size=4096\" npx expo export --platform web",
@@ -43,6 +44,7 @@
     "electron:dev:clis": "cross-env SCHOOL_ID=clis node scripts/generate-electron-config.js && cross-env SCHOOL_ID=clis concurrently \"npm run web\" \"wait-on http://localhost:8081 && NODE_ENV=development SCHOOL_ID=clis electron electron-main.js\"",
     "electron:dev:stone": "cross-env SCHOOL_ID=stone node scripts/generate-electron-config.js && cross-env SCHOOL_ID=stone concurrently \"npm run web\" \"wait-on http://localhost:8081 && NODE_ENV=development SCHOOL_ID=stone electron electron-main.js\"",
     "electron:dev:jewel": "cross-env SCHOOL_ID=jewel node scripts/generate-electron-config.js && cross-env SCHOOL_ID=jewel concurrently \"npm run web\" \"wait-on http://localhost:8081 && NODE_ENV=development SCHOOL_ID=jewel electron electron-main.js\"",
+    "electron:dev:lilies": "cross-env SCHOOL_ID=lilies node scripts/generate-electron-config.js && cross-env SCHOOL_ID=lilies concurrently \"npm run web\" \"wait-on http://localhost:8081 && NODE_ENV=development SCHOOL_ID=lilies electron electron-main.js\"",
     "build:beano": "cross-env SCHOOL_ID=beano node scripts/generate-electron-config.js && cross-env SCHOOL_ID=beano NODE_ENV=production npx expo export --platform web && cross-env SCHOOL_ID=beano electron-builder --config electron-builder.config.js",
     "build:morgis": "cross-env SCHOOL_ID=morgis node scripts/generate-electron-config.js && cross-env SCHOOL_ID=morgis NODE_ENV=production npx expo export --platform web && cross-env SCHOOL_ID=morgis electron-builder --config electron-builder.config.js",
     "build:afahjoy": "cross-env SCHOOL_ID=afahjoy node scripts/generate-electron-config.js && cross-env SCHOOL_ID=afahjoy NODE_ENV=production npx expo export --platform web && cross-env SCHOOL_ID=afahjoy electron-builder --config electron-builder.config.js",
@@ -59,6 +61,7 @@
     "build:clis": "cross-env SCHOOL_ID=clis node scripts/generate-electron-config.js && cross-env SCHOOL_ID=clis NODE_ENV=production npx expo export --platform web && cross-env SCHOOL_ID=clis electron-builder --config electron-builder.config.js",
     "build:stone": "cross-env SCHOOL_ID=stone node scripts/generate-electron-config.js && cross-env SCHOOL_ID=stone NODE_ENV=production npx expo export --platform web && cross-env SCHOOL_ID=stone electron-builder --config electron-builder.config.js",
     "build:jewel": "cross-env SCHOOL_ID=jewel node scripts/generate-electron-config.js && cross-env SCHOOL_ID=jewel NODE_ENV=production npx expo export --platform web && cross-env SCHOOL_ID=jewel electron-builder --config electron-builder.config.js",
+    "build:lilies": "cross-env SCHOOL_ID=lilies node scripts/generate-electron-config.js && cross-env SCHOOL_ID=lilies NODE_ENV=production npx expo export --platform web && cross-env SCHOOL_ID=lilies electron-builder --config electron-builder.config.js",
     "deploy:pwa:afahjoy": "cross-env SCHOOL_ID=afahjoy npx expo export --platform web && firebase deploy --project afahjoy --only hosting:afahjoy",
     "deploy:pwa:beano": "cross-env SCHOOL_ID=beano npx expo export --platform web && firebase deploy --project beano --only hosting:beano",
     "deploy:pwa:morgis": "cross-env SCHOOL_ID=morgis npx expo export --platform web && firebase deploy --project morgis --only hosting:morgis",
@@ -75,6 +78,7 @@
     "deploy:pwa:bms": "cross-env SCHOOL_ID=bms npx expo export --platform web && firebase deploy --project bms --only hosting:bms",
     "deploy:pwa:kent": "cross-env SCHOOL_ID=kent npx expo export --platform web && firebase deploy --project kent --only hosting:kent",
     "deploy:pwa:bishops": "cross-env SCHOOL_ID=bishops npx expo export --platform web && firebase deploy --project bishops --only hosting:bishops",
+    "deploy:pwa:lilies": "cross-env SCHOOL_ID=lilies npx expo export --platform web && firebase deploy --project lilies --only hosting:lilies",
     "lint": "expo lint"
   },
   "dependencies": {

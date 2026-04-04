@@ -16,7 +16,8 @@
     "cascom": "cascom-59b61",
     "bms": "bms-app-f4572",
     "kent": "golden-rock-16bf8",
-    "bishops": "thess-app"
+    "bishops": "thess-app",
+    "lilies": "bright-lilies"
   },
   "targets": {
     "afahjoy-7cc03": {
@@ -128,6 +129,13 @@
       "hosting": {
         "bishops": [
           "thess-app"
+        ]
+      }
+    },
+    "bright-lilies": {
+      "hosting": {
+        "lilies": [
+          "bright-lilies"
         ]
       }
     }

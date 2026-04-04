@@ -25,6 +25,7 @@ on:
           - clis-prod
           - stone-prod
           - jewel-prod
+          - lilies-prod
 
 jobs:
   setup:
@@ -35,7 +36,7 @@ jobs:
       - id: set-profiles
         run: |
           if [ "${{ github.event.inputs.school_profile }}" == "all-prod" ]; then
-            echo 'profiles=["afahjoy-prod", "beano-prod", "bishops-prod", "bms-prod", "brain-prod", "cascom-prod", "creation-prod", "eagles-prod", "ibs-prod", "kent-prod", "model-prod", "morgis-prod", "perfect-prod", "clis-prod", "stone-prod", "jewel-prod"]' >> $GITHUB_OUTPUT
+            echo 'profiles=["afahjoy-prod", "beano-prod", "bishops-prod", "bms-prod", "brain-prod", "cascom-prod", "creation-prod", "eagles-prod", "ibs-prod", "kent-prod", "model-prod", "morgis-prod", "perfect-prod", "clis-prod", "stone-prod", "jewel-prod", "lilies-prod"]' >> $GITHUB_OUTPUT
           else
             echo 'profiles=["${{ github.event.inputs.school_profile }}"]' >> $GITHUB_OUTPUT
           fi

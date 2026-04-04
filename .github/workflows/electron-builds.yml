@@ -25,6 +25,7 @@ on:
           - clis
           - stone
           - jewel
+          - lilies
 
 jobs:
   setup:
@@ -35,7 +36,7 @@ jobs:
       - id: set-schools
         run: |
           if [ "${{ github.event.inputs.school_profile }}" == "all" ]; then
-            echo 'schools=["afahjoy", "beano", "bishops", "bms", "brain", "cascom", "creation", "eagles", "ibs", "kent", "model", "morgis", "perfect", "clis", "stone", "jewel"]' >> $GITHUB_OUTPUT
+            echo 'schools=["afahjoy", "beano", "bishops", "bms", "brain", "cascom", "creation", "eagles", "ibs", "kent", "model", "morgis", "perfect", "clis", "stone", "jewel", "lilies"]' >> $GITHUB_OUTPUT
           else
             echo 'schools=["${{ github.event.inputs.school_profile }}"]' >> $GITHUB_OUTPUT
           fi

@@ -346,6 +346,34 @@ module.exports = ({ config }) => {
         appId: "1:121225001260:web:fd141544f12ae285389489",
       },
     },
+
+    lilies: {
+      name: "BLS App",
+      slug: "lilies",
+      package: "com.saysmanage.lilies",
+      scheme: "lilies",
+      logo: "./assets/icon-lilies.png",
+      hotline: "0595974481",
+      fullName: "Bright Lilies School",
+      motto: "Solid Academic Foundation",
+      address: "",
+      email: "inquiries@brightlilies.com",
+      primaryColor: "#1E3A8A",
+      secondaryColor: "#D4AF37",
+      surfaceColor: "#acad93ff",
+      brandPrimary: "#D4AF37",
+      brandSecondary: "#1E3A8A",
+      easProjectId: "",
+      firebase: {
+        apiKey: "AIzaSyBmV1tyq6Q5ctDCawWQqRKnvDjScltZhB4",
+        authDomain: "bright-lilies.firebaseapp.com",
+        projectId: "bright-lilies",
+        storageBucket: "bright-lilies.firebasestorage.app",
+        messagingSenderId: "732349796782",
+        appId: "1:732349796782:web:49980f6d6309889fd6b83f",
+      },
+    },
+
     bms: {
       name: "BMS App",
       slug: "bms",
@@ -467,7 +495,7 @@ module.exports = ({ config }) => {
         orientation: "any",
         icon: selected.logo,
         startUrl: "/",
-      }
+      },
     },
     plugins: [
       "expo-router",

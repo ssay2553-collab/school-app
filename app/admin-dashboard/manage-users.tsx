@@ -816,7 +816,6 @@ export default function ManageUsers() {
             </View>
 
             <ScrollView
-              style={{ flex: 1 }}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 40 }}
             >

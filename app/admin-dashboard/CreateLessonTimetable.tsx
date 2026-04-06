@@ -5,9 +5,12 @@ import {
   getDoc,
   getDocFromCache,
   getDocFromServer,
+  getDocs,
   getDocsFromServer,
+  query,
   serverTimestamp,
   setDoc,
+  where,
 } from "firebase/firestore";
 import React, {
   useCallback,
@@ -73,6 +76,7 @@ export default function CreateLessonTimetable() {
   const [curriculum, setCurriculum] = useState<CurriculumType>("GES");
   const [timetableDays, setTimetableDays] = useState<Record<string, Period[]>>({});
   const [numColumns, setNumColumns] = useState(6);
+  const [customSubjects, setCustomSubjects] = useState<string[]>([]);
 
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
@@ -85,8 +89,8 @@ export default function CreateLessonTimetable() {
 
   const availableSubjects = useMemo(() => {
     const list = curriculum === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS;
-    return [...new Set([...list, ...COMMON_ACTIVITIES])].sort();
-  }, [curriculum]);
+    return [...new Set([...list, ...COMMON_ACTIVITIES, ...customSubjects])].sort();
+  }, [curriculum, customSubjects]);
 
   const canEdit = useMemo(() => {
     if (!appUser) return false;
@@ -174,11 +178,38 @@ export default function CreateLessonTimetable() {
     } finally { 
       if (mounted.current) setLoadingData(false); 
     }
-  }, [selectedClass]);
+  }, [selectedClass, classes]);
 
   useEffect(() => { 
     if (selectedClass) loadTimetable(); 
   }, [selectedClass, loadTimetable]);
+
+  const fetchCustomSubjects = useCallback(async () => {
+    try {
+      const q = query(collection(db, "users"), where("role", "==", "teacher"));
+      const snap = await getDocs(q);
+      const subjects = new Set<string>();
+      
+      snap.forEach(d => {
+        const data = d.data();
+        if (Array.isArray(data.subjects)) {
+          data.subjects.forEach((s: string) => {
+            if (s && !GES_SUBJECTS.includes(s) && !CAMBRIDGE_SUBJECTS.includes(s) && !COMMON_ACTIVITIES.includes(s)) {
+              subjects.add(s);
+            }
+          });
+        }
+      });
+      
+      setCustomSubjects(Array.from(subjects));
+    } catch (e) {
+      console.error("Error fetching custom subjects:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCustomSubjects();
+  }, [fetchCustomSubjects]);
 
   const updateCell = (day: string, colIndex: number, updates: Partial<Period>) => {
     if (!canEdit) return;
@@ -219,8 +250,12 @@ export default function CreateLessonTimetable() {
         curriculum,
         updatedAt: serverTimestamp() 
       }, { merge: true });
-      Alert.alert("Saved", "Weekly timetable updated successfully.");
-    } catch (e) { Alert.alert("Error", "Could not save timetable."); } finally { if (mounted.current) setSaving(false); }
+      if (Platform.OS === 'web') alert("Weekly timetable updated successfully.");
+      else Alert.alert("Saved", "Weekly timetable updated successfully.");
+    } catch (e) { 
+      if (Platform.OS === 'web') alert("Could not save timetable.");
+      else Alert.alert("Error", "Could not save timetable."); 
+    } finally { if (mounted.current) setSaving(false); }
   }
 
   const renderTableCell = (day: string, colIndex: number) => {
@@ -252,14 +287,22 @@ export default function CreateLessonTimetable() {
         <View style={styles.columnHeaderTop}>
           <Text style={styles.columnHeaderText}>Period {index + 1}</Text>
           {canEdit && (
-            <TouchableOpacity onPress={() => Alert.alert("Delete", "Remove this period?", [{text: "No"}, {text: "Yes", onPress: () => {
-                setTimetableDays(prev => {
-                    const newState = {...prev};
-                    DAYS.forEach(d => { if(newState[d]) newState[d].splice(index, 1); });
-                    return newState;
-                });
-                setNumColumns(prev => Math.max(0, prev - 1));
-            }}])}>
+            <TouchableOpacity onPress={() => {
+                const performDelete = () => {
+                    setTimetableDays(prev => {
+                        const newState = {...prev};
+                        DAYS.forEach(d => { if(newState[d]) newState[d].splice(index, 1); });
+                        return newState;
+                    });
+                    setNumColumns(prev => Math.max(0, prev - 1));
+                };
+
+                if (Platform.OS === 'web') {
+                    if (window.confirm("Remove this period?")) performDelete();
+                } else {
+                    Alert.alert("Delete", "Remove this period?", [{text: "No"}, {text: "Yes", onPress: performDelete}]);
+                }
+            }}>
               <Ionicons name="trash" size={14} color="#EF4444" />
             </TouchableOpacity>
           )}

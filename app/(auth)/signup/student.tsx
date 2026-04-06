@@ -93,22 +93,37 @@ export default function StudentSignupScreen() {
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert("Permission Denied", "We need access to your gallery to upload a profile picture.");
+        return;
+      }
 
-    if (!result.canceled) {
-      setForm({ ...form, profileImage: result.assets[0].uri });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.4, // Reduced quality to prevent memory crashes on Android
+      });
+
+      if (!result.canceled) {
+        setForm({ ...form, profileImage: result.assets[0].uri });
+      }
+    } catch (e) {
+      console.error("Image pick error:", e);
+      Alert.alert("Error", "Failed to open image gallery.");
     }
   };
 
   const validateStep = () => {
     if (step === 1) {
-      if (!form.firstName || !form.lastName || !form.email || !form.password) {
+      if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.password) {
         Alert.alert("Required", "Please fill in all account details");
+        return false;
+      }
+      if (form.password.length < 6) {
+        Alert.alert("Weak Password", "Password must be at least 6 characters.");
         return false;
       }
       if (form.password !== form.confirmPassword) {
@@ -129,6 +144,22 @@ export default function StudentSignupScreen() {
   };
 
   const prevStep = () => setStep(s => s - 1);
+
+  // Robust way to get blob from local URI on Android
+  const uriToBlob = (uri: string): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.onload = function () {
+        resolve(xhr.response);
+      };
+      xhr.onerror = function (e) {
+        reject(new Error("Image upload failed at source. Please try another image."));
+      };
+      xhr.responseType = "blob";
+      xhr.open("GET", uri, true);
+      xhr.send(null);
+    });
+  };
 
   const handleSignup = async () => {
     if (!form.signupCode.trim()) {
@@ -157,22 +188,29 @@ export default function StudentSignupScreen() {
         throw new Error("This code isn't for you or it's already been used! Check your class and code again.");
       }
 
+      // Create Authentication Entry
       const cred = await createUserWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
       const userId = cred.user.uid;
 
+      // Safe Image Upload
       let profileImageUrl = null;
       if (form.profileImage) {
-        const response = await fetch(form.profileImage);
-        const blob = await response.blob();
-        const storageRef = ref(storage, `profiles/${userId}.jpg`);
-        await uploadBytes(storageRef, blob);
-        profileImageUrl = await getDownloadURL(storageRef);
+        try {
+          const blob = await uriToBlob(form.profileImage);
+          const storageRef = ref(storage, `profiles/${userId}.jpg`);
+          await uploadBytes(storageRef, blob);
+          profileImageUrl = await getDownloadURL(storageRef);
+        } catch (imgErr) {
+          console.error("Profile image upload failed:", imgErr);
+          // Don't fail the whole signup if just the image fails
+        }
       }
 
       const batch = writeBatch(db);
       batch.set(doc(db, "users", userId), {
         uid: userId,
         role: "student",
+        schoolId: SCHOOL_CONFIG.schoolId,
         status: "active",
         classId: form.selectedClassId,
         gender: form.gender, 
@@ -196,7 +234,8 @@ export default function StudentSignupScreen() {
         { text: "Let's Go!", onPress: () => router.replace("/(auth)/login/student") },
       ]);
     } catch (err: any) {
-      Alert.alert("Error", err.message);
+      console.error("Signup error details:", err);
+      Alert.alert("Signup Failed", err.message || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -239,9 +278,8 @@ export default function StudentSignupScreen() {
               <View style={styles.card}>
                 <ThemedText style={styles.cardHeader}>Account Details</ThemedText>
                 
-                {/* Profile Picture Picker */}
                 <View style={styles.avatarPickerContainer}>
-                   <TouchableOpacity onPress={pickImage} style={styles.avatarBtn}>
+                   <TouchableOpacity onPress={pickImage} style={styles.avatarBtn} disabled={loading}>
                       {form.profileImage ? (
                         <Image source={{ uri: form.profileImage }} style={styles.avatarImg} />
                       ) : (
@@ -302,7 +340,7 @@ export default function StudentSignupScreen() {
                    {Platform.OS === 'web' ? (
                      <View style={styles.datePickerBtn}>
                         <TextInput
-                          // @ts-ignore - 'type' is supported by react-native-web
+                          // @ts-ignore
                           type="date"
                           style={[styles.dateText, { width: '100%' }]}
                           value={form.dateOfBirth ? form.dateOfBirth.toISOString().split('T')[0] : ""}
@@ -433,7 +471,7 @@ export default function StudentSignupScreen() {
 
 const InputField = ({ label, isPassword, onTogglePassword, showPassword, ...props }: any) => (
   <View style={styles.inputGroup}>
-    <ThemedText style={styles.inputLabel}>{label}</ThemedText>
+    <ThemedText style={styles.inputLabel}>{(label || "").toUpperCase()}</ThemedText>
     <View style={styles.inputWrapper}>
       <TextInput 
         style={styles.input} 

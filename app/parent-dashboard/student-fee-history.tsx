@@ -30,6 +30,8 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
+import { Asset } from "expo-asset";
+import * as FileSystem from "expo-file-system";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -132,6 +134,27 @@ export default function StudentFeeHistory() {
 
   const generatePDF = async () => {
     if (!record || !studentData) return;
+
+    // Attempt to embed logo
+    let logoDataUrl = "";
+    try {
+      const asset = Asset.fromModule(schoolLogo as any);
+      await asset.downloadAsync();
+      const localUri = asset.localUri || asset.uri;
+      if (localUri) {
+        const ext = localUri.split(".").pop()?.toLowerCase() || "png";
+        const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
+        const b64 = await FileSystem.readAsStringAsync(localUri, { encoding: "base64" });
+        logoDataUrl = `data:${mime};base64,${b64}`;
+      }
+    } catch (e) {
+      console.warn("Failed to embed logo for PDF:", e);
+    }
+
+    const logoImgHtml = logoDataUrl
+      ? `<img src="${logoDataUrl}" style="width:80px;height:80px;object-fit:contain;margin-bottom:10px"/>`
+      : "";
+
     const sName = `${studentData.profile?.firstName || ""} ${studentData.profile?.lastName || ""}`.trim();
     const html = `
        <html>
@@ -139,7 +162,7 @@ export default function StudentFeeHistory() {
           <style>
             body { font-family: 'Helvetica'; padding: 30px; color: #1E293B; background: #fff; }
             .receipt-container { max-width: 800px; margin: 0 auto; border: 2px solid #eee; padding: 40px; }
-            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid ${primary}; padding-bottom: 20px; }
+            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid ${primary}; padding-bottom: 20px; display: flex; flex-direction: column; align-items: center; }
             .school-name { font-size: 28px; font-weight: 900; color: ${primary}; margin-bottom: 5px; text-transform: uppercase; }
             .school-motto { font-size: 14px; font-style: italic; color: #64748B; margin-bottom: 10px; }
             .school-contact { font-size: 12px; color: #94A3B8; line-height: 1.5; }
@@ -161,12 +184,13 @@ export default function StudentFeeHistory() {
         <body>
           <div class="receipt-container">
             <div class="header">
+              ${logoImgHtml}
               <div class="school-name">${SCHOOL_CONFIG.fullName}</div>
               <div class="school-motto">${SCHOOL_CONFIG.motto}</div>
-              <div class="school-contact">${SCHOOL_CONFIG.address}<br/>${SCHOOL_CONFIG.hotline} | ${SCHOOL_CONFIG.email}</div>
+              <div class="school-contact">${SCHOOL_CONFIG.address}<br/>TEL: ${SCHOOL_CONFIG.hotline} | EMAIL: ${SCHOOL_CONFIG.email}</div>
             </div>
             
-            <div class="receipt-title">FINANCIAL STATEMENT / RECEIPT</div>
+            <div class="receipt-title">OFFICIAL RECEIPT</div>
             
             <div class="info-section">
               <div class="info-column">

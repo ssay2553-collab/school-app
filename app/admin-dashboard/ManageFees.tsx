@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import { useRouter } from "expo-router";
@@ -9,6 +10,7 @@ import {
     collection,
     doc,
     DocumentSnapshot,
+    getDocs,
     increment,
     limit,
     orderBy,
@@ -16,8 +18,9 @@ import {
     serverTimestamp,
     startAfter,
     where,
-    writeBatch,
+    writeBatch
 } from "firebase/firestore";
+import moment from "moment";
 import React, {
     useCallback,
     useEffect,
@@ -160,6 +163,13 @@ export default function ManageFees() {
   const [paymentMethod, setPaymentMethod] = useState<
     "Cash" | "Cheque" | "E-cash" | "Momo"
   >("Cash");
+
+  // Daily Payments States
+  const [dailyModalVisible, setDailyModalVisible] = useState(false);
+  const [selectedDailyDate, setSelectedDailyDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dailyPayments, setDailyPayments] = useState<any[]>([]);
+  const [loadingDaily, setLoadingDaily] = useState(false);
 
   const lastVisibleRef = useRef<DocumentSnapshot | null>(null);
   const hasMoreRef = useRef(true);
@@ -360,6 +370,31 @@ export default function ManageFees() {
     fetchStudents(true);
   };
 
+  const fetchDailyPayments = async (date: Date) => {
+    setLoadingDaily(true);
+    const dateStr = moment(date).format("YYYY-MM-DD");
+    try {
+      const q = query(
+        collection(db, "feePayments"),
+        where("date", "==", dateStr),
+      );
+      const snap = await getDocs(q);
+      const list = snap.docs.map((d) => d.data());
+      setDailyPayments(list);
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to fetch daily payments");
+    } finally {
+      setLoadingDaily(false);
+    }
+  };
+
+  useEffect(() => {
+    if (dailyModalVisible) {
+      fetchDailyPayments(selectedDailyDate);
+    }
+  }, [dailyModalVisible, selectedDailyDate]);
+
   const exportPDF = async () => {
     const className =
       classes.find((c) => c.id === selectedClassId)?.name || "Class";
@@ -494,6 +529,11 @@ export default function ManageFees() {
         adminUid: appUser?.uid || "unknown",
         createdAt: new Date().toISOString(),
         receiptNo: serial,
+        date: moment().format("YYYY-MM-DD"),
+        studentUid: selectedStudent.uid,
+        studentName: selectedStudent.fullName,
+        classId: selectedStudent.classId,
+        className: selectedStudent.className,
       };
 
       batch.update(doc(db, "studentFeeRecords", recordId), {
@@ -504,6 +544,9 @@ export default function ManageFees() {
       batch.update(doc(db, "users", selectedStudent.uid), {
         walletBalance: increment(-amount),
       });
+      // Set to dedicated feePayments collection for efficient daily reporting
+      batch.set(doc(db, "feePayments", serial), entry);
+
       await batch.commit();
       setPaymentAmount("");
       setReceivedFrom("");
@@ -540,6 +583,11 @@ export default function ManageFees() {
               batch.update(doc(db, "users", selectedStudent.uid), {
                 walletBalance: increment(payment.amount || 0),
               });
+              // Also delete from dedicated feePayments collection
+              if (payment.receiptNo) {
+                batch.delete(doc(db, "feePayments", payment.receiptNo));
+              }
+
               await batch.commit();
               fetchStudents(true);
               setPaymentModalVisible(false);
@@ -730,8 +778,11 @@ export default function ManageFees() {
               <Text style={styles.headerTitle}>Finance Central</Text>
               <Text style={styles.headerSub}>ADMINISTRATION</Text>
             </View>
-            <TouchableOpacity onPress={exportPDF} style={styles.headerIconBtn}>
-              <SVGIcon name="share-outline" size={24} color="#fff" />
+            <TouchableOpacity
+              onPress={() => setDailyModalVisible(true)}
+              style={styles.headerIconBtn}
+            >
+              <SVGIcon name="calendar-outline" size={24} color="#fff" />
             </TouchableOpacity>
           </View>
           <View style={styles.selectorGrid}>
@@ -885,67 +936,9 @@ export default function ManageFees() {
                 <Text style={styles.checkAllText}>SELECT ALL</Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            students.length > 0 &&
-            !searchQuery && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.statsDashboard}
-              >
-                <Animatable.View
-                  animation="zoomIn"
-                  style={[styles.statBox, { backgroundColor: VIBE.info }]}
-                >
-                  <Text style={styles.statLabel}>EXPECTED</Text>
-                  <Text style={styles.statValue}>
-                    ₵{stats.expected.toLocaleString()}
-                  </Text>
-                  <View style={styles.statIcon}>
-                    <SVGIcon
-                      name="analytics"
-                      size={24}
-                      color="rgba(255,255,255,0.3)"
-                    />
-                  </View>
-                </Animatable.View>
-                <Animatable.View
-                  animation="zoomIn"
-                  delay={100}
-                  style={[styles.statBox, { backgroundColor: VIBE.success }]}
-                >
-                  <Text style={styles.statLabel}>RECEIVED</Text>
-                  <Text style={styles.statValue}>
-                    ₵{stats.received.toLocaleString()}
-                  </Text>
-                  <View style={styles.statIcon}>
-                    <SVGIcon
-                      name="wallet"
-                      size={24}
-                      color="rgba(255,255,255,0.3)"
-                    />
-                  </View>
-                </Animatable.View>
-                <Animatable.View
-                  animation="zoomIn"
-                  delay={200}
-                  style={[styles.statBox, { backgroundColor: VIBE.danger }]}
-                >
-                  <Text style={styles.statLabel}>OUTSTANDING</Text>
-                  <Text style={styles.statValue}>
-                    ₵{stats.balance.toLocaleString()}
-                  </Text>
-                  <View style={styles.statIcon}>
-                    <SVGIcon
-                      name="alert-circle"
-                      size={24}
-                      color="rgba(255,255,255,0.3)"
-                    />
-                  </View>
-                </Animatable.View>
-              </ScrollView>
-            )
-          )}
+          ) : // Stats will be rendered inside the FlatList header to avoid overlapping
+          // with the list on platforms where separate scrolls can cause z-index issues.
+          null}
 
           <View style={styles.listHeaderRow}>
             <Text style={styles.listTitle}>Student Directory</Text>
@@ -976,6 +969,68 @@ export default function ManageFees() {
           </View>
 
           <FlatList
+            ListHeaderComponent={() =>
+              activeMode === "payment" &&
+              students.length > 0 &&
+              !searchQuery ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.statsDashboard}
+                >
+                  <Animatable.View
+                    animation="zoomIn"
+                    style={[styles.statBox, { backgroundColor: VIBE.info }]}
+                  >
+                    <Text style={styles.statLabel}>EXPECTED</Text>
+                    <Text style={styles.statValue}>
+                      ₵{stats.expected.toLocaleString()}
+                    </Text>
+                    <View style={styles.statIcon}>
+                      <SVGIcon
+                        name="analytics"
+                        size={24}
+                        color="rgba(255,255,255,0.3)"
+                      />
+                    </View>
+                  </Animatable.View>
+                  <Animatable.View
+                    animation="zoomIn"
+                    delay={100}
+                    style={[styles.statBox, { backgroundColor: VIBE.success }]}
+                  >
+                    <Text style={styles.statLabel}>RECEIVED</Text>
+                    <Text style={styles.statValue}>
+                      ₵{stats.received.toLocaleString()}
+                    </Text>
+                    <View style={styles.statIcon}>
+                      <SVGIcon
+                        name="wallet"
+                        size={24}
+                        color="rgba(255,255,255,0.3)"
+                      />
+                    </View>
+                  </Animatable.View>
+                  <Animatable.View
+                    animation="zoomIn"
+                    delay={200}
+                    style={[styles.statBox, { backgroundColor: VIBE.danger }]}
+                  >
+                    <Text style={styles.statLabel}>OUTSTANDING</Text>
+                    <Text style={styles.statValue}>
+                      ₵{stats.balance.toLocaleString()}
+                    </Text>
+                    <View style={styles.statIcon}>
+                      <SVGIcon
+                        name="alert-circle"
+                        size={24}
+                        color="rgba(255,255,255,0.3)"
+                      />
+                    </View>
+                  </Animatable.View>
+                </ScrollView>
+              ) : null
+            }
             data={filteredStudents}
             extraData={{
               activeMode,
@@ -1023,7 +1078,7 @@ export default function ManageFees() {
               colors={[VIBE.primary, VIBE.purple]}
               style={styles.fabGrad}
               start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+              end={{ x: 1, y: 1 }}
             >
               <Text style={styles.fabText}>
                 APPLY BILLS ({selectedStudentUids.size})
@@ -1277,6 +1332,98 @@ export default function ManageFees() {
           </View>
         </View>
       </Modal>
+
+      {/* Daily Payments Modal */}
+      <Modal visible={dailyModalVisible} transparent animationType="slide">
+        <View style={styles.overlay}>
+          <View style={[styles.sheetBody, { height: "90%", maxHeight: "90%" }]}>
+            <View style={styles.modalTopRow}>
+              <Text style={styles.modalStudentName}>Daily Collections</Text>
+              <TouchableOpacity
+                onPress={() => setDailyModalVisible(false)}
+                style={styles.closeRound}
+              >
+                <SVGIcon name="close" size={24} color={VIBE.muted} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.dateSelector}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <SVGIcon name="calendar" size={20} color={VIBE.primary} />
+              <Text style={styles.dateText}>
+                {moment(selectedDailyDate).format("MMMM Do, YYYY")}
+              </Text>
+              <SVGIcon name="chevron-down" size={20} color={VIBE.muted} />
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={selectedDailyDate}
+                mode="date"
+                display="default"
+                onChange={(event, date) => {
+                  setShowDatePicker(false);
+                  if (date) setSelectedDailyDate(date);
+                }}
+              />
+            )}
+
+            <View style={styles.dailyTotalCard}>
+              <Text style={styles.dailyTotalLabel}>TOTAL COLLECTED</Text>
+              <Text style={styles.dailyTotalValue}>
+                ₵
+                {dailyPayments
+                  .reduce((acc, p) => acc + (p.amount || 0), 0)
+                  .toLocaleString(undefined, { minimumFractionDigits: 2 })}
+              </Text>
+            </View>
+
+            {loadingDaily ? (
+              <ActivityIndicator
+                size="large"
+                color={VIBE.primary}
+                style={{ marginTop: 40 }}
+              />
+            ) : (
+              <FlatList
+                data={dailyPayments}
+                keyExtractor={(item, index) =>
+                  item.receiptNo || index.toString()
+                }
+                contentContainerStyle={{ paddingBottom: 20 }}
+                renderItem={({ item }) => (
+                  <View style={styles.dailyPaymentItem}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.dailyStudentName}>
+                        {item.studentName}
+                      </Text>
+                      <Text style={styles.dailyStudentClass}>
+                        {item.className || "N/A"}
+                      </Text>
+                      <Text style={styles.dailyReceipt}>
+                        {item.receiptNo} • {item.method}
+                      </Text>
+                    </View>
+                    <Text style={styles.dailyAmount}>
+                      ₵{(item.amount || 0).toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+                ListEmptyComponent={() => (
+                  <View style={styles.emptyWrap}>
+                    <SVGIcon name="cash-outline" size={48} color="#CBD5E1" />
+                    <Text style={styles.emptyText}>
+                      No payments on this day.
+                    </Text>
+                  </View>
+                )}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1393,6 +1540,9 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     padding: 20,
     justifyContent: "center",
+    // Ensure the stat boxes sit above list items on platforms that need elevation/zIndex
+    zIndex: 2,
+    elevation: 3,
   },
   statLabel: {
     fontSize: 9,
@@ -1793,4 +1943,69 @@ const styles = StyleSheet.create({
   },
   linkBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
   textWhite: { color: "#fff" },
+  dateSelector: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: VIBE.bg,
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 20,
+    gap: 12,
+  },
+  dateText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: VIBE.text,
+  },
+  dailyTotalCard: {
+    backgroundColor: VIBE.primary + "10",
+    borderRadius: 20,
+    padding: 20,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  dailyTotalLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: VIBE.primary,
+    letterSpacing: 1,
+  },
+  dailyTotalValue: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: VIBE.primary,
+    marginTop: 5,
+  },
+  dailyPaymentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: VIBE.border,
+  },
+  dailyStudentName: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: VIBE.text,
+  },
+  dailyStudentClass: {
+    fontSize: 11,
+    color: VIBE.muted,
+    fontWeight: "700",
+    marginTop: 2,
+  },
+  dailyReceipt: {
+    fontSize: 10,
+    color: VIBE.muted,
+    marginTop: 4,
+  },
+  dailyAmount: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: VIBE.success,
+  },
 });

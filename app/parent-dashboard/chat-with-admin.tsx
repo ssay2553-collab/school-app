@@ -21,6 +21,7 @@ import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, storage } from "../../firebaseConfig";
@@ -42,6 +43,8 @@ export default function ChatWithAdmin() {
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
 
   useEffect(() => {
     if (!appUser) return;
@@ -126,7 +129,15 @@ export default function ChatWithAdmin() {
     }
   };
 
-  const sendMessage = async ({ type = "text", text, fileUrl }: { type?: "text" | "audio"; text?: string; fileUrl?: string }) => {
+  const sendMessage = async ({
+    type = "text",
+    text,
+    fileUrl,
+  }: {
+    type?: "text" | "audio";
+    text?: string;
+    fileUrl?: string;
+  }) => {
     if (!appUser) return;
     if (type === "text" && !text?.trim()) return;
     if (type === "audio" && !fileUrl) return;
@@ -146,15 +157,22 @@ export default function ChatWithAdmin() {
 
     try {
       const chatRef = doc(db, "chats", appUser.uid);
-      await setDoc(chatRef, {
+      await setDoc(
+        chatRef,
+        {
           messages: arrayUnion(msg),
           lastUpdated: Date.now(),
           parentUid: appUser.uid,
-          parentName: `${appUser.profile?.firstName} ${appUser.profile?.lastName}`
-        }, { merge: true });
+          parentName: `${appUser.profile?.firstName} ${appUser.profile?.lastName}`,
+        },
+        { merge: true },
+      );
 
       await Notifications.scheduleNotificationAsync({
-        content: { title: "Message Sent", body: type === "text" ? text : "🎤 Voice message sent" },
+        content: {
+          title: "Message Sent",
+          body: type === "text" ? text : "🎤 Voice message sent",
+        },
         trigger: null,
       });
     } catch (err) {
@@ -165,7 +183,7 @@ export default function ChatWithAdmin() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: primary + "20" }]}>
         <Text style={styles.headerTitle}>Admin Support</Text>
         <Text style={styles.headerSub}>Real-time assistance</Text>
       </View>
@@ -173,39 +191,75 @@ export default function ChatWithAdmin() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 70}
       >
         <ScrollView
           ref={scrollRef}
           style={{ flex: 1 }}
-          contentContainerStyle={styles.messagesList}
+          contentContainerStyle={[styles.messagesList, { paddingBottom: 160 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={() => {
+            Keyboard.dismiss();
+          }}
         >
           {messages.length === 0 ? (
             <View style={styles.emptyContainer}>
               <SVGIcon name="chatbubble-ellipses" size={64} color="#CBD5E1" />
-              <Text style={styles.emptyText}>Start a conversation with school administration.</Text>
+              <Text style={styles.emptyText}>
+                Start a conversation with school administration.
+              </Text>
             </View>
           ) : (
             messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} isYou={msg.sender === "parent"}>
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                isYou={msg.sender === "parent"}
+              >
                 {msg.type === "text" && msg.text && (
-                  <Text style={[styles.msgText, msg.sender === "parent" ? { color: "#fff" } : { color: "#1E293B" }]}>{msg.text}</Text>
+                  <Text
+                    style={[
+                      styles.msgText,
+                      msg.sender === "parent"
+                        ? { color: "#fff" }
+                        : { color: "#1E293B" },
+                    ]}
+                  >
+                    {msg.text}
+                  </Text>
                 )}
-                {msg.type === "audio" && msg.fileUrl && <AudioPlayer url={msg.fileUrl} />}
+                {msg.type === "audio" && msg.fileUrl && (
+                  <AudioPlayer url={msg.fileUrl} />
+                )}
               </MessageBubble>
             ))
           )}
         </ScrollView>
 
         <View style={styles.inputArea}>
-          {uploading && <ActivityIndicator size="small" color={COLORS.primary} style={{ marginBottom: 8 }} />}
+          {uploading && (
+            <ActivityIndicator
+              size="small"
+              color={primary}
+              style={{ marginBottom: 8 }}
+            />
+          )}
           {previewUri ? (
-            <Animatable.View animation="slideInUp" duration={300} style={styles.previewContainer}>
-              <TouchableOpacity onPress={() => setPreviewUri(null)}><SVGIcon name="close-circle" size={32} color={COLORS.danger} /></TouchableOpacity>
-              <View style={{ flex: 1, marginHorizontal: 10 }}><AudioPlayer url={previewUri} /></View>
-              <TouchableOpacity onPress={sendVoiceMessage}><SVGIcon name="send" size={28} color={COLORS.primary} /></TouchableOpacity>
+            <Animatable.View
+              animation="slideInUp"
+              duration={300}
+              style={styles.previewContainer}
+            >
+              <TouchableOpacity onPress={() => setPreviewUri(null)}>
+                <SVGIcon name="close-circle" size={32} color={COLORS.danger} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, marginHorizontal: 10 }}>
+                <AudioPlayer url={previewUri} />
+              </View>
+              <TouchableOpacity onPress={sendVoiceMessage}>
+                <SVGIcon name="send" size={28} color={primary} />
+              </TouchableOpacity>
             </Animatable.View>
           ) : (
             <View style={styles.inputRow}>
@@ -213,10 +267,28 @@ export default function ChatWithAdmin() {
                 onPress={recording ? stopRecording : startRecording}
                 style={[styles.iconBtn, recording && styles.recordingBtn]}
               >
-                <SVGIcon name={recording ? "square" : "mic"} size={24} color={recording ? "#fff" : COLORS.gray} />
+                <SVGIcon
+                  name={recording ? "square" : "mic"}
+                  size={24}
+                  color={recording ? "#fff" : COLORS.gray}
+                />
               </TouchableOpacity>
-              <TextInput value={input} onChangeText={setInput} placeholder="Type a message..." style={styles.input} multiline />
-              <TouchableOpacity onPress={() => sendMessage({ type: "text", text: input })} style={[styles.sendBtn, !input.trim() && { opacity: 0.5 }]} disabled={!input.trim()}>
+              <TextInput
+                value={input}
+                onChangeText={setInput}
+                placeholder="Type a message..."
+                style={styles.input}
+                multiline
+              />
+              <TouchableOpacity
+                onPress={() => sendMessage({ type: "text", text: input })}
+                style={[
+                  styles.sendBtn,
+                  { backgroundColor: primary },
+                  !input.trim() && { opacity: 0.5 },
+                ]}
+                disabled={!input.trim()}
+              >
                 <SVGIcon name="send" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -228,18 +300,71 @@ export default function ChatWithAdmin() {
 }
 
 const styles = StyleSheet.create({
-  header: { padding: 16, backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#E2E8F0", alignItems: "center" },
+  header: {
+    padding: 16,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    alignItems: "center",
+  },
   headerTitle: { fontSize: 18, fontWeight: "bold", color: "#1E293B" },
   headerSub: { fontSize: 12, color: "#64748B" },
-  messagesList: { padding: 16, paddingBottom: 20 },
+  messagesList: { padding: 16, paddingBottom: 160 },
   msgText: { fontSize: 15, lineHeight: 20 },
-  emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", marginTop: 100, paddingHorizontal: 40 },
-  emptyText: { textAlign: "center", color: "#94A3B8", marginTop: 16, fontSize: 14, lineHeight: 22 },
-  inputArea: { backgroundColor: "#fff", paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: "#E2E8F0", paddingBottom: Platform.OS === "ios" ? 10 : 15 },
-  inputRow: { flexDirection: "row", alignItems: "flex-end" },
-  input: { flex: 1, backgroundColor: "#F1F5F9", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, marginHorizontal: 8, fontSize: 15, maxHeight: 100, color: "#1E293B" },
-  iconBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#F1F5F9", justifyContent: "center", alignItems: "center" },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 100,
+    paddingHorizontal: 40,
+  },
+  emptyText: {
+    textAlign: "center",
+    color: "#94A3B8",
+    marginTop: 16,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  inputArea: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+    paddingBottom: Platform.OS === "ios" ? 10 : 20,
+  },
+  inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  input: {
+    flex: 1,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 15,
+    maxHeight: 100,
+    color: "#1E293B",
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   recordingBtn: { backgroundColor: COLORS.danger },
-  sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary, justifyContent: "center", alignItems: "center", ...SHADOWS.small },
-  previewContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#F1F5F9", padding: 10, borderRadius: 20 },
+  sendBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    ...SHADOWS.small,
+  },
+  previewContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    padding: 10,
+    borderRadius: 20,
+  },
 });

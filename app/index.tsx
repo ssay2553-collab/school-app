@@ -3,14 +3,14 @@ import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import React from "react";
 import {
-  ActivityIndicator,
-  Image,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -118,7 +118,11 @@ export default function WelcomeScreen() {
           >
             <View style={styles.glassLogo}>
               <View style={[styles.innerLogo, { backgroundColor: "#FFFFFF" }]}>
-                <Image source={logo} style={styles.logo} resizeMode="contain" />
+                <Image
+                  source={logo}
+                  style={styles.logo as any}
+                  resizeMode="contain"
+                />
               </View>
             </View>
           </Animatable.View>
@@ -236,9 +240,9 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 40,
-    ...Platform.select({
-      web: { cursor: "default" },
-    }),
+    // Avoid strict style typing issues by only adding web-specific props at runtime
+    // (StyleSheet typings can reject web-only keys like `cursor`).
+    ...(Platform.OS === "web" ? ({ cursor: "default" } as any) : {}),
   },
   glassLogo: {
     width: 170,

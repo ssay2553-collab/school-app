@@ -1,11 +1,10 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
     addDoc,
     collection,
-    doc,
-    getDoc,
     getDocs,
     limit,
     onSnapshot,
@@ -24,6 +23,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
+    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
@@ -40,52 +40,68 @@ import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
-import { sortClasses } from "../../lib/classHelpers";
 
-type TeacherClass = { id: string; name: string };
-type Student = { uid: string; fullName: string };
-type Parent = { uid: string; fullName: string; email: string; phone: string };
-type Message = {
+const QUICK_EMOJIS = [
+  "😀",
+  "😂",
+  "👍",
+  "🙌",
+  "🔥",
+  "✨",
+  "📚",
+  "🎓",
+  "💡",
+  "✅",
+];
+
+interface StaffMember {
+  uid: string;
+  fullName: string;
+  role: "admin" | "teacher";
+  adminRole?: string;
+  email: string;
+  profileImage?: string;
+}
+
+interface Message {
   id: string;
   text?: string;
   fileUrl?: string;
   senderId: string;
   createdAt: any;
   type: "text" | "audio";
-};
+}
 
 const generateChatId = (uid1: string, uid2: string) =>
   [uid1, uid2].sort().join("_");
 
-export default function TeacherChatWithParent() {
+export default function StaffChat() {
   const { appUser } = useAuth();
   const router = useRouter();
-  const [stage, setStage] = useState<
-    "select_class" | "select_student" | "select_parent" | "chat"
-  >("select_class");
-
-  const [teacherClasses, setTeacherClasses] = useState<TeacherClass[]>([]);
-  const [students, setStudents] = useState<Student[]>([]);
-  const [parents, setParents] = useState<Parent[]>([]);
-
-  const [selectedClass, setSelectedClass] = useState<TeacherClass | null>(null);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
+  const [stage, setStage] = useState<"list" | "chat">("list");
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [filteredStaff, setFilteredStaff] = useState<StaffMember[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(true);
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
-  const isFirstLoad = useRef(true);
   const soundRef = useRef<Audio.Sound | null>(null);
-  const messagesLenRef = useRef<number>(0);
+  const isFirstLoad = useRef(true);
+  const messagesLenRef = useRef(0);
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
+
+  const { registerDirectChat, markChatRead, unregisterDirectChat } =
+    useUnreadCounts();
 
   useEffect(() => {
     return () => {
@@ -109,115 +125,92 @@ export default function TeacherChatWithParent() {
   };
 
   useEffect(() => {
-    const fetchTeacherClasses = async () => {
-      if (!appUser) return;
+    const fetchStaff = async () => {
       try {
-        const teacherSnap = await getDoc(doc(db, "users", appUser.uid));
-        const classIds = teacherSnap.data()?.classes || [];
-        if (classIds.length > 0) {
-          const q = query(
-            collection(db, "classes"),
-            where("__name__", "in", classIds),
-          );
-          const snap = await getDocs(q);
-          const list = snap.docs.map((d) => ({
-            id: d.id,
-            name: d.data().name || d.id,
-          }));
-          setTeacherClasses(sortClasses(list));
-        }
+        const q = query(
+          collection(db, "users"),
+          where("role", "in", ["admin", "teacher"]),
+        );
+        const snap = await getDocs(q);
+        const list = snap.docs
+          .map((d) => {
+            const data = d.data();
+            return {
+              uid: d.id,
+              fullName:
+                `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() ||
+                "Staff Member",
+              role: data.role,
+              adminRole: data.adminRole,
+              email: data.profile?.email || "",
+              profileImage: data.profile?.profileImage,
+            } as StaffMember;
+          })
+          .filter((s) => s.uid !== appUser?.uid);
+        setStaff(list);
+        setFilteredStaff(list);
+      } catch (e) {
+        console.error("Error fetching staff:", e);
       } finally {
         setLoading(false);
       }
     };
-    fetchTeacherClasses();
-  }, [appUser]);
+    fetchStaff();
+  }, [appUser?.uid]);
 
-  const handleSelectClass = async (cls: TeacherClass) => {
-    setSelectedClass(cls);
-    setLoading(true);
-    try {
-      const q = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("classId", "==", cls.id),
-      );
-      const snap = await getDocs(q);
-      setStudents(
-        snap.docs.map((d) => ({
-          uid: d.id,
-          fullName:
-            `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
-        })),
-      );
-      setStage("select_student");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSelectStudent = async (student: Student) => {
-    setSelectedStudent(student);
-    setLoading(true);
-    try {
-      const q = query(
-        collection(db, "users"),
-        where("role", "==", "parent"),
-        where("childrenIds", "array-contains", student.uid),
-      );
-      const snap = await getDocs(q);
-      setParents(
-        snap.docs.map((d) => ({
-          uid: d.id,
-          fullName:
-            `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
-          email: d.data().profile?.email || "",
-          phone: d.data().profile?.phone || "",
-        })),
-      );
-      setStage("select_parent");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSelectParent = (parent: Parent) => {
-    setSelectedParent(parent);
-    setChatId(generateChatId(appUser!.uid, parent.uid));
-    setStage("chat");
-    isFirstLoad.current = true;
-  };
+  useEffect(() => {
+    const q = searchQuery.toLowerCase();
+    setFilteredStaff(
+      staff.filter(
+        (s) =>
+          s.fullName.toLowerCase().includes(q) ||
+          s.email.toLowerCase().includes(q) ||
+          (s.adminRole && s.adminRole.toLowerCase().includes(q)),
+      ),
+    );
+  }, [searchQuery, staff]);
 
   useEffect(() => {
     if (!chatId) return;
+    registerDirectChat(chatId);
+    markChatRead("direct", chatId);
+
     const q = query(
       collection(db, "directMessages", chatId, "messages"),
       orderBy("createdAt", "desc"),
       limit(50),
     );
-    const unsubscribe = onSnapshot(q, (snap) => {
+
+    const unsub = onSnapshot(q, (snap) => {
       const msgs = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }) as Message)
         .reverse();
+
       if (!isFirstLoad.current && msgs.length > messagesLenRef.current) {
-        if (msgs[msgs.length - 1].senderId !== appUser?.uid)
+        const lastMsg = msgs[msgs.length - 1];
+        if (lastMsg.senderId !== appUser?.uid) {
           playSound("received");
+          markChatRead("direct", chatId);
+        }
       }
+
       setMessages(msgs);
       messagesLenRef.current = msgs.length;
       isFirstLoad.current = false;
     });
-    return () => unsubscribe();
-  }, [chatId, appUser?.uid]);
 
-  const { registerDirectChat, markChatRead, unregisterDirectChat } =
-    useUnreadCounts();
-  useEffect(() => {
-    if (!chatId) return;
-    registerDirectChat(chatId);
-    markChatRead("direct", chatId);
-    return () => unregisterDirectChat(chatId);
+    return () => {
+      unsub();
+      unregisterDirectChat(chatId);
+    };
   }, [chatId]);
+
+  const handleSelectStaff = (member: StaffMember) => {
+    setSelectedStaff(member);
+    setChatId(generateChatId(appUser!.uid, member.uid));
+    setStage("chat");
+    isFirstLoad.current = true;
+  };
 
   const startRecording = async () => {
     try {
@@ -246,10 +239,7 @@ export default function TeacherChatWithParent() {
       if (!uri) return;
 
       const blob = await (await fetch(uri)).blob();
-      const audioRef = ref(
-        storage,
-        `chats/parents/${chatId}/${Date.now()}.m4a`,
-      );
+      const audioRef = ref(storage, `chats/staff/${chatId}/${Date.now()}.m4a`);
       await uploadBytes(audioRef, blob);
       const audioUrl = await getDownloadURL(audioRef);
 
@@ -272,6 +262,7 @@ export default function TeacherChatWithParent() {
     if (!input.trim() || !chatId) return;
     const text = input.trim();
     setInput("");
+    setShowEmojis(false);
     try {
       await addDoc(collection(db, "directMessages", chatId, "messages"), {
         type: "text",
@@ -280,19 +271,25 @@ export default function TeacherChatWithParent() {
         createdAt: serverTimestamp(),
       });
       playSound("sent");
-    } catch {
-      Alert.alert("Error", "Message failed to send.");
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to send message");
     }
   };
 
-  if (loading)
+  const addEmoji = (emoji: string) => {
+    setInput((prev) => prev + emoji);
+  };
+
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={primary} />
       </View>
     );
+  }
 
-  if (stage === "chat" && selectedParent) {
+  if (stage === "chat" && selectedStaff) {
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
         <StatusBar barStyle="dark-content" />
@@ -301,33 +298,32 @@ export default function TeacherChatWithParent() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 70}
         >
-          <View style={[styles.chatHeader, { backgroundColor: primary }]}>
+          <View
+            style={[styles.chatHeader, { borderBottomColor: primary + "20" }]}
+          >
             <TouchableOpacity
-              onPress={() => setStage("select_parent")}
-              style={styles.chatBackBtn}
+              onPress={() => setStage("list")}
+              style={styles.backBtn}
             >
-              <SVGIcon name="arrow-back" size={24} color="#fff" />
+              <SVGIcon name="arrow-back" size={24} color={primary} />
             </TouchableOpacity>
-            <View style={styles.chatUserInfo}>
-              <Text style={styles.chatUserName}>{selectedParent.fullName}</Text>
-              <Text style={styles.chatUserStatus}>Parent Account</Text>
+            <View style={{ flex: 1, alignItems: "center" }}>
+              <Text style={styles.chatHeaderTitle}>
+                {selectedStaff.fullName}
+              </Text>
+              <Text style={[styles.headerSub, { color: primary }]}>
+                {selectedStaff.role === "admin"
+                  ? selectedStaff.adminRole || "Admin"
+                  : "Teacher"}
+              </Text>
             </View>
-            <TouchableOpacity
-              onPress={() =>
-                Alert.alert(
-                  "Parent Contact",
-                  `Phone: ${selectedParent.phone}\nEmail: ${selectedParent.email}`,
-                )
-              }
-            >
-              <SVGIcon name="information-circle" size={24} color="#fff" />
-            </TouchableOpacity>
+            <View style={{ width: 40 }} />
           </View>
 
           <FlatList
             ref={flatListRef}
             data={messages}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(m) => m.id}
             renderItem={({ item }) => (
               <MessageBubble
                 message={item}
@@ -349,22 +345,38 @@ export default function TeacherChatWithParent() {
               </MessageBubble>
             )}
             contentContainerStyle={{ padding: 16, paddingBottom: 140 }}
+            keyboardShouldPersistTaps="handled"
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: true })
             }
             onScrollBeginDrag={() => {
               Keyboard.dismiss();
+              setShowEmojis(false);
             }}
             showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
           />
 
-          <View
-            style={[
-              styles.inputArea,
-              { paddingBottom: Platform.OS === "android" ? 12 : 20 },
-            ]}
-          >
+          {showEmojis && (
+            <Animatable.View
+              animation="fadeInUp"
+              duration={300}
+              style={styles.emojiContainer}
+            >
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {QUICK_EMOJIS.map((emoji, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    onPress={() => addEmoji(emoji)}
+                    style={styles.emojiBtn}
+                  >
+                    <Text style={styles.emojiText}>{emoji}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </Animatable.View>
+          )}
+
+          <View style={styles.inputArea}>
             {uploading && (
               <ActivityIndicator
                 size="small"
@@ -373,6 +385,20 @@ export default function TeacherChatWithParent() {
               />
             )}
             <View style={styles.inputRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  setShowEmojis(!showEmojis);
+                  if (!showEmojis) Keyboard.dismiss();
+                }}
+                style={styles.emojiToggle}
+              >
+                <Ionicons
+                  name={showEmojis ? "keypad" : "happy-outline"}
+                  size={26}
+                  color={primary}
+                />
+              </TouchableOpacity>
+
               <TouchableOpacity
                 onPressIn={startRecording}
                 onPressOut={stopRecordingAndSend}
@@ -386,11 +412,11 @@ export default function TeacherChatWithParent() {
               </TouchableOpacity>
               <TextInput
                 style={styles.textInput}
+                placeholder="Type your message..."
                 value={input}
                 onChangeText={setInput}
-                placeholder="Type your message..."
-                placeholderTextColor="#94A3B8"
                 multiline
+                onFocus={() => setShowEmojis(false)}
               />
               <TouchableOpacity
                 onPress={handleSendMessage}
@@ -406,31 +432,6 @@ export default function TeacherChatWithParent() {
     );
   }
 
-  const listData =
-    stage === "select_class"
-      ? teacherClasses
-      : stage === "select_student"
-        ? students
-        : parents;
-  const stageTitle =
-    stage === "select_class"
-      ? "Select Class"
-      : stage === "select_student"
-        ? "Select Student"
-        : "Select Parent";
-  const stageSub =
-    stage === "select_class"
-      ? "Choose a classroom to begin"
-      : stage === "select_student"
-        ? `Students in ${selectedClass?.name}`
-        : `Guardians of ${selectedStudent?.fullName}`;
-  const stageIcon =
-    stage === "select_class"
-      ? "school"
-      : stage === "select_student"
-        ? "people"
-        : "person";
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -438,62 +439,69 @@ export default function TeacherChatWithParent() {
         colors={[primary, "#1E293B"]}
         style={styles.headerGradient}
       >
-        <View style={styles.headerRow}>
+        <View style={styles.headerTitleRow}>
           <TouchableOpacity
-            onPress={() => {
-              if (stage === "select_class") router.back();
-              else if (stage === "select_student") setStage("select_class");
-              else if (stage === "select_parent") setStage("select_student");
-              else setStage("select_parent");
-            }}
-            style={styles.backBtn}
+            onPress={() => router.back()}
+            style={styles.backBtnHeader}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>{stageTitle}</Text>
-            <Text style={styles.headerSubtitle}>{stageSub}</Text>
-          </View>
-          <SVGIcon name={stageIcon} size={24} color={secondary} />
+          <Text style={styles.headerTitleMain}>Staff Directory</Text>
+          <SVGIcon name="people" size={24} color={secondary} />
+        </View>
+
+        <View style={styles.searchContainer}>
+          <SVGIcon name="search" size={18} color="#94A3B8" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search staff members..."
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
       </LinearGradient>
+
       <FlatList
-        data={listData as any}
-        keyExtractor={(item, index) => item.id || item.uid || index.toString()}
+        data={filteredStaff}
+        keyExtractor={(item) => item.uid}
         contentContainerStyle={styles.listContent}
         renderItem={({ item, index }) => (
           <Animatable.View animation="fadeInUp" delay={index * 50}>
             <TouchableOpacity
-              style={styles.listItem}
-              onPress={() => {
-                if (stage === "select_class") handleSelectClass(item);
-                else if (stage === "select_student") handleSelectStudent(item);
-                else handleSelectParent(item);
-              }}
+              style={styles.staffCard}
+              onPress={() => handleSelectStaff(item)}
             >
               <View
-                style={[
-                  styles.listIconBox,
-                  { backgroundColor: primary + "10" },
-                ]}
+                style={[styles.avatar, { backgroundColor: primary + "10" }]}
               >
-                <SVGIcon
-                  name={stage === "select_class" ? "school" : "person"}
-                  size={20}
-                  color={primary}
-                />
+                <Text style={[styles.avatarText, { color: primary }]}>
+                  {item.fullName.charAt(0)}
+                </Text>
               </View>
-              <Text style={styles.listItemText}>
-                {item.name || item.fullName}
-              </Text>
-              <SVGIcon name="chevron-forward" size={18} color="#CBD5E1" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.staffName}>{item.fullName}</Text>
+                <View style={styles.roleRow}>
+                  <Text
+                    style={[
+                      styles.roleText,
+                      { color: item.role === "admin" ? "#EF4444" : primary },
+                    ]}
+                  >
+                    {item.role === "admin"
+                      ? item.adminRole || "Admin"
+                      : "Teacher"}
+                  </Text>
+                </View>
+              </View>
+              <SVGIcon name="chatbubble-ellipses" size={20} color={primary} />
             </TouchableOpacity>
           </Animatable.View>
         )}
         ListEmptyComponent={() => (
           <View style={styles.emptyCenter}>
-            <SVGIcon name="chatbubbles" size={64} color="#CBD5E1" />
-            <Text style={styles.emptyText}>No entries found.</Text>
+            <SVGIcon name="people" size={64} color="#CBD5E1" />
+            <Text style={styles.emptyText}>No staff members found.</Text>
           </View>
         )}
       />
@@ -512,23 +520,31 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     ...SHADOWS.medium,
   },
-  headerRow: { flexDirection: "row", alignItems: "center", gap: 15 },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
+  headerTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 20,
   },
-  headerTitle: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  headerSubtitle: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "600",
+  headerTitleMain: { fontSize: 22, fontWeight: "900", color: "#fff" },
+  backBtnHeader: { padding: 5 },
+  searchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    borderRadius: 15,
+    paddingHorizontal: 15,
+    height: 50,
   },
-  listContent: { padding: 20 },
-  listItem: {
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: "#1E293B",
+    fontWeight: "500",
+  },
+  listContent: { padding: 16 },
+  staffCard: {
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
@@ -536,46 +552,75 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 12,
     ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
   },
-  listIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
   },
-  listItemText: { flex: 1, fontSize: 16, fontWeight: "700", color: "#1E293B" },
+  avatarText: { fontSize: 20, fontWeight: "900" },
+  staffName: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
+  roleRow: { marginTop: 2 },
+  roleText: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  emptyCenter: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 100,
+  },
+  emptyText: { color: "#94A3B8", marginTop: 15, fontWeight: "600" },
   chatHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 15,
+    backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.1)",
-    ...SHADOWS.medium,
+    ...SHADOWS.small,
   },
-  chatBackBtn: { padding: 5 },
-  chatUserInfo: { flex: 1, alignItems: "center" },
-  chatUserName: { fontSize: 18, fontWeight: "800", color: "#fff" },
-  chatUserStatus: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "600",
-    textTransform: "uppercase",
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
   },
+  chatHeaderTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B" },
+  headerSub: { fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
+  messagesContainer: { padding: 20 },
   msgText: { fontSize: 15, lineHeight: 22 },
+  emojiContainer: {
+    backgroundColor: "#fff",
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderTopWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  emojiBtn: { padding: 8, marginRight: 10 },
+  emojiText: { fontSize: 24 },
   inputArea: {
-    padding: 12,
+    padding: 15,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
+    paddingBottom: Platform.OS === "ios" ? 25 : 20,
   },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  emojiToggle: { padding: 5 },
   textInput: {
     flex: 1,
     backgroundColor: "#F1F5F9",
     borderRadius: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 15,
     paddingVertical: 10,
     maxHeight: 100,
     fontSize: 15,
@@ -597,11 +642,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  emptyCenter: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 150,
-  },
-  emptyText: { color: "#94A3B8", marginTop: 15, fontWeight: "600" },
 });

@@ -1,36 +1,38 @@
 import { Audio } from "expo-av";
+import { useRouter } from "expo-router";
 import {
-  addDoc,
-  collection,
-  doc,
-  limitToLast,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
+    addDoc,
+    collection,
+    doc,
+    limitToLast,
+    onSnapshot,
+    orderBy,
+    query,
+    serverTimestamp,
+    updateDoc,
 } from "firebase/firestore";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  SafeAreaView,
-  StatusBar
+    ActivityIndicator,
+    Alert,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import MessageBubble from "../../components/MessageBubble";
+import SVGIcon from "../../components/SVGIcon";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
-import SVGIcon from "../../components/SVGIcon";
-import { useRouter } from "expo-router";
 
 export default function AdminGuestChat() {
   const router = useRouter();
@@ -45,6 +47,8 @@ export default function AdminGuestChat() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const isFirstLoad = useRef(true);
   const messagesLenRef = useRef<number>(0);
+
+  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
 
   useEffect(() => {
     return () => {
@@ -75,28 +79,32 @@ export default function AdminGuestChat() {
   useEffect(() => {
     const ticketsRef = collection(db, "guestTickets");
     const q = query(ticketsRef, orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
-      const allTickets = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as any),
-      })) as any[];
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const allTickets = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as any),
+        })) as any[];
 
-      const filtered = allTickets.filter((t) => {
-        if (t.status !== "handled" || !t.handledAt) return true;
-        const handledTime = t.handledAt.toDate
-          ? t.handledAt.toDate().getTime()
-          : new Date(t.handledAt).getTime();
-        const now = new Date().getTime();
-        const diffMinutes = (now - handledTime) / (1000 * 60);
-        return diffMinutes < 30;
-      });
+        const filtered = allTickets.filter((t) => {
+          if (t.status !== "handled" || !t.handledAt) return true;
+          const handledTime = t.handledAt.toDate
+            ? t.handledAt.toDate().getTime()
+            : new Date(t.handledAt).getTime();
+          const now = new Date().getTime();
+          const diffMinutes = (now - handledTime) / (1000 * 60);
+          return diffMinutes < 30;
+        });
 
-      setTickets(filtered);
-      setLoading(false);
-    }, (error) => {
-      console.error("Tickets Listener Error:", error);
-      setLoading(false);
-    });
+        setTickets(filtered);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Tickets Listener Error:", error);
+        setLoading(false);
+      },
+    );
     return unsub;
   }, []);
 
@@ -107,24 +115,36 @@ export default function AdminGuestChat() {
       return;
     }
     isFirstLoad.current = true;
-    const messagesRef = collection(db, "guestTickets", activeTicketId, "messages");
+    const messagesRef = collection(
+      db,
+      "guestTickets",
+      activeTicketId,
+      "messages",
+    );
     const q = query(messagesRef, orderBy("timestamp", "asc"), limitToLast(20));
-    const unsub = onSnapshot(q, (snap) => {
-      const newMsgs = snap.docs.map((d) => d.data());
-      const prevLen = messagesLenRef.current;
-      if (!isFirstLoad.current && newMsgs.length > prevLen) {
-        const lastMsg = newMsgs[newMsgs.length - 1];
-        if (lastMsg?.sender === "guest") {
-          playSound("received");
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const newMsgs = snap.docs.map((d) => d.data());
+        const prevLen = messagesLenRef.current;
+        if (!isFirstLoad.current && newMsgs.length > prevLen) {
+          const lastMsg = newMsgs[newMsgs.length - 1];
+          if (lastMsg?.sender === "guest") {
+            playSound("received");
+          }
         }
-      }
-      setMessages(newMsgs);
-      messagesLenRef.current = newMsgs.length;
-      isFirstLoad.current = false;
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-    }, (error) => {
-      console.error("Messages Listener Error:", error);
-    });
+        setMessages(newMsgs);
+        messagesLenRef.current = newMsgs.length;
+        isFirstLoad.current = false;
+        setTimeout(
+          () => scrollRef.current?.scrollToEnd({ animated: true }),
+          100,
+        );
+      },
+      (error) => {
+        console.error("Messages Listener Error:", error);
+      },
+    );
     return unsub;
   }, [activeTicketId]);
 
@@ -175,13 +195,21 @@ export default function AdminGuestChat() {
     const ticket = tickets.find((t) => t.id === activeTicketId);
     if (!ticket) return;
     if (ticket.claimedByUid && ticket.claimedByUid !== appUser.uid) {
-      Alert.alert("Locked", `This ticket is handled by ${ticket.claimedByRole}`);
+      Alert.alert(
+        "Locked",
+        `This ticket is handled by ${ticket.claimedByRole}`,
+      );
       return;
     }
     const textToSend = input.trim();
     setInput("");
     try {
-      const messagesRef = collection(db, "guestTickets", activeTicketId, "messages");
+      const messagesRef = collection(
+        db,
+        "guestTickets",
+        activeTicketId,
+        "messages",
+      );
       await addDoc(messagesRef, {
         sender: "admin",
         text: textToSend,
@@ -202,30 +230,34 @@ export default function AdminGuestChat() {
   if (loading)
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={primary} />
       </View>
     );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
+          <SVGIcon name="arrow-back" size={24} color={primary} />
         </TouchableOpacity>
         <View>
-           <Text style={styles.headerTitle}>Guest Inquiries</Text>
-           <Text style={styles.headerSubtitle}>Real-time support tickets</Text>
+          <Text style={styles.headerTitle}>Guest Inquiries</Text>
+          <Text style={styles.headerSubtitle}>Real-time support tickets</Text>
         </View>
       </View>
 
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 70}
       >
         <View style={styles.ticketListContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.ticketList}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.ticketList}
+          >
             {tickets.map((t) => {
               const isSelected = activeTicketId === t.id;
               const isMine = t.claimedByUid === appUser?.uid;
@@ -235,19 +267,46 @@ export default function AdminGuestChat() {
                   key={t.id}
                   style={[
                     styles.ticketBtn,
-                    isSelected && { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-                    isHandled && !isSelected && { opacity: 0.6, borderStyle: "dotted" },
+                    isSelected && {
+                      backgroundColor: primary,
+                      borderColor: primary,
+                    },
+                    isHandled &&
+                      !isSelected && { opacity: 0.6, borderStyle: "dotted" },
                   ]}
                   onPress={() => setActiveTicketId(t.id)}
                 >
                   <View style={styles.ticketHeader}>
-                    <Text style={[styles.ticketBtnText, isSelected && { color: "#fff" }]}>{t.guestName}</Text>
-                    {isHandled && <SVGIcon name="checkmark-done-circle" size={16} color={isSelected ? "#fff" : COLORS.success} />}
+                    <Text
+                      style={[
+                        styles.ticketBtnText,
+                        isSelected && { color: "#fff" },
+                      ]}
+                    >
+                      {t.guestName}
+                    </Text>
+                    {isHandled && (
+                      <SVGIcon
+                        name="checkmark-done-circle"
+                        size={16}
+                        color={isSelected ? "#fff" : COLORS.success}
+                      />
+                    )}
                   </View>
                   {t.claimedByUid ? (
-                    <Text style={[styles.claimStatus, isSelected && { color: "#eee" }]}>{isMine ? "Handling" : t.claimedByRole}</Text>
+                    <Text
+                      style={[
+                        styles.claimStatus,
+                        isSelected && { color: "#eee" },
+                      ]}
+                    >
+                      {isMine ? "Handling" : t.claimedByRole}
+                    </Text>
                   ) : (
-                    <TouchableOpacity onPress={() => claimTicket(t.id)} style={[styles.claimButton, { backgroundColor: COLORS.primary }]}>
+                    <TouchableOpacity
+                      onPress={() => claimTicket(t.id)}
+                      style={[styles.claimButton, { backgroundColor: primary }]}
+                    >
                       <Text style={styles.claimButtonText}>Claim</Text>
                     </TouchableOpacity>
                   )}
@@ -259,7 +318,10 @@ export default function AdminGuestChat() {
 
         <View style={styles.chatArea}>
           {activeTicketId && activeTicket?.status !== "handled" && (
-            <TouchableOpacity style={styles.resolveBtn} onPress={markAsHandled}>
+            <TouchableOpacity
+              style={[styles.resolveBtn, { backgroundColor: primary }]}
+              onPress={markAsHandled}
+            >
               <SVGIcon name="checkmark-done-circle" size={20} color="#fff" />
               <Text style={styles.resolveBtnText}>Mark as Handled</Text>
             </TouchableOpacity>
@@ -267,20 +329,43 @@ export default function AdminGuestChat() {
 
           <ScrollView
             style={styles.messagesContainer}
-            contentContainerStyle={{ flexGrow: 1, padding: 15 }}
+            contentContainerStyle={{
+              flexGrow: 1,
+              padding: 15,
+              paddingBottom: 160,
+            }}
             ref={scrollRef}
             showsVerticalScrollIndicator={false}
+            onScrollBeginDrag={() => {
+              Keyboard.dismiss();
+            }}
+            keyboardShouldPersistTaps="handled"
           >
             {!activeTicketId ? (
               <View style={styles.noSelection}>
-                <View style={[styles.noSelectionCircle, { backgroundColor: COLORS.primary + "10" }]}>
-                  <SVGIcon name="chatbubble-ellipses" size={64} color={COLORS.primary} />
+                <View
+                  style={[
+                    styles.noSelectionCircle,
+                    { backgroundColor: primary + "10" },
+                  ]}
+                >
+                  <SVGIcon
+                    name="chatbubble-ellipses"
+                    size={64}
+                    color={primary}
+                  />
                 </View>
-                <Text style={styles.noSelectionText}>Select an inquiry to start chatting</Text>
+                <Text style={styles.noSelectionText}>
+                  Select an inquiry to start chatting
+                </Text>
               </View>
             ) : (
               messages.map((msg, idx) => (
-                <MessageBubble key={idx} message={msg} isYou={msg.sender === "admin"} />
+                <MessageBubble
+                  key={idx}
+                  message={msg}
+                  isYou={msg.sender === "admin"}
+                />
               ))
             )}
           </ScrollView>
@@ -297,7 +382,11 @@ export default function AdminGuestChat() {
             />
             <TouchableOpacity
               onPress={sendMessage}
-              style={[styles.sendButton, { backgroundColor: COLORS.primary }, !input.trim() && { opacity: 0.5 }]}
+              style={[
+                styles.sendButton,
+                { backgroundColor: primary },
+                !input.trim() && { opacity: 0.5 },
+              ]}
               disabled={!input.trim()}
             >
               <SVGIcon name="arrow-forward" size={20} color="#fff" />
@@ -325,7 +414,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: COLORS.primary + "10",
+    backgroundColor: "rgba(0,0,0,0.05)",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
@@ -349,15 +438,28 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     ...SHADOWS.small,
   },
-  ticketHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  ticketHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   ticketBtnText: { fontWeight: "bold", fontSize: 14, color: "#1E293B" },
-  claimStatus: { fontSize: 10, color: "#64748B", marginTop: 4, fontWeight: "600" },
-  claimButton: { marginTop: 8, paddingVertical: 6, borderRadius: 8, alignItems: "center" },
+  claimStatus: {
+    fontSize: 10,
+    color: "#64748B",
+    marginTop: 4,
+    fontWeight: "600",
+  },
+  claimButton: {
+    marginTop: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: "center",
+  },
   claimButtonText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
   chatArea: { flex: 1 },
   resolveBtn: {
     flexDirection: "row",
-    backgroundColor: COLORS.primary,
     padding: 12,
     margin: 15,
     borderRadius: 12,
@@ -365,10 +467,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     ...SHADOWS.small,
   },
-  resolveBtnText: { color: "#fff", fontWeight: "bold", marginLeft: 8, fontSize: 13 },
+  resolveBtnText: {
+    color: "#fff",
+    fontWeight: "bold",
+    marginLeft: 8,
+    fontSize: 13,
+  },
   messagesContainer: { flex: 1 },
-  noSelection: { flex: 1, justifyContent: "center", alignItems: "center", marginTop: 80 },
-  noSelectionCircle: { width: 120, height: 120, borderRadius: 60, justifyContent: "center", alignItems: "center", marginBottom: 20 },
+  noSelection: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 80,
+  },
+  noSelectionCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
   noSelectionText: { color: "#64748B", fontSize: 16, fontWeight: "600" },
   inputContainer: {
     flexDirection: "row",
@@ -377,7 +496,8 @@ const styles = StyleSheet.create({
     borderColor: "#F1F5F9",
     backgroundColor: "#fff",
     alignItems: "center",
-    paddingBottom: Platform.OS === "ios" ? 35 : 15,
+    paddingBottom: Platform.OS === "ios" ? 35 : 20,
+    gap: 8,
   },
   input: {
     flex: 1,
@@ -391,5 +511,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  sendButton: { width: 50, height: 50, borderRadius: 25, marginLeft: 12, alignItems: "center", justifyContent: "center", ...SHADOWS.medium },
+  sendButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginLeft: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.medium,
+  },
 });

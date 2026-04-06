@@ -1,26 +1,27 @@
 import {
-  addDoc,
-  collection,
-  doc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  where,
+    addDoc,
+    collection,
+    doc,
+    getDocs,
+    onSnapshot,
+    orderBy,
+    query,
+    serverTimestamp,
+    setDoc,
+    where,
 } from "firebase/firestore";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -133,7 +134,7 @@ export default function GuestChat() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 70}
     >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Inquiry Support</Text>
@@ -142,10 +143,13 @@ export default function GuestChat() {
       <ScrollView
         style={styles.msgList}
         ref={scrollRef}
-        contentContainerStyle={{ padding: 15 }}
+        contentContainerStyle={{ padding: 15, paddingBottom: 160 }}
         onContentSizeChange={() =>
           scrollRef.current?.scrollToEnd({ animated: true })
         }
+        onScrollBeginDrag={() => {
+          Keyboard.dismiss();
+        }}
         keyboardShouldPersistTaps="handled"
       >
         {messages.map((m, i) => (
@@ -227,6 +231,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#F1F5F9",
     paddingBottom: Platform.OS === "ios" ? 30 : 12,
+    gap: 8,
   },
   input: {
     flex: 1,
@@ -241,7 +246,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    marginLeft: 10,
+    marginLeft: 4,
     justifyContent: "center",
     alignItems: "center",
     ...SHADOWS.small,

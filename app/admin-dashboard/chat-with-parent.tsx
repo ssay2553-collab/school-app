@@ -1,4 +1,7 @@
+import { Picker } from "@react-native-picker/picker";
 import { Audio } from "expo-av";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import {
     arrayUnion,
     collection,
@@ -15,30 +18,28 @@ import {
     ActivityIndicator,
     Alert,
     FlatList,
+    Keyboard,
     KeyboardAvoidingView,
     Platform,
     SafeAreaView,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
-    StatusBar,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, storage } from "../../firebaseConfig";
-import { LinearGradient } from "expo-linear-gradient";
-import { SCHOOL_CONFIG } from "../../constants/Config";
-import { Picker } from "@react-native-picker/picker";
 import { sortClasses } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
-import { useRouter } from "expo-router";
 
 interface ChatMessage {
   id: string;
@@ -66,7 +67,7 @@ export default function ChatWithParent() {
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [searchQuery, setSearchBar] = useState("");
-  
+
   const [selected, setSelected] = useState<Parent | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -74,7 +75,7 @@ export default function ChatWithParent() {
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  
+
   const scrollRef = useRef<ScrollView>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -115,19 +116,27 @@ export default function ChatWithParent() {
     const fetchData = async () => {
       try {
         // 1. Fetch Classes for filtering
-        const classesSnap = await getDocsCacheFirst(collection(db, "classes") as any);
-        const classList = classesSnap.docs.map(d => ({ id: d.id, name: d.data().name || d.id }));
+        const classesSnap = await getDocsCacheFirst(
+          collection(db, "classes") as any,
+        );
+        const classList = classesSnap.docs.map((d) => ({
+          id: d.id,
+          name: d.data().name || d.id,
+        }));
         setClasses(sortClasses(classList));
 
         // 2. Fetch Students to link parents to children names
-        const studentsSnap = await getDocs(query(collection(db, "users"), where("role", "==", "student")));
-        const studentMap: Record<string, { name: string; classId: string }> = {};
-        studentsSnap.docs.forEach(doc => {
-            const data = doc.data();
-            studentMap[doc.id] = {
-                name: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
-                classId: data.classId
-            };
+        const studentsSnap = await getDocs(
+          query(collection(db, "users"), where("role", "==", "student")),
+        );
+        const studentMap: Record<string, { name: string; classId: string }> =
+          {};
+        studentsSnap.docs.forEach((doc) => {
+          const data = doc.data();
+          studentMap[doc.id] = {
+            name: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
+            classId: data.classId,
+          };
         });
 
         // 3. Fetch Parents
@@ -136,15 +145,19 @@ export default function ChatWithParent() {
         const list = snap.docs.map((d) => {
           const data = d.data();
           const childrenIds = data.childrenIds || [];
-          const childrenData = childrenIds.map((id: string) => studentMap[id]).filter(Boolean);
-          
+          const childrenData = childrenIds
+            .map((id: string) => studentMap[id])
+            .filter(Boolean);
+
           return {
             uid: d.id,
-            fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Parent",
+            fullName:
+              `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() ||
+              "Parent",
             email: data.profile?.email || "No email",
             pushToken: data.pushToken,
             childrenClassIds: childrenData.map((c: any) => c.classId),
-            children: childrenData
+            children: childrenData,
           };
         });
         setParents(list);
@@ -162,14 +175,17 @@ export default function ChatWithParent() {
   useEffect(() => {
     let result = parents;
     if (selectedClassId !== "all") {
-      result = result.filter(p => p.childrenClassIds?.includes(selectedClassId));
+      result = result.filter((p) =>
+        p.childrenClassIds?.includes(selectedClassId),
+      );
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(p => 
-        p.fullName.toLowerCase().includes(q) || 
-        p.email.toLowerCase().includes(q) ||
-        p.children?.some(c => c.name.toLowerCase().includes(q))
+      result = result.filter(
+        (p) =>
+          p.fullName.toLowerCase().includes(q) ||
+          p.email.toLowerCase().includes(q) ||
+          p.children?.some((c) => c.name.toLowerCase().includes(q)),
       );
     }
     setFilteredParents(result);
@@ -188,7 +204,10 @@ export default function ChatWithParent() {
       if (snap.exists()) {
         const newMessages = snap.data().messages || [];
 
-        if (!isFirstLoad.current && newMessages.length > messagesRef.current.length) {
+        if (
+          !isFirstLoad.current &&
+          newMessages.length > messagesRef.current.length
+        ) {
           const lastMsg = newMessages[newMessages.length - 1];
           if (lastMsg.sender === "parent") {
             playSound("received");
@@ -265,7 +284,15 @@ export default function ChatWithParent() {
     }
   };
 
-  const sendMessage = async ({ type = "text", text, fileUrl }: { type?: "text" | "audio"; text?: string; fileUrl?: string }) => {
+  const sendMessage = async ({
+    type = "text",
+    text,
+    fileUrl,
+  }: {
+    type?: "text" | "audio";
+    text?: string;
+    fileUrl?: string;
+  }) => {
     if (!selected) return;
     if (type === "text" && !text?.trim()) return;
     if (type === "audio" && !fileUrl) return;
@@ -285,13 +312,17 @@ export default function ChatWithParent() {
 
     try {
       const chatRef = doc(db, "chats", selected.uid);
-      await setDoc(chatRef, {
-        messages: arrayUnion(msg),
-        lastUpdated: Date.now(),
-        lastMessageFrom: "admin",
-        parentUid: selected.uid, // Ensure parent can find the chat
-        parentName: selected.fullName
-      }, { merge: true });
+      await setDoc(
+        chatRef,
+        {
+          messages: arrayUnion(msg),
+          lastUpdated: Date.now(),
+          lastMessageFrom: "admin",
+          parentUid: selected.uid, // Ensure parent can find the chat
+          parentName: selected.fullName,
+        },
+        { merge: true },
+      );
       playSound("sent");
     } catch (err) {
       console.error("Send error", err);
@@ -311,9 +342,15 @@ export default function ChatWithParent() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
-        <LinearGradient colors={[primary, "#1E293B"]} style={styles.headerGradient}>
+        <LinearGradient
+          colors={[primary, "#1E293B"]}
+          style={styles.headerGradient}
+        >
           <View style={styles.headerTitleRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtnHeader}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.backBtnHeader}
+            >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerTitleMain}>Parent Relations</Text>
@@ -336,13 +373,24 @@ export default function ChatWithParent() {
               <Text style={styles.pickerLabel}>FILTER BY CLASS</Text>
               <View style={styles.pickerInner}>
                 <Picker
-                    selectedValue={selectedClassId}
-                    onValueChange={setSelectedClassId}
-                    style={styles.picker}
-                    dropdownIconColor="#fff"
+                  selectedValue={selectedClassId}
+                  onValueChange={setSelectedClassId}
+                  style={styles.picker}
+                  dropdownIconColor="#fff"
                 >
-                    <Picker.Item label="All Classes" value="all" color="#94A3B8" />
-                    {classes.map(c => <Picker.Item key={c.id} label={c.name} value={c.id} color="#000" />)}
+                  <Picker.Item
+                    label="All Classes"
+                    value="all"
+                    color="#94A3B8"
+                  />
+                  {classes.map((c) => (
+                    <Picker.Item
+                      key={c.id}
+                      label={c.name}
+                      value={c.id}
+                      color="#000"
+                    />
+                  ))}
                 </Picker>
               </View>
             </View>
@@ -355,17 +403,25 @@ export default function ChatWithParent() {
           contentContainerStyle={styles.listContent}
           renderItem={({ item, index }) => (
             <Animatable.View animation="fadeInUp" delay={index * 50}>
-              <TouchableOpacity style={styles.parentCard} onPress={() => setSelected(item)}>
-                <View style={[styles.avatar, { backgroundColor: primary + '10' }]}>
-                  <Text style={[styles.avatarText, { color: primary }]}>{item.fullName.charAt(0)}</Text>
+              <TouchableOpacity
+                style={styles.parentCard}
+                onPress={() => setSelected(item)}
+              >
+                <View
+                  style={[styles.avatar, { backgroundColor: primary + "10" }]}
+                >
+                  <Text style={[styles.avatarText, { color: primary }]}>
+                    {item.fullName.charAt(0)}
+                  </Text>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.parentName}>{item.fullName}</Text>
                   <View style={styles.childrenRow}>
-                     <SVGIcon name="school" size={12} color="#94A3B8" />
-                     <Text style={styles.childrenText}>
-                        {item.children?.map(c => c.name).join(", ") || "No linked students"}
-                     </Text>
+                    <SVGIcon name="school" size={12} color="#94A3B8" />
+                    <Text style={styles.childrenText}>
+                      {item.children?.map((c) => c.name).join(", ") ||
+                        "No linked students"}
+                    </Text>
                   </View>
                 </View>
                 <SVGIcon name="chevron-forward" size={20} color="#CBD5E1" />
@@ -389,58 +445,102 @@ export default function ChatWithParent() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 70}
       >
         <View style={styles.chatHeader}>
-          <TouchableOpacity onPress={() => setSelected(null)} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => setSelected(null)}
+            style={styles.backBtn}
+          >
             <SVGIcon name="arrow-back" size={24} color={primary} />
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: "center" }}>
             <Text style={styles.chatHeaderTitle}>{selected.fullName}</Text>
             <Text style={styles.headerSub}>Parent</Text>
           </View>
-          <TouchableOpacity onPress={() => Alert.alert("Parent Info", `Email: ${selected.email}`)}>
-             <View style={[styles.infoIcon, { backgroundColor: primary + '10' }]}>
-                <SVGIcon name="information-circle" size={24} color={primary} />
-             </View>
+          <TouchableOpacity
+            onPress={() =>
+              Alert.alert("Parent Info", `Email: ${selected.email}`)
+            }
+          >
+            <View
+              style={[styles.infoIcon, { backgroundColor: primary + "10" }]}
+            >
+              <SVGIcon name="information-circle" size={24} color={primary} />
+            </View>
           </TouchableOpacity>
         </View>
 
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={styles.messagesContainer}
+          contentContainerStyle={[
+            styles.messagesContainer,
+            { paddingBottom: 160 },
+          ]}
           showsVerticalScrollIndicator={false}
+          onScrollBeginDrag={() => {
+            Keyboard.dismiss();
+          }}
+          keyboardShouldPersistTaps="handled"
         >
           {messages.length === 0 ? (
             <View style={styles.emptyCenterChat}>
               <SVGIcon name="chatbubbles" size={48} color="#CBD5E1" />
-              <Text style={styles.emptyTextChat}>Start a conversation with this parent.</Text>
+              <Text style={styles.emptyTextChat}>
+                Start a conversation with this parent.
+              </Text>
             </View>
           ) : (
             messages.map((m) => (
-              <MessageBubble key={m.id} message={m} isYou={m.sender === "admin"}>
+              <MessageBubble
+                key={m.id}
+                message={m}
+                isYou={m.sender === "admin"}
+              >
                 {m.type === "text" && m.text && (
-                  <Text style={[styles.msgText, m.sender === "admin" ? { color: "#fff" } : { color: "#1E293B" }]}>
+                  <Text
+                    style={[
+                      styles.msgText,
+                      m.sender === "admin"
+                        ? { color: "#fff" }
+                        : { color: "#1E293B" },
+                    ]}
+                  >
                     {m.text}
                   </Text>
                 )}
-                {m.type === "audio" && m.fileUrl && <AudioPlayer url={m.fileUrl} />}
+                {m.type === "audio" && m.fileUrl && (
+                  <AudioPlayer url={m.fileUrl} />
+                )}
               </MessageBubble>
             ))
           )}
         </ScrollView>
 
         <View style={styles.inputArea}>
-          {uploading && <ActivityIndicator size="small" color={primary} style={{ marginBottom: 8 }} />}
+          {uploading && (
+            <ActivityIndicator
+              size="small"
+              color={primary}
+              style={{ marginBottom: 8 }}
+            />
+          )}
           {previewUri ? (
-            <Animatable.View animation="slideInUp" duration={300} style={styles.previewContainer}>
+            <Animatable.View
+              animation="slideInUp"
+              duration={300}
+              style={styles.previewContainer}
+            >
               <TouchableOpacity onPress={() => setPreviewUri(null)}>
                 <SVGIcon name="close-circle" size={32} color="#EF4444" />
               </TouchableOpacity>
               <View style={{ flex: 1, marginHorizontal: 12 }}>
                 <AudioPlayer url={previewUri} />
               </View>
-              <TouchableOpacity onPress={sendVoiceMessage} style={[styles.sendVoiceBtn, { backgroundColor: primary }]}>
+              <TouchableOpacity
+                onPress={sendVoiceMessage}
+                style={[styles.sendVoiceBtn, { backgroundColor: primary }]}
+              >
                 <SVGIcon name="send" size={20} color="#fff" />
               </TouchableOpacity>
             </Animatable.View>
@@ -450,9 +550,13 @@ export default function ChatWithParent() {
                 onPress={recording ? stopRecording : startRecording}
                 style={[styles.iconBtn, recording && styles.recordingBtn]}
               >
-                <SVGIcon name={recording ? "square" : "mic"} size={22} color={recording ? "#fff" : primary} />
+                <SVGIcon
+                  name={recording ? "square" : "mic"}
+                  size={22}
+                  color={recording ? "#fff" : primary}
+                />
               </TouchableOpacity>
-              
+
               <TextInput
                 style={styles.textInput}
                 placeholder="Type your message..."
@@ -487,32 +591,61 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 30,
     ...SHADOWS.medium,
   },
-  headerTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 20 },
+  headerTitleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
   headerTitleMain: { fontSize: 22, fontWeight: "900", color: "#fff" },
   backBtnHeader: { padding: 5 },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.9)",
     borderRadius: 15,
     paddingHorizontal: 15,
     height: 50,
-    marginBottom: 15
+    marginBottom: 15,
   },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: "#1E293B",
+    fontWeight: "500",
+  },
   filterRow: { marginBottom: 5 },
   pickerWrapper: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 15,
     height: 55,
-    justifyContent: 'center',
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    overflow: 'hidden'
+    borderColor: "rgba(255,255,255,0.2)",
+    overflow: "hidden",
   },
-  pickerLabel: { fontSize: 9, fontWeight: '900', color: '#fff', position: 'absolute', top: 6, left: 12, zIndex: 1 },
+  pickerLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#fff",
+    position: "absolute",
+    top: 6,
+    left: 12,
+    zIndex: 1,
+  },
   pickerInner: { marginTop: 10 },
-  picker: { color: '#fff', backgroundColor: 'transparent', ...Platform.select({ web: { outlineWidth: 0, borderStyle: 'none', paddingHorizontal: 10 } as any }) },
+  picker: {
+    color: "#fff",
+    backgroundColor: "transparent",
+    ...Platform.select({
+      web: {
+        outlineWidth: 0,
+        borderStyle: "none",
+        paddingHorizontal: 10,
+      } as any,
+    }),
+  },
   listContent: { padding: 16, paddingBottom: 40 },
   parentCard: {
     flexDirection: "row",
@@ -535,10 +668,19 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 20, fontWeight: "900" },
   parentName: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
-  childrenRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 5 },
-  childrenText: { fontSize: 12, color: "#64748B", fontWeight: '500' },
+  childrenRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 5,
+  },
+  childrenText: { fontSize: 12, color: "#64748B", fontWeight: "500" },
   parentEmail: { fontSize: 12, color: "#64748B", marginTop: 2 },
-  emptyCenter: { alignItems: "center", justifyContent: "center", marginTop: 100 },
+  emptyCenter: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 100,
+  },
   emptyText: { color: "#94A3B8", marginTop: 15, fontWeight: "600" },
   chatHeader: {
     flexDirection: "row",
@@ -547,21 +689,50 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
-    ...SHADOWS.small
+    ...SHADOWS.small,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#F8FAFC", justifyContent: "center", alignItems: "center" },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   chatHeaderTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B" },
-  headerSub: { fontSize: 11, color: "#64748B", fontWeight: "700", textTransform: 'uppercase' },
-  infoIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  messagesContainer: { padding: 20, paddingBottom: 40 },
+  headerSub: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
+  infoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  messagesContainer: { padding: 20, paddingBottom: 160 },
   msgText: { fontSize: 15, lineHeight: 22 },
-  emptyCenterChat: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 150 },
-  emptyTextChat: { color: '#94A3B8', marginTop: 15, textAlign: 'center', fontSize: 14 },
+  emptyCenterChat: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 150,
+  },
+  emptyTextChat: {
+    color: "#94A3B8",
+    marginTop: 15,
+    textAlign: "center",
+    fontSize: 14,
+  },
   inputArea: {
     padding: 15,
     backgroundColor: "#fff",
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
+    paddingBottom: Platform.OS === "ios" ? 25 : 20,
   },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   textInput: {
@@ -597,5 +768,11 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 20,
   },
-  sendVoiceBtn: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }
+  sendVoiceBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });

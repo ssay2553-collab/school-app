@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     addDoc,
@@ -9,28 +9,31 @@ import {
     query,
     serverTimestamp,
 } from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     Keyboard,
     KeyboardAvoidingView,
     Platform,
+    SafeAreaView,
     ScrollView,
+    StatusBar,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
-    SafeAreaView,
-    StatusBar,
 } from "react-native";
-import * as Animatable from "react-native-animatable";
+import { AudioPlayer } from "../../components/AudioPlayer";
+import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
-import { COLORS, SHADOWS } from "../../constants/theme";
+import { SCHOOL_CONFIG } from "../../constants/Config";
+import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
-import { db } from "../../firebaseConfig";
-
-const QUICK_EMOJIS = ["😀", "😂", "👍", "🙌", "🔥", "✨", "📚", "🎓", "💡", "✅"];
+import { db, storage } from "../../firebaseConfig";
+import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 export default function GroupChat() {
   const { groupId, groupName } = useLocalSearchParams();
@@ -39,8 +42,34 @@ export default function GroupChat() {
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
-  const [showEmojis, setShowEmojis] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const messagesLenRef = useRef(0);
+
+  const primary = SCHOOL_CONFIG.primaryColor;
+
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) soundRef.current.unloadAsync();
+    };
+  }, []);
+
+  const playSound = async (type: "sent" | "received") => {
+    try {
+      if (soundRef.current) await soundRef.current.unloadAsync();
+      const soundFile =
+        type === "sent"
+          ? require("../../assets/message_sent.mp3")
+          : require("../../assets/message_received.mp3");
+      const { sound } = await Audio.Sound.createAsync(soundFile);
+      soundRef.current = sound;
+      await sound.playAsync();
+    } catch (e) {
+      console.log("Audio error:", e);
+    }
+  };
 
   useEffect(() => {
     if (!groupId) return;
@@ -51,22 +80,89 @@ export default function GroupChat() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-        setMessages(snap.docs.map((d) => d.data()));
-        setLoading(false);
-        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
-      }, (error) => {
-        console.error("Group Chat Listener Error:", error);
-        setLoading(false);
-      },
-    );
+      const newMsgs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      if (
+        messagesLenRef.current > 0 &&
+        newMsgs.length > messagesLenRef.current
+      ) {
+        const lastMsg = newMsgs[newMsgs.length - 1] as any;
+        if (lastMsg.senderId !== appUser?.uid) {
+          playSound("received");
+        }
+      }
+
+      setMessages(newMsgs);
+      messagesLenRef.current = newMsgs.length;
+      setLoading(false);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    });
     return unsub;
   }, [groupId]);
 
+  const { markChatRead } = useUnreadCounts();
+  useEffect(() => {
+    if (groupId) markChatRead("group", String(groupId));
+  }, [groupId]);
+
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) return;
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+      );
+      setRecording(recording);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const stopRecordingAndSend = async () => {
+    if (!recording) return;
+    try {
+      setUploading(true);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+      if (!uri) return;
+
+      const blob = await (await fetch(uri)).blob();
+      const audioRef = ref(
+        storage,
+        `chats/groups/${groupId}/${Date.now()}.m4a`,
+      );
+      await uploadBytes(audioRef, blob);
+      const audioUrl = await getDownloadURL(audioRef);
+
+      await addDoc(
+        collection(db, "studentGroups", groupId as string, "messages"),
+        {
+          senderId: appUser!.uid,
+          senderName: `${appUser!.profile?.firstName ?? ""} ${appUser!.profile?.lastName ?? ""}`,
+          type: "audio",
+          fileUrl: audioUrl,
+          timestamp: serverTimestamp(),
+        },
+      );
+      playSound("sent");
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to send voice message");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const sendMessage = async () => {
-    if (!input.trim() || !appUser || !groupId) return;
     const text = input.trim();
+    if (!text || !appUser || !groupId) return;
     setInput("");
-    setShowEmojis(false);
+
     try {
       await addDoc(
         collection(db, "studentGroups", groupId as string, "messages"),
@@ -74,87 +170,108 @@ export default function GroupChat() {
           senderId: appUser.uid,
           senderName: `${appUser.profile?.firstName ?? ""} ${appUser.profile?.lastName ?? ""}`,
           text,
+          type: "text",
           timestamp: serverTimestamp(),
         },
       );
+      playSound("sent");
     } catch (e) {
       console.error("Send Message Error:", e);
     }
   };
 
-  const addEmoji = (emoji: string) => { setInput((prev) => prev + emoji); };
-
   if (loading)
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={primary} />
       </View>
     );
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 70}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+          >
+            <SVGIcon name="arrow-back" size={24} color={primary} />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
-            <Text style={styles.headerTitle}>{groupName || "Group Chat"} 💬</Text>
+            <Text style={styles.headerTitle}>
+              {groupName || "Group Chat"} 💬
+            </Text>
             <Text style={styles.headerSub}>Learning together!</Text>
           </View>
           <TouchableOpacity style={styles.headerAction}>
-            <SVGIcon name="information-circle" size={24} color={COLORS.primary} />
+            <SVGIcon name="information-circle" size={24} color={primary} />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.chatArea}>
-          <ScrollView
-            ref={scrollRef}
-            style={styles.msgList}
-            contentContainerStyle={{ padding: 15, paddingBottom: 30 }}
-            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-            onScrollBeginDrag={() => { Keyboard.dismiss(); setShowEmojis(false); }}
-          >
-            {messages.map((m, i) => {
-              const isMe = m.senderId === appUser?.uid;
-              return (
-                <Animatable.View
-                  key={i}
-                  animation={isMe ? "fadeInRight" : "fadeInLeft"}
-                  duration={400}
-                  style={[styles.bubbleWrapper, isMe ? styles.meWrapper : styles.othersWrapper]}
+        <ScrollView
+          ref={scrollRef}
+          style={styles.chatArea}
+          contentContainerStyle={{ padding: 15, paddingBottom: 160 }}
+          onContentSizeChange={() =>
+            scrollRef.current?.scrollToEnd({ animated: true })
+          }
+          onScrollBeginDrag={() => Keyboard.dismiss()}
+          keyboardShouldPersistTaps="handled"
+        >
+          {messages.map((m, i) => (
+            <MessageBubble
+              key={i}
+              message={{
+                type: m.type || "text",
+                text: m.text,
+                senderName: m.senderName,
+                fileUrl: m.fileUrl,
+                createdAt: m.timestamp,
+              }}
+              isYou={m.senderId === appUser?.uid}
+            >
+              {m.type === "audio" ? (
+                <AudioPlayer url={m.fileUrl} />
+              ) : (
+                <Text
+                  style={[
+                    styles.msgText,
+                    m.senderId === appUser?.uid
+                      ? { color: "#fff" }
+                      : { color: "#1E293B" },
+                  ]}
                 >
-                  {!isMe && <Text style={styles.senderName}>{m.senderName}</Text>}
-                  <View style={[styles.bubble, isMe ? [styles.me, { backgroundColor: COLORS.primary }] : styles.others]}>
-                    <Text style={[styles.msgText, { color: isMe ? "#fff" : "#1E293B" }]}>{m.text}</Text>
-                  </View>
-                </Animatable.View>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        {showEmojis && (
-          <Animatable.View animation="fadeInUp" duration={300} style={styles.emojiContainer}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {QUICK_EMOJIS.map((emoji, index) => (
-                <TouchableOpacity key={index} onPress={() => addEmoji(emoji)} style={styles.emojiBtn}>
-                  <Text style={styles.emojiText}>{emoji}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </Animatable.View>
-        )}
+                  {m.text}
+                </Text>
+              )}
+            </MessageBubble>
+          ))}
+        </ScrollView>
 
         <View style={styles.inputBar}>
-          <TouchableOpacity onPress={() => { setShowEmojis(!showEmojis); if (!showEmojis) Keyboard.dismiss(); }} style={styles.emojiToggle}>
-            <Ionicons name={showEmojis ? "keypad" : "happy-outline"} size={26} color={COLORS.primary} />
+          {uploading && (
+            <ActivityIndicator
+              size="small"
+              color={primary}
+              style={{ marginRight: 10 }}
+            />
+          )}
+
+          <TouchableOpacity
+            onPressIn={startRecording}
+            onPressOut={stopRecordingAndSend}
+            style={[styles.iconBtn, recording && styles.recordingBtn]}
+          >
+            <SVGIcon
+              name={recording ? "mic" : "mic-outline"}
+              size={24}
+              color={recording ? "#fff" : primary}
+            />
           </TouchableOpacity>
           <TextInput
             style={styles.input}
@@ -163,11 +280,14 @@ export default function GroupChat() {
             value={input}
             onChangeText={setInput}
             multiline
-            onFocus={() => setShowEmojis(false)}
           />
           <TouchableOpacity
             onPress={sendMessage}
-            style={[styles.sendBtn, { backgroundColor: COLORS.primary }, !input.trim() && { opacity: 0.5 }]}
+            style={[
+              styles.sendBtn,
+              { backgroundColor: primary },
+              !input.trim() && { opacity: 0.5 },
+            ]}
             disabled={!input.trim()}
           >
             <SVGIcon name="send" size={20} color="#fff" />
@@ -190,26 +310,55 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F1F5F9",
     ...SHADOWS.small,
   },
-  backBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center' },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   headerInfo: { flex: 1, marginLeft: 15 },
   headerTitle: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
   headerSub: { fontSize: 12, color: "#64748B", fontWeight: "600" },
   headerAction: { padding: 5 },
   chatArea: { flex: 1 },
-  msgList: { flex: 1 },
-  bubbleWrapper: { marginVertical: 6, maxWidth: "85%" },
-  meWrapper: { alignSelf: "flex-end" },
-  othersWrapper: { alignSelf: "flex-start" },
-  bubble: { padding: 12, paddingHorizontal: 16, borderRadius: 20, ...SHADOWS.small },
-  me: { borderBottomRightRadius: 4 },
-  others: { backgroundColor: "#fff", borderBottomLeftRadius: 4, borderWidth: 1, borderColor: "#F1F5F9" },
   msgText: { fontSize: 15, lineHeight: 22 },
-  senderName: { fontSize: 11, fontWeight: "800", marginBottom: 4, marginLeft: 10, color: COLORS.primary },
-  emojiContainer: { backgroundColor: "#fff", paddingVertical: 10, paddingHorizontal: 15, borderTopWidth: 1, borderColor: "#F1F5F9" },
-  emojiBtn: { padding: 8, marginRight: 10 },
-  emojiText: { fontSize: 24 },
-  inputBar: { flexDirection: "row", padding: 12, alignItems: "center", backgroundColor: "#fff", borderTopWidth: 1, borderColor: "#E2E8F0" },
-  emojiToggle: { padding: 5, marginRight: 5 },
-  input: { flex: 1, backgroundColor: "#F1F5F9", borderRadius: 25, paddingHorizontal: 18, paddingVertical: 10, maxHeight: 100, fontSize: 15, color: "#0F172A" },
-  sendBtn: { width: 48, height: 48, borderRadius: 24, marginLeft: 10, justifyContent: "center", alignItems: "center", ...SHADOWS.medium },
+  inputBar: {
+    flexDirection: "row",
+    padding: 12,
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderColor: "#E2E8F0",
+    gap: 10,
+    paddingBottom: Platform.OS === "ios" ? 25 : 20,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 25,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    maxHeight: 100,
+    fontSize: 15,
+    color: "#0F172A",
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  recordingBtn: { backgroundColor: "#EF4444" },
+  sendBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    ...SHADOWS.medium,
+  },
 });

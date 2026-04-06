@@ -1,37 +1,40 @@
 import { Audio } from "expo-av";
 import {
-  addDoc,
-  collection,
-  documentId,
-  getDocs,
-  limit,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  where,
+    addDoc,
+    collection,
+    documentId,
+    getDocs,
+    limit,
+    onSnapshot,
+    orderBy,
+    query,
+    serverTimestamp,
+    where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
+import SVGIcon from "../../components/SVGIcon";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, storage } from "../../firebaseConfig";
-import SVGIcon from "../../components/SVGIcon";
+import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 type Child = {
   uid: string;
@@ -43,11 +46,11 @@ type Teacher = {
   profile: { firstName: string; lastName: string; phone: string };
   pushToken?: string;
 };
-type Message = { 
-  id: string; 
-  text?: string; 
+type Message = {
+  id: string;
+  text?: string;
   fileUrl?: string;
-  senderId: string; 
+  senderId: string;
   createdAt: any;
   type: "text" | "audio";
 };
@@ -78,6 +81,8 @@ export default function ParentChatWithTeacher() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const messagesLenRef = useRef<number>(0);
   const appUserUidRef = useRef<string | undefined>(appUser?.uid);
+
+  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
 
   useEffect(() => {
     appUserUidRef.current = appUser?.uid;
@@ -183,6 +188,17 @@ export default function ParentChatWithTeacher() {
     return () => unsubscribe();
   }, [chatId]);
 
+  const { registerDirectChat, markChatRead, unregisterDirectChat } =
+    useUnreadCounts();
+  useEffect(() => {
+    if (!chatId) return;
+    registerDirectChat(chatId);
+    markChatRead("direct", chatId);
+    return () => {
+      unregisterDirectChat(chatId);
+    };
+  }, [chatId]);
+
   const startRecording = async () => {
     try {
       const permission = await Audio.requestPermissionsAsync();
@@ -194,7 +210,7 @@ export default function ParentChatWithTeacher() {
       });
 
       const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
       );
       setRecording(recording);
       setPreviewUri(null);
@@ -239,7 +255,15 @@ export default function ParentChatWithTeacher() {
     setMessageText("");
   };
 
-  const sendMessage = async ({ type, text, fileUrl }: { type: "text" | "audio", text?: string, fileUrl?: string }) => {
+  const sendMessage = async ({
+    type,
+    text,
+    fileUrl,
+  }: {
+    type: "text" | "audio";
+    text?: string;
+    fileUrl?: string;
+  }) => {
     if (!chatId) return;
     await addDoc(collection(db, "directMessages", chatId, "messages"), {
       text: text || null,
@@ -253,7 +277,7 @@ export default function ParentChatWithTeacher() {
   if (loading)
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
+        <ActivityIndicator size="large" color={primary} />
       </View>
     );
 
@@ -262,9 +286,9 @@ export default function ParentChatWithTeacher() {
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: "#fff" }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 70}
       >
-        <View style={styles.chatHeader}>
+        <View style={[styles.chatHeader, { backgroundColor: primary }]}>
           <TouchableOpacity onPress={() => setStage("select_teacher")}>
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
@@ -282,40 +306,87 @@ export default function ParentChatWithTeacher() {
               message={item}
               isYou={item.senderId === appUser?.uid}
             >
-              {item.type === "text" && item.text && <Text style={{ fontSize: 15, color: item.senderId === appUser?.uid ? '#fff' : '#1E293B' }}>{item.text}</Text>}
-              {item.type === "audio" && item.fileUrl && <AudioPlayer url={item.fileUrl} />}
+              {item.type === "text" && item.text && (
+                <Text
+                  style={{
+                    fontSize: 15,
+                    color: item.senderId === appUser?.uid ? "#fff" : "#1E293B",
+                  }}
+                >
+                  {item.text}
+                </Text>
+              )}
+              {item.type === "audio" && item.fileUrl && (
+                <AudioPlayer url={item.fileUrl} />
+              )}
             </MessageBubble>
           )}
-          contentContainerStyle={{ padding: 10 }}
+          contentContainerStyle={{ padding: 10, paddingBottom: 140 }}
+          keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
+          onScrollBeginDrag={() => {
+            Keyboard.dismiss();
+          }}
         />
-        
-        <View style={styles.inputArea}>
-          {uploading && <ActivityIndicator size="small" color={COLORS.primary} style={{ marginBottom: 8 }}/>}
+
+        <View
+          style={[
+            styles.inputArea,
+            { paddingBottom: Platform.OS === "android" ? 12 : 20 },
+          ]}
+        >
+          {uploading && (
+            <ActivityIndicator
+              size="small"
+              color={primary}
+              style={{ marginBottom: 8 }}
+            />
+          )}
           {previewUri ? (
-            <Animatable.View animation="slideInUp" duration={300} style={styles.previewContainer}>
-              <TouchableOpacity onPress={() => setPreviewUri(null)}><SVGIcon name="close-circle" size={28} color={COLORS.danger}/></TouchableOpacity>
-              <View style={{ flex: 1, marginHorizontal: 12 }}><AudioPlayer url={previewUri}/></View>
-              <TouchableOpacity onPress={sendVoiceMessage}><SVGIcon name="send" size={24} color={COLORS.primary}/></TouchableOpacity>
+            <Animatable.View
+              animation="slideInUp"
+              duration={300}
+              style={styles.previewContainer}
+            >
+              <TouchableOpacity onPress={() => setPreviewUri(null)}>
+                <SVGIcon name="close-circle" size={28} color={COLORS.danger} />
+              </TouchableOpacity>
+              <View style={{ flex: 1, marginHorizontal: 12 }}>
+                <AudioPlayer url={previewUri} />
+              </View>
+              <TouchableOpacity onPress={sendVoiceMessage}>
+                <SVGIcon name="send" size={24} color={primary} />
+              </TouchableOpacity>
             </Animatable.View>
           ) : (
             <View style={styles.inputRow}>
-              <TouchableOpacity onPress={recording ? stopRecording : startRecording} style={[styles.iconBtn, recording && styles.recordingBtn]}>
-                <SVGIcon name={recording ? "square" : "mic"} size={24} color={recording ? "#fff" : COLORS.gray}/>
+              <TouchableOpacity
+                onPress={recording ? stopRecording : startRecording}
+                style={[styles.iconBtn, recording && styles.recordingBtn]}
+              >
+                <SVGIcon
+                  name={recording ? "square" : "mic"}
+                  size={24}
+                  color={recording ? "#fff" : COLORS.gray}
+                />
               </TouchableOpacity>
-              <TextInput 
-                value={messageText} 
-                onChangeText={setMessageText} 
-                placeholder="Type your message..." 
-                style={styles.input} 
+              <TextInput
+                value={messageText}
+                onChangeText={setMessageText}
+                placeholder="Type your message..."
+                style={styles.input}
                 multiline
               />
-              <TouchableOpacity 
-                onPress={handleSendMessage} 
-                style={[styles.sendBtn, !messageText.trim() && styles.sendBtnDisabled]} 
+              <TouchableOpacity
+                onPress={handleSendMessage}
+                style={[
+                  styles.sendBtn,
+                  { backgroundColor: primary },
+                  !messageText.trim() && styles.sendBtnDisabled,
+                ]}
                 disabled={!messageText.trim()}
               >
-                <SVGIcon name="send" size={20} color="#fff"/>
+                <SVGIcon name="send" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
           )}
@@ -326,7 +397,7 @@ export default function ParentChatWithTeacher() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>
+      <Text style={[styles.header, { color: primary }]}>
         {stage === "select_child" ? "Select Student" : "Select Teacher"}
       </Text>
       <FlatList
@@ -357,7 +428,6 @@ const styles = StyleSheet.create({
   header: {
     fontSize: 24,
     fontWeight: "bold",
-    color: COLORS.primary,
     marginBottom: 20,
   },
   listItem: {
@@ -372,7 +442,6 @@ const styles = StyleSheet.create({
   },
   listItemText: { fontSize: 16, fontWeight: "600" },
   chatHeader: {
-    backgroundColor: COLORS.primary,
     paddingTop: 50,
     paddingBottom: 15,
     paddingHorizontal: 16,
@@ -387,7 +456,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#F1F5F9",
     backgroundColor: "#fff",
   },
-  inputRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   input: {
     flex: 1,
     backgroundColor: "#F8FAFC",
@@ -402,7 +471,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
   },

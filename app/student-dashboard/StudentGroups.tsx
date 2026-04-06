@@ -5,16 +5,18 @@ import {
     ActivityIndicator,
     FlatList,
     SafeAreaView,
+    StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
-    StatusBar,
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
+import UnreadBadge from "../../components/UnreadBadge";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 type Group = {
   id: string;
@@ -29,6 +31,7 @@ export default function StudentGroups() {
 
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
+  const { groupUnread, markChatRead } = useUnreadCounts();
 
   useEffect(() => {
     if (!appUser?.uid) return;
@@ -86,14 +89,21 @@ export default function StudentGroups() {
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.groupCard}
-            onPress={() =>
+            onPress={() => {
               router.push({
                 pathname: "/student-dashboard/GroupChat",
                 params: { groupId: item.id, groupName: item.name },
-              })
-            }
+              });
+              // mark read when opened
+              markChatRead("group", item.id);
+            }}
           >
-            <View style={[styles.iconWrapper, { backgroundColor: COLORS.primary + "15" }]}>
+            <View
+              style={[
+                styles.iconWrapper,
+                { backgroundColor: COLORS.primary + "15" },
+              ]}
+            >
               <SVGIcon name="people" size={28} color={COLORS.primary} />
             </View>
 
@@ -104,13 +114,20 @@ export default function StudentGroups() {
               </Text>
             </View>
 
-            <SVGIcon name="chevron-forward" size={20} color="#94A3B8" />
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+            >
+              {groupUnread[item.id] ? (
+                <UnreadBadge count={groupUnread[item.id]} />
+              ) : null}
+              <SVGIcon name="chevron-forward" size={20} color="#94A3B8" />
+            </View>
           </TouchableOpacity>
         )}
         ListEmptyComponent={() => (
           <View style={styles.empty}>
             <View style={styles.emptyIconCircle}>
-               <SVGIcon name="chatbubbles" size={60} color="#CBD5E1" />
+              <SVGIcon name="chatbubbles" size={60} color="#CBD5E1" />
             </View>
             <Text style={styles.emptyTitle}>No groups yet!</Text>
             <Text style={styles.emptySub}>
@@ -126,10 +143,26 @@ export default function StudentGroups() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FDFDFD" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { padding: 20, flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  backBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', marginRight: 15, ...SHADOWS.small },
+  header: {
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+    ...SHADOWS.small,
+  },
   title: { fontSize: 24, fontWeight: "900", color: "#0F172A" },
-  subtitle: { fontSize: 14, color: "#64748B", fontWeight: '600', marginTop: 2 },
+  subtitle: { fontSize: 14, color: "#64748B", fontWeight: "600", marginTop: 2 },
   groupCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -150,9 +183,24 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   groupName: { fontSize: 17, fontWeight: "800", color: "#1E293B" },
-  sub: { fontSize: 13, color: "#64748B", marginTop: 4, fontWeight: '500' },
+  sub: { fontSize: 13, color: "#64748B", marginTop: 4, fontWeight: "500" },
   empty: { marginTop: 100, alignItems: "center", paddingHorizontal: 40 },
-  emptyIconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
+  emptyIconCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
   emptyTitle: { fontSize: 20, fontWeight: "900", color: "#1E293B" },
-  emptySub: { textAlign: "center", marginTop: 8, color: "#64748B", fontWeight: '500', fontSize: 14, lineHeight: 20 },
+  emptySub: {
+    textAlign: "center",
+    marginTop: 8,
+    color: "#64748B",
+    fontWeight: "500",
+    fontSize: 14,
+    lineHeight: 20,
+  },
 });

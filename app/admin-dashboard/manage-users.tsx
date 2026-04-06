@@ -1,5 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
     arrayRemove,
     arrayUnion,
@@ -7,7 +7,6 @@ import {
     deleteDoc,
     doc,
     documentId,
-    getCountFromServer,
     getDoc,
     limit,
     onSnapshot,
@@ -18,14 +17,16 @@ import {
     writeBatch,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
     FlatList,
     Image,
+    KeyboardAvoidingView,
     Modal,
+    Platform,
     RefreshControl,
     ScrollView,
     StatusBar,
@@ -35,8 +36,6 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    KeyboardAvoidingView,
-    Platform
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -71,6 +70,7 @@ interface User {
   classTeacherOf?: string;
   classId?: string;
   assignedRoles?: string[];
+  departmentHeadOf?: string;
   childrenIds?: string[];
   parentUids?: string[];
   canCreateNews?: boolean;
@@ -82,6 +82,7 @@ interface User {
   archivedAt?: any;
   archivedInYear?: string;
 }
+
 
 const roles: { name: string; role: UserRole; icon: string }[] = [
   { name: "Admins", role: "admin", icon: "shield-checkmark" },
@@ -150,6 +151,7 @@ export default function ManageUsers() {
   }>({ type: "none", target: null });
 
   const [customRoleText, setCustomRoleText] = useState("");
+  const [deptText, setDeptText] = useState("");
   const [newsPermission, setNewsPermission] = useState(false);
   const [tempPermissions, setTempPermissions] = useState<
     Record<string, PermissionLevel>
@@ -228,7 +230,7 @@ export default function ManageUsers() {
         },
       );
       return () => unsub();
-    }, [selectedRole, selectedClassId, hasManageUsersAccess, showArchived])
+    }, [selectedRole, selectedClassId, hasManageUsersAccess, showArchived]),
   );
 
   const filteredUsers = useMemo(() => {
@@ -262,14 +264,8 @@ export default function ManageUsers() {
           snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as User),
         );
       }
-      if (user.role === "teacher") {
-        const assignmentsQuery = query(
-          collection(db, "assignments"),
-          where("teacherId", "==", user.uid),
-        );
-        const countSnap = await getCountFromServer(assignmentsQuery);
-        setAssignmentCount(countSnap.data().count);
-      }
+      // Avoid performing a server-side count on load to reduce Firestore costs.
+      // If needed, assignment count can be fetched on demand.
     } catch (err) {
       console.error(err);
     } finally {
@@ -281,25 +277,32 @@ export default function ManageUsers() {
     if (!viewingUser) return;
     setUpdating(true);
     try {
-        const batch = writeBatch(db);
-        // Remove parent from student's array
-        batch.update(doc(db, "users", viewingUser.uid), {
-            parentUids: arrayRemove(parentUid)
-        });
-        // Remove student from parent's array
-        batch.update(doc(db, "users", parentUid), {
-            childrenIds: arrayRemove(viewingUser.uid)
-        });
-        await batch.commit();
-        
-        // Refresh local UI state
-        setLinkedUsers(prev => prev.filter(u => u.uid !== parentUid));
-        setViewingUser(prev => prev ? { ...prev, parentUids: prev.parentUids?.filter(id => id !== parentUid) } : null);
-        Alert.alert("Success", "Parent unlinked from student record.");
+      const batch = writeBatch(db);
+      // Remove parent from student's array
+      batch.update(doc(db, "users", viewingUser.uid), {
+        parentUids: arrayRemove(parentUid),
+      });
+      // Remove student from parent's array
+      batch.update(doc(db, "users", parentUid), {
+        childrenIds: arrayRemove(viewingUser.uid),
+      });
+      await batch.commit();
+
+      // Refresh local UI state
+      setLinkedUsers((prev) => prev.filter((u) => u.uid !== parentUid));
+      setViewingUser((prev) =>
+        prev
+          ? {
+              ...prev,
+              parentUids: prev.parentUids?.filter((id) => id !== parentUid),
+            }
+          : null,
+      );
+      Alert.alert("Success", "Parent unlinked from student record.");
     } catch (err) {
-        Alert.alert("Error", "Failed to unlink parent.");
+      Alert.alert("Error", "Failed to unlink parent.");
     } finally {
-        setUpdating(false);
+      setUpdating(false);
     }
   };
 
@@ -318,20 +321,33 @@ export default function ManageUsers() {
       setUpdating(false);
     }
   };
-
+  // Assign a role to the currently selected assignment target (assignmentModal.target)
   const handleAssignRole = async (roleName: string) => {
-    const teacher = assignmentModal.target;
-    if (!teacher) return;
+    const target = assignmentModal.target;
+    if (!target) return;
     setUpdating(true);
     try {
-      await updateDoc(doc(db, "users", teacher.uid), {
-        assignedRoles: arrayUnion(roleName),
-        canCreateNews: newsPermission,
-      });
+      const userRef = doc(db, "users", target.uid);
+      await updateDoc(userRef, { assignedRoles: arrayUnion(roleName) });
+
+      // update local viewingUser state if it's the same user
+      setViewingUser((prev) =>
+        prev && prev.uid === target.uid
+          ? ({
+              ...prev,
+              assignedRoles: Array.from(new Set([...(prev.assignedRoles || []), roleName])),
+            } as User)
+          : prev,
+      );
       setAssignmentModal({ type: "none", target: null });
-      setCustomRoleText("");
-      Alert.alert("Success", `Role assigned: ${roleName}`);
-    } catch {
+      if (Platform.OS === "web") {
+        // eslint-disable-next-line no-restricted-globals
+        window.alert("Role assigned.");
+      } else {
+        Alert.alert("Success", "Role assigned.");
+      }
+    } catch (e) {
+      console.error(e);
       Alert.alert("Error", "Failed to assign role.");
     } finally {
       setUpdating(false);
@@ -370,6 +386,103 @@ export default function ManageUsers() {
       Alert.alert("Success", "Class Teacher assigned.");
     } catch {
       Alert.alert("Error", "Assignment failed.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Assign department head role with department text
+  const handleAssignDeptHead = async (department: string) => {
+    const target = assignmentModal.target;
+    if (!target) return;
+    if (!department || !department.trim())
+      return Alert.alert("Error", "Please enter a department name.");
+    setUpdating(true);
+    try {
+      const userRef = doc(db, "users", target.uid);
+      await updateDoc(userRef, {
+        assignedRoles: arrayUnion("Dept Head"),
+        departmentHeadOf: department.trim(),
+      });
+      setViewingUser((prev) =>
+        prev && prev.uid === target.uid
+          ? ({
+              ...prev,
+              assignedRoles: Array.from(new Set([...(prev.assignedRoles || []), "Dept Head"])),
+              departmentHeadOf: department.trim(),
+            } as User)
+          : prev,
+      );
+      setAssignmentModal({ type: "none", target: null });
+      Alert.alert("Success", "Department head assigned.");
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Assignment failed.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  // Remove an assigned role from a user (with confirmation)
+  const handleRemoveAssignedRole = async (roleName: string, user: User) => {
+    const proceed =
+      Platform.OS === "web"
+        ? // eslint-disable-next-line no-restricted-globals
+          (window.confirm(
+            `Remove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`,
+          ) as boolean)
+        : await new Promise<boolean>((resolve) =>
+            Alert.alert(
+              "Confirm",
+              `Remove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`,
+              [
+                { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                { text: "Remove", style: "destructive", onPress: () => resolve(true) },
+              ],
+            ),
+          );
+
+    if (!proceed) return;
+    setUpdating(true);
+    try {
+      const batch = writeBatch(db);
+      const userRef = doc(db, "users", user.uid);
+      batch.update(userRef, { assignedRoles: arrayRemove(roleName) });
+
+      if (roleName === "Dept Head") {
+        batch.update(userRef, { departmentHeadOf: null });
+      }
+
+      if (roleName === "Class Teacher" || user.classTeacherOf) {
+        if (user.classTeacherOf) {
+          batch.update(doc(db, "classes", user.classTeacherOf), {
+            classTeacherId: null,
+          });
+        }
+        batch.update(userRef, { classTeacherOf: null });
+      }
+
+      await batch.commit();
+
+      setViewingUser((prev) =>
+        prev
+          ? ({
+              ...prev,
+              assignedRoles: prev.assignedRoles?.filter((r) => r !== roleName),
+              departmentHeadOf: roleName === "Dept Head" ? undefined : prev.departmentHeadOf,
+              classTeacherOf: roleName === "Class Teacher" ? undefined : prev.classTeacherOf,
+            } as User)
+          : prev,
+      );
+      if (Platform.OS === "web") {
+        // eslint-disable-next-line no-restricted-globals
+        window.alert("Role removed.");
+      } else {
+        Alert.alert("Success", "Role removed.");
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to remove role.");
     } finally {
       setUpdating(false);
     }
@@ -528,13 +641,11 @@ export default function ManageUsers() {
     if (!date) return "N/A";
     try {
       if (date.toDate)
-        return date
-          .toDate()
-          .toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          });
+        return date.toDate().toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        });
       return new Date(date).toLocaleDateString("en-GB", {
         day: "numeric",
         month: "short",
@@ -839,6 +950,66 @@ export default function ManageUsers() {
                     <Text style={styles.detailRole}>
                       {viewingUser.adminRole || viewingUser.role.toUpperCase()}
                     </Text>
+                    {viewingUser.assignedRoles &&
+                      viewingUser.assignedRoles.length > 0 && (
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            marginTop: 8,
+                            gap: 8,
+                          }}
+                        >
+                          {viewingUser.assignedRoles.map((r, idx) => (
+                            <View
+                              key={idx}
+                              style={[
+                                styles.badge,
+                                {
+                                  backgroundColor: "#eef2ff",
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  paddingHorizontal: 10,
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[styles.badgeText, { color: "#4f46e5" }]}
+                              >
+                                {r}
+                              </Text>
+                              {hasManageUsersAccess && (
+                                <TouchableOpacity
+                                  onPress={() =>
+                                    handleRemoveAssignedRole(r, viewingUser)
+                                  }
+                                  style={{ marginLeft: 8 }}
+                                >
+                                  <SVGIcon
+                                    name="close"
+                                    size={12}
+                                    color="#374151"
+                                  />
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          ))}
+                          {viewingUser.departmentHeadOf ? (
+                            <View
+                              style={[
+                                styles.badge,
+                                { backgroundColor: "#fff7ed" },
+                              ]}
+                            >
+                              <Text
+                                style={[styles.badgeText, { color: "#b45309" }]}
+                              >
+                                Dept: {viewingUser.departmentHeadOf}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+                      )}
                   </View>
 
                   {viewingUser.role === "student" && (
@@ -886,6 +1057,24 @@ export default function ManageUsers() {
                           </Text>
                         </View>
                       )}
+                    </View>
+                  )}
+
+                  {viewingUser.role === "teacher" && (
+                    <View style={styles.infoSection}>
+                      <Text style={styles.infoLabel}>Teaching Assignments</Text>
+                      <View style={styles.infoGrid}>
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoKey}>Class Teacher Of:</Text>
+                          <Text style={styles.infoValue}>
+                            {viewingUser.classTeacherOf
+                              ? allClasses.find(
+                                  (c) => c.id === viewingUser.classTeacherOf,
+                                )?.name || viewingUser.classTeacherOf
+                              : "N/A"}
+                          </Text>
+                        </View>
+                      </View>
                     </View>
                   )}
 
@@ -961,17 +1150,26 @@ export default function ManageUsers() {
                             </View>
                             {/* UNLINK BUTTON FOR ADMINS */}
                             {viewingUser.role === "student" && (
-                                <TouchableOpacity 
-                                    style={styles.unlinkBtn}
-                                    onPress={() => {
-                                        Alert.alert("Unlink Parent", `Remove ${u.profile.firstName} from this student's records?`, [
-                                            { text: "Cancel", style: "cancel" },
-                                            { text: "Unlink", style: "destructive", onPress: () => handleUnlinkParent(u.uid) }
-                                        ]);
-                                    }}
-                                >
-                                    <Text style={styles.unlinkBtnText}>UNLINK</Text>
-                                </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.unlinkBtn}
+                                onPress={() => {
+                                  Alert.alert(
+                                    "Unlink Parent",
+                                    `Remove ${u.profile.firstName} from this student's records?`,
+                                    [
+                                      { text: "Cancel", style: "cancel" },
+                                      {
+                                        text: "Unlink",
+                                        style: "destructive",
+                                        onPress: () =>
+                                          handleUnlinkParent(u.uid),
+                                      },
+                                    ],
+                                  );
+                                }}
+                              >
+                                <Text style={styles.unlinkBtnText}>UNLINK</Text>
+                              </TouchableOpacity>
                             )}
                           </View>
                         ))}
@@ -1066,8 +1264,8 @@ export default function ManageUsers() {
         transparent
         animationType="slide"
       >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.modalOverlay}
         >
           <View style={styles.assignmentSheet}>
@@ -1083,7 +1281,7 @@ export default function ManageUsers() {
                 <SVGIcon name="close" size={24} color="#94A3B8" />
               </TouchableOpacity>
             </View>
-            <ScrollView 
+            <ScrollView
               contentContainerStyle={{ padding: 25, paddingBottom: 60 }}
               showsVerticalScrollIndicator={false}
             >
@@ -1221,6 +1419,67 @@ export default function ManageUsers() {
                   ))}
                 </View>
               )}
+              {assignmentModal.type === "dept_head" && (
+                <View>
+                  <Text style={[styles.pickerLabel, { marginBottom: 8 }]}>
+                    Department
+                  </Text>
+                  <TextInput
+                    placeholder="e.g. Mathematics, Science"
+                    style={styles.textInput}
+                    value={deptText}
+                    onChangeText={setDeptText}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: COLORS.primary },
+                    ]}
+                    onPress={() => handleAssignDeptHead(deptText)}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Assign Dept Head</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+              {assignmentModal.type === "other" && (
+                <View>
+                  <Text style={[styles.pickerLabel, { marginBottom: 8 }]}>
+                    Custom Role
+                  </Text>
+                  <TextInput
+                    placeholder="Enter custom role"
+                    style={styles.textInput}
+                    value={customRoleText}
+                    onChangeText={setCustomRoleText}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: COLORS.primary },
+                    ]}
+                    onPress={() => {
+                      if (!customRoleText || !customRoleText.trim())
+                        return Alert.alert(
+                          "Error",
+                          "Please enter a role name.",
+                        );
+                      handleAssignRole(customRoleText.trim());
+                    }}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Assign Role</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
@@ -1351,7 +1610,7 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 500,
     maxHeight: "90%",
-    overflow: 'hidden',
+    overflow: "hidden",
     ...SHADOWS.large,
   },
   modalHeader: {
@@ -1428,8 +1687,13 @@ const styles = StyleSheet.create({
   linkedAvatar: { width: 35, height: 35, borderRadius: 10, marginRight: 12 },
   linkedName: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
   linkedSub: { fontSize: 11, color: "#94A3B8" },
-  unlinkBtn: { backgroundColor: '#FEE2E2', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  unlinkBtnText: { color: '#EF4444', fontSize: 9, fontWeight: '900' },
+  unlinkBtn: {
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  unlinkBtnText: { color: "#EF4444", fontSize: 9, fontWeight: "900" },
   btnStack: { paddingBottom: 40 },
   actionButton: {
     height: 55,
@@ -1502,6 +1766,21 @@ const styles = StyleSheet.create({
     backgroundColor: "#f8fafc",
     borderRadius: 12,
     overflow: "hidden",
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#475569",
+    marginBottom: 6,
+  },
+  textInput: {
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    fontSize: 14,
+    color: "#1E293B",
   },
   saveBtn: {
     height: 60,

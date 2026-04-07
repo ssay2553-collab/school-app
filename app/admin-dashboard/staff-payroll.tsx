@@ -168,14 +168,30 @@ export default function StaffPayrollScreen() {
     const val = editingSalaries[item.id];
     const newSalary = parseFloat(val);
     if (isNaN(newSalary) || !canEditSalary) return;
+
     setUpdatingId(item.id);
     try {
       const col = item.role === "Teacher" ? "users" : "nonTeachingStaff";
       await updateDoc(doc(db, col, item.id), { salary: newSalary });
-      setStaff((prev) => prev.map((s) => (s.id === item.id ? { ...s, salary: newSalary } : s)));
-      fetchTotalCommitment();
+
+      // Update local state first for immediate UI response
+      setStaff((prev) =>
+        prev.map((s) => (s.id === item.id ? { ...s, salary: newSalary } : s))
+      );
+
+      // Update cached total commitment locally to avoid heavy server calls immediately
+      setSchoolTotalPayroll((prevTotal) => {
+        const oldSalary = item.salary || 0;
+        return prevTotal - oldSalary + newSalary;
+      });
+
       Alert.alert("Success", "Salary updated.");
-    } catch { Alert.alert("Error", "Update failed."); } finally { setUpdatingId(null); }
+    } catch (error) {
+      console.error("Update salary error:", error);
+      Alert.alert("Error", "Update failed.");
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   const handleAddNonTeaching = async () => {

@@ -3,8 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
   addDoc,
   collection,
-  getAggregateFromServer,
-  sum,
+  onSnapshot,
   orderBy,
   query,
   serverTimestamp,
@@ -102,76 +101,44 @@ export default function ExpenditureScreen() {
     }
   }, [acadConfig]);
 
-  const fetchExpenditures = useCallback(async (isRefresh = false) => {
+  useEffect(() => {
     if (!selectedYear || !selectedTerm) {
       setLoading(false);
-      setRefreshing(false);
       return;
     }
-    
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
 
-    const cacheKey = `EXP_CACHE_V4_${selectedYear}_${selectedTerm}`;
+    setLoading(true);
+    const q = query(
+      collection(db, "expenditures"),
+      where("academicYear", "==", selectedYear),
+      where("term", "==", selectedTerm),
+      orderBy("createdAt", "desc")
+    );
 
-    try {
-      if (!isRefresh) {
-        const cached = await AsyncStorage.getItem(cacheKey);
-        if (cached) {
-            try {
-                const parsed = JSON.parse(cached);
-                const { list, total, timestamp } = parsed;
-                if (timestamp && Date.now() - timestamp < CACHE_EXPIRY) {
-                  setExpenditures(list || []);
-                  setServerTotal(total || 0);
-                  setLoading(false);
-                  return;
-                }
-            } catch (e) {}
-        }
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Expenditure);
+        // Ensure uniqueness and valid data
+        const uniqueList = Array.from(new Map(list.map((item) => [item.id, item])).values());
+        setExpenditures(uniqueList);
+
+        // Update total spending locally from the current list
+        const total = uniqueList.reduce((sum, item) => sum + (item.amount || 0), 0);
+        setServerTotal(total);
+
+        setLoading(false);
+        setRefreshing(false);
+      },
+      (error) => {
+        console.error("Expenditure snapshot error:", error);
+        setLoading(false);
+        setRefreshing(false);
       }
+    );
 
-      const q = query(
-        collection(db, "expenditures"),
-        where("academicYear", "==", selectedYear),
-        where("term", "==", selectedTerm),
-        orderBy("createdAt", "desc")
-      );
-
-      // Wrapper for aggregate server calls which can fail on Android network drops
-      let totalValue = 0;
-      try {
-          const aggSnap = await getAggregateFromServer(q, { total: sum("amount") });
-          totalValue = aggSnap.data().total || 0;
-      } catch (e) { console.warn("Aggregate fail:", e); }
-
-      const docSnap = isRefresh ? await getDocsFromServer(q) : await getDocsCacheFirst(q as any);
-
-      const list = docSnap.docs.map(d => ({ id: d.id, ...d.data() } as Expenditure));
-      const uniqueList = Array.from(new Map(list.map(item => [item.id, item])).values());
-      
-      setServerTotal(totalValue);
-      setExpenditures(uniqueList);
-
-      await AsyncStorage.setItem(cacheKey, JSON.stringify({
-        list: uniqueList,
-        total: totalValue,
-        timestamp: Date.now()
-      }));
-
-    } catch (error) {
-      console.error("Fetch expenditures error:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    return () => unsubscribe();
   }, [selectedYear, selectedTerm]);
-
-  useEffect(() => {
-    if (selectedYear && selectedTerm) {
-      fetchExpenditures();
-    }
-  }, [fetchExpenditures, selectedYear, selectedTerm]);
 
   const addExpenditure = async () => {
     if (!canEdit) return Alert.alert("Denied", "You don't have permission to add entries.");
@@ -191,18 +158,10 @@ export default function ExpenditureScreen() {
         term: selectedTerm,
         createdAt: serverTimestamp(),
       });
-      
-      const cacheKey = `EXP_CACHE_V4_${selectedYear}_${selectedTerm}`;
-      await AsyncStorage.removeItem(cacheKey);
-      
+
       setModalVisible(false);
       setItemName("");
       setAmount("");
-
-      // Delay slightly to ensure Firestore index/latency doesn't return old data
-      setTimeout(() => {
-        fetchExpenditures(true);
-      }, 800);
     } catch (e) {
       Alert.alert("Error", "Save failed.");
     } finally {

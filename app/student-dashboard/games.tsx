@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 
@@ -29,8 +30,20 @@ const REMARKS = [
   "Superstar! ⭐",
   "Way to go! 🚀",
 ];
-const getRandomRemark = () =>
-  REMARKS[Math.floor(Math.random() * REMARKS.length)];
+
+const WRONG_REMARKS = [
+  "Not quite, but keep trying! 💪",
+  "Oops! You'll get it next time! ✨",
+  "So close! Try again! 🌈",
+  "Don't give up! You're learning! 🧠",
+  "Almost there! Keep going! 🚀",
+  "Keep your chin up! You can do it! ⭐",
+];
+
+const getRandomRemark = (isCorrect: boolean = true) => {
+  const list = isCorrect ? REMARKS : WRONG_REMARKS;
+  return list[Math.floor(Math.random() * list.length)];
+};
 
 type GameMode = "menu" | "quiz" | "word" | "memory" | "math" | "scramble";
 
@@ -145,6 +158,7 @@ const QuizGame = ({ onExit }: { onExit: () => void }) => {
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [remark, setRemark] = useState<string>("");
   const [showSummary, setShowSummary] = useState(false);
 
   const startStage = useCallback(() => {
@@ -153,6 +167,7 @@ const QuizGame = ({ onExit }: { onExit: () => void }) => {
     setScore(0);
     setSelected(null);
     setIsCorrect(null);
+    setRemark("");
     setShowSummary(false);
   }, []);
 
@@ -165,12 +180,14 @@ const QuizGame = ({ onExit }: { onExit: () => void }) => {
     const correct = opt === questions[index].answer;
     setSelected(opt);
     setIsCorrect(correct);
+    setRemark(getRandomRemark(correct));
     if (correct) setScore((s) => s + 1);
     setTimeout(() => {
       if (index + 1 < questions.length) {
         setIndex((i) => i + 1);
         setSelected(null);
         setIsCorrect(null);
+        setRemark("");
       } else setShowSummary(true);
     }, 1500);
   };
@@ -210,6 +227,17 @@ const QuizGame = ({ onExit }: { onExit: () => void }) => {
       <View style={styles.questionContainer}>
         <Text style={styles.topicBadge}>{q.topic}</Text>
         <Text style={styles.questionText}>{q.question}</Text>
+        {remark ? (
+          <Animatable.Text
+            animation="bounceIn"
+            style={[
+              styles.quizRemark,
+              { color: isCorrect ? "#34D399" : "#F87171" },
+            ]}
+          >
+            {remark}
+          </Animatable.Text>
+        ) : null}
       </View>
       <View style={styles.optionsContainer}>
         {q.options.map((opt: string) => (
@@ -251,11 +279,12 @@ const WordHuntGame = ({ onExit }: { onExit: () => void }) => {
   }, [startStage]);
 
   const check = () => {
-    if (input.toUpperCase().trim() === words[index].word) {
+    const isCorrect = input.toUpperCase().trim() === words[index].word;
+    if (isCorrect) {
       setScore((s) => s + 1);
-      Alert.alert("Correct!", getRandomRemark());
+      Alert.alert("Correct!", getRandomRemark(true));
     } else {
-      Alert.alert("Wrong", `The word was ${words[index].word}`);
+      Alert.alert("Oops!", `${getRandomRemark(false)}\n\nThe word was ${words[index].word}`);
     }
     if (index + 1 < words.length) {
       setIndex((i) => i + 1);
@@ -339,11 +368,12 @@ const ScrambleGame = ({ onExit }: { onExit: () => void }) => {
   }, [startStage]);
 
   const check = () => {
-    if (input.toUpperCase().trim() === words[index]) {
+    const isCorrect = input.toUpperCase().trim() === words[index];
+    if (isCorrect) {
       setScore((s) => s + 1);
-      Alert.alert("Bravo!", getRandomRemark());
+      Alert.alert("Bravo!", getRandomRemark(true));
     } else {
-      Alert.alert("Not Quite", `The word was ${words[index]}`);
+      Alert.alert("Not Quite", `${getRandomRemark(false)}\n\nThe word was ${words[index]}`);
     }
     if (index + 1 < words.length) {
       setIndex((i) => i + 1);
@@ -588,6 +618,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     textAlign: "center",
     lineHeight: 34,
+  },
+  quizRemark: {
+    fontSize: 22,
+    fontWeight: "900",
+    marginTop: 20,
+    textAlign: "center",
+    textShadowColor: "rgba(0, 0, 0, 0.1)",
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   optionsContainer: { gap: 15 },
   optionButton: {

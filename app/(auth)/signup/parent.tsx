@@ -53,6 +53,7 @@ export default function ParentSignup() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -144,7 +145,7 @@ export default function ParentSignup() {
 
   const handleSignup = async () => {
     Keyboard.dismiss();
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !phone || !email || !password || !confirmPassword) {
       return Alert.alert("Required", "Please fill in all profile details.");
     }
     if (password !== confirmPassword) {
@@ -194,7 +195,8 @@ export default function ParentSignup() {
         profile: { 
           firstName: firstName.trim(), 
           lastName: lastName.trim(), 
-          email: email.trim().toLowerCase() 
+          email: email.trim().toLowerCase(),
+          phone: phone.trim()
         },
         childrenIds: childrenUids,
         childrenClassIds: childrenClassIds,
@@ -254,6 +256,17 @@ export default function ParentSignup() {
                         placeholder="Doe" 
                     />
                 </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>PHONE NUMBER</Text>
+              <TextInput
+                style={styles.inputField}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="024 XXX XXXX"
+                keyboardType="phone-pad"
+              />
             </View>
 
             <View style={styles.inputGroup}>

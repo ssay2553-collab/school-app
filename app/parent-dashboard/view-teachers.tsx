@@ -43,6 +43,9 @@ interface Teacher {
     phone?: string;
     gender?: string;
     profileImage?: string;
+    bio?: string;
+    experience?: string;
+    education?: string;
   };
   role: "teacher";
   classes?: string[];
@@ -251,6 +254,43 @@ export default function ViewTeachers() {
                   <Text style={styles.profileEmail}>{viewingTeacher.profile.email || "No email provided"}</Text>
                 </View>
 
+                {viewingTeacher.profile.bio && (
+                  <View style={styles.infoSection}>
+                    <Text style={styles.sectionLabel}>ABOUT INSTRUCTOR</Text>
+                    <View style={styles.bioCard}>
+                       <SVGIcon name="quote" size={20} color={COLORS.primary + '30'} style={styles.quoteIcon} />
+                       <Text style={styles.bioText}>{viewingTeacher.profile.bio}</Text>
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.statsRow}>
+                   <View style={styles.statBox}>
+                      <Text style={styles.statValue}>{viewingTeacher.profile.experience || "0"}</Text>
+                      <Text style={styles.statLabel}>YRS EXP.</Text>
+                   </View>
+                   <View style={styles.statBox}>
+                      <Text style={styles.statValue} numberOfLines={1}>{viewingTeacher.profile.education?.split(' ')[0] || "N/A"}</Text>
+                      <Text style={styles.statLabel}>DEGREE</Text>
+                   </View>
+                   <View style={styles.statBox}>
+                      <Text style={styles.statValue}>{viewingTeacher.subjects?.length || "0"}</Text>
+                      <Text style={styles.statLabel}>SUBJECTS</Text>
+                   </View>
+                </View>
+
+                {viewingTeacher.profile.education && (
+                  <View style={styles.infoSection}>
+                    <Text style={styles.sectionLabel}>QUALIFICATIONS</Text>
+                    <View style={styles.infoCard}>
+                       <View style={styles.infoRow}>
+                          <SVGIcon name="school" size={18} color={COLORS.primary} />
+                          <Text style={styles.infoText}>{viewingTeacher.profile.education}</Text>
+                       </View>
+                    </View>
+                  </View>
+                )}
+
                 <View style={styles.infoSection}>
                   <Text style={styles.sectionLabel}>ASSIGNED ROLES</Text>
                   <View style={styles.infoCard}>
@@ -276,6 +316,19 @@ export default function ViewTeachers() {
                       {viewingTeacher.subjects.map((s, i) => (
                         <View key={i} style={styles.profileSubjectChip}>
                           <Text style={styles.profileSubjectText}>{s}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {viewingTeacher.classes && viewingTeacher.classes.length > 0 && (
+                  <View style={styles.infoSection}>
+                    <Text style={styles.sectionLabel}>CLASSES TAUGHT</Text>
+                    <View style={styles.profileSubjectGrid}>
+                      {viewingTeacher.classes.map((c, i) => (
+                        <View key={i} style={[styles.profileSubjectChip, { backgroundColor: '#F1F5F9' }]}>
+                          <Text style={[styles.profileSubjectText, { color: '#475569' }]}>{c}</Text>
                         </View>
                       ))}
                     </View>
@@ -372,6 +425,13 @@ const styles = StyleSheet.create({
   profileSubjectGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   profileSubjectChip: { backgroundColor: COLORS.primary + '10', paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12 },
   profileSubjectText: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
+  bioCard: { backgroundColor: '#EEF2FF', borderRadius: 20, padding: 20, borderLeftWidth: 4, borderLeftColor: COLORS.primary },
+  quoteIcon: { position: 'absolute', top: 10, right: 10, opacity: 0.1 },
+  bioText: { fontSize: 14, color: '#475569', lineHeight: 22, fontWeight: '600', fontStyle: 'italic' },
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 25 },
+  statBox: { flex: 1, backgroundColor: '#fff', padding: 15, borderRadius: 20, alignItems: 'center', ...SHADOWS.small, borderWidth: 1, borderColor: '#F1F5F9' },
+  statValue: { fontSize: 18, fontWeight: '900', color: COLORS.primary },
+  statLabel: { fontSize: 9, fontWeight: '800', color: '#94A3B8', marginTop: 4 },
   messageBtn: { backgroundColor: COLORS.primary, height: 60, borderRadius: 20, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, ...SHADOWS.medium, marginTop: 10 },
   messageBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' }
 });

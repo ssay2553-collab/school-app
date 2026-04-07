@@ -41,7 +41,11 @@ export default function ParentSettingsScreen() {
       const code = linkCode.trim().toUpperCase();
 
       const studentsRef = collection(db, "users");
-      const q = query(studentsRef, where("role", "==", "student"), where("parentLinkCode", "==", code));
+      const q = query(
+        studentsRef,
+        where("role", "==", "student"),
+        where("parentLinkCode", "==", code),
+      );
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
@@ -54,13 +58,19 @@ export default function ParentSettingsScreen() {
       const studentId = studentDoc.id;
 
       if (appUser.childrenIds?.includes(studentId)) {
-        Alert.alert("Already Linked", "You are already linked to this student.");
+        Alert.alert(
+          "Already Linked",
+          "You are already linked to this student.",
+        );
         return;
       }
 
       const currentParents = studentData.parentUids || [];
       if (currentParents.length >= 2) {
-        Alert.alert("Limit Reached", "This student already has 2 parents linked.");
+        Alert.alert(
+          "Limit Reached",
+          "This student already has 2 parents linked.",
+        );
         return;
       }
 
@@ -68,16 +78,19 @@ export default function ParentSettingsScreen() {
 
       batch.update(doc(db, "users", appUser.uid), {
         childrenIds: arrayUnion(studentId),
-        childrenClassIds: arrayUnion(studentData.classId)
+        childrenClassIds: arrayUnion(studentData.classId),
       });
 
       batch.update(doc(db, "users", studentId), {
-        parentUids: arrayUnion(appUser.uid)
+        parentUids: arrayUnion(appUser.uid),
       });
 
       await batch.commit();
 
-      Alert.alert("Success", `Successfully linked to ${studentData.profile?.firstName || "student"}.`);
+      Alert.alert(
+        "Success",
+        `Successfully linked to ${studentData.profile?.firstName || "student"}.`,
+      );
       setLinkCode("");
     } catch (error: any) {
       console.error(error);
@@ -88,28 +101,24 @@ export default function ParentSettingsScreen() {
   };
 
   const handleLogout = async () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLogoutLoading(true);
-              await signOut(auth);
-              router.replace("/(auth)/login/parent");
-            } catch (error: any) {
-              Alert.alert("Error", error.message);
-            } finally {
-              setLogoutLoading(false);
-            }
-          },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setLogoutLoading(true);
+            await signOut(auth);
+            router.replace("/");
+          } catch (error: any) {
+            Alert.alert("Error", error.message);
+          } finally {
+            setLogoutLoading(false);
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleDeleteAccount = async () => {
@@ -127,7 +136,10 @@ export default function ParentSettingsScreen() {
               const user = auth.currentUser;
               if (user) {
                 await deleteUser(user);
-                Alert.alert("Account Deleted", "Your account has been removed successfully.");
+                Alert.alert(
+                  "Account Deleted",
+                  "Your account has been removed successfully.",
+                );
                 router.replace("/");
               }
             } catch (error: any) {
@@ -137,31 +149,97 @@ export default function ParentSettingsScreen() {
             }
           },
         },
-      ]
+      ],
     );
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView contentContainerStyle={{ padding: 20, alignItems: "center" }} showsVerticalScrollIndicator={false}>
-        <Animatable.View animation="fadeInUp" duration={700} style={{ width: '100%', alignItems: 'center' }}>
-          <Text style={[styles.header, { color: COLORS.primary }]}>Settings</Text>
+  const settingsOptions = [
+    {
+      title: "Profile Management",
+      items: [
+        {
+          label: "Edit Personal Info",
+          icon: "person",
+          color: "#6366f1",
+          onPress: () => router.push("/parent-dashboard/profile-edit"),
+        },
+      ],
+    },
+    {
+      title: "Account Security",
+      items: [
+        {
+          label: "Log Out of App",
+          icon: "log-out",
+          color: COLORS.primary,
+          onPress: handleLogout,
+          loading: logoutLoading,
+        },
+        {
+          label: "Delete Parent Account",
+          icon: "trash",
+          color: "#ef4444",
+          onPress: handleDeleteAccount,
+          loading: deleteLoading,
+        },
+      ],
+    },
+  ];
 
-          {/* Link Student Section */}
-          <View style={styles.card}>
+  return (
+    <ScrollView
+      style={[styles.container, { backgroundColor: "#F8FAFC" }]}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.headerSection}>
+        <Text style={[styles.header, { color: COLORS.primary }]}>
+          Parental Settings
+        </Text>
+        <Text style={styles.subHeader}>
+          Manage your account and student connections
+        </Text>
+      </View>
+
+      {/* Profile Summary Card */}
+      {appUser && (
+        <View style={styles.profileSummary}>
+          <View style={styles.profileInfo}>
+            <View style={styles.summaryAvatar}>
+               {appUser.profile?.profileImage ? (
+                 <Image source={{ uri: appUser.profile.profileImage }} style={styles.sumImg} />
+               ) : (
+                 <Text style={styles.sumText}>{appUser.profile?.firstName?.[0] || "P"}</Text>
+               )}
+            </View>
+            <View>
+              <Text style={styles.sumName}>{appUser.profile?.firstName} {appUser.profile?.lastName}</Text>
+              <Text style={styles.sumEmail}>{appUser.profile?.email || "No email"}</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Link Student Section */}
+      <Animatable.View animation="fadeInUp" duration={600} style={styles.section}>
+        <Text style={styles.sectionTitle}>Student Connection</Text>
+        <View style={styles.card}>
+          <View style={{ padding: 16 }}>
             <Text style={styles.cardTitle}>Link New Student</Text>
-            <Text style={styles.cardSubtitle}>Enter the link code from your child&apos;s dashboard</Text>
+            <Text style={styles.cardSubtitle}>
+              Enter the unique 6-digit code from your child's dashboard
+            </Text>
             <View style={styles.inputContainer}>
               <TextInput
                 style={styles.input}
-                placeholder="Enter 6-digit code"
+                placeholder="E.G. AB12CD"
                 value={linkCode}
                 onChangeText={setLinkCode}
                 autoCapitalize="characters"
                 maxLength={6}
+                placeholderTextColor="#94A3B8"
               />
               <TouchableOpacity
-                style={[styles.linkBtn, linkLoading && { opacity: 0.7 }]}
+                style={[styles.linkBtn, { backgroundColor: COLORS.primary }]}
                 onPress={handleLinkStudent}
                 disabled={linkLoading}
               >
@@ -173,33 +251,52 @@ export default function ParentSettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        </View>
+      </Animatable.View>
 
-          {/* Logout */}
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: COLORS.primary }]}
-            onPress={handleLogout}
-          >
-            {logoutLoading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text style={styles.buttonText}>Logout</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Delete account */}
-          <TouchableOpacity
-            style={[styles.button, { backgroundColor: COLORS.secondary }]}
-            onPress={handleDeleteAccount}
-          >
-            {deleteLoading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text style={styles.buttonText}>Delete Account</Text>
-            )}
-          </TouchableOpacity>
+      {/* Menu Options */}
+      {settingsOptions.map((section, idx) => (
+        <Animatable.View
+          key={section.title}
+          animation="fadeInUp"
+          duration={600}
+          delay={idx * 100}
+          style={styles.section}
+        >
+          <Text style={styles.sectionTitle}>{section.title}</Text>
+          <View style={styles.menuCard}>
+            {section.items.map((item: any, i: number) => (
+              <TouchableOpacity
+                key={item.label}
+                style={[
+                  styles.itemRow,
+                  i < section.items.length - 1 && styles.borderBottom,
+                ]}
+                onPress={item.onPress}
+                disabled={!!item.loading}
+              >
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: item.color + "15" },
+                  ]}
+                >
+                  <Ionicons name={item.icon} size={20} color={item.color} />
+                </View>
+                <Text style={styles.itemLabel}>{item.label}</Text>
+                {item.loading ? (
+                  <ActivityIndicator size="small" color={item.color} />
+                ) : (
+                  <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
         </Animatable.View>
-      </ScrollView>
-    </View>
+      ))}
+
+      <View style={{ height: 40 }} />
+    </ScrollView>
   );
 }
 
@@ -207,18 +304,69 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  headerSection: {
+    padding: 20,
+    marginTop: 10,
+  },
   header: {
-    fontSize: SIZES.extraLarge,
-    fontWeight: "bold",
-    marginVertical: 15,
+    fontSize: 28,
+    fontWeight: "900",
+  },
+  subHeader: {
+    fontSize: 14,
+    color: "#64748B",
+    marginTop: 4,
+  },
+  profileSummary: {
+    marginHorizontal: 20,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    marginBottom: 25,
+    ...SHADOWS.medium,
+  },
+  profileInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 15,
+  },
+  summaryAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    backgroundColor: COLORS.primary + '10',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  sumImg: { width: '100%', height: '100%' },
+  sumText: { fontSize: 24, fontWeight: '900', color: COLORS.primary },
+  sumName: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
+  sumEmail: { fontSize: 13, color: '#64748B', fontWeight: '600' },
+  section: {
+    paddingHorizontal: 20,
+    marginBottom: 25,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: "#94A3B8",
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+    marginBottom: 12,
+    marginLeft: 5,
   },
   card: {
-    width: "100%",
-    backgroundColor: COLORS.white,
-    padding: 20,
-    borderRadius: 15,
-    marginBottom: 20,
+    backgroundColor: "#fff",
+    borderRadius: 24,
     ...SHADOWS.medium,
+    overflow: "hidden",
+  },
+  menuCard: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    ...SHADOWS.medium,
+    overflow: "hidden",
   },
   cardTitle: {
     fontSize: 18,
@@ -227,44 +375,56 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   cardSubtitle: {
-    fontSize: 14,
-    color: COLORS.gray,
+    fontSize: 13,
+    color: '#64748B',
     marginBottom: 15,
+    fontWeight: '600'
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   input: {
     flex: 1,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    color: COLORS.text,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1E293B",
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
   },
   linkBtn: {
-    backgroundColor: COLORS.primary,
-    marginLeft: 10,
-    padding: 12,
-    borderRadius: 10,
     width: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  button: {
-    width: "100%",
-    padding: 15,
-    borderRadius: 10,
+    height: 50,
+    borderRadius: 14,
     alignItems: "center",
-    marginVertical: 10,
-    ...SHADOWS.medium,
+    justifyContent: "center",
+    ...SHADOWS.small,
   },
-  buttonText: {
-    color: COLORS.white,
-    fontSize: SIZES.medium,
-    fontWeight: "bold",
+  itemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+  },
+  borderBottom: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  itemLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1E293B",
   },
 });

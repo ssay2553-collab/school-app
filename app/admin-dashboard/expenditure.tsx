@@ -198,7 +198,11 @@ export default function ExpenditureScreen() {
       setModalVisible(false);
       setItemName("");
       setAmount("");
-      fetchExpenditures(true);
+
+      // Delay slightly to ensure Firestore index/latency doesn't return old data
+      setTimeout(() => {
+        fetchExpenditures(true);
+      }, 800);
     } catch (e) {
       Alert.alert("Error", "Save failed.");
     } finally {

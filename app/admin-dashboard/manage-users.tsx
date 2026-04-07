@@ -62,6 +62,9 @@ interface User {
     phone?: string;
     gender?: string;
     profileImage?: string;
+    bio?: string;
+    experience?: string;
+    education?: string;
   };
   role: UserRole;
   adminRole?: string;
@@ -948,67 +951,43 @@ export default function ManageUsers() {
                       {viewingUser.profile?.firstName}{" "}
                       {viewingUser.profile?.lastName}
                     </Text>
-                    <Text style={styles.detailRole}>
-                      {viewingUser.adminRole || viewingUser.role.toUpperCase()}
-                    </Text>
+                    <View style={styles.roleBadgeContainer}>
+                      <Text style={styles.detailRole}>
+                        {viewingUser.adminRole || viewingUser.role.toUpperCase()}
+                      </Text>
+                    </View>
+
                     {viewingUser.assignedRoles &&
                       viewingUser.assignedRoles.length > 0 && (
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            marginTop: 8,
-                            gap: 8,
-                          }}
-                        >
-                          {viewingUser.assignedRoles.map((r, idx) => (
-                            <View
-                              key={idx}
-                              style={[
-                                styles.badge,
-                                {
-                                  backgroundColor: "#eef2ff",
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  paddingHorizontal: 10,
-                                },
-                              ]}
-                            >
-                              <Text
-                                style={[styles.badgeText, { color: "#4f46e5" }]}
+                        <View style={styles.assignedRolesWrapper}>
+                          <Text style={styles.assignedRolesTitle}>SPECIAL ASSIGNMENTS</Text>
+                          <View style={styles.assignedRolesGrid}>
+                            {viewingUser.assignedRoles.map((r, idx) => (
+                              <View
+                                key={idx}
+                                style={styles.modernRoleBadge}
                               >
-                                {r}
-                              </Text>
-                              {hasManageUsersAccess && (
-                                <TouchableOpacity
-                                  onPress={() =>
-                                    handleRemoveAssignedRole(r, viewingUser)
-                                  }
-                                  style={{ marginLeft: 8 }}
-                                >
-                                  <SVGIcon
-                                    name="close"
-                                    size={12}
-                                    color="#374151"
-                                  />
-                                </TouchableOpacity>
-                              )}
-                            </View>
-                          ))}
-                          {viewingUser.departmentHeadOf ? (
-                            <View
-                              style={[
-                                styles.badge,
-                                { backgroundColor: "#fff7ed" },
-                              ]}
-                            >
-                              <Text
-                                style={[styles.badgeText, { color: "#b45309" }]}
-                              >
-                                Dept: {viewingUser.departmentHeadOf}
-                              </Text>
-                            </View>
-                          ) : null}
+                                <SVGIcon name="star" size={12} color="#4f46e5" />
+                                <Text style={styles.modernRoleText}>{r}</Text>
+                                {hasManageUsersAccess && (
+                                  <TouchableOpacity
+                                    onPress={() =>
+                                      handleRemoveAssignedRole(r, viewingUser)
+                                    }
+                                    style={styles.removeRoleBtn}
+                                  >
+                                    <SVGIcon name="close-circle" size={16} color="#ef4444" />
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            ))}
+                            {viewingUser.departmentHeadOf && (
+                              <View style={[styles.modernRoleBadge, { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }]}>
+                                <SVGIcon name="business" size={12} color="#b45309" />
+                                <Text style={[styles.modernRoleText, { color: "#b45309" }]}>Dept Head: {viewingUser.departmentHeadOf}</Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
                       )}
                   </View>
@@ -1062,6 +1041,65 @@ export default function ManageUsers() {
                   )}
 
                   {viewingUser.role === "teacher" && (
+                    <>
+                      <View style={styles.infoSection}>
+                        <Text style={styles.infoLabel}>Teacher Professional Profile</Text>
+                        <View style={styles.infoGrid}>
+                          <View style={styles.infoRow}>
+                            <View style={styles.infoKeyRow}>
+                              <SVGIcon name="school" size={18} color="#94A3B8" />
+                              <Text style={styles.infoKey}>Education</Text>
+                            </View>
+                            <Text style={styles.infoValue}>
+                              {viewingUser.profile?.education || "N/A"}
+                            </Text>
+                          </View>
+                          <View style={styles.infoRow}>
+                            <View style={styles.infoKeyRow}>
+                              <SVGIcon name="briefcase" size={18} color="#94A3B8" />
+                              <Text style={styles.infoKey}>Experience</Text>
+                            </View>
+                            <Text style={styles.infoValue}>
+                              {viewingUser.profile?.experience ? `${viewingUser.profile.experience} Years` : "N/A"}
+                            </Text>
+                          </View>
+                        </View>
+                        {viewingUser.profile?.bio && (
+                          <View style={styles.adminBioBox}>
+                            <Text style={styles.adminBioText}>"{viewingUser.profile.bio}"</Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {(viewingUser.subjects?.length ?? 0) > 0 && (
+                        <View style={styles.infoSection}>
+                          <Text style={styles.infoLabel}>Subjects Handled</Text>
+                          <View style={styles.adminTagGrid}>
+                            {viewingUser.subjects?.map((s, i) => (
+                              <View key={i} style={styles.adminSubjectTag}>
+                                <Text style={styles.adminTagText}>{s}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+
+                      {(viewingUser.classes?.length ?? 0) > 0 && (
+                        <View style={styles.infoSection}>
+                          <Text style={styles.infoLabel}>Classes Assigned</Text>
+                          <View style={styles.adminTagGrid}>
+                            {viewingUser.classes?.map((c, i) => (
+                              <View key={i} style={[styles.adminSubjectTag, { backgroundColor: '#F1F5F9' }]}>
+                                <Text style={[styles.adminTagText, { color: '#475569' }]}>{c}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                      )}
+                    </>
+                  )}
+
+                  {viewingUser.role === "teacher" && (
                     <View style={styles.infoSection}>
                       <Text style={styles.infoLabel}>Teaching Assignments</Text>
                       <View style={styles.infoGrid}>
@@ -1083,34 +1121,51 @@ export default function ManageUsers() {
                     <Text style={styles.infoLabel}>Bio Information</Text>
                     <View style={styles.infoGrid}>
                       <View style={styles.infoRow}>
-                        <Text style={styles.infoKey}>Email:</Text>
+                        <View style={styles.infoKeyRow}>
+                          <SVGIcon name="mail" size={18} color="#94A3B8" />
+                          <Text style={styles.infoKey}>Email</Text>
+                        </View>
                         <Text style={styles.infoValue}>
                           {viewingUser.profile?.email || "N/A"}
                         </Text>
                       </View>
                       {viewingUser.role !== "student" && (
                         <View style={styles.infoRow}>
-                          <Text style={styles.infoKey}>Phone:</Text>
+                          <View style={styles.infoKeyRow}>
+                            <SVGIcon name="call" size={18} color="#94A3B8" />
+                            <Text style={styles.infoKey}>Phone</Text>
+                          </View>
                           <Text style={styles.infoValue}>
                             {viewingUser.profile?.phone || "N/A"}
                           </Text>
                         </View>
                       )}
                       <View style={styles.infoRow}>
-                        <Text style={styles.infoKey}>Gender:</Text>
+                        <View style={styles.infoKeyRow}>
+                          <SVGIcon name="person" size={18} color="#94A3B8" />
+                          <Text style={styles.infoKey}>Gender</Text>
+                        </View>
                         <Text style={styles.infoValue}>
                           {viewingUser.profile?.gender || "N/A"}
                         </Text>
                       </View>
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoKey}>Date of Birth:</Text>
-                        <Text style={styles.infoValue}>
-                          {formatDate(viewingUser.dateOfBirth)}
-                        </Text>
-                      </View>
+                      {viewingUser.role !== "admin" && viewingUser.role !== "parent" && (
+                        <View style={styles.infoRow}>
+                          <View style={styles.infoKeyRow}>
+                            <SVGIcon name="calendar" size={18} color="#94A3B8" />
+                            <Text style={styles.infoKey}>Date of Birth</Text>
+                          </View>
+                          <Text style={styles.infoValue}>
+                            {formatDate(viewingUser.dateOfBirth)}
+                          </Text>
+                        </View>
+                      )}
                       {viewingUser.role === "student" && (
                         <View style={styles.infoRow}>
-                          <Text style={styles.infoKey}>Current Class:</Text>
+                          <View style={styles.infoKeyRow}>
+                            <SVGIcon name="school" size={18} color="#94A3B8" />
+                            <Text style={styles.infoKey}>Current Class</Text>
+                          </View>
                           <Text style={styles.infoValue}>
                             {allClasses.find(
                               (c) => c.id === viewingUser.classId,
@@ -1133,7 +1188,7 @@ export default function ManageUsers() {
                           <View key={u.uid} style={styles.linkedItem}>
                             <Image
                               source={
-                                u.profile?.profileImage
+                                u.profile?.profileImage && u.role !== "parent"
                                   ? { uri: u.profile.profileImage }
                                   : DEFAULT_AVATAR
                               }
@@ -1643,9 +1698,90 @@ const styles = StyleSheet.create({
   detailName: { fontSize: 24, fontWeight: "800", color: "#1E293B" },
   detailRole: {
     fontSize: 14,
-    color: COLORS.primary || "#2e86de",
+    color: "#fff",
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  roleBadgeContainer: {
+    backgroundColor: COLORS.primary || "#2e86de",
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 8,
+    ...SHADOWS.small,
+  },
+  assignedRolesWrapper: {
+    width: "100%",
+    marginTop: 20,
+    alignItems: "center",
+  },
+  assignedRolesTitle: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#94A3B8",
+    letterSpacing: 1.5,
+    marginBottom: 10,
+  },
+  assignedRolesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 10,
+  },
+  modernRoleBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EEF2FF",
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 15,
+    gap: 8,
+  },
+  modernRoleText: {
+    fontSize: 12,
     fontWeight: "700",
-    marginTop: 4,
+    color: "#4F46E5",
+  },
+  removeRoleBtn: {
+    marginLeft: 4,
+  },
+  infoKeyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  adminBioBox: {
+    backgroundColor: "#F8FAFC",
+    padding: 15,
+    borderRadius: 15,
+    marginTop: 15,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary || "#2e86de",
+  },
+  adminBioText: {
+    fontSize: 13,
+    color: "#64748B",
+    fontStyle: "italic",
+    lineHeight: 20,
+  },
+  adminTagGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  adminSubjectTag: {
+    backgroundColor: (COLORS.primary || "#2e86de") + "15",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  adminTagText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.primary || "#2e86de",
   },
   financeCardRow: {
     flexDirection: "row",

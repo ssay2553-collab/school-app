@@ -40,7 +40,17 @@ export default function ProfileEditScreen() {
     phone: "",
     email: "",
     profileImage: "",
+    bio: "",
+    experience: "",
+    education: "",
+    gender: "",
+    dateOfBirth: "",
+    subjects: [] as string[],
+    classes: [] as string[],
   });
+
+  const [subjectText, setSubjectText] = useState("");
+  const [classText, setClassText] = useState("");
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
@@ -53,13 +63,21 @@ export default function ProfileEditScreen() {
         const ref = doc(db, "users", appUser.uid);
         const snap = await getDoc(ref);
         if (snap.exists()) {
-          const data = snap.data().profile;
+          const userData = snap.data();
+          const p = userData.profile || {};
           setForm({
-            firstName: data.firstName || "",
-            lastName: data.lastName || "",
-            email: data.email || appUser.profile?.email || "",
-            phone: data.phone || "",
-            profileImage: data.profileImage || "",
+            firstName: p.firstName || "",
+            lastName: p.lastName || "",
+            email: p.email || appUser.profile?.email || "",
+            phone: p.phone || "",
+            profileImage: p.profileImage || "",
+            bio: p.bio || "",
+            experience: p.experience || "",
+            education: p.education || "",
+            gender: p.gender || "",
+            dateOfBirth: userData.dateOfBirth ? (userData.dateOfBirth.toDate ? userData.dateOfBirth.toDate().toISOString().split('T')[0] : userData.dateOfBirth) : "",
+            subjects: userData.subjects || [],
+            classes: userData.classes || [],
           });
         }
       } catch (err) {
@@ -127,6 +145,13 @@ export default function ProfileEditScreen() {
         "profile.firstName": form.firstName,
         "profile.lastName": form.lastName,
         "profile.phone": form.phone,
+        "profile.bio": form.bio,
+        "profile.experience": form.experience,
+        "profile.education": form.education,
+        "profile.gender": form.gender,
+        dateOfBirth: form.dateOfBirth,
+        subjects: form.subjects,
+        classes: form.classes,
       });
 
       Alert.alert("Success", "Profile updated successfully!");
@@ -242,6 +267,173 @@ export default function ProfileEditScreen() {
             />
           </View>
 
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>GENDER</Text>
+            <View style={styles.tagContainer}>
+              {["Male", "Female"].map((g) => (
+                <TouchableOpacity
+                  key={g}
+                  onPress={() => setForm({ ...form, gender: g })}
+                  style={[
+                    styles.tag,
+                    form.gender === g && { backgroundColor: primary },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tagText,
+                      form.gender === g && { color: "#fff" },
+                    ]}
+                  >
+                    {g}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>DATE OF BIRTH</Text>
+            <TextInput
+              value={form.dateOfBirth}
+              onChangeText={(t) => setForm({ ...form, dateOfBirth: t })}
+              style={styles.input}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#94A3B8"
+            />
+          </View>
+
+          <View style={styles.cardHeader}>
+            <View style={[styles.iconBox, { backgroundColor: primary + "15" }]}>
+              <SVGIcon name="briefcase" size={20} color={primary} />
+            </View>
+            <Text style={styles.cardTitle}>Professional Profile</Text>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>EDUCATIONAL LEVEL</Text>
+            <TextInput
+              value={form.education}
+              onChangeText={(t) => setForm({ ...form, education: t })}
+              style={styles.input}
+              placeholder="e.g. B.Ed in Mathematics"
+              placeholderTextColor="#94A3B8"
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>YEARS OF EXPERIENCE</Text>
+            <TextInput
+              value={form.experience}
+              onChangeText={(t) => setForm({ ...form, experience: t })}
+              keyboardType="numeric"
+              style={styles.input}
+              placeholder="e.g. 5"
+              placeholderTextColor="#94A3B8"
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>PERSONAL BIO</Text>
+            <TextInput
+              value={form.bio}
+              onChangeText={(t) => setForm({ ...form, bio: t })}
+              multiline
+              numberOfLines={4}
+              style={[styles.input, { height: 100, textAlignVertical: "top" }]}
+              placeholder="Tell parents and students about yourself..."
+              placeholderTextColor="#94A3B8"
+            />
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>SUBJECTS TAUGHT</Text>
+            <View style={styles.rowInput}>
+              <TextInput
+                value={subjectText}
+                onChangeText={setSubjectText}
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Add Subject..."
+                placeholderTextColor="#94A3B8"
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  if (subjectText.trim()) {
+                    setForm({
+                      ...form,
+                      subjects: [...form.subjects, subjectText.trim()],
+                    });
+                    setSubjectText("");
+                  }
+                }}
+                style={[styles.addBtn, { backgroundColor: primary }]}
+              >
+                <SVGIcon name="add" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.tagContainer}>
+              {form.subjects.map((s, i) => (
+                <View key={i} style={styles.tag}>
+                  <Text style={styles.tagText}>{s}</Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      setForm({
+                        ...form,
+                        subjects: form.subjects.filter((_, idx) => idx !== i),
+                      })
+                    }
+                  >
+                    <SVGIcon name="close-circle" size={14} color="#94A3B8" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>CLASSES ASSIGNED</Text>
+            <View style={styles.rowInput}>
+              <TextInput
+                value={classText}
+                onChangeText={setClassText}
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Add Class..."
+                placeholderTextColor="#94A3B8"
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  if (classText.trim()) {
+                    setForm({
+                      ...form,
+                      classes: [...form.classes, classText.trim()],
+                    });
+                    setClassText("");
+                  }
+                }}
+                style={[styles.addBtn, { backgroundColor: primary }]}
+              >
+                <SVGIcon name="add" size={20} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.tagContainer}>
+              {form.classes.map((c, i) => (
+                <View key={i} style={styles.tag}>
+                  <Text style={styles.tagText}>{c}</Text>
+                  <TouchableOpacity
+                    onPress={() =>
+                      setForm({
+                        ...form,
+                        classes: form.classes.filter((_, idx) => idx !== i),
+                      })
+                    }
+                  >
+                    <SVGIcon name="close-circle" size={14} color="#94A3B8" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          </View>
+
           <TouchableOpacity
             style={styles.saveButton}
             onPress={handleSave}
@@ -324,6 +516,19 @@ const styles = StyleSheet.create({
   saveButton: { marginTop: 15, borderRadius: 16, overflow: 'hidden', ...SHADOWS.medium },
   btnGradient: { padding: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   saveText: { color: "#fff", fontWeight: "900", fontSize: 16 },
+  tagContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  tagText: { fontSize: 13, fontWeight: "600", color: "#475569" },
+  rowInput: { flexDirection: "row", gap: 10, alignItems: "center" },
+  addBtn: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center" },
   cancelButton: { marginTop: 15, padding: 15, alignItems: "center" },
   cancelText: { fontWeight: "700", fontSize: 14, color: "#94A3B8" },
 });

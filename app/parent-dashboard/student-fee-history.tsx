@@ -245,10 +245,25 @@ export default function StudentFeeHistory() {
     `;
     try {
       const { uri } = await Print.printToFileAsync({ html });
+      const fileName = `Fee_Statement_${sName.replace(/\s+/g, '_')}_${moment().format('DDMMYY')}.pdf`;
+
       if (Platform.OS !== 'web') {
-          await Sharing.shareAsync(uri);
+          // Move to a permanent-ish location with a nice name before sharing
+          const newUri = FileSystem.documentDirectory + fileName;
+          await FileSystem.copyAsync({ from: uri, to: newUri });
+          await Sharing.shareAsync(newUri, {
+            mimeType: "application/pdf",
+            dialogTitle: "Download Fee Statement",
+            UTI: "com.adobe.pdf",
+          });
       } else {
-          window.open(uri, '_blank');
+          // Force download on web
+          const link = document.createElement('a');
+          link.href = uri;
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
       }
     } catch { Alert.alert("Error", "Could not generate PDF statement"); }
   };

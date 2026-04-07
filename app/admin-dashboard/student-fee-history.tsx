@@ -336,10 +336,25 @@ export default function StudentFeeHistoryScreen() {
     `;
 
       const { uri } = await Print.printToFileAsync({ html });
+      const fileName = `Fee_Receipt_${record.studentName.replace(/\s+/g, "_")}_${moment().format("DDMMYY")}.pdf`;
+
       if (Platform.OS !== "web") {
-        await Sharing.shareAsync(uri);
+        // Move to a permanent-ish location with a nice name before sharing
+        const newUri = FileSystem.documentDirectory + fileName;
+        await FileSystem.copyAsync({ from: uri, to: newUri });
+        await Sharing.shareAsync(newUri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Download Fee Receipt",
+          UTI: "com.adobe.pdf",
+        });
       } else {
-        window.open(uri, "_blank");
+        // Force download on web instead of just opening
+        const link = document.createElement("a");
+        link.href = uri;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (err) {
       console.error("PDF generation failed", err);

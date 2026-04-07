@@ -1,41 +1,41 @@
 import { Picker } from "@react-native-picker/picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
-    arrayRemove,
-    arrayUnion,
-    collection,
-    deleteDoc,
-    doc,
-    documentId,
-    getDoc,
-    limit,
-    onSnapshot,
-    query,
-    Timestamp,
-    updateDoc,
-    where,
-    writeBatch,
+  arrayRemove,
+  arrayUnion,
+  collection,
+  deleteDoc,
+  doc,
+  documentId,
+  getDoc,
+  limit,
+  onSnapshot,
+  query,
+  Timestamp,
+  updateDoc,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -82,7 +82,6 @@ interface User {
   archivedAt?: any;
   archivedInYear?: string;
 }
-
 
 const roles: { name: string; role: UserRole; icon: string }[] = [
   { name: "Admins", role: "admin", icon: "shield-checkmark" },
@@ -310,8 +309,18 @@ export default function ManageUsers() {
     if (!assignmentModal.target) return;
     setUpdating(true);
     try {
+      // sanitize permissions to remove invalid/undefined values before sending to Firestore
+      const sanitized: Record<string, PermissionLevel> = Object.entries(
+        tempPermissions || {},
+      ).reduce((acc, [k, v]) => {
+        if (v === "full" || v === "view" || v === "edit" || v === "deny") {
+          acc[k] = v as PermissionLevel;
+        }
+        return acc;
+      }, {} as Record<string, PermissionLevel>);
+
       await updateDoc(doc(db, "users", assignmentModal.target.uid), {
-        permissions: tempPermissions,
+        permissions: sanitized,
       });
       setAssignmentModal({ type: "none", target: null });
       Alert.alert("Success", "Admin permissions updated.");
@@ -321,37 +330,114 @@ export default function ManageUsers() {
       setUpdating(false);
     }
   };
-  // Assign a role to the currently selected assignment target (assignmentModal.target)
+
   const handleAssignRole = async (roleName: string) => {
-    const target = assignmentModal.target;
-    if (!target) return;
+    const teacher = assignmentModal.target;
+    if (!teacher) return;
     setUpdating(true);
     try {
-      const userRef = doc(db, "users", target.uid);
-      await updateDoc(userRef, { assignedRoles: arrayUnion(roleName) });
-
-      // update local viewingUser state if it's the same user
-      setViewingUser((prev) =>
-        prev && prev.uid === target.uid
-          ? ({
-              ...prev,
-              assignedRoles: Array.from(new Set([...(prev.assignedRoles || []), roleName])),
-            } as User)
-          : prev,
-      );
+      await updateDoc(doc(db, "users", teacher.uid), {
+        assignedRoles: arrayUnion(roleName),
+        canCreateNews: newsPermission,
+      });
       setAssignmentModal({ type: "none", target: null });
-      if (Platform.OS === "web") {
-        // eslint-disable-next-line no-restricted-globals
-        window.alert("Role assigned.");
-      } else {
-        Alert.alert("Success", "Role assigned.");
-      }
-    } catch (e) {
-      console.error(e);
+      setCustomRoleText("");
+      setDeptText("");
+      Alert.alert("Success", `Role assigned: ${roleName}`);
+    } catch {
       Alert.alert("Error", "Failed to assign role.");
     } finally {
       setUpdating(false);
     }
+  };
+
+  const handleAssignDeptHead = async (department: string) => {
+    const teacher = assignmentModal.target;
+    if (!teacher) return;
+    if (!department || !department.trim())
+      return Alert.alert("Error", "Please enter a department name.");
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "users", teacher.uid), {
+        assignedRoles: arrayUnion("Dept Head"),
+        departmentHeadOf: department.trim(),
+        canCreateNews: newsPermission,
+      });
+      setAssignmentModal({ type: "none", target: null });
+      setDeptText("");
+      Alert.alert("Success", `Assigned Dept Head (${department.trim()})`);
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to assign dept head.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleRemoveAssignedRole = async (roleName: string, user: User) => {
+    if (!user) return;
+    Alert.alert(
+      "Confirm",
+      `Remove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Remove",
+          style: "destructive",
+          onPress: async () => {
+            setUpdating(true);
+            try {
+              const batch = writeBatch(db);
+              const userRef = doc(db, "users", user.uid);
+              batch.update(userRef, { assignedRoles: arrayRemove(roleName) });
+
+              // If removing dept head, clear departmentHeadOf
+              if (roleName === "Dept Head") {
+                batch.update(userRef, { departmentHeadOf: null });
+              }
+
+              // If removing class teacher role, clear classTeacherOf and unset class doc
+              if (roleName === "Class Teacher" || user.classTeacherOf) {
+                if (user.classTeacherOf) {
+                  batch.update(doc(db, "classes", user.classTeacherOf), {
+                    classTeacherId: null,
+                  });
+                }
+                batch.update(userRef, { classTeacherOf: null });
+              }
+
+              await batch.commit();
+
+              // update local state
+              setViewingUser((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      assignedRoles: prev.assignedRoles?.filter(
+                        (r) => r !== roleName,
+                      ),
+                      departmentHeadOf:
+                        roleName === "Dept Head"
+                          ? undefined
+                          : prev.departmentHeadOf,
+                      classTeacherOf:
+                        roleName === "Class Teacher"
+                          ? undefined
+                          : prev.classTeacherOf,
+                    }
+                  : prev,
+              );
+              Alert.alert("Success", "Role removed.");
+            } catch (e) {
+              console.error(e);
+              Alert.alert("Error", "Failed to remove role.");
+            } finally {
+              setUpdating(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleAssignClassTeacher = async (targetClassId: string) => {
@@ -386,103 +472,6 @@ export default function ManageUsers() {
       Alert.alert("Success", "Class Teacher assigned.");
     } catch {
       Alert.alert("Error", "Assignment failed.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  // Assign department head role with department text
-  const handleAssignDeptHead = async (department: string) => {
-    const target = assignmentModal.target;
-    if (!target) return;
-    if (!department || !department.trim())
-      return Alert.alert("Error", "Please enter a department name.");
-    setUpdating(true);
-    try {
-      const userRef = doc(db, "users", target.uid);
-      await updateDoc(userRef, {
-        assignedRoles: arrayUnion("Dept Head"),
-        departmentHeadOf: department.trim(),
-      });
-      setViewingUser((prev) =>
-        prev && prev.uid === target.uid
-          ? ({
-              ...prev,
-              assignedRoles: Array.from(new Set([...(prev.assignedRoles || []), "Dept Head"])),
-              departmentHeadOf: department.trim(),
-            } as User)
-          : prev,
-      );
-      setAssignmentModal({ type: "none", target: null });
-      Alert.alert("Success", "Department head assigned.");
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Assignment failed.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  // Remove an assigned role from a user (with confirmation)
-  const handleRemoveAssignedRole = async (roleName: string, user: User) => {
-    const proceed =
-      Platform.OS === "web"
-        ? // eslint-disable-next-line no-restricted-globals
-          (window.confirm(
-            `Remove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`,
-          ) as boolean)
-        : await new Promise<boolean>((resolve) =>
-            Alert.alert(
-              "Confirm",
-              `Remove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`,
-              [
-                { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-                { text: "Remove", style: "destructive", onPress: () => resolve(true) },
-              ],
-            ),
-          );
-
-    if (!proceed) return;
-    setUpdating(true);
-    try {
-      const batch = writeBatch(db);
-      const userRef = doc(db, "users", user.uid);
-      batch.update(userRef, { assignedRoles: arrayRemove(roleName) });
-
-      if (roleName === "Dept Head") {
-        batch.update(userRef, { departmentHeadOf: null });
-      }
-
-      if (roleName === "Class Teacher" || user.classTeacherOf) {
-        if (user.classTeacherOf) {
-          batch.update(doc(db, "classes", user.classTeacherOf), {
-            classTeacherId: null,
-          });
-        }
-        batch.update(userRef, { classTeacherOf: null });
-      }
-
-      await batch.commit();
-
-      setViewingUser((prev) =>
-        prev
-          ? ({
-              ...prev,
-              assignedRoles: prev.assignedRoles?.filter((r) => r !== roleName),
-              departmentHeadOf: roleName === "Dept Head" ? undefined : prev.departmentHeadOf,
-              classTeacherOf: roleName === "Class Teacher" ? undefined : prev.classTeacherOf,
-            } as User)
-          : prev,
-      );
-      if (Platform.OS === "web") {
-        // eslint-disable-next-line no-restricted-globals
-        window.alert("Role removed.");
-      } else {
-        Alert.alert("Success", "Role removed.");
-      }
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Failed to remove role.");
     } finally {
       setUpdating(false);
     }
@@ -626,14 +615,26 @@ export default function ManageUsers() {
   };
 
   const openPermissionModal = (user: User) => {
-    setTempPermissions(
-      user.permissions || {
-        "manage-fees": "deny",
-        "staff-payroll": "deny",
-        expenditure: "deny",
-        "manage-users": "deny",
-      },
+    // Initialize tempPermissions with explicit defaults and validate incoming values
+    const defaults: Record<string, PermissionLevel> = PERMISSION_KEYS.reduce(
+      (acc, p) => ({ ...acc, [p.key]: "deny" as PermissionLevel }),
+      {},
     );
+
+    const incoming = user.permissions || {};
+    const merged: Record<string, PermissionLevel> = Object.keys(defaults).reduce(
+      (acc, k) => {
+        const val = (incoming as any)[k];
+        acc[k] =
+          val === "full" || val === "view" || val === "edit" || val === "deny"
+            ? (val as PermissionLevel)
+            : "deny";
+        return acc;
+      },
+      {} as Record<string, PermissionLevel>,
+    );
+
+    setTempPermissions(merged);
     setAssignmentModal({ type: "permissions", target: user });
   };
 
@@ -1371,13 +1372,17 @@ export default function ManageUsers() {
                     <Text style={styles.permTitle}>{pk.label}</Text>
                     <View style={styles.permPickerBox}>
                       <Picker
-                        selectedValue={tempPermissions[pk.key] || "deny"}
-                        onValueChange={(v) =>
+                        selectedValue={(tempPermissions[pk.key] || "deny") as any}
+                        onValueChange={(v) => {
+                          const safe =
+                            v === "full" || v === "view" || v === "edit" || v === "deny"
+                              ? (v as PermissionLevel)
+                              : "deny";
                           setTempPermissions((prev) => ({
                             ...prev,
-                            [pk.key]: v,
-                          }))
-                        }
+                            [pk.key]: safe,
+                          }));
+                        }}
                       >
                         {PERMISSION_LEVELS.map((l) => (
                           <Picker.Item

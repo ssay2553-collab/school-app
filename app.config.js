@@ -1,7 +1,18 @@
-require("dotenv").config();
-
 module.exports = ({ config }) => {
-  const rawId = process.env.SCHOOL_ID || "eagles";
+  // 1. Get ID from Command Line / Environment first
+  const cmdLineId = process.env.EXPO_PUBLIC_SCHOOL_ID || process.env.SCHOOL_ID;
+
+  // 2. Load .env file
+  require("dotenv").config();
+
+  // 3. Priority: Command Line > .env > Default (Changed from Jewel to Eagles)
+  const rawId = cmdLineId || process.env.EXPO_PUBLIC_SCHOOL_ID || process.env.SCHOOL_ID || "eagles";
+
+  console.log(`\n=========================================`);
+  console.log(`  TARGET SCHOOL: ${rawId.toUpperCase()}`);
+  console.log(`  (Source: ${cmdLineId ? "Command Line" : "Environment/.env"})`);
+  console.log(`=========================================\n`);
+
   const schoolId = rawId.toLowerCase() === "ibs" ? "IBS" : rawId;
 
   const schools = {
@@ -515,7 +526,7 @@ module.exports = ({ config }) => {
     ],
     extra: {
       schoolId: selected.slug,
-      schoolData: process.env.NODE_ENV === "production" ? null : schools,
+      schoolData: null, // Hard-disable embedding all schools to prevent leakage
       schoolFullName: selected.fullName,
       schoolHotline: selected.hotline,
       schoolAddress: selected.address,

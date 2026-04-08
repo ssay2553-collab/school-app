@@ -118,8 +118,13 @@ export default function StudentSignupScreen() {
 
   const validateStep = () => {
     if (step === 1) {
-      if (!form.firstName.trim() || !form.lastName.trim() || !form.email.trim() || !form.password) {
-        Alert.alert("Required", "Please fill in all account details");
+      if (!form.firstName.trim() || !form.lastName.trim()) {
+        Alert.alert("Required", "Please enter your full name.");
+        return false;
+      }
+      const emailRegex = /\S+@\S+\.\S+/;
+      if (!emailRegex.test(form.email)) {
+        Alert.alert("Invalid Email", "Please enter a valid email address.");
         return false;
       }
       if (form.password.length < 6) {
@@ -131,8 +136,12 @@ export default function StudentSignupScreen() {
         return false;
       }
     } else if (step === 2) {
-      if (!form.gender || !form.selectedClassId) {
-        Alert.alert("Required", "Please select your gender and class");
+      if (!form.gender) {
+        Alert.alert("Required", "Please select your gender.");
+        return false;
+      }
+      if (!form.selectedClassId) {
+        Alert.alert("Required", "Please select your class.");
         return false;
       }
     }
@@ -230,12 +239,14 @@ export default function StudentSignupScreen() {
       batch.update(doc(db, "signupCodes", codeDoc.id), { used: true, usedBy: userId });
       await batch.commit();
 
-      Alert.alert("Yay! 🎉", "Your student adventure starts now!", [
+      Alert.alert("Yay! 🎉", "Account created successfully! Your student adventure starts now!", [
         { text: "Let's Go!", onPress: () => router.replace("/(auth)/login/student") },
       ]);
     } catch (err: any) {
       console.error("Signup error details:", err);
-      Alert.alert("Signup Failed", err.message || "An unexpected error occurred.");
+      let msg = err.message;
+      if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
+      Alert.alert("Signup Failed", msg || "An unexpected error occurred.");
     } finally {
       setLoading(false);
     }
@@ -457,7 +468,7 @@ export default function StudentSignupScreen() {
                 style={[styles.nextBtn, { backgroundColor: '#fff', flex: step === 1 ? 1 : 2 }]}
                 disabled={loading}
               >
-                <ThemedText style={[styles.nextBtnText, { color: primary }]}>Next Step</ThemedText>
+                <ThemedText style={[styles.nextBtnText, { color: primary }]}>Continue</ThemedText>
               </TouchableOpacity>
             )}
           </View>

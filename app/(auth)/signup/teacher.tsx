@@ -64,6 +64,48 @@ export default function TeacherSignupScreen() {
     fetchClasses();
   }, []);
 
+  const validateStep = () => {
+    if (step === 1) {
+      if (!form.firstName.trim() || !form.surname.trim()) {
+        Alert.alert("Required", "Please enter your full name.");
+        return false;
+      }
+      const emailRegex = /\S+@\S+\.\S+/;
+      if (!emailRegex.test(form.email)) {
+        Alert.alert("Invalid Email", "Please enter a valid email address.");
+        return false;
+      }
+      if (form.phone.length < 10) {
+        Alert.alert("Invalid Phone", "Please enter a valid phone number.");
+        return false;
+      }
+      if (form.password.length < 6) {
+        Alert.alert("Weak Password", "Password must be at least 6 characters.");
+        return false;
+      }
+      if (form.password !== form.confirmPassword) {
+        Alert.alert("Mismatch", "Passwords do not match.");
+        return false;
+      }
+    } else if (step === 2) {
+      if (selectedClasses.length === 0) {
+        Alert.alert("Required", "Please select at least one class you teach.");
+        return false;
+      }
+      if (selectedSubjects.length === 0 && otherSubjects.length === 0) {
+        Alert.alert("Required", "Please select or add at least one subject.");
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const handleNext = () => {
+    if (validateStep()) {
+      setStep(s => s + 1);
+    }
+  };
+
   const handleSignup = async () => {
     if (!form.signupCode.trim()) return Alert.alert("Error", "Signup code required.");
     setLoading(true);
@@ -72,9 +114,12 @@ export default function TeacherSignupScreen() {
       const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode));
       const snap = await getDocs(q);
 
-      if (snap.empty) throw new Error("Invalid signup code.");
+      if (snap.empty) throw new Error("Invalid signup code. Please check with your admin.");
       const codeDoc = snap.docs[0];
-      if (codeDoc.data().used || codeDoc.data().intendedForRole !== "teacher") throw new Error("Code invalid or used.");
+      const codeData = codeDoc.data();
+
+      if (codeData.used) throw new Error("This code has already been used.");
+      if (codeData.intendedForRole !== "teacher") throw new Error("This code is not for a teacher account.");
 
       const cred = await createUserWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
       
@@ -88,18 +133,25 @@ export default function TeacherSignupScreen() {
         classes: selectedClasses,
         subjects: [...selectedSubjects, ...otherSubjects],
         curriculum: curriculum,
-        profile: { firstName: form.firstName, lastName: form.surname, email: form.email.trim().toLowerCase(), phone: form.phone },
+        profile: {
+          firstName: form.firstName.trim(),
+          lastName: form.surname.trim(),
+          email: form.email.trim().toLowerCase(),
+          phone: form.phone.trim()
+        },
         createdAt: serverTimestamp(),
       });
 
       batch.update(doc(db, "signupCodes", codeDoc.id), { used: true, usedBy: cred.user.uid });
       await batch.commit();
       
-      Alert.alert("Success", "Account created! Please login.");
+      Alert.alert("Success 🎉", "Account created successfully! You can now log in.");
       router.replace("/(auth)/login/teacher");
     } catch (err: any) {
       console.error(err);
-      Alert.alert("Signup Failed", err.message);
+      let msg = err.message;
+      if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
+      Alert.alert("Signup Failed", msg);
     } finally { setLoading(false); }
   };
 
@@ -188,9 +240,21 @@ export default function TeacherSignupScreen() {
           )}
 
           <View style={styles.footer}>
-            {step > 1 && <TouchableOpacity onPress={() => setStep(s => s - 1)} style={styles.backBtn}><Text style={styles.backBtnText}>Back</Text></TouchableOpacity>}
-            <TouchableOpacity onPress={() => { if(step < 3) setStep(s => s + 1); else handleSignup(); }} style={[styles.nextBtn, { backgroundColor: primary, flex: step === 1 ? 1 : 2 }]} disabled={loading}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.nextBtnText}>{step === 3 ? "Complete" : "Next Step"}</Text>}
+            {step > 1 && (
+              <TouchableOpacity onPress={() => setStep(s => s - 1)} style={styles.backBtn}>
+                <Text style={styles.backBtnText}>Back</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              onPress={() => { if(step < 3) handleNext(); else handleSignup(); }}
+              style={[styles.nextBtn, { backgroundColor: primary, flex: step === 1 ? 1 : 2 }]}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.nextBtnText}>{step === 3 ? "Register Account" : "Continue"}</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>

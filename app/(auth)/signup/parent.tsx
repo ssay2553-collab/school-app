@@ -145,8 +145,20 @@ export default function ParentSignup() {
 
   const handleSignup = async () => {
     Keyboard.dismiss();
-    if (!firstName || !lastName || !phone || !email || !password || !confirmPassword) {
-      return Alert.alert("Required", "Please fill in all profile details.");
+
+    // Validation
+    if (!firstName.trim() || !lastName.trim()) {
+      return Alert.alert("Required", "Please enter your full name.");
+    }
+    if (phone.trim().length < 10) {
+      return Alert.alert("Invalid Phone", "Please enter a valid phone number.");
+    }
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(email)) {
+      return Alert.alert("Invalid Email", "Please enter a valid email address.");
+    }
+    if (password.length < 6) {
+      return Alert.alert("Weak Password", "Password must be at least 6 characters.");
     }
     if (password !== confirmPassword) {
       return Alert.alert("Error", "Passwords do not match.");
@@ -154,7 +166,7 @@ export default function ParentSignup() {
 
     const linkedChildren = children.filter(c => c.isValid);
     if (linkedChildren.length === 0) {
-      return Alert.alert("Link Code Required", "Please enter at least one valid student link code.");
+      return Alert.alert("Link Code Required", "Please enter at least one valid student link code. Contact the school if you don't have one.");
     }
 
     setIsLoading(true);
@@ -206,10 +218,13 @@ export default function ParentSignup() {
 
       await batch.commit();
       
+      Alert.alert("Success 🎉", "Your parent account has been created! You can now log in to view your children's progress.");
       router.replace("/(auth)/login/parent");
     } catch (err: any) {
       console.error("Signup error:", err);
-      Alert.alert("Signup Failed", err.message);
+      let msg = err.message;
+      if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
+      Alert.alert("Signup Failed", msg);
     } finally {
       setIsLoading(false);
     }

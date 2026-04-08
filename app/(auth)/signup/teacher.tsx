@@ -114,15 +114,30 @@ export default function TeacherSignupScreen() {
       const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode));
       const snap = await getDocs(q);
 
-      if (snap.empty) throw new Error("Invalid signup code. Please check with your admin.");
+      if (snap.empty) {
+        setLoading(false);
+        return Alert.alert("Invalid Code", "This signup code is not valid. Please check with your admin.");
+      }
+
       const codeDoc = snap.docs[0];
       const codeData = codeDoc.data();
 
-      if (codeData.used) throw new Error("This code has already been used.");
-      if (codeData.intendedForRole !== "teacher") throw new Error("This code is not for a teacher account.");
+      if (codeData.used) {
+        setLoading(false);
+        return Alert.alert("Used Code", "This code has already been used by another teacher.");
+      }
 
-      const cred = await createUserWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
+      if (codeData.intendedForRole !== "teacher") {
+        setLoading(false);
+        return Alert.alert("Wrong Code", "This code is not meant for a teacher account.");
+      }
+
+      const cleanEmail = form.email.trim().toLowerCase();
+      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, form.password);
       
+      // Ensure session is fresh for Firestore rules
+      await cred.user.getIdToken(true);
+
       const batch = writeBatch(db);
       batch.set(doc(db, "users", cred.user.uid), {
         uid: cred.user.uid,
@@ -136,7 +151,7 @@ export default function TeacherSignupScreen() {
         profile: {
           firstName: form.firstName.trim(),
           lastName: form.surname.trim(),
-          email: form.email.trim().toLowerCase(),
+          email: cleanEmail,
           phone: form.phone.trim()
         },
         createdAt: serverTimestamp(),
@@ -146,9 +161,11 @@ export default function TeacherSignupScreen() {
       await batch.commit();
       
       Alert.alert("Success 🎉", "Account created successfully! You can now log in.");
-      router.replace("/(auth)/login/teacher");
+      setTimeout(() => {
+        router.replace("/(auth)/login/teacher");
+      }, 1000);
     } catch (err: any) {
-      console.error(err);
+      console.error("Teacher signup error:", err);
       let msg = err.message;
       if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
       Alert.alert("Signup Failed", msg);

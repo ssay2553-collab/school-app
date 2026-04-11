@@ -230,12 +230,12 @@ export default function TeacherSignupScreen() {
           {step === 1 && (
             <Animatable.View animation="fadeInRight" style={styles.stepContainer}>
               <View style={styles.card}>
-                <InputField label="FIRST NAME" placeholder="e.g. Ama" value={form.firstName} onChangeText={(v: string) => setForm({ ...form, firstName: v })} />
-                <InputField label="SURNAME" placeholder="e.g. Boateng" value={form.surname} onChangeText={(v: string) => setForm({ ...form, surname: v })} />
-                <InputField label="EMAIL" placeholder="teacher@school.com" value={form.email} onChangeText={(v: string) => setForm({ ...form, email: v })} autoCapitalize="none" keyboardType="email-address" />
-                <InputField label="PHONE" placeholder="024 XXX XXXX" value={form.phone} onChangeText={(v: string) => setForm({ ...form, phone: v })} keyboardType="phone-pad" />
-                <InputField label="PASSWORD" placeholder="••••••••" value={form.password} onChangeText={(v: string) => setForm({ ...form, password: v })} secureTextEntry={!showPassword} isPassword onTogglePassword={() => setShowPassword(!showPassword)} showPassword={showPassword} />
-                <InputField label="CONFIRM PASSWORD" placeholder="••••••••" value={form.confirmPassword} onChangeText={(v: string) => setForm({ ...form, confirmPassword: v })} secureTextEntry={!showPassword} />
+                <InputField icon="person-outline" label="FIRST NAME" placeholder="e.g. Ama" value={form.firstName} onChangeText={(v: string) => setForm({ ...form, firstName: v })} />
+                <InputField icon="people-outline" label="SURNAME" placeholder="e.g. Boateng" value={form.surname} onChangeText={(v: string) => setForm({ ...form, surname: v })} />
+                <InputField icon="mail-outline" label="EMAIL" placeholder="teacher@school.com" value={form.email} onChangeText={(v: string) => setForm({ ...form, email: v })} autoCapitalize="none" keyboardType="email-address" />
+                <InputField icon="call-outline" label="PHONE" placeholder="024 XXX XXXX" value={form.phone} onChangeText={(v: string) => setForm({ ...form, phone: v })} keyboardType="phone-pad" />
+                <InputField icon="lock-closed-outline" label="PASSWORD" placeholder="••••••••" value={form.password} onChangeText={(v: string) => setForm({ ...form, password: v })} secureTextEntry={!showPassword} isPassword onTogglePassword={() => setShowPassword(!showPassword)} showPassword={showPassword} />
+                <InputField icon="shield-checkmark-outline" label="CONFIRM PASSWORD" placeholder="••••••••" value={form.confirmPassword} onChangeText={(v: string) => setForm({ ...form, confirmPassword: v })} secureTextEntry={!showPassword} />
               </View>
             </Animatable.View>
           )}
@@ -315,10 +315,13 @@ export default function TeacherSignupScreen() {
   );
 }
 
-const InputField = ({ label, isPassword, onTogglePassword, showPassword, ...props }: any) => (
+const InputField = ({ label, icon, isPassword, onTogglePassword, showPassword, ...props }: any) => (
   <View style={styles.inputGroup}>
     <Text style={styles.inputLabel}>{label}</Text>
     <View style={styles.inputWrapper}>
+      <View style={styles.inputIconContainer}>
+        <Ionicons name={icon} size={18} color="#94A3B8" />
+      </View>
       <TextInput style={styles.input} placeholderTextColor="#94A3B8" {...props} />
       {isPassword && <TouchableOpacity onPress={onTogglePassword} style={styles.eyeIcon}><Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="#94A3B8" /></TouchableOpacity>}
     </View>
@@ -347,7 +350,8 @@ const styles = StyleSheet.create({
   inputGroup: { marginBottom: 16 },
   inputLabel: { fontSize: 10, fontWeight: "900", color: "#64748B", marginBottom: 6, letterSpacing: 1 },
   inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: "#F1F5F9", borderRadius: 12, overflow: 'hidden' },
-  input: { flex: 1, height: 50, paddingHorizontal: 15, fontSize: 14, color: "#1E293B" },
+  inputIconContainer: { paddingLeft: 15, paddingRight: 5, justifyContent: 'center', alignItems: 'center' },
+  input: { flex: 1, height: 50, paddingHorizontal: 10, fontSize: 14, color: "#1E293B" },
   eyeIcon: { paddingHorizontal: 12 },
   sectionTitle: { fontSize: 12, fontWeight: "900", color: "#94A3B8", marginBottom: 15, textTransform: "uppercase", letterSpacing: 1, marginTop: 10 },
   chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 24 },

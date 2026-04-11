@@ -35,25 +35,17 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { shareFile } from "../../utils/shareUtils";
 import { Ionicons } from "@expo/vector-icons";
+import { getGradeDetails } from "../../lib/classHelpers";
+import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 const TERMS = ["Term 1", "Term 2", "Term 3"];
 type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
 
-const getGradeInfo = (score: number) => {
-  const s = score || 0;
-  if (s >= 80) return { aggregate: 1, grade: "A1", remark: "Excellent" };
-  if (s >= 75) return { aggregate: 2, grade: "B2", remark: "Very Good" };
-  if (s >= 70) return { aggregate: 3, grade: "B3", remark: "Good" };
-  if (s >= 65) return { aggregate: 4, grade: "C4", remark: "Credit" };
-  if (s >= 60) return { aggregate: 5, grade: "C5", remark: "Credit" };
-  if (s >= 55) return { aggregate: 6, grade: "C6", remark: "Credit" };
-  if (s >= 50) return { aggregate: 7, grade: "D7", remark: "Pass" };
-  if (s >= 40) return { aggregate: 8, grade: "E8", remark: "Pass" };
-  return { aggregate: 9, grade: "F9", remark: "Fail" };
-};
 
 export default function StudentAcademicReport() {
   const { appUser } = useAuth();
+  const { acadConfig } = useAcademicConfig();
 
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
@@ -65,16 +57,20 @@ export default function StudentAcademicReport() {
   const schoolLogo = getSchoolLogo(schoolId);
 
   const academicYears = useMemo(() => {
-    const start = 2024;
+    const start = 2022; // Extended history start
     const currentYear = new Date().getFullYear();
     const years = [];
-    for (let y = start; y <= currentYear + 3; y++) {
+    for (let y = start; y <= currentYear + 1; y++) {
       years.push(`${y}/${y + 1}`);
     }
-    return years.reverse();
-  }, []);
+    // Ensure the current active year from config is always present
+    if (acadConfig.academicYear && !years.includes(acadConfig.academicYear)) {
+      years.push(acadConfig.academicYear);
+    }
+    return Array.from(new Set(years)).sort().reverse();
+  }, [acadConfig.academicYear]);
 
-  const [selectedYear, setSelectedYear] = useState(academicYears[0]);
+  const [selectedYear, setSelectedYear] = useState("");
   const [report, setReport] = useState<any>(null);
   const [subjectsData, setSubjectsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +86,7 @@ export default function StudentAcademicReport() {
       if (ids.length > 0) {
         try {
           const q = query(collection(db, "users"), where(documentId(), "in", ids));
-          const snap = await getDocs(q);
+          const snap = await getDocsCacheFirst(q);
           const list = snap.docs.map((d) => ({
             id: d.id,
             name: `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
@@ -106,6 +102,14 @@ export default function StudentAcademicReport() {
     };
     fetchData();
   }, [appUser]);
+
+  // Sync with global academic config (initial load only)
+  useEffect(() => {
+    if (!acadConfig.loading && !selectedYear && acadConfig.academicYear) {
+      setSelectedYear(acadConfig.academicYear);
+      setSelectedTerm(acadConfig.currentTerm);
+    }
+  }, [acadConfig, selectedYear]);
 
   const loadReport = async () => {
     if (!selectedChildId || !selectedYear) return;
@@ -126,7 +130,7 @@ export default function StudentAcademicReport() {
         where("status", "==", "approved")
       );
       
-      const scoresSnap = await getDocs(qScores);
+      const scoresSnap = await getDocsCacheFirst(qScores);
       let results: any[] = [];
 
       scoresSnap.docs.forEach(d => {
@@ -143,7 +147,7 @@ export default function StudentAcademicReport() {
           const studentEntry = studentsList.find((s: any) => s.studentId === selectedChildId);
           if (studentEntry) {
               const scoreValue = parseFloat(studentEntry.finalScore || (parseFloat(studentEntry.classScore || 0) + parseFloat(studentEntry.exam50 || 0)).toFixed(2));
-              const gradeObj = getGradeInfo(scoreValue);
+              const gradeObj = getGradeDetails(scoreValue);
               results.push({
                   subject: data.subject,
                   classScore: studentEntry.classScore || "-",
@@ -176,7 +180,7 @@ export default function StudentAcademicReport() {
       }
 
       const qAdmin = query(collection(db, "users"), where("role", "==", "admin"), where("adminRole", "in", ["proprietor", "headmaster", "ceo"]), limit(1));
-      const adminSnap = await getDocs(qAdmin);
+      const adminSnap = await getDocsCacheFirst(qAdmin);
       if (!adminSnap.empty) {
         setAdminSig(adminSnap.docs[0].data().profile?.signatureUrl || "");
       }
@@ -198,16 +202,27 @@ export default function StudentAcademicReport() {
 
   const unifiedAggregate = useMemo(() => {
     if (subjectsData.length === 0) return 0;
-    const coreList = ["Mathematics", "Science", "English", "Social Studies"];
-    const cores = subjectsData.filter(s => coreList.some(c => s.subject.toLowerCase().includes(c.toLowerCase())));
-    const electives = subjectsData.filter(s => !coreList.some(c => s.subject.toLowerCase().includes(c.toLowerCase())))
-                                .sort((a, b) => a.aggregate - b.aggregate);
-    
-    const coreSum = cores.reduce((a, c) => a + (c.aggregate || 9), 0);
-    const electiveSum = electives.slice(0, 2).reduce((a, c) => a + (c.aggregate || 9), 0);
-    
-    const missingCoresCount = Math.max(0, 4 - cores.length);
-    return coreSum + electiveSum + (missingCoresCount * 9);
+    const coreList = ["Mathematics", "Science", "English"];
+
+    const cores = subjectsData.filter((s) =>
+      coreList.some((c) => s.subject.toLowerCase() === c.toLowerCase()),
+    );
+
+    const others = subjectsData
+      .filter((s) =>
+        !coreList.some((c) => s.subject.toLowerCase() === c.toLowerCase()),
+      )
+      .sort((a, b) => (parseInt(a.grade) || 9) - (parseInt(b.grade) || 9));
+
+    const coreSum = cores.reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
+    const electiveSum = others
+      .slice(0, 3)
+      .reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
+
+    const missingCoresCount = Math.max(0, 3 - cores.length);
+    const missingElectivesCount = Math.max(0, 3 - others.length);
+
+    return coreSum + electiveSum + (missingCoresCount + missingElectivesCount) * 9;
   }, [subjectsData]);
 
   const downloadPDF = async () => {
@@ -242,12 +257,16 @@ export default function StudentAcademicReport() {
               .remarks-section { margin-top: 20px; }
               .remark-row { margin-bottom: 10px; font-size: 12px; }
               .remark-label { font-weight: 800; text-decoration: underline; margin-right: 10px; }
-              .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
-              .sig-box { text-align: center; padding-top: 5px; font-size: 11px; font-weight: 800; border-top: 1px solid #000; position: relative; }
-              .sig-img { height: 40px; object-fit: contain; margin-bottom: 5px; }
+              .footer-grid { display: flex; justify-content: center; margin-top: 40px; }
+              .sig-box { text-align: center; padding-top: 5px; font-size: 11px; font-weight: 800; border-top: 1px solid #000; position: relative; width: 60%; }
+              .sig-img { height: 45px; object-fit: contain; margin-bottom: 5px; }
+              .verification-footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+              .verify-text { font-size: 8px; color: #64748b; line-height: 1.2; }
+              .qr-code { width: 60px; height: 60px; }
             </style>
           </head>
           <body>
+            <div style="width: 210mm; min-height: 297mm; padding: 20mm; margin: auto; background: white; box-sizing: border-box; position: relative;">
             <div class="letterhead">
               <img src="${logoUri}" class="logo" />
               <div class="school-details">
@@ -261,7 +280,7 @@ export default function StudentAcademicReport() {
 
             <table class="info-table">
               <tr>
-                <td class="label">STUDENT NAME</td><td class="value">${report?.studentName || ''}</td>
+                <td class="label">STUDENT NAME</td><td class="value">${report?.studentName || children.find(c=>c.id===selectedChildId)?.name}</td>
                 <td class="label">CLASS / GRADE</td><td class="value">${report?.classId || ''}</td>
               </tr>
               <tr>
@@ -312,15 +331,22 @@ export default function StudentAcademicReport() {
 
             <div class="footer-grid">
               <div class="sig-box">
-                ${teacherSig ? `<img src="${teacherSig}" class="sig-img" /><br/>` : '<div style="height:40px;"></div>'}
-                CLASS TEACHER'S SIGNATURE
-              </div>
-              <div class="sig-box">
-                ${adminSig ? `<img src="${adminSig}" class="sig-img" /><br/>` : '<div style="height:40px;"></div>'}
+                ${adminSig ? `<img src="${adminSig}" class="sig-img" /><br/>` : '<div style="height:45px;"></div>'}
                 HEAD OF INSTITUTION'S SIGNATURE & STAMP
               </div>
             </div>
-          </body>
+
+            <div class="verification-footer">
+              <div class="verify-text">
+                <b>DIGITALLY VERIFIED DOCUMENT</b><br/>
+                Student ID: ${selectedChildId}<br/>
+                Ref: ${selectedYear.replace("/", "")}-${selectedTerm.replace(" ", "")}-${selectedReportType.substring(0, 1)}<br/>
+                Generated on: ${new Date().toLocaleDateString()}
+              </div>
+              <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VERIFY-${selectedChildId}-${selectedYear}-${selectedTerm}" />
+            </div>
+          </div>
+        </body>
         </html>
       `;
 

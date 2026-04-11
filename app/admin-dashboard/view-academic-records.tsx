@@ -54,7 +54,8 @@ interface ScoreData {
   total: number;
   position: number;
   grade: string;
-  // Behavioral data from academicRecords
+  aggregate?: number; // Sum of grades (1-9) for Core 3 + Best 3
+  tas?: number; // Sum of raw scores for Core 3 + Best 3
   conduct?: string;
   attitude?: string;
   interest?: string;
@@ -235,51 +236,84 @@ export default function ViewAcademicRecords() {
     setHasSearched(true);
 
     try {
-      const yearSlug = selectedYear.replace(/\//g, "-");
-      const reportSlug = selectedReportType.replace(/\s+/g, "");
-      const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
-
-      const finalSnap = await getDocsFromServer(
+      // 1. Fetch ALL approved records for this class to calculate aggregates
+      const allRecordsSnap = await getDocsFromServer(
         query(
           collection(db, "academicRecords"),
-          where("__name__", "==", docId),
+          where("classId", "==", selectedClassId),
+          where("academicYear", "==", selectedYear),
+          where("term", "==", term),
+          where("status", "==", "approved"),
         ),
       );
 
-      if (!finalSnap.empty) {
-        const data = finalSnap.docs[0].data();
+      // Map to store every student's data across all subjects
+      const studentPerformanceMap: Record<string, { fullName: string, subjects: Record<string, { grade: number, score: number }>, subjectScore?: number }> = {};
+      const coreSubjects = ["mathematics", "science", "english"];
+
+      allRecordsSnap.docs.forEach(doc => {
+        const data = doc.data();
+        const subName = (data.subject || "").toLowerCase();
         const students = data.students || [];
 
-        const processed = students
-          .map((s: any) => {
-            let total = 0;
-            if (selectedReportType === "End of Term") {
-              total = parseFloat(
-                s.finalScore ||
-                  (
-                    parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)
-                  ).toFixed(2),
-              );
-            } else {
-              total = parseFloat(s.examsMark || 0);
-            }
+        students.forEach((s: any) => {
+          if (!studentPerformanceMap[s.studentId]) {
+            studentPerformanceMap[s.studentId] = { fullName: s.fullName, subjects: {} };
+          }
 
-            return {
-              id: s.studentId,
-              studentId: s.studentId,
-              fullName: s.fullName || "Unknown",
-              total: total,
-              grade: getGradeDetails(total).grade,
-              conduct: s.conduct,
-              attitude: s.attitude,
-              interest: s.interest,
-              teacherRemarks: s.teacherRemarks,
-            };
-          })
-          .sort((a: any, b: any) => b.total - a.total)
-          .map((s: any, i: number) => ({ ...s, position: i + 1 }));
+          let scoreValue = 0;
+          if (data.reportType === "End of Term") {
+            scoreValue = parseFloat(s.finalScore || (parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)).toFixed(2));
+          } else {
+            scoreValue = parseFloat(s.examsMark || 0);
+          }
 
-        setStudentScores(processed);
+          const grade = parseInt(getGradeDetails(scoreValue).grade) || 9;
+          studentPerformanceMap[s.studentId].subjects[subName] = { grade, score: scoreValue };
+
+          if (subName === selectedSubject.toLowerCase()) {
+            studentPerformanceMap[s.studentId].subjectScore = scoreValue;
+          }
+        });
+      });
+
+      const processed = Object.keys(studentPerformanceMap).filter(sid => studentPerformanceMap[sid].subjectScore !== undefined).map(sid => {
+        const p = studentPerformanceMap[sid];
+        const subs = p.subjects;
+
+        // Core 3
+        const coreEntries = Object.keys(subs)
+          .filter(k => coreSubjects.includes(k))
+          .map(k => subs[k]);
+
+        // Best 3 Electives
+        const electiveEntries = Object.keys(subs)
+          .filter(k => !coreSubjects.includes(k))
+          .map(k => subs[k])
+          .sort((a, b) => a.grade - b.grade); // Sort by grade (lower is better)
+
+        const coreGradeSum = coreEntries.reduce((a, b) => a + b.grade, 0) + (Math.max(0, 3 - coreEntries.length) * 9);
+        const electiveGradeSum = electiveEntries.slice(0, 3).reduce((a, b) => a + b.grade, 0) + (Math.max(0, 3 - electiveEntries.length) * 9);
+        const aggregate = coreGradeSum + electiveGradeSum;
+
+        const coreScoreSum = coreEntries.reduce((a, b) => a + b.score, 0);
+        const electiveScoreSum = electiveEntries.slice(0, 3).reduce((a, b) => a + b.score, 0);
+        const tas = coreScoreSum + electiveScoreSum;
+
+        return {
+          id: sid,
+          studentId: sid,
+          fullName: p.fullName,
+          total: p.subjectScore || 0,
+          grade: getGradeDetails(p.subjectScore || 0).grade,
+          aggregate: aggregate,
+          tas: tas
+        };
+      })
+      .sort((a, b) => b.total - a.total)
+      .map((s, i) => ({ ...s, position: i + 1 }));
+
+      setStudentScores(processed);
 
         if (processed.length > 0) {
           const sumValue = processed.reduce(
@@ -349,7 +383,25 @@ export default function ViewAcademicRecords() {
     setTeacherRemarks(student.teacherRemarks || "");
     setPromotedTo("");
     setNextTermBegins("");
-    setAdminRemarks("");
+    // Auto-generate admin remarks based on OVERALL Aggregate performance
+    let autoRemarks = "";
+    const agg = student.aggregate || 54;
+
+    if (agg <= 10) {
+      autoRemarks = "An outstanding academic record. Your consistent excellence across all subjects is highly commendable. Keep it up!";
+    } else if (agg <= 20) {
+      autoRemarks = "A very strong overall performance. You have demonstrated high competence in most areas. Maintain this focus.";
+    } else if (agg <= 30) {
+      autoRemarks = "A good performance overall. However, there is still room to convert your potentials into higher grades with extra effort.";
+    } else if (agg <= 40) {
+      autoRemarks = "Average performance. You need to put in more study hours, especially in your core subjects, to improve your standing.";
+    } else if (agg <= 50) {
+      autoRemarks = "Performance is below expectations. You are capable of better results if you minimize distractions and focus on your studies.";
+    } else {
+      autoRemarks = "A very weak performance this term. Intensive remedial support and a change in study habits are urgently required.";
+    }
+
+    setAdminRemarks(autoRemarks);
 
     setMetadataModalVisible(true);
 
@@ -718,25 +770,78 @@ export default function ViewAcademicRecords() {
             )}
           </View>
 
-          <TouchableOpacity
-            onPress={loadData}
-            disabled={listLoading || !selectedSubject}
-            style={[
-              styles.searchBtn,
-              { backgroundColor: primary },
-              (!selectedSubject || listLoading) && { opacity: 0.6 },
-            ]}
-          >
-            {listLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <View style={styles.btnRow}>
-                <Text style={styles.searchBtnText}>View Ledger</Text>
-                <SVGIcon name="arrow-forward" color="#fff" size={20} />
-              </View>
-            )}
-          </TouchableOpacity>
-        </Animatable.View>
+            <TouchableOpacity
+              onPress={loadData}
+              disabled={listLoading || !selectedSubject}
+              style={[
+                styles.searchBtn,
+                { backgroundColor: primary },
+                (!selectedSubject || listLoading) && { opacity: 0.6 },
+              ]}
+            >
+              {listLoading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <View style={styles.btnRow}>
+                  <Text style={styles.searchBtnText}>View Ledger</Text>
+                  <SVGIcon name="arrow-forward" color="#fff" size={20} />
+                </View>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={async () => {
+                if (studentScores.length === 0) return;
+                Alert.alert(
+                  "Bulk Update",
+                  "This will apply the current 'Next Term Begins' and 'Promoted To' values to ALL students in this list. Continue?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Apply to All",
+                      onPress: async () => {
+                        setListLoading(true);
+                        try {
+                          const batch = writeBatch(db);
+                          for (const student of studentScores) {
+                            const reportId = `${student.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(/\//g, "-");
+
+                            // Auto-generate remarks for each student in the loop based on their AGGREGATE
+                            let autoRemarks = "";
+                            const agg = student.aggregate || 54;
+                            if (agg <= 10) autoRemarks = "An outstanding academic record. Your consistent excellence across all subjects is highly commendable. Keep it up!";
+                            else if (agg <= 20) autoRemarks = "A very strong overall performance. You have demonstrated high competence in most areas. Maintain this focus.";
+                            else if (agg <= 30) autoRemarks = "A good performance overall. However, there is still room to convert your potentials into higher grades with extra effort.";
+                            else if (agg <= 40) autoRemarks = "Average performance. You need to put in more study hours, especially in your core subjects, to improve your standing.";
+                            else if (agg <= 50) autoRemarks = "Performance is below expectations. You are capable of better results if you minimize distractions and focus on your studies.";
+                            else autoRemarks = "A very weak performance this term. Intensive remedial support and a change in study habits are urgently required.";
+
+                            batch.set(doc(db, "student-reports", reportId), {
+                              nextTermBegins: mNextTermBegins,
+                              promotedTo: mPromotedTo,
+                              adminRemarks: autoRemarks,
+                              updatedAt: serverTimestamp(),
+                            }, { merge: true });
+                          }
+                          await batch.commit();
+                          Alert.alert("Success", "Settings applied to all students in this view.");
+                        } catch (e) {
+                          console.error(e);
+                          Alert.alert("Error", "Bulk update failed.");
+                        } finally {
+                          setListLoading(false);
+                        }
+                      }
+                    }
+                  ]
+                );
+              }}
+              style={[styles.bulkBtn, { borderColor: primary }]}
+            >
+              <SVGIcon name="copy-outline" size={18} color={primary} />
+              <Text style={[styles.bulkBtnText, { color: primary }]}>Apply Reopening & Auto-Remarks to All</Text>
+            </TouchableOpacity>
+          </Animatable.View>
 
         {stats && studentScores.length > 0 && (
           <Animatable.View animation="fadeIn" style={styles.statsContainer}>
@@ -870,7 +975,7 @@ export default function ViewAcademicRecords() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>PROMOTED / REPEATED TO</Text>
+                <Text style={styles.inputLabel}>PROMOTED / REPEATED TO (Global)</Text>
                 <TextInput
                   style={styles.textInput}
                   value={mPromotedTo}
@@ -880,7 +985,7 @@ export default function ViewAcademicRecords() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>NEXT TERM BEGINS</Text>
+                <Text style={styles.inputLabel}>NEXT TERM BEGINS (Global)</Text>
                 <TextInput
                   style={styles.textInput}
                   value={mNextTermBegins}
@@ -1200,6 +1305,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   textArea: { textAlignVertical: "top", minHeight: 80 },
+  bulkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 15,
+    padding: 15,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+  },
+  bulkBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
   saveMetadataBtn: {
     padding: 18,
     borderRadius: 16,

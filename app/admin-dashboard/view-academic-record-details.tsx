@@ -36,6 +36,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 
 import { getGradeDetails } from "../../lib/classHelpers";
+import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
 
@@ -89,7 +90,7 @@ export default function ViewAcademicRecordDetails() {
           where("status", "==", "approved"),
         );
 
-        const scoresSnap = await getDocs(qScores);
+        const scoresSnap = await getDocsCacheFirst(qScores);
         let studentResults: any[] = [];
         let nameFound = "";
 
@@ -151,7 +152,7 @@ export default function ViewAcademicRecordDetails() {
           where("adminRole", "in", ["proprietor", "headmaster", "ceo"]),
           limit(1),
         );
-        const adminSnap = await getDocs(qAdmin);
+        const adminSnap = await getDocsCacheFirst(qAdmin);
         if (!adminSnap.empty) {
           setAdminSig(adminSnap.docs[0].data().profile?.signatureUrl || "");
         }
@@ -183,7 +184,7 @@ export default function ViewAcademicRecordDetails() {
     fetchAllData();
   }, [studentId, termState, classIdState, academicYearState, reportType]);
 
-  const unifiedAggregate = useMemo(() => {
+  const AGGREGATE = useMemo(() => {
     if (subjectsData.length === 0) return 0;
     const coreList = ["Mathematics", "Science", "English"];
 
@@ -206,6 +207,25 @@ export default function ViewAcademicRecordDetails() {
     const missingElectivesCount = Math.max(0, 3 - others.length);
 
     return coreSum + electiveSum + (missingCoresCount + missingElectivesCount) * 9;
+  }, [subjectsData]);
+
+  const TAS = useMemo(() => {
+    const coreList = ["Mathematics", "Science", "English"];
+    const cores = subjectsData.filter((s) =>
+      coreList.some((c) => s.subject.toLowerCase() === c.toLowerCase())
+    );
+    const others = subjectsData
+      .filter((s) => !coreList.some((c) => s.subject.toLowerCase() === c.toLowerCase()))
+      .sort((a, b) => b.total - a.total);
+
+    const coreTotal = cores.reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
+    const electiveTotal = others.slice(0, 3).reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
+
+    return (coreTotal + electiveTotal).toFixed(2);
+  }, [subjectsData]);
+
+  const TRS = useMemo(() => {
+    return subjectsData.reduce((acc, curr) => acc + (parseFloat(curr.total) || 0), 0).toFixed(2);
   }, [subjectsData]);
 
   const generatePDF = async () => {
@@ -274,8 +294,12 @@ export default function ViewAcademicRecordDetails() {
                   <td class="label">TERM / PERIOD</td><td class="value">${termState}</td>
                 </tr>
                 <tr>
-                   <td class="label">OVERALL AGGREGATE</td><td class="value">${unifiedAggregate}</td>
-                   ${isFullReport ? `<td class="label">PROMOTED TO</td><td class="value">${promotedTo || "N/A"}</td>` : `<td></td><td></td>`}
+                  <td class="label">TRS / TAS</td><td class="value">${TRS} / ${TAS}</td>
+                  <td class="label">AGGREGATE</td><td class="value">${AGGREGATE}</td>
+                </tr>
+                <tr>
+                   <td class="label">PROMOTED TO</td><td class="value">${promotedTo || "N/A"}</td>
+                   <td></td><td></td>
                 </tr>
               </table>
 
@@ -336,7 +360,7 @@ export default function ViewAcademicRecordDetails() {
 
                     return `
                       <div class="aggregate-box">
-                        GES AGGREGATE (Core 3 + Best 3): ${finalAggregate}
+                        AGGREGATE (Best 6): ${finalAggregate} | TRS: ${TRS} | TAS: ${TAS}
                       </div>
                     `;
                   }
@@ -525,8 +549,16 @@ export default function ViewAcademicRecordDetails() {
           {/* Performance Summary */}
           <View style={styles.summarySection}>
             <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>OVERALL AGGREGATE:</Text>
-              <Text style={styles.summaryVal}>{unifiedAggregate}</Text>
+              <Text style={styles.summaryLabel}>TRS:</Text>
+              <Text style={styles.summaryVal}>{TRS}</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>TAS:</Text>
+              <Text style={styles.summaryVal}>{TAS}</Text>
+            </View>
+            <View style={styles.summaryItem}>
+              <Text style={styles.summaryLabel}>AGGREGATE:</Text>
+              <Text style={styles.summaryVal}>{AGGREGATE}</Text>
             </View>
             {isFullReport && (
               <View style={styles.summaryItem}>

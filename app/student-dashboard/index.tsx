@@ -99,6 +99,13 @@ export default function StudentDashboard() {
           path: "/student-dashboard/assignment-scores",
         },
         {
+          title: "Study Hub",
+          subtitle: "Past Questions",
+          icon: "library",
+          color: "#A55EEA",
+          path: "/student-dashboard/study-resources",
+        },
+        {
           title: "Class Times",
           subtitle: "What's next?",
           icon: "time",

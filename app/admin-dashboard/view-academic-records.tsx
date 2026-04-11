@@ -315,19 +315,17 @@ export default function ViewAcademicRecords() {
 
       setStudentScores(processed);
 
-        if (processed.length > 0) {
-          const sumValue = processed.reduce(
-            (acc: number, curr: any) => acc + curr.total,
-            0,
-          );
-          setStats({
-            average: parseFloat((sumValue / processed.length).toFixed(2)),
-            studentCount: processed.length,
-            passRate: 100,
-          });
-        }
+      if (processed.length > 0) {
+        const sumValue = processed.reduce(
+          (acc: number, curr: any) => acc + curr.total,
+          0,
+        );
+        setStats({
+          average: parseFloat((sumValue / processed.length).toFixed(2)),
+          studentCount: processed.length,
+          passRate: 100,
+        });
       } else {
-        setStudentScores([]);
         setStats(null);
       }
     } catch (e) {

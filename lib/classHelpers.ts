@@ -71,6 +71,40 @@ export const getGradeDetails = (score: number) => {
 /**
  * Legacy support for simple grade string calculation
  */
-export const calculateGrade = (score: number): string => {
-  return getGradeDetails(score).grade;
+/**
+ * Calculates the TRS (Total Raw Score), TAS (Total Aggregate Score - 6 subjects),
+ * and Aggregate (Sum of grades - 6 subjects) based on GES standards.
+ */
+export const calculatePerformanceMetrics = (subjects: Record<string, { grade: number, score: number }>) => {
+  const coreList = ["mathematics", "science", "english"];
+
+  // 1. TRS: Sum of ALL scores
+  const trs = Object.values(subjects).reduce((acc, curr) => acc + (curr.score || 0), 0);
+
+  // Split into Core and Electives
+  const coreEntries = Object.keys(subjects)
+    .filter(k => coreList.includes(k.toLowerCase()))
+    .map(k => subjects[k]);
+
+  const electiveEntries = Object.keys(subjects)
+    .filter(k => !coreList.includes(k.toLowerCase()))
+    .map(k => subjects[k])
+    .sort((a, b) => a.grade - b.grade); // Lower grade is better
+
+  // 2. Aggregate (Best 6 Grades)
+  // Logic: Sum of 3 Cores + Best 3 Electives. Missing cores/electives count as Grade 9.
+  const coreGradeSum = coreEntries.reduce((a, b) => a + b.grade, 0) + (Math.max(0, 3 - coreEntries.length) * 9);
+  const electiveGradeSum = electiveEntries.slice(0, 3).reduce((a, b) => a + b.grade, 0) + (Math.max(0, 3 - electiveEntries.length) * 9);
+  const aggregate = coreGradeSum + electiveGradeSum;
+
+  // 3. TAS (Best 6 Raw Scores)
+  const coreScoreSum = coreEntries.reduce((a, b) => a + b.score, 0);
+  const electiveScoreSum = electiveEntries.slice(0, 3).reduce((a, b) => a + b.score, 0);
+  const tas = coreScoreSum + electiveScoreSum;
+
+  return {
+    trs: trs.toFixed(2),
+    tas: tas.toFixed(2),
+    aggregate
+  };
 };

@@ -35,7 +35,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { calculateGrade, sortClasses } from "../../lib/classHelpers";
+import { getGradeDetails, sortClasses } from "../../lib/classHelpers";
 
 const storage = getStorage();
 
@@ -137,10 +137,10 @@ export default function StudentAcademicRecords() {
         const finalScoreNum =
           parseFloat(updated.classScore) + parseFloat(updated.exam50);
         updated.finalScore = finalScoreNum.toFixed(2);
-        updated.grade = calculateGrade(finalScoreNum);
+        updated.grade = getGradeDetails(finalScoreNum).grade;
       } else {
         const examsMark = parseFloat(updated.examsMark) || 0;
-        updated.grade = calculateGrade(examsMark);
+        updated.grade = getGradeDetails(examsMark).grade;
       }
       return updated;
     },
@@ -169,14 +169,8 @@ export default function StudentAcademicRecords() {
           if (sorted.length > 0 && !selectedClassId)
             setSelectedClassId(sorted[0].id);
         }
-        if (
-          appUser.subjects &&
-          appUser.subjects.length > 0 &&
-          !selectedSubject
-        ) {
-          setSelectedSubject(appUser.subjects[0]);
-        }
-        setSignatureUrl((appUser.profile as any)?.signatureUrl || "");
+        // Removed Class Teacher Signature logic to reduce RAM usage and ensure consistency with official reports
+        setSignatureUrl("");
       } catch (err) {
         console.error("fetchTeacherMetadata Error:", err);
       } finally {

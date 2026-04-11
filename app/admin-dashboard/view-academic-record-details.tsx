@@ -11,11 +11,15 @@ import {
     query,
     where,
 } from "firebase/firestore";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     Image,
+    Platform,
     SafeAreaView,
     ScrollView,
     StatusBar,
@@ -30,22 +34,10 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
-import { shareFile } from "../../utils/shareUtils";
+
+import { getGradeDetails } from "../../lib/classHelpers";
 
 type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
-
-const getGradeInfo = (score: number) => {
-  const s = score || 0;
-  if (s >= 80) return { aggregate: 1, grade: "A1", remark: "Excellent" };
-  if (s >= 75) return { aggregate: 2, grade: "B2", remark: "Very Good" };
-  if (s >= 70) return { aggregate: 3, grade: "B3", remark: "Good" };
-  if (s >= 65) return { aggregate: 4, grade: "C4", remark: "Credit" };
-  if (s >= 60) return { aggregate: 5, grade: "C5", remark: "Credit" };
-  if (s >= 55) return { aggregate: 6, grade: "C6", remark: "Credit" };
-  if (s >= 50) return { aggregate: 7, grade: "D7", remark: "Pass" };
-  if (s >= 40) return { aggregate: 8, grade: "E8", remark: "Pass" };
-  return { aggregate: 9, grade: "F9", remark: "Fail" };
-};
 
 export default function ViewAcademicRecordDetails() {
   const params = useLocalSearchParams();
@@ -135,7 +127,7 @@ export default function ViewAcademicRecordDetails() {
                   parseFloat(studentEntry.exam50 || 0)
                 ).toFixed(2),
             );
-            const gradeObj = getGradeInfo(scoreValue);
+            const gradeObj = getGradeDetails(scoreValue);
             studentResults.push({
               subject: data.subject,
               classScore: studentEntry.classScore || "-",
@@ -151,17 +143,6 @@ export default function ViewAcademicRecordDetails() {
 
         setStudentName(nameFound);
         setSubjectsData(studentResults);
-
-        // Fetch Metadata & Signatures
-        const classSnap = await getDoc(doc(db, "classes", classIdState));
-        if (classSnap.exists()) {
-          const classTeacherId = classSnap.data().classTeacherId;
-          if (classTeacherId) {
-            const teacherSnap = await getDoc(doc(db, "users", classTeacherId));
-            if (teacherSnap.exists())
-              setTeacherSig(teacherSnap.data().profile?.signatureUrl || "");
-          }
-        }
 
         // Fetch Head of Institution Signature (Admin with role proprietor/headmaster)
         const qAdmin = query(
@@ -204,26 +185,27 @@ export default function ViewAcademicRecordDetails() {
 
   const unifiedAggregate = useMemo(() => {
     if (subjectsData.length === 0) return 0;
-    const coreList = ["Mathematics", "Science", "English", "Social Studies"];
+    const coreList = ["Mathematics", "Science", "English"];
+
     const cores = subjectsData.filter((s) =>
-      coreList.some((c) => s.subject.toLowerCase().includes(c.toLowerCase())),
+      coreList.some((c) => s.subject.toLowerCase() === c.toLowerCase()),
     );
-    const electives = subjectsData
-      .filter(
-        (s) =>
-          !coreList.some((c) =>
-            s.subject.toLowerCase().includes(c.toLowerCase()),
-          ),
+
+    const others = subjectsData
+      .filter((s) =>
+        !coreList.some((c) => s.subject.toLowerCase() === c.toLowerCase()),
       )
-      .sort((a, b) => a.aggregate - b.aggregate);
+      .sort((a, b) => (parseInt(a.grade) || 9) - (parseInt(b.grade) || 9));
 
-    const coreSum = cores.reduce((a, c) => a + (c.aggregate || 9), 0);
-    const electiveSum = electives
-      .slice(0, 2)
-      .reduce((a, c) => a + (c.aggregate || 9), 0);
+    const coreSum = cores.reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
+    const electiveSum = others
+      .slice(0, 3)
+      .reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
 
-    const missingCoresCount = Math.max(0, 4 - cores.length);
-    return coreSum + electiveSum + missingCoresCount * 9;
+    const missingCoresCount = Math.max(0, 3 - cores.length);
+    const missingElectivesCount = Math.max(0, 3 - others.length);
+
+    return coreSum + electiveSum + (missingCoresCount + missingElectivesCount) * 9;
   }, [subjectsData]);
 
   const generatePDF = async () => {
@@ -259,90 +241,137 @@ export default function ViewAcademicRecordDetails() {
               .remarks-section { margin-top: 20px; }
               .remark-row { margin-bottom: 10px; font-size: 12px; }
               .remark-label { font-weight: 800; text-decoration: underline; margin-right: 10px; }
-              .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
-              .sig-box { text-align: center; padding-top: 5px; font-size: 11px; font-weight: 800; border-top: 1px solid #000; position: relative; }
-              .sig-img { height: 40px; object-fit: contain; margin-bottom: 5px; }
+              .footer-grid { display: flex; justify-content: center; margin-top: 40px; }
+              .sig-box { text-align: center; padding-top: 5px; font-size: 11px; font-weight: 800; border-top: 1px solid #000; position: relative; width: 60%; }
+              .sig-img { height: 45px; object-fit: contain; margin-bottom: 5px; }
+              .aggregate-box { margin-top: 15px; padding: 10px; border: 2px solid #333; display: inline-block; font-weight: bold; }
+              .verification-footer { margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px; display: flex; justify-content: space-between; align-items: center; }
+              .verify-text { font-size: 8px; color: #64748b; line-height: 1.2; }
+              .qr-code { width: 60px; height: 60px; }
+              @page { size: A4; margin: 0; }
             </style>
           </head>
           <body>
-            <div class="letterhead">
-              <img src="${logoUri}" class="logo" />
-              <div class="school-details">
-                <h1>${SCHOOL_CONFIG.fullName}</h1>
-                <p>${SCHOOL_CONFIG.address || "Academic Excellence & Integrity"}</p>
-                <p>Contact: ${SCHOOL_CONFIG.hotline || ""} | Email: ${SCHOOL_CONFIG.email || ""}</p>
+            <div style="width: 210mm; min-height: 297mm; padding: 20mm; margin: auto; background: white; box-sizing: border-box; position: relative;">
+              <div class="letterhead">
+                <img src="${logoUri}" class="logo" />
+                <div class="school-details">
+                  <h1>${SCHOOL_CONFIG.fullName}</h1>
+                  <p>${SCHOOL_CONFIG.address || "Academic Excellence & Integrity"}</p>
+                  <p>Contact: ${SCHOOL_CONFIG.hotline || ""} | Email: ${SCHOOL_CONFIG.email || ""}</p>
+                </div>
               </div>
-            </div>
 
-            <div class="report-title">${reportType} Progress Report Sheet</div>
+              <div class="report-title">${reportType} Progress Report Sheet</div>
 
-            <table class="info-table">
-              <tr>
-                <td class="label">STUDENT NAME</td><td class="value">${studentName}</td>
-                <td class="label">CLASS / GRADE</td><td class="value">${classIdState}</td>
-              </tr>
-              <tr>
-                <td class="label">ACADEMIC YEAR</td><td class="value">${academicYearState}</td>
-                <td class="label">TERM / PERIOD</td><td class="value">${termState}</td>
-              </tr>
-              <tr>
-                 <td class="label">OVERALL AGGREGATE</td><td class="value">${unifiedAggregate}</td>
-                 ${isFullReport ? `<td class="label">PROMOTED TO</td><td class="value">${promotedTo || "N/A"}</td>` : `<td></td><td></td>`}
-              </tr>
-            </table>
-
-            <table class="results">
-              <thead>
+              <table class="info-table">
                 <tr>
-                  <th style="width: 30%;">Subject</th>
-                  <th>Class Score</th>
-                  <th>Exams Score</th>
-                  <th>Total</th>
-                  <th>Grade</th>
-                  <th>Grade Remarks</th>
-                  <th>Pos</th>
+                  <td class="label">STUDENT NAME</td><td class="value">${studentName}</td>
+                  <td class="label">CLASS / GRADE</td><td class="value">${classIdState}</td>
                 </tr>
-              </thead>
-              <tbody>
-                ${subjectsData
-                  .map(
-                    (s) => `
+                <tr>
+                  <td class="label">ACADEMIC YEAR</td><td class="value">${academicYearState}</td>
+                  <td class="label">TERM / PERIOD</td><td class="value">${termState}</td>
+                </tr>
+                <tr>
+                   <td class="label">OVERALL AGGREGATE</td><td class="value">${unifiedAggregate}</td>
+                   ${isFullReport ? `<td class="label">PROMOTED TO</td><td class="value">${promotedTo || "N/A"}</td>` : `<td></td><td></td>`}
+                </tr>
+              </table>
+
+              <table class="results">
+                <thead>
                   <tr>
-                    <td class="subject-cell">${s.subject}</td>
-                    <td>${s.classScore}</td>
-                    <td>${s.examsScore}</td>
-                    <td style="font-weight: 900;">${s.total}</td>
-                    <td>${s.grade}</td>
-                    <td style="font-size: 9px;">${s.remark}</td>
-                    <td>${s.pos}</td>
+                    <th style="width: ${isFullReport ? '25%' : '35%'};">Subject</th>
+                    ${isFullReport ? `
+                      <th>Class Score</th>
+                      <th>Exams Score</th>
+                      <th>Total</th>
+                    ` : `
+                      <th>Score</th>
+                    `}
+                    <th>Grade</th>
+                    <th>Position</th>
+                    <th>Remark</th>
                   </tr>
-                `,
-                  )
-                  .join("")}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  ${subjectsData
+                    .map(
+                      (s) => `
+                    <tr>
+                      <td class="subject-cell">${s.subject}</td>
+                      ${isFullReport ? `
+                        <td>${s.classScore}</td>
+                        <td>${s.examsScore}</td>
+                        <td style="font-weight: 900;">${s.total}</td>
+                      ` : `
+                        <td style="font-weight: 900;">${s.total}</td>
+                      `}
+                      <td>${s.grade}</td>
+                      <td>${s.pos}</td>
+                      <td style="font-size: 10px; text-align: left; padding-left: 8px;">${s.remark}</td>
+                    </tr>
+                  `,
+                    )
+                    .join("")}
+                </tbody>
+              </table>
 
-            ${
-              isFullReport
-                ? `
-            <div class="remarks-section">
-              <div class="remark-row"><span class="remark-label">BEHAVIORAL ASSESSMENT:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>
-              <div class="remark-row"><span class="remark-label">TEACHER'S REMARKS:</span> ${teacherRemarks || "A very good performance. Keep it up."}</div>
-              <div class="remark-row"><span class="remark-label">ADMINISTRATIVE REMARKS:</span> ${adminRemarks || "Satisfactory progress. Hard work is encouraged."}</div>
-              <div class="remark-row"><span class="remark-label">NEXT TERM BEGINS:</span> ${nextTermBegins || "To be communicated"}</div>
-            </div>
-            `
-                : ""
-            }
+              ${
+                (() => {
+                  const coreSubjects = ["Mathematics", "Science", "English"];
+                  const studentGrades = subjectsData.map(s => ({ subject: s.subject, grade: parseInt(s.grade) || 9 }));
 
-            <div class="footer-grid">
-              <div class="sig-box">
-                ${teacherSig ? `<img src="${teacherSig}" class="sig-img" /><br/>` : '<div style="height:40px;"></div>'}
-                CLASS TEACHER'S SIGNATURE
+                  const coreGrades = studentGrades.filter(s => coreSubjects.some(c => s.subject.toLowerCase() === c.toLowerCase()));
+                  const otherGrades = studentGrades
+                    .filter(s => !coreSubjects.some(c => s.subject.toLowerCase() === c.toLowerCase()))
+                    .sort((a, b) => a.grade - b.grade)
+                    .slice(0, 3);
+
+                  if (coreGrades.length >= 3) {
+                    const totalCore = coreGrades.reduce((acc, curr) => acc + curr.grade, 0);
+                    const totalOthers = otherGrades.reduce((acc, curr) => acc + curr.grade, 0);
+                    const finalAggregate = totalCore + totalOthers;
+
+                    return `
+                      <div class="aggregate-box">
+                        GES AGGREGATE (Core 3 + Best 3): ${finalAggregate}
+                      </div>
+                    `;
+                  }
+                  return "";
+                })()
+              }
+
+              ${
+                isFullReport
+                  ? `
+              <div class="remarks-section">
+                <div class="remark-row"><span class="remark-label">BEHAVIORAL ASSESSMENT:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>
+                <div class="remark-row"><span class="remark-label">TEACHER'S REMARKS:</span> ${teacherRemarks || "A very good performance. Keep it up."}</div>
+                <div class="remark-row"><span class="remark-label">ADMINISTRATIVE REMARKS:</span> ${adminRemarks || "Satisfactory progress. Hard work is encouraged."}</div>
+                <div class="remark-row"><span class="remark-label">NEXT TERM BEGINS:</span> ${nextTermBegins || "To be communicated"}</div>
               </div>
-              <div class="sig-box">
-                ${adminSig ? `<img src="${adminSig}" class="sig-img" /><br/>` : '<div style="height:40px;"></div>'}
-                HEAD OF INSTITUTION'S SIGNATURE & STAMP
+              `
+                  : ""
+              }
+
+              <div class="footer-grid">
+                <div class="sig-box">
+                  ${adminSig ? `<img src="${adminSig}" class="sig-img" /><br/>` : '<div style="height:45px;"></div>'}
+                  HEAD OF INSTITUTION'S SIGNATURE & STAMP
+                </div>
+              </div>
+
+              <div class="verification-footer">
+                <div class="verify-text">
+                  <b>DIGITALLY VERIFIED DOCUMENT</b><br/>
+                  Student ID: ${studentId}<br/>
+                  Ref: ${academicYearState.replace("/", "")}-${termState.replace(" ", "")}-${reportType.substring(0, 1)}<br/>
+                  Generated on: ${new Date().toLocaleDateString()}
+                </div>
+                <img class="qr-code" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VERIFY-${studentId}-${academicYearState}-${termState}" />
               </div>
             </div>
           </body>
@@ -350,11 +379,23 @@ export default function ViewAcademicRecordDetails() {
       `;
 
       const result = await Print.printToFileAsync({ html });
-      if (result && result.uri) {
-        await shareFile(
-          result.uri,
-          `Report_${studentName.replace(/\s+/g, "_")}_${termState}.pdf`,
-        );
+      const fileName = `Report_${studentName.replace(/\s+/g, "_")}_${termState.replace(/\s+/g, "_")}.pdf`;
+
+      if (Platform.OS !== "web") {
+        const newUri = FileSystem.cacheDirectory + fileName;
+        await FileSystem.copyAsync({ from: result.uri, to: newUri });
+        await Sharing.shareAsync(newUri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Download Academic Report",
+          UTI: "com.adobe.pdf",
+        });
+      } else {
+        const link = document.createElement("a");
+        link.href = result.uri;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
     } catch (error) {
       console.error("PDF generation error:", error);
@@ -387,7 +428,7 @@ export default function ViewAcademicRecordDetails() {
           {generating ? (
             <ActivityIndicator size="small" color={primary} />
           ) : (
-            <SVGIcon name="print" size={24} color={primary} />
+            <SVGIcon name="download" size={24} color={primary} />
           )}
         </TouchableOpacity>
       </View>
@@ -449,62 +490,34 @@ export default function ViewAcademicRecordDetails() {
               <Text style={[styles.cell, styles.subCell, { color: "#fff" }]}>
                 SUBJECT
               </Text>
-              <Text style={[styles.cell, styles.numCell, { color: "#fff" }]}>
-                CLASS
-              </Text>
-              <Text style={[styles.cell, styles.numCell, { color: "#fff" }]}>
-                EXAM
-              </Text>
-              <Text style={[styles.cell, styles.numCell, { color: "#fff" }]}>
-                TOTAL
-              </Text>
-              <Text style={[styles.cell, styles.numCell, { color: "#fff" }]}>
-                GRD
-              </Text>
-              <Text style={[styles.cell, styles.remCell, { color: "#fff" }]}>
-                REMARKS
-              </Text>
-              <Text style={[styles.cell, styles.posCell, { color: "#fff" }]}>
-                POS
-              </Text>
+              {isFullReport ? (
+                <>
+                  <Text style={[styles.cell, styles.numCell, { color: "#fff" }]}>CLASS</Text>
+                  <Text style={[styles.cell, styles.numCell, { color: "#fff" }]}>EXAM</Text>
+                  <Text style={[styles.cell, styles.numCell, { color: "#fff" }]}>TOTAL</Text>
+                </>
+              ) : (
+                <Text style={[styles.cell, styles.numCell, { color: "#fff" }]}>SCORE</Text>
+              )}
+              <Text style={[styles.cell, styles.numCell, { color: "#fff" }]}>GRD</Text>
+              <Text style={[styles.cell, styles.posCell, { color: "#fff" }]}>POS</Text>
+              <Text style={[styles.cell, styles.remCell, { color: "#fff" }]}>REMARKS</Text>
             </View>
             {subjectsData.map((s, i) => (
-              <View
-                key={i}
-                style={[
-                  styles.tableRow,
-                  i % 2 !== 0 && { backgroundColor: "#F8FAFC" },
-                ]}
-              >
-                <Text
-                  style={[styles.cell, styles.subCell, { fontWeight: "800" }]}
-                >
-                  {s.subject}
-                </Text>
-                <Text style={[styles.cell, styles.numCell]}>
-                  {s.classScore}
-                </Text>
-                <Text style={[styles.cell, styles.numCell]}>
-                  {s.examsScore}
-                </Text>
-                <Text
-                  style={[
-                    styles.cell,
-                    styles.numCell,
-                    { fontWeight: "900", color: primary },
-                  ]}
-                >
-                  {s.total}
-                </Text>
-                <Text
-                  style={[styles.cell, styles.numCell, { fontWeight: "800" }]}
-                >
-                  {s.grade}
-                </Text>
-                <Text style={[styles.cell, styles.remCell, { fontSize: 9 }]}>
-                  {s.remark}
-                </Text>
+              <View key={i} style={[styles.tableRow, i % 2 !== 0 && { backgroundColor: "#F8FAFC" }]}>
+                <Text style={[styles.cell, styles.subCell, { fontWeight: "800" }]}>{s.subject}</Text>
+                {isFullReport ? (
+                  <>
+                    <Text style={[styles.cell, styles.numCell]}>{s.classScore}</Text>
+                    <Text style={[styles.cell, styles.numCell]}>{s.examsScore}</Text>
+                    <Text style={[styles.cell, styles.numCell, { fontWeight: "900", color: primary }]}>{s.total}</Text>
+                  </>
+                ) : (
+                  <Text style={[styles.cell, styles.numCell, { fontWeight: "900", color: primary }]}>{s.total}</Text>
+                )}
+                <Text style={[styles.cell, styles.numCell, { fontWeight: "800" }]}>{s.grade}</Text>
                 <Text style={[styles.cell, styles.posCell]}>{s.pos}</Text>
+                <Text style={[styles.cell, styles.remCell, { fontSize: 9, textAlign: 'left', paddingLeft: 4 }]}>{s.remark}</Text>
               </View>
             ))}
           </View>
@@ -570,20 +583,7 @@ export default function ViewAcademicRecordDetails() {
 
           {/* Signatures */}
           <View style={[styles.footer, !isFullReport && { marginTop: 80 }]}>
-            <View style={styles.sigContainer}>
-              {teacherSig ? (
-                <Image
-                  source={{ uri: teacherSig }}
-                  style={styles.sigImgUI}
-                  resizeMode="contain"
-                />
-              ) : (
-                <View style={{ height: 40 }} />
-              )}
-              <View style={styles.sigLine} />
-              <Text style={styles.sigLabel}>CLASS TEACHER</Text>
-            </View>
-            <View style={styles.sigContainer}>
+            <View style={[styles.sigContainer, { width: '100%' }]}>
               {adminSig ? (
                 <Image
                   source={{ uri: adminSig }}
@@ -593,7 +593,7 @@ export default function ViewAcademicRecordDetails() {
               ) : (
                 <View style={{ height: 40 }} />
               )}
-              <View style={styles.sigLine} />
+              <View style={[styles.sigLine, { width: '60%' }]} />
               <Text style={styles.sigLabel}>HEAD OF INSTITUTION</Text>
             </View>
           </View>

@@ -339,14 +339,26 @@ export default function StudentFeeHistoryScreen() {
       const fileName = `Fee_Receipt_${record.studentName.replace(/\s+/g, "_")}_${moment().format("DDMMYY")}.pdf`;
 
       if (Platform.OS !== "web") {
-        // Move to a permanent-ish location with a nice name before sharing
-        const newUri = FileSystem.documentDirectory + fileName;
+        // Move to a permanent-ish location with a nice name
+        const newUri = FileSystem.cacheDirectory + fileName;
         await FileSystem.copyAsync({ from: uri, to: newUri });
-        await Sharing.shareAsync(newUri, {
-          mimeType: "application/pdf",
-          dialogTitle: "Download Fee Receipt",
-          UTI: "com.adobe.pdf",
-        });
+
+        if (Platform.OS === "android") {
+          // On Android, we can try to save it to a public folder or just share it
+          // Sharing is often the only way without extra permissions,
+          // but we can at least ensure the dialog title is clear.
+          await Sharing.shareAsync(newUri, {
+            mimeType: "application/pdf",
+            dialogTitle: "Download Fee Receipt",
+            UTI: "com.adobe.pdf",
+          });
+        } else {
+          // iOS sharing dialog includes "Save to Files"
+          await Sharing.shareAsync(newUri, {
+            mimeType: "application/pdf",
+            UTI: "com.adobe.pdf",
+          });
+        }
       } else {
         // Force download on web instead of just opening
         const link = document.createElement("a");

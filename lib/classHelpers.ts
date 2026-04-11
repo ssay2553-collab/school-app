@@ -52,16 +52,25 @@ export const sortClasses = <T extends { name: string }>(list: T[]): T[] => {
 };
 
 /**
- * Calculates grade based on total score (0-100)
+ * Calculates grade details based on total score (0-100)
+ * Uses the standard scale: 90-100(1), 80-89(2), 70-79(3), etc.
+ */
+export const getGradeDetails = (score: number) => {
+  const s = Math.round(score || 0);
+  if (s >= 90) return { grade: "1", aggregate: 1, remark: "Highest" };
+  if (s >= 80) return { grade: "2", aggregate: 2, remark: "Higher" };
+  if (s >= 70) return { grade: "3", aggregate: 3, remark: "High" };
+  if (s >= 60) return { grade: "4", aggregate: 4, remark: "High Average" };
+  if (s >= 55) return { grade: "5", aggregate: 5, remark: "Average" };
+  if (s >= 50) return { grade: "6", aggregate: 6, remark: "Low Average" };
+  if (s >= 40) return { grade: "7", aggregate: 7, remark: "Low" };
+  if (s >= 35) return { grade: "8", aggregate: 8, remark: "Lower" };
+  return { grade: "9", aggregate: 9, remark: "Lowest" };
+};
+
+/**
+ * Legacy support for simple grade string calculation
  */
 export const calculateGrade = (score: number): string => {
-  if (score >= 80) return "A1";
-  if (score >= 70) return "B2";
-  if (score >= 60) return "B3";
-  if (score >= 55) return "C4";
-  if (score >= 50) return "C5";
-  if (score >= 45) return "C6";
-  if (score >= 40) return "D7";
-  if (score >= 35) return "E8";
-  return "F9";
+  return getGradeDetails(score).grade;
 };

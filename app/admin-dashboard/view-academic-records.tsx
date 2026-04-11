@@ -40,7 +40,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import { sortClasses, getGradeDetails } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 const storage = getStorage();
@@ -269,7 +269,7 @@ export default function ViewAcademicRecords() {
               studentId: s.studentId,
               fullName: s.fullName || "Unknown",
               total: total,
-              grade: s.grade || "N/A",
+              grade: getGradeDetails(total).grade,
               conduct: s.conduct,
               attitude: s.attitude,
               interest: s.interest,
@@ -508,11 +508,11 @@ export default function ViewAcademicRecords() {
 
         <Animatable.View animation="fadeInDown" style={styles.signatureCard}>
           <View style={styles.sigHeader}>
-            <SVGIcon name="brush-outline" size={20} color={primary} />
-            <Text style={styles.sigTitle}>Institution's Digital Signature</Text>
+            <SVGIcon name="shield-checkmark-outline" size={20} color={primary} />
+            <Text style={styles.sigTitle}>Institution's Official Signature</Text>
           </View>
           <Text style={styles.sigSubtitle}>
-            Used for Head of Institution's section on reports
+            Tip: Sign on plain white paper and <Text style={{fontWeight: 'bold', color: primary}}>apply the school stamp</Text> over it before uploading for a professional look.
           </Text>
           <View style={styles.sigContent}>
             {signatureUrl ? (

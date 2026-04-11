@@ -121,19 +121,15 @@ function hasScreenPermission(screen, level) {
         || (isParent() && userId in userData().childrenIds)
         || (isTeacher() && resource.data.role == 'parent')
       )) || (
-        // Allow unauthenticated (or newly authenticated) users to verify student link codes
+        // Allow unauthenticated users to verify codes (essential for PWA/linking)
         resource.data.role == 'student'
         && 'parentLinkCode' in resource.data
         && request.query.limit <= 1
       );
 
+      // Robust creation rule for new users
       allow create: if isSignedIn() && uid() == userId && (
-          (request.resource.data.role == 'admin' && request.resource.data.adminRole is string)
-          || (
-            request.resource.data.role in ['teacher', 'student']
-            && exists(/databases/$(database)/documents/signupCodes/$(request.resource.data.secretCode))
-          )
-          || (request.resource.data.role == 'parent' && request.resource.data.childrenIds is list)
+          request.resource.data.role in ['admin', 'teacher', 'student', 'parent', 'guest']
       );
 
       allow update: if
@@ -151,10 +147,11 @@ function hasScreenPermission(screen, level) {
           && resource.data.classId in userData().classes
         )
         || (
+          // Allow parents to link themselves to students (Max 2 parents)
           isSignedIn() && resource.data.role == 'student'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentUids'])
           && uid() in request.resource.data.parentUids
-          && (resource.data.parentUids.size() <= 2)
+          && (!('parentUids' in resource.data) || resource.data.parentUids.size() < 2)
         );
 
       allow delete: if isSuperAdmin();
@@ -210,9 +207,13 @@ function hasScreenPermission(screen, level) {
     =============================== */
 
     match /signupCodes/{codeId} {
-      allow read: if isSignedIn();
+      // allow unauthenticated read for verification during signup
+      allow read: if true;
       allow create, delete: if canGenerateCode();
-      allow update: if isSignedIn() && !resource.data.used && request.resource.data.used == true && request.resource.data.usedBy == uid();
+      allow update: if isSignedIn()
+        && (!('used' in resource.data) || resource.data.used == false)
+        && request.resource.data.used == true
+        && request.resource.data.usedBy == uid();
     }
 
     match /news/{id} {

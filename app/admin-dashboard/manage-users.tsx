@@ -50,7 +50,7 @@ import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 const { width } = Dimensions.get("window");
 const DEFAULT_AVATAR = require("../../assets/default-avatar.png");
 
-type UserRole = "admin" | "teacher" | "parent" | "student";
+type UserRole = "admin" | "teacher" | "parent" | "student" | "staff";
 type PermissionLevel = "full" | "view" | "edit" | "deny";
 
 interface User {
@@ -91,6 +91,7 @@ const roles: { name: string; role: UserRole; icon: string }[] = [
   { name: "Teachers", role: "teacher", icon: "people" },
   { name: "Parents", role: "parent", icon: "home" },
   { name: "Students", role: "student", icon: "school" },
+  { name: "Staff", role: "staff", icon: "briefcase" },
 ];
 
 const PERMISSION_KEYS = [
@@ -191,7 +192,14 @@ export default function ManageUsers() {
         limit(100),
       );
 
-      if (selectedRole === "student" && selectedClassId !== "all") {
+      if (selectedRole === "staff") {
+        q = query(
+          collection(db, "users"),
+          where("role", "==", "staff"),
+          where("status", "==", showArchived ? "archived" : "active"),
+          limit(100)
+        );
+      } else if (selectedRole === "student" && selectedClassId !== "all") {
         q = query(
           collection(db, "users"),
           where("role", "==", "student"),
@@ -241,7 +249,7 @@ export default function ManageUsers() {
       (u) =>
         u.profile?.firstName?.toLowerCase().includes(low) ||
         u.profile?.lastName?.toLowerCase().includes(low) ||
-        u.profile?.email?.toLowerCase().includes(low),
+        (u.profile?.email && u.profile.email.toLowerCase().includes(low)),
     );
   }, [users, searchQuery]);
 
@@ -838,6 +846,8 @@ export default function ManageUsers() {
                 <Text style={styles.userSubText}>
                   {item.status === "archived"
                     ? `Archived (${item.archivedInYear || "N/A"})`
+                    : item.role === "staff"
+                    ? `Salary: ₵${(item.salary || 0).toLocaleString()}`
                     : allClasses.find((c) => c.id === item.classId)?.name ||
                       item.adminRole ||
                       item.role.toUpperCase()}
@@ -1120,43 +1130,65 @@ export default function ManageUsers() {
                   <View style={styles.infoSection}>
                     <Text style={styles.infoLabel}>Bio Information</Text>
                     <View style={styles.infoGrid}>
-                      <View style={styles.infoRow}>
-                        <View style={styles.infoKeyRow}>
-                          <SVGIcon name="mail" size={18} color="#94A3B8" />
-                          <Text style={styles.infoKey}>Email</Text>
-                        </View>
-                        <Text style={styles.infoValue}>
-                          {viewingUser.profile?.email || "N/A"}
-                        </Text>
-                      </View>
-                      {viewingUser.role !== "student" && (
+                      {viewingUser.role !== "staff" && (
                         <View style={styles.infoRow}>
                           <View style={styles.infoKeyRow}>
-                            <SVGIcon name="call" size={18} color="#94A3B8" />
-                            <Text style={styles.infoKey}>Phone</Text>
+                            <SVGIcon name="mail" size={18} color="#94A3B8" />
+                            <Text style={styles.infoKey}>Email</Text>
                           </View>
                           <Text style={styles.infoValue}>
-                            {viewingUser.profile?.phone || "N/A"}
+                            {viewingUser.profile?.email || "N/A"}
                           </Text>
                         </View>
                       )}
-                      <View style={styles.infoRow}>
-                        <View style={styles.infoKeyRow}>
-                          <SVGIcon name="person" size={18} color="#94A3B8" />
-                          <Text style={styles.infoKey}>Gender</Text>
-                        </View>
-                        <Text style={styles.infoValue}>
-                          {viewingUser.profile?.gender || "N/A"}
-                        </Text>
-                      </View>
-                      {viewingUser.role !== "admin" && viewingUser.role !== "parent" && (
+                      {viewingUser.role !== "student" &&
+                        viewingUser.role !== "staff" && (
+                          <View style={styles.infoRow}>
+                            <View style={styles.infoKeyRow}>
+                              <SVGIcon name="call" size={18} color="#94A3B8" />
+                              <Text style={styles.infoKey}>Phone</Text>
+                            </View>
+                            <Text style={styles.infoValue}>
+                              {viewingUser.profile?.phone || "N/A"}
+                            </Text>
+                          </View>
+                        )}
+                      {viewingUser.role !== "staff" && (
                         <View style={styles.infoRow}>
                           <View style={styles.infoKeyRow}>
-                            <SVGIcon name="calendar" size={18} color="#94A3B8" />
-                            <Text style={styles.infoKey}>Date of Birth</Text>
+                            <SVGIcon name="person" size={18} color="#94A3B8" />
+                            <Text style={styles.infoKey}>Gender</Text>
                           </View>
                           <Text style={styles.infoValue}>
-                            {formatDate(viewingUser.dateOfBirth)}
+                            {viewingUser.profile?.gender || "N/A"}
+                          </Text>
+                        </View>
+                      )}
+                      {viewingUser.role !== "admin" &&
+                        viewingUser.role !== "parent" &&
+                        viewingUser.role !== "staff" && (
+                          <View style={styles.infoRow}>
+                            <View style={styles.infoKeyRow}>
+                              <SVGIcon
+                                name="calendar"
+                                size={18}
+                                color="#94A3B8"
+                              />
+                              <Text style={styles.infoKey}>Date of Birth</Text>
+                            </View>
+                            <Text style={styles.infoValue}>
+                              {formatDate(viewingUser.dateOfBirth)}
+                            </Text>
+                          </View>
+                        )}
+                      {viewingUser.role === "staff" && (
+                        <View style={styles.infoRow}>
+                          <View style={styles.infoKeyRow}>
+                            <SVGIcon name="cash" size={18} color="#94A3B8" />
+                            <Text style={styles.infoKey}>Monthly Salary</Text>
+                          </View>
+                          <Text style={styles.infoValue}>
+                            ₵{(viewingUser.salary || 0).toLocaleString()}
                           </Text>
                         </View>
                       )}

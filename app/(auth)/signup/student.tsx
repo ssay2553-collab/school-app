@@ -122,9 +122,8 @@ export default function StudentSignupScreen() {
         Alert.alert("Required", "Please enter your full name.");
         return false;
       }
-      const emailRegex = /\S+@\S+\.\S+/;
-      if (!emailRegex.test(form.email)) {
-        Alert.alert("Invalid Email", "Please enter a valid email address.");
+      if (!form.email.trim()) {
+        Alert.alert("Required", "Please enter an email address.");
         return false;
       }
       if (form.password.length < 6) {
@@ -201,6 +200,11 @@ export default function StudentSignupScreen() {
       const cred = await createUserWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
       const userId = cred.user.uid;
 
+      // Ensure session is fresh for Firestore rules
+      if (cred.user) {
+        await cred.user.getIdToken(true);
+      }
+
       // Safe Image Upload
       let profileImageUrl = null;
       if (form.profileImage) {
@@ -223,7 +227,7 @@ export default function StudentSignupScreen() {
         status: "active",
         classId: form.selectedClassId,
         gender: form.gender, 
-        secretCode: cleanCode,
+        secretCode: codeDoc.id,
         parentLinkCode: generateLinkCode(),
         parentUids: [],
         dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : null,
@@ -239,14 +243,25 @@ export default function StudentSignupScreen() {
       batch.update(doc(db, "signupCodes", codeDoc.id), { used: true, usedBy: userId });
       await batch.commit();
 
-      Alert.alert("Yay! 🎉", "Account created successfully! Your student adventure starts now!", [
-        { text: "Let's Go!", onPress: () => router.replace("/(auth)/login/student") },
-      ]);
+      const successMsg = "Account created successfully! Your student adventure starts now!";
+      if (Platform.OS === 'web') {
+        window.alert("Yay! 🎉\n" + successMsg);
+        router.replace("/(auth)/login/student");
+      } else {
+        Alert.alert("Yay! 🎉", successMsg, [
+          { text: "Let's Go!", onPress: () => router.replace("/(auth)/login/student") },
+        ]);
+      }
     } catch (err: any) {
       console.error("Signup error details:", err);
       let msg = err.message;
       if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
-      Alert.alert("Signup Failed", msg || "An unexpected error occurred.");
+
+      if (Platform.OS === 'web') {
+        window.alert("Signup Failed\n" + msg);
+      } else {
+        Alert.alert("Signup Failed", msg || "An unexpected error occurred.");
+      }
     } finally {
       setLoading(false);
     }
@@ -350,12 +365,19 @@ export default function StudentSignupScreen() {
                    <ThemedText style={styles.inputLabel}>DATE OF BIRTH</ThemedText>
                    {Platform.OS === 'web' ? (
                      <View style={styles.datePickerBtn}>
-                        <TextInput
-                          // @ts-ignore
+                        <input
                           type="date"
-                          style={[styles.dateText, { width: '100%' }]}
+                          style={{
+                            width: '100%',
+                            border: 'none',
+                            backgroundColor: 'transparent',
+                            fontSize: '14px',
+                            color: '#1E293B',
+                            outline: 'none',
+                            fontFamily: 'inherit'
+                          }}
                           value={form.dateOfBirth ? form.dateOfBirth.toISOString().split('T')[0] : ""}
-                          onChange={(e: any) => {
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                             const date = new Date(e.target.value);
                             if (!isNaN(date.getTime())) {
                               setForm({ ...form, dateOfBirth: date });

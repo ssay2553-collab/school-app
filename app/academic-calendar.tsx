@@ -21,6 +21,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    Dimensions,
     Modal,
     Platform,
     RefreshControl,
@@ -74,6 +75,8 @@ const ADMIN_PRIVILEGED_ROLES = [
   "CEO",
   "Admin",
 ];
+
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function AcademicCalendar() {
   const { appUser } = useAuth();
@@ -912,10 +915,13 @@ const styles = StyleSheet.create<any>({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#F1F5F9",
+    flexWrap: "wrap",
+    gap: 8
   },
   backBtn: {
     width: 40,
@@ -955,14 +961,16 @@ const styles = StyleSheet.create<any>({
     }),
   },
   termBar: {
-    margin: 20,
+    margin: 15,
     marginBottom: 10,
-    padding: 18,
+    padding: 15,
     backgroundColor: "#fff",
-    borderRadius: 24,
+    borderRadius: 20,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    flexWrap: "wrap",
+    gap: 10,
     ...Platform.select({
       web: { boxShadow: "0 2px 3px rgba(0,0,0,0.1)" },
       default: SHADOWS.small,
@@ -1052,12 +1060,12 @@ const styles = StyleSheet.create<any>({
   settingsContainer: {
     backgroundColor: "#fff",
     borderRadius: 30,
-    padding: 25,
+    padding: 20,
     ...Platform.select({
       web: { boxShadow: "0 10px 15px rgba(0,0,0,0.2)" },
       default: SHADOWS.large,
     }),
-    width: Platform.OS === "web" ? 500 : "100%",
+    width: Platform.OS === "web" ? Math.min(SCREEN_WIDTH - 30, 500) : "100%",
     alignSelf: "center",
   },
   modalHeader: {

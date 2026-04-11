@@ -95,74 +95,69 @@ export default function StaffPayrollScreen() {
     }
   }, [acadConfig]);
 
-  const fetchTotalCommitment = async () => {
-    try {
-      const teacherQuery = query(collection(db, "users"), where("role", "==", "teacher"), where("status", "==", "active"));
-      const ntQuery = query(collection(db, "nonTeachingStaff"));
-      const [tSnap, ntSnap] = await Promise.all([
-        getAggregateFromServer(teacherQuery, { total: sum("salary") }),
-        getAggregateFromServer(ntQuery, { total: sum("salary") }),
-      ]);
-      setSchoolTotalPayroll((tSnap.data().total || 0) + (ntSnap.data().total || 0));
-    } catch (e) { console.warn("Aggregate error:", e); }
-  };
-
-  const fetchStaff = useCallback(async (isRefresh = false) => {
-      if (!canView) return;
-      if (isRefresh) setRefreshing(true);
-      else setLoadingStaff(true);
-
-      try {
-        if (!isRefresh) {
-          const cached = await AsyncStorage.getItem(CACHE_KEY);
-          if (cached) {
-            try { 
-              const parsed = JSON.parse(cached);
-              setStaff(parsed); 
-              const salaries: Record<string, string> = {};
-              parsed.forEach((s: Staff) => (salaries[s.id] = (s.salary || 0).toString()));
-              setEditingSalaries(salaries);
-              setLoadingStaff(false); 
-            } catch (e) {}
-          }
-        }
-
-        const teacherQuery = query(collection(db, "users"), where("role", "==", "teacher"), limit(100));
-        const ntQuery = query(collection(db, "nonTeachingStaff"), limit(100));
-        const [tSnap, ntSnap] = await Promise.all([getDocs(teacherQuery), getDocs(ntQuery)]);
-
-        const teachers = tSnap.docs.map((d) => ({
-            id: d.id,
-            name: `${d.data().profile?.firstName ?? ""} ${d.data().profile?.lastName ?? ""}`.trim() || "Teacher",
-            role: "Teacher" as const,
-            salary: d.data().salary ?? 0,
-            approved: d.data().status === "active",
-          })).filter((t) => t.approved);
-
-        const nonTeaching = ntSnap.docs.map((d) => ({
-          id: d.id,
-          name: d.data().name ?? d.id,
-          role: "Non-Teaching" as const,
-          salary: d.data().salary ?? 0,
-          approved: true,
-        }));
-
-        const combined = [...teachers, ...nonTeaching].sort((a, b) => a.name.localeCompare(b.name));
-        setStaff(combined);
-        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(combined));
-
-        const salaries: Record<string, string> = {};
-        combined.forEach((s) => (salaries[s.id] = (s.salary || 0).toString()));
-        setEditingSalaries(salaries);
-        fetchTotalCommitment();
-      } catch (err) { console.error(err); } finally { setLoadingStaff(false); setRefreshing(false); }
-    },
-    [canView],
-  );
 
   useEffect(() => {
-    if (appUser && canView) fetchStaff();
-  }, [appUser, canView, fetchStaff]);
+    if (!canView || !appUser) return;
+
+    // Load from cache first for instant UI
+    const loadCache = async () => {
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setStaff(parsed);
+          const salaries: Record<string, string> = {};
+          parsed.forEach((s: Staff) => (salaries[s.id] = (s.salary || 0).toString()));
+          setEditingSalaries(salaries);
+          setLoadingStaff(false);
+        } catch (e) {}
+      }
+    };
+    loadCache();
+
+    // Single real-time listener for all roles (Saves Cost & is Smooth)
+    const q = query(
+      collection(db, "users"),
+      where("role", "in", ["admin", "teacher", "staff"]),
+      where("status", "==", "active"),
+      limit(300)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const combined = snapshot.docs.map((d) => {
+        const data = d.data();
+        const role = data.role === "admin" ? "Administrator" : (data.role === "teacher" ? "Teacher" : "Non-Teaching");
+        return {
+          id: d.id,
+          name: `${data.profile?.firstName ?? ""} ${data.profile?.lastName ?? ""}`.trim() || d.id,
+          role: role as any,
+          salary: data.salary ?? 0,
+          approved: true,
+        };
+      }).sort((a, b) => a.name.localeCompare(b.name));
+
+      setStaff(combined);
+
+      // Calculate total commitment locally (FREE - no extra server hits)
+      const total = combined.reduce((acc, curr) => acc + (curr.salary || 0), 0);
+      setSchoolTotalPayroll(total);
+
+      // Update local state for editing
+      const salaries: Record<string, string> = {};
+      combined.forEach((s) => (salaries[s.id] = (s.salary || 0).toString()));
+      setEditingSalaries(prev => ({ ...salaries, ...prev })); // Keep active edits
+
+      AsyncStorage.setItem(CACHE_KEY, JSON.stringify(combined));
+      setLoadingStaff(false);
+      setRefreshing(false);
+    }, (err) => {
+      console.error("Staff snapshot error:", err);
+      setLoadingStaff(false);
+      setRefreshing(false);
+    });
+
+    return () => unsubscribe();
+  }, [canView, appUser]);
 
   const handleUpdateSalary = async (item: Staff) => {
     const val = editingSalaries[item.id];
@@ -171,20 +166,8 @@ export default function StaffPayrollScreen() {
 
     setUpdatingId(item.id);
     try {
-      const col = item.role === "Teacher" ? "users" : "nonTeachingStaff";
-      await updateDoc(doc(db, col, item.id), { salary: newSalary });
-
-      // Update local state first for immediate UI response
-      setStaff((prev) =>
-        prev.map((s) => (s.id === item.id ? { ...s, salary: newSalary } : s))
-      );
-
-      // Update cached total commitment locally to avoid heavy server calls immediately
-      setSchoolTotalPayroll((prevTotal) => {
-        const oldSalary = item.salary || 0;
-        return prevTotal - oldSalary + newSalary;
-      });
-
+      await updateDoc(doc(db, "users", item.id), { salary: newSalary });
+      // Total will auto-update via onSnapshot listener
       Alert.alert("Success", "Salary updated.");
     } catch (error) {
       console.error("Update salary error:", error);
@@ -199,16 +182,26 @@ export default function StaffPayrollScreen() {
     if (!newStaffName || !newStaffSalary) return Alert.alert("Required", "Please fill all fields.");
     setAddingStaff(true);
     try {
-      await addDoc(collection(db, "nonTeachingStaff"), {
-        name: newStaffName,
+      const names = newStaffName.trim().split(" ");
+      const firstName = names[0];
+      const lastName = names.slice(1).join(" ") || "Staff";
+
+      await addDoc(collection(db, "users"), {
+        role: "staff",
+        schoolId: appUser?.schoolId || "default",
+        status: "active",
         salary: parseFloat(newStaffSalary),
-        role: "Non-Teaching",
+        profile: {
+          firstName,
+          lastName,
+          email: `${firstName.toLowerCase()}.${Date.now()}@staff.com`, // Placeholder email
+        },
         createdAt: serverTimestamp(),
       });
       setShowAddStaffModal(false);
       setNewStaffName("");
       setNewStaffSalary("");
-      fetchStaff(true);
+      // Fetch will happen automatically via onSnapshot
       Alert.alert("Success", "Staff registered.");
     } catch { Alert.alert("Error", "Could not add staff."); } finally { setAddingStaff(false); }
   };
@@ -252,7 +245,13 @@ export default function StaffPayrollScreen() {
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Staff Payroll</Text>
-          <SVGIcon name="cash" size={28} color="#fff" />
+          {canEditSalary ? (
+            <TouchableOpacity onPress={() => setShowAddStaffModal(true)} style={styles.addBtn}>
+              <SVGIcon name="add" size={28} color="#fff" />
+            </TouchableOpacity>
+          ) : (
+            <SVGIcon name="cash" size={28} color="#fff" />
+          )}
         </View>
 
         <View style={styles.summaryArea}>
@@ -300,7 +299,7 @@ export default function StaffPayrollScreen() {
           <FlatList
             data={staff}
             keyExtractor={(item) => item.id}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchStaff(true)} colors={[COLORS.primary]} tintColor={COLORS.primary} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} colors={[COLORS.primary]} tintColor={COLORS.primary} />}
             renderItem={({ item }) => (
               <Animatable.View animation="fadeInUp" duration={500} style={styles.card}>
                 <View style={{ flex: 1 }}>
@@ -343,12 +342,6 @@ export default function StaffPayrollScreen() {
           />
         )}
       </View>
-
-      {canEditSalary && (
-        <TouchableOpacity style={styles.fab} onPress={() => setShowAddStaffModal(true)}>
-          <SVGIcon name="add" size={30} color="#fff" />
-        </TouchableOpacity>
-      )}
 
       {/* Add Staff Modal */}
       <Modal visible={showAddModal} animationType="slide" transparent>
@@ -403,7 +396,7 @@ const styles = StyleSheet.create({
   salaryInput: { width: 80, height: 40, backgroundColor: '#F8FAFC', borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', textAlign: 'center', fontSize: 14, fontWeight: '900', color: COLORS.primary },
   updateBtn: { paddingHorizontal: 12, height: 40, borderRadius: 10, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center' },
   updateBtnText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-  fab: { position: 'absolute', bottom: 30, right: 30, width: 60, height: 60, borderRadius: 30, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', ...SHADOWS.large },
+  addBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', marginTop: 60 },
   emptyText: { color: '#94A3B8', marginTop: 15, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },

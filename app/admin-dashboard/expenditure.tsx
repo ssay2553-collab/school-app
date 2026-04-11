@@ -37,6 +37,8 @@ import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { httpsCallable } from "firebase/functions";
+import { functions } from "../../firebaseConfig";
 
 const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 Hours
 
@@ -80,11 +82,13 @@ export default function ExpenditureScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
   const [serverTotal, setServerTotal] = useState(0);
   
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("");
+  const [isPreviousTerm, setIsPreviousTerm] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [itemName, setItemName] = useState("");
@@ -140,6 +144,41 @@ export default function ExpenditureScreen() {
     return () => unsubscribe();
   }, [selectedYear, selectedTerm]);
 
+  const fetchPreviousTerm = () => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) return;
+
+    let prevTerm = "";
+    let prevYear = acadConfig.academicYear;
+
+    if (acadConfig.currentTerm.toLowerCase().includes("term 3") || acadConfig.currentTerm.toLowerCase().includes("3rd")) {
+      prevTerm = "Term 2";
+    } else if (acadConfig.currentTerm.toLowerCase().includes("term 2") || acadConfig.currentTerm.toLowerCase().includes("2nd")) {
+      prevTerm = "Term 1";
+    } else {
+      // If it's Term 1, go back to previous year Term 3
+      const yearParts = acadConfig.academicYear.split("/");
+      if (yearParts.length === 2) {
+        const startYear = parseInt(yearParts[0]);
+        const endYear = parseInt(yearParts[1]);
+        prevYear = `${startYear - 1}/${endYear - 1}`;
+        prevTerm = "Term 3";
+      }
+    }
+
+    if (prevTerm) {
+      setSelectedYear(prevYear);
+      setSelectedTerm(prevTerm);
+      setIsPreviousTerm(true);
+      Alert.alert("Viewing Archive", `Showing records for ${prevYear} - ${prevTerm}`);
+    }
+  };
+
+  const resetToCurrentTerm = () => {
+    setSelectedYear(acadConfig.academicYear || "");
+    setSelectedTerm(acadConfig.currentTerm || "");
+    setIsPreviousTerm(false);
+  };
+
   const addExpenditure = async () => {
     if (!canEdit) return Alert.alert("Denied", "You don't have permission to add entries.");
     if (!itemName.trim() || !amount.trim()) return Alert.alert("Required", "Please fill all fields");
@@ -169,6 +208,34 @@ export default function ExpenditureScreen() {
     }
   };
 
+  const handleDeleteExpenditure = (item: Expenditure) => {
+    if (!canEdit) return;
+
+    Alert.alert(
+      "Confirm Delete",
+      `Are you sure you want to remove "${item.item}"? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingId(item.id);
+            try {
+              const deleteFn = httpsCallable(functions, "deleteExpenditure");
+              await deleteFn({ expenditureId: item.id });
+            } catch (e: any) {
+              console.error("Delete function error:", e);
+              Alert.alert("Error", e.message || "Could not delete entry.");
+            } finally {
+              setDeletingId(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   if (!canView) return null;
 
   const isConfigMissing = !selectedYear || !selectedTerm;
@@ -183,15 +250,21 @@ export default function ExpenditureScreen() {
                <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Expenditures</Text>
-            <View style={{ width: 24 }} />
+            {canEdit && !isConfigMissing && !isPreviousTerm ? (
+              <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.addBtn}>
+                 <SVGIcon name="add" size={28} color="#fff" />
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 24 }} />
+            )}
         </View>
 
         <View style={styles.summaryBox}>
             <Text style={styles.summaryLabel}>TOTAL PERIOD SPENDING</Text>
             <Text style={styles.summaryValue}>₵{(serverTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</Text>
             {!isConfigMissing && (
-              <Animatable.View animation="pulse" iterationCount="infinite" style={[styles.periodBadge, { backgroundColor: secondaryBrand }]}>
-                  <Text style={styles.periodText}>{selectedYear} • {selectedTerm}</Text>
+              <Animatable.View animation="pulse" iterationCount="infinite" style={[styles.periodBadge, { backgroundColor: isPreviousTerm ? "#F59E0B" : secondaryBrand }]}>
+                  <Text style={styles.periodText}>{selectedYear} • {selectedTerm} {isPreviousTerm ? "(ARCHIVE)" : ""}</Text>
               </Animatable.View>
             )}
         </View>
@@ -206,6 +279,22 @@ export default function ExpenditureScreen() {
             <View style={styles.lockedValue}><Text style={styles.lockedValueText}>{selectedTerm || "Not Set"}</Text></View>
           </View>
         </View>
+
+        {!isConfigMissing && (
+          <View style={styles.historyToggleRow}>
+             {isPreviousTerm ? (
+               <TouchableOpacity style={styles.historyBtn} onPress={resetToCurrentTerm}>
+                  <SVGIcon name="refresh" size={14} color="#fff" />
+                  <Text style={styles.historyBtnText}>Return to Current Term</Text>
+               </TouchableOpacity>
+             ) : (
+               <TouchableOpacity style={styles.historyBtn} onPress={fetchPreviousTerm}>
+                  <SVGIcon name="time-outline" size={14} color="#fff" />
+                  <Text style={styles.historyBtnText}>View Previous Term Records</Text>
+               </TouchableOpacity>
+             )}
+          </View>
+        )}
       </LinearGradient>
 
       {isConfigMissing ? (
@@ -242,24 +331,31 @@ export default function ExpenditureScreen() {
                       <Text style={styles.dateText}>{item.date || "N/A"}</Text>
                   </View>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.itemAmount}>₵{(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</Text>
-                  <View style={styles.adminBadge}>
-                    <Text style={styles.adminText}>{item.adminName} • {item.adminRole}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 15 }}>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.itemAmount}>₵{(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</Text>
+                    <View style={styles.adminBadge}>
+                      <Text style={styles.adminText}>{item.adminName} • {item.adminRole}</Text>
+                    </View>
                   </View>
+                  {canEdit && (
+                    <TouchableOpacity
+                      onPress={() => handleDeleteExpenditure(item)}
+                      style={styles.deleteBtn}
+                      disabled={deletingId === item.id}
+                    >
+                      {deletingId === item.id ? (
+                        <ActivityIndicator size="small" color="#EF4444" />
+                      ) : (
+                        <SVGIcon name="trash-outline" size={20} color="#EF4444" />
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
             </Animatable.View>
           )}
         />
-      )}
-
-      {canEdit && !isConfigMissing && (
-        <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-          <LinearGradient colors={[secondaryBrand, "#d97706"]} style={styles.fabGradient}>
-              <SVGIcon name="create" size={30} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
       )}
 
       <Modal visible={modalVisible} animationType="slide" transparent>
@@ -303,6 +399,9 @@ const styles = StyleSheet.create({
   miniLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 9, fontWeight: '800', marginBottom: 4 },
   lockedValue: { height: 25, justifyContent: 'center' },
   lockedValueText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  historyToggleRow: { marginTop: 15, flexDirection: 'row', justifyContent: 'center' },
+  historyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, gap: 6 },
+  historyBtnText: { color: '#fff', fontSize: 11, fontWeight: '600' },
   listContent: { padding: 16, paddingBottom: 100 },
   card: { backgroundColor: '#fff', borderRadius: 18, padding: 16, marginBottom: 12, ...SHADOWS.small },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -312,8 +411,8 @@ const styles = StyleSheet.create({
   itemAmount: { fontSize: 18, fontWeight: '800', color: COLORS.primary || "#2e86de" },
   adminBadge: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
   adminText: { fontSize: 10, color: '#64748B', fontWeight: '600' },
-  fab: { position: 'absolute', bottom: 30, right: 30, width: 65, height: 65, borderRadius: 32.5, ...SHADOWS.medium },
-  fabGradient: { flex: 1, borderRadius: 32.5, alignItems: 'center', justifyContent: 'center' },
+  deleteBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#FEE2E2', justifyContent: 'center', alignItems: 'center' },
+  addBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 60, paddingHorizontal: 40 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginTop: 20 },
   emptyText: { fontSize: 14, color: '#64748B', textAlign: 'center', marginTop: 8 },

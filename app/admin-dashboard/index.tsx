@@ -370,39 +370,48 @@ export default function AdminDashboard() {
                 {section.title}
               </Text>
               <View style={styles.grid}>
-                {section.items.map((item, index) => (
-                  <View key={item.title} style={styles.gridItemWrapper}>
-                    <TouchableOpacity
-                      style={styles.gridItem}
-                      onPress={() => router.push(item.route as any)}
-                    >
-                      <View
-                        style={[
-                          styles.itemIconBox,
-                          { backgroundColor: (item.color || "#000") + "10" },
-                        ]}
+                {section.items.map((item, index) => {
+                  const columnCount = (section.items.length % 3 === 0) ? 3 : 2;
+                  const itemWidth = (100 / columnCount) + "%";
+
+                  return (
+                    <View key={item.title} style={[styles.gridItemWrapper, { width: itemWidth as any }]}>
+                      <TouchableOpacity
+                        style={[styles.gridItem, columnCount === 3 && styles.gridItemSmall]}
+                        onPress={() => router.push(item.route as any)}
                       >
-                        <SVGIcon
-                          name={item.icon}
-                          size={26}
-                          color={item.color}
-                        />
-                      </View>
-                      <Text style={styles.itemTitle} numberOfLines={1}>
-                        {item.title}
-                      </Text>
-                      {item.route &&
-                      String(item.route).includes("chat") &&
-                      totalUnread > 0 ? (
                         <View
-                          style={{ position: "absolute", top: 10, right: 12 }}
+                          style={[
+                            styles.itemIconBox,
+                            columnCount === 3 && styles.itemIconBoxSmall,
+                            { backgroundColor: (item.color || "#000") + "10" },
+                          ]}
                         >
-                          <UnreadBadge count={totalUnread} />
+                          <SVGIcon
+                            name={item.icon}
+                            size={columnCount === 3 ? 22 : 26}
+                            color={item.color}
+                          />
                         </View>
-                      ) : null}
-                    </TouchableOpacity>
-                  </View>
-                ))}
+                        <Text
+                          style={[styles.itemTitle, columnCount === 3 && styles.itemTitleSmall]}
+                          numberOfLines={1}
+                        >
+                          {item.title}
+                        </Text>
+                        {item.route &&
+                        String(item.route).includes("chat") &&
+                        totalUnread > 0 ? (
+                          <View
+                            style={{ position: "absolute", top: 8, right: columnCount === 3 ? 8 : 12 }}
+                          >
+                            <UnreadBadge count={totalUnread} />
+                          </View>
+                        ) : null}
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })}
               </View>
             </View>
           ))}
@@ -514,14 +523,21 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     marginTop: 10,
   },
-  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -8 },
-  gridItemWrapper: { width: "50%", padding: 8 },
+  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
+  gridItemWrapper: { padding: 6 },
   gridItem: {
     backgroundColor: "#fff",
     borderRadius: 24,
     padding: 20,
     alignItems: "center",
+    justifyContent: "center",
+    minHeight: 120,
     ...SHADOWS.small,
+  },
+  gridItemSmall: {
+    padding: 12,
+    borderRadius: 20,
+    minHeight: 100,
   },
   itemIconBox: {
     width: 56,
@@ -531,5 +547,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  itemTitle: { fontSize: 13, fontWeight: "700", color: "#1f2937" },
+  itemIconBoxSmall: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    marginBottom: 8,
+  },
+  itemTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1f2937",
+    textAlign: "center"
+  },
+  itemTitleSmall: {
+    fontSize: 11,
+  },
 });

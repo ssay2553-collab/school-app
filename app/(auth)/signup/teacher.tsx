@@ -70,12 +70,11 @@ export default function TeacherSignupScreen() {
         Alert.alert("Required", "Please enter your full name.");
         return false;
       }
-      const emailRegex = /\S+@\S+\.\S+/;
-      if (!emailRegex.test(form.email)) {
-        Alert.alert("Invalid Email", "Please enter a valid email address.");
+      if (!form.email.trim()) {
+        Alert.alert("Required", "Please enter an email address.");
         return false;
       }
-      if (form.phone.length < 10) {
+      if (form.phone.length < 9) {
         Alert.alert("Invalid Phone", "Please enter a valid phone number.");
         return false;
       }
@@ -107,7 +106,11 @@ export default function TeacherSignupScreen() {
   };
 
   const handleSignup = async () => {
-    if (!form.signupCode.trim()) return Alert.alert("Error", "Signup code required.");
+    if (!form.signupCode.trim()) {
+      if (Platform.OS === 'web') window.alert("Signup code required.");
+      else Alert.alert("Error", "Signup code required.");
+      return;
+    }
     setLoading(true);
     try {
       const cleanCode = form.signupCode.trim().toUpperCase();
@@ -116,7 +119,10 @@ export default function TeacherSignupScreen() {
 
       if (snap.empty) {
         setLoading(false);
-        return Alert.alert("Invalid Code", "This signup code is not valid. Please check with your admin.");
+        const msg = "This signup code is not valid. Please check with your admin.";
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert("Invalid Code", msg);
+        return;
       }
 
       const codeDoc = snap.docs[0];
@@ -124,26 +130,34 @@ export default function TeacherSignupScreen() {
 
       if (codeData.used) {
         setLoading(false);
-        return Alert.alert("Used Code", "This code has already been used by another teacher.");
+        const msg = "This code has already been used by another teacher.";
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert("Used Code", msg);
+        return;
       }
 
       if (codeData.intendedForRole !== "teacher") {
         setLoading(false);
-        return Alert.alert("Wrong Code", "This code is not meant for a teacher account.");
+        const msg = "This code is not meant for a teacher account.";
+        if (Platform.OS === 'web') window.alert(msg);
+        else Alert.alert("Wrong Code", msg);
+        return;
       }
 
       const cleanEmail = form.email.trim().toLowerCase();
       const cred = await createUserWithEmailAndPassword(auth, cleanEmail, form.password);
       
       // Ensure session is fresh for Firestore rules
-      await cred.user.getIdToken(true);
+      if (cred.user) {
+        await cred.user.getIdToken(true);
+      }
 
       const batch = writeBatch(db);
       batch.set(doc(db, "users", cred.user.uid), {
         uid: cred.user.uid,
         role: "teacher",
         schoolId: schoolId,
-        secretCode: cleanCode,
+        secretCode: codeDoc.id,
         status: "active",
         classes: selectedClasses,
         subjects: [...selectedSubjects, ...otherSubjects],
@@ -160,15 +174,23 @@ export default function TeacherSignupScreen() {
       batch.update(doc(db, "signupCodes", codeDoc.id), { used: true, usedBy: cred.user.uid });
       await batch.commit();
       
-      Alert.alert("Success 🎉", "Account created successfully! You can now log in.");
-      setTimeout(() => {
+      const successMsg = "Account created successfully! You can now log in.";
+      if (Platform.OS === 'web') {
+        window.alert("Success 🎉\n" + successMsg);
         router.replace("/(auth)/login/teacher");
-      }, 1000);
+      } else {
+        Alert.alert("Success 🎉", successMsg);
+        setTimeout(() => {
+          router.replace("/(auth)/login/teacher");
+        }, 1000);
+      }
     } catch (err: any) {
       console.error("Teacher signup error:", err);
       let msg = err.message;
       if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
-      Alert.alert("Signup Failed", msg);
+
+      if (Platform.OS === 'web') window.alert("Signup Failed\n" + msg);
+      else Alert.alert("Signup Failed", msg);
     } finally { setLoading(false); }
   };
 

@@ -1,6 +1,6 @@
-import * as admin from "firebase-admin";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 
 /**
  * Triggered when a payment is added or updated in studentFeeRecords.
@@ -112,5 +112,64 @@ export const sendFeeReminders = onSchedule("0 15 26,27 * *", async (event) => {
     }
   } catch (error) {
     console.error("Error in sendFeeReminders function:", error);
+  }
+});
+
+/**
+ * Deletes an expenditure entry and logs the action for audit.
+ * payload: { expenditureId: string }
+ */
+export const deleteExpenditure = onCall(async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
+
+  const { expenditureId } = req.data || {};
+  if (!expenditureId) throw new HttpsError("invalid-argument", "Missing expenditureId.");
+
+  const db = admin.firestore();
+
+  // 1. Verify Caller is an Admin
+  const callerDoc = await db.collection("users").doc(auth.uid).get();
+  const callerData = callerDoc.data();
+  const expPermission = callerData?.permissions?.["expenditure"] || "deny";
+  const isSuperAdmin = ["proprietor", "headmaster", "ceo"].includes(callerData?.adminRole?.toLowerCase() || "");
+  const canDelete = isSuperAdmin || expPermission === "full" || expPermission === "edit";
+
+  if (!canDelete) {
+    throw new HttpsError("permission-denied", "Unauthorized to delete expenditures.");
+  }
+
+  try {
+    const expRef = db.collection("expenditures").doc(expenditureId);
+    const expDoc = await expRef.get();
+
+    if (!expDoc.exists) {
+      throw new HttpsError("not-found", "Expenditure record not found.");
+    }
+
+    const expData = expDoc.data();
+
+    // 2. Perform Deletion
+    await expRef.delete();
+
+    // 3. Log the Deletion for audit (Optional but highly recommended)
+    await db.collection("auditLogs").add({
+      action: "DELETE_EXPENDITURE",
+      performedBy: auth.uid,
+      adminName: callerData?.profile?.firstName || "Unknown Admin",
+      details: {
+        item: expData?.item,
+        amount: expData?.amount,
+        expenditureDate: expData?.date,
+      },
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(`Expenditure ${expenditureId} deleted by ${auth.uid}`);
+    return { status: 200, message: "Expenditure deleted successfully." };
+
+  } catch (error: any) {
+    console.error("deleteExpenditure error:", error);
+    throw new HttpsError("internal", error.message || "Deletion failed.");
   }
 });

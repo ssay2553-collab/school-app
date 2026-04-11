@@ -150,12 +150,11 @@ export default function ParentSignup() {
     if (!firstName.trim() || !lastName.trim()) {
       return Alert.alert("Required", "Please enter your full name.");
     }
-    if (phone.trim().length < 10) {
+    if (phone.trim().length < 9) {
       return Alert.alert("Invalid Phone", "Please enter a valid phone number.");
     }
-    const emailRegex = /\S+@\S+\.\S+/;
-    if (!emailRegex.test(email)) {
-      return Alert.alert("Invalid Email", "Please enter a valid email address.");
+    if (!email.trim()) {
+      return Alert.alert("Required", "Please enter an email address.");
     }
     if (password.length < 6) {
       return Alert.alert("Weak Password", "Password must be at least 6 characters.");
@@ -173,6 +172,12 @@ export default function ParentSignup() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       const parentId = userCredential.user.uid;
+
+      // Ensure session is fresh for Firestore rules
+      if (userCredential.user) {
+        await userCredential.user.getIdToken(true);
+      }
+
       const batch = writeBatch(db);
 
       const childrenUids: string[] = [];
@@ -218,13 +223,24 @@ export default function ParentSignup() {
 
       await batch.commit();
       
-      Alert.alert("Success 🎉", "Your parent account has been created! You can now log in to view your children's progress.");
-      router.replace("/(auth)/login/parent");
+      const successMsg = "Your parent account has been created! You can now log in to view your children's progress.";
+      if (Platform.OS === 'web') {
+        window.alert("Success 🎉\n" + successMsg);
+        router.replace("/(auth)/login/parent");
+      } else {
+        Alert.alert("Success 🎉", successMsg);
+        router.replace("/(auth)/login/parent");
+      }
     } catch (err: any) {
       console.error("Signup error:", err);
       let msg = err.message;
       if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
-      Alert.alert("Signup Failed", msg);
+
+      if (Platform.OS === 'web') {
+        window.alert("Signup Failed\n" + msg);
+      } else {
+        Alert.alert("Signup Failed", msg);
+      }
     } finally {
       setIsLoading(false);
     }

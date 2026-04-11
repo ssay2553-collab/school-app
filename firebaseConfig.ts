@@ -64,23 +64,35 @@ export const auth: Auth = authInstance;
 
 let dbInstance: Firestore;
 try {
-  const isWeb = Platform.OS === 'web';
-  
+  const isWeb = Platform.OS === "web";
+  const isElectron =
+    isWeb &&
+    typeof window !== "undefined" &&
+    navigator.userAgent.toLowerCase().includes("electron");
+
   /**
-   * FIX: The Firebase JS SDK v10+ persistentLocalCache() relies on IndexedDB,
-   * which is missing in React Native (Android/iOS) and some Electron/Web environments.
-   * We force memoryLocalCache() to avoid the "unimplemented" warning.
+   * PERSISTENCE:
+   * - Web/PWA/Electron/Safari: Use IndexedDB (persistentLocalCache) for speed and offline.
+   * - React Native: Must use Memory-Only (memoryLocalCache) to avoid errors.
    */
-  const cache = memoryLocalCache();
-  
-  // CRITICAL: Use long-polling and disable auto-detect to prevent 400 Bad Request in Electron
+  const cache = isWeb ? persistentLocalCache() : memoryLocalCache();
+
+  /**
+   * TRANSPORT:
+   * - Electron: Specifically needs experimentalForceLongPolling to avoid 400 Bad Request.
+   * - Safari/Chrome/Mobile Web: Standard WebSockets (auto-detect) are best.
+   */
   dbInstance = initializeFirestore(app, {
     localCache: cache,
-    experimentalForceLongPolling: isWeb,
-    experimentalAutoDetectLongPolling: false,
+    experimentalForceLongPolling: isElectron, // ONLY force for Electron
+    experimentalAutoDetectLongPolling: isWeb, // Let it decide for other web browsers
   });
-  
-  console.log(`[Firebase] Firestore initialized. Persistence: Memory-Only (Platform: ${Platform.OS})`);
+
+  console.log(
+    `[Firebase] Firestore init (${Platform.OS}${
+      isElectron ? "-electron" : ""
+    }). Cache: ${isWeb ? "IndexedDB" : "Memory"}`
+  );
 } catch (e) {
   console.warn("[Firebase] Re-using existing Firestore instance.");
   dbInstance = getFirestore(app);

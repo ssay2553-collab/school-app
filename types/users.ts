@@ -30,6 +30,9 @@ export interface AppUser {
   // Permissions
   canCreateNews?: boolean;
 
+  // School association
+  schoolId?: string;
+
   // Updated: Flexible admin roles and permission mapping
   adminRole?: string;
   permissions?: Record<string, PermissionLevel>;

@@ -343,9 +343,12 @@ export default function AdminGalleryUpload() {
       }
 
       const filename = item.url.split("/").pop()?.split("?")[0] || "media";
-      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+      const fileUri = `${(FileSystem as any).cacheDirectory}${filename}`;
 
-      const downloadRes = await FileSystem.downloadAsync(item.url, fileUri);
+      const downloadRes = await (FileSystem as any).downloadAsync(
+        item.url,
+        fileUri,
+      );
 
       await Sharing.shareAsync(downloadRes.uri);
     } catch (e) {

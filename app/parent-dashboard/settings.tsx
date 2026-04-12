@@ -1,24 +1,33 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { deleteUser, signOut } from "firebase/auth";
-import { arrayUnion, collection, doc, getDocs, query, where, writeBatch } from "firebase/firestore";
+import {
+    arrayUnion,
+    collection,
+    doc,
+    getDocs,
+    query,
+    where,
+    writeBatch,
+} from "firebase/firestore";
 import React, { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  ScrollView,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
-import { Ionicons } from "@expo/vector-icons";
 
-import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
+import { COLORS, SHADOWS } from "../../constants/theme";
+import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { auth, db } from "../../firebaseConfig";
-import { useAuth } from "../../contexts/AuthContext";
 
 export default function ParentSettingsScreen() {
   const { theme } = useTheme();
@@ -205,22 +214,35 @@ export default function ParentSettingsScreen() {
         <View style={styles.profileSummary}>
           <View style={styles.profileInfo}>
             <View style={styles.summaryAvatar}>
-               {appUser.profile?.profileImage ? (
-                 <Image source={{ uri: appUser.profile.profileImage }} style={styles.sumImg} />
-               ) : (
-                 <Text style={styles.sumText}>{appUser.profile?.firstName?.[0] || "P"}</Text>
-               )}
+              {appUser.profile?.profileImage ? (
+                <Image
+                  source={{ uri: appUser.profile.profileImage }}
+                  style={styles.sumImg}
+                />
+              ) : (
+                <Text style={styles.sumText}>
+                  {appUser.profile?.firstName?.[0] || "P"}
+                </Text>
+              )}
             </View>
             <View>
-              <Text style={styles.sumName}>{appUser.profile?.firstName} {appUser.profile?.lastName}</Text>
-              <Text style={styles.sumEmail}>{appUser.profile?.email || "No email"}</Text>
+              <Text style={styles.sumName}>
+                {appUser.profile?.firstName} {appUser.profile?.lastName}
+              </Text>
+              <Text style={styles.sumEmail}>
+                {appUser.profile?.email || "No email"}
+              </Text>
             </View>
           </View>
         </View>
       )}
 
       {/* Link Student Section */}
-      <Animatable.View animation="fadeInUp" duration={600} style={styles.section}>
+      <Animatable.View
+        animation="fadeInUp"
+        duration={600}
+        style={styles.section}
+      >
         <Text style={styles.sectionTitle}>Student Connection</Text>
         <View style={styles.card}>
           <View style={{ padding: 16 }}>
@@ -320,29 +342,29 @@ const styles = StyleSheet.create({
   profileSummary: {
     marginHorizontal: 20,
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 24,
     marginBottom: 25,
     ...SHADOWS.medium,
   },
   profileInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 15,
   },
   summaryAvatar: {
     width: 60,
     height: 60,
     borderRadius: 20,
-    backgroundColor: COLORS.primary + '10',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
+    backgroundColor: COLORS.primary + "10",
+    justifyContent: "center",
+    alignItems: "center",
+    overflow: "hidden",
   },
-  sumImg: { width: '100%', height: '100%' },
-  sumText: { fontSize: 24, fontWeight: '900', color: COLORS.primary },
-  sumName: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
-  sumEmail: { fontSize: 13, color: '#64748B', fontWeight: '600' },
+  sumImg: { width: "100%", height: "100%" },
+  sumText: { fontSize: 24, fontWeight: "900", color: COLORS.primary },
+  sumName: { fontSize: 18, fontWeight: "800", color: "#1E293B" },
+  sumEmail: { fontSize: 13, color: "#64748B", fontWeight: "600" },
   section: {
     paddingHorizontal: 20,
     marginBottom: 25,
@@ -376,9 +398,9 @@ const styles = StyleSheet.create({
   },
   cardSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: "#64748B",
     marginBottom: 15,
-    fontWeight: '600'
+    fontWeight: "600",
   },
   inputContainer: {
     flexDirection: "row",

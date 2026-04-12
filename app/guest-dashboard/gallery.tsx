@@ -1,40 +1,40 @@
 import { ResizeMode, Video } from "expo-av";
-import { Image } from "expo-image";
 import * as FileSystem from "expo-file-system/legacy";
+import { Image } from "expo-image";
+import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
 import {
-  collection,
-  limit,
-  orderBy,
-  query,
-  startAfter,
+    collection,
+    limit,
+    orderBy,
+    query,
+    startAfter,
 } from "firebase/firestore";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  Platform,
-  useWindowDimensions,
-  StatusBar,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    Platform,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from "react-native";
-import { router } from "expo-router";
 import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
+    Gesture,
+    GestureDetector,
+    GestureHandlerRootView,
 } from "react-native-gesture-handler";
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-  runOnJS,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
 } from "react-native-reanimated";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -55,9 +55,15 @@ const GuestDashboardGallery = () => {
   const lastVisibleRef = useRef(lastVisible);
   const hasMoreRef = useRef(hasMore);
 
-  useEffect(() => { loadingRef.current = loading; }, [loading]);
-  useEffect(() => { lastVisibleRef.current = lastVisible; }, [lastVisible]);
-  useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+  useEffect(() => {
+    lastVisibleRef.current = lastVisible;
+  }, [lastVisible]);
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -123,14 +129,14 @@ const GuestDashboardGallery = () => {
   const handleDownload = async (item: any) => {
     if (downloadingId) return;
     setDownloadingId(item.id);
-    
+
     try {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         // Direct web download
         const response = await fetch(item.url);
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
+        const link = document.createElement("a");
         link.href = url;
         link.download = item.name || `media_${item.id}`;
         document.body.appendChild(link);
@@ -141,10 +147,14 @@ const GuestDashboardGallery = () => {
       }
 
       // Native platform download/save using system share (which includes "Save Image/Video")
-      const filename = item.url.split("/").pop()?.split("?")[0] || `media_${item.id}`;
-      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+      const filename =
+        item.url.split("/").pop()?.split("?")[0] || `media_${item.id}`;
+      const fileUri = `${(FileSystem as any).cacheDirectory}${filename}`;
 
-      const downloadRes = await FileSystem.downloadAsync(item.url, fileUri);
+      const downloadRes = await (FileSystem as any).downloadAsync(
+        item.url,
+        fileUri,
+      );
 
       if (downloadRes.status === 200) {
         const isAvailable = await Sharing.isAvailableAsync();
@@ -227,7 +237,14 @@ const GuestDashboardGallery = () => {
     }));
 
     return (
-      <View style={{ width, height, justifyContent: "center", alignItems: "center" }}>
+      <View
+        style={{
+          width,
+          height,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
         <GestureDetector
           gesture={Gesture.Race(
             doubleTapGesture,
@@ -247,7 +264,9 @@ const GuestDashboardGallery = () => {
                 style={styles.fullMedia}
                 useNativeControls
                 resizeMode={ResizeMode.CONTAIN}
-                shouldPlay={modalVisible && gallery[currentIndex]?.id === item.id}
+                shouldPlay={
+                  modalVisible && gallery[currentIndex]?.id === item.id
+                }
               />
             )}
           </Animated.View>
@@ -262,7 +281,9 @@ const GuestDashboardGallery = () => {
             {downloadingId === item.id ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+              >
                 <SVGIcon name="cloud-upload" size={20} color="#fff" />
                 <Text style={styles.fullActionText}>Save Memory</Text>
               </View>
@@ -277,11 +298,19 @@ const GuestDashboardGallery = () => {
     <TouchableOpacity
       onPress={() => openModal(index)}
       activeOpacity={0.9}
-      style={[styles.mediaContainer, { width: width / 2 - 22, height: width / 2 - 22, maxWidth: 300, maxHeight: 300 }]}
+      style={[
+        styles.mediaContainer,
+        {
+          width: width / 2 - 22,
+          height: width / 2 - 22,
+          maxWidth: 300,
+          maxHeight: 300,
+        },
+      ]}
     >
-      <Image 
-        source={{ uri: item.thumbnailUrl || item.url }} 
-        style={styles.media} 
+      <Image
+        source={{ uri: item.thumbnailUrl || item.url }}
+        style={styles.media}
         contentFit="cover"
       />
       {item.type === "video" && (
@@ -308,11 +337,14 @@ const GuestDashboardGallery = () => {
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
             <SVGIcon name="chevron-back" size={24} color={COLORS.primary} />
           </TouchableOpacity>
           <Text style={styles.title}>School Gallery</Text>
-          <View style={{ width: 44 }} /> 
+          <View style={{ width: 44 }} />
         </View>
 
         <FlatList
@@ -368,28 +400,37 @@ const GuestDashboardGallery = () => {
             />
 
             <View style={styles.navContainer}>
-              <TouchableOpacity 
-                  style={[styles.navBtn, currentIndex === 0 && { opacity: 0.3 }]} 
-                  disabled={currentIndex === 0}
-                  onPress={() => {
-                      const newIndex = currentIndex - 1;
-                      setCurrentIndex(newIndex);
-                      flatListRef.current?.scrollToIndex({ index: newIndex, animated: true });
-                  }}
+              <TouchableOpacity
+                style={[styles.navBtn, currentIndex === 0 && { opacity: 0.3 }]}
+                disabled={currentIndex === 0}
+                onPress={() => {
+                  const newIndex = currentIndex - 1;
+                  setCurrentIndex(newIndex);
+                  flatListRef.current?.scrollToIndex({
+                    index: newIndex,
+                    animated: true,
+                  });
+                }}
               >
-                  <SVGIcon name="chevron-back" size={40} color="#fff" />
+                <SVGIcon name="chevron-back" size={40} color="#fff" />
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                  style={[styles.navBtn, currentIndex === gallery.length - 1 && { opacity: 0.3 }]} 
-                  disabled={currentIndex === gallery.length - 1}
-                  onPress={() => {
-                      const newIndex = currentIndex + 1;
-                      setCurrentIndex(newIndex);
-                      flatListRef.current?.scrollToIndex({ index: newIndex, animated: true });
-                  }}
+              <TouchableOpacity
+                style={[
+                  styles.navBtn,
+                  currentIndex === gallery.length - 1 && { opacity: 0.3 },
+                ]}
+                disabled={currentIndex === gallery.length - 1}
+                onPress={() => {
+                  const newIndex = currentIndex + 1;
+                  setCurrentIndex(newIndex);
+                  flatListRef.current?.scrollToIndex({
+                    index: newIndex,
+                    animated: true,
+                  });
+                }}
               >
-                  <SVGIcon name="chevron-forward" size={40} color="#fff" />
+                <SVGIcon name="chevron-forward" size={40} color="#fff" />
               </TouchableOpacity>
             </View>
           </View>
@@ -433,7 +474,10 @@ const styles = StyleSheet.create({
   media: { width: "100%", height: "100%" },
   playOverlay: {
     position: "absolute",
-    top: 0, left: 0, right: 0, bottom: 0,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: "rgba(0,0,0,0.2)",
     alignItems: "center",
     justifyContent: "center",
@@ -455,7 +499,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  fullMediaContainer: { width: "100%", height: "100%", justifyContent: "center", alignItems: "center" },
+  fullMediaContainer: {
+    width: "100%",
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   fullMedia: { width: "100%", height: "100%" },
   fullScreenActions: {
     position: "absolute",
@@ -486,17 +535,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  navContainer: { 
-    position: 'absolute', 
-    top: '50%', 
-    left: 0, 
-    right: 0, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    paddingHorizontal: 20, 
+  navContainer: {
+    position: "absolute",
+    top: "50%",
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
     transform: [{ translateY: -20 }],
-    pointerEvents: 'box-none',
+    pointerEvents: "box-none",
     zIndex: 15,
   },
-  navBtn: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 30, padding: 5 },
+  navBtn: {
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderRadius: 30,
+    padding: 5,
+  },
 });

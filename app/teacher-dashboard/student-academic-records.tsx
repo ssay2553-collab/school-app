@@ -66,6 +66,134 @@ interface StudentScoreRecord {
   teacherRemarks: string;
 }
 
+// Optimized Student Card Component
+const StudentCard = React.memo(({
+    student,
+    onUpdate,
+    reportType,
+    isClassTeacher,
+    primaryColor
+}: {
+    student: StudentScoreRecord;
+    onUpdate: (id: string, field: keyof StudentScoreRecord, val: string) => void;
+    reportType: ReportType;
+    isClassTeacher: boolean;
+    primaryColor: string;
+}) => {
+    return (
+        <View style={styles.studentCard}>
+            <View style={styles.cardHeader}>
+                <Text style={styles.studentName}>{student.fullName}</Text>
+                <View style={styles.gradeBadge}>
+                    <Text style={styles.gradeText}>{student.grade}</Text>
+                </View>
+            </View>
+            <View style={styles.scoresGrid}>
+                {reportType === "End of Term" ? (
+                    <>
+                        <View style={styles.scoreInput}>
+                            <Text style={styles.scoreLabel}>CAT A (15)</Text>
+                            <TextInput
+                                value={student.catA}
+                                onChangeText={(v) => onUpdate(student.studentId, "catA", v)}
+                                keyboardType="numeric"
+                                style={styles.input}
+                            />
+                        </View>
+                        <View style={styles.scoreInput}>
+                            <Text style={styles.scoreLabel}>CAT B (15)</Text>
+                            <TextInput
+                                value={student.catB}
+                                onChangeText={(v) => onUpdate(student.studentId, "catB", v)}
+                                keyboardType="numeric"
+                                style={styles.input}
+                            />
+                        </View>
+                        <View style={styles.scoreInput}>
+                            <Text style={styles.scoreLabel}>GROUP (15)</Text>
+                            <TextInput
+                                value={student.groupWork}
+                                onChangeText={(v) => onUpdate(student.studentId, "groupWork", v)}
+                                keyboardType="numeric"
+                                style={styles.input}
+                            />
+                        </View>
+                        <View style={styles.scoreInput}>
+                            <Text style={styles.scoreLabel}>PROJECT (15)</Text>
+                            <TextInput
+                                value={student.projectWork}
+                                onChangeText={(v) => onUpdate(student.studentId, "projectWork", v)}
+                                keyboardType="numeric"
+                                style={styles.input}
+                            />
+                        </View>
+                        <View style={styles.scoreInput}>
+                            <Text style={styles.scoreLabel}>EXAMS (100)</Text>
+                            <TextInput
+                                value={student.examsMark}
+                                onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)}
+                                keyboardType="numeric"
+                                style={styles.input}
+                            />
+                        </View>
+                        <View style={styles.totalBox}>
+                            <Text style={styles.totalLabel}>TOTAL (100)</Text>
+                            <Text style={styles.totalVal}>{student.finalScore}</Text>
+                        </View>
+                    </>
+                ) : (
+                    <View style={[styles.scoreInput, { flex: 1 }]}>
+                        <Text style={styles.scoreLabel}>TOTAL SCORE</Text>
+                        <TextInput
+                            value={student.examsMark}
+                            onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)}
+                            keyboardType="numeric"
+                            style={styles.input}
+                        />
+                    </View>
+                )}
+            </View>
+            {isClassTeacher && reportType === "End of Term" && (
+                <View style={styles.behavioralGrid}>
+                    <View style={styles.scoreInput}>
+                        <Text style={styles.scoreLabel}>CONDUCT</Text>
+                        <TextInput
+                            value={student.conduct}
+                            onChangeText={(v) => onUpdate(student.studentId, "conduct", v)}
+                            style={styles.input}
+                        />
+                    </View>
+                    <View style={styles.scoreInput}>
+                        <Text style={styles.scoreLabel}>INTEREST</Text>
+                        <TextInput
+                            value={student.interest}
+                            onChangeText={(v) => onUpdate(student.studentId, "interest", v)}
+                            style={styles.input}
+                        />
+                    </View>
+                    <View style={styles.scoreInput}>
+                        <Text style={styles.scoreLabel}>ATTITUDE</Text>
+                        <TextInput
+                            value={student.attitude}
+                            onChangeText={(v) => onUpdate(student.studentId, "attitude", v)}
+                            style={styles.input}
+                        />
+                    </View>
+                    <View style={[styles.scoreInput, { width: "100%" }]}>
+                        <Text style={styles.scoreLabel}>TEACHER REMARKS</Text>
+                        <TextInput
+                            value={student.teacherRemarks}
+                            onChangeText={(v) => onUpdate(student.studentId, "teacherRemarks", v)}
+                            style={styles.input}
+                            multiline
+                        />
+                    </View>
+                </View>
+            )}
+        </View>
+    );
+});
+
 export default function StudentAcademicRecords() {
   const router = useRouter();
   const { appUser } = useAuth();
@@ -79,39 +207,22 @@ export default function StudentAcademicRecords() {
     (appUser?.profile as any)?.signatureUrl || "",
   );
 
-  const academicYears = useMemo(() => {
-    const start = 2024;
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let y = start; y <= currentYear + 3; y++) {
-      years.push(`${y}/${y + 1}`);
-    }
-    if (acadConfig.academicYear && !years.includes(acadConfig.academicYear)) {
-      years.push(acadConfig.academicYear);
-    }
-    return Array.from(new Set(years)).sort().reverse();
-  }, [acadConfig.academicYear]);
-
+  // State for selections
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
-  const [term, setTerm] = useState("");
   const [reportType, setReportType] = useState<ReportType>("End of Term");
 
-  const [allStudents, setAllStudents] = useState<StudentScoreRecord[]>([]);
-  const [visibleStudents, setVisibleStudents] = useState<StudentScoreRecord[]>(
-    [],
-  );
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 10;
+  // Local derived values for active period
+  const selectedYear = acadConfig.academicYear || "";
+  const term = acadConfig.currentTerm || "";
 
-  // Sync with global academic config
-  useEffect(() => {
-    if (!acadConfig.loading) {
-      setSelectedYear(acadConfig.academicYear);
-      setTerm(acadConfig.currentTerm);
-    }
-  }, [acadConfig]);
+  const [allStudents, setAllStudents] = useState<StudentScoreRecord[]>([]);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15; // Increased page size slightly since rendering is now efficient
+
+  const visibleStudents = useMemo(() => {
+    return allStudents.slice(0, page * PAGE_SIZE);
+  }, [allStudents, page]);
 
   const isClassTeacher = useMemo(() => {
     const selectedClass = teacherClasses.find((c) => c.id === selectedClassId);
@@ -169,8 +280,7 @@ export default function StudentAcademicRecords() {
           if (sorted.length > 0 && !selectedClassId)
             setSelectedClassId(sorted[0].id);
         }
-        // Removed Class Teacher Signature logic to reduce RAM usage and ensure consistency with official reports
-        setSignatureUrl("");
+        setSignatureUrl((appUser?.profile as any)?.signatureUrl || "");
       } catch (err) {
         console.error("fetchTeacherMetadata Error:", err);
       } finally {
@@ -196,7 +306,6 @@ export default function StudentAcademicRecords() {
             (s: StudentScoreRecord) => calculateScores(s, reportType),
           );
           setAllStudents(loadedStudents);
-          setVisibleStudents(loadedStudents.slice(0, PAGE_SIZE));
         } else {
           const q = query(
             collection(db, "users"),
@@ -224,7 +333,6 @@ export default function StudentAcademicRecords() {
             teacherRemarks: "",
           }));
           setAllStudents(list);
-          setVisibleStudents(list.slice(0, PAGE_SIZE));
         }
         setPage(1);
       } catch (err) {
@@ -243,33 +351,25 @@ export default function StudentAcademicRecords() {
     calculateScores,
   ]);
 
-  const updateStudentScore = (
+  const updateStudentScore = useCallback((
     studentId: string,
     field: keyof StudentScoreRecord,
     value: string,
   ) => {
-    const updatedAll = allStudents.map((s) => {
+    setAllStudents(prev => prev.map((s) => {
       if (s.studentId === studentId) {
         let updated = { ...s, [field]: value } as StudentScoreRecord;
-        if (
-          ["catA", "catB", "groupWork", "projectWork", "examsMark"].includes(
-            field,
-          )
-        ) {
+        if (["catA", "catB", "groupWork", "projectWork", "examsMark"].includes(field)) {
           updated = calculateScores(updated, reportType);
         }
         return updated;
       }
       return s;
-    });
-    setAllStudents(updatedAll);
-    setVisibleStudents(updatedAll.slice(0, page * PAGE_SIZE));
-  };
+    }));
+  }, [calculateScores, reportType]);
 
   const loadMore = () => {
-    const nextPage = page + 1;
-    setVisibleStudents(allStudents.slice(0, nextPage * PAGE_SIZE));
-    setPage(nextPage);
+    setPage(p => p + 1);
   };
 
   const saveRecord = async () => {
@@ -305,7 +405,7 @@ export default function StudentAcademicRecords() {
   const handleUploadSignature = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [2, 1],
         quality: 0.5,
@@ -367,10 +467,11 @@ export default function StudentAcademicRecords() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        removeClippedSubviews={true} // Performance optimization for Android
       >
         {isClassTeacher && (
-          <Animatable.View animation="fadeInDown" style={styles.signatureCard}>
+          <Animatable.View animation="fadeInDown" duration={500} style={styles.signatureCard}>
             <View style={styles.sigHeader}>
               <SVGIcon name="brush-outline" size={20} color={COLORS.primary} />
               <Text style={styles.sigTitle}>Teacher's Digital Signature</Text>
@@ -413,63 +514,25 @@ export default function StudentAcademicRecords() {
           </Animatable.View>
         )}
 
-        <Animatable.View animation="fadeInDown" style={styles.configCard}>
+        <Animatable.View animation="fadeInDown" duration={500} style={styles.configCard}>
           <Text style={styles.sectionLabel}>LEDGER CONFIGURATION</Text>
-          <Text style={styles.label}>
-            ACADEMIC YEAR{" "}
-            {selectedYear === acadConfig.academicYear && "(CURRENT)"}
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {academicYears.map((y) => (
-              <TouchableOpacity
-                key={y}
-                onPress={() => setSelectedYear(y)}
-                style={[
-                  styles.bubble,
-                  selectedYear === y && styles.bubbleActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    selectedYear === y && styles.bubbleTextActive,
-                  ]}
-                >
-                  {y}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <Text style={styles.label}>
-            TERM {term === acadConfig.currentTerm && "(CURRENT)"}
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {["Term 1", "Term 2", "Term 3"].map((t) => (
-              <TouchableOpacity
-                key={t}
-                onPress={() => setTerm(t)}
-                style={[styles.bubble, term === t && styles.bubbleActive]}
-              >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    term === t && styles.bubbleTextActive,
-                  ]}
-                >
-                  {t}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <Text style={styles.label}>REPORT TYPE</Text>
+
+          <View style={styles.lockedConfigRow}>
+            <View style={styles.lockedConfigItem}>
+              <Text style={styles.miniLabel}>ACADEMIC YEAR</Text>
+              <View style={styles.lockedBadge}>
+                <Text style={styles.lockedBadgeText}>{selectedYear || "---"}</Text>
+              </View>
+            </View>
+            <View style={styles.lockedConfigItem}>
+              <Text style={styles.miniLabel}>CURRENT TERM</Text>
+              <View style={styles.lockedBadge}>
+                <Text style={styles.lockedBadgeText}>{term || "---"}</Text>
+              </View>
+            </View>
+          </View>
+
+          <Text style={[styles.label, {marginTop: 15}]}>REPORT TYPE</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -568,158 +631,14 @@ export default function StudentAcademicRecords() {
               </Text>
             </View>
             {visibleStudents.map((student) => (
-              <Animatable.View
+              <StudentCard
                 key={student.studentId}
-                animation="fadeInUp"
-                style={styles.studentCard}
-              >
-                <View style={styles.cardHeader}>
-                  <Text style={styles.studentName}>{student.fullName}</Text>
-                  <View style={styles.gradeBadge}>
-                    <Text style={styles.gradeText}>{student.grade}</Text>
-                  </View>
-                </View>
-                <View style={styles.scoresGrid}>
-                  {reportType === "End of Term" ? (
-                    <>
-                      <View style={styles.scoreInput}>
-                        <Text style={styles.scoreLabel}>CAT A (15)</Text>
-                        <TextInput
-                          value={student.catA}
-                          onChangeText={(v) =>
-                            updateStudentScore(student.studentId, "catA", v)
-                          }
-                          keyboardType="numeric"
-                          style={styles.input}
-                        />
-                      </View>
-                      <View style={styles.scoreInput}>
-                        <Text style={styles.scoreLabel}>CAT B (15)</Text>
-                        <TextInput
-                          value={student.catB}
-                          onChangeText={(v) =>
-                            updateStudentScore(student.studentId, "catB", v)
-                          }
-                          keyboardType="numeric"
-                          style={styles.input}
-                        />
-                      </View>
-                      <View style={styles.scoreInput}>
-                        <Text style={styles.scoreLabel}>GROUP (15)</Text>
-                        <TextInput
-                          value={student.groupWork}
-                          onChangeText={(v) =>
-                            updateStudentScore(
-                              student.studentId,
-                              "groupWork",
-                              v,
-                            )
-                          }
-                          keyboardType="numeric"
-                          style={styles.input}
-                        />
-                      </View>
-                      <View style={styles.scoreInput}>
-                        <Text style={styles.scoreLabel}>PROJECT (15)</Text>
-                        <TextInput
-                          value={student.projectWork}
-                          onChangeText={(v) =>
-                            updateStudentScore(
-                              student.studentId,
-                              "projectWork",
-                              v,
-                            )
-                          }
-                          keyboardType="numeric"
-                          style={styles.input}
-                        />
-                      </View>
-                      <View style={styles.scoreInput}>
-                        <Text style={styles.scoreLabel}>EXAMS (100)</Text>
-                        <TextInput
-                          value={student.examsMark}
-                          onChangeText={(v) =>
-                            updateStudentScore(
-                              student.studentId,
-                              "examsMark",
-                              v,
-                            )
-                          }
-                          keyboardType="numeric"
-                          style={styles.input}
-                        />
-                      </View>
-                      <View style={styles.totalBox}>
-                        <Text style={styles.totalLabel}>TOTAL (100)</Text>
-                        <Text style={styles.totalVal}>
-                          {student.finalScore}
-                        </Text>
-                      </View>
-                    </>
-                  ) : (
-                    <View style={[styles.scoreInput, { flex: 1 }]}>
-                      <Text style={styles.scoreLabel}>TOTAL SCORE</Text>
-                      <TextInput
-                        value={student.examsMark}
-                        onChangeText={(v) =>
-                          updateStudentScore(student.studentId, "examsMark", v)
-                        }
-                        keyboardType="numeric"
-                        style={styles.input}
-                      />
-                    </View>
-                  )}
-                </View>
-                {isClassTeacher && reportType === "End of Term" && (
-                  <View style={styles.behavioralGrid}>
-                    <View style={styles.scoreInput}>
-                      <Text style={styles.scoreLabel}>CONDUCT</Text>
-                      <TextInput
-                        value={student.conduct}
-                        onChangeText={(v) =>
-                          updateStudentScore(student.studentId, "conduct", v)
-                        }
-                        style={styles.input}
-                      />
-                    </View>
-                    <View style={styles.scoreInput}>
-                      <Text style={styles.scoreLabel}>INTEREST</Text>
-                      <TextInput
-                        value={student.interest}
-                        onChangeText={(v) =>
-                          updateStudentScore(student.studentId, "interest", v)
-                        }
-                        style={styles.input}
-                      />
-                    </View>
-                    <View style={styles.scoreInput}>
-                      <Text style={styles.scoreLabel}>ATTITUDE</Text>
-                      <TextInput
-                        value={student.attitude}
-                        onChangeText={(v) =>
-                          updateStudentScore(student.studentId, "attitude", v)
-                        }
-                        style={styles.input}
-                      />
-                    </View>
-                    <View style={[styles.scoreInput, { width: "100%" }]}>
-                      <Text style={styles.scoreLabel}>TEACHER REMARKS</Text>
-                      <TextInput
-                        value={student.teacherRemarks}
-                        onChangeText={(v) =>
-                          updateStudentScore(
-                            student.studentId,
-                            "teacherRemarks",
-                            v,
-                          )
-                        }
-                        style={styles.input}
-                        multiline
-                      />
-                    </View>
-                  </View>
-                )}
-              </Animatable.View>
+                student={student}
+                onUpdate={updateStudentScore}
+                reportType={reportType}
+                isClassTeacher={isClassTeacher}
+                primaryColor={COLORS.primary}
+              />
             ))}
             {allStudents.length > visibleStudents.length && (
               <TouchableOpacity onPress={loadMore} style={styles.loadMoreBtn}>
@@ -859,6 +778,11 @@ const styles = StyleSheet.create({
   },
   bubbleText: { fontSize: 12, color: "#475569", fontWeight: "700" },
   bubbleTextActive: { color: "#fff" },
+  lockedConfigRow: { flexDirection: 'row', gap: 15, marginBottom: 5 },
+  lockedConfigItem: { flex: 1 },
+  miniLabel: { fontSize: 9, fontWeight: "900", color: "#94A3B8", marginBottom: 6 },
+  lockedBadge: { backgroundColor: '#F1F5F9', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  lockedBadgeText: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
   syncBox: { padding: 50, alignItems: "center" },
   syncText: { marginTop: 15, color: "#64748B", fontWeight: "700" },
   recordsList: { padding: 20 },

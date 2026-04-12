@@ -340,7 +340,7 @@ export default function StudentFeeHistoryScreen() {
 
       if (Platform.OS !== "web") {
         // Move to a permanent-ish location with a nice name
-        const newUri = FileSystem.cacheDirectory + fileName;
+        const newUri = (FileSystem as any).cacheDirectory + fileName;
         await FileSystem.copyAsync({ from: uri, to: newUri });
 
         if (Platform.OS === "android") {
@@ -545,7 +545,9 @@ export default function StudentFeeHistoryScreen() {
               <View style={styles.tableContainer}>
                 <View style={styles.tableHeader}>
                   <Text style={[styles.th, { flex: 1.2 }]}>DATE / SERIAL</Text>
-                  <Text style={[styles.th, { flex: 1.5 }]}>PAYEE / PROCESSED BY</Text>
+                  <Text style={[styles.th, { flex: 1.5 }]}>
+                    PAYEE / PROCESSED BY
+                  </Text>
                   <Text style={[styles.th, { flex: 1, textAlign: "right" }]}>
                     AMOUNT
                   </Text>
@@ -715,17 +717,26 @@ const styles = StyleSheet.create({
     borderColor: "#CBD5E1",
     overflow: "hidden",
   },
-  paperHeader: { flexDirection: "column", alignItems: "center", marginBottom: 15 },
+  paperHeader: {
+    flexDirection: "column",
+    alignItems: "center",
+    marginBottom: 15,
+  },
   paperLogo: { width: 60, height: 60, marginBottom: 10 },
-  paperSchoolInfo: { flex: 1, alignItems: 'center' },
+  paperSchoolInfo: { flex: 1, alignItems: "center" },
   paperSchoolName: {
     fontSize: 16,
     fontWeight: "900",
     color: "#1E293B",
     textTransform: "uppercase",
-    textAlign: 'center'
+    textAlign: "center",
   },
-  paperContact: { fontSize: 10, color: "#64748B", marginTop: 2, textAlign: 'center' },
+  paperContact: {
+    fontSize: 10,
+    color: "#64748B",
+    marginTop: 2,
+    textAlign: "center",
+  },
   divider: { height: 2, backgroundColor: "#1E293B", marginVertical: 10 },
   receiptTitle: {
     textAlign: "center",

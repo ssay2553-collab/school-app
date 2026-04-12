@@ -1,41 +1,41 @@
 import { Picker } from "@react-native-picker/picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
-  arrayRemove,
-  arrayUnion,
-  collection,
-  deleteDoc,
-  doc,
-  documentId,
-  getDoc,
-  limit,
-  onSnapshot,
-  query,
-  Timestamp,
-  updateDoc,
-  where,
-  writeBatch,
+    arrayRemove,
+    arrayUnion,
+    collection,
+    deleteDoc,
+    doc,
+    documentId,
+    getDoc,
+    limit,
+    onSnapshot,
+    query,
+    Timestamp,
+    updateDoc,
+    where,
+    writeBatch,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -81,6 +81,8 @@ interface User {
   dateOfBirth?: any;
   walletBalance?: number;
   onScholarship?: boolean;
+  // Optional monthly salary for staff/admin records
+  salary?: number;
   status: "active" | "archived" | "disabled" | string;
   archivedAt?: any;
   archivedInYear?: string;
@@ -197,7 +199,7 @@ export default function ManageUsers() {
           collection(db, "users"),
           where("role", "==", "staff"),
           where("status", "==", showArchived ? "archived" : "active"),
-          limit(100)
+          limit(100),
         );
       } else if (selectedRole === "student" && selectedClassId !== "all") {
         q = query(
@@ -323,12 +325,15 @@ export default function ManageUsers() {
       // sanitize permissions to remove invalid/undefined values before sending to Firestore
       const sanitized: Record<string, PermissionLevel> = Object.entries(
         tempPermissions || {},
-      ).reduce((acc, [k, v]) => {
-        if (v === "full" || v === "view" || v === "edit" || v === "deny") {
-          acc[k] = v as PermissionLevel;
-        }
-        return acc;
-      }, {} as Record<string, PermissionLevel>);
+      ).reduce(
+        (acc, [k, v]) => {
+          if (v === "full" || v === "view" || v === "edit" || v === "deny") {
+            acc[k] = v as PermissionLevel;
+          }
+          return acc;
+        },
+        {} as Record<string, PermissionLevel>,
+      );
 
       await updateDoc(doc(db, "users", assignmentModal.target.uid), {
         permissions: sanitized,
@@ -633,7 +638,9 @@ export default function ManageUsers() {
     );
 
     const incoming = user.permissions || {};
-    const merged: Record<string, PermissionLevel> = Object.keys(defaults).reduce(
+    const merged: Record<string, PermissionLevel> = Object.keys(
+      defaults,
+    ).reduce(
       (acc, k) => {
         const val = (incoming as any)[k];
         acc[k] =
@@ -847,10 +854,10 @@ export default function ManageUsers() {
                   {item.status === "archived"
                     ? `Archived (${item.archivedInYear || "N/A"})`
                     : item.role === "staff"
-                    ? `Salary: ₵${(item.salary || 0).toLocaleString()}`
-                    : allClasses.find((c) => c.id === item.classId)?.name ||
-                      item.adminRole ||
-                      item.role.toUpperCase()}
+                      ? `Salary: ₵${(item.salary || 0).toLocaleString()}`
+                      : allClasses.find((c) => c.id === item.classId)?.name ||
+                        item.adminRole ||
+                        item.role.toUpperCase()}
                 </Text>
                 <View style={styles.badgeRow}>
                   {item.role === "teacher" && item.classTeacherOf && (
@@ -963,21 +970,25 @@ export default function ManageUsers() {
                     </Text>
                     <View style={styles.roleBadgeContainer}>
                       <Text style={styles.detailRole}>
-                        {viewingUser.adminRole || viewingUser.role.toUpperCase()}
+                        {viewingUser.adminRole ||
+                          viewingUser.role.toUpperCase()}
                       </Text>
                     </View>
 
                     {viewingUser.assignedRoles &&
                       viewingUser.assignedRoles.length > 0 && (
                         <View style={styles.assignedRolesWrapper}>
-                          <Text style={styles.assignedRolesTitle}>SPECIAL ASSIGNMENTS</Text>
+                          <Text style={styles.assignedRolesTitle}>
+                            SPECIAL ASSIGNMENTS
+                          </Text>
                           <View style={styles.assignedRolesGrid}>
                             {viewingUser.assignedRoles.map((r, idx) => (
-                              <View
-                                key={idx}
-                                style={styles.modernRoleBadge}
-                              >
-                                <SVGIcon name="star" size={12} color="#4f46e5" />
+                              <View key={idx} style={styles.modernRoleBadge}>
+                                <SVGIcon
+                                  name="star"
+                                  size={12}
+                                  color="#4f46e5"
+                                />
                                 <Text style={styles.modernRoleText}>{r}</Text>
                                 {hasManageUsersAccess && (
                                   <TouchableOpacity
@@ -986,15 +997,38 @@ export default function ManageUsers() {
                                     }
                                     style={styles.removeRoleBtn}
                                   >
-                                    <SVGIcon name="close-circle" size={16} color="#ef4444" />
+                                    <SVGIcon
+                                      name="close-circle"
+                                      size={16}
+                                      color="#ef4444"
+                                    />
                                   </TouchableOpacity>
                                 )}
                               </View>
                             ))}
                             {viewingUser.departmentHeadOf && (
-                              <View style={[styles.modernRoleBadge, { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }]}>
-                                <SVGIcon name="business" size={12} color="#b45309" />
-                                <Text style={[styles.modernRoleText, { color: "#b45309" }]}>Dept Head: {viewingUser.departmentHeadOf}</Text>
+                              <View
+                                style={[
+                                  styles.modernRoleBadge,
+                                  {
+                                    backgroundColor: "#fff7ed",
+                                    borderColor: "#fed7aa",
+                                  },
+                                ]}
+                              >
+                                <SVGIcon
+                                  name="business"
+                                  size={12}
+                                  color="#b45309"
+                                />
+                                <Text
+                                  style={[
+                                    styles.modernRoleText,
+                                    { color: "#b45309" },
+                                  ]}
+                                >
+                                  Dept Head: {viewingUser.departmentHeadOf}
+                                </Text>
                               </View>
                             )}
                           </View>
@@ -1053,11 +1087,17 @@ export default function ManageUsers() {
                   {viewingUser.role === "teacher" && (
                     <>
                       <View style={styles.infoSection}>
-                        <Text style={styles.infoLabel}>Teacher Professional Profile</Text>
+                        <Text style={styles.infoLabel}>
+                          Teacher Professional Profile
+                        </Text>
                         <View style={styles.infoGrid}>
                           <View style={styles.infoRow}>
                             <View style={styles.infoKeyRow}>
-                              <SVGIcon name="school" size={18} color="#94A3B8" />
+                              <SVGIcon
+                                name="school"
+                                size={18}
+                                color="#94A3B8"
+                              />
                               <Text style={styles.infoKey}>Education</Text>
                             </View>
                             <Text style={styles.infoValue}>
@@ -1066,17 +1106,25 @@ export default function ManageUsers() {
                           </View>
                           <View style={styles.infoRow}>
                             <View style={styles.infoKeyRow}>
-                              <SVGIcon name="briefcase" size={18} color="#94A3B8" />
+                              <SVGIcon
+                                name="briefcase"
+                                size={18}
+                                color="#94A3B8"
+                              />
                               <Text style={styles.infoKey}>Experience</Text>
                             </View>
                             <Text style={styles.infoValue}>
-                              {viewingUser.profile?.experience ? `${viewingUser.profile.experience} Years` : "N/A"}
+                              {viewingUser.profile?.experience
+                                ? `${viewingUser.profile.experience} Years`
+                                : "N/A"}
                             </Text>
                           </View>
                         </View>
                         {viewingUser.profile?.bio && (
                           <View style={styles.adminBioBox}>
-                            <Text style={styles.adminBioText}>"{viewingUser.profile.bio}"</Text>
+                            <Text style={styles.adminBioText}>
+                              "{viewingUser.profile.bio}"
+                            </Text>
                           </View>
                         )}
                       </View>
@@ -1098,11 +1146,29 @@ export default function ManageUsers() {
                         <View style={styles.infoSection}>
                           <Text style={styles.infoLabel}>Classes Assigned</Text>
                           <View style={styles.adminTagGrid}>
-                            {viewingUser.classes?.map((c, i) => (
-                              <View key={i} style={[styles.adminSubjectTag, { backgroundColor: '#F1F5F9' }]}>
-                                <Text style={[styles.adminTagText, { color: '#475569' }]}>{c}</Text>
-                              </View>
-                            ))}
+                            {viewingUser.classes?.map((c, i) => {
+                              const className =
+                                allClasses.find((cls) => cls.id === c)?.name ||
+                                c;
+                              return (
+                                <View
+                                  key={i}
+                                  style={[
+                                    styles.adminSubjectTag,
+                                    { backgroundColor: "#F1F5F9" },
+                                  ]}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.adminTagText,
+                                      { color: "#475569" },
+                                    ]}
+                                  >
+                                    {className}
+                                  </Text>
+                                </View>
+                              );
+                            })}
                           </View>
                         </View>
                       )}
@@ -1459,10 +1525,15 @@ export default function ManageUsers() {
                     <Text style={styles.permTitle}>{pk.label}</Text>
                     <View style={styles.permPickerBox}>
                       <Picker
-                        selectedValue={(tempPermissions[pk.key] || "deny") as any}
+                        selectedValue={
+                          (tempPermissions[pk.key] || "deny") as any
+                        }
                         onValueChange={(v) => {
                           const safe =
-                            v === "full" || v === "view" || v === "edit" || v === "deny"
+                            v === "full" ||
+                            v === "view" ||
+                            v === "edit" ||
+                            v === "deny"
                               ? (v as PermissionLevel)
                               : "deny";
                           setTempPermissions((prev) => ({

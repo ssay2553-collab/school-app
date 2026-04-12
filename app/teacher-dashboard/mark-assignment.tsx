@@ -72,6 +72,148 @@ interface ClassInfo {
   name: string;
 }
 
+/* ---------------- SUB-COMPONENT ---------------- */
+
+const SubmissionItem = React.memo(({
+  item,
+  assignment,
+  onMark,
+  qScoreValue,
+  standardMarkValue,
+  feedbackValue,
+  onUpdateQScore,
+  onUpdateStandardMark,
+  onUpdateFeedback
+}: {
+  item: Submission;
+  assignment: Assignment | null;
+  onMark: (sub: Submission) => void;
+  qScoreValue: Record<number, string>;
+  standardMarkValue: string;
+  feedbackValue: string;
+  onUpdateQScore: (subId: string, qIdx: number, text: string) => void;
+  onUpdateStandardMark: (subId: string, text: string) => void;
+  onUpdateFeedback: (subId: string, text: string) => void;
+}) => {
+  const calculateTotal = () => {
+    if (item.type === "standard") return standardMarkValue || "0";
+    return Object.values(qScoreValue || {}).reduce(
+      (acc, curr) => acc + (Number(curr) || 0),
+      0,
+    );
+  };
+
+  return (
+    <View style={styles.subCard}>
+      <View style={styles.subHeader}>
+        <View style={styles.studentInfo}>
+          <View style={[styles.avatar, { backgroundColor: COLORS.primary + "15" }]}>
+            <Text style={styles.avatarText}>
+              {(item.studentName?.charAt(0) || "S").toUpperCase()}
+            </Text>
+          </View>
+          <View>
+            <Text style={styles.student}>{item.studentName || "Student"}</Text>
+            <Text style={styles.submissionDate}>
+              Submitted{" "}
+              {item.submittedAt
+                ? new Date(item.submittedAt.toDate()).toLocaleDateString()
+                : "date unknown"}
+            </Text>
+          </View>
+        </View>
+        {item.isLate && (
+          <View style={styles.lateBadge}>
+            <Text style={styles.lateText}>LATE</Text>
+          </View>
+        )}
+      </View>
+
+      {item.type === "standard" ? (
+        <View>
+          <TouchableOpacity
+            style={styles.fileLink}
+            onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}
+          >
+            <View style={[styles.fileIconBox, { backgroundColor: COLORS.secondary + "15" }]}>
+              <SVGIcon name="document-text" size={20} color={COLORS.secondary} />
+            </View>
+            <Text style={styles.linkText}>View Submission File</Text>
+            <SVGIcon name="chevron-forward" size={16} color={COLORS.secondary} style={{ marginLeft: "auto" }} />
+          </TouchableOpacity>
+
+          <View style={styles.standardMarkRow}>
+            <View>
+              <Text style={styles.scoreLabelHeader}>Total Marks</Text>
+              <Text style={styles.scoreSubLabel}>Enter numeric value</Text>
+            </View>
+            <TextInput
+              style={styles.totalInput}
+              keyboardType="numeric"
+              placeholder="0"
+              placeholderTextColor="#94A3B8"
+              value={standardMarkValue}
+              onChangeText={(t) => onUpdateStandardMark(item.id, t)}
+            />
+          </View>
+        </View>
+      ) : (
+        <View style={styles.responsesBox}>
+          <Text style={styles.responseLabel}>DETAILED REVIEW</Text>
+          {assignment?.questions?.map((q, idx) => (
+            <View key={idx} style={styles.responseItem}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.qText}>{idx + 1}. {q.text}</Text>
+                <View style={styles.answerRow}>
+                  <SVGIcon name="checkmark-circle" size={14} color="#10b981" />
+                  <Text style={styles.aText}>{item.responses?.[idx] || "No answer provided"}</Text>
+                </View>
+              </View>
+              <View style={styles.qScoreWrapper}>
+                <Text style={styles.qScoreLabel}>SCORE</Text>
+                <TextInput
+                  style={styles.qScoreInput}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  value={qScoreValue?.[idx] || ""}
+                  onChangeText={(t) => onUpdateQScore(item.id, idx, t)}
+                />
+              </View>
+            </View>
+          ))}
+
+          <View style={styles.totalSumRow}>
+            <Text style={styles.totalSumText}>Total Calculated Score:</Text>
+            <Text style={styles.totalSumValue}>{calculateTotal()}</Text>
+          </View>
+        </View>
+      )}
+
+      <View style={styles.feedbackSection}>
+        <Text style={styles.label}>TEACHER'S FEEDBACK</Text>
+        <TextInput
+          style={styles.feedbackInput}
+          placeholder="Add comments or feedback for the student/parent..."
+          multiline
+          value={feedbackValue}
+          onChangeText={(t) => onUpdateFeedback(item.id, t)}
+        />
+      </View>
+
+      <TouchableOpacity
+        style={[styles.saveSubmitBtn, { backgroundColor: COLORS.primary }]}
+        onPress={() => onMark(item)}
+        activeOpacity={0.8}
+      >
+        <LinearGradient colors={[COLORS.primary, "#4F46E5"]} style={styles.btnGradient}>
+          <SVGIcon name="checkmark-done-circle" size={18} color="#fff" />
+          <Text style={styles.saveSubmitBtnText}>Submit Grade</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 /* ---------------- SCREEN ---------------- */
 
 export default function MarkAssignment() {
@@ -275,7 +417,7 @@ export default function MarkAssignment() {
   }, [selectedAssignment]);
 
   /* ---------------- MARK SUBMISSION & NOTIFY PARENT ---------------- */
-  const submitMark = async (sub: Submission) => {
+  const submitMark = useCallback(async (sub: Submission) => {
     let totalScore = 0;
     const finalQuestionScores: Record<number, number> = {};
 
@@ -339,9 +481,9 @@ export default function MarkAssignment() {
       console.error("Marking Error:", error);
       Alert.alert("Error", "Failed to submit marks.");
     }
-  };
+  }, [standardMarksInput, qScoreInputs, feedbackInputs, selectedAssignment]);
 
-  const updateQScore = (subId: string, qIdx: number, text: string) => {
+  const updateQScore = useCallback((subId: string, qIdx: number, text: string) => {
     setQScoreInputs((prev) => ({
       ...prev,
       [subId]: {
@@ -349,165 +491,29 @@ export default function MarkAssignment() {
         [qIdx]: text,
       },
     }));
-  };
+  }, []);
 
-  const calculateTotal = (sub: Submission) => {
-    if (sub.type === "standard") return standardMarksInput[sub.id] || "0";
-    const inputs = qScoreInputs[sub.id] || {};
-    return Object.values(inputs).reduce(
-      (acc, curr) => acc + (Number(curr) || 0),
-      0,
-    );
-  };
+  const updateStandardMark = useCallback((subId: string, text: string) => {
+    setStandardMarksInput((prev) => ({ ...prev, [subId]: text }));
+  }, []);
 
-  const renderSubmission = ({
-    item,
-    index,
-  }: {
-    item: Submission;
-    index: number;
-  }) => (
-    <Animatable.View
-      animation="fadeInUp"
-      duration={500}
-      delay={index * 100}
-      key={item.id}
-      style={styles.subCard}
-    >
-      <View style={styles.subHeader}>
-        <View style={styles.studentInfo}>
-          <View
-            style={[styles.avatar, { backgroundColor: COLORS.primary + "15" }]}
-          >
-            <Text style={styles.avatarText}>
-              {(item.studentName?.charAt(0) || "S").toUpperCase()}
-            </Text>
-          </View>
-          <View>
-            <Text style={styles.student}>{item.studentName || "Student"}</Text>
-            <Text style={styles.submissionDate}>
-              Submitted{" "}
-              {item.submittedAt
-                ? new Date(item.submittedAt.toDate()).toLocaleDateString()
-                : "date unknown"}
-            </Text>
-          </View>
-        </View>
-        {item.isLate && (
-          <View style={styles.lateBadge}>
-            <Text style={styles.lateText}>LATE</Text>
-          </View>
-        )}
-      </View>
+  const updateFeedback = useCallback((subId: string, text: string) => {
+    setFeedbackInputs((prev) => ({ ...prev, [subId]: text }));
+  }, []);
 
-      {item.type === "standard" ? (
-        <View>
-          <TouchableOpacity
-            style={styles.fileLink}
-            onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}
-          >
-            <View
-              style={[
-                styles.fileIconBox,
-                { backgroundColor: COLORS.secondary + "15" },
-              ]}
-            >
-              <SVGIcon
-                name="document-text"
-                size={20}
-                color={COLORS.secondary}
-              />
-            </View>
-            <Text style={styles.linkText}>View Submission File</Text>
-            <SVGIcon
-              name="chevron-forward"
-              size={16}
-              color={COLORS.secondary}
-              style={{ marginLeft: "auto" }}
-            />
-          </TouchableOpacity>
-
-          <View style={styles.standardMarkRow}>
-            <View>
-              <Text style={styles.scoreLabelHeader}>Total Marks</Text>
-              <Text style={styles.scoreSubLabel}>Enter numeric value</Text>
-            </View>
-            <TextInput
-              style={styles.totalInput}
-              keyboardType="numeric"
-              placeholder="0"
-              placeholderTextColor="#94A3B8"
-              value={standardMarksInput[item.id] || ""}
-              onChangeText={(t) =>
-                setStandardMarksInput((p) => ({ ...p, [item.id]: t }))
-              }
-            />
-          </View>
-        </View>
-      ) : (
-        <View style={styles.responsesBox}>
-          <Text style={styles.responseLabel}>DETAILED REVIEW</Text>
-          {selectedAssignment?.questions?.map((q, idx) => (
-            <View key={idx} style={styles.responseItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.qText}>
-                  {idx + 1}. {q.text}
-                </Text>
-                <View style={styles.answerRow}>
-                  <SVGIcon name="checkmark-circle" size={14} color="#10b981" />
-                  <Text style={styles.aText}>
-                    {item.responses?.[idx] || "No answer provided"}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.qScoreWrapper}>
-                <Text style={styles.qScoreLabel}>SCORE</Text>
-                <TextInput
-                  style={styles.qScoreInput}
-                  keyboardType="numeric"
-                  placeholder="0"
-                  value={qScoreInputs[item.id]?.[idx] || ""}
-                  onChangeText={(t) => updateQScore(item.id, idx, t)}
-                />
-              </View>
-            </View>
-          ))}
-
-          <View style={styles.totalSumRow}>
-            <Text style={styles.totalSumText}>Total Calculated Score:</Text>
-            <Text style={styles.totalSumValue}>{calculateTotal(item)}</Text>
-          </View>
-        </View>
-      )}
-
-      <View style={styles.feedbackSection}>
-        <Text style={styles.label}>TEACHER'S FEEDBACK</Text>
-        <TextInput
-          style={styles.feedbackInput}
-          placeholder="Add comments or feedback for the student/parent..."
-          multiline
-          value={feedbackInputs[item.id] || ""}
-          onChangeText={(t) =>
-            setFeedbackInputs((prev) => ({ ...prev, [item.id]: t }))
-          }
-        />
-      </View>
-
-      <TouchableOpacity
-        style={[styles.saveSubmitBtn, { backgroundColor: COLORS.primary }]}
-        onPress={() => submitMark(item)}
-        activeOpacity={0.8}
-      >
-        <LinearGradient
-          colors={[COLORS.primary, "#4F46E5"]}
-          style={styles.btnGradient}
-        >
-          <SVGIcon name="checkmark-done-circle" size={18} color="#fff" />
-          <Text style={styles.saveSubmitBtnText}>Submit Grade</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-    </Animatable.View>
-  );
+  const renderSubmission = useCallback(({ item }: { item: Submission }) => (
+    <SubmissionItem
+      item={item}
+      assignment={selectedAssignment}
+      onMark={submitMark}
+      qScoreValue={qScoreInputs[item.id]}
+      standardMarkValue={standardMarksInput[item.id] || ""}
+      feedbackValue={feedbackInputs[item.id] || ""}
+      onUpdateQScore={updateQScore}
+      onUpdateStandardMark={updateStandardMark}
+      onUpdateFeedback={updateFeedback}
+    />
+  ), [selectedAssignment, submitMark, qScoreInputs, standardMarksInput, feedbackInputs, updateQScore, updateStandardMark, updateFeedback]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -531,7 +537,7 @@ export default function MarkAssignment() {
           <SVGIcon name="library" size={24} color={COLORS.secondary} />
         </View>
 
-        <Animatable.View animation="fadeInDown" style={styles.configCard}>
+        <Animatable.View animation="fadeInDown" duration={500} style={styles.configCard}>
           <Text style={styles.sectionLabel}>GRADING CONFIGURATION</Text>
 
           <Text style={styles.label}>TARGET CLASS</Text>
@@ -648,12 +654,16 @@ export default function MarkAssignment() {
         renderItem={renderSubmission}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={5}
         ListEmptyComponent={() => (
           <View style={styles.emptyBox}>
             {fetchingSubmissions ? (
               <ActivityIndicator size="large" color={COLORS.primary} />
             ) : (
-              <Animatable.View animation="zoomIn" style={styles.emptyAnim}>
+              <Animatable.View animation="zoomIn" duration={500} style={styles.emptyAnim}>
                 <View style={styles.emptyIconCircle}>
                   <SVGIcon name="document-text" size={60} color="#CBD5E1" />
                 </View>

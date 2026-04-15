@@ -20,6 +20,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     FlatList,
     KeyboardAvoidingView,
     Modal,
@@ -62,13 +63,6 @@ export default function StaffPayrollScreen() {
   const canView = isSuperAdmin || payrollPermission === "full" || payrollPermission === "view" || payrollPermission === "edit";
   const canEditSalary = isSuperAdmin || payrollPermission === "full" || payrollPermission === "edit";
 
-  useEffect(() => {
-    if (appUser && !canView) {
-      Alert.alert("Access Denied", "You do not have permission to view staff payroll.");
-      router.replace("/admin-dashboard");
-    }
-  }, [appUser, canView]);
-
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -87,6 +81,26 @@ export default function StaffPayrollScreen() {
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffSalary, setNewStaffSalary] = useState("");
   const [addingStaff, setAddingStaff] = useState(false);
+
+  useEffect(() => {
+    if (appUser && !canView) {
+      Alert.alert("Access Denied", "You do not have permission to view staff payroll.");
+      router.replace("/admin-dashboard");
+    }
+  }, [appUser, canView]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (showAddModal) {
+        setShowAddStaffModal(false);
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => subscription.remove();
+  }, [showAddModal]);
 
   // Sync with global academic config
   useEffect(() => {
@@ -128,11 +142,15 @@ export default function StaffPayrollScreen() {
       const combined = snapshot.docs.map((d) => {
         const data = d.data();
         const role = data.role === "admin" ? "Administrator" : (data.role === "teacher" ? "Teacher" : "Non-Teaching");
+        const firstName = data.profile?.firstName || "";
+        const lastName = data.profile?.lastName || "";
+        const fullName = `${firstName} ${lastName}`.trim();
+
         return {
           id: d.id,
-          name: `${data.profile?.firstName ?? ""} ${data.profile?.lastName ?? ""}`.trim() || d.id,
+          name: fullName || "Unnamed Staff",
           role: role as any,
-          salary: data.salary ?? 0,
+          salary: Number(data.salary) || 0,
           approved: true,
         };
       }).sort((a, b) => a.name.localeCompare(b.name));
@@ -146,7 +164,16 @@ export default function StaffPayrollScreen() {
       // Update local state for editing
       const salaries: Record<string, string> = {};
       combined.forEach((s) => (salaries[s.id] = (s.salary || 0).toString()));
-      setEditingSalaries(prev => ({ ...salaries, ...prev })); // Keep active edits
+      setEditingSalaries(prev => {
+        const newSalaries = { ...salaries };
+        // Preserve current user input for items that still exist
+        Object.keys(prev).forEach(key => {
+          if (newSalaries.hasOwnProperty(key)) {
+            newSalaries[key] = prev[key];
+          }
+        });
+        return newSalaries;
+      });
 
       AsyncStorage.setItem(CACHE_KEY, JSON.stringify(combined));
       setLoadingStaff(false);
@@ -162,8 +189,12 @@ export default function StaffPayrollScreen() {
 
   const handleUpdateSalary = async (item: Staff) => {
     const val = editingSalaries[item.id];
+    if (val === undefined || val === null) return;
+
     const newSalary = parseFloat(val);
-    if (isNaN(newSalary) || !canEditSalary) return;
+    if (isNaN(newSalary) || !canEditSalary) {
+      return Alert.alert("Invalid Amount", "Please enter a valid numeric salary.");
+    }
 
     setUpdatingId(item.id);
     try {

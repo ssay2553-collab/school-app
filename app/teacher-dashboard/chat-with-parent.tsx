@@ -76,8 +76,11 @@ export default function TeacherChatWithParent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<any | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [webRecorder, setWebRecorder] = useState<any | null>(null);
+  const [webStream, setWebStream] = useState<MediaStream | null>(null);
+  const webChunksRef = React.useRef<any[]>([]);
 
   const flatListRef = useRef<FlatList>(null);
   const isFirstLoad = useRef(true);
@@ -221,6 +224,41 @@ export default function TeacherChatWithParent() {
 
   const startRecording = async () => {
     try {
+      if (Platform.OS === "web") {
+        // Web fallback using MediaRecorder / getUserMedia
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          Alert.alert(
+            "Unsupported",
+            "Audio recording is not supported in this browser.",
+          );
+          return;
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        webChunksRef.current = [];
+        const MediaRec =
+          (window as any).MediaRecorder || (global as any).MediaRecorder;
+        if (!MediaRec) {
+          Alert.alert(
+            "Unsupported",
+            "MediaRecorder is not available in this environment.",
+          );
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        const mediaRecorder = new MediaRec(stream);
+        mediaRecorder.ondataavailable = (ev: any) => {
+          if (ev.data && ev.data.size > 0) webChunksRef.current.push(ev.data);
+        };
+        mediaRecorder.start();
+        setWebStream(stream);
+        setWebRecorder(mediaRecorder);
+        // set a sentinel recording object for UI
+        setRecording({ web: true });
+        return;
+      }
+
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) return;
       await Audio.setAudioModeAsync({
@@ -233,6 +271,7 @@ export default function TeacherChatWithParent() {
       setRecording(recording);
     } catch (e) {
       console.error(e);
+      Alert.alert("Error", "Failed to start recording.");
     }
   };
 
@@ -240,6 +279,44 @@ export default function TeacherChatWithParent() {
     if (!recording) return;
     try {
       setUploading(true);
+
+      if (Platform.OS === "web") {
+        // stop the media recorder and assemble blob
+        if (!webRecorder) return;
+        webRecorder.stop();
+        // wait briefly for onstop to populate chunks (ondataavailable already pushed them)
+        await new Promise((r) => setTimeout(r, 200));
+        const blob = new Blob(webChunksRef.current, { type: "audio/webm" });
+        // clear chunks
+        webChunksRef.current = [];
+
+        const audioRef = ref(
+          storage,
+          `chats/parents/${chatId}/${Date.now()}.webm`,
+        );
+        await uploadBytes(audioRef, blob);
+        const audioUrl = await getDownloadURL(audioRef);
+
+        await addDoc(collection(db, "directMessages", chatId!, "messages"), {
+          type: "audio",
+          fileUrl: audioUrl,
+          senderId: appUser!.uid,
+          createdAt: serverTimestamp(),
+        });
+
+        playSound("sent");
+
+        // cleanup
+        setRecording(null);
+        if (webStream) {
+          webStream.getTracks().forEach((t) => t.stop());
+          setWebStream(null);
+        }
+        setWebRecorder(null);
+        setUploading(false);
+        return;
+      }
+
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setRecording(null);

@@ -12,7 +12,10 @@ import {
     StatusBar,
     Platform,
 } from "react-native";
-import { WebView } from "react-native-webview";
+
+// Conditionally import WebView to prevent crashes on web/electron
+const WebView = Platform.OS !== 'web' ? require("react-native-webview").WebView : null;
+
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS } from "../../constants/theme";
 import { useRouter } from "expo-router";
@@ -29,7 +32,7 @@ export default function SearchScreen() {
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
 
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<any>(null);
 
   const BLOCKED_KEYWORDS = ["porn", "xxx", "adult", "sex", "nude", "bet", "casino"];
 
@@ -40,6 +43,7 @@ export default function SearchScreen() {
         Alert.alert("Safe Search", "Your search contains restricted terms. Please try a different topic.");
         return;
       }
+      setLoading(true);
       // Use adlt=strict for Bing and ensure we are using the full URL
       setSearchUrl(`https://www.bing.com/search?q=${encodeURIComponent(query)}&adlt=strict`);
     }
@@ -87,8 +91,8 @@ export default function SearchScreen() {
           <View style={styles.navBar}>
             <TouchableOpacity 
               onPress={() => {
-                if (isElectron) {
-                   // Direct DOM manipulation for Electron as webview history is tricky via props
+                if (Platform.OS === 'web') {
+                   // Direct DOM manipulation for Web/Electron as webview history is tricky via props
                    const iframe = document.getElementsByTagName('iframe')[0];
                    if (iframe && (iframe as any).contentWindow) (iframe as any).contentWindow.history.back();
                 } else {
@@ -101,9 +105,9 @@ export default function SearchScreen() {
             </TouchableOpacity>
             
             <TouchableOpacity onPress={() => {
-                if (isElectron) {
+                if (Platform.OS === 'web') {
                     const iframe = document.getElementsByTagName('iframe')[0];
-                    if (iframe) iframe.src = iframe.src;
+                    if (iframe) (iframe as any).src = (iframe as any).src;
                 } else {
                     webViewRef.current?.reload();
                 }
@@ -113,7 +117,7 @@ export default function SearchScreen() {
 
             <TouchableOpacity 
               onPress={() => {
-                if (isElectron) {
+                if (Platform.OS === 'web') {
                     const iframe = document.getElementsByTagName('iframe')[0];
                     if (iframe && (iframe as any).contentWindow) (iframe as any).contentWindow.history.forward();
                 } else {
@@ -136,19 +140,27 @@ export default function SearchScreen() {
         )}
 
         {searchUrl ? (
-          <WebView
-            ref={webViewRef}
-            source={{ uri: searchUrl }}
-            style={{ flex: 1 }}
-            onLoadStart={() => setLoading(true)}
-            onLoadEnd={() => setLoading(false)}
-            onNavigationStateChange={(navState) => {
-              // Note: canGoBack/Forward are limited on web cross-domain
-              setCanGoBack(navState.canGoBack);
-              setCanGoForward(navState.canGoForward);
-            }}
-            onShouldStartLoadWithRequest={handleShouldStartLoad}
-          />
+          Platform.OS === 'web' ? (
+            <iframe
+              src={searchUrl}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              onLoad={() => setLoading(false)}
+            />
+          ) : (
+            <WebView
+              ref={webViewRef}
+              source={{ uri: searchUrl }}
+              style={{ flex: 1 }}
+              onLoadStart={() => setLoading(true)}
+              onLoadEnd={() => setLoading(false)}
+              onNavigationStateChange={(navState: any) => {
+                // Note: canGoBack/Forward are limited on web cross-domain
+                setCanGoBack(navState.canGoBack);
+                setCanGoForward(navState.canGoForward);
+              }}
+              onShouldStartLoadWithRequest={handleShouldStartLoad}
+            />
+          )
         ) : (
           <View style={styles.placeholder}>
             <View style={styles.shieldCircle}>

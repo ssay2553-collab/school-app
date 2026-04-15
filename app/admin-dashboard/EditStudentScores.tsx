@@ -54,187 +54,221 @@ interface SubjectInfo {
 const StudentScoreCard = React.memo(
   ({
     item,
-    onUpdate,
+    onUpdateRef,
     primary,
     reportType,
   }: {
     item: any;
-    onUpdate: (id: string, field: string, value: string) => void;
+    onUpdateRef: (id: string, updated: any) => void;
     primary: string;
     reportType: ReportType;
-  }) => (
-    <Animatable.View animation="fadeInUp" duration={500} style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={[styles.avatarBox, { backgroundColor: primary + "15" }]}>
-          <Text style={[styles.avatarText, { color: primary }]}>
-            {item.fullName?.charAt(0) || "S"}
-          </Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.studentName}>{item.fullName}</Text>
-          <Text style={styles.studentIdLabel}>ID: {item.studentId}</Text>
-        </View>
-      </View>
+  }) => {
+    const [localItem, setLocalItem] = useState(item);
 
-      {reportType === "End of Term" ? (
-        <View style={styles.scoreGrid}>
-          <View style={styles.gridSection}>
-            <Text style={styles.sectionLabel}>CONTINUOUS ASSESSMENT (60%)</Text>
+    useEffect(() => {
+      setLocalItem(item);
+    }, [item]);
+
+    const handleUpdate = (field: string, v: string) => {
+      setLocalItem((prev: any) => {
+        const updated = { ...prev, [field]: v };
+        if (reportType === "End of Term") {
+          const catA = parseFloat(updated.catA) || 0;
+          const catB = parseFloat(updated.catB) || 0;
+          const gWork = parseFloat(updated.groupWork) || 0;
+          const pWork = parseFloat(updated.projectWork) || 0;
+          updated.total60 = catA + catB + gWork + pWork;
+          updated.classScore = (updated.total60 * (50 / 60)).toFixed(2);
+          const examsMark = parseFloat(updated.examsMark) || 0;
+          updated.exam50 = (examsMark * 0.5).toFixed(2);
+          updated.finalScore = (
+            parseFloat(updated.classScore) + parseFloat(updated.exam50)
+          ).toFixed(2);
+          updated.grade = getGradeDetails(parseFloat(updated.finalScore)).grade;
+        } else {
+          const examsMark = parseFloat(updated.examsMark) || 0;
+          updated.grade = getGradeDetails(examsMark).grade;
+        }
+        onUpdateRef(item.studentId, updated);
+        return updated;
+      });
+    };
+
+    return (
+      <Animatable.View animation="fadeInUp" duration={500} style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={[styles.avatarBox, { backgroundColor: primary + "15" }]}>
+            <Text style={[styles.avatarText, { color: primary }]}>
+              {localItem.fullName?.charAt(0) || "S"}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.studentName}>{localItem.fullName}</Text>
+            <Text style={styles.studentIdLabel}>ID: {localItem.studentId}</Text>
+          </View>
+        </View>
+
+        {reportType === "End of Term" ? (
+          <View style={styles.scoreGrid}>
+            <View style={styles.gridSection}>
+              <Text style={styles.sectionLabel}>
+                CONTINUOUS ASSESSMENT (60%)
+              </Text>
+              <View style={styles.gridRow}>
+                <View style={styles.inputCol}>
+                  <Text style={styles.miniHeader}>CAT A</Text>
+                  <TextInput
+                    style={styles.gridInput}
+                    keyboardType="numeric"
+                    value={String(localItem.catA || "")}
+                    onChangeText={(v) => handleUpdate("catA", v)}
+                  />
+                </View>
+                <View style={styles.inputCol}>
+                  <Text style={styles.miniHeader}>CAT B</Text>
+                  <TextInput
+                    style={styles.gridInput}
+                    keyboardType="numeric"
+                    value={String(localItem.catB || "")}
+                    onChangeText={(v) => handleUpdate("catB", v)}
+                  />
+                </View>
+                <View style={styles.inputCol}>
+                  <Text style={styles.miniHeader}>GRP</Text>
+                  <TextInput
+                    style={styles.gridInput}
+                    keyboardType="numeric"
+                    value={String(localItem.groupWork || "")}
+                    onChangeText={(v) => handleUpdate("groupWork", v)}
+                  />
+                </View>
+                <View style={styles.inputCol}>
+                  <Text style={styles.miniHeader}>PRJ</Text>
+                  <TextInput
+                    style={styles.gridInput}
+                    keyboardType="numeric"
+                    value={String(localItem.projectWork || "")}
+                    onChangeText={(v) => handleUpdate("projectWork", v)}
+                  />
+                </View>
+                <View style={styles.valueCol}>
+                  <Text style={styles.miniHeader}>50% WT</Text>
+                  <View
+                    style={[
+                      styles.gridValueBox,
+                      { backgroundColor: primary + "10" },
+                    ]}
+                  >
+                    <Text style={[styles.gridValueText, { color: primary }]}>
+                      {localItem.classScore}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.gridDivider} />
+
+            <View style={styles.gridSection}>
+              <Text style={styles.sectionLabel}>FINAL EXAMS & GRADING</Text>
+              <View style={styles.gridRow}>
+                <View style={[styles.inputCol, { flex: 1.5 }]}>
+                  <Text style={styles.miniHeader}>EXAMS (100)</Text>
+                  <TextInput
+                    style={[styles.gridInput, { height: 44 }]}
+                    keyboardType="numeric"
+                    value={String(localItem.examsMark || "")}
+                    onChangeText={(v) => handleUpdate("examsMark", v)}
+                  />
+                </View>
+                <View style={styles.valueCol}>
+                  <Text style={styles.miniHeader}>50% WT</Text>
+                  <View
+                    style={[styles.gridValueBox, { backgroundColor: "#ecfdf5" }]}
+                  >
+                    <Text style={[styles.gridValueText, { color: "#059669" }]}>
+                      {localItem.exam50}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.valueCol}>
+                  <Text style={styles.miniHeader}>TOTAL</Text>
+                  <View
+                    style={[styles.gridValueBox, { backgroundColor: "#fffbeb" }]}
+                  >
+                    <Text style={[styles.gridValueText, { color: "#d97706" }]}>
+                      {localItem.finalScore}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.valueCol}>
+                  <Text style={styles.miniHeader}>GRADE</Text>
+                  <View
+                    style={[styles.gridValueBox, { backgroundColor: "#f0f9ff" }]}
+                  >
+                    <Text style={[styles.gridValueText, { color: "#0284c7" }]}>
+                      {localItem.grade}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.scoreGrid}>
+            <Text style={styles.sectionLabel}>RAW SCORE ASSESSMENT</Text>
             <View style={styles.gridRow}>
-              <View style={styles.inputCol}>
-                <Text style={styles.miniHeader}>CAT A</Text>
+              <View style={{ flex: 2 }}>
+                <Text style={styles.miniHeader}>EXAMINATION SCORE (100)</Text>
                 <TextInput
-                  style={styles.gridInput}
+                  style={[
+                    styles.gridInput,
+                    {
+                      height: 48,
+                      fontSize: 18,
+                      textAlign: "left",
+                      paddingHorizontal: 15,
+                    },
+                  ]}
                   keyboardType="numeric"
-                  value={String(item.catA || "")}
-                  onChangeText={(v) => onUpdate(item.studentId, "catA", v)}
+                  value={String(localItem.examsMark || "")}
+                  onChangeText={(v) => handleUpdate("examsMark", v)}
+                  placeholder="0.00"
                 />
               </View>
-              <View style={styles.inputCol}>
-                <Text style={styles.miniHeader}>CAT B</Text>
-                <TextInput
-                  style={styles.gridInput}
-                  keyboardType="numeric"
-                  value={String(item.catB || "")}
-                  onChangeText={(v) => onUpdate(item.studentId, "catB", v)}
-                />
-              </View>
-              <View style={styles.inputCol}>
-                <Text style={styles.miniHeader}>GRP</Text>
-                <TextInput
-                  style={styles.gridInput}
-                  keyboardType="numeric"
-                  value={String(item.groupWork || "")}
-                  onChangeText={(v) => onUpdate(item.studentId, "groupWork", v)}
-                />
-              </View>
-              <View style={styles.inputCol}>
-                <Text style={styles.miniHeader}>PRJ</Text>
-                <TextInput
-                  style={styles.gridInput}
-                  keyboardType="numeric"
-                  value={String(item.projectWork || "")}
-                  onChangeText={(v) =>
-                    onUpdate(item.studentId, "projectWork", v)
-                  }
-                />
-              </View>
-              <View style={styles.valueCol}>
-                <Text style={styles.miniHeader}>50% WT</Text>
+              <View style={{ flex: 1, marginLeft: 15 }}>
+                <Text style={styles.miniHeader}>GRADE</Text>
                 <View
                   style={[
                     styles.gridValueBox,
-                    { backgroundColor: primary + "10" },
+                    { height: 48, backgroundColor: "#f0f9ff" },
                   ]}
                 >
-                  <Text style={[styles.gridValueText, { color: primary }]}>
-                    {item.classScore}
+                  <Text
+                    style={[
+                      styles.gridValueText,
+                      { color: "#0284c7", fontSize: 20 },
+                    ]}
+                  >
+                    {localItem.grade}
                   </Text>
                 </View>
               </View>
             </View>
           </View>
+        )}
 
-          <View style={styles.gridDivider} />
-
-          <View style={styles.gridSection}>
-            <Text style={styles.sectionLabel}>FINAL EXAMS & GRADING</Text>
-            <View style={styles.gridRow}>
-              <View style={[styles.inputCol, { flex: 1.5 }]}>
-                <Text style={styles.miniHeader}>EXAMS (100)</Text>
-                <TextInput
-                  style={[styles.gridInput, { height: 44 }]}
-                  keyboardType="numeric"
-                  value={String(item.examsMark || "")}
-                  onChangeText={(v) => onUpdate(item.studentId, "examsMark", v)}
-                />
-              </View>
-              <View style={styles.valueCol}>
-                <Text style={styles.miniHeader}>50% WT</Text>
-                <View
-                  style={[styles.gridValueBox, { backgroundColor: "#ecfdf5" }]}
-                >
-                  <Text style={[styles.gridValueText, { color: "#059669" }]}>
-                    {item.exam50}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.valueCol}>
-                <Text style={styles.miniHeader}>TOTAL</Text>
-                <View
-                  style={[styles.gridValueBox, { backgroundColor: "#fffbeb" }]}
-                >
-                  <Text style={[styles.gridValueText, { color: "#d97706" }]}>
-                    {item.finalScore}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.valueCol}>
-                <Text style={styles.miniHeader}>GRADE</Text>
-                <View
-                  style={[styles.gridValueBox, { backgroundColor: "#f0f9ff" }]}
-                >
-                  <Text style={[styles.gridValueText, { color: "#0284c7" }]}>
-                    {item.grade}
-                  </Text>
-                </View>
-              </View>
-            </View>
+        {localItem.teacherRemarks ? (
+          <View style={[styles.remarksBox, { borderLeftColor: primary }]}>
+            <Text style={styles.remarksLabel}>TEACHER&apos;S REMARKS</Text>
+            <Text style={styles.remarksText}>{localItem.teacherRemarks}</Text>
           </View>
-        </View>
-      ) : (
-        <View style={styles.scoreGrid}>
-          <Text style={styles.sectionLabel}>RAW SCORE ASSESSMENT</Text>
-          <View style={styles.gridRow}>
-            <View style={{ flex: 2 }}>
-              <Text style={styles.miniHeader}>EXAMINATION SCORE (100)</Text>
-              <TextInput
-                style={[
-                  styles.gridInput,
-                  {
-                    height: 48,
-                    fontSize: 18,
-                    textAlign: "left",
-                    paddingHorizontal: 15,
-                  },
-                ]}
-                keyboardType="numeric"
-                value={String(item.examsMark || "")}
-                onChangeText={(v) => onUpdate(item.studentId, "examsMark", v)}
-                placeholder="0.00"
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: 15 }}>
-              <Text style={styles.miniHeader}>GRADE</Text>
-              <View
-                style={[
-                  styles.gridValueBox,
-                  { height: 48, backgroundColor: "#f0f9ff" },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.gridValueText,
-                    { color: "#0284c7", fontSize: 20 },
-                  ]}
-                >
-                  {item.grade}
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {item.teacherRemarks ? (
-        <View style={[styles.remarksBox, { borderLeftColor: primary }]}>
-          <Text style={styles.remarksLabel}>TEACHER&apos;S REMARKS</Text>
-          <Text style={styles.remarksText}>{item.teacherRemarks}</Text>
-        </View>
-      ) : null}
-    </Animatable.View>
-  ),
+        ) : null}
+      </Animatable.View>
+    );
+  },
 );
+
 
 StudentScoreCard.displayName = "StudentScoreCard";
 
@@ -282,9 +316,7 @@ export default function EditStudentScores() {
   const [visibleStudents, setVisibleStudents] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
-  const allStudentsRef = useRef<any[]>([]);
-
-  // Removed local sync as they are now derived directly from acadConfig
+  const masterDataRef = useRef<Record<string, any>>({});
 
   const loadClasses = async () => {
     try {
@@ -379,6 +411,9 @@ export default function EditStudentScores() {
       if (snap.exists()) {
         setRecordId(snap.id);
         const students = snap.data().students || [];
+        students.forEach((s: any) => {
+          masterDataRef.current[s.studentId] = s;
+        });
         setAllStudents(students);
         setVisibleStudents(students.slice(0, PAGE_SIZE));
         setPage(1);
@@ -401,52 +436,18 @@ export default function EditStudentScores() {
 
   const reportTypeToSlug = (type: string) => type.replace(/\s+/g, "");
 
-  useEffect(() => {
-    allStudentsRef.current = allStudents;
-  }, [allStudents]);
-
   const loadMoreStudents = useCallback(() => {
     setVisibleStudents((prev) => {
-      if (prev.length >= allStudentsRef.current.length) return prev;
+      if (prev.length >= allStudents.length) return prev;
       const nextPage = Math.floor(prev.length / PAGE_SIZE) + 1;
       setPage(nextPage);
-      return allStudentsRef.current.slice(0, nextPage * PAGE_SIZE);
+      return allStudents.slice(0, nextPage * PAGE_SIZE);
     });
-  }, []);
+  }, [allStudents]);
 
-  const updateStudentScore = useCallback(
-    (studentId: string, field: string, value: string) => {
-      setAllStudents((prev) =>
-        prev.map((s) => {
-          if (s.studentId === studentId) {
-            const updated = { ...s, [field]: value };
-            if (selectedReportType === "End of Term") {
-              const catA = parseFloat(updated.catA) || 0;
-              const catB = parseFloat(updated.catB) || 0;
-              const gWork = parseFloat(updated.groupWork) || 0;
-              const pWork = parseFloat(updated.projectWork) || 0;
-              updated.total60 = catA + catB + gWork + pWork;
-              updated.classScore = (updated.total60 * (50 / 60)).toFixed(2);
-              const examsMark = parseFloat(updated.examsMark) || 0;
-              updated.exam50 = (examsMark * 0.5).toFixed(2);
-              updated.finalScore = (
-                parseFloat(updated.classScore) + parseFloat(updated.exam50)
-              ).toFixed(2);
-              updated.grade = getGradeDetails(
-                parseFloat(updated.finalScore),
-              ).grade;
-            } else {
-              const examsMark = parseFloat(updated.examsMark) || 0;
-              updated.grade = getGradeDetails(examsMark).grade;
-            }
-            return updated;
-          }
-          return s;
-        }),
-      );
-    },
-    [selectedReportType],
-  );
+  const onUpdateRef = useCallback((id: string, updated: any) => {
+    masterDataRef.current[id] = updated;
+  }, []);
 
   useEffect(() => {
     setVisibleStudents(allStudents.slice(0, page * PAGE_SIZE));
@@ -454,15 +455,18 @@ export default function EditStudentScores() {
 
   const approveAndSave = async () => {
     if (!recordId || allStudents.length === 0) return;
+    const studentsToSave = allStudents.map(
+      (s) => masterDataRef.current[s.studentId] || s,
+    );
     if (selectedReportType === "End of Term") {
-      const invalid = allStudents.find((s) => s.total60 > 60);
+      const invalid = studentsToSave.find((s) => s.total60 > 60);
       if (invalid)
         return Alert.alert("Error", `${invalid.fullName}'s Total exceeds 60.`);
     }
     setSaving(true);
     try {
       await updateDoc(doc(db, "academicRecords", recordId), {
-        students: allStudents,
+        students: studentsToSave,
         status: "approved",
         approvedAt: serverTimestamp(),
         approvedBy: appUser?.uid,
@@ -668,7 +672,7 @@ export default function EditStudentScores() {
         renderItem={({ item }) => (
           <StudentScoreCard
             item={item}
-            onUpdate={updateStudentScore}
+            onUpdateRef={onUpdateRef}
             primary={primary}
             reportType={selectedReportType}
           />

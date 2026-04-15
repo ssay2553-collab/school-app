@@ -60,62 +60,181 @@ const GAME_BG = {
    DATA STRUCTURES
 ----------------------------------------------------- */
 const QUIZ_DATA = [
+  // Level 1
   {
     topic: "Science 🧪",
     question: "Which organ pumps blood through the body?",
     options: ["Lungs", "Heart", "Brain", "Liver"],
     answer: "Heart",
-    difficulty: 1,
+    level: 1,
   },
   {
     topic: "Math 🔢",
     question: "What is 7 + 8?",
     options: ["14", "15", "16", "13"],
     answer: "15",
-    difficulty: 1,
+    level: 1,
   },
   {
     topic: "English 📖",
     question: "Which of these is a noun?",
     options: ["Run", "Blue", "Happiness", "Quickly"],
     answer: "Happiness",
-    difficulty: 1,
+    level: 1,
   },
   {
     topic: "Geography 🌍",
     question: "What is the capital city of Ghana?",
     options: ["Accra", "Kumasi", "Takoradi", "Tamale"],
     answer: "Accra",
-    difficulty: 1,
+    level: 1,
   },
   {
     topic: "Science 🚀",
     question: "What planet do we live on?",
     options: ["Mars", "Venus", "Earth", "Jupiter"],
     answer: "Earth",
-    difficulty: 1,
+    level: 1,
+  },
+  // Level 2
+  {
+    topic: "Science 🧬",
+    question: "What is the hardest natural substance on Earth?",
+    options: ["Gold", "Iron", "Diamond", "Quartz"],
+    answer: "Diamond",
+    level: 2,
+  },
+  {
+    topic: "Math ➗",
+    question: "What is 12 x 12?",
+    options: ["124", "144", "164", "134"],
+    answer: "144",
+    level: 2,
+  },
+  {
+    topic: "History 🏛️",
+    question: "Who was the first President of Ghana?",
+    options: ["J.B Danquah", "Kwame Nkrumah", "Jerry Rawlings", "John Kufuor"],
+    answer: "Kwame Nkrumah",
+    level: 2,
+  },
+  {
+    topic: "General 💡",
+    question: "How many colors are in a rainbow?",
+    options: ["5", "6", "7", "8"],
+    answer: "7",
+    level: 2,
+  },
+  {
+    topic: "English ✍️",
+    question: "A person who writes books is called a/an...",
+    options: ["Artist", "Author", "Actor", "Architect"],
+    answer: "Author",
+    level: 2,
+  },
+  // Level 3
+  {
+    topic: "Science 🌡️",
+    question: "At what temperature does water boil?",
+    options: ["50°C", "90°C", "100°C", "120°C"],
+    answer: "100°C",
+    level: 3,
+  },
+  {
+    topic: "Math ✖️",
+    question: "What is 50 multiplied by 4?",
+    options: ["150", "200", "250", "300"],
+    answer: "200",
+    level: 3,
+  },
+  {
+    topic: "History 🇬🇭",
+    question: "In which year did Ghana gain independence?",
+    options: ["1950", "1957", "1960", "1966"],
+    answer: "1957",
+    level: 3,
+  },
+  {
+    topic: "Geography 🗺️",
+    question: "Which is the longest river in the world?",
+    options: ["Amazon", "Nile", "Mississippi", "Volta"],
+    answer: "Nile",
+    level: 3,
+  },
+  {
+    topic: "English 💬",
+    question: "Which word is a synonym for 'Joyful'?",
+    options: ["Sad", "Angry", "Happy", "Tired"],
+    answer: "Happy",
+    level: 3,
+  },
+  // Level 4
+  {
+    topic: "Science 🌬️",
+    question: "Which gas do humans need to breathe in to survive?",
+    options: ["Nitrogen", "Carbon Dioxide", "Oxygen", "Helium"],
+    answer: "Oxygen",
+    level: 4,
+  },
+  {
+    topic: "Math 📐",
+    question: "What is the square root of 81?",
+    options: ["7", "8", "9", "10"],
+    answer: "9",
+    level: 4,
+  },
+  {
+    topic: "General 🐆",
+    question: "What is the fastest land animal?",
+    options: ["Lion", "Cheetah", "Horse", "Tiger"],
+    answer: "Cheetah",
+    level: 4,
+  },
+  {
+    topic: "ICT 💻",
+    question: "What does 'WWW' stand for?",
+    options: ["World Wide Web", "World Word Web", "Western Wide Web", "World Wide Win"],
+    answer: "World Wide Web",
+    level: 4,
+  },
+  {
+    topic: "Geography 🌏",
+    question: "What is the largest continent on Earth?",
+    options: ["Africa", "Europe", "Asia", "North America"],
+    answer: "Asia",
+    level: 4,
   },
 ];
 
 const WORD_DATA = [
-  { hint: "A common fruit that's also a color 🍎", word: "ORANGE" },
-  { hint: "A device used to type ⌨️", word: "KEYBOARD" },
-  { hint: "A large body of water 🌊", word: "OCEAN" },
-  { hint: "Place where students learn 🏫", word: "SCHOOL" },
-  { hint: "The capital of Ghana 🇬🇭", word: "ACCRA" },
+  { hint: "A common fruit that's also a color 🍎", word: "ORANGE", level: 1 },
+  { hint: "A device used to type ⌨️", word: "KEYBOARD", level: 1 },
+  { hint: "A large body of water 🌊", word: "OCEAN", level: 1 },
+  { hint: "Place where students learn 🏫", word: "SCHOOL", level: 1 },
+  { hint: "The capital of Ghana 🇬🇭", word: "ACCRA", level: 1 },
+  { hint: "King of the jungle 🦁", word: "LION", level: 2 },
+  { hint: "Opposite of cold ☀️", word: "HOT", level: 2 },
+  { hint: "Something you use to brush your teeth 🦷", word: "TOOTHBRUSH", level: 2 },
+  { hint: "The star at the center of our solar system ☀️", word: "SUN", level: 2 },
+  { hint: "A very tall animal with a long neck 🦒", word: "GIRAFFE", level: 2 },
+  { hint: "Earth's only natural satellite 🌙", word: "MOON", level: 3 },
+  { hint: "A person who treats sick people 🩺", word: "DOCTOR", level: 3 },
+  { hint: "The building where you live 🏠", word: "HOUSE", level: 3 },
+  { hint: "You use this to keep dry in rain ☂️", word: "UMBRELLA", level: 3 },
+  { hint: "A large animal with a trunk 🐘", word: "ELEPHANT", level: 3 },
 ];
 
 const SCRAMBLE_DATA = [
-  "APPLE",
-  "BANANA",
-  "CHAIR",
-  "TABLE",
-  "WINDOW",
-  "PENCIL",
-  "GARDEN",
-  "FLOWER",
-  "SCHOOL",
-  "FRIEND",
+  { word: "APPLE", level: 1 },
+  { word: "BANANA", level: 1 },
+  { word: "CHAIR", level: 1 },
+  { word: "TABLE", level: 1 },
+  { word: "WINDOW", level: 1 },
+  { word: "COMPUTER", level: 2 },
+  { word: "ELEPHANT", level: 2 },
+  { word: "MOUNTAIN", level: 2 },
+  { word: "UNIVERSE", level: 2 },
+  { word: "FOOTBALL", level: 2 },
 ];
 const MEMORY_EMOJIS = [
   "🍎",
@@ -152,7 +271,7 @@ const usePersistedState = (key: string, defaultValue: any) => {
 };
 
 const QuizGame = ({ onExit }: { onExit: () => void }) => {
-  const [difficulty, setDifficulty] = usePersistedState("@quiz_difficulty", 1);
+  const [level, setLevel] = usePersistedState("@quiz_level", 1);
   const [questions, setQuestions] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -162,18 +281,30 @@ const QuizGame = ({ onExit }: { onExit: () => void }) => {
   const [showSummary, setShowSummary] = useState(false);
 
   const startStage = useCallback(() => {
-    setQuestions(QUIZ_DATA.sort(() => 0.5 - Math.random()).slice(0, 5));
+    // Filter by level or fallback to random if level is too high
+    let pool = QUIZ_DATA.filter((q) => q.level === level);
+    if (pool.length === 0) pool = QUIZ_DATA;
+
+    setQuestions([...pool].sort(() => 0.5 - Math.random()).slice(0, 5));
     setIndex(0);
     setScore(0);
     setSelected(null);
     setIsCorrect(null);
     setRemark("");
     setShowSummary(false);
-  }, []);
+  }, [level]);
 
   useEffect(() => {
     startStage();
   }, [startStage]);
+
+  const handleNextLevel = () => {
+    if (score >= 4) {
+      setLevel(level + 1);
+    } else {
+      startStage();
+    }
+  };
 
   const handleAnswer = (opt: string) => {
     if (selected) return;
@@ -201,9 +332,9 @@ const QuizGame = ({ onExit }: { onExit: () => void }) => {
         <Text style={styles.summaryText}>
           You got {score} / {questions.length} correct!
         </Text>
-        <TouchableOpacity style={styles.summaryButton} onPress={startStage}>
+        <TouchableOpacity style={styles.summaryButton} onPress={handleNextLevel}>
           <Text style={styles.summaryButtonText}>
-            {score >= 4 ? "Play Again" : "Retry Level"}
+            {score >= 4 ? "Next Level" : "Retry Level"}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.exitButton} onPress={onExit}>
@@ -260,6 +391,7 @@ const QuizGame = ({ onExit }: { onExit: () => void }) => {
 };
 
 const WordHuntGame = ({ onExit }: { onExit: () => void }) => {
+  const [level, setLevel] = usePersistedState("@word_level", 1);
   const [words, setWords] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -267,16 +399,27 @@ const WordHuntGame = ({ onExit }: { onExit: () => void }) => {
   const [showSummary, setShowSummary] = useState(false);
 
   const startStage = useCallback(() => {
-    setWords(WORD_DATA.sort(() => 0.5 - Math.random()).slice(0, 5));
+    let pool = WORD_DATA.filter((w) => w.level === level);
+    if (pool.length === 0) pool = WORD_DATA;
+
+    setWords([...pool].sort(() => 0.5 - Math.random()).slice(0, 5));
     setIndex(0);
     setScore(0);
     setInput("");
     setShowSummary(false);
-  }, []);
+  }, [level]);
 
   useEffect(() => {
     startStage();
   }, [startStage]);
+
+  const handleNextLevel = () => {
+    if (score >= 4) {
+      setLevel(level + 1);
+    } else {
+      startStage();
+    }
+  };
 
   const check = () => {
     const isCorrect = input.toUpperCase().trim() === words[index].word;
@@ -284,7 +427,10 @@ const WordHuntGame = ({ onExit }: { onExit: () => void }) => {
       setScore((s) => s + 1);
       Alert.alert("Correct!", getRandomRemark(true));
     } else {
-      Alert.alert("Oops!", `${getRandomRemark(false)}\n\nThe word was ${words[index].word}`);
+      Alert.alert(
+        "Oops!",
+        `${getRandomRemark(false)}\n\nThe word was ${words[index].word}`,
+      );
     }
     if (index + 1 < words.length) {
       setIndex((i) => i + 1);
@@ -299,8 +445,10 @@ const WordHuntGame = ({ onExit }: { onExit: () => void }) => {
           {score >= 4 ? "Well Done! 🌟" : "Good Try! 👍"}
         </Text>
         <Text style={styles.summaryText}>You found {score} / 5 words.</Text>
-        <TouchableOpacity style={styles.summaryButton} onPress={startStage}>
-          <Text style={styles.summaryButtonText}>Play Again</Text>
+        <TouchableOpacity style={styles.summaryButton} onPress={handleNextLevel}>
+          <Text style={styles.summaryButtonText}>
+            {score >= 4 ? "Next Level" : "Retry Level"}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.exitButton} onPress={onExit}>
           <Text style={styles.exitButtonText}>Back to Menu</Text>
@@ -343,7 +491,9 @@ const WordHuntGame = ({ onExit }: { onExit: () => void }) => {
 };
 
 const ScrambleGame = ({ onExit }: { onExit: () => void }) => {
+  const [level, setLevel] = usePersistedState("@scramble_level", 1);
   const [words, setWords] = useState<string[]>([]);
+  const [scrambled, setScrambled] = useState("");
   const [index, setIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [input, setInput] = useState("");
@@ -356,16 +506,30 @@ const ScrambleGame = ({ onExit }: { onExit: () => void }) => {
       .join("");
 
   const startStage = useCallback(() => {
-    setWords(SCRAMBLE_DATA.sort(() => 0.5 - Math.random()).slice(0, 5));
+    let pool = SCRAMBLE_DATA.filter((s) => s.level === level).map((s) => s.word);
+    if (pool.length === 0) pool = SCRAMBLE_DATA.map((s) => s.word);
+
+    const stageWords = [...pool].sort(() => 0.5 - Math.random()).slice(0, 5);
+    setWords(stageWords);
+    if (stageWords[0]) setScrambled(shuffle(stageWords[0]));
+
     setIndex(0);
     setScore(0);
     setInput("");
     setShowSummary(false);
-  }, []);
+  }, [level]);
 
   useEffect(() => {
     startStage();
   }, [startStage]);
+
+  const handleNextLevel = () => {
+    if (score >= 4) {
+      setLevel(level + 1);
+    } else {
+      startStage();
+    }
+  };
 
   const check = () => {
     const isCorrect = input.toUpperCase().trim() === words[index];
@@ -373,10 +537,15 @@ const ScrambleGame = ({ onExit }: { onExit: () => void }) => {
       setScore((s) => s + 1);
       Alert.alert("Bravo!", getRandomRemark(true));
     } else {
-      Alert.alert("Not Quite", `${getRandomRemark(false)}\n\nThe word was ${words[index]}`);
+      Alert.alert(
+        "Not Quite",
+        `${getRandomRemark(false)}\n\nThe word was ${words[index]}`,
+      );
     }
     if (index + 1 < words.length) {
-      setIndex((i) => i + 1);
+      const nextIdx = index + 1;
+      setIndex(nextIdx);
+      setScrambled(shuffle(words[nextIdx]));
       setInput("");
     } else setShowSummary(true);
   };
@@ -385,11 +554,13 @@ const ScrambleGame = ({ onExit }: { onExit: () => void }) => {
     return (
       <View style={styles.summaryContainer}>
         <Text style={styles.summaryTitle}>
-          {score >= 3 ? "Excellent! ✨" : "Keep Trying! 💪"}
+          {score >= 4 ? "Excellent! ✨" : "Keep Trying! 💪"}
         </Text>
         <Text style={styles.summaryText}>Unscrambled {score} / 5 words.</Text>
-        <TouchableOpacity style={styles.summaryButton} onPress={startStage}>
-          <Text style={styles.summaryButtonText}>Play Again</Text>
+        <TouchableOpacity style={styles.summaryButton} onPress={handleNextLevel}>
+          <Text style={styles.summaryButtonText}>
+            {score >= 4 ? "Next Level" : "Retry Level"}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.exitButton} onPress={onExit}>
           <Text style={styles.exitButtonText}>Back to Menu</Text>
@@ -405,7 +576,7 @@ const ScrambleGame = ({ onExit }: { onExit: () => void }) => {
         <TouchableOpacity onPress={onExit}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
-        <Text style={styles.levelText}>Scramble 🔠</Text>
+        <Text style={styles.levelText}>Scramble 🔠 (Lvl {level})</Text>
       </View>
       <View style={styles.scrambleContainer}>
         <Text style={styles.hintLabel}>UNSCRAMBLE THIS:</Text>
@@ -421,7 +592,7 @@ const ScrambleGame = ({ onExit }: { onExit: () => void }) => {
             },
           ]}
         >
-          {shuffle(words[index])}
+          {scrambled}
         </Text>
         <TextInput
           style={styles.textInput}

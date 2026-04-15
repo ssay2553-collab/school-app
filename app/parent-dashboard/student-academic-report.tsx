@@ -34,7 +34,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { getGradeDetails } from "../../lib/classHelpers";
+import { getGradeDetails, calculatePerformanceFromList } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import { shareFile } from "../../utils/shareUtils";
 
@@ -72,10 +72,12 @@ export default function StudentAcademicReport() {
   }, [acadConfig.academicYear]);
 
   const [selectedYear, setSelectedYear] = useState("");
+  const [hasSetDefaults, setHasSetDefaults] = useState(false);
   const [report, setReport] = useState<any>(null);
   const [subjectsData, setSubjectsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchingReport, setFetchingReport] = useState(false);
+  const [overallPosition, setOverallPosition] = useState("N/A");
 
   const [teacherSig, setTeacherSig] = useState("");
   const [adminSig, setAdminSig] = useState("");
@@ -94,7 +96,7 @@ export default function StudentAcademicReport() {
           const list = snap.docs.map((d) => ({
             id: d.id,
             name: `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
-            classId: d.data().profile?.classId || "",
+            classId: d.data().classId || d.data().profile?.classId || "",
           }));
           setChildren(list);
           if (list.length > 0) setSelectedChildId(list[0].id);
@@ -107,23 +109,58 @@ export default function StudentAcademicReport() {
     fetchData();
   }, [appUser]);
 
-  // Sync with global academic config (initial load only)
+  // Unified effect to sync with global academic config and set fallback defaults
   useEffect(() => {
-    if (!acadConfig.loading && !selectedYear && acadConfig.academicYear) {
+    if (acadConfig.loading) return;
+
+    if (acadConfig.academicYear && !hasSetDefaults) {
+      console.log("[Report] Setting defaults from config:", acadConfig.academicYear, acadConfig.currentTerm);
       setSelectedYear(acadConfig.academicYear);
-      setSelectedTerm(acadConfig.currentTerm);
+      setSelectedTerm(acadConfig.currentTerm || "Term 1");
+      setHasSetDefaults(true);
+    } else if (!selectedYear && academicYears.length > 0 && !hasSetDefaults) {
+      console.log("[Report] Setting fallback default year:", academicYears[0]);
+      setSelectedYear(academicYears[0]);
+      setSelectedTerm("Term 1");
+      setHasSetDefaults(true);
     }
-  }, [acadConfig, selectedYear]);
+  }, [acadConfig, academicYears, hasSetDefaults]);
+
+  useEffect(() => {
+    if (selectedChildId && selectedYear && selectedTerm && selectedReportType) {
+      loadReport();
+    }
+  }, [selectedChildId, selectedYear, selectedTerm, selectedReportType]);
+
+  const [className, setClassName] = useState("");
 
   const loadReport = async () => {
-    if (!selectedChildId || !selectedYear) return;
+    if (!selectedChildId) {
+      return Alert.alert("Selection Required", "Please select a student first.");
+    }
+    if (!selectedYear) {
+      return Alert.alert("Selection Required", "Please select an academic year.");
+    }
+
     setFetchingReport(true);
     setReport(null);
     setSubjectsData([]);
+    setClassName("");
 
     try {
       const child = children.find((c) => c.id === selectedChildId);
       const classId = child?.classId;
+
+      console.log(`[Report] Loading for child: ${selectedChildId}, Class: ${classId}, Year: ${selectedYear}, Term: ${selectedTerm}, Type: ${selectedReportType}`);
+
+      if (!classId) {
+        Alert.alert(
+          "Profile Incomplete",
+          "This student is not assigned to a class. Please contact the school administrator."
+        );
+        setFetchingReport(false);
+        return;
+      }
 
       const qScores = query(
         collection(db, "academicRecords"),
@@ -134,7 +171,10 @@ export default function StudentAcademicReport() {
         where("status", "==", "approved"),
       );
 
-      const scoresSnap = await getDocsCacheFirst(qScores);
+      // Always fetch from server for reports to ensure we get latest approved data
+      const scoresSnap = await getDocsFromServer(qScores);
+      console.log(`[Report] Found ${scoresSnap.size} approved subject records.`);
+
       let results: any[] = [];
 
       scoresSnap.docs.forEach((d) => {
@@ -143,13 +183,13 @@ export default function StudentAcademicReport() {
 
         const sortedBySubject = [...studentsList].sort((a, b) => {
           const valA = parseFloat(
-            a.finalScore ||
+            a.finalScore ??
               (
                 parseFloat(a.classScore || 0) + parseFloat(a.exam50 || 0)
               ).toFixed(2),
           );
           const valB = parseFloat(
-            b.finalScore ||
+            b.finalScore ??
               (
                 parseFloat(b.classScore || 0) + parseFloat(b.exam50 || 0)
               ).toFixed(2),
@@ -162,14 +202,16 @@ export default function StudentAcademicReport() {
         const studentEntry = studentsList.find(
           (s: any) => s.studentId === selectedChildId,
         );
+
         if (studentEntry) {
           const scoreValue = parseFloat(
-            studentEntry.finalScore ||
+            studentEntry.finalScore ??
               (
                 parseFloat(studentEntry.classScore || 0) +
                 parseFloat(studentEntry.exam50 || 0)
               ).toFixed(2),
           );
+
           const gradeObj = getGradeDetails(scoreValue);
           results.push({
             subject: data.subject,
@@ -184,10 +226,21 @@ export default function StudentAcademicReport() {
         }
       });
 
-      if (results.length === 0) {
+      if (scoresSnap.size === 0) {
+        console.warn(`[Report] No approved academic records found for Class: ${classId}, Year: ${selectedYear}, Term: ${selectedTerm}`);
         Alert.alert(
           "Not Ready",
-          "No approved academic records found for this period.",
+          "No approved academic records found for this period. Please check if records have been approved by the administration.",
+        );
+        setFetchingReport(false);
+        return;
+      }
+
+      if (results.length === 0) {
+        console.warn(`[Report] No entry found for student ${selectedChildId} in ${scoresSnap.size} approved subject records.`);
+        Alert.alert(
+          "Missing Record",
+          "Your child was not found in the approved records for this period. Please contact the class teacher.",
         );
         setFetchingReport(false);
         return;
@@ -195,18 +248,54 @@ export default function StudentAcademicReport() {
 
       setSubjectsData(results);
 
-      // Fetch Metadata & Signatures
-      const classSnap = await getDoc(doc(db, "classes", classId));
-      if (classSnap.exists()) {
-        const classTeacherId = classSnap.data().classTeacherId;
-        if (classTeacherId) {
-          const teacherSnap = await getDoc(doc(db, "users", classTeacherId));
-          if (teacherSnap.exists())
-            setTeacherSig(teacherSnap.data().profile?.signatureUrl || "");
-        }
+      // Fetch overall position ranking
+      try {
+        const qAllReports = query(
+          collection(db, "academicRecords"),
+          where("classId", "==", classId),
+          where("academicYear", "==", selectedYear),
+          where("term", "==", selectedTerm),
+          where("reportType", "==", selectedReportType),
+          where("status", "==", "approved"),
+        );
+        const allSnap = await getDocsFromServer(qAllReports);
+        const studentTotals: { [id: string]: number } = {};
+        allSnap.docs.forEach((d) => {
+          const dData = d.data();
+          (dData.students || []).forEach((s: any) => {
+            const val = parseFloat(
+              s.finalScore ??
+                (parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)),
+            );
+            studentTotals[s.studentId] = (studentTotals[s.studentId] || 0) + val;
+          });
+        });
+        const sortedTotals = Object.entries(studentTotals).sort(
+          (a, b) => b[1] - a[1],
+        );
+        const rank =
+          sortedTotals.findIndex(([id]) => id === selectedChildId) + 1;
+        const totalInClass = sortedTotals.length;
+        setOverallPosition(rank > 0 ? `${rank}/${totalInClass}` : "N/A");
+      } catch (e) {
+        console.warn("Ranking error:", e);
+        setOverallPosition("N/A");
       }
 
-      // Fetch Head of Institution Signature - Robust matching for various admin titles
+      // Fetch class name
+      try {
+        const classDoc = await getDoc(doc(db, "classes", classId));
+        if (classDoc.exists()) {
+          const classData: any = classDoc.data();
+          setClassName(classData.className || classData.name || classId);
+        } else {
+          setClassName(classId);
+        }
+      } catch (e) {
+        setClassName(classId);
+      }
+
+      // Fetch Head of Institution Signature
       const qAdmin = query(
         collection(db, "users"),
         where("role", "==", "admin"),
@@ -258,32 +347,8 @@ export default function StudentAcademicReport() {
     }
   };
 
-  const unifiedAggregate = useMemo(() => {
-    if (subjectsData.length === 0) return 0;
-    const coreList = ["Mathematics", "Science", "English"];
-
-    const cores = subjectsData.filter((s) =>
-      coreList.some((c) => s.subject.toLowerCase() === c.toLowerCase()),
-    );
-
-    const others = subjectsData
-      .filter(
-        (s) =>
-          !coreList.some((c) => s.subject.toLowerCase() === c.toLowerCase()),
-      )
-      .sort((a, b) => (parseInt(a.grade) || 9) - (parseInt(b.grade) || 9));
-
-    const coreSum = cores.reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
-    const electiveSum = others
-      .slice(0, 3)
-      .reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
-
-    const missingCoresCount = Math.max(0, 3 - cores.length);
-    const missingElectivesCount = Math.max(0, 3 - others.length);
-
-    return (
-      coreSum + electiveSum + (missingCoresCount + missingElectivesCount) * 9
-    );
+  const { trs: TRS, tas: TAS, aggregate: unifiedAggregate } = useMemo(() => {
+    return calculatePerformanceFromList(subjectsData);
   }, [subjectsData]);
 
   const downloadPDF = async () => {
@@ -292,201 +357,194 @@ export default function StudentAcademicReport() {
 
     try {
       let logoDataUri = "";
-      let sigDataUri = "";
+      let adminSigDataUri = "";
 
-      if (Platform.OS !== "web") {
-        // Mobile: Convert to Base64 for PDF engine reliability
+      const getBase64FromUri = async (uri: string) => {
+        if (!uri) return "";
         try {
-          const asset = Asset.fromModule(schoolLogo);
-          if (!asset.localUri) await asset.downloadAsync();
-          const logoFile = new (FileSystem as any).File(
-            asset.localUri || asset.uri,
-          );
-          const base64Logo = await logoFile.base64();
-          logoDataUri = `data:image/png;base64,${base64Logo}`;
-        } catch (e) {
-          console.warn("Logo conversion failed", e);
-        }
-
-        if (adminSig) {
-          try {
-            const destSig = new (FileSystem as any).File(
-              FileSystem.Paths.cache,
-              "temp_sig_parent.png",
-            );
-            const downloaded = await (FileSystem as any).File.downloadFileAsync(
-              adminSig,
-              destSig,
-            );
-            const base64Sig = await downloaded.base64();
-            sigDataUri = `data:image/png;base64,${base64Sig}`;
-          } catch (e) {
-            console.warn("Signature conversion failed", e);
+          if (Platform.OS === "web") {
+            const resp = await fetch(uri);
+            const blob = await resp.blob();
+            return new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          } else {
+            const tempPath = `${FileSystem.cacheDirectory}temp_${Math.random().toString(36).substring(7)}.png`;
+            const downloaded = await FileSystem.downloadAsync(uri, tempPath);
+            const b64 = await FileSystem.readAsStringAsync(downloaded.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            return `data:image/png;base64,${b64}`;
           }
+        } catch (e) {
+          console.warn("Base64 conversion failed for", uri, e);
+          return uri;
         }
-      } else {
+      };
+
+      // Logo conversion
+      try {
         const asset = Asset.fromModule(schoolLogo);
-        logoDataUri = asset.uri;
-        sigDataUri = adminSig;
+        if (!asset.localUri && !asset.uri) await asset.downloadAsync();
+        logoDataUri = await getBase64FromUri(asset.localUri || asset.uri);
+      } catch (e) {
+        console.warn("Logo conversion failed", e);
       }
 
+      // Signatures conversion
+      if (adminSig) {
+        adminSigDataUri = await getBase64FromUri(adminSig);
+      }
+
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VERIFY-${selectedChildId}`;
+      const qrDataUri = await getBase64FromUri(qrUrl);
+
+      const generatedOn = new Date().toLocaleString();
+
       const html = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            @page { size: A4; margin: 15mm; }
-            body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 0; color: #1E293B; background-color: #fff; }
-            .container { width: 100%; box-sizing: border-box; position: relative; }
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8" />
+      <style>
+        @page { size: A4; margin: 12mm; }
+        body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; margin:0; color:#0f172a; background:#fff; }
+        .paper { max-width: 794px; margin: 0 auto; padding: 26px 28px; position: relative; }
 
-            .header-table { width: 100%; border-bottom: 2pt solid #1E293B; padding-bottom: 15px; margin-bottom: 20px; }
-            .header-logo { width: 80px; vertical-align: middle; }
-            .header-text { text-align: left; padding-left: 20px; vertical-align: middle; }
-            .school-name { font-size: 22pt; font-weight: 900; margin: 0; text-transform: uppercase; color: #1E293B; }
-            .school-info { font-size: 9pt; margin: 2px 0; font-weight: 600; color: #64748B; }
+        .header-table { width: 100%; border-bottom: 2pt solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
+        .header-logo { width: 80px; vertical-align: middle; }
+        .header-text { text-align: left; padding-left: 20px; vertical-align: middle; }
+        .school-name { font-size: 22pt; font-weight: 900; margin: 0; text-transform: uppercase; color: #0f172a; }
+        .school-info { font-size: 9pt; margin: 2px 0; font-weight: 600; color: #475569; }
 
-            .report-title { text-align: center; font-size: 14pt; font-weight: 900; margin: 20px 0; color: #1E293B; letter-spacing: 1.5pt; text-transform: uppercase; }
+        .title { text-align:center; font-weight:900; margin: 20px 0; font-size: 14pt; letter-spacing: 1.5pt; text-transform: uppercase; }
 
-            .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1pt solid #E2E8F0; }
-            .info-grid td { padding: 8pt 12pt; font-size: 10pt; border: 1pt solid #E2E8F0; }
-            .label-cell { background-color: #F8FAFC; color: #64748B; font-weight: 800; width: 20%; font-size: 8pt; text-transform: uppercase; }
-            .value-cell { width: 30%; font-weight: 700; color: #1E293B; }
+        .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1pt solid #E2E8F0; }
+        .info-grid td { padding: 8pt 12pt; font-size: 10pt; border: 1pt solid #E2E8F0; }
+        .label-cell { background-color: #F8FAFC; color: #64748B; font-weight: 800; width: 20%; font-size: 8pt; text-transform: uppercase; }
+        .value-cell { width: 30%; font-weight: 700; color: #1E293B; }
 
-            .results-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; }
-            .results-table th { background-color: #1E293B !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; color: #fff !important; padding: 10pt 5pt; font-size: 9pt; border: 1pt solid #334155; text-transform: uppercase; }
-            .results-table td { padding: 8pt 5pt; font-size: 10pt; border: 1pt solid #E2E8F0; text-align: center; font-weight: 600; color: #1E293B; }
-            .results-table tr:nth-child(even) { background-color: #F8FAFC !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .subj-name { text-align: left !important; padding-left: 12pt !important; font-weight: 800; text-transform: uppercase; color: #0F172A; }
+        table.results { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; border: 1pt solid #0b1220; }
+        table.results th { background-color: #1E293B !important; -webkit-print-color-adjust: exact; color: #fff; padding: 10pt 5pt; font-size: 9pt; border: 1pt solid #334155; text-transform: uppercase; }
+        table.results td { padding: 8pt 5pt; font-size: 10pt; border: 1pt solid #E2E8F0; text-align: center; font-weight: 600; color: #1E293B; }
+        table.results tr:nth-child(even) { background-color: #F8FAFC; }
+        .subj-name { text-align: left !important; padding-left: 12pt !important; font-weight: 800; text-transform: uppercase; }
 
-            .summary-box { border: 1pt solid #E2E8F0; padding: 12pt; margin-bottom: 20px; background-color: #F1F5F9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; border-radius: 4pt; }
-            .summary-text { font-size: 11pt; font-weight: 900; margin: 0; color: #1E293B; text-align: center; }
+        .summary-box { border: 1pt solid #E2E8F0; padding: 12pt; margin-bottom: 20px; background-color: #F1F5F9; border-radius: 4pt; }
+        .summary-text { font-size: 11pt; font-weight: 900; margin: 0; color: #1E293B; text-align: center; }
 
-            .remarks-box { margin-top: 10pt; border: 1pt solid #E2E8F0; padding: 12pt; border-radius: 4pt; background-color: #F8FAFC !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .remark-line { margin-bottom: 10pt; font-size: 10pt; line-height: 1.5; color: #334155; }
-            .remark-header { font-weight: 900; color: #1E293B; margin-right: 8pt; font-size: 8.5pt; text-transform: uppercase; }
+        .remarks-box { margin-top: 10pt; border: 1pt solid #E2E8F0; padding: 12pt; border-radius: 4pt; background-color: #F8FAFC; }
+        .remark-line { margin-bottom: 8pt; font-size: 10pt; line-height: 1.4; color: #334155; }
+        .remark-header { font-weight: 900; color: #1E293B; margin-right: 8pt; font-size: 8.5pt; text-transform: uppercase; }
 
-            .footer-table { width: 100%; margin-top: 40pt; }
-            .sig-section { text-align: center; vertical-align: bottom; }
-            .sig-line { border-top: 1pt solid #1E293B; width: 80%; margin: 5pt auto; }
-            .sig-label { font-size: 9pt; font-weight: 800; text-transform: uppercase; color: #64748B; }
-            .sig-image { height: 45pt; object-fit: contain; margin-bottom: -5pt; }
+        .footer { display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; }
+        .sig-section { width: 40%; text-align: center; }
+        .sig-image { height: 45pt; object-fit: contain; margin-bottom: -5pt; max-width: 90%; }
+        .sig-line { border-top: 1pt solid #1E293B; width: 85%; margin: 5pt auto; }
+        .sig-label { font-size: 8.5pt; font-weight: 800; text-transform: uppercase; color: #64748B; }
 
-            .verified-footer { margin-top: 50pt; border-top: 1pt solid #E2E8F0; padding-top: 10pt; }
-            .footer-flex { display: flex; justify-content: space-between; align-items: center; }
-            .footer-meta { font-size: 8pt; color: #94A3B8; line-height: 1.4; }
-            .qr-img { width: 50pt; height: 50pt; opacity: 0.8; }
+        .qr-section { text-align: right; width: 20%; }
+        .qr-img { width: 50pt; height: 50pt; opacity: 0.8; }
+      </style>
+    </head>
+    <body>
+      <div class="paper">
+        <table class="header-table">
+          <tr>
+            <td class="header-logo">
+              ${logoDataUri ? `<img src="${logoDataUri}" style="width: 80px; height: 80px;" />` : ""}
+            </td>
+            <td class="header-text">
+              <h1 class="school-name">${SCHOOL_CONFIG.fullName}</h1>
+              <p class="school-info">${SCHOOL_CONFIG.address || ""}</p>
+              <p class="school-info">Contact: ${SCHOOL_CONFIG.hotline || ""} | Email: ${SCHOOL_CONFIG.email || ""}</p>
+            </td>
+          </tr>
+        </table>
 
-            table { page-break-inside: auto; }
-            tr { page-break-inside: avoid; page-break-after: auto; }
-            thead { display: table-header-group; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <table class="header-table">
-              <tr>
-                <td class="header-logo">
-                  ${logoDataUri ? `<img src="${logoDataUri}" style="width: 80px; height: 80px;" />` : ""}
-                </td>
-                <td class="header-text">
-                  <h1 class="school-name">${SCHOOL_CONFIG.fullName}</h1>
-                  <p class="school-info">${SCHOOL_CONFIG.address || "Quality Education & Discipline"}</p>
-                  <p class="school-info">Contact: ${SCHOOL_CONFIG.hotline || ""} | Email: ${SCHOOL_CONFIG.email || ""}</p>
-                </td>
-              </tr>
-            </table>
+        <div class="title">${selectedReportType} Progress Report</div>
 
-            <div class="report-title">${selectedReportType} PROGRESS REPORT</div>
+        <table class="info-grid">
+          <tr>
+            <td class="label-cell">Student Name</td><td class="value-cell">${report?.studentName || children.find((c) => c.id === selectedChildId)?.name}</td>
+            <td class="label-cell">Class/Grade</td><td class="value-cell">${className}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Academic Year</td><td class="value-cell">${selectedYear}</td>
+            <td class="label-cell">Term/Period</td><td class="value-cell">${selectedTerm}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Aggregate</td><td class="value-cell">${unifiedAggregate}</td>
+            <td class="label-cell">Position</td><td class="value-cell">${overallPosition}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Generated</td><td class="value-cell">${generatedOn}</td>
+            <td class="label-cell">Status</td><td class="value-cell">Approved</td>
+          </tr>
+        </table>
 
-            <table class="info-grid">
-              <tr>
-                <td class="label-cell">Student Name</td><td class="value-cell">${report?.studentName || children.find((c) => c.id === selectedChildId)?.name}</td>
-                <td class="label-cell">Class/Grade</td><td class="value-cell">${report?.classId || ""}</td>
-              </tr>
-              <tr>
-                <td class="label-cell">Academic Year</td><td class="value-cell">${selectedYear}</td>
-                <td class="label-cell">Term/Period</td><td class="value-cell">${selectedTerm}</td>
-              </tr>
-              <tr>
-                <td class="label-cell">Aggregate</td><td class="value-cell" style="font-size: 14pt;">${unifiedAggregate}</td>
-                <td class="label-cell">Promoted To</td><td class="value-cell">${report?.promotedTo || "N/A"}</td>
-              </tr>
-            </table>
+        <table class="results">
+          <thead>
+            <tr>
+              <th style="width: 30%;">Subject</th>
+              ${isFullReport ? '<th style="width: 10%;">Class</th><th style="width: 10%;">Exams</th><th style="width: 10%;">Total</th>' : '<th style="width: 10%;">Total</th>'}
+              <th style="width: 8%;">Grade</th>
+              <th style="width: 8%;">Pos.</th>
+              <th style="width: 24%;">Remark</th>
+            </tr>
+          </thead>
+          <tbody>
+          ${subjectsData
+            .map((s) => {
+              const classScoreDisplay = isNaN(Number(s.classScore)) ? s.classScore : Number(s.classScore).toFixed(1);
+              const examsScoreDisplay = isNaN(Number(s.examsScore)) ? s.examsScore : Number(s.examsScore).toFixed(1);
+              const totalDisplay = isNaN(Number(s.total)) ? s.total : Number(s.total).toFixed(1);
+              return `
+            <tr>
+              <td class="subj-name">${s.subject}</td>
+              ${isFullReport ? `
+                <td>${classScoreDisplay}</td>
+                <td>${examsScoreDisplay}</td>
+                <td style="font-weight: 900;">${totalDisplay}</td>
+              ` : `<td>${totalDisplay}</td>`}
+              <td>${s.grade}</td>
+              <td>${s.pos}</td>
+              <td style="font-size: 9pt; text-align: left; padding-left: 5pt;">${s.remark}</td>
+            </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
 
-            <table class="results-table">
-              <thead>
-                <tr>
-                  <th style="width: 30%;">Subject</th>
-                  <th style="width: 10%;">Class</th>
-                  <th style="width: 10%;">Exams</th>
-                  <th style="width: 10%;">Total</th>
-                  <th style="width: 8%;">Grade</th>
-                  <th style="width: 8%;">Pos.</th>
-                  <th style="width: 24%;">Remark</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${subjectsData
-                  .map(
-                    (s) => `
-                  <tr>
-                    <td class="subj-name">${s.subject}</td>
-                    <td>${s.classScore}</td>
-                    <td>${s.examsScore}</td>
-                    <td style="font-weight: 900;">${s.total}</td>
-                    <td>${s.grade}</td>
-                    <td>${s.pos}</td>
-                    <td style="font-size: 9pt; text-align: left; padding-left: 5pt;">${s.remark}</td>
-                  </tr>
-                `,
-                  )
-                  .join("")}
-              </tbody>
-            </table>
+        <div class="summary-box">
+          <p class="summary-text">TRS: ${TRS} | TAS: ${TAS} | AGGREGATE: ${unifiedAggregate}</p>
+        </div>
 
-            <div class="summary-box">
-              <p class="summary-text">OFFICIAL AGGREGATE: ${unifiedAggregate}</p>
-            </div>
+        <div class="remarks-box">
+          ${isFullReport && report?.assessment ? `<div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${report.assessment.conduct}</b> | Attitude: <b>${report.assessment.attitude}</b> | Interest: <b>${report.assessment.interest || "N/A"}</b></div>` : ""}
+          <div class="remark-line"><span class="remark-header">CLASS TEACHER:</span> ${report?.teacherRemarks || "Satisfactory performance."}</div>
+          <div class="remark-line"><span class="remark-header">ADMINISTRATIVE:</span> ${report?.adminRemarks || "Keep up the hard work."}</div>
+          <div class="remark-line"><span class="remark-header">NEXT TERM BEGINS:</span> <b>${report?.nextTermBegins || "TBA"}</b></div>
+          ${report?.promotedTo ? `<div class="remark-line"><span class="remark-header">PROMOTED TO:</span> <b>${report.promotedTo}</b></div>` : ""}
+        </div>
 
-            ${
-              isFullReport
-                ? `
-              <div class="remarks-box">
-                <div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${report?.assessment?.conduct || "N/A"}</b> | Attitude: <b>${report?.assessment?.attitude || "N/A"}</b> | Interest: <b>${report?.assessment?.interest || "N/A"}</b></div>
-                <div class="remark-line"><span class="remark-header">CLASS TEACHER:</span> ${report?.teacherRemarks || "Satisfactory performance."}</div>
-                <div class="remark-line"><span class="remark-header">ADMINISTRATIVE:</span> ${report?.adminRemarks || "Keep up the hard work."}</div>
-                <div class="remark-line"><span class="remark-header">NEXT TERM BEGINS:</span> <b>${report?.nextTermBegins || "To be communicated"}</b></div>
-              </div>
-            `
-                : ""
-            }
-
-            <table class="footer-table">
-              <tr>
-                <td class="sig-section" style="width: 50%;"></td>
-                <td class="sig-section" style="width: 50%;">
-                  ${sigDataUri ? `<img src="${sigDataUri}" class="sig-image" />` : '<div style="height:45pt;"></div>'}
-                  <div class="sig-line"></div>
-                  <div class="sig-label">Head of Institution's Signature & Stamp</div>
-                </td>
-              </tr>
-            </table>
-
-            <div class="verified-footer">
-              <div class="footer-flex">
-                <div class="footer-meta">
-                  <b>DIGITALLY VERIFIED ACADEMIC RECORD</b><br/>
-                  Ref: ${selectedChildId.substring(0, 8)}-${selectedYear.replace("/", "")}<br/>
-                  Date: ${new Date().toLocaleDateString()}
-                </div>
-                <img class="qr-img" src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VERIFY-${selectedChildId}" />
-              </div>
-            </div>
+        <div class="footer">
+          <div class="sig-section" style="width: 60%; text-align: left;">
+            ${adminSigDataUri ? `<img src="${adminSigDataUri}" class="sig-image" style="margin-left: 20px;" />` : '<div style="height:45pt;"></div>'}
+            <div class="sig-line" style="width: 80%; margin-left: 0;"></div>
+            <div class="sig-label" style="margin-left: 20px;">Head of Institution</div>
           </div>
-        </body>
-        </html>
-      `;
+          <div class="qr-section">
+            <img src="${qrDataUri}" class="qr-img"/>
+            <div style="font-size:7pt; color:#64748B; margin-top:4pt;">Verify Report</div>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
 
       if (Platform.OS !== "web") {
         const { uri } = await Print.printToFileAsync({ html });
@@ -616,20 +674,25 @@ export default function StudentAcademicReport() {
             </View>
           </View>
 
-          <TouchableOpacity
-            style={[styles.viewBtn, { backgroundColor: primary }]}
-            onPress={loadReport}
-            disabled={fetchingReport}
-          >
-            {fetchingReport ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.viewBtnText}>Generate Report Card</Text>
-            )}
-          </TouchableOpacity>
+          {/* Load Report functionality is now automated via useEffect */}
         </View>
 
-        {subjectsData.length > 0 && (
+        {fetchingReport && (
+          <View style={{ padding: 40, alignItems: "center" }}>
+            <ActivityIndicator color={primary} size="large" />
+            <Text style={{ marginTop: 10, color: "#64748B", fontWeight: "600" }}>Fetching Report Data...</Text>
+          </View>
+        )}
+
+        {!fetchingReport && subjectsData.length === 0 && selectedChildId && (
+          <View style={{ padding: 40, alignItems: "center" }}>
+            <Text style={{ color: "#64748B", textAlign: "center", fontWeight: "600" }}>
+              No approved academic records found for this period.
+            </Text>
+          </View>
+        )}
+
+        {!fetchingReport && subjectsData.length > 0 && (
           <Animatable.View
             animation="fadeInUp"
             duration={600}
@@ -649,6 +712,9 @@ export default function StudentAcademicReport() {
                 <Text style={styles.paperReportType}>
                   {selectedReportType.toUpperCase()} PROGRESS REPORT
                 </Text>
+                <Text style={styles.paperSchoolInfo}>
+                  {SCHOOL_CONFIG.hotline} | {SCHOOL_CONFIG.email}
+                </Text>
               </View>
             </View>
 
@@ -665,7 +731,7 @@ export default function StudentAcademicReport() {
               <View style={styles.paperInfoItem}>
                 <Text style={styles.paperInfoLabel}>CLASS:</Text>
                 <Text style={styles.paperInfoValue}>
-                  {report?.classId || "N/A"}
+                  {className || report?.classId || "N/A"}
                 </Text>
               </View>
               <View style={styles.paperInfoItem}>
@@ -676,19 +742,25 @@ export default function StudentAcademicReport() {
                 <Text style={styles.paperInfoLabel}>TERM:</Text>
                 <Text style={styles.paperInfoValue}>{selectedTerm}</Text>
               </View>
+              <View style={styles.paperInfoItem}>
+                <Text style={styles.paperInfoLabel}>POSITION:</Text>
+                <Text style={styles.paperInfoValue}>{overallPosition}</Text>
+              </View>
             </View>
 
             {/* Table */}
             <View style={styles.paperTable}>
               <View style={styles.paperTableHeader}>
-                <Text
-                  style={[styles.paperCell, { flex: 3, textAlign: "left" }]}
-                >
-                  SUBJECT
-                </Text>
-                <Text style={styles.paperCell}>SCORE</Text>
-                <Text style={styles.paperCell}>GRD</Text>
-                <Text style={styles.paperCell}>POS</Text>
+                <Text style={[styles.paperHeaderCell, { flex: 2, textAlign: "left" }]}>SUBJECT</Text>
+                {selectedReportType === "End of Term" && (
+                  <>
+                    <Text style={styles.paperHeaderCell}>CLS</Text>
+                    <Text style={styles.paperHeaderCell}>EXM</Text>
+                  </>
+                )}
+                <Text style={styles.paperHeaderCell}>TOT</Text>
+                <Text style={styles.paperHeaderCell}>GRD</Text>
+                <Text style={[styles.paperHeaderCell, { flex: 1.5 }]}>REMARK</Text>
               </View>
               {subjectsData.map((s, i) => (
                 <View
@@ -701,70 +773,114 @@ export default function StudentAcademicReport() {
                   <Text
                     style={[
                       styles.paperCell,
-                      { flex: 3, textAlign: "left", fontWeight: "800" },
+                      { flex: 2, textAlign: "left", fontWeight: "800" },
                     ]}
                   >
                     {s.subject}
                   </Text>
+                  {selectedReportType === "End of Term" && (
+                    <>
+                      <Text style={styles.paperCell}>
+                        {isNaN(Number(s.classScore)) ? s.classScore : Number(s.classScore).toFixed(0)}
+                      </Text>
+                      <Text style={styles.paperCell}>
+                        {isNaN(Number(s.examsScore)) ? s.examsScore : Number(s.examsScore).toFixed(0)}
+                      </Text>
+                    </>
+                  )}
                   <Text
                     style={[
                       styles.paperCell,
                       { fontWeight: "900", color: primary },
                     ]}
                   >
-                    {s.total}
+                    {isNaN(Number(s.total)) ? s.total : Number(s.total).toFixed(1)}
                   </Text>
                   <Text style={[styles.paperCell, { fontWeight: "700" }]}>
                     {s.grade}
                   </Text>
-                  <Text style={styles.paperCell}>{s.pos}</Text>
+                  <Text style={[styles.paperCell, { flex: 1.5, fontSize: 8 }]}>{s.remark}</Text>
                 </View>
               ))}
             </View>
 
             <View style={styles.paperSummaryRow}>
-              <Text style={styles.paperSummaryLabel}>OVERALL AGGREGATE:</Text>
-              <Text style={styles.paperSummaryValue}>{unifiedAggregate}</Text>
-            </View>
-
-            {selectedReportType === "End of Term" && report?.assessment && (
-              <View style={styles.paperRemarksSection}>
-                <Text style={styles.paperSectionTitle}>BEHAVIORAL RATINGS</Text>
-                <Text style={styles.paperRemarkLine}>
-                  Conduct:{" "}
-                  <Text style={{ fontWeight: "700" }}>
-                    {report.assessment.conduct}
-                  </Text>{" "}
-                  | Attitude:{" "}
-                  <Text style={{ fontWeight: "700" }}>
-                    {report.assessment.attitude}
-                  </Text>
+              <View style={{ alignItems: "flex-end" }}>
+                <Text style={[styles.paperSummaryLabel, { fontSize: 9 }]}>
+                  TRS: <Text style={{ color: "#1E293B" }}>{TRS}</Text> | TAS:{" "}
+                  <Text style={{ color: "#1E293B" }}>{TAS}</Text>
                 </Text>
-
-                <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>
-                  ADMIN REMARKS
-                </Text>
-                <Text style={styles.paperRemarkText}>
-                  {report.adminRemarks || "Satisfactory."}
-                </Text>
-
-                <View style={styles.paperNextTerm}>
-                  <Text style={styles.paperNextTermLabel}>
-                    NEXT TERM BEGINS:
-                  </Text>
-                  <Text style={styles.paperNextTermVal}>
-                    {report.nextTermBegins || "TBA"}
-                  </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 }}>
+                  <Text style={styles.paperSummaryLabel}>OVERALL AGGREGATE:</Text>
+                  <Text style={styles.paperSummaryValue}>{unifiedAggregate}</Text>
                 </View>
               </View>
-            )}
+            </View>
+
+            <View style={styles.paperRemarksSection}>
+              {selectedReportType === "End of Term" && report?.assessment && (
+                <>
+                  <Text style={styles.paperSectionTitle}>BEHAVIORAL RATINGS</Text>
+                  <Text style={styles.paperRemarkLine}>
+                    Conduct: <Text style={{ fontWeight: "700" }}>{report.assessment.conduct}</Text> | Attitude:{" "}
+                    <Text style={{ fontWeight: "700" }}>{report.assessment.attitude}</Text> | Interest:{" "}
+                    <Text style={{ fontWeight: "700" }}>{report.assessment.interest || "N/A"}</Text>
+                  </Text>
+                </>
+              )}
+
+              <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>TEACHER'S REMARKS</Text>
+              <Text style={styles.paperRemarkText}>
+                {report?.teacherRemarks || "Satisfactory performance."}
+              </Text>
+
+              <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>ADMIN REMARKS</Text>
+              <Text style={styles.paperRemarkText}>
+                {report?.adminRemarks || "Keep up the hard work."}
+              </Text>
+
+              <View style={styles.paperNextTerm}>
+                <Text style={styles.paperNextTermLabel}>
+                  NEXT TERM BEGINS:
+                </Text>
+                <Text style={styles.paperNextTermVal}>
+                  {report?.nextTermBegins || "TBA"}
+                </Text>
+              </View>
+
+              {report?.promotedTo ? (
+                <View style={[styles.paperNextTerm, { marginTop: 5 }]}>
+                  <Text style={styles.paperNextTermLabel}>PROMOTED TO:</Text>
+                  <Text style={[styles.paperNextTermVal, { color: "#10b981" }]}>
+                    {report.promotedTo}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Signature Preview */}
+              <View style={styles.paperSigRow}>
+                <View style={{ flex: 1 }} />
+                <View style={styles.paperSigItem}>
+                  {adminSig ? (
+                    <Image
+                      source={{ uri: adminSig }}
+                      style={styles.paperSigImg}
+                    />
+                  ) : (
+                    <View style={styles.paperSigSpace} />
+                  )}
+                  <View style={styles.paperSigLine} />
+                  <Text style={styles.paperSigLabel}>Head of Institution</Text>
+                </View>
+              </View>
+            </View>
 
             <TouchableOpacity
               style={[styles.downloadBtn, { backgroundColor: primary }]}
               onPress={downloadPDF}
             >
               <SVGIcon name="download" size={20} color="#fff" />
-              <Text style={styles.downloadBtnText}>Save Official PDF</Text>
+              <Text style={styles.downloadBtnText}>Generate Official PDF</Text>
             </TouchableOpacity>
           </Animatable.View>
         )}
@@ -846,6 +962,12 @@ const styles = StyleSheet.create({
   },
   paperLogo: { width: 50, height: 50, marginRight: 15 },
   paperSchoolName: { fontSize: 16, fontWeight: "900", color: "#1E293B" },
+  paperSchoolInfo: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#64748B",
+    marginTop: 2,
+  },
   paperReportType: {
     fontSize: 10,
     fontWeight: "800",
@@ -865,7 +987,7 @@ const styles = StyleSheet.create({
   paperTable: { borderWidth: 1, borderColor: "#E2E8F0", marginBottom: 15 },
   paperTableHeader: {
     flexDirection: "row",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#1E293B",
     borderBottomWidth: 1,
     borderColor: "#E2E8F0",
   },
@@ -874,7 +996,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#F1F5F9",
   },
-  paperCell: { flex: 1, padding: 8, fontSize: 10, textAlign: "center" },
+  paperCell: { flex: 1, padding: 8, fontSize: 10, textAlign: "center", color: "#475569" },
+  paperHeaderCell: {
+    flex: 1,
+    padding: 8,
+    fontSize: 10,
+    textAlign: "center",
+    color: "#fff",
+    fontWeight: "900",
+  },
   paperSummaryRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -902,6 +1032,22 @@ const styles = StyleSheet.create({
   paperNextTerm: { flexDirection: "row", marginTop: 10, gap: 5 },
   paperNextTermLabel: { fontSize: 10, fontWeight: "900" },
   paperNextTermVal: { fontSize: 10, fontWeight: "700", color: COLORS.primary },
+  paperSigRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    gap: 20,
+  },
+  paperSigItem: { flex: 1, alignItems: "center" },
+  paperSigImg: { width: "100%", height: 40, resizeMode: "contain" },
+  paperSigSpace: { height: 40 },
+  paperSigLine: {
+    width: "100%",
+    height: 1,
+    backgroundColor: "#1E293B",
+    marginVertical: 4,
+  },
+  paperSigLabel: { fontSize: 8, fontWeight: "800", color: "#64748B" },
   downloadBtn: {
     flexDirection: "row",
     padding: 16,

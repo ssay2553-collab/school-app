@@ -40,7 +40,7 @@ export const onNewChatMessage = onDocumentCreated(
             ? text.length > 100
               ? text.substring(0, 97) + "..."
               : text
-            : "Sent an attachment",
+            : (messageData.type === "audio" ? "Sent a voice message 🎤" : "Sent an attachment"),
         },
         data: { chatId, type: "chat_message" },
         token: recipientData.fcmToken,

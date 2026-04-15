@@ -59,18 +59,39 @@ interface Submission {
   studentName: string;
   fileUrl?: string;
   responses?: Record<number, string>;
-  type: "standard" | "mcq" | "short_answer";
+  type: "standard" | "mcq" | "short_answer" | "rich-text";
   marked: boolean;
   marks?: number;
   questionScores?: Record<number, number>;
   isLate?: boolean;
   submittedAt?: Timestamp;
+  contentHtml?: string;
 }
 
 interface ClassInfo {
   id: string;
   name: string;
 }
+
+/* ---------------- HELPERS ---------------- */
+
+const formatDate = (ts: any) => {
+  if (!ts) return "date unknown";
+  try {
+    if (typeof ts.toDate === "function") {
+      return ts.toDate().toLocaleDateString();
+    }
+    if (ts instanceof Date) {
+      return ts.toLocaleDateString();
+    }
+    if (ts.seconds !== undefined) {
+      return new Date(ts.seconds * 1000).toLocaleDateString();
+    }
+  } catch (e) {
+    return "invalid date";
+  }
+  return "date unknown";
+};
 
 /* ---------------- SUB-COMPONENT ---------------- */
 
@@ -115,10 +136,7 @@ const SubmissionItem = React.memo(({
           <View>
             <Text style={styles.student}>{item.studentName || "Student"}</Text>
             <Text style={styles.submissionDate}>
-              Submitted{" "}
-              {item.submittedAt
-                ? new Date(item.submittedAt.toDate()).toLocaleDateString()
-                : "date unknown"}
+              Submitted {formatDate(item.submittedAt)}
             </Text>
           </View>
         </View>
@@ -133,7 +151,13 @@ const SubmissionItem = React.memo(({
         <View>
           <TouchableOpacity
             style={styles.fileLink}
-            onPress={() => item.fileUrl && Linking.openURL(item.fileUrl)}
+            onPress={() => {
+              if (item.fileUrl) {
+                Linking.openURL(item.fileUrl).catch(() => {
+                  Alert.alert("Error", "Could not open the submission file.");
+                });
+              }
+            }}
           >
             <View style={[styles.fileIconBox, { backgroundColor: COLORS.secondary + "15" }]}>
               <SVGIcon name="document-text" size={20} color={COLORS.secondary} />
@@ -246,6 +270,15 @@ export default function MarkAssignment() {
   const [refreshing, setRefreshing] = useState(false);
   const [, setFetchingNames] = useState(true);
   const [fetchingSubmissions, setFetchingSubmissions] = useState(false);
+
+  // Refs to keep the submitMark callback stable and prevent mass re-renders
+  const qScoreInputsRef = useRef(qScoreInputs);
+  const standardMarksInputRef = useRef(standardMarksInput);
+  const feedbackInputsRef = useRef(feedbackInputs);
+
+  useEffect(() => { qScoreInputsRef.current = qScoreInputs; }, [qScoreInputs]);
+  useEffect(() => { standardMarksInputRef.current = standardMarksInput; }, [standardMarksInput]);
+  useEffect(() => { feedbackInputsRef.current = feedbackInputs; }, [feedbackInputs]);
 
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
@@ -417,71 +450,79 @@ export default function MarkAssignment() {
   }, [selectedAssignment]);
 
   /* ---------------- MARK SUBMISSION & NOTIFY PARENT ---------------- */
-  const submitMark = useCallback(async (sub: Submission) => {
-    let totalScore = 0;
-    const finalQuestionScores: Record<number, number> = {};
+  const submitMark = useCallback(
+    async (sub: Submission) => {
+      let totalScore = 0;
+      const finalQuestionScores: Record<number, number> = {};
 
-    if (sub.type === "standard") {
-      const val = standardMarksInput[sub.id];
-      if (!val || isNaN(Number(val))) {
-        return Alert.alert("Invalid Score", "Please enter a numeric score.");
-      }
-      totalScore = Number(val);
-    } else {
-      const submissionQInputs = qScoreInputs[sub.id] || {};
-      const questionIndices = Object.keys(sub.responses || {});
+      // Get latest values from refs to avoid dependency re-renders
+      const currentStandardMarks = standardMarksInputRef.current;
+      const currentQScores = qScoreInputsRef.current;
+      const currentFeedback = feedbackInputsRef.current;
 
-      for (const idx of questionIndices) {
-        const i = parseInt(idx);
-        const scoreStr = submissionQInputs[i];
-        if (!scoreStr || isNaN(Number(scoreStr))) {
-          return Alert.alert("Incomplete", `Please score question ${i + 1}.`);
+      if (sub.type === "standard") {
+        const val = currentStandardMarks[sub.id];
+        if (!val || isNaN(Number(val))) {
+          return Alert.alert("Invalid Score", "Please enter a numeric score.");
         }
-        const score = Number(scoreStr);
-        finalQuestionScores[i] = score;
-        totalScore += score;
+        totalScore = Number(val);
+      } else {
+        const submissionQInputs = currentQScores[sub.id] || {};
+        const questionIndices = Object.keys(sub.responses || {});
+
+        for (const idx of questionIndices) {
+          const i = parseInt(idx);
+          const scoreStr = submissionQInputs[i];
+          if (!scoreStr || isNaN(Number(scoreStr))) {
+            return Alert.alert("Incomplete", `Please score question ${i + 1}.`);
+          }
+          const score = Number(scoreStr);
+          finalQuestionScores[i] = score;
+          totalScore += score;
+        }
       }
-    }
 
-    try {
-      await updateDoc(doc(db, "submissions", sub.id), {
-        marks: totalScore,
-        questionScores: finalQuestionScores,
-        marked: true,
-        feedback: feedbackInputs[sub.id] || "",
-        markedAt: serverTimestamp(),
-      });
+      try {
+        await updateDoc(doc(db, "submissions", sub.id), {
+          marks: totalScore,
+          questionScores: finalQuestionScores,
+          marked: true,
+          feedback: currentFeedback[sub.id] || "",
+          markedAt: serverTimestamp(),
+        });
 
-      const studentSnap = await getDoc(doc(db, "users", sub.studentId));
-      if (studentSnap.exists()) {
-        const studentData = studentSnap.data();
-        const parentUids = studentData.parentUids || [];
+        const studentSnap = await getDoc(doc(db, "users", sub.studentId));
+        if (studentSnap.exists()) {
+          const studentData = studentSnap.data();
+          const parentUids = studentData.parentUids || [];
 
-        if (parentUids.length > 0) {
-          for (const pUid of parentUids) {
-            await addDoc(collection(db, "notifications"), {
-              recipientId: pUid,
-              title: "New Assignment Grade",
-              body: `${sub.studentName} scored ${totalScore} in their ${selectedAssignment?.title || "assignment"}.`,
-              type: "grade",
-              timestamp: serverTimestamp(),
-              studentId: sub.studentId,
-              read: false,
-            });
+          if (parentUids.length > 0) {
+            for (const pUid of parentUids) {
+              await addDoc(collection(db, "notifications"), {
+                recipientId: pUid,
+                title: "New Assignment Grade",
+                body: `${sub.studentName} scored ${totalScore} in their ${selectedAssignment?.title || "assignment"}.`,
+                type: "grade",
+                timestamp: serverTimestamp(),
+                studentId: sub.studentId,
+                read: false,
+              });
+            }
           }
         }
-      }
 
-      setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
-      Alert.alert(
-        "Success",
-        `Assignment marked! Total Score: ${totalScore}. Parent has been notified.`,
-      );
-    } catch (error) {
-      console.error("Marking Error:", error);
-      Alert.alert("Error", "Failed to submit marks.");
-    }
-  }, [standardMarksInput, qScoreInputs, feedbackInputs, selectedAssignment]);
+        setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
+        Alert.alert(
+          "Success",
+          `Assignment marked! Total Score: ${totalScore}. Parent has been notified.`,
+        );
+      } catch (error) {
+        console.error("Marking Error:", error);
+        Alert.alert("Error", "Failed to submit marks.");
+      }
+    },
+    [selectedAssignment],
+  );
 
   const updateQScore = useCallback((subId: string, qIdx: number, text: string) => {
     setQScoreInputs((prev) => ({
@@ -501,19 +542,61 @@ export default function MarkAssignment() {
     setFeedbackInputs((prev) => ({ ...prev, [subId]: text }));
   }, []);
 
-  const renderSubmission = useCallback(({ item }: { item: Submission }) => (
-    <SubmissionItem
-      item={item}
-      assignment={selectedAssignment}
-      onMark={submitMark}
-      qScoreValue={qScoreInputs[item.id]}
-      standardMarkValue={standardMarksInput[item.id] || ""}
-      feedbackValue={feedbackInputs[item.id] || ""}
-      onUpdateQScore={updateQScore}
-      onUpdateStandardMark={updateStandardMark}
-      onUpdateFeedback={updateFeedback}
-    />
-  ), [selectedAssignment, submitMark, qScoreInputs, standardMarksInput, feedbackInputs, updateQScore, updateStandardMark, updateFeedback]);
+  const renderSubmission = useCallback(({ item }: { item: Submission }) => {
+    if (item.type === "rich-text") {
+      return (
+        <View style={styles.subCard}>
+          <View style={styles.subHeader}>
+            <View style={styles.studentInfo}>
+              <View style={[styles.avatar, { backgroundColor: COLORS.primary + "15" }]}>
+                <Text style={styles.avatarText}>
+                  {(item.studentName?.charAt(0) || "S").toUpperCase()}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.student}>{item.studentName || "Student"}</Text>
+                <Text style={styles.submissionDate}>
+                  Rich Text Submission • {formatDate(item.submittedAt)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.fileLink, { backgroundColor: COLORS.primary + "05", borderColor: COLORS.primary + "20" }]}
+            onPress={() => router.push({
+              pathname: "/teacher-dashboard/review-document",
+              params: { submissionId: item.id }
+            })}
+          >
+            <View style={[styles.fileIconBox, { backgroundColor: COLORS.primary + "15" }]}>
+              <SVGIcon name="document-text" size={20} color={COLORS.primary} />
+            </View>
+            <Text style={[styles.linkText, { color: COLORS.primary }]}>Open & Review Rich Text</Text>
+            <SVGIcon name="chevron-forward" size={16} color={COLORS.primary} style={{ marginLeft: "auto" }} />
+          </TouchableOpacity>
+
+          <Text style={{ fontSize: 12, color: "#64748B", fontStyle: "italic", textAlign: "center" }}>
+            Review content, add comments, and grade in the document editor.
+          </Text>
+        </View>
+      );
+    }
+
+    return (
+      <SubmissionItem
+        item={item}
+        assignment={selectedAssignment}
+        onMark={submitMark}
+        qScoreValue={qScoreInputs[item.id]}
+        standardMarkValue={standardMarksInput[item.id] || ""}
+        feedbackValue={feedbackInputs[item.id] || ""}
+        onUpdateQScore={updateQScore}
+        onUpdateStandardMark={updateStandardMark}
+        onUpdateFeedback={updateFeedback}
+      />
+    );
+  }, [selectedAssignment, submitMark, qScoreInputs, standardMarksInput, feedbackInputs, updateQScore, updateStandardMark, updateFeedback, router]);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -31,6 +31,7 @@ import React, {
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     Dimensions,
     FlatList,
     KeyboardAvoidingView,
@@ -108,20 +109,24 @@ export default function ManageFees() {
   const canEdit =
     isSuperAdmin || feePermission === "full" || feePermission === "edit";
 
+  // Stabilize inputs using refs for batch updates to prevent render-loops during typing
+  const individualBillOverridesRef = useRef<Record<string, string>>({});
+  const [individualBillOverrides, setIndividualBillOverridesState] = useState<
+    Record<string, string>
+  >({});
+
+  const setIndividualBillOverrides = useCallback((update: any) => {
+    setIndividualBillOverridesState((prev) => {
+      const next = typeof update === "function" ? update(prev) : update;
+      individualBillOverridesRef.current = next;
+      return next;
+    });
+  }, []);
+
   // Brand Fallbacks
   const primaryBrand =
     SCHOOL_CONFIG.primaryColor || COLORS.primary || VIBE.primary;
   const secondaryBrand = SCHOOL_CONFIG.secondaryColor || primaryBrand;
-
-  useEffect(() => {
-    if (appUser && !canView) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to view fees management.",
-      );
-      router.replace("/admin-dashboard");
-    }
-  }, [appUser, canView]);
 
   const [loading, setLoading] = useState(true);
   const [fetchingMore, setFetchingMore] = useState(false);
@@ -140,9 +145,6 @@ export default function ManageFees() {
   const [selectedStudentUids, setSelectedStudentUids] = useState<Set<string>>(
     new Set(),
   );
-  const [individualBillOverrides, setIndividualBillOverrides] = useState<
-    Record<string, string>
-  >({});
 
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [academicYear, setAcademicYear] = useState("");
@@ -170,6 +172,47 @@ export default function ManageFees() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dailyPayments, setDailyPayments] = useState<any[]>([]);
   const [loadingDaily, setLoadingDaily] = useState(false);
+
+  useEffect(() => {
+    if (appUser && !canView) {
+      Alert.alert(
+        "Access Denied",
+        "You do not have permission to view fees management.",
+      );
+      router.replace("/admin-dashboard");
+    }
+  }, [appUser, canView]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (selectorModal.visible) {
+        setSelectorModal({ visible: false, type: null });
+        return true;
+      }
+      if (billModalVisible) {
+        setBillModalVisible(false);
+        return true;
+      }
+      if (paymentModalVisible) {
+        setPaymentModalVisible(false);
+        setSelectedStudent(null);
+        return true;
+      }
+      if (dailyModalVisible) {
+        setDailyModalVisible(false);
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => subscription.remove();
+  }, [
+    selectorModal.visible,
+    billModalVisible,
+    paymentModalVisible,
+    dailyModalVisible,
+  ]);
 
   const lastVisibleRef = useRef<DocumentSnapshot | null>(null);
   const hasMoreRef = useRef(true);
@@ -463,10 +506,13 @@ export default function ManageFees() {
       const cleanTerm = term.replace(/\s/g, "");
       const selectedUids = Array.from(selectedStudentUids);
 
+      // Use the ref for the latest data to avoid closure issues or stale state
+      const latestOverrides = individualBillOverridesRef.current;
+
       for (const uid of selectedUids) {
         const s = students.find((stud) => stud.uid === uid);
         if (!s) continue;
-        const bill = parseFloat(individualBillOverrides[uid] || termBillAmount);
+        const bill = parseFloat(latestOverrides[uid] || termBillAmount);
         if (isNaN(bill)) continue;
         const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
         const totalPaid = s.hasRecordInTerm ? s.amountPaid : 0;
@@ -722,7 +768,7 @@ export default function ManageFees() {
                     }
                     value={String(currentBillValue)}
                     onChangeText={(v) =>
-                      setIndividualBillOverrides((p) => ({
+                      setIndividualBillOverrides((p: Record<string, string>) => ({
                         ...p,
                         [item.uid]: v,
                       }))
@@ -973,62 +1019,64 @@ export default function ManageFees() {
               activeMode === "payment" &&
               students.length > 0 &&
               !searchQuery ? (
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.statsDashboard}
-                >
-                  <Animatable.View
-                    animation="zoomIn"
-                    style={[styles.statBox, { backgroundColor: VIBE.info }]}
+                <View style={{ zIndex: 10 }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.statsDashboard}
                   >
-                    <Text style={styles.statLabel}>EXPECTED</Text>
-                    <Text style={styles.statValue}>
-                      ₵{stats.expected.toLocaleString()}
-                    </Text>
-                    <View style={styles.statIcon}>
-                      <SVGIcon
-                        name="analytics"
-                        size={24}
-                        color="rgba(255,255,255,0.3)"
-                      />
-                    </View>
-                  </Animatable.View>
-                  <Animatable.View
-                    animation="zoomIn"
-                    delay={100}
-                    style={[styles.statBox, { backgroundColor: VIBE.success }]}
-                  >
-                    <Text style={styles.statLabel}>RECEIVED</Text>
-                    <Text style={styles.statValue}>
-                      ₵{stats.received.toLocaleString()}
-                    </Text>
-                    <View style={styles.statIcon}>
-                      <SVGIcon
-                        name="wallet"
-                        size={24}
-                        color="rgba(255,255,255,0.3)"
-                      />
-                    </View>
-                  </Animatable.View>
-                  <Animatable.View
-                    animation="zoomIn"
-                    delay={200}
-                    style={[styles.statBox, { backgroundColor: VIBE.danger }]}
-                  >
-                    <Text style={styles.statLabel}>OUTSTANDING</Text>
-                    <Text style={styles.statValue}>
-                      ₵{stats.balance.toLocaleString()}
-                    </Text>
-                    <View style={styles.statIcon}>
-                      <SVGIcon
-                        name="alert-circle"
-                        size={24}
-                        color="rgba(255,255,255,0.3)"
-                      />
-                    </View>
-                  </Animatable.View>
-                </ScrollView>
+                    <Animatable.View
+                      animation="zoomIn"
+                      style={[styles.statBox, { backgroundColor: VIBE.info }]}
+                    >
+                      <Text style={styles.statLabel}>EXPECTED</Text>
+                      <Text style={styles.statValue}>
+                        ₵{stats.expected.toLocaleString()}
+                      </Text>
+                      <View style={styles.statIcon}>
+                        <SVGIcon
+                          name="analytics"
+                          size={24}
+                          color="rgba(255,255,255,0.3)"
+                        />
+                      </View>
+                    </Animatable.View>
+                    <Animatable.View
+                      animation="zoomIn"
+                      delay={100}
+                      style={[styles.statBox, { backgroundColor: VIBE.success }]}
+                    >
+                      <Text style={styles.statLabel}>RECEIVED</Text>
+                      <Text style={styles.statValue}>
+                        ₵{stats.received.toLocaleString()}
+                      </Text>
+                      <View style={styles.statIcon}>
+                        <SVGIcon
+                          name="wallet"
+                          size={24}
+                          color="rgba(255,255,255,0.3)"
+                        />
+                      </View>
+                    </Animatable.View>
+                    <Animatable.View
+                      animation="zoomIn"
+                      delay={200}
+                      style={[styles.statBox, { backgroundColor: VIBE.danger }]}
+                    >
+                      <Text style={styles.statLabel}>OUTSTANDING</Text>
+                      <Text style={styles.statValue}>
+                        ₵{stats.balance.toLocaleString()}
+                      </Text>
+                      <View style={styles.statIcon}>
+                        <SVGIcon
+                          name="alert-circle"
+                          size={24}
+                          color="rgba(255,255,255,0.3)"
+                        />
+                      </View>
+                    </Animatable.View>
+                  </ScrollView>
+                </View>
               ) : null
             }
             data={filteredStudents}

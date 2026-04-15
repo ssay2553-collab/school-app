@@ -71,13 +71,18 @@ export default function AssignmentScores() {
     return Timestamp.fromDate(hundredDaysAgo);
   }, []);
 
+  const childrenIdsKey = JSON.stringify(appUser?.childrenIds || []);
+
   const fetchScores = useCallback(
     async (isNextPage = false) => {
       const childrenIds = appUser?.childrenIds || [];
-      if (childrenIds.length === 0 || (!hasMore.current && isNextPage)) {
+      if (childrenIds.length === 0) {
         setLoading(false);
+        setRefreshing(false);
         return;
       }
+
+      if (isNextPage && !hasMore.current) return;
 
       if (isNextPage) setLoadingMore(true);
       else {
@@ -87,7 +92,7 @@ export default function AssignmentScores() {
       }
 
       try {
-        const qConstraints = [
+        const qConstraints: any[] = [
           where("studentId", "in", childrenIds.slice(0, 30)),
           where("marked", "==", true),
           where("markedAt", ">=", cutoff),
@@ -96,17 +101,19 @@ export default function AssignmentScores() {
         ];
 
         if (isNextPage && lastVisible.current) {
-          qConstraints.push(startAfter(lastVisible.current) as any);
+          qConstraints.push(startAfter(lastVisible.current));
         }
 
         const q = query(collection(db, "submissions"), ...qConstraints);
 
         let snap;
         try {
-          snap = await getDocsFromCache(q);
-          if (snap.empty) snap = await getDocsFromServer(q);
-        } catch {
+          // For complex queries with 'in' and 'orderBy', cache results can be flaky or slow.
+          // We'll try server first if cache is likely to be empty or outdated.
           snap = await getDocsFromServer(q);
+        } catch (serverError) {
+          console.warn("Server fetch failed, trying cache...", serverError);
+          snap = await getDocsFromCache(q);
         }
 
         const data = snap.docs.map((d) => ({
@@ -127,12 +134,17 @@ export default function AssignmentScores() {
         setLoadingMore(false);
       }
     },
-    [appUser?.childrenIds, cutoff],
+    [childrenIdsKey, cutoff],
   );
 
   useEffect(() => {
-    fetchScores();
-  }, [fetchScores]);
+    if (appUser) {
+      fetchScores();
+    } else {
+      // If no user, stop loading to show empty state
+      setLoading(false);
+    }
+  }, [fetchScores, appUser]);
 
   const toggleExpand = async (item: ScoreRecord) => {
     if (expandedId === item.id) {

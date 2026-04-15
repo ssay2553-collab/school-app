@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
   FlatList,
   StyleSheet,
   Text,
@@ -81,17 +82,33 @@ export default function DailyAttendanceScreen() {
   const hasMoreRef = useRef(true);
   const loadingMoreRef = useRef(false);
 
-  // Sync with global academic config
-  useEffect(() => {
-    if (!acadConfig.loading) {
-      setAcademicYear(acadConfig.academicYear || "");
-      setTerm(acadConfig.currentTerm || "");
-    }
-  }, [acadConfig]);
-
   const hasUnsavedChanges = useMemo(() => {
     return JSON.stringify(localAttendance) !== JSON.stringify(serverAttendance);
   }, [localAttendance, serverAttendance]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (hasUnsavedChanges) {
+        Alert.alert(
+          "Unsaved Changes",
+          "You have unsaved attendance data. Are you sure you want to leave?",
+          [
+            { text: "Stay", style: "cancel" },
+            {
+              text: "Leave",
+              style: "destructive",
+              onPress: () => router.back()
+            }
+          ]
+        );
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => subscription.remove();
+  }, [hasUnsavedChanges]);
 
   const isOfficialClassTeacher = useMemo(() => {
     if (!classId || !appUser) return false;
@@ -112,26 +129,37 @@ export default function DailyAttendanceScreen() {
               setLoading(false);
               return;
             }
-            q = query(collection(db, "classes"), where("__name__", "in", teacherClasses));
+            // Firestore 'in' query limit is 30.
+            const chunkedClasses = teacherClasses.slice(0, 30);
+            q = query(collection(db, "classes"), where("__name__", "in", chunkedClasses));
         }
         const snap = await getDocs(q);
-        const list = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.id, classTeacherId: d.data().classTeacherId }));
+        const list = snap.docs.map(d => ({
+          id: d.id,
+          name: d.data().name || d.id,
+          classTeacherId: d.data().classTeacherId
+        }));
         const sorted = sortClasses(list);
         setAvailableClasses(sorted);
-        if (sorted.length > 0) setClassId(prev => prev || sorted[0].id);
-      } catch (e) { 
-        console.error(e); 
-      } finally {
-        if (appUser.role !== "admin" && (!appUser.classes || appUser.classes.length === 0)) {
+
+        if (sorted.length > 0) {
+          setClassId(prev => prev || sorted[0].id);
+        } else {
           setLoading(false);
         }
+      } catch (e) {
+        console.error("Load classes error:", e);
+        setLoading(false);
       }
     };
     loadClasses();
   }, [appUser]);
 
   const fetchStudents = useCallback(async (isFirstLoad = false) => {
-    if (!classId) return;
+    if (!classId) {
+      if (isFirstLoad) setLoading(false);
+      return;
+    }
     if (!isFirstLoad && (!hasMoreRef.current || loadingMoreRef.current)) return;
 
     if (isFirstLoad) { setLoading(true); lastVisibleRef.current = null; hasMoreRef.current = true; }
@@ -227,16 +255,23 @@ export default function DailyAttendanceScreen() {
     const cardStatusStyle = status === "present" ? styles.presentCard : status === "absent" ? styles.absentCard : {};
 
     return (
-      <Animatable.View animation="fadeInUp" delay={index * 50} duration={400} style={[styles.card, cardStatusStyle, isUnsaved && styles.unsavedCard]}>
+      <Animatable.View
+        animation="fadeInUp"
+        delay={Math.min(index * 50, 500)}
+        duration={400}
+        style={[styles.card, cardStatusStyle, isUnsaved && styles.unsavedCard]}
+      >
         <View style={styles.cardInfo}>
           <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>{item.profile?.firstName?.[0]}{item.profile?.lastName?.[0]}</Text>
+            <Text style={styles.avatarText}>
+              {item.profile?.firstName?.[0] || ""}{item.profile?.lastName?.[0] || ""}
+            </Text>
           </View>
           <View style={{ flex: 1, marginLeft: 15 }}>
-            <Text style={styles.name}>{item.profile?.firstName} {item.profile?.lastName}</Text>
+            <Text style={styles.name}>{item.profile?.firstName || "Student"} {item.profile?.lastName || ""}</Text>
             <View style={styles.statusBadge}>
                <View style={[styles.statusDot, { backgroundColor: status === "present" ? "#10B981" : status === "absent" ? "#EF4444" : "#94A3B8" }]} />
-               <Text style={styles.statusLabel}>{status.toUpperCase()}</Text>
+               <Text style={styles.statusLabel}>{(status || "NOT_MARKED").toUpperCase()}</Text>
                {isUnsaved && <Text style={styles.unsavedTag}> • Unsaved</Text>}
             </View>
           </View>

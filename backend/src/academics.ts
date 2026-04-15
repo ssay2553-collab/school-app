@@ -113,6 +113,82 @@ export const onNewAssignment = onDocumentCreated(
 );
 
 /**
+ * Triggered when a student submits an assignment.
+ */
+export const onNewSubmission = onDocumentCreated(
+  "submissions/{submissionId}",
+  async (event) => {
+    const data = event.data?.data();
+    if (!data) return;
+
+    const { studentId, studentName, subjectId, assignmentId, classId, teacherId } = data;
+    const db = admin.firestore();
+
+    try {
+      // 1. Notify Parent(s)
+      const studentSnap = await db.collection("users").doc(studentId).get();
+      if (studentSnap.exists) {
+        const sData = studentSnap.data();
+        const parentUids = sData?.parentUids || [];
+
+        if (parentUids.length > 0) {
+          const parentTokens: string[] = [];
+          for (let i = 0; i < parentUids.length; i += 30) {
+            const chunk = parentUids.slice(i, i + 30);
+            const parentsSnap = await db.collection("users")
+              .where(admin.firestore.FieldPath.documentId(), "in", chunk)
+              .get();
+
+            parentsSnap.forEach((pDoc: any) => {
+              const pData = pDoc.data();
+              if (pData.fcmToken) parentTokens.push(pData.fcmToken);
+            });
+          }
+
+          if (parentTokens.length > 0) {
+            await admin.messaging().sendEachForMulticast({
+              notification: {
+                title: "Assignment Submitted ✅",
+                body: `${studentName} has successfully submitted the ${subjectId} assignment.`,
+              },
+              data: { type: "submission_alert", studentId, assignmentId },
+              tokens: parentTokens,
+            });
+          }
+        }
+      }
+
+      // 2. Notify Teacher (Only on the FIRST submission to avoid spamming)
+      if (teacherId) {
+        const countSnap = await db.collection("submissions")
+          .where("assignmentId", "==", assignmentId)
+          .count()
+          .get();
+
+        if (countSnap.data().count === 1) {
+          const teacherSnap = await db.collection("users").doc(teacherId).get();
+          if (teacherSnap.exists) {
+            const tData = teacherSnap.data();
+            if (tData?.fcmToken) {
+              await admin.messaging().send({
+                notification: {
+                  title: "First Submission Received! 📥",
+                  body: `${studentName} is the first to submit ${subjectId} for ${classId}. Check the dashboard for others.`,
+                },
+                data: { type: "teacher_submission_alert", assignmentId },
+                token: tData.fcmToken,
+              });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Submission notification error:", error);
+    }
+  },
+);
+
+/**
  * Scheduled function to delete expired assignments.
  */
 export const deleteExpiredAssignments = onSchedule("0 0 * * *", async () => {

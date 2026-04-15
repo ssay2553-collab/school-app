@@ -121,6 +121,13 @@ export default function TeacherDashboard() {
           icon: "chatbubbles",
           color: "#06b6d4",
         },
+        {
+          title: "Pedagogy",
+          subtitle: "Curriculum & Tools",
+          route: "/teacher-dashboard/pedagogy-vault",
+          icon: "briefcase",
+          color: "#f59e0b",
+        },
       ],
     },
     {

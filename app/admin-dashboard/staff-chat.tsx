@@ -88,8 +88,11 @@ export default function StaffChat() {
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recording, setRecording] = useState<any | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [webRecorder, setWebRecorder] = useState<any | null>(null);
+  const [webStream, setWebStream] = useState<MediaStream | null>(null);
+  const webChunksRef = React.useRef<any[]>([]);
   const [showEmojis, setShowEmojis] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
@@ -214,6 +217,36 @@ export default function StaffChat() {
 
   const startRecording = async () => {
     try {
+      if (Platform.OS === "web") {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          Alert.alert(
+            "Unsupported",
+            "Audio recording is not supported in this browser.",
+          );
+          return;
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        webChunksRef.current = [];
+        const MediaRec =
+          (window as any).MediaRecorder || (global as any).MediaRecorder;
+        if (!MediaRec) {
+          Alert.alert("Unsupported", "MediaRecorder not available.");
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        const mediaRecorder = new MediaRec(stream);
+        mediaRecorder.ondataavailable = (ev: any) => {
+          if (ev.data && ev.data.size > 0) webChunksRef.current.push(ev.data);
+        };
+        mediaRecorder.start();
+        setWebStream(stream);
+        setWebRecorder(mediaRecorder);
+        setRecording({ web: true });
+        return;
+      }
+
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) return;
       await Audio.setAudioModeAsync({
@@ -233,6 +266,36 @@ export default function StaffChat() {
     if (!recording) return;
     try {
       setUploading(true);
+
+      if (Platform.OS === "web") {
+        if (!webRecorder) return;
+        webRecorder.stop();
+        await new Promise((r) => setTimeout(r, 200));
+        const blob = new Blob(webChunksRef.current, { type: "audio/webm" });
+        webChunksRef.current = [];
+        const audioRef = ref(
+          storage,
+          `chats/staff/${chatId}/${Date.now()}.webm`,
+        );
+        await uploadBytes(audioRef, blob);
+        const audioUrl = await getDownloadURL(audioRef);
+        await addDoc(collection(db, "directMessages", chatId!, "messages"), {
+          type: "audio",
+          fileUrl: audioUrl,
+          senderId: appUser!.uid,
+          createdAt: serverTimestamp(),
+        });
+        playSound("sent");
+        setRecording(null);
+        if (webStream) {
+          webStream.getTracks().forEach((t) => t.stop());
+          setWebStream(null);
+        }
+        setWebRecorder(null);
+        setUploading(false);
+        return;
+      }
+
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setRecording(null);

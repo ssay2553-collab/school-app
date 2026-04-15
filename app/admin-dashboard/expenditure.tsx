@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     FlatList,
     KeyboardAvoidingView,
     Modal,
@@ -78,16 +79,6 @@ export default function ExpenditureScreen() {
     SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
   const secondaryBrand = SCHOOL_CONFIG.secondaryColor || primaryBrand;
 
-  useEffect(() => {
-    if (appUser && !canView) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to view expenditures.",
-      );
-      router.replace("/admin-dashboard");
-    }
-  }, [appUser, canView]);
-
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -103,6 +94,29 @@ export default function ExpenditureScreen() {
   const [itemName, setItemName] = useState("");
   const [amount, setAmount] = useState("");
   const [itemDate] = useState(new Date().toISOString().split("T")[0]);
+
+  useEffect(() => {
+    if (appUser && !canView) {
+      Alert.alert(
+        "Access Denied",
+        "You do not have permission to view expenditures.",
+      );
+      router.replace("/admin-dashboard");
+    }
+  }, [appUser, canView]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (modalVisible) {
+        setModalVisible(false);
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => subscription.remove();
+  }, [modalVisible]);
 
   useEffect(() => {
     if (!acadConfig.loading) {
@@ -131,9 +145,18 @@ export default function ExpenditureScreen() {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const list = snapshot.docs.map(
-          (d) => ({ id: d.id, ...d.data() }) as Expenditure,
-        );
+        const list = snapshot.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: d.id,
+            ...data,
+            amount: Number(data.amount) || 0,
+            item: data.item || "Unnamed Expense",
+            date: data.date || "N/A",
+            adminName: data.adminName || "Admin",
+            adminRole: data.adminRole || "Staff",
+          } as Expenditure;
+        });
         // Ensure uniqueness and valid data
         const uniqueList = Array.from(
           new Map(list.map((item) => [item.id, item])).values(),
@@ -242,15 +265,20 @@ export default function ExpenditureScreen() {
   const addExpenditure = async () => {
     if (!canEdit)
       return Alert.alert("Denied", "You don't have permission to add entries.");
-    if (!itemName.trim() || !amount.trim())
-      return Alert.alert("Required", "Please fill all fields");
+
+    const cleanItemName = itemName.trim();
+    const cleanAmount = parseFloat(amount);
+
+    if (!cleanItemName || isNaN(cleanAmount))
+      return Alert.alert("Required", "Please provide a valid item name and amount.");
+
     if (!appUser) return Alert.alert("Auth Error", "Session expired.");
 
     setSaving(true);
     try {
       await addDoc(collection(db, "expenditures"), {
-        item: itemName.trim(),
-        amount: parseFloat(amount),
+        item: cleanItemName,
+        amount: cleanAmount,
         date: itemDate,
         adminName: appUser?.profile?.firstName || "Admin",
         adminRole: appUser?.adminRole || "Administrator",

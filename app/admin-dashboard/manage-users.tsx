@@ -21,6 +21,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     Dimensions,
     FlatList,
     Image,
@@ -115,18 +116,6 @@ export default function ManageUsers() {
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
 
-  const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = ["proprietor", "headmaster"].includes(currentUserRole);
-  const hasManageUsersAccess =
-    appUser?.permissions?.["manage-users"] === "full" || isSuperAdmin;
-
-  useEffect(() => {
-    if (appUser && !hasManageUsersAccess) {
-      Alert.alert("Access Denied", "Unauthorized management access.");
-      router.replace("/admin-dashboard");
-    }
-  }, [appUser, hasManageUsersAccess]);
-
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -163,6 +152,39 @@ export default function ManageUsers() {
   >({});
   const [updating, setUpdating] = useState(false);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
+
+  const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
+  const isSuperAdmin = ["proprietor", "headmaster"].includes(currentUserRole);
+  const hasManageUsersAccess =
+    appUser?.permissions?.["manage-users"] === "full" || isSuperAdmin;
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (assignmentModal.type !== "none") {
+        setAssignmentModal({ type: "none", target: null });
+        return true;
+      }
+      if (viewingUser) {
+        setViewingUser(null);
+        return true;
+      }
+      if (selectedRole) {
+        setSelectedRole(null);
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => subscription.remove();
+  }, [viewingUser, selectedRole, assignmentModal]);
+
+  useEffect(() => {
+    if (appUser && !hasManageUsersAccess) {
+      Alert.alert("Access Denied", "Unauthorized management access.");
+      router.replace("/admin-dashboard");
+    }
+  }, [appUser, hasManageUsersAccess]);
 
   useEffect(() => {
     const fetchClasses = async () => {

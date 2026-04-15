@@ -69,6 +69,69 @@ export const getGradeDetails = (score: number) => {
 };
 
 /**
+ * Calculates the TRS (Total Raw Score), TAS (Total Aggregate Score - Core 3 + Best 3),
+ * and Aggregate (Sum of grades - Core 3 + Best 3) based on standard education metrics.
+ *
+ * @param subjects Array of subject objects with 'subject', 'total' (score), and 'grade' (string/number)
+ */
+export const calculatePerformanceFromList = (subjects: any[]) => {
+  if (!subjects || subjects.length === 0) {
+    return { trs: "0.00", tas: "0.00", aggregate: 54 }; // 6 subjects * Grade 9
+  }
+
+  const coreList = ["Mathematics", "Science", "English", "Social Studies"]; // Standard 4 cores or 3?
+  // Most Ghana systems use 4 cores for JHS/SHS.
+  // Let's stick to what was there but maybe make it more robust.
+  const targetCores = ["mathematics", "science", "english"];
+
+  // 1. TRS: Sum of ALL scores
+  const trsValue = subjects.reduce((acc, curr) => acc + (parseFloat(curr.total) || 0), 0);
+
+  // Split into Core and Others
+  const cores = subjects.filter((s) =>
+    targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase())
+  );
+
+  const others = subjects
+    .filter(
+      (s) => !targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase())
+    )
+    .sort((a, b) => (parseFloat(a.total) || 0) - (parseFloat(b.total) || 0)); // For TAS we want highest scores
+
+  const othersForGrade = [...subjects]
+    .filter(
+      (s) => !targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase())
+    )
+    .sort((a, b) => (parseInt(a.grade) || 9) - (parseInt(b.grade) || 9)); // For Aggregate we want lowest grades
+
+  // Aggregate (3 Cores + Best 3 Electives)
+  const coreGradeSum = cores.reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
+  const electiveGradeSum = othersForGrade
+    .slice(0, 3)
+    .reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
+
+  const missingCoresCount = Math.max(0, 3 - cores.length);
+  const missingElectivesCount = Math.max(0, 3 - othersForGrade.length);
+  const aggregate = coreGradeSum + electiveGradeSum + (missingCoresCount + missingElectivesCount) * 9;
+
+  // TAS (3 Cores + Best 3 Scores)
+  // Re-sort others for highest scores
+  const othersForScore = others.reverse();
+
+  const coreScoreSum = cores.reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
+  const electiveScoreSum = othersForScore
+    .slice(0, 3)
+    .reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
+  const tasValue = coreScoreSum + electiveScoreSum;
+
+  return {
+    trs: trsValue.toFixed(2),
+    tas: tasValue.toFixed(2),
+    aggregate
+  };
+};
+
+/**
  * Legacy support for simple grade string calculation
  */
 /**

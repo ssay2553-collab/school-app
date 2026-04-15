@@ -200,7 +200,10 @@ export default function StudentDashboard() {
   const isCodeLocked = linkedParentsCount >= 2;
 
   const renderItem = (item: any, index: number) => (
-    <View
+    <Animatable.View
+      animation="bounceIn"
+      duration={800}
+      delay={index * 50}
       key={item.title}
       style={[
         styles.cardWrapper,
@@ -213,36 +216,41 @@ export default function StudentDashboard() {
       ]}
     >
       <TouchableOpacity
-        style={styles.menuCard}
+        style={[styles.menuCard, { borderBottomColor: item.color + "40" }]}
         onPress={() => router.push(item.path as any)}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
-        <View style={[styles.iconBox, { backgroundColor: item.color + "15" }]}>
-          <SVGIcon
-            name={item.icon}
-            size={windowWidth > 768 ? 32 : 28}
-            color={item.color}
-          />
-        </View>
-        <View style={styles.cardInfo}>
-          <Text style={styles.menuText}>{item.title}</Text>
-          <Text style={styles.menuSubtitle} numberOfLines={1}>
-            {item.subtitle}
-          </Text>
-        </View>
-        {item.path &&
-        (item.path.includes("chat") || item.path.includes("Group")) &&
-        totalUnread > 0 ? (
-          <View style={{ position: "absolute", top: 10, right: 12 }}>
-            <UnreadBadge count={totalUnread} />
-          </View>
-        ) : null}
+        <LinearGradient
+            colors={['#FFFFFF', item.color + '05']}
+            style={styles.cardGradient}
+        >
+            <View style={[styles.iconBox, { backgroundColor: item.color + "20" }]}>
+              <SVGIcon
+                name={item.icon}
+                size={windowWidth > 768 ? 36 : 32}
+                color={item.color}
+              />
+            </View>
+            <View style={styles.cardInfo}>
+              <Text style={styles.menuText}>{item.title}</Text>
+              <Text style={[styles.menuSubtitle, { color: item.color }]}>
+                {item.subtitle}
+              </Text>
+            </View>
+            {item.path &&
+            (item.path.includes("chat") || item.path.includes("Group")) &&
+            totalUnread > 0 ? (
+              <View style={styles.badgePos}>
+                <UnreadBadge count={totalUnread} />
+              </View>
+            ) : null}
+        </LinearGradient>
       </TouchableOpacity>
-    </View>
+    </Animatable.View>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: surface }]}>
+    <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
       <StatusBar barStyle="light-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -256,6 +264,9 @@ export default function StudentDashboard() {
           colors={[brandPrimary, brandSecondary]}
           style={styles.header}
         >
+          <View style={styles.blob1} />
+          <View style={styles.blob2} />
+
           <SafeAreaView edges={["top"]}>
             <View style={styles.headerRow}>
               <View style={styles.studentInfo}>
@@ -278,7 +289,7 @@ export default function StudentDashboard() {
                 </TouchableOpacity>
                 <View style={{ marginLeft: 15 }}>
                   <Text style={styles.welcomeText}>
-                    {config.name.toUpperCase()} STUDENT
+                    HI THERE, EXPLORER! 👋
                   </Text>
                   <Text style={styles.studentName}>
                     {appUser?.profile?.firstName || "Student"}
@@ -293,17 +304,12 @@ export default function StudentDashboard() {
                         const ok = await copyToClipboard(code);
                         if (ok) {
                           if (Platform.OS === "web")
-                            window.alert("Family code copied to clipboard");
+                            window.alert("Magic code copied! ✨");
                           else
                             Alert.alert(
-                              "Copied",
-                              "Family code copied to clipboard.",
+                              "Copied!",
+                              "Your magic code is ready to share. ✨",
                             );
-                        } else {
-                          Alert.alert(
-                            "Copy Failed",
-                            "Unable to copy code to clipboard.",
-                          );
                         }
                       }}
                       activeOpacity={0.8}
@@ -313,7 +319,7 @@ export default function StudentDashboard() {
                         iterationCount="infinite"
                         style={[styles.codeBadge, styles.codeBadgeClickable]}
                       >
-                        <Text style={styles.codeLabel}>FAMILY CODE: </Text>
+                        <Text style={styles.codeLabel}>MAGIC CODE: </Text>
                         <Text style={styles.codeValue}>
                           {appUser?.parentLinkCode || "------"}
                         </Text>
@@ -324,23 +330,23 @@ export default function StudentDashboard() {
                       style={[
                         styles.codeBadge,
                         {
-                          backgroundColor: "#10B98130",
-                          borderColor: "#10B98150",
+                          backgroundColor: "rgba(255,255,255,0.3)",
+                          borderColor: "rgba(255,255,255,0.4)",
                         },
                       ]}
                     >
                       <SVGIcon
-                        name="checkmark-circle"
+                        name="heart"
                         size={12}
-                        color="#10B981"
+                        color="#fff"
                       />
                       <Text
                         style={[
                           styles.codeValue,
-                          { color: "#10B981", marginLeft: 5 },
+                          { color: "#fff", marginLeft: 5, fontSize: 10 },
                         ]}
                       >
-                        FAMILY LINK SECURED
+                        FAMILY CONNECTED!
                       </Text>
                     </View>
                   )}
@@ -356,14 +362,12 @@ export default function StudentDashboard() {
                       style={styles.actionBtn}
                     >
                       <SVGIcon name="arrow-back" size={20} color="#fff" />
-                      <Text style={styles.btnText}>BACK</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleLogout}
                       style={[styles.actionBtn, styles.exitBtn]}
                     >
                       <SVGIcon name="log-out-outline" size={20} color="#fff" />
-                      <Text style={styles.btnText}>EXIT</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -375,17 +379,12 @@ export default function StudentDashboard() {
         <View style={styles.contentContainer}>
           <View style={styles.content}>
             {sections.map((section, sIndex) => (
-              <View key={section.title} style={{ marginBottom: 35 }}>
+              <View key={section.title} style={{ marginBottom: 40 }}>
                 <View style={styles.sectionHeader}>
+                    <View style={[styles.dot, { backgroundColor: section.color }]} />
                   <Text style={[styles.sectionTitle, { color: section.color }]}>
                     {section.title}
                   </Text>
-                  <View
-                    style={[
-                      styles.sectionLine,
-                      { backgroundColor: section.color + "30" },
-                    ]}
-                  />
                 </View>
                 <View style={styles.grid}>
                   {section.items.map((item, iIndex) =>
@@ -408,10 +407,29 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
   header: {
     paddingHorizontal: 25,
-    paddingBottom: 45,
-    borderBottomLeftRadius: 45,
-    borderBottomRightRadius: 45,
+    paddingBottom: 60,
+    borderBottomLeftRadius: 50,
+    borderBottomRightRadius: 50,
+    overflow: 'hidden',
     ...SHADOWS.medium,
+  },
+  blob1: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  blob2: {
+    position: 'absolute',
+    bottom: -40,
+    left: -30,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   headerRow: {
     flexDirection: "row",
@@ -421,47 +439,46 @@ const styles = StyleSheet.create({
   },
   studentInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
   welcomeText: {
-    fontSize: 10,
-    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.9)",
     fontWeight: "900",
-    letterSpacing: 1.5,
+    letterSpacing: 1,
   },
-  studentName: { fontSize: 24, fontWeight: "900", color: "#fff", marginTop: 2 },
+  studentName: { fontSize: 32, fontWeight: "900", color: "#fff", marginTop: 2 },
   codeBadge: {
     flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.25)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginTop: 8,
+    backgroundColor: "#FFD93D",
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 12,
     alignSelf: "flex-start",
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+    ...SHADOWS.small,
   },
   codeBadgeClickable: {
-    // web-only cursor hint; ignored on native
     ...(Platform.OS === "web" ? { cursor: "pointer" as any } : {}),
   },
   codeLabel: {
     fontSize: 10,
-    color: "rgba(255,255,255,0.8)",
-    fontWeight: "800",
+    color: "#4338ca",
+    fontWeight: "900",
   },
   codeValue: {
-    fontSize: 12,
-    color: "#fff",
+    fontSize: 14,
+    color: "#4338ca",
     fontWeight: "900",
-    letterSpacing: 2,
+    letterSpacing: 1,
   },
   profileBtn: {
-    width: 65,
-    height: 65,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#fff",
     overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderWidth: 4,
+    borderColor: "rgba(255,255,255,0.5)",
+    ...SHADOWS.medium,
   },
   profileImg: { width: "100%", height: "100%" },
   profilePlaceholder: {
@@ -469,79 +486,88 @@ const styles = StyleSheet.create({
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.3)",
+    backgroundColor: "#F3F4F6",
   },
-  profilePlaceholderText: { color: "#fff", fontWeight: "bold", fontSize: 24 },
+  profilePlaceholderText: { color: "#4338ca", fontWeight: "900", fontSize: 32 },
   headerActions: { flexDirection: "row", gap: 10, alignItems: "center" },
   actionBtn: {
-    flexDirection: "row",
+    width: 44,
+    height: 44,
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.15)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    gap: 6,
+    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  exitBtn: {
-    backgroundColor: "rgba(255,255,255,0.25)",
     borderColor: "rgba(255,255,255,0.3)",
   },
-  btnText: { fontSize: 11, fontWeight: "800", color: "#fff" },
+  exitBtn: {
+    backgroundColor: "rgba(255,0,0,0.2)",
+  },
   contentContainer: { alignItems: "center", width: "100%" },
   content: {
     paddingHorizontal: 20,
-    marginTop: 25,
+    marginTop: -30, // Pull content up into the header curve
     width: "100%",
     maxWidth: 1100,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 15,
-    gap: 10,
+    marginBottom: 20,
+    gap: 12,
+    paddingHorizontal: 10,
   },
-  sectionTitle: { fontSize: 12, fontWeight: "900", letterSpacing: 1 },
-  sectionLine: { flex: 1, height: 1, borderRadius: 1 },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  sectionTitle: { fontSize: 18, fontWeight: "900", letterSpacing: 0.5 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "flex-start",
-    gap: 15,
+    gap: 20,
   },
-  cardWrapper: { marginBottom: 5 },
+  cardWrapper: { marginBottom: 10 },
   menuCard: {
     backgroundColor: "#fff",
-    borderRadius: 25,
-    padding: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    ...SHADOWS.small,
+    borderRadius: 35,
+    overflow: 'hidden',
+    ...SHADOWS.medium,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
-    minHeight: 130,
+    borderColor: "#E2E8F0",
+    borderBottomWidth: 6, // 3D effect
+    minHeight: 150,
     width: "100%",
   },
+  cardGradient: {
+    flex: 1,
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   iconBox: {
-    width: 50,
-    height: 50,
-    borderRadius: 18,
+    width: 65,
+    height: 65,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 15,
+    ...SHADOWS.small,
   },
   cardInfo: { alignItems: "center" },
   menuText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#334155",
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#1E293B",
     textAlign: "center",
   },
   menuSubtitle: {
-    fontSize: 10,
-    color: "#94A3B8",
-    marginTop: 2,
-    fontWeight: "600",
+    fontSize: 11,
+    marginTop: 4,
+    fontWeight: "800",
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden'
   },
+  badgePos: { position: "absolute", top: 15, right: 15 },
 });

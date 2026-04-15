@@ -14,6 +14,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     FlatList,
     Image,
     SafeAreaView,
@@ -106,6 +107,19 @@ export default function NewsCenter() {
   useEffect(() => {
     if (!loading) fetchNews();
   }, [loading, fetchNews]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (mode === "create") {
+        setMode("view");
+        return true;
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => subscription.remove();
+  }, [mode]);
 
   const onRefresh = () => {
     setRefreshing(true);

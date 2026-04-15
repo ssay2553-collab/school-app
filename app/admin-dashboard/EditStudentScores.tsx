@@ -22,6 +22,7 @@ import React, {
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     FlatList,
     Platform,
     SafeAreaView,
@@ -317,6 +318,30 @@ export default function EditStudentScores() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
   const masterDataRef = useRef<Record<string, any>>({});
+  const initialDataRef = useRef<string>("");
+
+  const hasUnsavedChanges = useMemo(() => {
+    return JSON.stringify(allStudents) !== initialDataRef.current;
+  }, [allStudents]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (allStudents.length > 0 && JSON.stringify(allStudents) !== initialDataRef.current) {
+        Alert.alert(
+          "Unsaved Changes",
+          "You have modified scores. Are you sure you want to exit without saving?",
+          [
+            { text: "Stay", style: "cancel" },
+            { text: "Exit", style: "destructive", onPress: () => router.back() }
+          ]
+        );
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [allStudents]);
 
   const loadClasses = async () => {
     try {
@@ -411,10 +436,11 @@ export default function EditStudentScores() {
       if (snap.exists()) {
         setRecordId(snap.id);
         const students = snap.data().students || [];
-        students.forEach((s: any) => {
+        allStudents.forEach((s: any) => {
           masterDataRef.current[s.studentId] = s;
         });
         setAllStudents(students);
+        initialDataRef.current = JSON.stringify(students);
         setVisibleStudents(students.slice(0, PAGE_SIZE));
         setPage(1);
       } else {
@@ -471,6 +497,8 @@ export default function EditStudentScores() {
         approvedAt: serverTimestamp(),
         approvedBy: appUser?.uid,
       });
+      initialDataRef.current = JSON.stringify(studentsToSave);
+      setAllStudents(studentsToSave);
       Alert.alert("Approved", "Scores updated and records marked as approved.");
       fetchSubjects();
     } catch (err) {

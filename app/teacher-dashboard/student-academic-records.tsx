@@ -19,6 +19,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     Image,
     SafeAreaView,
     ScrollView,
@@ -217,8 +218,32 @@ export default function StudentAcademicRecords() {
   const term = acadConfig.currentTerm || "";
 
   const [allStudents, setAllStudents] = useState<StudentScoreRecord[]>([]);
+  const [serverStudents, setServerStudents] = useState<StudentScoreRecord[]>([]);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15; // Increased page size slightly since rendering is now efficient
+
+  const hasUnsavedChanges = useMemo(() => {
+    return JSON.stringify(allStudents) !== JSON.stringify(serverStudents);
+  }, [allStudents, serverStudents]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (hasUnsavedChanges) {
+        Alert.alert(
+          "Unsaved Changes",
+          "You have modified student scores. Are you sure you want to discard them?",
+          [
+            { text: "Stay", style: "cancel" },
+            { text: "Discard", style: "destructive", onPress: () => router.back() }
+          ]
+        );
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [hasUnsavedChanges]);
 
   const visibleStudents = useMemo(() => {
     return allStudents.slice(0, page * PAGE_SIZE);
@@ -306,6 +331,7 @@ export default function StudentAcademicRecords() {
             (s: StudentScoreRecord) => calculateScores(s, reportType),
           );
           setAllStudents(loadedStudents);
+          setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
         } else {
           const q = query(
             collection(db, "users"),
@@ -333,6 +359,7 @@ export default function StudentAcademicRecords() {
             teacherRemarks: "",
           }));
           setAllStudents(list);
+          setServerStudents(JSON.parse(JSON.stringify(list)));
         }
         setPage(1);
       } catch (err) {
@@ -395,6 +422,7 @@ export default function StudentAcademicRecords() {
         status: "pending",
         containsBehavioralData: isClassTeacher && reportType === "End of Term",
       });
+      setServerStudents(JSON.parse(JSON.stringify(allStudents)));
       Alert.alert("Success", "Academic ledger saved successfully.");
       router.back();
     } catch (err) {

@@ -20,14 +20,12 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import RichTextEditor from "../../components/RichTextEditor";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { auth, db, storage } from "../../firebaseConfig";
 
@@ -36,8 +34,6 @@ export default function SubmitAssignment() {
   const [assignmentCode, setAssignmentCode] = useState("");
   const [note, setNote] = useState("");
   const [file, setFile] = useState<any>(null);
-  const [richText, setRichText] = useState("");
-  const [showEditor, setShowEditor] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const studentId = auth.currentUser?.uid;
@@ -60,15 +56,18 @@ export default function SubmitAssignment() {
 
       const picked = result.assets[0];
       setFile(picked);
-      setRichText(""); // Clear rich text if file is picked
     } catch (error) {
       console.log("Error picking file", error);
     }
   };
 
+  const goToNotes = () => {
+    router.push("/student-dashboard/note");
+  };
+
   const handleSubmit = async () => {
-    if (!assignmentCode.trim() || (!file && !richText) || !studentId) {
-      return Alert.alert("Error", "Assignment code and either a file or written content are required.");
+    if (!assignmentCode.trim() || !file || !studentId) {
+      return Alert.alert("Error", "Assignment code and a file are required. To submit written content, please use the Notes dashboard.");
     }
 
     setLoading(true);
@@ -129,13 +128,13 @@ export default function SubmitAssignment() {
         assignmentCode: assignment.code,
         studentId,
         studentName,
-        type: richText ? "rich-text" : (assignment.type || "standard"),
+        type: assignment.type || "standard",
         classId: assignment.classId,
         subjectId: assignment.subjectId,
         teacherId: assignment.teacherId,
         fileUrl: downloadURL || null,
         fileName: fileName || null,
-        contentHtml: richText || null,
+        contentHtml: null,
         note,
         isLate: false,
         marked: false,
@@ -167,26 +166,25 @@ export default function SubmitAssignment() {
       <Text style={styles.label}>Submission Method</Text>
       <View style={styles.methodRow}>
         <TouchableOpacity
-          style={[styles.methodBtn, !richText && styles.activeMethod]}
+          style={[styles.methodBtn, styles.activeMethod]}
           onPress={pickFile}
         >
-          <Text style={[styles.methodBtnText, !richText && styles.activeMethodText]}>
+          <Text style={[styles.methodBtnText, styles.activeMethodText]}>
             {file ? "File Selected" : "Upload File"}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.methodBtn, richText !== "" && styles.activeMethod]}
-          onPress={() => setShowEditor(true)}
+          style={styles.methodBtn}
+          onPress={goToNotes}
         >
-          <Text style={[styles.methodBtnText, richText !== "" && styles.activeMethodText]}>
-            {richText ? "Edit Writing" : "Write Online"}
+          <Text style={styles.methodBtnText}>
+            Submit from Notes
           </Text>
         </TouchableOpacity>
       </View>
 
       {file && <Text style={styles.fileName}>📎 {file.name || file.fileName}</Text>}
-      {richText !== "" && <Text style={styles.fileName}>📝 Rich Text Content Ready</Text>}
 
       <Text style={styles.label}>Note (optional)</Text>
       <TextInput
@@ -209,23 +207,11 @@ export default function SubmitAssignment() {
         )}
       </TouchableOpacity>
 
-      <Modal visible={showEditor} animationType="slide">
-        <View style={{ flex: 1, paddingTop: 50 }}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Write Assignment</Text>
-            <TouchableOpacity onPress={() => setShowEditor(false)}>
-              <Text style={{ color: COLORS.primary, fontWeight: "bold" }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <RichTextEditor
-            initialContent={richText}
-            onChange={(html: string) => {
-              setRichText(html);
-              if (html) setFile(null); // Clear file if writing is used
-            }}
-          />
-        </View>
-      </Modal>
+      <View style={styles.infoBox}>
+        <Text style={styles.infoText}>
+          💡 To submit written content (Rich Text), please use the "Academic Notes" dashboard. You can create a note and then tap "Submit to Teacher".
+        </Text>
+      </View>
     </View>
   );
 }
@@ -243,6 +229,6 @@ const styles = StyleSheet.create({
   button: { paddingVertical: 15, borderRadius: 8, marginTop: 25, alignItems: "center", ...SHADOWS.medium },
   buttonText: { color: COLORS.white, fontSize: SIZES.medium, fontWeight: "bold" },
   fileName: { marginTop: 10, color: COLORS.secondary, fontWeight: "600" },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", padding: 20, borderBottomWidth: 1, borderBottomColor: "#eee" },
-  modalTitle: { fontSize: 18, fontWeight: "bold" },
+  infoBox: { marginTop: 30, padding: 15, backgroundColor: "#EBF5FF", borderRadius: 8 },
+  infoText: { color: "#1E40AF", fontSize: 13, lineHeight: 18 },
 });

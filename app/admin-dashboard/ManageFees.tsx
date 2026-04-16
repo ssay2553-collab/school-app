@@ -1395,18 +1395,43 @@ export default function ManageFees() {
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={styles.dateSelector}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <SVGIcon name="calendar" size={20} color={VIBE.primary} />
-              <Text style={styles.dateText}>
-                {moment(selectedDailyDate).format("MMMM Do, YYYY")}
-              </Text>
-              <SVGIcon name="chevron-down" size={20} color={VIBE.muted} />
-            </TouchableOpacity>
+            {Platform.OS === "web" ? (
+              <input
+                type="date"
+                value={moment(selectedDailyDate).format("YYYY-MM-DD")}
+                onChange={(e) => {
+                  const date = new Date(e.target.value);
+                  if (!isNaN(date.getTime())) {
+                    setSelectedDailyDate(date);
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  padding: "15px",
+                  borderRadius: "15px",
+                  border: `1px solid ${VIBE.border}`,
+                  fontSize: "16px",
+                  marginBottom: "20px",
+                  backgroundColor: VIBE.bg,
+                  color: VIBE.text,
+                  fontFamily: "inherit",
+                  outline: "none",
+                }}
+              />
+            ) : (
+              <TouchableOpacity
+                style={styles.dateSelector}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <SVGIcon name="calendar" size={20} color={VIBE.primary} />
+                <Text style={styles.dateText}>
+                  {moment(selectedDailyDate).format("MMMM Do, YYYY")}
+                </Text>
+                <SVGIcon name="chevron-down" size={20} color={VIBE.muted} />
+              </TouchableOpacity>
+            )}
 
-            {showDatePicker && (
+            {showDatePicker && Platform.OS !== "web" && (
               <DateTimePicker
                 value={selectedDailyDate}
                 mode="date"

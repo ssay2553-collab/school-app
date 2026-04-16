@@ -206,7 +206,7 @@ export default function TeacherSignupScreen() {
       {[1, 2, 3].map((s) => (
         <View key={s} style={styles.stepWrapper}>
           <View style={[styles.stepCircle, step >= s && { backgroundColor: primary }]}>
-            {step > s ? <Ionicons name="checkmark" size={16} color="#fff" /> : <Text style={[styles.stepNumber, step >= s && { color: "#fff" }]}>{s}</Text>}
+            {step > s ? <SVGIcon name="checkmark" size={16} color="#fff" /> : <Text style={[styles.stepNumber, step >= s && { color: "#fff" }]}>{s}</Text>}
           </View>
           {s < 3 && <View style={[styles.stepLine, step > s && { backgroundColor: primary }]} />}
         </View>
@@ -260,7 +260,7 @@ export default function TeacherSignupScreen() {
                  {subjectList.map(s => <Chip key={s} label={s} active={selectedSubjects.includes(s)} onPress={() => setSelectedSubjects(prev => prev.includes(s) ? prev.filter(i => i !== s) : [...prev, s])} activeColor={primary} />)}
                  {otherSubjects.map(s => <Chip key={s} label={s} active={true} onPress={() => setOtherSubjects(prev => prev.filter(i => i !== s))} activeColor={COLORS.secondary} />)}
                  <TouchableOpacity onPress={() => setShowOtherModal(true)} style={styles.addOtherChip}>
-                    <Ionicons name="add-circle" size={18} color={primary} />
+                    <SVGIcon name="add-circle" size={18} color={primary} />
                     <Text style={[styles.chipText, { color: primary, marginLeft: 4 }]}>Other</Text>
                  </TouchableOpacity>
                </View>
@@ -270,7 +270,7 @@ export default function TeacherSignupScreen() {
           {step === 3 && (
             <Animatable.View animation="fadeInRight" style={styles.stepContainer}>
               <View style={styles.codeCard}>
-                <Ionicons name="shield-checkmark" size={48} color={primary} />
+                <SVGIcon name="shield-checkmark" size={48} color={primary} />
                 <Text style={styles.codeTitle}>Final Verification</Text>
                 <Text style={styles.codeSubtitle}>Enter the secure signup code from your administrator.</Text>
                 <TextInput style={styles.codeInput} placeholder="CODE" placeholderTextColor="#94A3B8" value={form.signupCode} onChangeText={(v) => setForm({ ...form, signupCode: v })} autoCapitalize="characters" />
@@ -320,10 +320,10 @@ const InputField = ({ label, icon, isPassword, onTogglePassword, showPassword, .
     <Text style={styles.inputLabel}>{label}</Text>
     <View style={styles.inputWrapper}>
       <View style={styles.inputIconContainer}>
-        <Ionicons name={icon} size={18} color="#94A3B8" />
+        <SVGIcon name={icon} size={18} color="#94A3B8" />
       </View>
       <TextInput style={styles.input} placeholderTextColor="#94A3B8" {...props} />
-      {isPassword && <TouchableOpacity onPress={onTogglePassword} style={styles.eyeIcon}><Ionicons name={showPassword ? "eye-off" : "eye"} size={20} color="#94A3B8" /></TouchableOpacity>}
+      {isPassword && <TouchableOpacity onPress={onTogglePassword} style={styles.eyeIcon}><SVGIcon name={showPassword ? "eye-off" : "eye"} size={20} color="#94A3B8" /></TouchableOpacity>}
     </View>
   </View>
 );

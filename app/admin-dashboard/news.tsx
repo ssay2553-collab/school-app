@@ -329,7 +329,7 @@ export default function NewsCenter() {
                         color: "#1E293B",
                         border: '1px solid #E2E8F0',
                         width: '100%',
-                        outlineStyle: 'none',
+                        outline: 'none',
                         fontFamily: 'inherit'
                       }}
                     />

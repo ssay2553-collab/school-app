@@ -82,7 +82,7 @@ export default function SearchScreen() {
               returnKeyType="search"
             />
             <TouchableOpacity onPress={handleSearch} style={styles.searchBtn}>
-              <Ionicons name="search" size={20} color="#fff" />
+              <SVGIcon name="search" size={20} color="#fff" />
             </TouchableOpacity>
           </View>
         </View>
@@ -112,7 +112,7 @@ export default function SearchScreen() {
                     webViewRef.current?.reload();
                 }
             }} style={styles.navBtn}>
-              <Ionicons name="refresh" size={20} color={COLORS.primary} />
+              <SVGIcon name="refresh" size={20} color={COLORS.primary} />
             </TouchableOpacity>
 
             <TouchableOpacity 

@@ -7,7 +7,7 @@ import {
     Timestamp,
     where,
 } from "firebase/firestore";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, memo } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -23,6 +23,8 @@ import {
     SafeAreaView,
     StatusBar,
     RefreshControl,
+    KeyboardAvoidingView,
+    Platform,
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -121,6 +123,10 @@ export default function Assignments() {
     setActiveAssignment(item);
     setAnswers({});
   };
+
+  const handleUpdateAnswer = useCallback((qIdx: number, val: string) => {
+    setAnswers((prev) => ({ ...prev, [qIdx]: val }));
+  }, []);
 
   const handleSubmitResponses = async () => {
     if (!activeAssignment || !appUser) return;
@@ -304,36 +310,23 @@ export default function Assignments() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-            {activeAssignment?.questions?.map((q, qIdx) => (
-              <View key={qIdx} style={styles.questionBox}>
-                <Text style={styles.questionText}>{qIdx + 1}. {q.text}</Text>
-                {activeAssignment.type === "mcq" ? (
-                  <View style={styles.optionsList}>
-                    {q.options?.map((opt, oIdx) => (
-                      <TouchableOpacity
-                        key={oIdx}
-                        style={[styles.optionBtn, answers[qIdx] === opt && styles.optionBtnSelected]}
-                        onPress={() => setAnswers((prev) => ({ ...prev, [qIdx]: opt }))}
-                      >
-                        <View style={[styles.radio, answers[qIdx] === opt && styles.radioSelected]} />
-                        <Text style={[styles.optionLabel, answers[qIdx] === opt && styles.optionLabelSelected]}>{opt}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                ) : (
-                  <TextInput
-                    style={styles.answerInput}
-                    placeholder="Type your answer here..."
-                    placeholderTextColor="#94A3B8"
-                    multiline
-                    value={answers[qIdx] || ""}
-                    onChangeText={(t) => setAnswers((prev) => ({ ...prev, [qIdx]: t }))}
-                  />
-                )}
-              </View>
-            ))}
-          </ScrollView>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={{ flex: 1 }}
+          >
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {activeAssignment?.questions?.map((q, qIdx) => (
+                <QuestionResponseItem
+                  key={qIdx}
+                  q={q}
+                  qIdx={qIdx}
+                  type={activeAssignment.type}
+                  answer={answers[qIdx]}
+                  setAnswer={(val) => handleUpdateAnswer(qIdx, val)}
+                />
+              ))}
+            </ScrollView>
+          </KeyboardAvoidingView>
 
           <View style={styles.modalFooterInner}>
             <TouchableOpacity
@@ -354,6 +347,49 @@ export default function Assignments() {
     </SafeAreaView>
   );
 }
+
+const QuestionResponseItem = memo(({
+  q,
+  qIdx,
+  type,
+  answer,
+  setAnswer
+}: {
+  q: Question;
+  qIdx: number;
+  type: string;
+  answer: string;
+  setAnswer: (val: string) => void;
+}) => {
+  return (
+    <View style={styles.questionBox}>
+      <Text style={styles.questionText}>{qIdx + 1}. {q.text}</Text>
+      {type === "mcq" ? (
+        <View style={styles.optionsList}>
+          {q.options?.map((opt, oIdx) => (
+            <TouchableOpacity
+              key={oIdx}
+              style={[styles.optionBtn, answer === opt && styles.optionBtnSelected]}
+              onPress={() => setAnswer(opt)}
+            >
+              <View style={[styles.radio, answer === opt && styles.radioSelected]} />
+              <Text style={[styles.optionLabel, answer === opt && styles.optionLabelSelected]}>{opt}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        <TextInput
+          style={styles.answerInput}
+          placeholder="Type your answer here..."
+          placeholderTextColor="#94A3B8"
+          multiline
+          value={answer || ""}
+          onChangeText={setAnswer}
+        />
+      )}
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },

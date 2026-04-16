@@ -12,7 +12,7 @@ import {
   where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, memo } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -80,13 +80,13 @@ export default function UploadAssignment() {
   const questions = type === "mcq" ? mcqQuestions : shortAnswerQuestions;
   
   // Wrapper setter to update the correct state based on current type
-  const setQuestions = (val: React.SetStateAction<Question[]>) => {
+  const setQuestions = useCallback((val: React.SetStateAction<Question[]>) => {
     if (type === "mcq") {
       setMcqQuestions(val);
     } else {
       setShortAnswerQuestions(val);
     }
-  };
+  }, [type]);
 
   useEffect(() => {
     if (!appUser) {
@@ -178,15 +178,15 @@ export default function UploadAssignment() {
     }
   };
 
-  const addQuestion = () => {
-    setQuestions([...questions, { text: "", options: ["", ""] }]);
-  };
+  const addQuestion = useCallback(() => {
+    setQuestions(prev => [...prev, { text: "", options: ["", ""] }]);
+  }, [setQuestions]);
 
-  const updateQuestion = (index: number, text: string) => {
+  const updateQuestion = useCallback((index: number, text: string) => {
     setQuestions(prev => prev.map((q, i) => i === index ? { ...q, text } : q));
-  };
+  }, [setQuestions]);
 
-  const updateOption = (qIndex: number, oIndex: number, text: string) => {
+  const updateOption = useCallback((qIndex: number, oIndex: number, text: string) => {
     setQuestions(prev => prev.map((q, i) => {
       if (i === qIndex) {
         const newOptions = [...q.options];
@@ -195,17 +195,17 @@ export default function UploadAssignment() {
       }
       return q;
     }));
-  };
+  }, [setQuestions]);
 
-  const addOption = (qIndex: number) => {
+  const addOption = useCallback((qIndex: number) => {
     setQuestions(prev => prev.map((q, i) => 
       i === qIndex ? { ...q, options: [...q.options, ""] } : q
     ));
-  };
+  }, [setQuestions]);
 
-  const removeQuestion = (index: number) => {
-    setQuestions(questions.filter((_, i) => i !== index));
-  };
+  const removeQuestion = useCallback((index: number) => {
+    setQuestions(prev => prev.filter((_, i) => i !== index));
+  }, [setQuestions]);
 
   const handleUpload = async () => {
     if (!title || !selectedClassId || !selectedSubject) {
@@ -281,7 +281,7 @@ export default function UploadAssignment() {
         </View>
       </LinearGradient>
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
           
           <Animatable.View animation="fadeInUp" style={styles.card}>
@@ -393,25 +393,16 @@ export default function UploadAssignment() {
               </View>
 
               {questions.map((q, qIndex) => (
-                <View key={qIndex} style={styles.questionCard}>
-                  <View style={styles.qHeader}>
-                    <Text style={styles.qIndex}>Question {qIndex + 1}</Text>
-                    <TouchableOpacity onPress={() => removeQuestion(qIndex)}><Ionicons name="trash-outline" size={20} color="#EF4444" /></TouchableOpacity>
-                  </View>
-                  <TextInput style={styles.input} placeholder="Type question..." value={q.text} onChangeText={(t) => updateQuestion(qIndex, t)} />
-                  
-                  {type === "mcq" && (
-                    <View style={styles.optionsContainer}>
-                      {q.options.map((opt, oIndex) => (
-                        <View key={oIndex} style={styles.optionRow}>
-                          <View style={styles.bullet} />
-                          <TextInput style={styles.optionInput} placeholder={`Option ${oIndex + 1}`} value={opt} onChangeText={(t) => updateOption(qIndex, oIndex, t)} />
-                        </View>
-                      ))}
-                      <TouchableOpacity onPress={() => addOption(qIndex)} style={styles.addOptionBtn}><Text style={styles.addOptionText}>+ Add Option</Text></TouchableOpacity>
-                    </View>
-                  )}
-                </View>
+                <QuestionItem
+                  key={qIndex}
+                  q={q}
+                  qIndex={qIndex}
+                  type={type}
+                  updateQuestion={updateQuestion}
+                  removeQuestion={removeQuestion}
+                  updateOption={updateOption}
+                  addOption={addOption}
+                />
               ))}
             </Animatable.View>
           )}
@@ -431,6 +422,60 @@ export default function UploadAssignment() {
     </SafeAreaView>
   );
 }
+
+const QuestionItem = memo(({
+  q,
+  qIndex,
+  type,
+  updateQuestion,
+  removeQuestion,
+  updateOption,
+  addOption
+}: {
+  q: Question;
+  qIndex: number;
+  type: AssignmentType;
+  updateQuestion: (index: number, text: string) => void;
+  removeQuestion: (index: number) => void;
+  updateOption: (qIndex: number, oIndex: number, text: string) => void;
+  addOption: (qIndex: number) => void;
+}) => {
+  return (
+    <View style={styles.questionCard}>
+      <View style={styles.qHeader}>
+        <Text style={styles.qIndex}>Question {qIndex + 1}</Text>
+        <TouchableOpacity onPress={() => removeQuestion(qIndex)}>
+          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+      <TextInput
+        style={styles.input}
+        placeholder="Type question..."
+        value={q.text}
+        onChangeText={(t) => updateQuestion(qIndex, t)}
+      />
+
+      {type === "mcq" && (
+        <View style={styles.optionsContainer}>
+          {q.options.map((opt, oIndex) => (
+            <View key={oIndex} style={styles.optionRow}>
+              <View style={styles.bullet} />
+              <TextInput
+                style={styles.optionInput}
+                placeholder={`Option ${oIndex + 1}`}
+                value={opt}
+                onChangeText={(t) => updateOption(qIndex, oIndex, t)}
+              />
+            </View>
+          ))}
+          <TouchableOpacity onPress={() => addOption(qIndex)} style={styles.addOptionBtn}>
+            <Text style={styles.addOptionText}>+ Add Option</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },

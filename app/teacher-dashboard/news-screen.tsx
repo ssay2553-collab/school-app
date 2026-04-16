@@ -37,7 +37,6 @@ import { Audience, NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { fetchCategories, fetchNewsForAudience } from "../../lib/newsFetcher";
-import DateTimePicker from "@react-native-community/datetimepicker";
 
 const storage = getStorage();
 

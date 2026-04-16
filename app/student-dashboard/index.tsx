@@ -192,48 +192,80 @@ export default function StudentDashboard() {
     );
   }
 
-  const isDesktop =
-    Platform.OS === "web" ||
-    Platform.OS === "windows" ||
-    Platform.OS === "macos";
+  const isSmallScreen = windowWidth < 380;
+  const isTablet = windowWidth >= 768;
+  const isDesktop = windowWidth >= 1024;
+
+  const getColumns = () => {
+    if (windowWidth >= 1200) return 5;
+    if (windowWidth >= 900) return 4;
+    if (windowWidth >= 600) return 3;
+    return 2;
+  };
+
+  const numColumns = getColumns();
+  const gap = 12;
+  const sidePadding = 20;
+  const totalGapSpace = (numColumns - 1) * gap;
+  const availableWidth = Math.min(1200, windowWidth) - sidePadding * 2;
+  const cardWidth = (availableWidth - totalGapSpace) / numColumns;
+
   const linkedParentsCount = appUser.parentUids?.length || 0;
   const isCodeLocked = linkedParentsCount >= 2;
 
-  const renderItem = (item: any, index: number) => (
-    <Animatable.View
-      animation="bounceIn"
-      duration={800}
-      delay={index * 50}
-      key={item.title}
-      style={[
-        styles.cardWrapper,
-        {
-          width:
-            windowWidth > 768
-              ? (Math.min(1100, windowWidth) - 100) / 4
-              : (windowWidth - 55) / 2,
-        },
-      ]}
-    >
-      <TouchableOpacity
-        style={[styles.menuCard, { borderBottomColor: item.color + "40" }]}
-        onPress={() => router.push(item.path as any)}
-        activeOpacity={0.8}
+  const renderItem = (item: any, index: number) => {
+    return (
+      <Animatable.View
+        animation="bounceIn"
+        duration={800}
+        delay={index * 50}
+        key={item.title}
+        style={[styles.cardWrapper, { width: cardWidth }]}
       >
-        <LinearGradient
-            colors={['#FFFFFF', item.color + '05']}
-            style={styles.cardGradient}
+        <TouchableOpacity
+          style={[styles.menuCard, { borderBottomColor: item.color + "40" }]}
+          onPress={() => router.push(item.path as any)}
+          activeOpacity={0.8}
         >
-            <View style={[styles.iconBox, { backgroundColor: item.color + "20" }]}>
+          <LinearGradient
+            colors={["#FFFFFF", item.color + "05"]}
+            style={styles.cardGradient}
+          >
+            <View
+              style={[
+                styles.iconBox,
+                {
+                  backgroundColor: item.color + "20",
+                  width: isSmallScreen ? 50 : 60,
+                  height: isSmallScreen ? 50 : 60,
+                  borderRadius: isSmallScreen ? 18 : 22,
+                },
+              ]}
+            >
               <SVGIcon
                 name={item.icon}
-                size={windowWidth > 768 ? 36 : 32}
+                size={numColumns > 3 ? 36 : isSmallScreen ? 26 : 30}
                 color={item.color}
               />
             </View>
             <View style={styles.cardInfo}>
-              <Text style={styles.menuText}>{item.title}</Text>
-              <Text style={[styles.menuSubtitle, { color: item.color }]}>
+              <Text
+                style={[
+                  styles.menuText,
+                  { fontSize: isSmallScreen ? 13 : 15 },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {item.title}
+              </Text>
+              <Text
+                style={[
+                  styles.menuSubtitle,
+                  { color: item.color, fontSize: isSmallScreen ? 9 : 10 },
+                ]}
+                numberOfLines={1}
+              >
                 {item.subtitle}
               </Text>
             </View>
@@ -244,10 +276,11 @@ export default function StudentDashboard() {
                 <UnreadBadge count={totalUnread} />
               </View>
             ) : null}
-        </LinearGradient>
-      </TouchableOpacity>
-    </Animatable.View>
-  );
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animatable.View>
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
@@ -272,7 +305,14 @@ export default function StudentDashboard() {
               <View style={styles.studentInfo}>
                 <TouchableOpacity
                   onPress={() => router.push("/student-dashboard/settings")}
-                  style={styles.profileBtn}
+                  style={[
+                    styles.profileBtn,
+                    {
+                      width: isSmallScreen ? 60 : 80,
+                      height: isSmallScreen ? 60 : 80,
+                      borderRadius: isSmallScreen ? 30 : 40,
+                    },
+                  ]}
                 >
                   {appUser?.profile?.profileImage ? (
                     <Image
@@ -281,17 +321,27 @@ export default function StudentDashboard() {
                     />
                   ) : (
                     <View style={styles.profilePlaceholder}>
-                      <Text style={styles.profilePlaceholderText}>
+                      <Text
+                        style={[
+                          styles.profilePlaceholderText,
+                          { fontSize: isSmallScreen ? 24 : 32 },
+                        ]}
+                      >
                         {appUser?.profile?.firstName?.[0] || "S"}
                       </Text>
                     </View>
                   )}
                 </TouchableOpacity>
-                <View style={{ marginLeft: 15 }}>
-                  <Text style={styles.welcomeText}>
-                    HI THERE, EXPLORER! 👋
-                  </Text>
-                  <Text style={styles.studentName}>
+                <View style={{ marginLeft: isSmallScreen ? 10 : 15, flex: 1 }}>
+                  <Text style={styles.welcomeText}>HI THERE, EXPLORER! 👋</Text>
+                  <Text
+                    style={[
+                      styles.studentName,
+                      { fontSize: isSmallScreen ? 24 : 32 },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
                     {appUser?.profile?.firstName || "Student"}
                   </Text>
 
@@ -406,11 +456,11 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   scrollContent: { flexGrow: 1 },
   header: {
-    paddingHorizontal: 25,
-    paddingBottom: 60,
-    borderBottomLeftRadius: 50,
-    borderBottomRightRadius: 50,
-    overflow: 'hidden',
+    paddingHorizontal: 20,
+    paddingBottom: 50,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    overflow: "hidden",
     ...SHADOWS.medium,
   },
   blob1: {
@@ -522,19 +572,19 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "flex-start",
-    gap: 20,
+    justifyContent: "center", // Center the grid on wide screens
+    gap: 12,
   },
   cardWrapper: { marginBottom: 10 },
   menuCard: {
     backgroundColor: "#fff",
-    borderRadius: 35,
-    overflow: 'hidden',
+    borderRadius: 24,
+    overflow: "hidden",
     ...SHADOWS.medium,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    borderBottomWidth: 6, // 3D effect
-    minHeight: 150,
+    borderBottomWidth: 4, // 3D effect
+    minHeight: 130,
     width: "100%",
   },
   cardGradient: {

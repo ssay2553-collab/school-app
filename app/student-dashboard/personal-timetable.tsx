@@ -259,12 +259,53 @@ const PersonalTimetable = () => {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add Subject 📚</Text>
             <TextInput style={styles.input} placeholder="e.g. Mathematics" placeholderTextColor="#94A3B8" value={tempSubject} onChangeText={setTempSubject} />
-            <TouchableOpacity style={styles.timePickerBtn} onPress={() => setShowTimePicker(true)}>
-              <SVGIcon name="time" size={20} color={COLORS.primary} />
-              <Text style={styles.timePickerText}>{tempTime.getHours().toString().padStart(2, "0")}:{tempTime.getMinutes().toString().padStart(2, "0")}</Text>
-            </TouchableOpacity>
-            {showTimePicker && (
-              <DateTimePicker value={tempTime} mode="time" is24Hour={true} display={Platform.OS === "ios" ? "spinner" : "default"} onChange={(e, d) => { setShowTimePicker(false); if (d) setTempTime(d); }} />
+            {Platform.OS === 'web' ? (
+              <View style={styles.timePickerBtn}>
+                <SVGIcon name="time" size={20} color={COLORS.primary} />
+                <input
+                  type="time"
+                  value={`${tempTime.getHours().toString().padStart(2, "0")}:${tempTime.getMinutes().toString().padStart(2, "0")}`}
+                  onChange={(e) => {
+                    const [h, m] = e.target.value.split(':').map(Number);
+                    const newDate = new Date(tempTime);
+                    newDate.setHours(h, m);
+                    setTempTime(newDate);
+                  }}
+                  style={{
+                    marginLeft: 15,
+                    fontSize: 18,
+                    fontWeight: "bold",
+                    color: COLORS.primary,
+                    border: 'none',
+                    backgroundColor: 'transparent',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                />
+              </View>
+            ) : (
+              <>
+                <TouchableOpacity style={styles.timePickerBtn} onPress={() => setShowTimePicker(true)}>
+                  <SVGIcon name="time" size={20} color={COLORS.primary} />
+                  <Text style={styles.timePickerText}>
+                    {tempTime.getHours().toString().padStart(2, "0")}:{tempTime.getMinutes().toString().padStart(2, "0")}
+                  </Text>
+                </TouchableOpacity>
+                {showTimePicker && (
+                  <DateTimePicker
+                    value={tempTime}
+                    mode="time"
+                    is24Hour={true}
+                    display={Platform.OS === "ios" ? "spinner" : "default"}
+                    onChange={(e, d) => {
+                      setShowTimePicker(false);
+                      if (d) setTempTime(d);
+                    }}
+                  />
+                )}
+              </>
             )}
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.modalCancel} onPress={() => setModalVisible(false)}>

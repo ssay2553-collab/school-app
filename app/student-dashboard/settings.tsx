@@ -205,20 +205,52 @@ export default function StudentSettings() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>PERSONAL DETAILS</Text>
           <View style={styles.settingsCard}>
-             <TouchableOpacity style={styles.settingItem} onPress={() => setShowDatePicker(true)}>
+             <TouchableOpacity style={styles.settingItem} onPress={() => {
+                if (Platform.OS === 'web') {
+                  // For web, we'll use a hidden input or just rely on the fallback if we don't want to overcomplicate
+                  // But the best way is to let the user click and trigger a native date picker
+                } else {
+                  setShowDatePicker(true);
+                }
+             }}>
                 <View style={styles.settingIconBox}>
                   <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
                 </View>
                 <View style={styles.settingTextContent}>
                   <Text style={styles.settingLabel}>Date of Birth</Text>
-                  <Text style={[styles.settingValue, !dob && { color: '#94A3B8' }]}>
-                    {dob ? dob.toLocaleDateString() : "Click to set birth date"}
-                  </Text>
+                  {Platform.OS === 'web' ? (
+                    <input
+                      type="date"
+                      value={dob ? dob.toISOString().split('T')[0] : ""}
+                      max={new Date().toISOString().split('T')[0]}
+                      onChange={(e) => {
+                        const newDate = new Date(e.target.value);
+                        if (!isNaN(newDate.getTime())) {
+                          saveDOB(newDate);
+                        }
+                      }}
+                      style={{
+                        border: 'none',
+                        background: 'none',
+                        fontSize: '15px',
+                        color: '#1E293B',
+                        fontWeight: '700',
+                        marginTop: '2px',
+                        fontFamily: 'inherit',
+                        outline: 'none',
+                        width: '100%'
+                      }}
+                    />
+                  ) : (
+                    <Text style={[styles.settingValue, !dob && { color: '#94A3B8' }]}>
+                      {dob ? dob.toLocaleDateString() : "Click to set birth date"}
+                    </Text>
+                  )}
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                {Platform.OS !== 'web' && <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />}
              </TouchableOpacity>
 
-             {showDatePicker && (
+             {Platform.OS !== 'web' && showDatePicker && (
                 <DateTimePicker
                   value={dob || new Date()}
                   mode="date"

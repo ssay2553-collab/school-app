@@ -1,4 +1,11 @@
-import React, { forwardRef, useImperativeHandle, useRef } from "react";
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+} from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 // Conditionally import WebView to prevent crashes on web
@@ -28,8 +35,10 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
   ) => {
     const webRef = useRef<any>(null);
     const resolver = useRef<((html: string) => void) | null>(null);
+    const lastHtml = useRef(initialContent);
+    const isFirstMount = useRef(true);
 
-    const send = (script: string) => {
+    const send = useCallback((script: string) => {
       if (Platform.OS === "web") {
         const iframe = document.getElementById(
           "rte-frame",
@@ -38,7 +47,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
       } else {
         webRef.current?.injectJavaScript(script);
       }
-    };
+    }, []);
 
     useImperativeHandle(ref, () => ({
       getHTML: () =>
@@ -47,11 +56,25 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
           send("window.__GET__()");
         }),
       setHTML: (html: string) => {
+        lastHtml.current = html;
         send(`window.__SET__(${JSON.stringify(html)})`);
       },
     }));
 
-    const html = `
+    // Sync external changes to initialContent (e.g. clearing or loading drafts)
+    // We only update if it's actually different to prevent cursor jumps/keyboard closing
+    useEffect(() => {
+      if (isFirstMount.current) {
+        isFirstMount.current = false;
+        return;
+      }
+      if (initialContent !== lastHtml.current) {
+        send(`window.__SET__(${JSON.stringify(initialContent)})`);
+        lastHtml.current = initialContent;
+      }
+    }, [initialContent, send]);
+
+    const htmlContent = useMemo(() => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -122,6 +145,7 @@ ${
 <script>
 const editor = document.getElementById("editor");
 
+// Initialize content ONCE from the variable captured at memoization time
 editor.innerHTML = ${JSON.stringify(initialContent)};
 
 function cmd(c){
@@ -204,13 +228,14 @@ if(!window.ReactNativeWebView){
 
 </body>
 </html>
-`;
+`, [readOnly, enableTeacherTools]); // DO NOT include initialContent here, it causes reload on typing
 
-    const onMsg = (data: any) => {
+    const onMsg = useCallback((data: any) => {
       try {
         const msg = JSON.parse(typeof data === 'string' ? data : JSON.stringify(data));
 
         if (msg.type === "CHANGE") {
+          lastHtml.current = msg.html;
           onChange?.(msg.html);
         }
 
@@ -220,20 +245,25 @@ if(!window.ReactNativeWebView){
       } catch (err) {
         // console.warn("RTE onMsg error:", err);
       }
-    };
+    }, [onChange]);
+
+    useEffect(() => {
+      if (Platform.OS === "web") {
+        const handler = (e: MessageEvent) => onMsg(e.data);
+        window.addEventListener("message", handler);
+        return () => window.removeEventListener("message", handler);
+      }
+    }, [onMsg]);
+
+    const source = useMemo(() => ({ html: htmlContent }), [htmlContent]);
 
     if (Platform.OS === "web") {
       return (
         <View style={styles.container}>
           <iframe
             id="rte-frame"
-            srcDoc={html}
+            srcDoc={htmlContent}
             style={{ flex: 1, border: "none", width: '100%', height: '100%' }}
-            onLoad={() => {
-              window.addEventListener("message", (e) => {
-                onMsg(e.data);
-              });
-            }}
           />
         </View>
       );
@@ -244,7 +274,7 @@ if(!window.ReactNativeWebView){
       <View style={styles.container}>
         <WebViewComponent
           ref={webRef}
-          source={{ html }}
+          source={source}
           onMessage={(e: any) => onMsg(e.nativeEvent.data)}
           javaScriptEnabled
           domStorageEnabled

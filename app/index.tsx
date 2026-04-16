@@ -11,6 +11,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    useWindowDimensions,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,6 +27,10 @@ export default function WelcomeScreen() {
   const { appUser, loading } = useAuth();
   const config = useSchoolConfig();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+
+  const isSmallScreen = windowWidth < 380;
+  const isTablet = windowWidth >= 768;
 
   const {
     schoolId,
@@ -114,9 +119,20 @@ export default function WelcomeScreen() {
           <Animatable.View
             animation={isWeb ? undefined : "zoomIn"}
             duration={1200}
-            style={styles.logoContainer}
+            style={[
+              styles.logoContainer,
+              { marginBottom: isSmallScreen ? 20 : 40 },
+            ]}
           >
-            <View style={styles.glassLogo}>
+            <View
+              style={[
+                styles.glassLogo,
+                {
+                  width: isSmallScreen ? 140 : 170,
+                  height: isSmallScreen ? 140 : 170,
+                },
+              ]}
+            >
               <View style={[styles.innerLogo, { backgroundColor: "#FFFFFF" }]}>
                 <Image
                   source={logo}
@@ -127,7 +143,12 @@ export default function WelcomeScreen() {
             </View>
           </Animatable.View>
 
-          <View style={styles.textSection}>
+          <View
+            style={[
+              styles.textSection,
+              { marginBottom: isSmallScreen ? 30 : 50 },
+            ]}
+          >
             <Animatable.View
               animation={isWeb ? undefined : "fadeInDown"}
               delay={200}
@@ -139,7 +160,12 @@ export default function WelcomeScreen() {
             <Animatable.Text
               animation={isWeb ? undefined : "fadeInUp"}
               delay={400}
-              style={styles.schoolName}
+              style={[
+                styles.schoolName,
+                { fontSize: isSmallScreen ? 22 : 28 },
+              ]}
+              numberOfLines={2}
+              adjustsFontSizeToFit
             >
               {fullName}
             </Animatable.Text>
@@ -149,7 +175,12 @@ export default function WelcomeScreen() {
               delay={600}
               style={styles.platformBadge}
             >
-              <Text style={styles.platformText}>
+              <Text
+                style={[
+                  styles.platformText,
+                  { fontSize: isSmallScreen ? 11 : 13 },
+                ]}
+              >
                 Multi-function Academic Management Platform
               </Text>
             </Animatable.View>
@@ -171,19 +202,40 @@ export default function WelcomeScreen() {
             style={styles.buttonWrapper}
           >
             <TouchableOpacity
-              style={[styles.primaryBtn, { backgroundColor: finalSurface }]}
+              style={[
+                styles.primaryBtn,
+                {
+                  backgroundColor: finalSurface,
+                  height: isSmallScreen ? 56 : 64,
+                },
+              ]}
               onPress={handleGetStarted}
               activeOpacity={0.8}
             >
               <View style={styles.btnContent}>
-                <Text style={[styles.primaryBtnText, { color: finalPrimary }]}>
+                <Text
+                  style={[
+                    styles.primaryBtnText,
+                    { color: finalPrimary, fontSize: isSmallScreen ? 14 : 16 },
+                  ]}
+                >
                   ENTER CAMPUS
                 </Text>
                 <LinearGradient
                   colors={[finalPrimary, finalSecondary]}
-                  style={styles.iconCircle}
+                  style={[
+                    styles.iconCircle,
+                    {
+                      width: isSmallScreen ? 30 : 36,
+                      height: isSmallScreen ? 30 : 36,
+                    },
+                  ]}
                 >
-                  <SVGIcon name="arrow-forward" size={18} color="#fff" />
+                  <SVGIcon
+                    name="arrow-forward"
+                    size={isSmallScreen ? 16 : 18}
+                    color="#fff"
+                  />
                 </LinearGradient>
               </View>
             </TouchableOpacity>
@@ -236,7 +288,7 @@ const styles = StyleSheet.create({
   },
   mainContent: {
     alignItems: "center",
-    paddingHorizontal: 30,
+    paddingHorizontal: 20,
   },
   logoContainer: {
     marginBottom: 40,

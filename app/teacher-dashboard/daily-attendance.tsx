@@ -31,7 +31,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Animatable from "react-native-animatable";
 import { useRouter } from "expo-router";
 import moment from "moment";
-import { SVGIcon } from "../../components/SVGIcon";
+import SVGIcon from "../../components/SVGIcon";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 const FILTERS_KEY = "@attendance_filters_v1";

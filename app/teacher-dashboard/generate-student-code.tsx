@@ -32,7 +32,6 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
-import SVGIcon from "../../components/SVGIcon";
 
 interface ClassItem {
   id: string;

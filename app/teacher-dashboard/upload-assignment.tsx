@@ -1,4 +1,3 @@
-import { SVGIcon } from "../../components/SVGIcon";
 import * as DocumentPicker from "expo-document-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";

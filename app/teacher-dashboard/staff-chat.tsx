@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -455,7 +454,7 @@ export default function StaffChat() {
                 }}
                 style={styles.emojiToggle}
               >
-                <Ionicons
+                <SVGIcon
                   name={showEmojis ? "keypad" : "happy-outline"}
                   size={26}
                   color={primary}

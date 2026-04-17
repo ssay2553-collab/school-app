@@ -1,5 +1,4 @@
 // app/student-dashboard/note.tsx
-import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   addDoc,
@@ -549,7 +548,7 @@ export default function NoteScreen() {
                 />
               )}
             </View>
-            <Ionicons name="chevron-down" size={18} color={COLORS.primary} />
+            <SVGIcon name="chevron-down" size={18} color={COLORS.primary} />
           </TouchableOpacity>
 
           {showSubjectDropdown && (
@@ -599,7 +598,7 @@ export default function NoteScreen() {
           {currentNoteSubmission?.status === "rework" && (
             <View style={styles.reworkBanner}>
               <View style={styles.reworkHeader}>
-                <Ionicons name="alert-circle" size={20} color="#B45309" />
+                <SVGIcon name="alert-circle" size={20} color="#B45309" />
                 <Text style={styles.reworkTitle}>Rework Required by Teacher</Text>
               </View>
               {currentNoteSubmission.feedback && (
@@ -680,7 +679,7 @@ export default function NoteScreen() {
       ) : (
         <View style={{ flex: 1 }}>
           <View style={styles.searchBox}>
-            <Ionicons
+            <SVGIcon
               name="search"
               size={20}
               color="#999"
@@ -758,8 +757,8 @@ export default function NoteScreen() {
                       await persistLocalNotes(next);
                     }}
                   >
-                    <Ionicons
-                      name={item.pinned ? "pin" : "pin-outline"}
+                    <SVGIcon
+                      name={item.pinned ? "pin" : "pin"}
                       size={20}
                       color={item.pinned ? COLORS.secondary : "#999"}
                     />
@@ -789,7 +788,7 @@ export default function NoteScreen() {
                         }
                       }}
                     >
-                      <Ionicons name="copy-outline" size={18} color="#666" />
+                      <SVGIcon name="copy" size={18} color="#666" />
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -797,7 +796,7 @@ export default function NoteScreen() {
                       disabled={submitting}
                       style={styles.submitBadge}
                     >
-                      <Ionicons
+                      <SVGIcon
                         name="cloud-upload"
                         size={16}
                         color="#fff"

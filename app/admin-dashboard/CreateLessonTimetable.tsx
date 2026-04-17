@@ -41,7 +41,7 @@ import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import { useRouter } from "expo-router";
 import { sortClasses } from "../../lib/classHelpers";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, COMMON_ACTIVITIES, CurriculumType } from "../../constants/Curriculum";
-import { Ionicons } from "@expo/vector-icons";
+import SVGIcon from "../../components/SVGIcon";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -303,7 +303,7 @@ export default function CreateLessonTimetable() {
                     Alert.alert("Delete", "Remove this period?", [{text: "No"}, {text: "Yes", onPress: performDelete}]);
                 }
             }}>
-              <Ionicons name="trash" size={14} color="#EF4444" />
+              <SVGIcon name="trash" size={14} color="#EF4444" />
             </TouchableOpacity>
           )}
         </View>
@@ -331,7 +331,7 @@ export default function CreateLessonTimetable() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><Ionicons name="arrow-back" size={24} color={brandColor} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color={brandColor} /></TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: neutralDark }]}>Timetable Creator</Text>
           <Text style={styles.subtitle}>{canEdit ? "Editing Mode" : "Viewing Mode"}</Text>
@@ -371,7 +371,7 @@ export default function CreateLessonTimetable() {
                 <View style={styles.tableRow}>
                   <View style={[styles.dayColumnHeader, { width: DAY_COLUMN_WIDTH }]}><Text style={styles.dayHeaderText}>Day \ Period</Text></View>
                   {Array.from({ length: numColumns }).map((_, i) => renderColumnHeader(i))}
-                  {canEdit && <TouchableOpacity style={styles.addColumnBtn} onPress={() => setNumColumns(p => p+1)}><Ionicons name="add-circle" size={24} color={brandColor} /></TouchableOpacity>}
+                  {canEdit && <TouchableOpacity style={styles.addColumnBtn} onPress={() => setNumColumns(p => p+1)}><SVGIcon name="add-circle" size={24} color={brandColor} /></TouchableOpacity>}
                 </View>
                 {DAYS.map((day) => (
                   <View key={day} style={styles.tableRow}>
@@ -391,7 +391,7 @@ export default function CreateLessonTimetable() {
             <View style={styles.pickerSheet}>
                 <View style={styles.sheetHeader}>
                     <Text style={styles.sheetTitle}>Select Subject</Text>
-                    <TouchableOpacity onPress={() => setPickerModal(null)}><Ionicons name="close" size={24} color="#64748B" /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => setPickerModal(null)}><SVGIcon name="close" size={24} color="#64748B" /></TouchableOpacity>
                 </View>
                 <FlatList
                     data={["---", ...availableSubjects]}
@@ -415,7 +415,7 @@ export default function CreateLessonTimetable() {
       {canEdit && !loadingData && selectedClass !== "" && (
         <View style={styles.footer}>
           <TouchableOpacity style={[styles.saveBtn, { backgroundColor: brandColor }]} onPress={save} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <><Text style={styles.saveBtnText}>Save Full Timetable</Text><Ionicons name="cloud-done" size={20} color="#fff" style={{ marginLeft: 10 }} /></>}
+            {saving ? <ActivityIndicator color="#fff" /> : <><Text style={styles.saveBtnText}>Save Full Timetable</Text><SVGIcon name="cloud-done" size={20} color="#fff" style={{ marginLeft: 10 }} /></>}
           </TouchableOpacity>
         </View>
       )}

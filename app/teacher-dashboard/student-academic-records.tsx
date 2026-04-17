@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -683,7 +682,7 @@ export default function StudentAcademicRecords() {
           style={styles.fabGrad}
         >
           <Text style={styles.saveFabText}>SAVE PERFORMANCE LEDGER</Text>
-          <Ionicons name="checkmark-done" size={24} color="#fff" />
+          <SVGIcon name="checkmark-done" size={24} color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
     </SafeAreaView>

@@ -146,6 +146,12 @@ export default function AdminDashboard() {
           icon: "checkmark-circle",
           color: "#10b981",
         },
+        {
+          title: "Teacher Stats",
+          route: "/admin-dashboard/teacher-statistics",
+          icon: "analytics",
+          color: "#f59e0b",
+        },
       ],
     },
     {

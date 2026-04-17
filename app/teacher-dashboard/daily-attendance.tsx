@@ -31,7 +31,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Animatable from "react-native-animatable";
 import { useRouter } from "expo-router";
 import moment from "moment";
-import { Ionicons } from "@expo/vector-icons";
+import { SVGIcon } from "../../components/SVGIcon";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 const FILTERS_KEY = "@attendance_filters_v1";
@@ -284,7 +284,7 @@ export default function DailyAttendanceScreen() {
               onPress={() => markLocal(item.id, "present")}
               activeOpacity={0.7}
             >
-              <Ionicons name="checkmark-circle" size={20} color={status === 'present' ? '#fff' : '#10B981'} />
+              <SVGIcon name="checkmark-circle" size={20} color={status === 'present' ? '#fff' : '#10B981'} />
               <Text style={[styles.actionBtnText, status === "present" && {color: "#fff"}]}>Present</Text>
             </TouchableOpacity>
             
@@ -293,7 +293,7 @@ export default function DailyAttendanceScreen() {
               onPress={() => markLocal(item.id, "absent")}
               activeOpacity={0.7}
             >
-              <Ionicons name="close-circle" size={20} color={status === 'absent' ? '#fff' : '#EF4444'} />
+              <SVGIcon name="close-circle" size={20} color={status === 'absent' ? '#fff' : '#EF4444'} />
               <Text style={[styles.actionBtnText, status === "absent" && {color: "#fff"}]}>Absent</Text>
             </TouchableOpacity>
           </View>
@@ -315,7 +315,7 @@ export default function DailyAttendanceScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}><Ionicons name="arrow-back" size={24} color="#1E293B" /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}><SVGIcon name="arrow-back" size={24} color="#1E293B" /></TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Daily Attendance</Text>
           <Text style={styles.subtitle}>{academicYear} • {term}</Text>
@@ -323,12 +323,12 @@ export default function DailyAttendanceScreen() {
       </View>
 
       <View style={styles.dateBar}>
-         <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateNavBtn}><Ionicons name="chevron-back" size={20} color="#64748B" /></TouchableOpacity>
+         <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateNavBtn}><SVGIcon name="chevron-back" size={20} color="#64748B" /></TouchableOpacity>
          <View style={styles.dateDisplay}>
-            <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+            <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
             <Text style={styles.dateText}>{moment(selectedDate).format("dddd, MMMM D, YYYY")}</Text>
          </View>
-         <TouchableOpacity onPress={() => changeDate(1)} style={styles.dateNavBtn}><Ionicons name="chevron-forward" size={20} color="#64748B" /></TouchableOpacity>
+         <TouchableOpacity onPress={() => changeDate(1)} style={styles.dateNavBtn}><SVGIcon name="chevron-forward" size={20} color="#64748B" /></TouchableOpacity>
       </View>
 
       <View style={styles.filterArea}>
@@ -355,7 +355,7 @@ export default function DailyAttendanceScreen() {
       {hasUnsavedChanges && (
         <Animatable.View animation="slideInUp" duration={400} style={styles.footerAction}>
            <TouchableOpacity style={styles.saveBtn} onPress={saveToFirestore} disabled={saving}>
-              {saving ? <ActivityIndicator color="#fff" /> : <><Ionicons name="cloud-upload" size={20} color="#fff" /><Text style={styles.saveBtnText}>Save Changes Now</Text></>}
+              {saving ? <ActivityIndicator color="#fff" /> : <><SVGIcon name="cloud-upload" size={20} color="#fff" /><Text style={styles.saveBtnText}>Save Changes Now</Text></>}
            </TouchableOpacity>
         </Animatable.View>
       )}

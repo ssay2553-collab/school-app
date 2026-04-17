@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import React, { useRef, useState, useEffect } from "react";
 import {
     ActivityIndicator,

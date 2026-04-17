@@ -444,7 +444,7 @@ module.exports = ({ config }) => {
       scheme: "bishops",
       logo: "./assets/icon-bishop.png",
       hotline: "0273122929",
-      fullName: "Bishop's Gate Educational School Complex",
+      fullName: "Bishop Gates Educational School Complex",
       motto: "Integrity, Excellence and Wholeness",
       address: "Off Jei River Rd, Kasoa, Ghana",
       email: "bishop@gmail.com",

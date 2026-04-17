@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import {
     Timestamp,
     collection,
@@ -209,7 +208,7 @@ export default function AssignmentScores() {
                 Marks
               </Text>
             </View>
-            <Ionicons 
+            <SVGIcon
               name={isExpanded ? "chevron-up" : "chevron-down"} 
               size={18} 
               color="#94A3B8" 
@@ -300,7 +299,7 @@ export default function AssignmentScores() {
           }
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Ionicons name="stats-chart-outline" size={64} color="#CBD5E1" />
+              <SVGIcon name="stats-chart-outline" size={64} color="#CBD5E1" />
               <Text style={styles.emptyText}>No scores found.</Text>
               <Text style={styles.emptyHint}>
                 Check back once your teacher marks your work!

@@ -65,6 +65,7 @@ type Group = {
   name: string;
   classId: string;
   studentIds: string[];
+  staffIds?: string[];
   teacherId: string;
   createdAt: any;
 };
@@ -72,6 +73,12 @@ type Group = {
 type Student = {
   id: string;
   fullName: string;
+};
+
+type Staff = {
+  id: string;
+  fullName: string;
+  role: string;
 };
 
 /* ======================================================
@@ -259,8 +266,30 @@ export default function TeacherStudentGroups() {
   const [selectedClassId, setSelectedClassId] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const [groupName, setGroupName] = useState("");
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
+
+  const fetchStaff = async () => {
+    try {
+      const q = query(
+        collection(db, "users"),
+        where("role", "in", ["teacher", "admin"])
+      );
+      const snap = await getDocs(q);
+      const staffList = snap.docs
+        .map((d) => ({
+          id: d.id,
+          fullName: `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim() || "Staff",
+          role: d.data().role,
+        }))
+        .filter((s) => s.id !== appUser?.uid); // Don't include self
+      setStaff(staffList);
+    } catch (e) {
+      console.error("Error fetching staff:", e);
+    }
+  };
 
   useEffect(() => {
     if (!appUser?.uid) return;
@@ -300,10 +329,12 @@ export default function TeacherStudentGroups() {
       }));
       // Logical Sort
       setTeacherClasses(sortClasses(list));
+      await fetchStaff();
 
       setGroupName("");
       setSelectedClassId("");
       setSelectedStudentIds([]);
+      setSelectedStaffIds([]);
       setView("CREATE");
     } catch {
       Alert.alert("Error", "Could not fetch classes.");
@@ -328,11 +359,13 @@ export default function TeacherStudentGroups() {
         name: d.data().name || d.id,
       }));
       setTeacherClasses(sortClasses(list));
+      await fetchStaff();
 
       setActiveGroup(group);
       setGroupName(group.name);
       setSelectedClassId(group.classId);
       setSelectedStudentIds(group.studentIds);
+      setSelectedStaffIds(group.staffIds || []);
       setView("EDIT");
     } catch {
       Alert.alert("Error", "Could not load edit screen.");
@@ -381,6 +414,7 @@ export default function TeacherStudentGroups() {
         await updateDoc(doc(db, "studentGroups", activeGroup.id), {
           name: groupName.trim(),
           studentIds: selectedStudentIds,
+          staffIds: selectedStaffIds,
         });
         Alert.alert("Success", "Group updated.");
       } else {
@@ -389,6 +423,7 @@ export default function TeacherStudentGroups() {
           teacherId: appUser!.uid,
           classId: selectedClassId,
           studentIds: selectedStudentIds,
+          staffIds: selectedStaffIds,
           createdAt: serverTimestamp(),
         });
         Alert.alert("Success", "Group created.");
@@ -403,6 +438,12 @@ export default function TeacherStudentGroups() {
 
   const toggleStudent = (id: string) => {
     setSelectedStudentIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
+  const toggleStaff = (id: string) => {
+    setSelectedStaffIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
@@ -635,6 +676,49 @@ export default function TeacherStudentGroups() {
                 </Text>
               </View>
             )}
+
+            <View style={{ marginTop: 25, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 20 }}>
+              <Text style={styles.label}>
+                ADD COLLABORATORS (STAFF) ({selectedStaffIds.length})
+              </Text>
+              <View style={styles.studentList}>
+                {staff.map((s) => (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={[
+                      styles.studentChip,
+                      selectedStaffIds.includes(s.id) && {
+                        backgroundColor: secondary,
+                        borderColor: secondary,
+                      },
+                    ]}
+                    onPress={() => toggleStaff(s.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.studentChipText,
+                        selectedStaffIds.includes(s.id) && {
+                          color: "#fff",
+                        },
+                      ]}
+                    >
+                      {s.fullName} ({s.role === 'admin' ? 'Admin' : 'Teacher'})
+                    </Text>
+                    <SVGIcon
+                      name={
+                        selectedStaffIds.includes(s.id)
+                          ? "checkmark-circle"
+                          : "add-circle-outline"
+                      }
+                      size={16}
+                      color={
+                        selectedStaffIds.includes(s.id) ? "#fff" : secondary
+                      }
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
 
           <TouchableOpacity

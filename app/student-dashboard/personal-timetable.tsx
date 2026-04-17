@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Notifications from "expo-notifications";
@@ -327,7 +326,7 @@ function Section({ title, icon, color, entries, onAdd, onEdit, onDelete }: any) 
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Ionicons name={icon} size={22} color={color} />
+          <SVGIcon name={icon} size={22} color={color} />
           <Text style={styles.sectionTitle}>{title}</Text>
         </View>
         {entries.length < 2 && (
@@ -344,7 +343,7 @@ function Section({ title, icon, color, entries, onAdd, onEdit, onDelete }: any) 
             <View style={{ flex: 1 }}>
               <Text style={styles.entrySubject}>{item.subject}</Text>
               <View style={styles.timeRow}>
-                <Ionicons name="alarm-outline" size={14} color="#64748B" />
+                <SVGIcon name="alarm-outline" size={14} color="#64748B" />
                 <Text style={styles.entryTime}>{item.time}</Text>
               </View>
             </View>

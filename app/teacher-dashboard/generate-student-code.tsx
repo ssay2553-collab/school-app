@@ -32,7 +32,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
-import { Ionicons } from "@expo/vector-icons";
+import SVGIcon from "../../components/SVGIcon";
 
 interface ClassItem {
   id: string;
@@ -121,7 +121,7 @@ export default function GenerateStudentCode() {
       <LinearGradient colors={[primary, secondary]} style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerInfo}>
             <Text style={styles.headerTitle}>Student Tokens</Text>
@@ -137,7 +137,7 @@ export default function GenerateStudentCode() {
         <Animatable.View animation="fadeInUp" duration={600} style={styles.mainCard}>
           <View style={styles.sectionHeader}>
             <View style={styles.iconCircle}>
-              <Ionicons name="people-outline" size={22} color={primary} />
+              <SVGIcon name="people-outline" size={22} color={primary} />
             </View>
             <View>
               <Text style={styles.sectionTitle}>TOKEN GENERATOR</Text>
@@ -176,7 +176,7 @@ export default function GenerateStudentCode() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="key-outline" size={20} color="#fff" />
+                  <SVGIcon name="key-outline" size={20} color="#fff" />
                   <Text style={styles.generateBtnText}>Generate Security Token</Text>
                 </>
               )}
@@ -187,7 +187,7 @@ export default function GenerateStudentCode() {
         {generatedCode && (
           <Animatable.View animation="zoomIn" duration={500} style={styles.resultCard}>
             <View style={styles.resultHeader}>
-              <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+              <SVGIcon name="shield-checkmark" size={20} color="#10B981" />
               <Text style={styles.resultTitle}>SECURE TOKEN CREATED</Text>
             </View>
             
@@ -197,18 +197,18 @@ export default function GenerateStudentCode() {
 
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={14} color="#64748B" />
+                <SVGIcon name="time-outline" size={14} color="#64748B" />
                 <Text style={styles.metaText}>Expires in 20 mins</Text>
               </View>
               <View style={styles.metaDivider} />
               <View style={styles.metaItem}>
-                <Ionicons name="person-outline" size={14} color="#64748B" />
+                <SVGIcon name="person-outline" size={14} color="#64748B" />
                 <Text style={styles.metaText}>1-Time Use</Text>
               </View>
             </View>
 
             <TouchableOpacity onPress={copyToClipboard} style={styles.copyBtn}>
-              <Ionicons name="copy-outline" size={18} color="#fff" />
+              <SVGIcon name="copy-outline" size={18} color="#fff" />
               <Text style={styles.copyBtnText}>Copy Token to Clipboard</Text>
             </TouchableOpacity>
           </Animatable.View>
@@ -216,7 +216,7 @@ export default function GenerateStudentCode() {
 
         <View style={styles.guideCard}>
           <View style={[styles.guideIcon, { backgroundColor: primary + '10' }]}>
-            <Ionicons name="information-circle" size={24} color={primary} />
+            <SVGIcon name="information-circle" size={24} color={primary} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.guideTitle}>How it works</Text>

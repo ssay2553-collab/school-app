@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
@@ -191,7 +190,7 @@ export default function StudentSettings() {
               </View>
             )}
             <View style={styles.editBadge}>
-               <Ionicons name="camera" size={14} color="#FFF" />
+               <SVGIcon name="camera" size={14} color="#FFF" />
             </View>
           </TouchableOpacity>
           
@@ -214,7 +213,7 @@ export default function StudentSettings() {
                 }
              }}>
                 <View style={styles.settingIconBox}>
-                  <Ionicons name="calendar-outline" size={20} color={COLORS.primary} />
+                  <SVGIcon name="calendar" size={20} color={COLORS.primary} />
                 </View>
                 <View style={styles.settingTextContent}>
                   <Text style={styles.settingLabel}>Date of Birth</Text>
@@ -247,7 +246,7 @@ export default function StudentSettings() {
                     </Text>
                   )}
                 </View>
-                {Platform.OS !== 'web' && <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />}
+                {Platform.OS !== 'web' && <SVGIcon name="chevron-forward" size={16} color="#CBD5E1" />}
              </TouchableOpacity>
 
              {Platform.OS !== 'web' && showDatePicker && (
@@ -270,25 +269,25 @@ export default function StudentSettings() {
           <View style={styles.settingsCard}>
              <TouchableOpacity style={styles.settingItem} onPress={() => setPwModalVisible(true)}>
                 <View style={[styles.settingIconBox, { backgroundColor: '#EEF2FF' }]}>
-                  <Ionicons name="lock-closed-outline" size={20} color="#4F46E5" />
+                  <SVGIcon name="lock-closed" size={20} color="#4F46E5" />
                 </View>
                 <View style={styles.settingTextContent}>
                   <Text style={styles.settingLabel}>Security</Text>
                   <Text style={[styles.settingValue, { color: '#4F46E5' }]}>Change Login Password</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={16} color="#CBD5E1" />
+                <SVGIcon name="chevron-forward" size={16} color="#CBD5E1" />
              </TouchableOpacity>
              <View style={styles.divider} />
              <View style={styles.settingItem}>
                 <View style={styles.settingIconBox}>
-                  <Ionicons name="key-outline" size={20} color={COLORS.primary} />
+                  <SVGIcon name="key" size={20} color={COLORS.primary} />
                 </View>
                 <View style={styles.settingTextContent}>
                   <Text style={styles.settingLabel}>Family Link Code</Text>
                   <Text style={[styles.settingValue, { letterSpacing: 2, color: COLORS.secondary }]}>{appUser?.parentLinkCode || "------"}</Text>
                 </View>
                 <TouchableOpacity onPress={() => Alert.alert("Parent Link", "Provide this code to your parents so they can link their account to your profile.")}>
-                    <Ionicons name="information-circle-outline" size={20} color="#94A3B8" />
+                    <SVGIcon name="information-circle" size={20} color="#94A3B8" />
                 </TouchableOpacity>
              </View>
           </View>
@@ -298,13 +297,13 @@ export default function StudentSettings() {
           <Text style={styles.sectionTitle}>MY INFO</Text>
           <View style={styles.settingsCard}>
              <SettingItem 
-                icon="person-outline" 
+                icon="person"
                 title="Full Name" 
                 value={`${appUser?.profile?.firstName} ${appUser?.profile?.lastName}`} 
              />
              <View style={styles.divider} />
              <SettingItem 
-                icon="mail-outline" 
+                icon="mail"
                 title="Email Address" 
                 value={appUser?.profile?.email || "Not set"} 
              />
@@ -320,10 +319,10 @@ export default function StudentSettings() {
           >
             <View style={styles.logoutContent}>
               <View style={styles.logoutIconBox}>
-                <Ionicons name="power-outline" size={20} color="#EF4444" />
+                <SVGIcon name="power" size={20} color="#EF4444" />
               </View>
               <Text style={styles.logoutText}>Sign Out of My Account</Text>
-              {loading ? <ActivityIndicator color="#EF4444" /> : <Ionicons name="chevron-forward" size={18} color="#94A3B8" />}
+              {loading ? <ActivityIndicator color="#EF4444" /> : <SVGIcon name="chevron-forward" size={18} color="#94A3B8" />}
             </View>
           </TouchableOpacity>
         </View>
@@ -341,7 +340,7 @@ export default function StudentSettings() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Change Password</Text>
               <TouchableOpacity onPress={() => setPwModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#64748B" />
+                <SVGIcon name="close" size={24} color="#64748B" />
               </TouchableOpacity>
             </View>
             
@@ -391,7 +390,7 @@ export default function StudentSettings() {
 const SettingItem = ({ icon, title, value }: any) => (
   <View style={styles.settingItem}>
     <View style={styles.settingIconBox}>
-      <Ionicons name={icon} size={20} color={COLORS.primary} />
+      <SVGIcon name={icon} size={20} color={COLORS.primary} />
     </View>
     <View style={styles.settingTextContent}>
       <Text style={styles.settingLabel}>{title}</Text>

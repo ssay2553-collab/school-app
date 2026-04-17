@@ -1,4 +1,4 @@
-import { Ionicons } from "@expo/vector-icons";
+import { SVGIcon } from "../../components/SVGIcon";
 import * as DocumentPicker from "expo-document-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -277,7 +277,7 @@ export default function UploadAssignment() {
         <View style={styles.headerTitleRow}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color="#fff" /></TouchableOpacity>
           <Text style={styles.headerTitle}>Post Assignment</Text>
-          <Ionicons name="cloud-upload" size={24} color={COLORS.secondary} />
+          <SVGIcon name="cloud-upload" size={24} color={COLORS.secondary} />
         </View>
       </LinearGradient>
 
@@ -322,7 +322,7 @@ export default function UploadAssignment() {
               {Platform.OS === "web" ? (
                 <>
                   <View style={[styles.datePickerBtn, { flex: 1.2 }]}>
-                    <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+                    <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
                     <TextInput
                       style={styles.webInput}
                       defaultValue={webDateValue}
@@ -331,7 +331,7 @@ export default function UploadAssignment() {
                     />
                   </View>
                   <View style={[styles.datePickerBtn, { flex: 1 }]}>
-                    <Ionicons name="time-outline" size={18} color={COLORS.primary} />
+                    <SVGIcon name="time-outline" size={18} color={COLORS.primary} />
                     <TextInput
                       style={styles.webInput}
                       defaultValue={webTimeValue}
@@ -346,7 +346,7 @@ export default function UploadAssignment() {
                     onPress={() => { setPickerMode("date"); setShowDatePicker(true); }} 
                     style={[styles.datePickerBtn, { flex: 1.2 }]}
                   >
-                    <Ionicons name="calendar-outline" size={18} color={COLORS.primary} />
+                    <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
                     <Text style={styles.datePickerText}>{dueDate.toLocaleDateString()}</Text>
                   </TouchableOpacity>
                   
@@ -354,7 +354,7 @@ export default function UploadAssignment() {
                     onPress={() => { setPickerMode("time"); setShowDatePicker(true); }} 
                     style={[styles.datePickerBtn, { flex: 1 }]}
                   >
-                    <Ionicons name="time-outline" size={18} color={COLORS.primary} />
+                    <SVGIcon name="time-outline" size={18} color={COLORS.primary} />
                     <Text style={styles.datePickerText}>
                       {dueDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </Text>
@@ -381,7 +381,7 @@ export default function UploadAssignment() {
               
               <Text style={styles.inputLabel}>Attachment (Optional)</Text>
               <TouchableOpacity style={styles.uploadBtn} onPress={pickDocument}>
-                <Ionicons name="document-attach" size={24} color={COLORS.primary} />
+                <SVGIcon name="document-attach" size={24} color={COLORS.primary} />
                 <Text style={styles.uploadBtnText}>{file && !file.canceled ? file.assets?.[0]?.name : "Select Document"}</Text>
               </TouchableOpacity>
             </Animatable.View>
@@ -389,7 +389,7 @@ export default function UploadAssignment() {
             <Animatable.View animation="fadeInUp" style={styles.card}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionLabel}>Interactive Questions</Text>
-                <TouchableOpacity onPress={addQuestion} style={styles.addBtn}><Ionicons name="add-circle" size={24} color={COLORS.primary} /></TouchableOpacity>
+                <TouchableOpacity onPress={addQuestion} style={styles.addBtn}><SVGIcon name="add-circle" size={24} color={COLORS.primary} /></TouchableOpacity>
               </View>
 
               {questions.map((q, qIndex) => (
@@ -414,7 +414,7 @@ export default function UploadAssignment() {
         <TouchableOpacity style={[styles.submitBtn, loading && { opacity: 0.7 }]} onPress={handleUpload} disabled={loading || uploadingFile}>
           <LinearGradient colors={[COLORS.primary, "#4F46E5"]} style={styles.submitBtnGradient}>
             {loading || uploadingFile ? <ActivityIndicator color="#fff" /> : (
-              <><Text style={styles.submitBtnText}>Post Assignment</Text><Ionicons name="send" size={20} color="#fff" style={{ marginLeft: 10 }} /></>
+              <><Text style={styles.submitBtnText}>Post Assignment</Text><SVGIcon name="send" size={20} color="#fff" style={{ marginLeft: 10 }} /></>
             )}
           </LinearGradient>
         </TouchableOpacity>
@@ -445,7 +445,7 @@ const QuestionItem = memo(({
       <View style={styles.qHeader}>
         <Text style={styles.qIndex}>Question {qIndex + 1}</Text>
         <TouchableOpacity onPress={() => removeQuestion(qIndex)}>
-          <Ionicons name="trash-outline" size={20} color="#EF4444" />
+          <SVGIcon name="trash-outline" size={20} color="#EF4444" />
         </TouchableOpacity>
       </View>
       <TextInput

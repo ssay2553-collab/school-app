@@ -26,13 +26,16 @@ import {
   Image,
   ScrollView,
   RefreshControl,
-  Modal
+  Modal,
+  AppState
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
+import { useAuth } from "../../contexts/AuthContext";
 import moment from "moment";
 
 const { width } = Dimensions.get("window");
@@ -45,18 +48,38 @@ interface TeacherStats {
   totalAssignments: number;
   totalGroups: number;
   totalLessonPlans: number;
-  weeklyTopics: { subject: string, topic: string }[];
+  weeklyTopics: {
+    subject: string,
+    topic: string,
+    className: string,
+    strand?: string,
+    duration?: string,
+    plan?: any
+  }[];
   lastActive?: any;
   onlineTimeMinutes: number; // Simulated or calculated if available
   usageScore: number; // Percentage
+  assignedClasses: string[];
+  groups: { name: string, className: string, memberCount: number }[];
+  assignmentBreakdown: {
+    subject: string;
+    className: string;
+    count: number;
+  }[];
 }
 
 export default function TeacherStatistics() {
   const router = useRouter();
+  const { appUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [teachers, setTeachers] = useState<TeacherStats[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherStats | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+
+  const CACHE_KEY = `teacher_stats_${SCHOOL_CONFIG.schoolId}`;
+  const CACHE_EXPIRY = 12 * 60 * 60 * 1000; // 12 hours cache
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
@@ -71,77 +94,133 @@ export default function TeacherStatistics() {
   };
 
   const fetchStatistics = useCallback(async () => {
+    if (!appUser) return;
     try {
       setLoading(true);
       const startOfWeek = getStartOfWeek();
 
-      // 1. Fetch all teachers
-      const teacherQuery = query(collection(db, "users"), where("role", "==", "teacher"));
-      const teacherSnap = await getDocs(teacherQuery);
+      // 0. Fetch metadata once
+      const classesSnap = await getDocs(collection(db, "classes"));
+      const classMap: Record<string, string> = {};
+      classesSnap.forEach(doc => {
+        classMap[doc.id] = doc.data().name || doc.data().className || doc.id;
+      });
 
-      const teacherList: TeacherStats[] = [];
+      // 1. Batch Fetch all required collections for the school
+      const [teacherSnap, allAssignmentsSnap, allGroupsSnap, weeklyLessonsSnap] = await Promise.all([
+        getDocs(query(collection(db, "users"), where("role", "==", "teacher"), where("schoolId", "==", SCHOOL_CONFIG.schoolId))),
+        getDocs(query(collection(db, "assignments"), where("schoolId", "==", SCHOOL_CONFIG.schoolId))),
+        getDocs(query(collection(db, "studentGroups"), where("schoolId", "==", SCHOOL_CONFIG.schoolId))),
+        getDocs(query(collection(db, "pedagogy_vault"), where("schoolId", "==", SCHOOL_CONFIG.schoolId), where("createdAt", ">=", Timestamp.fromDate(startOfWeek)), orderBy("createdAt", "desc")))
+      ]);
 
-      const teachersData = teacherSnap.docs.map(d => ({
-        uid: d.id,
-        ...d.data()
-      }));
+      // 2. Map data to teachers in memory (O(1) lookup)
+      const assignmentMap: Record<string, any[]> = {};
+      allAssignmentsSnap.docs.forEach(d => {
+        const data = d.data();
+        if (!assignmentMap[data.teacherId]) assignmentMap[data.teacherId] = [];
+        assignmentMap[data.teacherId].push(data);
+      });
 
-      // 2. For each teacher, fetch assignments, groups, and lesson plans
-      for (const t of teachersData) {
-        const assignmentsQuery = query(collection(db, "assignments"), where("teacherId", "==", t.uid));
-        const groupsQuery = query(collection(db, "studentGroups"), where("teacherId", "==", t.uid));
-        const lessonsCountQuery = query(collection(db, "pedagogy_vault"), where("userId", "==", t.uid));
+      const groupMap: Record<string, any[]> = {};
+      allGroupsSnap.docs.forEach(d => {
+        const data = d.data();
+        if (!groupMap[data.teacherId]) groupMap[data.teacherId] = [];
+        groupMap[data.teacherId].push(data);
+      });
 
-        // Fetch specific topics for the current week
-        const weeklyLessonsQuery = query(
-          collection(db, "pedagogy_vault"),
-          where("userId", "==", t.uid),
-          where("createdAt", ">=", Timestamp.fromDate(startOfWeek)),
-          orderBy("createdAt", "desc")
-        );
+      const lessonsMap: Record<string, any[]> = {};
+      weeklyLessonsSnap.docs.forEach(d => {
+        const data = d.data();
+        if (!lessonsMap[data.userId]) lessonsMap[data.userId] = [];
+        lessonsMap[data.userId].push(data);
+      });
 
-        const [aSnap, gSnap, lCountSnap, weeklySnap] = await Promise.all([
-          getCountFromServer(assignmentsQuery),
-          getCountFromServer(groupsQuery),
-          getCountFromServer(lessonsCountQuery),
-          getDocs(weeklyLessonsQuery)
-        ]);
+      // 3. Assemble final teacher list
+      const teacherList: TeacherStats[] = teacherSnap.docs.map(tDoc => {
+        const t = { uid: tDoc.id, ...tDoc.data() } as any;
+        const tAssignments = assignmentMap[t.uid] || [];
+        const tGroups = groupMap[t.uid] || [];
+        const tLessons = lessonsMap[t.uid] || [];
 
-        const aCount = aSnap.data().count;
-        const gCount = gSnap.data().count;
-        const lCount = lCountSnap.data().count;
-
-        const weeklyTopics = weeklySnap.docs.map(doc => ({
-          subject: doc.data().subject,
-          topic: doc.data().topic
-        }));
-
-        // Usage Score calculation
-        const lastActive = (t as any).lastActive || null;
-        let usageScore = Math.min(100, (aCount * 10) + (gCount * 15) + (lCount * 20));
-        if (lastActive) {
-            const daysSinceActive = moment().diff(moment(lastActive.toDate()), 'days');
-            usageScore = Math.max(0, usageScore - (daysSinceActive * 2));
-        }
-
-        teacherList.push({
-          uid: t.uid,
-          fullName: `${(t as any).profile?.firstName || ""} ${(t as any).profile?.lastName || ""}`.trim() || "Teacher",
-          email: (t as any).profile?.email || "",
-          profileImage: (t as any).profile?.profileImage,
-          totalAssignments: aCount,
-          totalGroups: gCount,
-          totalLessonPlans: lCount,
-          weeklyTopics: weeklyTopics,
-          lastActive: lastActive,
-          onlineTimeMinutes: (t as any).onlineTimeMinutes || Math.floor(Math.random() * 500) + 100,
-          usageScore: usageScore
+        // Calculate breakdown
+        const breakdownMap: Record<string, number> = {};
+        tAssignments.forEach(a => {
+          const key = `${a.classId}|||${a.subjectId}`;
+          breakdownMap[key] = (breakdownMap[key] || 0) + 1;
         });
-      }
+
+        const assignmentBreakdown = Object.entries(breakdownMap).map(([key, count]) => {
+          const [classId, subject] = key.split("|||");
+          return { subject, className: classMap[classId] || classId, count };
+        });
+
+        // Group topics (Keep latest per subject/class)
+        const topicsMap: Record<string, any> = {};
+        tLessons.forEach(data => {
+          const key = `${data.subject}|||${data.classLevel}`;
+          if (!topicsMap[key]) {
+            topicsMap[key] = {
+              subject: data.subject,
+              topic: data.topic,
+              className: classMap[data.classLevel] || data.classLevel,
+              strand: data.strand,
+              duration: data.duration,
+              plan: data.plan
+            };
+          }
+        });
+
+        const usageScore = Math.min(100, (tAssignments.length * 10) + (tGroups.length * 15) + (tLessons.length * 20));
+
+        return {
+          uid: t.uid,
+          fullName: `${t.profile?.firstName || ""} ${t.profile?.lastName || ""}`.trim() || "Teacher",
+          email: t.profile?.email || "",
+          profileImage: t.profile?.profileImage,
+          totalAssignments: tAssignments.length,
+          totalGroups: tGroups.length,
+          totalLessonPlans: tLessons.length,
+          weeklyTopics: Object.values(topicsMap),
+          lastActive: t.lastActive,
+          onlineTimeMinutes: t.onlineTimeMinutes || 0,
+          usageScore,
+          assignedClasses: (t.classes || []).map((cid: string) => classMap[cid] || cid),
+          groups: tGroups.map(g => ({
+            name: g.name || "Unnamed Group",
+            className: classMap[g.classId] || g.classId || "General",
+            memberCount: (g.studentIds || []).length
+          })),
+          assignmentBreakdown
+        };
+      });
+
+      teacherList.sort((a, b) => b.usageScore - a.usageScore);
+      setTeachers(teacherList);
+      setLastFetchTime(Date.now());
+
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        data: teacherList
+      }));
+    } catch (error) {
+      console.error("Error fetching teacher stats:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [appUser, CACHE_KEY]);
 
       // Sort by usage score
       teacherList.sort((a, b) => b.usageScore - a.usageScore);
       setTeachers(teacherList);
+      setLastFetchTime(Date.now());
+
+      // Cache the result
+      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
+        timestamp: Date.now(),
+        data: teacherList
+      }));
     } catch (error) {
       console.error("Error fetching teacher stats:", error);
     } finally {
@@ -150,9 +229,50 @@ export default function TeacherStatistics() {
     }
   }, []);
 
+  const loadCachedData = async () => {
+    try {
+      const cached = await AsyncStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const { timestamp, data } = JSON.parse(cached);
+        const age = Date.now() - timestamp;
+
+        setTeachers(data);
+        setLastFetchTime(timestamp);
+
+        if (age < CACHE_EXPIRY) {
+          setLoading(false);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.error("Cache load error:", e);
+    }
+    return false;
+  };
+
   useEffect(() => {
-    fetchStatistics();
-  }, [fetchStatistics]);
+    if (!appUser) return;
+
+    const init = async () => {
+      const isCacheValid = await loadCachedData();
+      if (!isCacheValid) {
+        fetchStatistics();
+      }
+    };
+    init();
+
+    // Re-fetch when app comes to foreground if cache is old
+    const subscription = AppState.addEventListener("change", nextAppState => {
+      if (nextAppState === "active" && appUser) {
+        const age = Date.now() - lastFetchTime;
+        if (age > CACHE_EXPIRY) {
+          fetchStatistics();
+        }
+      }
+    });
+
+    return () => subscription.remove();
+  }, [fetchStatistics, appUser, lastFetchTime]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -268,7 +388,7 @@ export default function TeacherStatistics() {
             <View style={styles.modalHeader}>
               <View>
                 <Text style={styles.modalTitle}>{selectedTeacher?.fullName}</Text>
-                <Text style={styles.modalSubtitle}>Current Week Preparations</Text>
+                <Text style={styles.modalSubtitle}>Teacher Activity Report</Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedTeacher(null)}>
                 <SVGIcon name="close-circle" size={28} color="#64748B" />
@@ -276,13 +396,80 @@ export default function TeacherStatistics() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.sectionTitle}>Assigned Classes</Text>
+              <View style={styles.tagContainer}>
+                {selectedTeacher?.assignedClasses && selectedTeacher.assignedClasses.length > 0 ? (
+                  selectedTeacher.assignedClasses.map((c, i) => (
+                    <View key={i} style={[styles.classTag, { backgroundColor: primary + "10" }]}>
+                      <Text style={[styles.classTagText, { color: primary }]}>{c}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.emptyTextSmall}>No classes assigned</Text>
+                )}
+              </View>
+
+              <Text style={styles.sectionTitle}>Assignment Distribution</Text>
+              <View style={styles.breakdownList}>
+                {selectedTeacher?.assignmentBreakdown && selectedTeacher.assignmentBreakdown.length > 0 ? (
+                  selectedTeacher.assignmentBreakdown.map((item, idx) => (
+                    <View key={idx} style={styles.breakdownItem}>
+                      <View style={styles.breakdownInfo}>
+                        <Text style={styles.breakdownClass}>{item.className}</Text>
+                        <Text style={styles.breakdownSubject}>{item.subject}</Text>
+                      </View>
+                      <View style={[styles.countBadge, { backgroundColor: secondary + "20" }]}>
+                        <Text style={[styles.countText, { color: secondary }]}>{item.count} Tasks</Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.noDataBox}>
+                    <Text style={styles.noDataText}>No assignments posted yet.</Text>
+                  </View>
+                )}
+              </View>
+
+              <Text style={styles.sectionTitle}>Student Groups</Text>
+              <View style={styles.breakdownList}>
+                {selectedTeacher?.groups && selectedTeacher.groups.length > 0 ? (
+                  selectedTeacher.groups.map((group, idx) => (
+                    <View key={idx} style={styles.breakdownItem}>
+                      <View style={styles.breakdownInfo}>
+                        <Text style={styles.breakdownClass}>{group.name}</Text>
+                        <Text style={styles.breakdownSubject}>{group.className}, {group.memberCount} members</Text>
+                      </View>
+                      <View style={[styles.countBadge, { backgroundColor: primary + "15" }]}>
+                        <SVGIcon name="people" size={14} color={primary} />
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.noDataBox}>
+                    <Text style={styles.noDataText}>No groups created yet.</Text>
+                  </View>
+                )}
+              </View>
+
+              <Text style={styles.sectionTitle}>Weekly Lesson Plans</Text>
               <View style={styles.plansList}>
                 {selectedTeacher?.weeklyTopics && selectedTeacher.weeklyTopics.length > 0 ? (
                   selectedTeacher.weeklyTopics.map((plan, idx) => (
-                    <View key={idx} style={styles.planCard}>
-                      <Text style={styles.planSubject}>{plan.subject}</Text>
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.planCard}
+                      onPress={() => setSelectedPlan(plan)}
+                    >
+                      <View style={styles.planHeader}>
+                        <Text style={styles.planClassText}>{plan.className}</Text>
+                        <Text style={styles.planSubject}>{plan.subject}</Text>
+                      </View>
                       <Text style={styles.planTopic}>{plan.topic}</Text>
-                    </View>
+                      <View style={styles.planFooter}>
+                        <Text style={styles.viewPlanText}>Tap to view full objectives & content</Text>
+                        <SVGIcon name="eye-outline" size={14} color={primary} />
+                      </View>
+                    </TouchableOpacity>
                   ))
                 ) : (
                   <View style={styles.noPlans}>
@@ -297,6 +484,74 @@ export default function TeacherStatistics() {
               >
                 <Text style={styles.closeModalBtnText}>Done</Text>
               </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Lesson Plan Detail Modal */}
+      <Modal
+        visible={!!selectedPlan}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedPlan(null)}
+      >
+        <View style={styles.planDetailOverlay}>
+          <View style={styles.planDetailContent}>
+            <View style={styles.planDetailHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.detailSubject}>{selectedPlan?.subject}</Text>
+                <Text style={styles.detailTopic}>{selectedPlan?.topic}</Text>
+                <Text style={styles.detailMeta}>{selectedPlan?.className} • {selectedPlan?.duration}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedPlan(null)} style={styles.closeDetailBtn}>
+                <SVGIcon name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
+              {selectedPlan?.strand && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailLabel}>Strand</Text>
+                  <Text style={styles.detailValue}>{selectedPlan.strand}</Text>
+                </View>
+              )}
+
+              {selectedPlan?.plan?.objectives && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailLabel}>Learning Objectives</Text>
+                  {selectedPlan.plan.objectives.map((obj: string, i: number) => (
+                    <View key={i} style={styles.bulletItem}>
+                      <Text style={styles.bullet}>•</Text>
+                      <Text style={styles.bulletText}>{obj}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {selectedPlan?.plan?.teachingActivities && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailLabel}>Teaching Activities</Text>
+                  {selectedPlan.plan.teachingActivities.map((act: string, i: number) => (
+                    <View key={i} style={styles.bulletItem}>
+                      <Text style={styles.bullet}>{i + 1}.</Text>
+                      <Text style={styles.bulletText}>{act}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {selectedPlan?.plan?.assessment && (
+                <View style={styles.detailSection}>
+                  <Text style={styles.detailLabel}>Assessment</Text>
+                  {selectedPlan.plan.assessment.map((ass: string, i: number) => (
+                    <View key={i} style={styles.bulletItem}>
+                      <Text style={styles.bullet}>✓</Text>
+                      <Text style={styles.bulletText}>{ass}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </ScrollView>
           </View>
         </View>
@@ -394,7 +649,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     padding: 24,
-    maxHeight: "80%",
+    maxHeight: "85%",
   },
   modalHeader: {
     flexDirection: "row",
@@ -407,6 +662,26 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 20, fontWeight: "900", color: "#1E293B" },
   modalSubtitle: { fontSize: 13, color: "#64748B", fontWeight: "600" },
+  sectionTitle: { fontSize: 14, fontWeight: "800", color: "#64748B", textTransform: "uppercase", marginTop: 20, marginBottom: 12, letterSpacing: 0.5 },
+  tagContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  classTag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  classTagText: { fontSize: 12, fontWeight: "700" },
+  breakdownList: { gap: 10 },
+  breakdownItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  breakdownInfo: { flex: 1 },
+  breakdownClass: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
+  breakdownSubject: { fontSize: 12, color: "#64748B", fontWeight: "600" },
+  countBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
+  countText: { fontSize: 11, fontWeight: "800" },
   plansList: { gap: 12 },
   planCard: {
     backgroundColor: "#F8FAFC",
@@ -415,21 +690,77 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  planSubject: { fontSize: 10, fontWeight: "800", color: "#64748B", textTransform: "uppercase", marginBottom: 4 },
+  planHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+    paddingBottom: 4,
+  },
+  planClassText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#1E293B",
+    textTransform: "uppercase",
+  },
+  planSubject: { fontSize: 10, fontWeight: "800", color: "#64748B", textTransform: "uppercase" },
   planTopic: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
+  planFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+  },
+  viewPlanText: { fontSize: 11, color: "#94A3B8", fontWeight: "600" },
   closeModalBtn: {
-    marginTop: 25,
+    marginTop: 30,
     height: 55,
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
     ...SHADOWS.medium,
+    marginBottom: 20,
   },
   closeModalBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  noPlans: {
-    padding: 30,
-    alignItems: "center",
+  noPlans: { padding: 20, alignItems: "center" },
+  noPlansText: { color: "#94A3B8", fontWeight: "600", fontSize: 13 },
+  noDataBox: { padding: 15, alignItems: "center" },
+  noDataText: { color: "#94A3B8", fontSize: 13, fontWeight: "600" },
+  emptyTextSmall: { fontSize: 13, color: "#94A3B8", fontWeight: "600", fontStyle: "italic" },
+
+  // Detail Modal Styles
+  planDetailOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.7)",
     justifyContent: "center",
+    padding: 20,
   },
-  noPlansText: { color: "#94A3B8", fontWeight: "600", fontSize: 14 },
+  planDetailContent: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    maxHeight: "80%",
+    padding: 24,
+  },
+  planDetailHeader: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    paddingBottom: 15,
+    marginBottom: 15,
+  },
+  detailSubject: { fontSize: 12, fontWeight: "800", color: "#64748B", textTransform: "uppercase" },
+  detailTopic: { fontSize: 20, fontWeight: "900", color: "#1E293B", marginVertical: 4 },
+  detailMeta: { fontSize: 13, color: "#94A3B8", fontWeight: "600" },
+  closeDetailBtn: { padding: 5 },
+  detailSection: { marginTop: 20 },
+  detailLabel: { fontSize: 11, fontWeight: "900", color: "#64748B", textTransform: "uppercase", marginBottom: 8, letterSpacing: 0.5 },
+  detailValue: { fontSize: 15, color: "#334155", fontWeight: "500", lineHeight: 22 },
+  bulletItem: { flexDirection: "row", marginBottom: 8, paddingRight: 10 },
+  bullet: { fontSize: 14, color: "#64748B", width: 25, fontWeight: "bold" },
+  bulletText: { flex: 1, fontSize: 14, color: "#334155", lineHeight: 20, fontWeight: "500" },
 });

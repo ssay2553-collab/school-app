@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Platform, Modal } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import SVGIcon from './SVGIcon';
 import { ThemedText } from './themed-text';
 import { ThemedView } from './themed-view';
 
@@ -44,7 +44,7 @@ export const PWAInstallPrompt = () => {
           <View style={styles.header}>
             <ThemedText type="subtitle">Install App</ThemedText>
             <TouchableOpacity onPress={handleDismiss}>
-              <Ionicons name="close" size={24} color="#666" />
+              <SVGIcon name="close" size={24} color="#666" />
             </TouchableOpacity>
           </View>
           
@@ -55,11 +55,11 @@ export const PWAInstallPrompt = () => {
           <View style={styles.instructions}>
             <View style={styles.step}>
               <ThemedText style={styles.stepText}>1. Tap the Share button</ThemedText>
-              <Ionicons name="share-outline" size={24} color="#007AFF" />
+              <SVGIcon name="share" size={24} color="#007AFF" />
             </View>
             <View style={styles.step}>
               <ThemedText style={styles.stepText}>2. Select 'Add to Home Screen'</ThemedText>
-              <Ionicons name="add-circle-outline" size={24} color="#007AFF" />
+              <SVGIcon name="add-circle" size={24} color="#007AFF" />
             </View>
           </View>
 

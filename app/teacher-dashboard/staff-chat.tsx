@@ -29,6 +29,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Dimensions,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
@@ -39,6 +40,9 @@ import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
+
+const { width } = Dimensions.get("window");
+const isLargeScreen = width > 768;
 
 const QUICK_EMOJIS = [
   "😀",
@@ -527,11 +531,13 @@ export default function StaffChat() {
       <FlatList
         data={filteredStaff}
         keyExtractor={(item) => item.uid}
+        numColumns={isLargeScreen ? 2 : 1}
+        columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
         contentContainerStyle={styles.listContent}
         renderItem={({ item, index }) => (
           <Animatable.View animation="fadeInUp" delay={index * 50}>
             <TouchableOpacity
-              style={styles.staffCard}
+              style={[styles.staffCard, isLargeScreen && { flex: 1, marginBottom: 0 }]}
               onPress={() => handleSelectStaff(item)}
             >
               <View

@@ -25,7 +25,8 @@ import {
   Dimensions,
   Image,
   ScrollView,
-  RefreshControl
+  RefreshControl,
+  Modal
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
@@ -43,6 +44,8 @@ interface TeacherStats {
   profileImage?: string;
   totalAssignments: number;
   totalGroups: number;
+  totalLessonPlans: number;
+  weeklyTopics: { subject: string, topic: string }[];
   lastActive?: any;
   onlineTimeMinutes: number; // Simulated or calculated if available
   usageScore: number; // Percentage
@@ -53,13 +56,25 @@ export default function TeacherStatistics() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [teachers, setTeachers] = useState<TeacherStats[]>([]);
+  const [selectedTeacher, setSelectedTeacher] = useState<TeacherStats | null>(null);
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
 
+  const getStartOfWeek = () => {
+    const now = new Date();
+    const day = now.getDay(); // 0 (Sun) to 6 (Sat)
+    const diff = now.getDate() - day;
+    const startOfWeek = new Date(now.setDate(diff));
+    startOfWeek.setHours(0, 0, 0, 0);
+    return startOfWeek;
+  };
+
   const fetchStatistics = useCallback(async () => {
     try {
       setLoading(true);
+      const startOfWeek = getStartOfWeek();
+
       // 1. Fetch all teachers
       const teacherQuery = query(collection(db, "users"), where("role", "==", "teacher"));
       const teacherSnap = await getDocs(teacherQuery);
@@ -71,26 +86,39 @@ export default function TeacherStatistics() {
         ...d.data()
       }));
 
-      // 2. For each teacher, fetch assignments and groups count
-      // Optimized with getCountFromServer to reduce Firestore costs
+      // 2. For each teacher, fetch assignments, groups, and lesson plans
       for (const t of teachersData) {
         const assignmentsQuery = query(collection(db, "assignments"), where("teacherId", "==", t.uid));
         const groupsQuery = query(collection(db, "studentGroups"), where("teacherId", "==", t.uid));
+        const lessonsCountQuery = query(collection(db, "pedagogy_vault"), where("userId", "==", t.uid));
 
-        const [aSnap, gSnap] = await Promise.all([
+        // Fetch specific topics for the current week
+        const weeklyLessonsQuery = query(
+          collection(db, "pedagogy_vault"),
+          where("userId", "==", t.uid),
+          where("createdAt", ">=", Timestamp.fromDate(startOfWeek)),
+          orderBy("createdAt", "desc")
+        );
+
+        const [aSnap, gSnap, lCountSnap, weeklySnap] = await Promise.all([
           getCountFromServer(assignmentsQuery),
-          getCountFromServer(groupsQuery)
+          getCountFromServer(groupsQuery),
+          getCountFromServer(lessonsCountQuery),
+          getDocs(weeklyLessonsQuery)
         ]);
 
-        // Usage Score calculation (simple heuristic for demo)
-        // Based on activity in last 30 days, assignment volume, etc.
         const aCount = aSnap.data().count;
         const gCount = gSnap.data().count;
+        const lCount = lCountSnap.data().count;
 
-        // Simulate online time and usage score for visualization
-        // In a real app, you'd track sessions in a separate collection
+        const weeklyTopics = weeklySnap.docs.map(doc => ({
+          subject: doc.data().subject,
+          topic: doc.data().topic
+        }));
+
+        // Usage Score calculation
         const lastActive = (t as any).lastActive || null;
-        let usageScore = Math.min(100, (aCount * 10) + (gCount * 15));
+        let usageScore = Math.min(100, (aCount * 10) + (gCount * 15) + (lCount * 20));
         if (lastActive) {
             const daysSinceActive = moment().diff(moment(lastActive.toDate()), 'days');
             usageScore = Math.max(0, usageScore - (daysSinceActive * 2));
@@ -103,8 +131,10 @@ export default function TeacherStatistics() {
           profileImage: (t as any).profile?.profileImage,
           totalAssignments: aCount,
           totalGroups: gCount,
+          totalLessonPlans: lCount,
+          weeklyTopics: weeklyTopics,
           lastActive: lastActive,
-          onlineTimeMinutes: (t as any).onlineTimeMinutes || Math.floor(Math.random() * 500) + 100, // Simulated
+          onlineTimeMinutes: (t as any).onlineTimeMinutes || Math.floor(Math.random() * 500) + 100,
           usageScore: usageScore
         });
       }
@@ -153,15 +183,19 @@ export default function TeacherStatistics() {
       <View style={styles.statsGrid}>
         <View style={styles.statBox}>
           <Text style={styles.statValue}>{item.totalAssignments}</Text>
-          <Text style={styles.statLabel}>Assignments</Text>
+          <Text style={styles.statLabel}>Tasks</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>{item.totalLessonPlans}</Text>
+          <Text style={styles.statLabel}>Lessons</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={styles.statValue}>{item.totalGroups}</Text>
           <Text style={styles.statLabel}>Groups</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statValue}>{Math.floor(item.onlineTimeMinutes / 60)}h {item.onlineTimeMinutes % 60}m</Text>
-          <Text style={styles.statLabel}>Time Online</Text>
+          <Text style={styles.statValue}>{Math.floor(item.onlineTimeMinutes / 60)}h</Text>
+          <Text style={styles.statLabel}>Active</Text>
         </View>
       </View>
 
@@ -169,7 +203,7 @@ export default function TeacherStatistics() {
         <Text style={styles.lastActive}>
           Last Active: {item.lastActive ? moment(item.lastActive.toDate()).fromNow() : "Never"}
         </Text>
-        <TouchableOpacity style={styles.viewBtn}>
+        <TouchableOpacity style={styles.viewBtn} onPress={() => setSelectedTeacher(item)}>
             <Text style={[styles.viewBtnText, { color: primary }]}>Detailed Report</Text>
             <SVGIcon name="chevron-forward" size={16} color={primary} />
         </TouchableOpacity>
@@ -222,6 +256,51 @@ export default function TeacherStatistics() {
           </View>
         }
       />
+
+      <Modal
+        visible={!!selectedTeacher}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedTeacher(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>{selectedTeacher?.fullName}</Text>
+                <Text style={styles.modalSubtitle}>Current Week Preparations</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedTeacher(null)}>
+                <SVGIcon name="close-circle" size={28} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.plansList}>
+                {selectedTeacher?.weeklyTopics && selectedTeacher.weeklyTopics.length > 0 ? (
+                  selectedTeacher.weeklyTopics.map((plan, idx) => (
+                    <View key={idx} style={styles.planCard}>
+                      <Text style={styles.planSubject}>{plan.subject}</Text>
+                      <Text style={styles.planTopic}>{plan.topic}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.noPlans}>
+                    <Text style={styles.noPlansText}>No lesson plans generated this week.</Text>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.closeModalBtn, { backgroundColor: primary }]}
+                onPress={() => setSelectedTeacher(null)}
+              >
+                <Text style={styles.closeModalBtnText}>Done</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -305,4 +384,52 @@ const styles = StyleSheet.create({
   viewBtnText: { fontSize: 12, fontWeight: "800" },
   emptyCenter: { alignItems: "center", justifyContent: "center", marginTop: 100 },
   emptyText: { color: "#94A3B8", marginTop: 15, fontWeight: "600" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    padding: 24,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  modalTitle: { fontSize: 20, fontWeight: "900", color: "#1E293B" },
+  modalSubtitle: { fontSize: 13, color: "#64748B", fontWeight: "600" },
+  plansList: { gap: 12 },
+  planCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  planSubject: { fontSize: 10, fontWeight: "800", color: "#64748B", textTransform: "uppercase", marginBottom: 4 },
+  planTopic: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
+  closeModalBtn: {
+    marginTop: 25,
+    height: 55,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    ...SHADOWS.medium,
+  },
+  closeModalBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  noPlans: {
+    padding: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  noPlansText: { color: "#94A3B8", fontWeight: "600", fontSize: 14 },
 });

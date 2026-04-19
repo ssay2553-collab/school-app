@@ -1,4 +1,4 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import SVGIcon from '../SVGIcon';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
@@ -7,7 +7,7 @@ const MAPPING = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
-  'chevron.right': 'chevron-right',
+  'chevron.right': 'chevron-forward',
 } as const;
 
 type IconSymbolName = keyof typeof MAPPING;
@@ -27,5 +27,5 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: 'thin' | 'light' | 'regular' | 'semibold' | 'bold' | 'heavy';
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  return <SVGIcon color={color as string} size={size} name={MAPPING[name]} style={style as any} />;
 }

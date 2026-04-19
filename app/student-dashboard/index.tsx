@@ -39,7 +39,7 @@ export default function StudentDashboard() {
   const surface = config.surfaceColor || "#F8FAFC";
 
   const [refreshing, setRefreshing] = useState(false);
-  const { totalUnread } = useUnreadCounts();
+  const { totalUnread, assignmentUnread } = useUnreadCounts();
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -146,6 +146,13 @@ export default function StudentDashboard() {
           color: "#4D96FF",
           path: "/student-dashboard/daily-attendance",
         },
+        {
+          title: "Settings",
+          subtitle: "Profile & More",
+          icon: "settings-outline",
+          color: "#64748B",
+          path: "/student-dashboard/settings",
+        },
       ],
     },
     {
@@ -175,9 +182,16 @@ export default function StudentDashboard() {
         },
         {
           title: "Fact Finder",
-          subtitle: "Search anything",
-          icon: "search",
+          subtitle: "AI Search",
+          icon: "sparkles",
           color: "#4ECDC4",
+          path: "/ai-search",
+        },
+        {
+          title: "Web Search",
+          subtitle: "Images & Videos",
+          icon: "search",
+          color: "#54a0ff",
           path: "/student-dashboard/search",
         },
       ],
@@ -274,6 +288,12 @@ export default function StudentDashboard() {
             totalUnread > 0 ? (
               <View style={styles.badgePos}>
                 <UnreadBadge count={totalUnread} />
+              </View>
+            ) : null}
+
+            {item.path && item.path.includes("assignments") && assignmentUnread > 0 ? (
+              <View style={styles.badgePos}>
+                <UnreadBadge count={assignmentUnread} />
               </View>
             ) : null}
           </LinearGradient>
@@ -403,6 +423,12 @@ export default function StudentDashboard() {
                 </View>
               </View>
               <View style={styles.headerActions}>
+                <TouchableOpacity
+                  onPress={handleLogout}
+                  style={[styles.actionBtn, styles.exitBtn]}
+                >
+                  <SVGIcon name="log-out-outline" size={20} color="#fff" />
+                </TouchableOpacity>
                 {isDesktop && (
                   <>
                     <TouchableOpacity
@@ -412,12 +438,6 @@ export default function StudentDashboard() {
                       style={styles.actionBtn}
                     >
                       <SVGIcon name="arrow-back" size={20} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={handleLogout}
-                      style={[styles.actionBtn, styles.exitBtn]}
-                    >
-                      <SVGIcon name="log-out-outline" size={20} color="#fff" />
                     </TouchableOpacity>
                   </>
                 )}

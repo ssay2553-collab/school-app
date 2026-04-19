@@ -37,6 +37,11 @@ export default function StudentSettings() {
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Edit Name state
+  const [nameModalVisible, setNameModalVisible] = useState(false);
+  const [firstName, setFirstName] = useState(appUser?.profile?.firstName || "");
+  const [lastName, setLastName] = useState(appUser?.profile?.lastName || "");
+
   // Password change state
   const [pwModalVisible, setPwModalVisible] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -70,6 +75,28 @@ export default function StudentSettings() {
         { text: "Cancel", style: "cancel" },
         { text: "Sign Out", style: "destructive", onPress: performLogout },
       ]);
+    }
+  };
+
+  const handleUpdateName = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      return Alert.alert("Required", "First name and surname are required.");
+    }
+
+    if (!appUser) return;
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "users", appUser.uid), {
+        "profile.firstName": firstName.trim(),
+        "profile.lastName": lastName.trim()
+      });
+      Alert.alert("Success", "Profile name updated!");
+      setNameModalVisible(false);
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Failed to update name.");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -204,6 +231,17 @@ export default function StudentSettings() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>PERSONAL DETAILS</Text>
           <View style={styles.settingsCard}>
+             <TouchableOpacity style={styles.settingItem} onPress={() => setNameModalVisible(true)}>
+                <View style={styles.settingIconBox}>
+                  <SVGIcon name="person" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.settingTextContent}>
+                  <Text style={styles.settingLabel}>Full Name</Text>
+                  <Text style={styles.settingValue}>{appUser?.profile?.firstName} {appUser?.profile?.lastName}</Text>
+                </View>
+                <SVGIcon name="create-outline" size={16} color={COLORS.primary} />
+             </TouchableOpacity>
+             <View style={styles.divider} />
              <TouchableOpacity style={styles.settingItem} onPress={() => {
                 if (Platform.OS === 'web') {
                   // For web, we'll use a hidden input or just rely on the fallback if we don't want to overcomplicate
@@ -296,16 +334,16 @@ export default function StudentSettings() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>MY INFO</Text>
           <View style={styles.settingsCard}>
-             <SettingItem 
-                icon="person"
-                title="Full Name" 
-                value={`${appUser?.profile?.firstName} ${appUser?.profile?.lastName}`} 
-             />
-             <View style={styles.divider} />
-             <SettingItem 
+             <SettingItem
                 icon="mail"
                 title="Email Address" 
                 value={appUser?.profile?.email || "Not set"} 
+             />
+             <View style={styles.divider} />
+             <SettingItem
+                icon="school"
+                title="School ID"
+                value={appUser?.schoolId?.toUpperCase() || "N/A"}
              />
           </View>
         </View>
@@ -332,6 +370,46 @@ export default function StudentSettings() {
            <Text style={styles.footerSubText}>Secure Student Portal Node</Text>
         </View>
       </ScrollView>
+
+      {/* NAME CHANGE MODAL */}
+      <Modal visible={nameModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Update Profile Name</Text>
+              <TouchableOpacity onPress={() => setNameModalVisible(false)}>
+                <SVGIcon name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalLabel}>FIRST NAME</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter first name"
+                value={firstName}
+                onChangeText={setFirstName}
+              />
+
+              <Text style={styles.modalLabel}>SURNAME (LAST NAME)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter surname"
+                value={lastName}
+                onChangeText={setLastName}
+              />
+
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: COLORS.primary }]}
+                onPress={handleUpdateName}
+                disabled={updating}
+              >
+                {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* PASSWORD CHANGE MODAL */}
       <Modal visible={pwModalVisible} animationType="slide" transparent>

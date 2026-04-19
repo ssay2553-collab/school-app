@@ -24,6 +24,7 @@ import {
     View,
     Platform,
     RefreshControl,
+    Dimensions,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
@@ -37,6 +38,9 @@ import { Audience, NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { fetchCategories, fetchNewsForAudience } from "../../lib/newsFetcher";
+
+const { width } = Dimensions.get("window");
+const isLargeScreen = width > 768;
 
 const storage = getStorage();
 
@@ -307,8 +311,10 @@ export default function TeacherNewsScreen() {
       <FlatList
         data={filtered}
         keyExtractor={(item) => item.id}
+        numColumns={isLargeScreen ? 2 : 1}
+        columnWrapperStyle={isLargeScreen ? { gap: 0 } : null}
         renderItem={({ item, index }) => (
-          <View style={{ paddingHorizontal: 20, marginBottom: 15 }}>
+          <View style={{ paddingHorizontal: 20, marginBottom: 15, flex: isLargeScreen ? 0.5 : 1 }}>
             <NewsCard item={item} />
           </View>
         )}

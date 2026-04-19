@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
@@ -117,7 +116,7 @@ export default function MessageBubble({
             {formatTimestamp(message.createdAt)}
           </Text>
           {isYou && (
-            <Ionicons
+            <SVGIcon
               name="checkmark-done"
               size={14}
               color={isMorgis ? COLORS.secondary : COLORS.tertiary}

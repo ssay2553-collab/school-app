@@ -27,13 +27,14 @@ import { db } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 const { width } = Dimensions.get("window");
-const CARD_WIDTH = (width - 55) / 2;
+const isLargeScreen = width > 768;
+const CARD_WIDTH = isLargeScreen ? (width - 80) / 3 : (width - 55) / 2;
 
 export default function TeacherDashboard() {
   const router = useRouter();
   const { appUser, loading } = useAuth();
   const [assignmentCount, setAssignmentCount] = useState<number | null>(null);
-  const { totalUnread } = useUnreadCounts();
+  const { totalUnread, submissionUnread } = useUnreadCounts();
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const surface = SCHOOL_CONFIG.surfaceColor;
@@ -88,6 +89,13 @@ export default function TeacherDashboard() {
           icon: "key",
           color: "#ec4899",
         },
+        {
+          title: "My Notes",
+          subtitle: "Personal scratchpad",
+          route: "/teacher-dashboard/note",
+          icon: "document-text",
+          color: "#6366f1",
+        },
       ],
     },
     {
@@ -127,6 +135,20 @@ export default function TeacherDashboard() {
           route: "/teacher-dashboard/pedagogy-vault",
           icon: "briefcase",
           color: "#f59e0b",
+        },
+        {
+          title: "AI Planner",
+          subtitle: "Lesson assistant",
+          route: "/teacher-dashboard/ai-lesson-planner",
+          icon: "sparkles",
+          color: "#8b5cf6",
+        },
+        {
+          title: "AI Search",
+          subtitle: "Fact finder",
+          route: "/ai-search",
+          icon: "search",
+          color: "#0ea5e9",
         },
       ],
     },
@@ -214,6 +236,11 @@ export default function TeacherDashboard() {
               <UnreadBadge count={totalUnread} />
             </View>
           ) : null}
+          {item.title === "Grading" && submissionUnread > 0 ? (
+            <View style={{ marginRight: 8 }}>
+              <UnreadBadge count={submissionUnread} />
+            </View>
+          ) : null}
           <SVGIcon name="chevron-forward" size={14} color="#CBD5E1" />
         </View>
       </TouchableOpacity>
@@ -235,19 +262,35 @@ export default function TeacherDashboard() {
               {appUser?.profile?.firstName || "Instructor"} 👋
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={() => router.push("/teacher-dashboard/settings")}
-            style={styles.settingsBtn}
-          >
-            <View
-              style={[
-                styles.settingsIconBg,
-                { backgroundColor: primary + "15" },
-              ]}
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity
+                onPress={() => router.push("/teacher-dashboard/note")}
+                style={styles.settingsBtn}
             >
-              <SVGIcon name="settings-outline" size={24} color={primary} />
-            </View>
-          </TouchableOpacity>
+                <View
+                    style={[
+                        styles.settingsIconBg,
+                        { backgroundColor: "#6366f1" + "15" },
+                    ]}
+                >
+                    <SVGIcon name="document-text" size={24} color="#6366f1" />
+                </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+                onPress={() => router.push("/teacher-dashboard/settings")}
+                style={styles.settingsBtn}
+            >
+                <View
+                    style={[
+                        styles.settingsIconBg,
+                        { backgroundColor: primary + "15" },
+                    ]}
+                >
+                    <SVGIcon name="settings-outline" size={24} color={primary} />
+                </View>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View
@@ -364,11 +407,12 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
+    gap: 15,
   },
   cardWrapper: {
     width: CARD_WIDTH,
-    marginBottom: 15,
+    marginBottom: 0,
   },
   card: {
     borderRadius: 24,

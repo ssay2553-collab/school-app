@@ -1,5 +1,5 @@
 // /guest-dashboard/FAQ.tsx
-import { Ionicons } from "@expo/vector-icons";
+import SVGIcon from "../../components/SVGIcon";
 import { doc, getDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
@@ -77,8 +77,8 @@ export default function FAQ() {
           <View key={key} style={styles.card}>
             <TouchableOpacity style={styles.questionRow} onPress={() => toggleExpand(key)}>
               <Text style={styles.question}>{formatQuestion(key)}</Text>
-              <Ionicons
-                name="chevron-down-outline"
+              <SVGIcon
+                name="chevron-down"
                 size={20}
                 color="#333"
                 style={{ transform: [{ rotate: isExpanded ? "180deg" : "0deg" }] }}

@@ -11,6 +11,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    Dimensions,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -35,6 +36,9 @@ interface ClassTimetable {
   timetableDays?: TimetableDays;
   otherActivities?: Lesson[];
 }
+
+const { width } = Dimensions.get("window");
+const isLargeScreen = width > 768;
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -302,26 +306,27 @@ export default function TeacherTimetable() {
             </Text>
           </View>
         ) : (
-          sortedClassIds.map((classId, index) => {
-            const lessons =
-              timetables[classId]?.timetableDays?.[selectedDay] || [];
-            const otherActs = timetables[classId]?.otherActivities || [];
-            const isAssignedClass = classId === appUser?.classTeacherOf;
+          <View style={isLargeScreen ? styles.grid : null}>
+            {sortedClassIds.map((classId, index) => {
+              const lessons =
+                timetables[classId]?.timetableDays?.[selectedDay] || [];
+              const otherActs = timetables[classId]?.otherActivities || [];
+              const isAssignedClass = classId === appUser?.classTeacherOf;
 
-            if (
-              lessons.length === 0 &&
-              otherActs.length === 0 &&
-              !isAssignedClass
-            )
-              return null;
+              if (
+                lessons.length === 0 &&
+                otherActs.length === 0 &&
+                !isAssignedClass
+              )
+                return null;
 
-            return (
-              <Animatable.View
-                animation="fadeInUp"
-                delay={index * 50}
-                key={classId}
-                style={styles.classSection}
-              >
+              return (
+                <Animatable.View
+                  animation="fadeInUp"
+                  delay={index * 50}
+                  key={classId}
+                  style={[styles.classSection, isLargeScreen && styles.gridItem]}
+                >
                 <View style={styles.classHeader}>
                   <View
                     style={[
@@ -367,7 +372,8 @@ export default function TeacherTimetable() {
                   )}
               </Animatable.View>
             );
-          })
+          })}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -508,4 +514,12 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
   },
   emptyDayText: { color: "#94A3B8", fontSize: 13, fontWeight: "600" },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 20,
+  },
+  gridItem: {
+    width: (width - 60) / 2,
+  },
 });

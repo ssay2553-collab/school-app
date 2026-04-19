@@ -115,6 +115,7 @@ export default function TeacherDashboardLayout() {
         >
           <Tabs.Screen name="index" options={{ title: "Home" }} />
           <Tabs.Screen name="teacher-timetable" options={{ href: null }} />
+          <Tabs.Screen name="note" options={{ href: null }} />
           <Tabs.Screen name="settings" options={{ href: null }} />
           <Tabs.Screen
             name="student-academic-records"

@@ -106,6 +106,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             createdAt: data.createdAt,
             parentUids: data.parentUids,
             parentLinkCode: data.parentLinkCode,
+            schoolId: data.schoolId,
+            departments: data.departments,
+            classTeacherOf: data.classTeacherOf,
+            assignedRoles: data.assignedRoles,
           };
 
           setAppUser(mapped);

@@ -187,11 +187,16 @@ export default function ReviewDocument() {
 
         <View style={styles.editorContainer}>
           <Text style={styles.sectionLabel}>DOCUMENT CONTENT</Text>
-          <RichTextEditor
-            ref={editorRef}
-            initialContent={submission?.contentHtml}
-            enableTeacherTools={true}
-          />
+          <View style={{ height: 500, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" }}>
+            <RichTextEditor
+              ref={editorRef}
+              initialContent={submission?.contentHtml}
+              enableTeacherTools={true}
+            />
+          </View>
+          <Text style={{ fontSize: 11, color: "#64748B", marginTop: 10, fontStyle: 'italic' }}>
+            💡 Select text to highlight or add comments. Corrections are saved when you complete the review.
+          </Text>
         </View>
 
         <View style={styles.gradingCard}>

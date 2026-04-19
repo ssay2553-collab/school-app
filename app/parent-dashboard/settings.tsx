@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { deleteUser, signOut } from "firebase/auth";
 import {
@@ -24,6 +23,7 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 
+import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
@@ -268,7 +268,7 @@ export default function ParentSettingsScreen() {
                 {linkLoading ? (
                   <ActivityIndicator color={COLORS.white} size="small" />
                 ) : (
-                  <Ionicons name="link" size={20} color={COLORS.white} />
+                  <SVGIcon name="link" size={20} color={COLORS.white} />
                 )}
               </TouchableOpacity>
             </View>
@@ -303,13 +303,13 @@ export default function ParentSettingsScreen() {
                     { backgroundColor: item.color + "15" },
                   ]}
                 >
-                  <Ionicons name={item.icon} size={20} color={item.color} />
+                  <SVGIcon name={item.icon} size={20} color={item.color} />
                 </View>
                 <Text style={styles.itemLabel}>{item.label}</Text>
                 {item.loading ? (
                   <ActivityIndicator size="small" color={item.color} />
                 ) : (
-                  <Ionicons name="chevron-forward" size={18} color="#CBD5E1" />
+                  <SVGIcon name="chevron-forward" size={18} color="#CBD5E1" />
                 )}
               </TouchableOpacity>
             ))}

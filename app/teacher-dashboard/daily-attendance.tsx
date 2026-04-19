@@ -23,6 +23,7 @@ import {
   SafeAreaView,
   StatusBar,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -58,6 +59,9 @@ const sortClasses = (list: any[]) => {
     return nameA.localeCompare(nameB);
   });
 };
+
+const { width } = Dimensions.get("window");
+const isLargeScreen = width > 768;
 
 export default function DailyAttendanceScreen() {
   const { appUser } = useAuth();
@@ -345,6 +349,8 @@ export default function DailyAttendanceScreen() {
         data={students}
         renderItem={renderStudentItem}
         keyExtractor={item => item.id}
+        numColumns={isLargeScreen ? 2 : 1}
+        columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
         contentContainerStyle={styles.list}
         onEndReached={() => fetchStudents()}
         onEndReachedThreshold={0.5}

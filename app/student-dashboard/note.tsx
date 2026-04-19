@@ -314,10 +314,11 @@ export default function NoteScreen() {
   --------------------------------------------- */
   const createLocalNote = async (htmlContent: string) => {
     if (!subject) return Alert.alert("Select a subject before creating a note");
+    if (!appUser) return;
 
     const newNote: Note = {
       id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      uid: appUser!.uid,
+      uid: appUser.uid,
       subject,
       title: title.trim() || "Untitled",
       content: htmlContent,
@@ -327,12 +328,36 @@ export default function NoteScreen() {
       updatedAt: Date.now(),
       synced: false,
       docId: null,
-      classId: appUser!.classId,
-      department: appUser!.departments?.[0] ?? "Unknown",
+      classId: appUser.classId,
+      department: appUser.departments?.[0] ?? "Unknown",
     };
 
+    // 1. Save locally for immediate UI update
     const next = [newNote, ...notes];
     await persistLocalNotes(next);
+
+    // 2. Immediately try to sync to Firestore
+    try {
+      const docRef = await addDoc(collection(db, "student_notes"), {
+        uid: appUser.uid,
+        subject: newNote.subject,
+        title: newNote.title,
+        content: newNote.content,
+        pinned: false,
+        color: newNote.color,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        classId: newNote.classId,
+        department: newNote.department,
+      });
+
+      // Update local note with docId and synced status
+      const syncedNext = next.map(n => n.id === newNote.id ? { ...n, docId: docRef.id, synced: true } : n);
+      await persistLocalNotes(syncedNext);
+    } catch (e) {
+      console.warn("Firestore sync failed, will retry on next fetch:", e);
+    }
+
     setTitle("");
     setContent("");
     setEditingId(null);
@@ -340,6 +365,7 @@ export default function NoteScreen() {
   };
 
   const updateLocalNote = async (id: string, htmlContent: string) => {
+    if (!appUser) return;
     const next = notes.map((n) =>
       n.id === id
         ? {
@@ -354,6 +380,27 @@ export default function NoteScreen() {
         : n,
     );
     await persistLocalNotes(next);
+
+    // Sync update to Firestore if it exists there
+    const noteToUpdate = next.find(n => n.id === id);
+    if (noteToUpdate?.docId) {
+      try {
+        await updateDoc(doc(db, "student_notes", noteToUpdate.docId), {
+          title: noteToUpdate.title,
+          content: noteToUpdate.content,
+          subject: noteToUpdate.subject,
+          color: noteToUpdate.color,
+          updatedAt: serverTimestamp(),
+        });
+
+        // Mark as synced
+        const syncedNext = next.map(n => n.id === id ? { ...n, synced: true } : n);
+        await persistLocalNotes(syncedNext);
+      } catch (e) {
+        console.warn("Firestore update sync failed:", e);
+      }
+    }
+
     setEditingId(null);
     setTitle("");
     setContent("");
@@ -418,16 +465,20 @@ export default function NoteScreen() {
       await addDoc(collection(db, "submissions"), {
         submissionKey: submissionId,
         assignmentId: assignmentDoc.id,
+        assignmentTitle: assignment.title || "Untitled",
         assignmentCode: assignment.code,
         studentId: appUser.uid,
         studentName,
-        type: "rich-text",
+        type: assignment.type || "standard",
         classId: assignment.classId,
         subjectId: assignment.subjectId,
         teacherId: assignment.teacherId,
         contentHtml: note.content,
         noteTitle: note.title,
         noteId: note.docId || note.id,
+        fileUrl: null,
+        fileName: null,
+        responses: null,
         status: "submitted",
         isLate: false,
         marked: false,
@@ -504,10 +555,7 @@ export default function NoteScreen() {
      Render
   --------------------------------------------- */
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>Academic Notes ✏️</Text>
         <TouchableOpacity
@@ -526,10 +574,12 @@ export default function NoteScreen() {
       </View>
 
       {isAdding ? (
-        <ScrollView
-          style={styles.editorContainer}
-          keyboardShouldPersistTaps="handled"
-        >
+        <View style={{ flex: 1 }}>
+          <ScrollView
+            style={styles.editorContainer}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ paddingBottom: 50 }}
+          >
           <TouchableOpacity
             style={styles.subjectPick}
             onPress={() => setShowSubjectDropdown((s) => !s)}
@@ -676,7 +726,8 @@ export default function NoteScreen() {
             </TouchableOpacity>
           </View>
         </ScrollView>
-      ) : (
+      </View>
+    ) : (
         <View style={{ flex: 1 }}>
           <View style={styles.searchBox}>
             <SVGIcon
@@ -868,7 +919,7 @@ export default function NoteScreen() {
           </View>
         </View>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

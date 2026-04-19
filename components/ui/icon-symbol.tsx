@@ -1,4 +1,4 @@
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import SVGIcon from "../SVGIcon";
 import { OpaqueColorValue, type StyleProp, type TextStyle } from "react-native";
 
 // Simple mapping from SF Symbols (iOS) to Material Icons (Android/Web)
@@ -6,7 +6,7 @@ const MAPPING = {
   "house.fill": "home",
   "paperplane.fill": "send",
   "chevron.left.forwardslash.chevron.right": "code",
-  "chevron.right": "chevron-right",
+  "chevron.right": "chevron-forward",
 } as const;
 
 type IconSymbolName = keyof typeof MAPPING;
@@ -29,11 +29,11 @@ export function IconSymbol({
   // adjust `size` or swap to a different icon component.
 }) {
   return (
-    <MaterialIcons
-      color={color}
+    <SVGIcon
+      color={color as string}
       size={size}
       name={MAPPING[name]}
-      style={style}
+      style={style as any}
     />
   );
 }

@@ -454,6 +454,27 @@ function hasScreenPermission(screen, level) {
     }
 
     /* ===============================
+       AI & PEDAGOGY COLLECTIONS
+    =============================== */
+    match /ai_generations/{id} {
+      // Teachers can read their own usage and log new generations
+      allow read, create: if isSignedIn() && (isTeacher() || isAdmin()) && (resource == null || resource.data.userId == uid()) && (request.resource == null || request.resource.data.userId == uid());
+    }
+
+    match /ai_searches/{id} {
+      // Users can log their searches and read their history
+      allow read, create: if isSignedIn() && (resource == null || resource.data.userId == uid()) && (request.resource == null || request.resource.data.userId == uid());
+    }
+
+    match /pedagogy_vault/{id} {
+      // Teachers can save and read their own lesson plans
+      allow read, create: if isSignedIn() && (isTeacher() || isAdmin()) && (resource == null || resource.data.userId == uid()) && (request.resource == null || request.resource.data.userId == uid());
+      // Allow updates if the teacher is editing their own saved plan
+      allow update: if isSignedIn() && resource.data.userId == uid();
+      allow delete: if isSignedIn() && resource.data.userId == uid();
+    }
+
+    /* ===============================
        FALLBACK & CATCH-ALL
     =============================== */
     match /{path=**} {

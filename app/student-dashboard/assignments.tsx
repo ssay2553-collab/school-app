@@ -32,6 +32,8 @@ import { db } from "../../firebaseConfig";
 import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
 import * as Animatable from "react-native-animatable";
+import * as Clipboard from "expo-clipboard";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 interface Question {
   text: string;
@@ -100,7 +102,7 @@ export default function Assignments() {
       );
 
       // Sort by newest first
-      setAssignments(pendingAssignments.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis()));
+      setAssignments(pendingAssignments.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)));
     } catch (error: any) {
       console.error("Fetch Assignments Error:", error);
       Alert.alert("Error", "Failed to load assignments.");
@@ -147,8 +149,10 @@ export default function Assignments() {
       const studentName = `${appUser.profile?.firstName || 'Student'} ${appUser.profile?.lastName || ''}`.trim();
       
       const submissionData = {
+        submissionKey: `${activeAssignment.id}_${appUser.uid}`,
         assignmentId: activeAssignment.id,
         assignmentTitle: activeAssignment.title,
+        assignmentCode: activeAssignment.code,
         studentId: appUser.uid,
         studentName,
         type: activeAssignment.type || "standard",
@@ -156,6 +160,10 @@ export default function Assignments() {
         subjectId: activeAssignment.subjectId,
         teacherId: activeAssignment.teacherId,
         responses: answers,
+        contentHtml: null,
+        fileUrl: null,
+        fileName: null,
+        isLate: false,
         marked: false,
         submittedAt: serverTimestamp(),
       };
@@ -181,6 +189,11 @@ export default function Assignments() {
     } catch (e) {
       return "Soon";
     }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    await Clipboard.setStringAsync(text);
+    Alert.alert("Copied", "Assignment code copied to clipboard!");
   };
 
   const renderAssignmentItem = ({ item, index }: { item: Assignment, index: number }) => {
@@ -288,10 +301,14 @@ export default function Assignments() {
             </ScrollView>
 
             <View style={styles.detailsFooter}>
-              <View style={styles.tipBox}>
+              <TouchableOpacity
+                style={styles.tipBox}
+                onPress={() => copyToClipboard(viewingDetails?.code || "")}
+                activeOpacity={0.7}
+              >
                 <SVGIcon name="information-circle" size={16} color={COLORS.primary} />
-                <Text style={styles.tipText}>Use code <Text style={{fontWeight: '900'}}>{viewingDetails?.code}</Text> to submit.</Text>
-              </View>
+                <Text style={styles.tipText}>Use code <Text style={{fontWeight: '900'}}>{viewingDetails?.code}</Text> to submit (Tap to copy).</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.closeBtn} onPress={() => setViewingDetails(null)}>
                 <Text style={styles.closeBtnText}>I'll start now</Text>
               </TouchableOpacity>

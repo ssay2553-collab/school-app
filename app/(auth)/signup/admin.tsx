@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
@@ -313,8 +312,8 @@ export default function AdminSignup() {
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
                 >
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  <SVGIcon
+                    name={showPassword ? "eye-off" : "eye"}
                     size={22}
                     color="#94A3B8"
                   />
@@ -338,9 +337,9 @@ export default function AdminSignup() {
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                   style={styles.eyeIcon}
                 >
-                  <Ionicons
+                  <SVGIcon
                     name={
-                      showConfirmPassword ? "eye-off-outline" : "eye-outline"
+                      showConfirmPassword ? "eye-off" : "eye"
                     }
                     size={22}
                     color="#94A3B8"

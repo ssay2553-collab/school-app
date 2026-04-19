@@ -30,7 +30,6 @@ import SVGIcon from "../../../components/SVGIcon";
 import { SHADOWS, COLORS as THEME_COLORS } from "../../../constants/theme";
 import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
-import { Ionicons } from "@expo/vector-icons";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, CurriculumType } from "../../../constants/Curriculum";
 
 const COLORS = { ...THEME_COLORS, gold: "#FFD700", orange: "#FFA500" };

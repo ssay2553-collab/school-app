@@ -22,6 +22,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    Dimensions,
 } from "react-native";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -43,6 +44,9 @@ interface StudentData {
   };
   classId: string;
 }
+
+const { width } = Dimensions.get("window");
+const isLargeScreen = width > 768;
 
 // --- COMPONENT --- //
 export default function PromoteStudentsScreen() {
@@ -235,9 +239,11 @@ export default function PromoteStudentsScreen() {
           <FlatList
             data={teacherClasses}
             keyExtractor={(item) => item.id}
+            numColumns={isLargeScreen ? 3 : 1}
+            columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={styles.itemCard}
+                style={[styles.itemCard, isLargeScreen && { flex: 1, marginBottom: 0 }]}
                 onPress={() => handleSelectClass(item)}
               >
                 <Text style={styles.itemTitle}>{item.name}</Text>
@@ -299,9 +305,11 @@ export default function PromoteStudentsScreen() {
         <FlatList
           data={students}
           keyExtractor={(item) => item.uid}
+          numColumns={isLargeScreen ? 2 : 1}
+          columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.itemCard}
+              style={[styles.itemCard, isLargeScreen && { flex: 1, marginBottom: 0 }]}
               onPress={() => {
                 setSelectedStudent(item);
                 setTargetClassId(item.classId); // Default picker to current class

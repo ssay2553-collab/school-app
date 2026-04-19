@@ -96,6 +96,13 @@ export default function useUnreadCounts() {
       );
       const unsub = onSnapshot(latestQ, async (snap) => {
         const lastMsg = snap.docs[0]?.data();
+
+        // FIX: Don't count as unread if I sent the message
+        if (lastMsg?.senderId === appUser?.uid) {
+          setGroupUnread((g) => ({ ...g, [groupId]: 0 }));
+          return;
+        }
+
         const latestTs = lastMsg?.timestamp?.toMillis?.() || 0;
         const seenKey = GROUP_SEEN_KEY(groupId);
         const seenStr = await AsyncStorage.getItem(seenKey);
@@ -134,6 +141,12 @@ export default function useUnreadCounts() {
     const latestQ = query(messagesRef, orderBy("createdAt", "desc"), limit(1));
     const unsub = onSnapshot(latestQ, async (snap) => {
       const lastMsg = snap.docs[0]?.data();
+      // FIX: Don't count as unread if I sent the message
+      if (lastMsg?.senderId === appUser?.uid) {
+        setDirectUnread((d) => ({ ...d, [chatId]: 0 }));
+        return;
+      }
+
       const latestTs = lastMsg?.createdAt?.toMillis?.() || 0;
       const seenKey = DIRECT_SEEN_KEY(chatId);
       const seenStr = await AsyncStorage.getItem(seenKey);
@@ -183,6 +196,57 @@ export default function useUnreadCounts() {
     }
   };
 
+  const [assignmentUnread, setAssignmentUnread] = useState<number>(0);
+  const [submissionUnread, setSubmissionUnread] = useState<number>(0);
+
+  // Watch Assignments (for Students)
+  useEffect(() => {
+    if (!appUser?.uid || appUser.role !== "student" || !appUser.classId) return;
+
+    // First, get all assignments for this class
+    const assignmentsQ = query(
+      collection(db, "assignments"),
+      where("classId", "==", appUser.classId)
+    );
+
+    const unsubAssignments = onSnapshot(assignmentsQ, (assignmentSnap) => {
+      const allAssignmentIds = assignmentSnap.docs.map(d => d.id);
+
+      // Then, get all submissions by this student
+      const submissionsQ = query(
+        collection(db, "submissions"),
+        where("studentId", "==", appUser.uid)
+      );
+
+      const unsubSubmissions = onSnapshot(submissionsQ, (subSnap) => {
+        const submittedIds = subSnap.docs.map(d => d.data().assignmentId);
+        const unreadCount = allAssignmentIds.filter(id => !submittedIds.includes(id)).length;
+        setAssignmentUnread(unreadCount);
+      });
+
+      return () => unsubSubmissions();
+    });
+
+    return () => unsubAssignments();
+  }, [appUser?.uid, appUser?.role, appUser?.classId]);
+
+  // Watch Submissions (for Teachers)
+  useEffect(() => {
+    if (!appUser?.uid || appUser.role !== "teacher") return;
+
+    const submissionsQ = query(
+      collection(db, "submissions"),
+      where("teacherId", "==", appUser.uid),
+      where("marked", "==", false)
+    );
+
+    const unsub = onSnapshot(submissionsQ, (snap) => {
+      setSubmissionUnread(snap.docs.length);
+    });
+
+    return () => unsub();
+  }, [appUser?.uid, appUser?.role]);
+
   const totalUnread =
     Object.values(groupUnread).reduce((s, v) => s + (v || 0), 0) +
     Object.values(directUnread).reduce((s, v) => s + (v || 0), 0);
@@ -190,8 +254,15 @@ export default function useUnreadCounts() {
   // Simple toast/notification for new unread messages (cross-device indicator)
   const prevTotalRef = useRef<number>(0);
   useEffect(() => {
+    // Only notify if we have valid user and the total increased
+    if (!appUser?.uid) return;
+
     const prev = prevTotalRef.current || 0;
     if (totalUnread > prev) {
+      // Logic: Only notify if the last message in any of the chats was NOT sent by me
+      // This is a bit complex without the full message context here,
+      // but we can at least avoid notifying if totalUnread is 0 or if we're currently in a chat.
+
       const diff = totalUnread - prev;
       try {
         if (Platform.OS === "android") {
@@ -200,6 +271,8 @@ export default function useUnreadCounts() {
             ToastAndroid.SHORT,
           );
         } else {
+          // Alert is too intrusive for every message, but keeps consistency with previous code
+          // In a real app, this would be a Push Notification or a subtle UI indicator
           Alert.alert("New messages", `You have ${diff} new message(s)`);
         }
       } catch (e) {
@@ -207,12 +280,14 @@ export default function useUnreadCounts() {
       }
     }
     prevTotalRef.current = totalUnread;
-  }, [totalUnread]);
+  }, [totalUnread, appUser?.uid]);
 
   return {
     totalUnread,
     groupUnread,
     directUnread,
+    assignmentUnread,
+    submissionUnread,
     registerDirectChat,
     unregisterDirectChat,
     markChatRead,

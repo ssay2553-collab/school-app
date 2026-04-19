@@ -29,7 +29,6 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
-import { Ionicons } from "@expo/vector-icons";
 
 interface ScoreRecord {
   id: string;
@@ -191,7 +190,7 @@ export default function AssignmentScores() {
             </View>
             <View style={styles.headerRight}>
               <Text style={styles.dateText}>{item.markedAt?.toDate().toLocaleDateString()}</Text>
-              <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="#94A3B8" style={{ marginLeft: 5 }} />
+              <SVGIcon name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="#94A3B8" style={{ marginLeft: 5 }} />
             </View>
           </View>
 

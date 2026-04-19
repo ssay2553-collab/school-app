@@ -967,18 +967,18 @@ export default function ManageFees() {
                   );
                 }}
               >
-                <SVGIcon
-                  name={
-                    filteredStudents.length > 0 &&
-                    filteredStudents.every((s) =>
-                      selectedStudentUids.has(s.uid),
-                    )
-                      ? "checkbox"
-                      : "square-outline"
-                  }
-                  size={28}
-                  color={VIBE.primary}
-                />
+                  <SVGIcon
+                    name={
+                      filteredStudents.length > 0 &&
+                      filteredStudents.every((s) =>
+                        selectedStudentUids.has(s.uid),
+                      )
+                        ? "checkbox"
+                        : "square"
+                    }
+                    size={28}
+                    color={VIBE.primary}
+                  />
                 <Text style={styles.checkAllText}>SELECT ALL</Text>
               </TouchableOpacity>
             </View>
@@ -1131,7 +1131,7 @@ export default function ManageFees() {
               <Text style={styles.fabText}>
                 APPLY BILLS ({selectedStudentUids.size})
               </Text>
-              <SVGIcon name="checkmark-done" size={22} color="#fff" />
+              <SVGIcon name="checkmark-done-circle" size={22} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
         </Animatable.View>
@@ -1486,7 +1486,7 @@ export default function ManageFees() {
                 )}
                 ListEmptyComponent={() => (
                   <View style={styles.emptyWrap}>
-                    <SVGIcon name="cash-outline" size={48} color="#CBD5E1" />
+                    <SVGIcon name="cash" size={48} color="#CBD5E1" />
                     <Text style={styles.emptyText}>
                       No payments on this day.
                     </Text>

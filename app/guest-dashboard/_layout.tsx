@@ -1,4 +1,3 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Stack, useRouter } from "expo-router";
 import React from "react";
 import { TouchableOpacity, View, Image, Text, StyleSheet, Alert, Platform } from "react-native";
@@ -79,7 +78,7 @@ export default function GuestDashboardLayout() {
            )}
            {Platform.OS !== 'web' && (
              <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-               <Ionicons name="log-out-outline" size={24} color={primary} />
+               <SVGIcon name="log-out" size={24} color={primary} />
              </TouchableOpacity>
            )}
         </View>

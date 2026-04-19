@@ -1,57 +1,34 @@
-import { Stack, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
+import { signOut } from "firebase/auth";
 import { useEffect } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, View, Platform, Alert } from "react-native";
 import { COLORS } from "../../constants/theme";
-import { useAuth } from "../../contexts/AuthContext";
+import { auth } from "../../firebaseConfig";
 
-export default function StudentDashboardLayout() {
-  const { appUser, loading } = useAuth();
+export default function LogoutScreen() {
   const router = useRouter();
 
-  // 🔐 Protect student routes
   useEffect(() => {
-    if (!loading) {
-      if (!appUser) {
-        router.replace("/(auth)/login");
-      } else if (appUser.role !== "student") {
-        router.replace("/(auth)/login");
+    const performLogout = async () => {
+      try {
+        await signOut(auth);
+        if (Platform.OS === 'web') {
+          window.location.href = "/";
+        } else {
+          router.replace("/");
+        }
+      } catch (err) {
+        console.error("Logout error", err);
+        router.back();
       }
-    }
-  }, [appUser, loading, router]); // ✅ added router as dependency
+    };
 
-  // ⏳ Loading state
-  if (loading || !appUser) {
-    return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: COLORS.background,
-        }}
-      >
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
+    performLogout();
+  }, [router]);
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="index" />
-      <Stack.Screen name="assignments" />
-      <Stack.Screen name="submit-assignment" />
-      <Stack.Screen name="StudentGroups" />
-      <Stack.Screen name="group-chat" />
-      <Stack.Screen name="NewsScreen" />
-      <Stack.Screen name="note" />
-      <Stack.Screen name="games" />
-      <Stack.Screen name="search" />
-      <Stack.Screen name="upgrade" />
-      <Stack.Screen name="settings" />
-    </Stack>
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFF" }}>
+      <ActivityIndicator size="large" color={COLORS.primary} />
+    </View>
   );
 }

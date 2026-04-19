@@ -76,7 +76,7 @@ export default function TeacherStatistics() {
   const [teachers, setTeachers] = useState<TeacherStats[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherStats | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
+  const lastFetchRef = useRef<number>(0);
 
   const CACHE_KEY = `teacher_stats_${SCHOOL_CONFIG.schoolId}`;
   const CACHE_EXPIRY = 12 * 60 * 60 * 1000; // 12 hours cache
@@ -197,7 +197,7 @@ export default function TeacherStatistics() {
 
       teacherList.sort((a, b) => b.usageScore - a.usageScore);
       setTeachers(teacherList);
-      setLastFetchTime(Date.now());
+      lastFetchRef.current = Date.now();
 
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
         timestamp: Date.now(),
@@ -219,7 +219,7 @@ export default function TeacherStatistics() {
         const age = Date.now() - timestamp;
 
         setTeachers(data);
-        setLastFetchTime(timestamp);
+        lastFetchRef.current = timestamp;
 
         if (age < CACHE_EXPIRY) {
           setLoading(false);
@@ -246,7 +246,7 @@ export default function TeacherStatistics() {
     // Re-fetch when app comes to foreground if cache is old
     const subscription = AppState.addEventListener("change", nextAppState => {
       if (nextAppState === "active" && appUser) {
-        const age = Date.now() - lastFetchTime;
+        const age = Date.now() - lastFetchRef.current;
         if (age > CACHE_EXPIRY) {
           fetchStatistics();
         }
@@ -254,7 +254,7 @@ export default function TeacherStatistics() {
     });
 
     return () => subscription.remove();
-  }, [fetchStatistics, appUser, lastFetchTime]);
+  }, [fetchStatistics, appUser]);
 
   const onRefresh = () => {
     setRefreshing(true);

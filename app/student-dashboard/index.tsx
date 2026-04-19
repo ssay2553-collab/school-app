@@ -106,6 +106,13 @@ export default function StudentDashboard() {
           path: "/student-dashboard/study-resources",
         },
         {
+          title: "Topics",
+          subtitle: "Weekly Roadmap",
+          icon: "book",
+          color: "#0EA5E9",
+          path: "/student-dashboard/weekly-plan",
+        },
+        {
           title: "Class Times",
           subtitle: "What's next?",
           icon: "time",

@@ -1,11 +1,12 @@
 name: Build Android APKs
+
 on:
   workflow_dispatch:
     inputs:
       school_profile:
-        description: 'Select the school profile to build'
+        description: "Select the school profile to build"
         required: true
-        default: 'all-prod'
+        default: "all-prod"
         type: choice
         options:
           - all-prod
@@ -36,7 +37,7 @@ jobs:
       - id: set-profiles
         run: |
           if [ "${{ github.event.inputs.school_profile }}" == "all-prod" ]; then
-            echo 'profiles=["afahjoy-prod", "beano-prod", "bishops-prod", "bms-prod", "brain-prod", "cascom-prod", "creation-prod", "eagles-prod", "ibs-prod", "kent-prod", "model-prod", "morgis-prod", "perfect-prod", "clis-prod", "stone-prod", "jewel-prod", "lilies-prod"]' >> $GITHUB_OUTPUT
+            echo 'profiles=["afahjoy-prod","beano-prod","bishops-prod","bms-prod","brain-prod","cascom-prod","creation-prod","eagles-prod","ibs-prod","kent-prod","model-prod","morgis-prod","perfect-prod","clis-prod","stone-prod","jewel-prod","lilies-prod"]' >> $GITHUB_OUTPUT
           else
             echo 'profiles=["${{ github.event.inputs.school_profile }}"]' >> $GITHUB_OUTPUT
           fi
@@ -44,10 +45,15 @@ jobs:
   build:
     needs: setup
     runs-on: ubuntu-latest
+
+    timeout-minutes: 25
+
     strategy:
       fail-fast: false
+      max-parallel: 3 # 🔥 VERY IMPORTANT (prevents overload)
       matrix:
         profile: ${{ fromJson(needs.setup.outputs.profiles) }}
+
     steps:
       - name: 🏗 Checkout repository
         uses: actions/checkout@v4
@@ -56,25 +62,37 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: "npm" # 🔥 enables automatic npm caching
 
       - name: ⚙️ Setup Java
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: "temurin"
+          java-version: "17"
 
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      # 🔥 Gradle cache (BIG speed boost)
+      - name: ⚡ Cache Gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
       - name: 📦 Install dependencies
-        run: npm install
+        run: npm ci # 🔥 faster than npm install
 
       - name: 🏗 Prebuild Expo
         run: |
-          # Correctly extract the school ID
           RAW_PROFILE="${{ matrix.profile }}"
           export SCHOOL_ID=${RAW_PROFILE%-prod}
           echo "Prebuilding for School ID: $SCHOOL_ID"
+
           rm -rf android
           npx expo prebuild --platform android --no-install
         env:
@@ -85,12 +103,14 @@ jobs:
           RAW_PROFILE="${{ matrix.profile }}"
           export SCHOOL_ID=${RAW_PROFILE%-prod}
           export EXPO_PUBLIC_SCHOOL_ID=$SCHOOL_ID
+
           echo "Building APK for School: $SCHOOL_ID"
-          
+
           cd android
           chmod +x gradlew
-          # Increase memory for the Gradle Daemon and set NODE_ENV
-          ./gradlew assembleRelease -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+
+          ./gradlew assembleRelease \
+            -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
         env:
           NODE_ENV: production
           CI: true

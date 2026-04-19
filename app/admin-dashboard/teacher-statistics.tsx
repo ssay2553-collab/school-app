@@ -211,24 +211,6 @@ export default function TeacherStatistics() {
     }
   }, [appUser, CACHE_KEY]);
 
-      // Sort by usage score
-      teacherList.sort((a, b) => b.usageScore - a.usageScore);
-      setTeachers(teacherList);
-      setLastFetchTime(Date.now());
-
-      // Cache the result
-      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
-        timestamp: Date.now(),
-        data: teacherList
-      }));
-    } catch (error) {
-      console.error("Error fetching teacher stats:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
   const loadCachedData = async () => {
     try {
       const cached = await AsyncStorage.getItem(CACHE_KEY);

@@ -5,7 +5,6 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDoc,
   getDocs,
   orderBy,
   query,
@@ -18,7 +17,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -26,6 +24,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Dimensions,
 } from "react-native";
 import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEditor";
 import SVGIcon from "../../components/SVGIcon";
@@ -33,132 +32,36 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 
-const DEFAULT_SUBJECTS = [
-  "Mathematics",
-  "English",
-  "Science",
-  "Social Studies",
-  "RME",
-  "Computing",
-  "French",
-  "History",
-  "Personal",
-  "Other",
-];
-
-const SUBJECT_COLORS: Record<string, string> = {
-  Mathematics: "#3B82F6",
-  English: "#EF4444",
-  Science: "#10B981",
-  "Social Studies": "#F59E0B",
-  RME: "#8B5CF6",
-  Computing: "#4B5563",
-  French: "#06B6D4",
-  History: "#B45309",
-  Personal: "#EC4899",
-  Other: "#6B7280",
-};
-
-const getSubjectColor = (subj: string | null): string => {
-  if (!subj) return COLORS.primary;
-  return SUBJECT_COLORS[subj] || COLORS.primary;
-};
-
 const NOTES_KEY = "@student_notes_v1";
 
 type Note = {
   id: string;
   uid: string;
-  subject: string | null;
   title: string;
   content: string;
   pinned?: boolean;
-  color?: string;
   createdAt: number;
   updatedAt?: number;
   synced?: boolean;
   docId?: string | null;
-  classId?: string;
-  department?: string;
-  submissionStatus?: "submitted" | "graded" | "rework" | "draft";
-  teacherFeedback?: string;
-  submissionId?: string;
 };
 
-export default function NoteScreen() {
+const { width } = Dimensions.get("window");
+const isLargeScreen = width > 768;
+
+export default function StudentNoteScreen() {
   const { appUser, loading: authLoading } = useAuth();
   const mountedRef = useRef(true);
 
-  const [subject, setSubject] = useState<string | null>(null);
-  const [showSubjectDropdown, setShowSubjectDropdown] = useState(false);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-  const [showCodeInput, setShowCodeInput] = useState(false);
-  const [assignmentCode, setAssignmentCode] = useState("");
-  const [selectedNoteForSubmit, setSelectedNoteForSubmit] = useState<Note | null>(null);
   const editorRef = useRef<RichTextEditorRef>(null);
-
-  // For rework/editing of existing submissions
-  const [currentNoteSubmission, setCurrentNoteSubmission] = useState<any>(null);
-
-  const canEdit = !currentNoteSubmission || currentNoteSubmission?.status === "draft" || currentNoteSubmission?.status === "rework";
-  const canSubmit = !currentNoteSubmission || currentNoteSubmission?.status === "draft" || currentNoteSubmission?.status === "rework";
-
-  // Dynamic subjects state
-  const [dynamicSubjects, setDynamicSubjects] =
-    useState<string[]>(DEFAULT_SUBJECTS);
-  const [loadingSubjects, setLoadingSubjects] = useState(false);
-
-  /* ---------------------------------------------
-     Fetch Dynamic Subjects based on Teachers
-  --------------------------------------------- */
-  const fetchDynamicSubjects = useCallback(async () => {
-    if (!appUser?.classId) return;
-    setLoadingSubjects(true);
-    try {
-      // Find all teachers who teach this student's class
-      const q = query(
-        collection(db, "users"),
-        where("role", "==", "teacher"),
-        where("classes", "array-contains", appUser.classId),
-      );
-
-      const snap = await getDocs(q);
-      const subjectSet = new Set<string>();
-
-      snap.forEach((doc) => {
-        const data = doc.data();
-        if (data.subjects && Array.isArray(data.subjects)) {
-          data.subjects.forEach((s: string) => subjectSet.add(s));
-        }
-      });
-
-      // Always include these useful categories
-      subjectSet.add("Personal");
-      subjectSet.add("Other");
-
-      const list = Array.from(subjectSet).sort();
-      if (list.length > 2) {
-        // 2 because of Personal and Other
-        setDynamicSubjects(list);
-      } else {
-        // Fallback if no teachers found yet
-        setDynamicSubjects(DEFAULT_SUBJECTS);
-      }
-    } catch (err) {
-      console.error("Error fetching dynamic subjects:", err);
-      setDynamicSubjects(DEFAULT_SUBJECTS);
-    } finally {
-      setLoadingSubjects(false);
-    }
-  }, [appUser?.classId]);
 
   /* ---------------------------------------------
      Load & Persist Notes
@@ -210,31 +113,13 @@ export default function NoteScreen() {
         docId: d.id,
         id: d.id + "_remote",
         uid: appUser.uid,
-        subject: d.data().subject ?? null,
         title: d.data().title,
         content: d.data().content,
         pinned: d.data().pinned ?? false,
-        color: d.data().color ?? getSubjectColor(d.data().subject ?? null),
         createdAt: d.data().createdAt?.toMillis() ?? Date.now(),
         updatedAt: d.data().updatedAt?.toMillis(),
         synced: true,
-        classId: appUser.classId,
-        department: appUser.departments?.[0] ?? "Unknown",
       }));
-
-      // Fetch submission statuses for these notes
-      const submissionQ = query(
-        collection(db, "submissions"),
-        where("studentId", "==", appUser.uid)
-      );
-      const subSnap = await getDocs(submissionQ);
-      const subMap = new Map<string, any>();
-      subSnap.forEach(sDoc => {
-        const data = sDoc.data();
-        if (data.noteId) {
-          subMap.set(data.noteId, { id: sDoc.id, ...data });
-        }
-      });
 
       const localRaw = await AsyncStorage.getItem(NOTES_KEY);
       const localAll: Note[] = localRaw ? JSON.parse(localRaw) : [];
@@ -242,16 +127,6 @@ export default function NoteScreen() {
 
       const map = new Map<string, Note>();
       for (const r of remote) {
-        const subData = subMap.get(r.docId ?? "");
-        if (subData) {
-          r.submissionStatus = subData.status;
-          r.teacherFeedback = subData.feedback;
-          r.submissionId = subData.id;
-          // If there's a rework content, we might want to use it
-          if (subData.status === "rework" && subData.contentHtml) {
-             r.content = subData.contentHtml;
-          }
-        }
         map.set(r.docId ?? r.id, r);
       }
       for (const l of localForUser) {
@@ -283,17 +158,16 @@ export default function NoteScreen() {
     (async () => {
       await loadLocalNotes();
       await fetchFromFirestoreAndMerge();
-      await fetchDynamicSubjects();
       setLoading(false);
     })();
     const interval = setInterval(() => {
       fetchFromFirestoreAndMerge();
-    }, 10000);
+    }, 15000);
     return () => {
       mountedRef.current = false;
       clearInterval(interval);
     };
-  }, [loadLocalNotes, fetchFromFirestoreAndMerge, fetchDynamicSubjects]);
+  }, [loadLocalNotes, fetchFromFirestoreAndMerge]);
 
   if (!appUser && !authLoading)
     return (
@@ -313,49 +187,37 @@ export default function NoteScreen() {
      CRUD
   --------------------------------------------- */
   const createLocalNote = async (htmlContent: string) => {
-    if (!subject) return Alert.alert("Select a subject before creating a note");
     if (!appUser) return;
 
     const newNote: Note = {
       id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       uid: appUser.uid,
-      subject,
-      title: title.trim() || "Untitled",
+      title: title.trim() || "Untitled Note",
       content: htmlContent,
       pinned: false,
-      color: getSubjectColor(subject),
       createdAt: Date.now(),
       updatedAt: Date.now(),
       synced: false,
       docId: null,
-      classId: appUser.classId,
-      department: appUser.departments?.[0] ?? "Unknown",
     };
 
-    // 1. Save locally for immediate UI update
     const next = [newNote, ...notes];
     await persistLocalNotes(next);
 
-    // 2. Immediately try to sync to Firestore
     try {
       const docRef = await addDoc(collection(db, "student_notes"), {
         uid: appUser.uid,
-        subject: newNote.subject,
         title: newNote.title,
         content: newNote.content,
         pinned: false,
-        color: newNote.color,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        classId: newNote.classId,
-        department: newNote.department,
       });
 
-      // Update local note with docId and synced status
       const syncedNext = next.map(n => n.id === newNote.id ? { ...n, docId: docRef.id, synced: true } : n);
       await persistLocalNotes(syncedNext);
     } catch (e) {
-      console.warn("Firestore sync failed, will retry on next fetch:", e);
+      console.warn("Firestore sync failed:", e);
     }
 
     setTitle("");
@@ -372,8 +234,6 @@ export default function NoteScreen() {
             ...n,
             title: title.trim() || n.title,
             content: htmlContent,
-            subject,
-            color: getSubjectColor(subject),
             updatedAt: Date.now(),
             synced: false,
           }
@@ -381,19 +241,15 @@ export default function NoteScreen() {
     );
     await persistLocalNotes(next);
 
-    // Sync update to Firestore if it exists there
     const noteToUpdate = next.find(n => n.id === id);
     if (noteToUpdate?.docId) {
       try {
         await updateDoc(doc(db, "student_notes", noteToUpdate.docId), {
           title: noteToUpdate.title,
           content: noteToUpdate.content,
-          subject: noteToUpdate.subject,
-          color: noteToUpdate.color,
           updatedAt: serverTimestamp(),
         });
 
-        // Mark as synced
         const syncedNext = next.map(n => n.id === id ? { ...n, synced: true } : n);
         await persistLocalNotes(syncedNext);
       } catch (e) {
@@ -405,95 +261,6 @@ export default function NoteScreen() {
     setTitle("");
     setContent("");
     setIsAdding(false);
-  };
-
-  const submitNoteToAssignment = (note: Note) => {
-    setSelectedNoteForSubmit(note);
-    setAssignmentCode("");
-    setShowCodeInput(true);
-  };
-
-  const executeSubmission = async (note: Note, code: string) => {
-    if (!appUser) return Alert.alert("Error", "You must be logged in.");
-    setSubmitting(true);
-    try {
-      const q = query(
-        collection(db, "assignments"),
-        where("code", "==", code.trim().toUpperCase()),
-      );
-      const snapshot = await getDocs(q);
-
-      if (snapshot.empty) {
-        setSubmitting(false);
-        return Alert.alert("Invalid Code", "Assignment not found.");
-      }
-
-      const assignmentDoc = snapshot.docs[0];
-      const assignment = assignmentDoc.data();
-
-      // Fetch student name fresh (like submit-assignment.tsx)
-      let studentName = "Student";
-      if (appUser.profile?.firstName && appUser.profile?.lastName) {
-        studentName = `${appUser.profile.firstName} ${appUser.profile.lastName}`;
-      }
-
-      try {
-        const studentSnap = await getDoc(doc(db, "users", appUser.uid));
-        if (studentSnap.exists()) {
-          const data = studentSnap.data();
-          if (data.profile?.firstName && data.profile?.lastName) {
-            studentName = `${data.profile.firstName} ${data.profile.lastName}`;
-          } else if (data.fullName) {
-            studentName = data.fullName;
-          } else if (data.name) {
-            studentName = data.name;
-          }
-        }
-      } catch (err) {
-        console.log("Error fetching student name", err);
-      }
-
-      // Check deadline
-      const deadline = assignment.dueDate || assignment.deadline;
-      if (deadline && new Date() > deadline.toDate()) {
-        setSubmitting(false);
-        return Alert.alert("Submission Closed", "The deadline has passed.");
-      }
-
-      const submissionId = `${assignmentDoc.id}_${appUser.uid}`;
-
-      await addDoc(collection(db, "submissions"), {
-        submissionKey: submissionId,
-        assignmentId: assignmentDoc.id,
-        assignmentTitle: assignment.title || "Untitled",
-        assignmentCode: assignment.code,
-        studentId: appUser.uid,
-        studentName,
-        type: assignment.type || "standard",
-        classId: assignment.classId,
-        subjectId: assignment.subjectId,
-        teacherId: assignment.teacherId,
-        contentHtml: note.content,
-        noteTitle: note.title,
-        noteId: note.docId || note.id,
-        fileUrl: null,
-        fileName: null,
-        responses: null,
-        status: "submitted",
-        isLate: false,
-        marked: false,
-        submittedAt: serverTimestamp(),
-      });
-
-      Alert.alert("Success", "Note submitted as assignment successfully!");
-      setShowCodeInput(false);
-      setAssignmentCode("");
-    } catch (error: any) {
-      console.error("Submission error:", error);
-      Alert.alert("Error", error.message || "Failed to submit note.");
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   const deleteLocalNote = async (id: string) => {
@@ -512,21 +279,9 @@ export default function NoteScreen() {
 
   const startEdit = (note: Note) => {
     setEditingId(note.id);
-    setSubject(note.subject);
     setTitle(note.title);
     setContent(note.content);
     setIsAdding(true);
-
-    // Check if this note has an active submission
-    if (note.submissionStatus) {
-      setCurrentNoteSubmission({
-        status: note.submissionStatus,
-        feedback: note.teacherFeedback,
-        id: note.submissionId
-      });
-    } else {
-      setCurrentNoteSubmission(null);
-    }
   };
 
   const cancelEdit = () => {
@@ -534,36 +289,22 @@ export default function NoteScreen() {
     setTitle("");
     setContent("");
     setIsAdding(false);
-    setCurrentNoteSubmission(null);
   };
 
-  /* ---------------------------------------------
-     Filter & sort
-  --------------------------------------------- */
   const filtered = notes
     .filter(
       (n) =>
         n.title.toLowerCase().includes(search.toLowerCase()) ||
         n.content.toLowerCase().includes(search.toLowerCase()),
-    )
-    .sort(
-      (a, b) =>
-        (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt - a.createdAt,
     );
 
-  /* ---------------------------------------------
-     Render
-  --------------------------------------------- */
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>Academic Notes ✏️</Text>
+        <Text style={styles.headerTitle}>My Study Notes 📚</Text>
         <TouchableOpacity
           style={styles.addCircle}
-          onPress={() => {
-            fetchDynamicSubjects();
-            setIsAdding(!isAdding);
-          }}
+          onPress={() => setIsAdding(!isAdding)}
         >
           <SVGIcon
             name={isAdding ? "close-circle" : "add-circle"}
@@ -580,99 +321,25 @@ export default function NoteScreen() {
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 50 }}
           >
-          <TouchableOpacity
-            style={styles.subjectPick}
-            onPress={() => setShowSubjectDropdown((s) => !s)}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Text
-                style={{ color: subject ? "#111" : "#666", fontWeight: "600" }}
-              >
-                {subject ?? "Select Subject"}
-              </Text>
-              {loadingSubjects && (
-                <ActivityIndicator
-                  size="small"
-                  color={COLORS.primary}
-                  style={{ marginLeft: 10 }}
-                />
-              )}
-            </View>
-            <SVGIcon name="chevron-down" size={18} color={COLORS.primary} />
-          </TouchableOpacity>
-
-          {showSubjectDropdown && (
-            <View style={styles.dropdown}>
-              <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
-                {dynamicSubjects.map((s) => (
-                  <TouchableOpacity
-                    key={s}
-                    style={[
-                      styles.subjectChip,
-                      {
-                        borderLeftWidth: 4,
-                        borderLeftColor: getSubjectColor(s),
-                      },
-                      subject === s && { backgroundColor: getSubjectColor(s) },
-                    ]}
-                    onPress={() => {
-                      setSubject(s);
-                      setShowSubjectDropdown(false);
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: subject === s ? "#fff" : "#333",
-                        fontSize: 13,
-                        fontWeight: "600",
-                        marginLeft: 8,
-                      }}
-                    >
-                      {s}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          <TextInput
-            placeholder="Note Title"
-            placeholderTextColor="#999"
-            value={title}
-            onChangeText={setTitle}
-            style={styles.titleInput}
-            editable={canEdit}
-          />
-
-          {currentNoteSubmission?.status === "rework" && (
-            <View style={styles.reworkBanner}>
-              <View style={styles.reworkHeader}>
-                <SVGIcon name="alert-circle" size={20} color="#B45309" />
-                <Text style={styles.reworkTitle}>Rework Required by Teacher</Text>
-              </View>
-              {currentNoteSubmission.feedback && (
-                <Text style={styles.reworkFeedback}>
-                  "{currentNoteSubmission.feedback}"
-                </Text>
-              )}
-            </View>
-          )}
-
-          <View style={styles.editorWrapper}>
-            <RichTextEditor
-              ref={editorRef}
-              initialContent={content}
-              readOnly={!canEdit}
+            <TextInput
+              placeholder="Note Title"
+              placeholderTextColor="#999"
+              value={title}
+              onChangeText={setTitle}
+              style={styles.titleInput}
             />
-          </View>
 
-          <View style={styles.actionRow}>
-            {canEdit && (
+            <View style={styles.editorWrapper}>
+              <RichTextEditor
+                ref={editorRef}
+                initialContent={content}
+              />
+            </View>
+
+            <View style={styles.actionRow}>
               <TouchableOpacity
                 style={[styles.saveBtn, { flex: 1 }]}
                 onPress={async () => {
-                  if (!subject) return Alert.alert("Please pick a subject first");
                   setSaving(true);
                   const html = await editorRef.current?.getHTML();
                   if (editingId) await updateLocalNote(editingId, html || "");
@@ -684,50 +351,18 @@ export default function NoteScreen() {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <Text style={styles.saveBtnText}>
-                    {editingId ? "Update Draft" : "Save Draft"}
+                    {editingId ? "Update Note" : "Save Note"}
                   </Text>
                 )}
               </TouchableOpacity>
-            )}
 
-            {currentNoteSubmission?.status === "rework" && (
-               <TouchableOpacity
-                style={[styles.saveBtn, { flex: 1, backgroundColor: COLORS.secondary }]}
-                onPress={async () => {
-                  setSubmitting(true);
-                  const html = await editorRef.current?.getHTML();
-                  try {
-                    await updateDoc(doc(db, "submissions", currentNoteSubmission.id), {
-                      contentHtml: html,
-                      status: "submitted",
-                      submittedAt: serverTimestamp(),
-                      marked: false
-                    });
-                    Alert.alert("Success", "Resubmitted successfully!");
-                    setIsAdding(false);
-                    fetchFromFirestoreAndMerge();
-                  } catch (e) {
-                    Alert.alert("Error", "Failed to resubmit.");
-                  } finally {
-                    setSubmitting(false);
-                  }
-                }}
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Resubmit to Teacher</Text>
-                )}
+              <TouchableOpacity style={styles.cancelBtn} onPress={cancelEdit}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-            )}
-
-            <TouchableOpacity style={styles.cancelBtn} onPress={cancelEdit}>
-              <Text style={styles.cancelBtnText}>{canEdit ? "Cancel" : "Close"}</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </View>
-    ) : (
+            </View>
+          </ScrollView>
+        </View>
+      ) : (
         <View style={{ flex: 1 }}>
           <View style={styles.searchBox}>
             <SVGIcon
@@ -737,7 +372,7 @@ export default function NoteScreen() {
               style={{ marginRight: 8 }}
             />
             <TextInput
-              placeholder="Search through notes..."
+              placeholder="Search your notes..."
               value={search}
               onChangeText={setSearch}
               style={styles.searchInput}
@@ -747,57 +382,19 @@ export default function NoteScreen() {
           <FlatList
             data={filtered}
             keyExtractor={(i) => i.id}
+            numColumns={isLargeScreen ? 2 : 1}
+            columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
             contentContainerStyle={{ paddingBottom: 100 }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
               <TouchableOpacity
-                style={[
-                  styles.noteCard,
-                  { borderLeftColor: item.color || COLORS.primary },
-                ]}
+                style={[styles.noteCard, isLargeScreen && { flex: 1, marginBottom: 0 }]}
                 onPress={() => startEdit(item)}
               >
                 <View style={styles.cardTop}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                    <View
-                      style={[
-                        styles.subjectBadge,
-                        {
-                          backgroundColor:
-                            (item.color || COLORS.primary) + "15",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.subjectBadgeText,
-                          { color: item.color || COLORS.primary },
-                        ]}
-                      >
-                        {item.subject}
-                      </Text>
-                    </View>
-                    {item.submissionStatus && (
-                      <View style={[
-                        styles.statusBadge,
-                        item.submissionStatus === 'rework' && { backgroundColor: '#FEF3C7' },
-                        item.submissionStatus === 'graded' && { backgroundColor: '#D1FAE5' },
-                        item.submissionStatus === 'submitted' && { backgroundColor: '#DBEAFE' },
-                      ]}>
-                        <Text style={[
-                          styles.statusBadgeText,
-                          item.submissionStatus === 'rework' && { color: '#B45309' },
-                          item.submissionStatus === 'graded' && { color: '#059669' },
-                          item.submissionStatus === 'submitted' && { color: '#2563EB' },
-                        ]}>
-                          {item.submissionStatus.toUpperCase()}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
+                  <Text style={styles.cardTitle} numberOfLines={1}>
+                    {item.title}
+                  </Text>
                   <TouchableOpacity
                     onPress={async () => {
                       const next = notes.map((n) =>
@@ -816,8 +413,8 @@ export default function NoteScreen() {
                   </TouchableOpacity>
                 </View>
 
-                <Text numberOfLines={4} style={styles.cardContent}>
-                  {item.content}
+                <Text numberOfLines={3} style={styles.cardContent}>
+                  {item.content.replace(/<[^>]*>?/gm, "")}
                 </Text>
 
                 <View style={styles.cardFooter}>
@@ -827,39 +424,11 @@ export default function NoteScreen() {
                     ).toLocaleDateString()}
                   </Text>
                   <View style={styles.footerActions}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        try {
-                          Alert.alert(
-                            "Content Copied",
-                            "Note text has been copied to your clipboard.",
-                          );
-                        } catch {
-                          Alert.alert("Copy failed");
-                        }
-                      }}
-                    >
-                      <SVGIcon name="copy" size={18} color="#666" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      onPress={() => submitNoteToAssignment(item)}
-                      disabled={submitting}
-                      style={styles.submitBadge}
-                    >
-                      <SVGIcon
-                        name="cloud-upload"
-                        size={16}
-                        color="#fff"
-                      />
-                      <Text style={styles.submitBadgeText}>Submit to Teacher</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
+                     <TouchableOpacity
                       onPress={() => {
                         Alert.alert(
                           "Delete Note",
-                          "Are you sure you want to remove this note?",
+                          "Are you sure you want to delete this note?",
                           [
                             { text: "Cancel", style: "cancel" },
                             {
@@ -879,44 +448,6 @@ export default function NoteScreen() {
               </TouchableOpacity>
             )}
           />
-        </View>
-      )}
-
-      {showCodeInput && (
-        <View style={styles.overlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Submit Assignment</Text>
-            <Text style={styles.modalLabel}>Enter the assignment code provided by your teacher:</Text>
-            <TextInput
-              style={styles.codeInput}
-              value={assignmentCode}
-              onChangeText={setAssignmentCode}
-              placeholder="e.g. MATH101"
-              autoCapitalize="characters"
-              autoFocus
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: "#F1F3F5" }]}
-                onPress={() => setShowCodeInput(false)}
-              >
-                <Text style={{ color: "#495057", fontWeight: "600" }}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: COLORS.primary }]}
-                onPress={() => {
-                  if (!assignmentCode.trim()) return Alert.alert("Error", "Assignment code is required.");
-                  if (selectedNoteForSubmit) executeSubmission(selectedNoteForSubmit, assignmentCode.trim());
-                }}
-              >
-                {submitting ? (
-                  <ActivityIndicator color="#fff" size="small" />
-                ) : (
-                  <Text style={{ color: "#fff", fontWeight: "600" }}>Submit</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
       )}
     </View>
@@ -951,32 +482,6 @@ const styles = StyleSheet.create({
   },
   editorContainer: {
     flex: 1,
-  },
-  subjectPick: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#FFF",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 12,
-    ...SHADOWS.small,
-  },
-  dropdown: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 10,
-    marginBottom: 12,
-    ...SHADOWS.medium,
-  },
-  subjectChip: {
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    borderRadius: 8,
-    marginBottom: 5,
-  },
-  subjectChipActive: {
-    backgroundColor: COLORS.primary,
   },
   titleInput: {
     backgroundColor: "#FFF",
@@ -1047,7 +552,9 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginBottom: 16,
     borderLeftWidth: 6,
+    borderLeftColor: COLORS.primary,
     ...SHADOWS.small,
+    minHeight: 160,
   },
   cardTop: {
     flexDirection: "row",
@@ -1059,19 +566,8 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "800",
     color: "#1A1C1E",
-    marginBottom: 4,
-  },
-  subjectBadge: {
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: "flex-start",
-  },
-  subjectBadgeText: {
-    fontSize: 11,
-    color: COLORS.primary,
-    fontWeight: "700",
+    flex: 1,
+    marginRight: 10,
   },
   cardContent: {
     fontSize: 14,
@@ -1096,105 +592,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 15,
-  },
-  submitBadge: {
-    backgroundColor: COLORS.primary,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-    ...SHADOWS.small,
-  },
-  submitBadgeText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  statusBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  reworkBanner: {
-    backgroundColor: '#FFFBEB',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#FEF3C7',
-  },
-  reworkHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  reworkTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#92400E',
-  },
-  reworkFeedback: {
-    fontSize: 13,
-    color: '#B45309',
-    fontStyle: 'italic',
-    lineHeight: 18,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 1000,
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: "#FFF",
-    borderRadius: 16,
-    padding: 24,
-    width: "100%",
-    maxWidth: 400,
-    ...SHADOWS.medium,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#1A1C1E",
-    marginBottom: 8,
-  },
-  modalLabel: {
-    fontSize: 14,
-    color: "#495057",
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  codeInput: {
-    backgroundColor: "#F8F9FA",
-    borderWidth: 1,
-    borderColor: "#E9ECEF",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: "row",
-    gap: 12,
-  },
-  modalBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
   },
 });

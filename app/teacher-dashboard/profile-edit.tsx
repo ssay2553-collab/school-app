@@ -1,534 +1,517 @@
 import { useRouter } from "expo-router";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import { signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import * as ImagePicker from "expo-image-picker";
+import { doc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
+  SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
-  StatusBar,
-  SafeAreaView,
-  Image
+  Image,
+  Modal,
+  TextInput,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
-import * as ImagePicker from "expo-image-picker";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { SHADOWS } from "../../constants/theme";
-import { useAuth } from "../../contexts/AuthContext";
-import { db } from "../../firebaseConfig";
-import { LinearGradient } from "expo-linear-gradient";
 import SVGIcon from "../../components/SVGIcon";
-import { SCHOOL_CONFIG } from "../../constants/Config";
+import { COLORS, SHADOWS } from "../../constants/theme";
+import { useAuth } from "../../contexts/AuthContext";
+import { auth, db, storage } from "../../firebaseConfig";
 
-const storage = getStorage();
-
-export default function ProfileEditScreen() {
+export default function TeacherProfileEdit() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  // Edit Name state
+  const [nameModalVisible, setNameModalVisible] = useState(false);
+  const [firstName, setFirstName] = useState(appUser?.profile?.firstName || "");
+  const [lastName, setLastName] = useState(appUser?.profile?.lastName || "");
 
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    phone: "",
-    email: "",
-    profileImage: "",
-    bio: "",
-    experience: "",
-    education: "",
-    gender: "",
-    dateOfBirth: "",
-    subjects: [] as string[],
-    classes: [] as string[],
-  });
+  // Password change state
+  const [pwModalVisible, setPwModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwUpdating, setPwUpdating] = useState(false);
 
-  const [subjectText, setSubjectText] = useState("");
-  const [classText, setClassText] = useState("");
-
-  const primary = SCHOOL_CONFIG.primaryColor;
-  const secondary = SCHOOL_CONFIG.secondaryColor;
-
-  useEffect(() => {
-    if (!appUser) return;
-
-    const fetchTeacher = async () => {
+  const handleLogout = () => {
+    const performLogout = async () => {
       try {
-        const ref = doc(db, "users", appUser.uid);
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const userData = snap.data();
-          const p = userData.profile || {};
-          setForm({
-            firstName: p.firstName || "",
-            lastName: p.lastName || "",
-            email: p.email || appUser.profile?.email || "",
-            phone: p.phone || "",
-            profileImage: p.profileImage || "",
-            bio: p.bio || "",
-            experience: p.experience || "",
-            education: p.education || "",
-            gender: p.gender || "",
-            dateOfBirth: userData.dateOfBirth ? (userData.dateOfBirth.toDate ? userData.dateOfBirth.toDate().toISOString().split('T')[0] : userData.dateOfBirth) : "",
-            subjects: userData.subjects || [],
-            classes: userData.classes || [],
-          });
+        setLoading(true);
+        await signOut(auth);
+        if (Platform.OS === 'web') {
+          window.location.href = "/";
+        } else {
+          router.replace("/");
         }
       } catch (err) {
-        console.error("Fetch teacher failed:", err);
-        Alert.alert("Error", "Failed to load profile data.");
+        Alert.alert("Error", "Logout failed. Please try again.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchTeacher();
-  }, [appUser]);
+    if (Platform.OS === 'web') {
+      if (window.confirm("Are you sure you want to sign out?")) {
+        performLogout();
+      }
+    } else {
+      Alert.alert("Logout", "Are you sure you want to sign out?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign Out", style: "destructive", onPress: performLogout },
+      ]);
+    }
+  };
+
+  const handleUpdateName = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      return Alert.alert("Required", "First name and surname are required.");
+    }
+
+    if (!appUser) return;
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "users", appUser.uid), {
+        "profile.firstName": firstName.trim(),
+        "profile.lastName": lastName.trim()
+      });
+      Alert.alert("Success", "Profile name updated!");
+      setNameModalVisible(false);
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Failed to update name.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return Alert.alert("Required", "Please fill in all password fields.");
+    }
+    if (newPassword !== confirmPassword) {
+      return Alert.alert("Mismatch", "New passwords do not match.");
+    }
+    if (newPassword.length < 6) {
+      return Alert.alert("Short Password", "New password must be at least 6 characters.");
+    }
+
+    setPwUpdating(true);
+    try {
+      const user = auth.currentUser;
+      if (!user || !user.email) throw new Error("No user session found.");
+
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      await updatePassword(user, newPassword);
+
+      Alert.alert("Success", "Password updated successfully!");
+      setPwModalVisible(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error(error);
+      let msg = "Failed to update password.";
+      if (error.code === 'auth/wrong-password') msg = "The current password you entered is incorrect.";
+      Alert.alert("Error", msg);
+    } finally {
+      setPwUpdating(false);
+    }
+  };
 
   const pickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.5,
       });
 
-      if (!result.canceled && result.assets[0].uri) {
-        handleImageUpload(result.assets[0].uri);
+      if (!result.canceled) {
+        uploadProfileImage(result.assets[0].uri);
       }
-    } catch (error) {
-      Alert.alert("Error", "Could not access photo library.");
+    } catch (e) {
+      Alert.alert("Error", "Failed to open library.");
     }
   };
 
-  const handleImageUpload = async (uri: string) => {
+  const uploadProfileImage = async (uri: string) => {
     if (!appUser) return;
-    setUploading(true);
+    setUpdating(true);
     try {
       const response = await fetch(uri);
       const blob = await response.blob();
-      const storageRef = ref(storage, `profiles/${appUser.uid}`);
+      const storageRef = ref(storage, `profiles/${appUser.uid}.jpg`);
       await uploadBytes(storageRef, blob);
       const downloadURL = await getDownloadURL(storageRef);
-      
-      setForm(prev => ({ ...prev, profileImage: downloadURL }));
-      const userRef = doc(db, "users", appUser.uid);
-      await updateDoc(userRef, { "profile.profileImage": downloadURL });
-      
-      Alert.alert("Success", "Profile image updated!");
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to upload image.");
-    } finally {
-      setUploading(false);
-    }
-  };
 
-  const handleSave = async () => {
-    if (!appUser) return;
-
-    if (!form.firstName.trim() || !form.lastName.trim()) {
-      return Alert.alert("Validation", "Name cannot be empty.");
-    }
-
-    setSaving(true);
-    try {
-      const ref = doc(db, "users", appUser.uid);
-      await updateDoc(ref, {
-        "profile.firstName": form.firstName,
-        "profile.lastName": form.lastName,
-        "profile.phone": form.phone,
-        "profile.bio": form.bio,
-        "profile.experience": form.experience,
-        "profile.education": form.education,
-        "profile.gender": form.gender,
-        dateOfBirth: form.dateOfBirth,
-        subjects: form.subjects,
-        classes: form.classes,
+      await updateDoc(doc(db, "users", appUser.uid), {
+        "profile.profileImage": downloadURL
       });
 
-      Alert.alert("Success", "Profile updated successfully!");
-      router.back();
+      Alert.alert("Success", "Profile picture updated!");
     } catch (err) {
-      console.error("Update profile failed:", err);
-      Alert.alert("Error", "Failed to update profile.");
+      console.error(err);
+      Alert.alert("Upload Failed", "Could not save image.");
     } finally {
-      setSaving(false);
+      setUpdating(false);
     }
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={primary} />
-        <Text style={{ color: "#64748B", marginTop: 8 }}>
-          Loading profile...
-        </Text>
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.mainContainer}>
-      <StatusBar barStyle="light-content" />
-      <LinearGradient colors={[primary, "#1E293B"]} style={styles.headerGradient}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <SVGIcon name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Profile</Text>
-          <SVGIcon name="person" size={24} color={secondary} />
-        </View>
-      </LinearGradient>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FDFDFD" />
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <Animatable.View animation="fadeInUp" duration={600} style={styles.card}>
-          <View style={styles.profileImageSection}>
-            <TouchableOpacity style={styles.imageContainer} onPress={pickImage} disabled={uploading}>
-               {form.profileImage ? (
-                 <Image source={{ uri: form.profileImage }} style={styles.profileImg} />
-               ) : (
-                 <View style={styles.placeholderImg}>
-                   <SVGIcon name="person" size={40} color="#94A3B8" />
-                 </View>
-               )}
-               {uploading && (
-                 <View style={styles.uploadingOverlay}>
-                    <ActivityIndicator color="#fff" />
-                 </View>
-               )}
-               <View style={[styles.cameraIcon, { backgroundColor: primary }]}>
-                 <SVGIcon name="camera" size={16} color="#fff" />
-               </View>
-            </TouchableOpacity>
-            <Text style={styles.imageHint}>Tap to change profile picture</Text>
-          </View>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <SVGIcon name="arrow-back" size={20} color={COLORS.primary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Teacher Profile</Text>
+        {updating && <ActivityIndicator size="small" color={COLORS.primary} style={{marginLeft: 'auto'}} />}
+      </View>
 
-          <View style={styles.cardHeader}>
-             <View style={[styles.iconBox, { backgroundColor: primary + '15' }]}>
-                <SVGIcon name="create" size={20} color={primary} />
-             </View>
-             <Text style={styles.cardTitle}>Personal Information</Text>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>FIRST NAME</Text>
-            <TextInput
-              value={form.firstName}
-              onChangeText={(t) => setForm({ ...form, firstName: t })}
-              style={styles.input}
-              placeholder="e.g. Samuel"
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>LAST NAME</Text>
-            <TextInput
-              value={form.lastName}
-              onChangeText={(t) => setForm({ ...form, lastName: t })}
-              style={styles.input}
-              placeholder="e.g. Mensah"
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>EMAIL ADDRESS</Text>
-            <View style={[styles.input, styles.disabledInput]}>
-               <Text style={styles.disabledText}>{form.email}</Text>
-               <SVGIcon name="lock-closed" size={14} color="#94A3B8" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Animatable.View animation="fadeInUp" duration={800} style={styles.profileSection}>
+          <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
+            {appUser?.profile?.profileImage ? (
+              <Image source={{ uri: appUser.profile.profileImage }} style={styles.avatarImg} />
+            ) : (
+              <View style={[styles.avatar, { backgroundColor: COLORS.primary }]}>
+                <Text style={styles.avatarText}>{appUser?.profile?.firstName?.charAt(0) || "T"}</Text>
+              </View>
+            )}
+            <View style={styles.editBadge}>
+               <SVGIcon name="camera" size={14} color="#FFF" />
             </View>
-            <Text style={styles.hint}>
-              System credentials cannot be modified.
-            </Text>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>PHONE NUMBER</Text>
-            <TextInput
-              value={form.phone}
-              onChangeText={(t) => setForm({ ...form, phone: t })}
-              keyboardType="phone-pad"
-              style={styles.input}
-              placeholder="024 XXX XXXX"
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>GENDER</Text>
-            <View style={styles.tagContainer}>
-              {["Male", "Female"].map((g) => (
-                <TouchableOpacity
-                  key={g}
-                  onPress={() => setForm({ ...form, gender: g })}
-                  style={[
-                    styles.tag,
-                    form.gender === g && { backgroundColor: primary },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.tagText,
-                      form.gender === g && { color: "#fff" },
-                    ]}
-                  >
-                    {g}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>DATE OF BIRTH</Text>
-            <TextInput
-              value={form.dateOfBirth}
-              onChangeText={(t) => setForm({ ...form, dateOfBirth: t })}
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <View style={styles.cardHeader}>
-            <View style={[styles.iconBox, { backgroundColor: primary + "15" }]}>
-              <SVGIcon name="briefcase" size={20} color={primary} />
-            </View>
-            <Text style={styles.cardTitle}>Professional Profile</Text>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>EDUCATIONAL LEVEL</Text>
-            <TextInput
-              value={form.education}
-              onChangeText={(t) => setForm({ ...form, education: t })}
-              style={styles.input}
-              placeholder="e.g. B.Ed in Mathematics"
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>YEARS OF EXPERIENCE</Text>
-            <TextInput
-              value={form.experience}
-              onChangeText={(t) => setForm({ ...form, experience: t })}
-              keyboardType="numeric"
-              style={styles.input}
-              placeholder="e.g. 5"
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>PERSONAL BIO</Text>
-            <TextInput
-              value={form.bio}
-              onChangeText={(t) => setForm({ ...form, bio: t })}
-              multiline
-              numberOfLines={4}
-              style={[styles.input, { height: 100, textAlignVertical: "top" }]}
-              placeholder="Tell parents and students about yourself..."
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>SUBJECTS TAUGHT</Text>
-            <View style={styles.rowInput}>
-              <TextInput
-                value={subjectText}
-                onChangeText={setSubjectText}
-                style={[styles.input, { flex: 1 }]}
-                placeholder="Add Subject..."
-                placeholderTextColor="#94A3B8"
-              />
-              <TouchableOpacity
-                onPress={() => {
-                  if (subjectText.trim()) {
-                    setForm({
-                      ...form,
-                      subjects: [...form.subjects, subjectText.trim()],
-                    });
-                    setSubjectText("");
-                  }
-                }}
-                style={[styles.addBtn, { backgroundColor: primary }]}
-              >
-                <SVGIcon name="add" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.tagContainer}>
-              {form.subjects.map((s, i) => (
-                <View key={i} style={styles.tag}>
-                  <Text style={styles.tagText}>{s}</Text>
-                  <TouchableOpacity
-                    onPress={() =>
-                      setForm({
-                        ...form,
-                        subjects: form.subjects.filter((_, idx) => idx !== i),
-                      })
-                    }
-                  >
-                    <SVGIcon name="close-circle" size={14} color="#94A3B8" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>CLASSES ASSIGNED</Text>
-            <View style={styles.rowInput}>
-              <TextInput
-                value={classText}
-                onChangeText={setClassText}
-                style={[styles.input, { flex: 1 }]}
-                placeholder="Add Class..."
-                placeholderTextColor="#94A3B8"
-              />
-              <TouchableOpacity
-                onPress={() => {
-                  if (classText.trim()) {
-                    setForm({
-                      ...form,
-                      classes: [...form.classes, classText.trim()],
-                    });
-                    setClassText("");
-                  }
-                }}
-                style={[styles.addBtn, { backgroundColor: primary }]}
-              >
-                <SVGIcon name="add" size={20} color="#fff" />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.tagContainer}>
-              {form.classes.map((c, i) => (
-                <View key={i} style={styles.tag}>
-                  <Text style={styles.tagText}>{c}</Text>
-                  <TouchableOpacity
-                    onPress={() =>
-                      setForm({
-                        ...form,
-                        classes: form.classes.filter((_, idx) => idx !== i),
-                      })
-                    }
-                  >
-                    <SVGIcon name="close-circle" size={14} color="#94A3B8" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSave}
-            disabled={saving || uploading}
-          >
-            <LinearGradient colors={[primary, '#4F46E5']} style={styles.btnGradient}>
-              {saving ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text style={styles.saveText}>Update Profile</Text>
-                  <SVGIcon name="checkmark-circle" size={18} color="#fff" style={{ marginLeft: 8 }} />
-                </>
-              )}
-            </LinearGradient>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.cancelText}>Discard Changes</Text>
-          </TouchableOpacity>
+          <Text style={styles.userName}>{appUser?.profile?.firstName} {appUser?.profile?.lastName}</Text>
+          <Text style={styles.userEmail}>{appUser?.profile?.email}</Text>
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>FACULTY MEMBER</Text>
+          </View>
         </Animatable.View>
 
-        <View style={{ height: 40 }} />
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>PERSONAL DETAILS</Text>
+          <View style={styles.settingsCard}>
+             <TouchableOpacity style={styles.settingItem} onPress={() => setNameModalVisible(true)}>
+                <View style={styles.settingIconBox}>
+                  <SVGIcon name="person" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.settingTextContent}>
+                  <Text style={styles.settingLabel}>Full Name</Text>
+                  <Text style={styles.settingValue}>{appUser?.profile?.firstName} {appUser?.profile?.lastName}</Text>
+                </View>
+                <SVGIcon name="create-outline" size={16} color={COLORS.primary} />
+             </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>SECURITY & ACCESS</Text>
+          <View style={styles.settingsCard}>
+             <TouchableOpacity style={styles.settingItem} onPress={() => setPwModalVisible(true)}>
+                <View style={[styles.settingIconBox, { backgroundColor: '#EEF2FF' }]}>
+                  <SVGIcon name="lock-closed" size={20} color="#4F46E5" />
+                </View>
+                <View style={styles.settingTextContent}>
+                  <Text style={styles.settingLabel}>Security</Text>
+                  <Text style={[styles.settingValue, { color: '#4F46E5' }]}>Change Login Password</Text>
+                </View>
+                <SVGIcon name="chevron-forward" size={16} color="#CBD5E1" />
+             </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>PROFESSIONAL INFO</Text>
+          <View style={styles.settingsCard}>
+             <SettingItem
+                icon="mail"
+                title="Work Email"
+                value={appUser?.profile?.email || "Not set"}
+             />
+             <View style={styles.divider} />
+             <SettingItem
+                icon="school"
+                title="School ID"
+                value={appUser?.schoolId?.toUpperCase() || "N/A"}
+             />
+             <View style={styles.divider} />
+             <View style={styles.settingItem}>
+                <View style={styles.settingIconBox}>
+                  <SVGIcon name="book" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.settingTextContent}>
+                  <Text style={styles.settingLabel}>Assigned Classes</Text>
+                  <Text style={styles.settingValue}>
+                    {appUser?.classes?.length > 0 ? appUser.classes.join(", ") : "None assigned"}
+                  </Text>
+                </View>
+             </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>SYSTEM</Text>
+          <TouchableOpacity
+            style={[styles.settingsCard, styles.logoutBtn]}
+            onPress={handleLogout}
+            disabled={loading}
+          >
+            <View style={styles.logoutContent}>
+              <View style={styles.logoutIconBox}>
+                <SVGIcon name="power" size={20} color="#EF4444" />
+              </View>
+              <Text style={styles.logoutText}>Sign Out of My Account</Text>
+              {loading ? <ActivityIndicator color="#EF4444" /> : <SVGIcon name="chevron-forward" size={18} color="#94A3B8" />}
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
+           <Text style={styles.footerText}>EduEaz App v1.2.0</Text>
+           <Text style={styles.footerSubText}>Secure Teacher Portal Node</Text>
+        </View>
       </ScrollView>
+
+      {/* NAME CHANGE MODAL */}
+      <Modal visible={nameModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Update Profile Name</Text>
+              <TouchableOpacity onPress={() => setNameModalVisible(false)}>
+                <SVGIcon name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalLabel}>FIRST NAME</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter first name"
+                value={firstName}
+                onChangeText={setFirstName}
+              />
+
+              <Text style={styles.modalLabel}>SURNAME (LAST NAME)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter surname"
+                value={lastName}
+                onChangeText={setLastName}
+              />
+
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: COLORS.primary }]}
+                onPress={handleUpdateName}
+                disabled={updating}
+              >
+                {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PASSWORD CHANGE MODAL */}
+      <Modal visible={pwModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Change Password</Text>
+              <TouchableOpacity onPress={() => setPwModalVisible(false)}>
+                <SVGIcon name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalLabel}>CURRENT PASSWORD</Text>
+              <TextInput
+                style={styles.modalInput}
+                secureTextEntry
+                placeholder="Required for security"
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+              />
+
+              <Text style={styles.modalLabel}>NEW PASSWORD</Text>
+              <TextInput
+                style={styles.modalInput}
+                secureTextEntry
+                placeholder="At least 6 characters"
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+
+              <Text style={styles.modalLabel}>CONFIRM NEW PASSWORD</Text>
+              <TextInput
+                style={styles.modalInput}
+                secureTextEntry
+                placeholder="Repeat new password"
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: COLORS.primary }]}
+                onPress={handleUpdatePassword}
+                disabled={pwUpdating}
+              >
+                {pwUpdating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Update My Password</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
+const SettingItem = ({ icon, title, value }: any) => (
+  <View style={styles.settingItem}>
+    <View style={styles.settingIconBox}>
+      <SVGIcon name={icon} size={20} color={COLORS.primary} />
+    </View>
+    <View style={styles.settingTextContent}>
+      <Text style={styles.settingLabel}>{title}</Text>
+      <Text style={styles.settingValue}>{value}</Text>
+    </View>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  mainContainer: { flex: 1, backgroundColor: "#F8FAFC" },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
-  headerGradient: {
-    paddingTop: 20,
+  container: { flex: 1, backgroundColor: "#FDFDFD" },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 25,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    ...SHADOWS.medium,
+    paddingVertical: 15,
+    backgroundColor: '#FFF',
+    ...SHADOWS.small,
+    zIndex: 10
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backBtn: { padding: 5 },
-  headerTitle: { fontSize: 22, fontWeight: '900', color: '#fff' },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15
+  },
+  headerTitle: { fontSize: 20, fontWeight: "900", color: "#0F172A" },
   scrollContent: { padding: 20 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 28,
-    padding: 24,
+  profileSection: {
+    alignItems: 'center',
+    marginBottom: 30,
+    backgroundColor: '#FFF',
+    padding: 25,
+    borderRadius: 30,
     ...SHADOWS.medium,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#F1F5F9'
   },
-  profileImageSection: { alignItems: 'center', marginBottom: 30 },
-  imageContainer: { width: 100, height: 100, borderRadius: 35, position: 'relative', ...SHADOWS.medium },
-  profileImg: { width: '100%', height: '100%', borderRadius: 35 },
-  placeholderImg: { width: '100%', height: '100%', borderRadius: 35, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
-  uploadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 35, justifyContent: 'center', alignItems: 'center', zIndex: 1 },
-  cameraIcon: { position: 'absolute', bottom: -5, right: -5, width: 32, height: 32, borderRadius: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff', zIndex: 2 },
-  imageHint: { fontSize: 11, color: '#94A3B8', marginTop: 12, fontWeight: '600' },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 25, gap: 12 },
-  iconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
-  fieldGroup: { marginBottom: 20 },
-  label: { fontSize: 10, fontWeight: "900", color: "#94A3B8", marginBottom: 8, letterSpacing: 1 },
-  input: {
-    backgroundColor: "#F8FAFC",
+  avatarContainer: { position: 'relative' },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 35,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+    ...SHADOWS.small
+  },
+  avatarImg: {
+    width: 100,
+    height: 100,
+    borderRadius: 35,
+    marginBottom: 15,
+  },
+  avatarText: { color: '#FFF', fontSize: 40, fontWeight: 'bold' },
+  editBadge: {
+    position: 'absolute',
+    bottom: 15,
+    right: -5,
+    backgroundColor: COLORS.primary,
+    width: 28,
+    height: 28,
     borderRadius: 14,
-    padding: 14,
-    fontSize: 15,
-    fontWeight: '600',
-    color: "#1E293B",
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 3,
+    borderColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center'
   },
-  disabledInput: { backgroundColor: '#F1F5F9', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  disabledText: { color: '#64748B', fontSize: 15 },
-  hint: { fontSize: 11, color: '#94A3B8', marginTop: 6, fontStyle: 'italic' },
-  saveButton: { marginTop: 15, borderRadius: 16, overflow: 'hidden', ...SHADOWS.medium },
-  btnGradient: { padding: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  saveText: { color: "#fff", fontWeight: "900", fontSize: 16 },
-  tagContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
-  tag: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F1F5F9",
-    paddingHorizontal: 12,
+  userName: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
+  userEmail: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '600' },
+  badge: {
+    marginTop: 15,
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: 15,
     paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
+    borderRadius: 100
   },
-  tagText: { fontSize: 13, fontWeight: "600", color: "#475569" },
-  rowInput: { flexDirection: "row", gap: 10, alignItems: "center" },
-  addBtn: { width: 48, height: 48, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  cancelButton: { marginTop: 15, padding: 15, alignItems: "center" },
-  cancelText: { fontWeight: "700", fontSize: 14, color: "#94A3B8" },
+  badgeText: { color: COLORS.primary, fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  section: { marginBottom: 25 },
+  sectionTitle: { fontSize: 11, fontWeight: '900', color: '#94A3B8', marginLeft: 10, marginBottom: 10, letterSpacing: 1 },
+  settingsCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 24,
+    padding: 10,
+    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: '#F1F5F9'
+  },
+  settingItem: { flexDirection: 'row', alignItems: 'center', padding: 15 },
+  settingIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15
+  },
+  settingTextContent: { flex: 1 },
+  settingLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '800', textTransform: 'uppercase' },
+  settingValue: { fontSize: 15, color: '#1E293B', fontWeight: '700', marginTop: 2 },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginHorizontal: 15 },
+  logoutBtn: { marginTop: 5, padding: 5 },
+  logoutContent: { flexDirection: 'row', alignItems: 'center', padding: 15 },
+  logoutIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15
+  },
+  logoutText: { flex: 1, fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  footer: { alignItems: 'center', marginTop: 20, marginBottom: 40 },
+  footerText: { fontSize: 12, fontWeight: '800', color: '#CBD5E1' },
+  footerSubText: { fontSize: 10, fontWeight: '700', color: '#E2E8F0', marginTop: 4 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B' },
+  modalBody: { gap: 15 },
+  modalLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
+  modalInput: { backgroundColor: '#F1F5F9', height: 55, borderRadius: 15, paddingHorizontal: 15, fontSize: 16, fontWeight: '600' },
+  modalBtn: { height: 55, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
+  modalBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' }
 });

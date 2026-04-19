@@ -71,22 +71,29 @@ jobs:
 
       - name: 🏗 Prebuild Expo
         run: |
-          export SCHOOL_ID=$(echo "${{ matrix.profile }}" | cut -d'-' -f1)
+          # Correctly extract the school ID
+          RAW_PROFILE="${{ matrix.profile }}"
+          export SCHOOL_ID=${RAW_PROFILE%-prod}
           echo "Prebuilding for School ID: $SCHOOL_ID"
           rm -rf android
           npx expo prebuild --platform android --no-install
         env:
-          SCHOOL_ID: $(echo "${{ matrix.profile }}" | cut -d'-' -f1)
+          NODE_ENV: production
 
       - name: 🛠 Build APK
         run: |
-          export SCHOOL_ID=$(echo "${{ matrix.profile }}" | cut -d'-' -f1)
+          RAW_PROFILE="${{ matrix.profile }}"
+          export SCHOOL_ID=${RAW_PROFILE%-prod}
+          export EXPO_PUBLIC_SCHOOL_ID=$SCHOOL_ID
+          echo "Building APK for School: $SCHOOL_ID"
+          
           cd android
           chmod +x gradlew
-          # Increase memory for the Gradle Daemon to prevent Metaspace errors
+          # Increase memory for the Gradle Daemon and set NODE_ENV
           ./gradlew assembleRelease -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
         env:
-          SCHOOL_ID: $(echo "${{ matrix.profile }}" | cut -d'-' -f1)
+          NODE_ENV: production
+          CI: true
 
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4

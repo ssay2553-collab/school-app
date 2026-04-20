@@ -68,7 +68,10 @@ export default function ParentLoginScreen() {
       const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       
       const userDoc = await getDoc(doc(db, "users", cred.user.uid));
-      if (!userDoc.exists() || userDoc.data()?.role !== "parent") {
+      const userData = userDoc.data();
+      const role = userData?.role || userData?.profile?.role;
+
+      if (!userDoc.exists() || role !== "parent") {
           await auth.signOut();
           throw new Error("This account is not registered as a parent.");
       }

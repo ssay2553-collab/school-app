@@ -82,14 +82,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             return;
           }
 
-          const data = snap.data();
+          const data = snap.data() || {};
           const mapped: AppUser = {
             uid: user.uid,
-            role: data.role,
-            status: data.status,
-            adminRole: data.adminRole,
-            permissions: data.permissions, // NEW: Map permissions from Firestore
-            dateOfBirth: data.dateOfBirth,
+            role: data.role || data.profile?.role,
+            status: data.status || data.profile?.status,
+            adminRole: data.adminRole || data.profile?.adminRole,
+            permissions: data.permissions || data.profile?.permissions,
+            dateOfBirth: data.dateOfBirth || data.profile?.dateOfBirth,
             profile: {
               firstName: data.profile?.firstName ?? "",
               lastName: data.profile?.lastName ?? "",
@@ -102,18 +102,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
               education: data.profile?.education,
               gender: data.profile?.gender,
             },
-            classes: data.classes ?? [],
-            subjects: data.subjects ?? [],
-            classId: data.classId,
-            childrenIds: data.childrenIds,
-            childrenClassIds: data.childrenClassIds,
+            classes: data.classes ?? data.profile?.classes ?? [],
+            subjects: data.subjects ?? data.profile?.subjects ?? [],
+            classId: data.classId || data.profile?.classId,
+            childrenIds: data.childrenIds || data.profile?.childrenIds,
+            childrenClassIds: data.childrenClassIds || data.profile?.childrenClassIds,
             createdAt: data.createdAt,
-            parentUids: data.parentUids,
-            parentLinkCode: data.parentLinkCode,
-            schoolId: data.schoolId,
-            departments: data.departments,
-            classTeacherOf: data.classTeacherOf,
-            assignedRoles: data.assignedRoles,
+            parentUids: data.parentUids || data.profile?.parentUids,
+            parentLinkCode: data.parentLinkCode || data.profile?.parentLinkCode,
+            schoolId: data.schoolId || data.profile?.schoolId,
+            departments: data.departments || data.profile?.departments,
+            classTeacherOf: data.classTeacherOf || data.profile?.classTeacherOf,
+            assignedRoles: data.assignedRoles || data.profile?.assignedRoles,
           };
 
           setAppUser(mapped);

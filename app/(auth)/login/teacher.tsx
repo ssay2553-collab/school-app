@@ -59,7 +59,10 @@ export default function TeacherLoginScreen() {
       );
 
       const userDoc = await getDoc(doc(db, "users", cred.user.uid));
-      if (!userDoc.exists() || userDoc.data()?.role !== "teacher") {
+      const userData = userDoc.data();
+      const role = userData?.role || userData?.profile?.role;
+
+      if (!userDoc.exists() || role !== "teacher") {
         await auth.signOut();
         throw new Error("This account is not registered as a teacher.");
       }

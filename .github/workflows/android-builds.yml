@@ -46,11 +46,11 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
 
-    timeout-minutes: 25
+    timeout-minutes: 90
 
     strategy:
       fail-fast: false
-      max-parallel: 3 # 🔥 VERY IMPORTANT (prevents overload)
+      max-parallel: 2 # Increased slightly as we've optimized resources
       matrix:
         profile: ${{ fromJson(needs.setup.outputs.profiles) }}
 
@@ -62,7 +62,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm" # 🔥 enables automatic npm caching
+
+      - name: ⚡ Cache Node Modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
 
       - name: ⚙️ Setup Java
         uses: actions/setup-java@v4
@@ -73,9 +80,8 @@ jobs:
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # 🔥 Gradle cache (BIG speed boost)
       - name: ⚡ Cache Gradle
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.gradle/caches
@@ -85,7 +91,12 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: 📦 Install dependencies
-        run: npm ci # 🔥 faster than npm install
+        run: |
+          if [ ! -d "node_modules" ]; then
+            npm ci
+          else
+            echo "Using cached node_modules"
+          fi
 
       - name: 🏗 Prebuild Expo
         run: |
@@ -110,7 +121,11 @@ jobs:
           chmod +x gradlew
 
           ./gradlew assembleRelease \
-            -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+            --no-daemon \
+            --console=plain \
+            -PdisableLintVitalRelease \
+            -PreactNativeArchitectures=armeabi-v7a,arm64-v8a \
+            -Dorg.gradle.jvmargs="-Xmx5g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8"
         env:
           NODE_ENV: production
           CI: true

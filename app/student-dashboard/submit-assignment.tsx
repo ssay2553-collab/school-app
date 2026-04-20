@@ -1,11 +1,8 @@
 import * as DocumentPicker from "expo-document-picker";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  Timestamp,
   addDoc,
   collection,
-  doc,
-  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -35,10 +32,13 @@ import { auth, db, storage } from "../../firebaseConfig";
 
 export default function SubmitAssignment() {
   const router = useRouter();
+  const { prefillNoteId, prefillTitle, prefillContent } = useLocalSearchParams();
+
   const [assignmentCode, setAssignmentCode] = useState("");
-  const [note, setNote] = useState("");
+  const [note, setNote] = useState(prefillTitle ? `Attached Note: ${prefillTitle}` : "");
   const [file, setFile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const surface = SCHOOL_CONFIG.surfaceColor;
@@ -72,157 +72,185 @@ export default function SubmitAssignment() {
     router.push("/student-dashboard/note");
   };
 
+  const showToast = (text: string, type: "success" | "error" | "info" = "info") => {
+    setMessage({ text, type });
+    // Keep success messages a bit longer if we are redirecting
+    setTimeout(() => setMessage(null), type === "success" ? 3000 : 5000);
+  };
+
   const handleSubmit = async () => {
-    if (!assignmentCode.trim() || !file || !studentId) {
-      return Alert.alert("Error", "Assignment code and a file are required. To submit written content, please use the Notes dashboard.");
+    if (!assignmentCode.trim() || (!file && !prefillNoteId) || !studentId) {
+      showToast("Assignment code and a submission (file or note) are required.", "error");
+      return;
     }
 
     setLoading(true);
+    setMessage(null);
 
     try {
+      // 1. Verify Assignment Code
       const q = query(
         collection(db, "assignments"),
-        where("code", "==", assignmentCode.trim())
+        where("code", "==", assignmentCode.trim().toUpperCase())
       );
-      const snapshot = await getDocs(q);
+      const snap = await getDocs(q);
 
-      if (snapshot.empty) {
-        Alert.alert("Invalid Code", "Assignment not found.");
+      if (snap.empty) {
         setLoading(false);
+        showToast("Invalid assignment code. Please check and try again.", "error");
         return;
       }
 
-      const assignmentDoc = snapshot.docs[0];
-      const assignment = assignmentDoc.data();
+      const assignmentDoc = snap.docs[0];
+      const assignmentId = assignmentDoc.id;
+      const assignmentData = assignmentDoc.data();
 
-      // Fetch student name
-      let studentName = "Student";
-      try {
-        const studentSnap = await getDoc(doc(db, "users", studentId));
-        if (studentSnap.exists()) {
-          studentName = studentSnap.data()?.profile?.firstName
-            ? `${studentSnap.data().profile.firstName} ${studentSnap.data().profile.lastName || ""}`
-            : studentSnap.data().fullName || studentSnap.data().name || "Student";
-        }
-      } catch (err) {
-        console.log("Error fetching student name", err);
-      }
+      // 2. Handle Upload or Rich-Text submission
+      let submissionData: any = {
+        assignmentId,
+        studentId,
+        schoolId: SCHOOL_CONFIG.schoolId,
+        studentName: auth.currentUser?.displayName || "Student",
+        submittedAt: serverTimestamp(),
+        status: "submitted",
+        note: note,
+        assignmentTitle: assignmentData.title,
+      };
 
-      const deadline: Timestamp | undefined = assignment.dueDate || assignment.deadline;
-      if (deadline && new Date() > deadline.toDate()) {
-        Alert.alert("Submission Closed", "The deadline has passed.");
-        setLoading(false);
-        return;
-      }
-
-      const submissionId = `${assignmentDoc.id}_${studentId}`;
-      let downloadURL = "";
-      let fileName = "";
-
-      if (file) {
-        fileName = file.name || file.fileName || `submission_${Date.now()}`;
-        const fileRef = ref(
-          storage,
-          `submissions/${assignmentDoc.id}/${studentId}_${fileName}`
-        );
+      if (prefillNoteId && prefillContent) {
+        // Rich Text Note submission
+        submissionData.type = "rich-text";
+        submissionData.contentHtml = prefillContent;
+        submissionData.noteId = prefillNoteId;
+      } else if (file) {
+        // File submission
         const response = await fetch(file.uri);
         const blob = await response.blob();
-        await uploadBytes(fileRef, blob, { contentType: blob.type });
-        downloadURL = await getDownloadURL(fileRef);
+        const fileRef = ref(storage, `submissions/${assignmentId}/${studentId}_${Date.now()}`);
+        await uploadBytes(fileRef, blob);
+        const fileUrl = await getDownloadURL(fileRef);
+
+        submissionData.type = "file";
+        submissionData.fileUrl = fileUrl;
+        submissionData.fileName = file.name;
       }
 
-      await addDoc(collection(db, "submissions"), {
-        submissionKey: submissionId,
-        assignmentId: assignmentDoc.id,
-        assignmentTitle: assignment.title || "Untitled",
-        assignmentCode: assignment.code,
-        studentId,
-        studentName,
-        type: assignment.type || "standard",
-        classId: assignment.classId,
-        subjectId: assignment.subjectId,
-        teacherId: assignment.teacherId,
-        fileUrl: downloadURL || null,
-        fileName: fileName || null,
-        contentHtml: null,
-        responses: null,
-        note,
-        isLate: false,
-        marked: false,
-        submittedAt: serverTimestamp(),
-      });
+      // 3. Save Submission
+      await addDoc(collection(db, "submissions"), submissionData);
 
-      Alert.alert("Success", "Assignment submitted successfully!");
-      router.back();
-    } catch (error: any) {
-      Alert.alert("Error", error.message);
+      showToast("Assignment submitted successfully!", "success");
+
+      // Give the user a moment to see the success message before redirecting
+      setTimeout(() => {
+        router.replace("/student-dashboard");
+      }, 1500);
+
+    } catch (error) {
+      console.error("Submission error:", error);
+      showToast("Failed to submit assignment. Please check your connection.", "error");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: surface }]}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <SVGIcon name="arrow-back" size={24} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.header}>Submit Assignment</Text>
-        </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <SVGIcon name="arrow-back" size={24} color="#1E293B" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Submit Assignment</Text>
+      </View>
 
+      <ScrollView contentContainerStyle={styles.content}>
+        {message && (
+          <View
+            style={[
+              styles.messageBanner,
+              message.type === "error"
+                ? styles.errorBanner
+                : message.type === "success"
+                ? styles.successBanner
+                : styles.infoBanner,
+            ]}
+          >
+            <SVGIcon
+              name={
+                message.type === "error"
+                  ? "alert-circle"
+                  : message.type === "success"
+                  ? "checkmark-circle"
+                  : "information-circle"
+              }
+              size={20}
+              color={
+                message.type === "error"
+                  ? COLORS.error || "#ef4444"
+                  : message.type === "success"
+                  ? COLORS.success || "#10b981"
+                  : "#3b82f6"
+              }
+            />
+            <Text
+              style={[
+                styles.messageText,
+                {
+                  color:
+                    message.type === "error"
+                      ? "#991b1b"
+                      : message.type === "success"
+                      ? "#065f46"
+                      : "#1e40af",
+                },
+              ]}
+            >
+              {message.text}
+            </Text>
+          </View>
+        )}
         <View style={styles.card}>
           <Text style={styles.label}>Assignment Code</Text>
-          <View style={styles.inputWrapper}>
-             <SVGIcon name="key" size={18} color="#94A3B8" style={styles.inputIcon} />
-             <TextInput
-              style={styles.input}
-              placeholder="Enter code (e.g. HW-123)"
-              placeholderTextColor="#94A3B8"
-              value={assignmentCode}
-              onChangeText={setAssignmentCode}
-              autoCapitalize="characters"
-            />
-          </View>
+          <TextInput
+            style={styles.input}
+            placeholder="ENTER CODE (e.g. MATH-101)"
+            value={assignmentCode}
+            onChangeText={(t) => setAssignmentCode(t.toUpperCase())}
+            autoCapitalize="characters"
+          />
 
-          <Text style={styles.label}>Submission Method</Text>
-          <View style={styles.methodRow}>
-            <TouchableOpacity
-              style={[styles.methodBtn, file && { borderColor: primary, backgroundColor: primary + '08' }]}
-              onPress={pickFile}
-            >
-              <SVGIcon name="cloud-upload" size={24} color={file ? primary : "#64748B"} />
-              <Text style={[styles.methodBtnText, file && { color: primary }]}>
-                {file ? "File Selected" : "Upload File"}
-              </Text>
-            </TouchableOpacity>
+          <Text style={styles.label}>Submission Type</Text>
 
-            <TouchableOpacity
-              style={styles.methodBtn}
-              onPress={goToNotes}
-            >
-              <SVGIcon name="document-text" size={24} color="#64748B" />
-              <Text style={styles.methodBtnText}>
-                From Notes
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {prefillNoteId ? (
+            <View style={styles.noteBox}>
+              <View style={styles.noteHeader}>
+                <SVGIcon name="document-text" size={20} color={primary} />
+                <Text style={styles.noteTitle}>{prefillTitle || "Attached Note"}</Text>
+              </View>
+              <Text style={styles.noteSubtitle}>Note content will be submitted as your assignment.</Text>
+              <TouchableOpacity onPress={() => router.setParams({ prefillNoteId: "", prefillTitle: "", prefillContent: "" })}>
+                <Text style={{color: COLORS.error, fontSize: 12, fontWeight: '700', marginTop: 10}}>Remove Note Attachment</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.uploadOptions}>
+              <TouchableOpacity style={styles.uploadBtn} onPress={pickFile}>
+                <SVGIcon name="cloud-upload-outline" size={32} color={primary} />
+                <Text style={styles.uploadText}>{file ? file.name : "Select File"}</Text>
+              </TouchableOpacity>
 
-          {file && (
-            <View style={styles.filePreview}>
-              <SVGIcon name="attach" size={18} color={primary} />
-              <Text style={styles.fileName} numberOfLines={1}>{file.name || file.fileName}</Text>
-              <TouchableOpacity onPress={() => setFile(null)}>
-                <SVGIcon name="close-circle" size={18} color="#EF4444" />
+              <Text style={styles.orText}>OR</Text>
+
+              <TouchableOpacity style={[styles.noteBtn, {borderColor: primary}]} onPress={goToNotes}>
+                <SVGIcon name="journal-outline" size={24} color={primary} />
+                <Text style={[styles.noteBtnText, {color: primary}]}>Attach from Notes</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          <Text style={styles.label}>Note (optional)</Text>
+          <Text style={[styles.label, { marginTop: 20 }]}>Comment (Optional)</Text>
           <TextInput
-            style={styles.textArea}
-            placeholder="Add a message for your teacher..."
-            placeholderTextColor="#94A3B8"
+            style={[styles.input, styles.textArea]}
+            placeholder="Add a comment to your teacher..."
             multiline
             numberOfLines={4}
             value={note}
@@ -230,7 +258,7 @@ export default function SubmitAssignment() {
           />
 
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: primary }]}
+            style={[styles.submitBtn, { backgroundColor: primary }]}
             onPress={handleSubmit}
             disabled={loading}
           >
@@ -238,18 +266,11 @@ export default function SubmitAssignment() {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={styles.buttonText}>Submit Assignment</Text>
-                <SVGIcon name="send" size={18} color="#fff" />
+                <SVGIcon name="send-outline" size={20} color="#fff" />
+                <Text style={styles.submitBtnText}>Submit Assignment</Text>
               </>
             )}
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.infoBox}>
-          <SVGIcon name="information-circle" size={20} color="#1E40AF" />
-          <Text style={styles.infoText}>
-            To submit written content (Rich Text), please use the "Academic Notes" dashboard. You can create a note and then tap "Submit to Teacher".
-          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -257,25 +278,150 @@ export default function SubmitAssignment() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { padding: 20 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
-  backBtn: { marginRight: 15, padding: 5 },
-  header: { fontSize: 24, fontWeight: "800", color: "#0F172A" },
-  card: { backgroundColor: '#fff', borderRadius: 24, padding: 20, ...SHADOWS.medium },
-  label: { fontSize: 13, fontWeight: "700", color: "#64748B", marginBottom: 8, marginTop: 15 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 12, paddingHorizontal: 15 },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, height: 50, fontSize: 15, color: "#1E293B", fontWeight: '600' },
-  methodRow: { flexDirection: "row", gap: 12, marginTop: 5 },
-  methodBtn: { flex: 1, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0", alignItems: "center", backgroundColor: '#fff', gap: 8 },
-  methodBtnText: { color: "#64748B", fontWeight: "700", fontSize: 13 },
-  filePreview: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, marginTop: 15, gap: 8 },
-  fileName: { flex: 1, color: "#334155", fontWeight: "600", fontSize: 14 },
-  textArea: { backgroundColor: '#F1F5F9', borderRadius: 12, padding: 15, fontSize: 15, color: "#1E293B", textAlignVertical: 'top', minHeight: 100 },
-  button: { height: 55, borderRadius: 16, marginTop: 30, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, ...SHADOWS.medium },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  infoBox: { marginTop: 30, padding: 16, backgroundColor: "#EFF6FF", borderRadius: 16, flexDirection: 'row', gap: 12 },
-  infoText: { flex: 1, color: "#1E40AF", fontSize: 13, lineHeight: 20, fontWeight: '500' },
+  container: { flex: 1, backgroundColor: "#F8FAFC" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  title: { fontSize: 20, fontWeight: "900", color: "#1E293B" },
+  content: { padding: 20 },
+  card: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 24,
+    ...SHADOWS.medium,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#64748B",
+    marginBottom: 8,
+    textTransform: "uppercase",
+  },
+  input: {
+    backgroundColor: "#F1F5F9",
+    borderRadius: 16,
+    padding: 15,
+    fontSize: 16,
+    color: "#1E293B",
+    fontWeight: "600",
+    marginBottom: 20,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: "top",
+  },
+  uploadOptions: {
+    alignItems: 'center',
+    gap: 15,
+  },
+  uploadBtn: {
+    width: '100%',
+    height: 120,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  uploadText: {
+    marginTop: 10,
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '700',
+  },
+  orText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#94A3B8',
+  },
+  noteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: 55,
+    borderRadius: 16,
+    borderWidth: 2,
+    gap: 10,
+  },
+  noteBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  noteBox: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 16,
+    padding: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3B82F6',
+  },
+  noteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 5,
+  },
+  noteTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  noteSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  submitBtn: {
+    height: 55,
+    borderRadius: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 10,
+    ...SHADOWS.medium,
+  },
+  submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  messageBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 20,
+    gap: 12,
+    borderWidth: 1,
+  },
+  successBanner: {
+    backgroundColor: "#ecfdf5",
+    borderColor: "#10b981",
+  },
+  errorBanner: {
+    backgroundColor: "#fef2f2",
+    borderColor: "#ef4444",
+  },
+  infoBanner: {
+    backgroundColor: "#eff6ff",
+    borderColor: "#3b82f6",
+  },
+  messageText: {
+    fontSize: 14,
+    fontWeight: "700",
+    flex: 1,
+  },
 });
-

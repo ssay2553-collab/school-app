@@ -1,9 +1,9 @@
 import { useRouter } from "expo-router";
 import { signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, query, collection, where, getDocs } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,7 +18,9 @@ import {
   Image,
   Modal,
   TextInput,
+  BackHandler,
 } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -30,11 +32,24 @@ export default function TeacherProfileEdit() {
   const { appUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [classNames, setClassNames] = useState<string[]>([]);
+  const [mainClassName, setMainClassName] = useState<string>("");
 
   // Edit Name state
   const [nameModalVisible, setNameModalVisible] = useState(false);
   const [firstName, setFirstName] = useState(appUser?.profile?.firstName || "");
   const [lastName, setLastName] = useState(appUser?.profile?.lastName || "");
+
+  // Personal Info state
+  const [personalModalVisible, setPersonalModalVisible] = useState(false);
+  const [phone, setPhone] = useState(appUser?.profile?.phone || "");
+  const [gender, setGender] = useState(appUser?.profile?.gender || "");
+
+  // Professional Profile state
+  const [profModalVisible, setProfModalVisible] = useState(false);
+  const [bio, setBio] = useState(appUser?.profile?.bio || "");
+  const [experience, setExperience] = useState(appUser?.profile?.experience || "");
+  const [education, setEducation] = useState(appUser?.profile?.education || "");
 
   // Password change state
   const [pwModalVisible, setPwModalVisible] = useState(false);
@@ -42,6 +57,94 @@ export default function TeacherProfileEdit() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwUpdating, setPwUpdating] = useState(false);
+
+  const handleBack = useCallback(() => {
+    if (nameModalVisible) {
+      setNameModalVisible(false);
+      return true;
+    }
+    if (personalModalVisible) {
+      setPersonalModalVisible(false);
+      return true;
+    }
+    if (profModalVisible) {
+      setProfModalVisible(false);
+      return true;
+    }
+    if (pwModalVisible) {
+      setPwModalVisible(false);
+      return true;
+    }
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+    return true;
+  }, [nameModalVisible, personalModalVisible, profModalVisible, pwModalVisible, router]);
+
+  useEffect(() => {
+    if (appUser?.profile) {
+      setFirstName(appUser.profile.firstName || "");
+      setLastName(appUser.profile.lastName || "");
+      setBio(appUser.profile.bio || "");
+      setExperience(appUser.profile.experience || "");
+      setEducation(appUser.profile.education || "");
+      setPhone(appUser.profile.phone || "");
+      setGender(appUser.profile.gender || "");
+    }
+  }, [appUser]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
+    return () => backHandler.remove();
+  }, [handleBack]);
+
+  useEffect(() => {
+    if (appUser?.profile) {
+      setFirstName(appUser.profile.firstName || "");
+      setLastName(appUser.profile.lastName || "");
+      setBio(appUser.profile.bio || "");
+      setExperience(appUser.profile.experience || "");
+      setEducation(appUser.profile.education || "");
+      setPhone(appUser.profile.phone || "");
+      setGender(appUser.profile.gender || "");
+    }
+  }, [appUser]);
+
+  useEffect(() => {
+    const fetchClassNames = async () => {
+      const classIds = [...(appUser?.classes || [])];
+      if (appUser?.classTeacherOf && !classIds.includes(appUser.classTeacherOf)) {
+        classIds.push(appUser.classTeacherOf);
+      }
+
+      if (classIds.length === 0) return;
+
+      try {
+        const q = query(
+          collection(db, "classes"),
+          where("__name__", "in", classIds)
+        );
+        const snap = await getDocs(q);
+        const namesMap: Record<string, string> = {};
+        snap.docs.forEach(doc => {
+          namesMap[doc.id] = doc.data().name;
+        });
+
+        // Update states
+        const assignedNames = (appUser?.classes || []).map(id => namesMap[id]).filter(Boolean);
+        setClassNames(assignedNames);
+
+        if (appUser?.classTeacherOf) {
+          setMainClassName(namesMap[appUser.classTeacherOf] || "Unknown");
+        }
+      } catch (err) {
+        console.error("Error fetching class names:", err);
+      }
+    };
+    fetchClassNames();
+  }, [appUser?.classes, appUser?.classTeacherOf]);
 
   const handleLogout = () => {
     const performLogout = async () => {
@@ -89,6 +192,43 @@ export default function TeacherProfileEdit() {
     } catch (err) {
       console.error(err);
       Alert.alert("Error", "Failed to update name.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdatePersonal = async () => {
+    if (!appUser) return;
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "users", appUser.uid), {
+        "profile.phone": phone.trim(),
+        "profile.gender": gender
+      });
+      Alert.alert("Success", "Personal details updated!");
+      setPersonalModalVisible(false);
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Failed to update personal details.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateProfessional = async () => {
+    if (!appUser) return;
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "users", appUser.uid), {
+        "profile.bio": bio.trim(),
+        "profile.experience": experience.trim(),
+        "profile.education": education.trim()
+      });
+      Alert.alert("Success", "Professional profile updated!");
+      setProfModalVisible(false);
+    } catch (err) {
+      console.error(err);
+      Alert.alert("Error", "Failed to update professional profile.");
     } finally {
       setUpdating(false);
     }
@@ -175,7 +315,7 @@ export default function TeacherProfileEdit() {
       <StatusBar barStyle="dark-content" backgroundColor="#FDFDFD" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <SVGIcon name="arrow-back" size={20} color={COLORS.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Teacher Profile</Text>
@@ -217,6 +357,19 @@ export default function TeacherProfileEdit() {
                 </View>
                 <SVGIcon name="create-outline" size={16} color={COLORS.primary} />
              </TouchableOpacity>
+             <View style={styles.divider} />
+             <TouchableOpacity style={styles.settingItem} onPress={() => setPersonalModalVisible(true)}>
+                <View style={styles.settingIconBox}>
+                  <SVGIcon name="call" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.settingTextContent}>
+                  <Text style={styles.settingLabel}>Contact & Gender</Text>
+                  <Text style={styles.settingValue}>
+                    {appUser?.profile?.phone || "No Phone"} • {appUser?.profile?.gender || "Not specified"}
+                  </Text>
+                </View>
+                <SVGIcon name="create-outline" size={16} color={COLORS.primary} />
+             </TouchableOpacity>
           </View>
         </View>
 
@@ -239,6 +392,19 @@ export default function TeacherProfileEdit() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>PROFESSIONAL INFO</Text>
           <View style={styles.settingsCard}>
+             <TouchableOpacity style={styles.settingItem} onPress={() => setProfModalVisible(true)}>
+                <View style={[styles.settingIconBox, {backgroundColor: COLORS.primary + '10'}]}>
+                  <SVGIcon name="briefcase" size={20} color={COLORS.primary} />
+                </View>
+                <View style={styles.settingTextContent}>
+                  <Text style={styles.settingLabel}>Professional Profile</Text>
+                  <Text style={styles.settingValue} numberOfLines={1}>
+                    {appUser?.profile?.education || "Add bio, experience & education"}
+                  </Text>
+                </View>
+                <SVGIcon name="create-outline" size={16} color={COLORS.primary} />
+             </TouchableOpacity>
+             <View style={styles.divider} />
              <SettingItem
                 icon="mail"
                 title="Work Email"
@@ -258,10 +424,26 @@ export default function TeacherProfileEdit() {
                 <View style={styles.settingTextContent}>
                   <Text style={styles.settingLabel}>Assigned Classes</Text>
                   <Text style={styles.settingValue}>
-                    {appUser?.classes?.length > 0 ? appUser.classes.join(", ") : "None assigned"}
+                    {classNames.length > 0 ? classNames.join(", ") : "None assigned"}
                   </Text>
                 </View>
              </View>
+             {appUser?.classTeacherOf && (
+               <>
+                 <View style={styles.divider} />
+                 <View style={styles.settingItem}>
+                    <View style={[styles.settingIconBox, {backgroundColor: '#FFFBEB'}]}>
+                      <SVGIcon name="ribbon" size={20} color="#D97706" />
+                    </View>
+                    <View style={styles.settingTextContent}>
+                      <Text style={[styles.settingLabel, {color: '#D97706'}]}>Class Teacher Of</Text>
+                      <Text style={styles.settingValue}>
+                        {mainClassName || "Loading..."}
+                      </Text>
+                    </View>
+                 </View>
+               </>
+             )}
           </View>
         </View>
 
@@ -324,6 +506,103 @@ export default function TeacherProfileEdit() {
                 {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PERSONAL INFO MODAL */}
+      <Modal visible={personalModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Contact & Gender</Text>
+              <TouchableOpacity onPress={() => setPersonalModalVisible(false)}>
+                <SVGIcon name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalLabel}>PHONE NUMBER</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Enter phone number"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+              />
+
+              <Text style={styles.modalLabel}>GENDER</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={gender}
+                  onValueChange={(itemValue) => setGender(itemValue)}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Select Gender" value="" />
+                  <Picker.Item label="Male" value="Male" />
+                  <Picker.Item label="Female" value="Female" />
+                  <Picker.Item label="Other" value="Other" />
+                </Picker>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: COLORS.primary }]}
+                onPress={handleUpdatePersonal}
+                disabled={updating}
+              >
+                {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PROFESSIONAL INFO MODAL */}
+      <Modal visible={profModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Professional Profile</Text>
+              <TouchableOpacity onPress={() => setProfModalVisible(false)}>
+                <SVGIcon name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalLabel}>BIO / ABOUT ME</Text>
+              <TextInput
+                style={[styles.modalInput, { height: 80, paddingTop: 12 }]}
+                placeholder="Tell parents and students about yourself..."
+                value={bio}
+                onChangeText={setBio}
+                multiline
+              />
+
+              <Text style={styles.modalLabel}>YEARS OF EXPERIENCE</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. 5"
+                value={experience}
+                onChangeText={setExperience}
+                keyboardType="numeric"
+              />
+
+              <Text style={styles.modalLabel}>HIGHEST QUALIFICATION (EDUCATION)</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. B.Ed in Mathematics"
+                value={education}
+                onChangeText={setEducation}
+              />
+
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: COLORS.primary }]}
+                onPress={handleUpdateProfessional}
+                disabled={updating}
+              >
+                {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Save Profile</Text>}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -512,6 +791,17 @@ const styles = StyleSheet.create({
   modalBody: { gap: 15 },
   modalLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
   modalInput: { backgroundColor: '#F1F5F9', height: 55, borderRadius: 15, paddingHorizontal: 15, fontSize: 16, fontWeight: '600' },
+  pickerWrapper: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 15,
+    height: 55,
+    justifyContent: 'center',
+    overflow: 'hidden'
+  },
+  picker: {
+    width: '100%',
+    height: 55,
+  },
   modalBtn: { height: 55, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
   modalBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' }
 });

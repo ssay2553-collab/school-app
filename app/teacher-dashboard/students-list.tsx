@@ -12,7 +12,7 @@ import {
     where,
     writeBatch,
 } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -23,7 +23,9 @@ import {
     TouchableOpacity,
     View,
     Dimensions,
+    BackHandler,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
@@ -50,6 +52,7 @@ const isLargeScreen = width > 768;
 
 // --- COMPONENT --- //
 export default function PromoteStudentsScreen() {
+  const router = useRouter();
   const { appUser } = useAuth();
 
   // --- STATE --- //
@@ -65,6 +68,32 @@ export default function PromoteStudentsScreen() {
   const [isBulkMode, setIsBulkMode] = useState(false);
 
   const [targetClassId, setTargetClassId] = useState<string | null>(null);
+
+  const handleBack = useCallback(() => {
+    if (selectedClass) {
+      setSelectedClass(null);
+    } else {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/teacher-dashboard");
+      }
+    }
+  }, [selectedClass, router]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress,
+    );
+
+    return () => subscription.remove();
+  }, [handleBack]);
 
   // --- DATA FETCHING --- //
 
@@ -154,6 +183,7 @@ export default function PromoteStudentsScreen() {
     }
   };
 
+
   // --- HANDLERS --- //
 
   const handleSelectClass = (cls: ClassData) => {
@@ -230,6 +260,13 @@ export default function PromoteStudentsScreen() {
   if (!selectedClass) {
     return (
       <View style={styles.container}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
+        >
+          <SVGIcon name="arrow-back" size={18} color={COLORS.primary} />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
         <Text style={styles.header}>Select a Class</Text>
         {teacherClasses.length === 0 ? (
           <Text style={styles.emptyText}>
@@ -265,10 +302,10 @@ export default function PromoteStudentsScreen() {
     <View style={styles.container}>
       <TouchableOpacity
         style={styles.backButton}
-        onPress={() => setSelectedClass(null)}
+        onPress={handleBack}
       >
         <SVGIcon name="arrow-back" size={18} color={COLORS.primary} />
-        <Text style={styles.backButtonText}>Back to Classes</Text>
+        <Text style={styles.backButtonText}>Back</Text>
       </TouchableOpacity>
 
       <Text style={styles.header}>Students in {selectedClass.name}</Text>

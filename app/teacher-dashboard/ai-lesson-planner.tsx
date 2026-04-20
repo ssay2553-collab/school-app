@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Alert,
   Modal,
   Dimensions,
+  BackHandler,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import SVGIcon from '../../components/SVGIcon';
@@ -31,11 +32,11 @@ import {
   getDocs,
   serverTimestamp,
   Timestamp,
-  orderBy,
-  limit
 } from 'firebase/firestore';
 
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+import Constants from "expo-constants";
+
+const GEMINI_API_KEY = Constants.expoConfig?.extra?.geminiApiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const { width } = Dimensions.get('window');
@@ -47,27 +48,66 @@ export default function AILessonPlanner() {
   const primary = SCHOOL_CONFIG.primaryColor;
 
   const teacherSubjects = appUser?.subjects || [];
-  const teacherClasses = appUser?.classes || [];
 
   const [loading, setLoading] = useState(false);
   const [weeklyUsage, setWeeklyUsage] = useState<Record<string, number>>({});
+  const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string }[]>([]);
+  const [generatedPlan, setGeneratedPlan] = useState<any>(null);
+  const [editingField, setEditingField] = useState<{ key: string; title: string } | null>(null);
+  const [editValue, setEditValue] = useState('');
   const [form, setForm] = useState({
     subject: teacherSubjects.length === 1 ? teacherSubjects[0] : '',
     strand: '',
     topic: '',
-    classLevel: teacherClasses.length === 1 ? teacherClasses[0] : '',
+    classLevel: '',
     duration: '60 mins',
   });
 
-  const [generatedPlan, setGeneratedPlan] = useState<any>(null);
-  const [editingField, setEditingField] = useState<{key: string, title: string} | null>(null);
-  const [editValue, setEditValue] = useState('');
+  // Handle navigation back
+  const handleBack = useCallback(() => {
+    if (generatedPlan) {
+      setGeneratedPlan(null);
+      return true;
+    } else {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/teacher-dashboard");
+      }
+      return true;
+    }
+  }, [generatedPlan, router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBack);
+    return () => backHandler.remove();
+  }, [handleBack]);
 
   useEffect(() => {
     if (appUser?.uid) {
       fetchWeeklyUsage();
+      fetchClasses();
     }
   }, [appUser?.uid]);
+
+  const fetchClasses = async () => {
+    if (!appUser?.classes || appUser.classes.length === 0) return;
+    try {
+      const q = query(
+        collection(db, "classes"),
+        where("__name__", "in", appUser.classes)
+      );
+      const snap = await getDocs(q);
+      const list = snap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+      setAvailableClasses(list);
+
+      if (list.length === 1) {
+        setForm(prev => ({ ...prev, classLevel: list[0].id }));
+      }
+    } catch (err) {
+      console.error("Error fetching classes:", err);
+    }
+  };
 
   const getStartOfWeek = () => {
     const now = new Date();
@@ -111,6 +151,8 @@ export default function AILessonPlanner() {
       return;
     }
 
+    const selectedClassName = availableClasses.find(c => c.id === form.classLevel)?.name || form.classLevel;
+
     const currentUsage = weeklyUsage[form.subject] || 0;
     if (currentUsage >= 3) {
       Alert.alert(
@@ -125,7 +167,7 @@ export default function AILessonPlanner() {
     const prompt = `
       Act as an expert teacher. Generate a simple, practical lesson plan for:
       Subject: ${form.subject}
-      Class: ${form.classLevel}
+      Class: ${selectedClassName}
       Strand: ${form.strand}
       Sub-strand (Topic): ${form.topic}
       Duration: ${form.duration}
@@ -180,13 +222,15 @@ export default function AILessonPlanner() {
 
     try {
       setLoading(true);
+      const selectedClassName = availableClasses.find(c => c.id === form.classLevel)?.name || form.classLevel;
+
       await addDoc(collection(db, 'pedagogy_vault'), {
         userId: appUser?.uid,
         schoolId: SCHOOL_CONFIG.schoolId,
         subject: form.subject,
         topic: form.topic,
         strand: form.strand,
-        classLevel: form.classLevel,
+        classLevel: selectedClassName,
         duration: form.duration,
         plan: generatedPlan,
         createdAt: serverTimestamp(),
@@ -245,7 +289,7 @@ export default function AILessonPlanner() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <View style={styles.headerText}>
@@ -286,8 +330,8 @@ export default function AILessonPlanner() {
                     style={styles.picker}
                   >
                     <Picker.Item label="Choose..." value="" />
-                    {teacherClasses.map((c: string) => (
-                      <Picker.Item key={c} label={c} value={c} />
+                    {availableClasses.map((c) => (
+                      <Picker.Item key={c.id} label={c.name} value={c.id} />
                     ))}
                   </Picker>
                 </View>
@@ -347,7 +391,9 @@ export default function AILessonPlanner() {
               <View style={styles.resultHeader}>
                 <View>
                   <Text style={styles.resultMainTitle}>Plan for {form.topic}</Text>
-                  <Text style={styles.resultMeta}>{form.classLevel} • {form.duration}</Text>
+                  <Text style={styles.resultMeta}>
+                    {availableClasses.find(c => c.id === form.classLevel)?.name || form.classLevel} • {form.duration}
+                  </Text>
                 </View>
                 <TouchableOpacity onPress={() => setGeneratedPlan(null)}>
                   <Text style={{ color: COLORS.error, fontWeight: '700' }}>Clear</Text>

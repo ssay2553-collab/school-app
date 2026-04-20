@@ -10,7 +10,7 @@ import {
     serverTimestamp,
     setDoc,
 } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -22,7 +22,8 @@ import {
     Text,
     TouchableOpacity,
     View,
-    Platform
+    Platform,
+    BackHandler
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
@@ -46,6 +47,20 @@ export default function GenerateStudentCode() {
   const [loading, setLoading] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [fetchingClasses, setFetchingClasses] = useState(true);
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+    return true;
+  }, [router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
+    return () => backHandler.remove();
+  }, [handleBack]);
 
   const schoolId = (Constants.expoConfig?.extra?.schoolId || "afahjoy").toLowerCase();
   const schoolLogo = getSchoolLogo(schoolId);
@@ -119,7 +134,7 @@ export default function GenerateStudentCode() {
       
       <LinearGradient colors={[primary, secondary]} style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.headerInfo}>

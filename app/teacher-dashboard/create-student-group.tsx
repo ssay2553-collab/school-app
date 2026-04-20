@@ -16,7 +16,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -32,8 +32,10 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  BackHandler,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
+import { useRouter } from "expo-router";
 
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
@@ -247,17 +249,11 @@ const GroupChatView = ({
 ====================================================== */
 export default function TeacherStudentGroups() {
   const { appUser } = useAuth();
+  const router = useRouter();
   const [view, setView] = useState<"LIST" | "CREATE" | "CHAT" | "EDIT">("LIST");
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchingStudents, setFetchingStudents] = useState(false);
-
-  const schoolId = (
-    Constants.expoConfig?.extra?.schoolId || "school"
-  ).toLowerCase();
-  const schoolLogo = getSchoolLogo(schoolId);
-  const primary = SCHOOL_CONFIG.primaryColor;
-  const secondary = SCHOOL_CONFIG.secondaryColor;
 
   // Management State
   const [teacherClasses, setTeacherClasses] = useState<
@@ -270,6 +266,42 @@ export default function TeacherStudentGroups() {
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const [groupName, setGroupName] = useState("");
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
+
+  const activeGroupRef = useRef<Group | null>(null);
+  useEffect(() => {
+    activeGroupRef.current = activeGroup;
+  }, [activeGroup]);
+
+  const handleBack = useCallback(() => {
+    if (view === "CHAT") {
+      setView("LIST");
+      setActiveGroup(null);
+    } else if (view === "CREATE" || view === "EDIT") {
+      setView("LIST");
+    } else {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/teacher-dashboard");
+      }
+    }
+    return true;
+  }, [view, router, setActiveGroup]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBack,
+    );
+    return () => backHandler.remove();
+  }, [handleBack]);
+
+  const schoolId = (
+    Constants.expoConfig?.extra?.schoolId || "school"
+  ).toLowerCase();
+  const schoolLogo = getSchoolLogo(schoolId);
+  const primary = SCHOOL_CONFIG.primaryColor;
+  const secondary = SCHOOL_CONFIG.secondaryColor;
 
   const fetchStaff = async () => {
     try {
@@ -455,7 +487,7 @@ export default function TeacherStudentGroups() {
       </View>
     );
   if (view === "CHAT" && activeGroup)
-    return <GroupChatView group={activeGroup} onBack={() => setView("LIST")} />;
+    return <GroupChatView group={activeGroup} onBack={handleBack} />;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -575,7 +607,7 @@ export default function TeacherStudentGroups() {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 20 }}>
           <View style={styles.modalHeaderRow}>
             <TouchableOpacity
-              onPress={() => setView("LIST")}
+              onPress={handleBack}
               style={styles.modalBack}
             >
               <SVGIcon name="close" size={24} color={primary} />

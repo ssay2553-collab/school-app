@@ -5,6 +5,7 @@ import React, {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
@@ -37,6 +38,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     const resolver = useRef<((html: string) => void) | null>(null);
     const lastHtml = useRef(initialContent);
     const isFirstMount = useRef(true);
+    const [webViewHeight, setWebViewHeight] = useState(initialContent ? 400 : 200);
 
     const send = useCallback((script: string) => {
       if (Platform.OS === "web") {
@@ -80,7 +82,11 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <style>
-body { margin:0; font-family: -apple-system, sans-serif; height: 100vh; display: flex; flex-direction: column; }
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, sans-serif;
+}
 .toolbar {
   display:${readOnly ? "none" : "flex"};
   flex-wrap: wrap;
@@ -88,6 +94,9 @@ body { margin:0; font-family: -apple-system, sans-serif; height: 100vh; display:
   border-bottom:1px solid #ddd;
   background:#fafafa;
   gap: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 button {
   padding:6px 10px;
@@ -98,10 +107,9 @@ button {
 }
 button:active { background: #eee; }
 #editor {
-  flex: 1;
   padding:12px;
   outline:none;
-  overflow-y: auto;
+  min-height: 100px;
 }
 
 /* Highlight */
@@ -151,6 +159,7 @@ editor.innerHTML = ${JSON.stringify(initialContent)};
 function cmd(c){
   document.execCommand(c,false,null);
   sendUpdate();
+  sendHeight();
 }
 
 function highlightText() {
@@ -160,6 +169,7 @@ function highlightText() {
     '<span class="highlight">' + selection.toString() + '</span>'
   );
   sendUpdate();
+  sendHeight();
 }
 
 function addComment() {
@@ -175,6 +185,7 @@ function addComment() {
   );
 
   sendUpdate();
+  sendHeight();
 }
 
 editor.addEventListener("click", function(e){
@@ -193,7 +204,30 @@ function sendUpdate(){
   }
 }
 
-editor.addEventListener("input", sendUpdate);
+function sendHeight() {
+  const height = document.body.scrollHeight || document.documentElement.scrollHeight;
+  const data = JSON.stringify({
+    type: "HEIGHT",
+    height: height
+  });
+  if (window.ReactNativeWebView) {
+    window.ReactNativeWebView.postMessage(data);
+  }
+}
+
+editor.addEventListener("input", () => {
+  sendUpdate();
+  sendHeight();
+});
+
+// Use ResizeObserver for more reliable height updates
+if (window.ResizeObserver) {
+  const ro = new ResizeObserver(sendHeight);
+  ro.observe(document.body);
+}
+
+window.onload = sendHeight;
+setTimeout(sendHeight, 500);
 
 window.__GET__ = () => {
   const data = JSON.stringify({
@@ -239,6 +273,10 @@ if(!window.ReactNativeWebView){
           onChange?.(msg.html);
         }
 
+        if (msg.type === "HEIGHT") {
+          setWebViewHeight(msg.height);
+        }
+
         if (msg.type === "GET") {
           resolver.current?.(msg.html);
         }
@@ -279,6 +317,8 @@ if(!window.ReactNativeWebView){
           javaScriptEnabled
           domStorageEnabled
           originWhitelist={["*"]}
+          scrollEnabled={false}
+          style={{ height: webViewHeight }}
         />
       </View>
     );
@@ -289,6 +329,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
+    minHeight: 200,
+    height: Platform.OS === "web" ? "100%" : undefined,
   },
 });
 

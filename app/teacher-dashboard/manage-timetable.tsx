@@ -32,7 +32,8 @@ import {
   View,
   Platform,
   Modal,
-  FlatList
+  FlatList,
+  BackHandler
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -106,6 +107,23 @@ export default function CreateLessonTimetable() {
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+  }, [router]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [handleBack]);
 
   const loadClasses = useCallback(async (forceRefresh = false) => {
     try {
@@ -331,7 +349,7 @@ export default function CreateLessonTimetable() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color={brandColor} /></TouchableOpacity>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color={brandColor} /></TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: neutralDark }]}>Timetable Creator</Text>
           <Text style={styles.subtitle}>{canEdit ? "Editing Mode" : "Viewing Mode"}</Text>

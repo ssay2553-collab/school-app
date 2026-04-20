@@ -121,6 +121,20 @@ export default function TeacherDashboardLayout() {
             name="student-academic-records"
             options={{ href: null }}
           />
+          <Tabs.Screen name="students-list" options={{ href: null }} />
+          <Tabs.Screen name="daily-attendance" options={{ href: null }} />
+          <Tabs.Screen name="staff-chat" options={{ href: null }} />
+          <Tabs.Screen name="news-screen" options={{ href: null }} />
+          <Tabs.Screen name="chat-with-parent" options={{ href: null }} />
+          <Tabs.Screen name="ai-lesson-planner" options={{ href: null }} />
+          <Tabs.Screen name="upload-assignment" options={{ href: null }} />
+          <Tabs.Screen name="mark-assignment" options={{ href: null }} />
+          <Tabs.Screen name="create-student-group" options={{ href: null }} />
+          <Tabs.Screen name="pedagogy-vault" options={{ href: null }} />
+          <Tabs.Screen name="generate-student-code" options={{ href: null }} />
+          <Tabs.Screen name="manage-timetable" options={{ href: null }} />
+          <Tabs.Screen name="profile-edit" options={{ href: null }} />
+          <Tabs.Screen name="review-document" options={{ href: null }} />
         </Tabs>
       </View>
     </View>

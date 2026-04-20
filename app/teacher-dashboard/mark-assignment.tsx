@@ -30,6 +30,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    BackHandler,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
@@ -283,6 +284,20 @@ export default function MarkAssignment() {
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
   const isFetchingRef = useRef(false);
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+    return true;
+  }, [router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
+    return () => backHandler.remove();
+  }, [handleBack]);
 
   /* ---------------- FETCH CLASS NAMES ---------------- */
   useEffect(() => {
@@ -611,7 +626,7 @@ export default function MarkAssignment() {
         />
         <View style={styles.headerTop}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleBack}
             style={styles.backBtn}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />

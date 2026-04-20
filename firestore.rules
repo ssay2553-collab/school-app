@@ -333,7 +333,7 @@ function hasScreenPermission(screen, level) {
     match /submissions/{submissionId} {
       allow read: if isAdmin() || isTeacher() || (isStudent() && resource.data.studentId == uid());
       allow create: if isStudent() && request.resource.data.studentId == uid();
-      allow update: if isAdmin() || (isTeacher() && request.resource.data.diff(resource.data).changedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores']));
+      allow update: if isAdmin() || (isTeacher() && request.resource.data.diff(resource.data).changedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores', 'status', 'updatedAt', 'contentHtml']));
       allow delete: if isAdmin();
     }
     

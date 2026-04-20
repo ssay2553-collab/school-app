@@ -26,6 +26,7 @@ import {
   View,
   Dimensions,
 } from "react-native";
+import { useRouter } from "expo-router";
 import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEditor";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -50,6 +51,7 @@ const { width } = Dimensions.get("window");
 const isLargeScreen = width > 768;
 
 export default function StudentNoteScreen() {
+  const router = useRouter();
   const { appUser, loading: authLoading } = useAuth();
   const mountedRef = useRef(true);
 
@@ -425,6 +427,22 @@ export default function StudentNoteScreen() {
                   </Text>
                   <View style={styles.footerActions}>
                      <TouchableOpacity
+                      onPress={() => {
+                        router.push({
+                          pathname: "/student-dashboard/submit-assignment",
+                          params: {
+                            prefillNoteId: item.docId,
+                            prefillTitle: item.title,
+                            prefillContent: item.content
+                          }
+                        });
+                      }}
+                      style={{ marginRight: 15 }}
+                    >
+                      <SVGIcon name="send" size={18} color={COLORS.primary} />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
                       onPress={() => {
                         Alert.alert(
                           "Delete Note",

@@ -15,7 +15,7 @@ import {
     where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -30,6 +30,7 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    BackHandler,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
@@ -86,6 +87,31 @@ export default function TeacherChatWithParent() {
   const isFirstLoad = useRef(true);
   const soundRef = useRef<Audio.Sound | null>(null);
   const messagesLenRef = useRef<number>(0);
+
+  const handleBack = useCallback(() => {
+    if (stage === "chat") {
+      setStage("select_parent");
+      setChatId(null);
+    } else if (stage === "select_parent") {
+      setStage("select_student");
+      setSelectedParent(null);
+    } else if (stage === "select_student") {
+      setStage("select_class");
+      setSelectedStudent(null);
+    } else {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/teacher-dashboard");
+      }
+    }
+    return true;
+  }, [stage, router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
+    return () => backHandler.remove();
+  }, [handleBack]);
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
@@ -380,7 +406,7 @@ export default function TeacherChatWithParent() {
         >
           <View style={[styles.chatHeader, { backgroundColor: primary }]}>
             <TouchableOpacity
-              onPress={() => setStage("select_parent")}
+              onPress={handleBack}
               style={styles.chatBackBtn}
             >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
@@ -517,12 +543,7 @@ export default function TeacherChatWithParent() {
       >
         <View style={styles.headerRow}>
           <TouchableOpacity
-            onPress={() => {
-              if (stage === "select_class") router.back();
-              else if (stage === "select_student") setStage("select_class");
-              else if (stage === "select_parent") setStage("select_student");
-              else setStage("select_parent");
-            }}
+            onPress={handleBack}
             style={styles.backBtn}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />

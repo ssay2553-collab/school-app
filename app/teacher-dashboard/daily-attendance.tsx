@@ -90,6 +90,14 @@ export default function DailyAttendanceScreen() {
     return JSON.stringify(localAttendance) !== JSON.stringify(serverAttendance);
   }, [localAttendance, serverAttendance]);
 
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+  }, [router]);
+
   useEffect(() => {
     const onBackPress = () => {
       if (hasUnsavedChanges) {
@@ -101,18 +109,19 @@ export default function DailyAttendanceScreen() {
             {
               text: "Leave",
               style: "destructive",
-              onPress: () => router.back()
+              onPress: handleBack
             }
           ]
         );
         return true;
       }
-      return false;
+      handleBack();
+      return true;
     };
 
     const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => subscription.remove();
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, handleBack]);
 
   const isOfficialClassTeacher = useMemo(() => {
     if (!classId || !appUser) return false;
@@ -319,7 +328,7 @@ export default function DailyAttendanceScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}><SVGIcon name="arrow-back" size={24} color="#1E293B" /></TouchableOpacity>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}><SVGIcon name="arrow-back" size={24} color="#1E293B" /></TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Daily Attendance</Text>
           <Text style={styles.subtitle}>{academicYear} • {term}</Text>

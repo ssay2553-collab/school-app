@@ -12,6 +12,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +26,7 @@ import {
   TouchableOpacity,
   View,
   Dimensions,
+  BackHandler,
 } from "react-native";
 import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEditor";
 import SVGIcon from "../../components/SVGIcon";
@@ -50,6 +52,7 @@ const { width } = Dimensions.get("window");
 const isLargeScreen = width > 768;
 
 export default function TeacherNoteScreen() {
+  const router = useRouter();
   const { appUser, loading: authLoading } = useAuth();
   const mountedRef = useRef(true);
 
@@ -62,6 +65,54 @@ export default function TeacherNoteScreen() {
   const [search, setSearch] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const editorRef = useRef<RichTextEditorRef>(null);
+
+  const handleBack = useCallback(async () => {
+    if (isAdding) {
+      const currentHtml = await editorRef.current?.getHTML();
+      const hasContent = title.trim() || (currentHtml && currentHtml !== "<p></p>" && currentHtml !== "");
+
+      if (hasContent) {
+        Alert.alert(
+          "Discard Note?",
+          "You have unsaved changes in your note. Do you want to discard them?",
+          [
+            { text: "Keep Editing", style: "cancel" },
+            {
+              text: "Discard",
+              style: "destructive",
+              onPress: () => {
+                setIsAdding(false);
+                setEditingId(null);
+                setTitle("");
+                setContent("");
+              },
+            },
+          ]
+        );
+      } else {
+        setIsAdding(false);
+        setEditingId(null);
+        setTitle("");
+        setContent("");
+      }
+      return;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+  }, [isAdding, title, router]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [handleBack]);
 
   /* ---------------------------------------------
      Load & Persist Notes
@@ -319,7 +370,7 @@ export default function TeacherNoteScreen() {
           <ScrollView
             style={styles.editorContainer}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: 50 }}
+            contentContainerStyle={{ paddingBottom: 80, flexGrow: 1 }}
           >
             <TextInput
               placeholder="Note Title"
@@ -384,7 +435,7 @@ export default function TeacherNoteScreen() {
             keyExtractor={(i) => i.id}
             numColumns={isLargeScreen ? 2 : 1}
             columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
-            contentContainerStyle={{ paddingBottom: 100 }}
+            contentContainerStyle={{ paddingBottom: 120, flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -497,7 +548,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 15,
     marginBottom: 20,
-    minHeight: 400,
     overflow: "hidden",
     ...SHADOWS.small,
   },

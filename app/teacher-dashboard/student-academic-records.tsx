@@ -225,6 +225,14 @@ export default function StudentAcademicRecords() {
     return JSON.stringify(allStudents) !== JSON.stringify(serverStudents);
   }, [allStudents, serverStudents]);
 
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+  }, [router]);
+
   useEffect(() => {
     const onBackPress = () => {
       if (hasUnsavedChanges) {
@@ -233,16 +241,17 @@ export default function StudentAcademicRecords() {
           "You have modified student scores. Are you sure you want to discard them?",
           [
             { text: "Stay", style: "cancel" },
-            { text: "Discard", style: "destructive", onPress: () => router.back() }
+            { text: "Discard", style: "destructive", onPress: handleBack }
           ]
         );
         return true;
       }
-      return false;
+      handleBack();
+      return true;
     };
     const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => sub.remove();
-  }, [hasUnsavedChanges]);
+  }, [hasUnsavedChanges, handleBack]);
 
   const visibleStudents = useMemo(() => {
     return allStudents.slice(0, page * PAGE_SIZE);
@@ -477,7 +486,7 @@ export default function StudentAcademicRecords() {
       >
         <View style={styles.headerTitleRow}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleBack}
             style={styles.backBtn}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />

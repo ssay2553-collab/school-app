@@ -13,7 +13,7 @@ import {
     where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -30,6 +30,7 @@ import {
     TouchableOpacity,
     View,
     Dimensions,
+    BackHandler,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
@@ -108,6 +109,30 @@ export default function StaffChat() {
 
   const { registerDirectChat, markChatRead, unregisterDirectChat } =
     useUnreadCounts();
+
+  const handleBack = useCallback(() => {
+    if (stage === "chat") {
+      setStage("list");
+      setSelectedStaff(null);
+      setChatId(null);
+      return;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+  }, [stage, router]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [handleBack]);
 
   useEffect(() => {
     return () => {
@@ -368,7 +393,7 @@ export default function StaffChat() {
             style={[styles.chatHeader, { borderBottomColor: primary + "20" }]}
           >
             <TouchableOpacity
-              onPress={() => setStage("list")}
+              onPress={handleBack}
               style={styles.backBtn}
             >
               <SVGIcon name="arrow-back" size={24} color={primary} />
@@ -507,7 +532,7 @@ export default function StaffChat() {
       >
         <View style={styles.headerTitleRow}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleBack}
             style={styles.backBtnHeader}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />

@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View,
     Dimensions,
+    BackHandler,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -141,6 +142,20 @@ export default function TeacherTimetable() {
   const [classNames, setClassNames] = useState<Record<string, string>>({});
   const [selectedDay, setSelectedDay] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+    return true;
+  }, [router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
+    return () => backHandler.remove();
+  }, [handleBack]);
 
   const brandColor = COLORS.brandPrimary || COLORS.primary || "#2e86de";
   const secondaryColor = COLORS.brandSecondary || COLORS.secondary || "#1E293B";
@@ -288,7 +303,7 @@ export default function TeacherTimetable() {
           <TouchableOpacity
             style={[styles.manageBtn, { borderColor: brandColor }]}
             onPress={() =>
-              router.push("/admin-dashboard/CreateLessonTimetable")
+              router.push("/teacher-dashboard/manage-timetable")
             }
           >
             <SVGIcon name="create" size={20} color={brandColor} />

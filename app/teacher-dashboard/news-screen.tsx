@@ -25,6 +25,7 @@ import {
     Platform,
     RefreshControl,
     Dimensions,
+    BackHandler,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
@@ -79,6 +80,52 @@ export default function TeacherNewsScreen() {
     type: "image" | "video";
   } | null>(null);
   const [posting, setPosting] = useState(false);
+
+  const hasUnsavedChanges = useMemo(() => {
+    return title.trim().length > 0 || content.trim().length > 0 || media !== null;
+  }, [title, content, media]);
+
+  const handleBack = useCallback(() => {
+    if (mode === "create") {
+      if (hasUnsavedChanges) {
+        Alert.alert(
+          "Discard Changes?",
+          "You have unsaved changes. Are you sure you want to discard them?",
+          [
+            { text: "Keep Editing", style: "cancel" },
+            {
+              text: "Discard",
+              style: "destructive",
+              onPress: () => {
+                setTitle("");
+                setContent("");
+                setMedia(null);
+                setMode("view");
+              },
+            },
+          ]
+        );
+      } else {
+        setMode("view");
+      }
+      return true;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+    return true;
+  }, [mode, hasUnsavedChanges, router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBack
+    );
+    return () => backHandler.remove();
+  }, [handleBack]);
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
@@ -191,7 +238,7 @@ export default function TeacherNewsScreen() {
       style={styles.headerArea}
     >
       <View style={styles.headerTop}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.miniBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.miniBtn}>
           <SVGIcon name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View style={styles.titleCenter}>

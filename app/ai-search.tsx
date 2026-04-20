@@ -31,7 +31,9 @@ import { useAuth } from "../contexts/AuthContext";
 import { db } from "../firebaseConfig";
 import { copyToClipboard } from "../utils/copyToClipboard";
 
-const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
+import Constants from "expo-constants";
+
+const GEMINI_API_KEY = Constants.expoConfig?.extra?.geminiApiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const { width } = Dimensions.get("window");

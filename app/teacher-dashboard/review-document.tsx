@@ -20,6 +20,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  BackHandler,
 } from "react-native";
 import RichTextEditor, {
   RichTextEditorRef,
@@ -28,6 +29,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import { useCallback, useMemo } from "react";
 
 export default function ReviewDocument() {
   const { submissionId } = useLocalSearchParams();
@@ -39,6 +41,50 @@ export default function ReviewDocument() {
   const [marks, setMarks] = useState("");
   const [feedback, setFeedback] = useState("");
   const editorRef = useRef<RichTextEditorRef>(null);
+
+  const hasUnsavedChanges = useMemo(() => {
+    return marks !== (submission?.marks?.toString() || "") || feedback !== (submission?.feedback || "");
+  }, [marks, feedback, submission]);
+
+  const handleBack = useCallback(() => {
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        "Discard Changes?",
+        "You have unsaved changes in your review. Are you sure you want to discard them?",
+        [
+          { text: "Keep Reviewing", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/teacher-dashboard");
+              }
+            },
+          },
+        ]
+      );
+      return true;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+    return true;
+  }, [hasUnsavedChanges, router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBack
+    );
+    return () => backHandler.remove();
+  }, [handleBack]);
+
   const handleRework = async () => {
     if (!feedback) {
       return Alert.alert(
@@ -114,7 +160,6 @@ export default function ReviewDocument() {
         marked: true,
         status: "graded",
         markedAt: serverTimestamp(),
-        // Optional: Update content if teacher made corrections/comments in-line
         contentHtml: updatedContent || submission.contentHtml,
       });
 
@@ -165,7 +210,7 @@ export default function ReviewDocument() {
     >
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={handleBack}
           style={styles.backButton}
         >
           <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
@@ -187,7 +232,7 @@ export default function ReviewDocument() {
 
         <View style={styles.editorContainer}>
           <Text style={styles.sectionLabel}>DOCUMENT CONTENT</Text>
-          <View style={{ height: 500, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" }}>
+          <View style={styles.editorInnerWrapper}>
             <RichTextEditor
               ref={editorRef}
               initialContent={submission?.contentHtml}
@@ -320,8 +365,14 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 15,
     marginBottom: 20,
-    minHeight: 450,
     ...SHADOWS.small,
+  },
+  editorInnerWrapper: {
+    minHeight: Platform.OS === "web" ? 700 : 500,
+    maxHeight: Platform.OS === "web" ? 1200 : 600,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    overflow: "hidden",
   },
   sectionLabel: {
     fontSize: 10,

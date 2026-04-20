@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Dimensions,
   TextInput,
   ActivityIndicator,
+  BackHandler,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -86,12 +88,29 @@ export default function PedagogyVault() {
   const config = useSchoolConfig();
   const primary = config.brandPrimary || COLORS.primary;
 
-  const [activeTab, setActiveTab] = React.useState<'saved' | 'resources'>('saved');
+  const [activeTab, setActiveTab] = React.useState<'saved' | 'resources'>('resources');
   const [savedPlans, setSavedPlans] = React.useState<any[]>([]);
   const [loadingPlans, setLoadingPlans] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedSubject, setSelectedSubject] = React.useState('All');
   const [selectedPlan, setSelectedPlan] = React.useState<any>(null);
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+  }, [router]);
+
+  React.useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [handleBack]);
 
   React.useEffect(() => {
     if (activeTab === 'saved' && appUser?.uid) {
@@ -179,7 +198,7 @@ export default function PedagogyVault() {
         </head>
         <body>
           <div class="header">
-            <div class="school">${SCHOOL_CONFIG.schoolName}</div>
+            <div class="school">${SCHOOL_CONFIG.name}</div>
             <h1 class="title">${plan.topic}</h1>
             <div class="meta"><strong>Subject:</strong> ${plan.subject}</div>
             <div class="meta"><strong>Level:</strong> ${plan.classLevel}</div>
@@ -223,7 +242,7 @@ export default function PedagogyVault() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <View style={styles.headerText}>

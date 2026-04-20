@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { deleteUser, signOut } from "firebase/auth";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -9,6 +9,7 @@ import {
     Text,
     TouchableOpacity,
     View,
+    BackHandler,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 
@@ -22,6 +23,23 @@ export default function SettingsScreen() {
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const router = useRouter();
+
+  const handleBack = useCallback(() => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
+  }, [router]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [handleBack]);
 
   const primary = SCHOOL_CONFIG.primaryColor;
 

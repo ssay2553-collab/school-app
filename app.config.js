@@ -538,6 +538,7 @@ module.exports = ({ config }) => {
       brandPrimary: selected.brandPrimary || selected.primaryColor,
       brandSecondary: selected.brandSecondary || selected.secondaryColor,
       firebase: selected.firebase,
+      geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY,
       ...(selected.easProjectId
         ? { eas: { projectId: selected.easProjectId } }
         : {}),

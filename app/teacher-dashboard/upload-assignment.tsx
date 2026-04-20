@@ -11,7 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import React, { useEffect, useState, useCallback, memo } from "react";
+import React, { useEffect, useState, useCallback, memo, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -25,6 +25,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  BackHandler,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
@@ -78,6 +79,39 @@ export default function UploadAssignment() {
   // Derived current questions based on type
   const questions = type === "mcq" ? mcqQuestions : shortAnswerQuestions;
   
+  const hasUnsavedChanges = useMemo(() => {
+    return title !== "" || description !== "" || mcqQuestions.length > 0 || shortAnswerQuestions.length > 0 || file !== null;
+  }, [title, description, mcqQuestions.length, shortAnswerQuestions.length, file]);
+
+  const handleBack = useCallback(() => {
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        "Discard Changes?",
+        "You have unsaved changes. Are you sure you want to go back?",
+        [
+          { text: "Keep Editing", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => {
+              if (router.canGoBack()) router.back();
+              else router.replace("/teacher-dashboard");
+            }
+          },
+        ]
+      );
+    } else {
+      if (router.canGoBack()) router.back();
+      else router.replace("/teacher-dashboard");
+    }
+    return true;
+  }, [hasUnsavedChanges, router]);
+
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
+    return () => backHandler.remove();
+  }, [handleBack]);
+
   // Wrapper setter to update the correct state based on current type
   const setQuestions = useCallback((val: React.SetStateAction<Question[]>) => {
     if (type === "mcq") {
@@ -274,7 +308,7 @@ export default function UploadAssignment() {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[COLORS.primary, "#1E293B"]} style={styles.headerGradient}>
         <View style={styles.headerTitleRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color="#fff" /></TouchableOpacity>
+          <TouchableOpacity onPress={handleBack} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color="#fff" /></TouchableOpacity>
           <Text style={styles.headerTitle}>Post Assignment</Text>
           <SVGIcon name="cloud-upload" size={24} color={COLORS.secondary} />
         </View>

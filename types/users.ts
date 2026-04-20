@@ -11,6 +11,10 @@ export interface UserProfile {
   phone?: string;
   profileImage?: string;
   signatureUrl?: string;
+  bio?: string;
+  experience?: string;
+  education?: string;
+  gender?: string;
 }
 
 export interface AppUser {

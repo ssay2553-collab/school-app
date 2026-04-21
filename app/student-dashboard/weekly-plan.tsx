@@ -23,6 +23,7 @@ import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 
 interface WeeklyTopic {
@@ -35,6 +36,7 @@ interface WeeklyTopic {
 export default function WeeklyPlanScreen() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [topics, setTopics] = useState<WeeklyTopic[]>([]);
@@ -58,7 +60,7 @@ export default function WeeklyPlanScreen() {
       const latestBySubject: Record<string, WeeklyTopic> = {};
 
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
+        const data = doc.data() as any;
         const subject = data.subject;
         if (!latestBySubject[subject]) {
           latestBySubject[subject] = {
@@ -73,6 +75,7 @@ export default function WeeklyPlanScreen() {
       setTopics(Object.values(latestBySubject));
     } catch (error) {
       console.error("Error fetching weekly plan:", error);
+      showToast({ message: "Failed to load weekly topics.", type: "error" });
     } finally {
       setLoading(false);
       setRefreshing(false);

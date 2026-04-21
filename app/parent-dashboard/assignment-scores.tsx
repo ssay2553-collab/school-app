@@ -117,7 +117,7 @@ export default function AssignmentScores() {
 
         const data = snap.docs.map((d) => ({
           id: d.id,
-          ...d.data(),
+          ...(d.data() as any),
         })) as ScoreRecord[];
 
         if (isNextPage) setScores((prev) => [...prev, ...data]);

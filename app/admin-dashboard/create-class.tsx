@@ -24,7 +24,9 @@ import {
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
@@ -59,6 +61,7 @@ const getLevelValue = (level: string | number): number => {
 
 export default function ClassManagementScreen() {
   const { appUser, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingClass, setEditingClass] = useState<ClassItem | null>(null);
@@ -77,18 +80,20 @@ export default function ClassManagementScreen() {
     setLoading(true);
     try {
       const classesSnap = await getDocsCacheFirst(collection(db, "classes") as any);
-      const baseClasses = classesSnap.docs.map((d, i) => ({
-        id: d.id,
-        ...d.data(),
-        order: d.data().order ?? i,
-      }) as ClassItem);
+      const baseClasses = classesSnap.docs
+        .map((d, i) => ({
+          id: d.id,
+          ...d.data(),
+          order: (d.data() as any).order ?? i,
+        }) as ClassItem)
+        .filter((c: any) => !c.schoolId || c.schoolId === SCHOOL_CONFIG.schoolId);
 
       const studentsQuery = query(collection(db, "users"), where("role", "==", "student"));
       const studentsSnap = await getDocsCacheFirst(studentsQuery as any);
 
       const counts: Record<string, { total: number; male: number; female: number }> = {};
       studentsSnap.docs.forEach((d) => {
-        const data = d.data();
+        const data = d.data() as any;
         const cid = data.classId;
         const gender = data.gender;
         if (!cid) return;
@@ -106,11 +111,7 @@ export default function ClassManagementScreen() {
       setClasses(merged.sort((a, b) => getLevelValue(a.level) - getLevelValue(b.level)));
     } catch (e) {
       console.error(e);
-      if (Platform.OS === 'web') {
-        alert("Failed to load class data.");
-      } else {
-        Alert.alert("Error", "Failed to load class data.");
-      }
+      showToast({ message: "Failed to load class data.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -133,20 +134,15 @@ export default function ClassManagementScreen() {
       setClasses((p) => p.map((c) => c.id === editingClass.id ? { ...c, name: newClassName.trim() } : c));
       setEditingClass(null);
       setNewClassName("");
+      showToast({ message: "Class updated.", type: "success" });
     } catch {
-      if (Platform.OS === 'web') {
-        alert("Update failed");
-      } else {
-        Alert.alert("Error", "Update failed");
-      }
+      showToast({ message: "Update failed.", type: "error" });
     }
   };
 
   const addClass = async () => {
     if (!newClassNameInput.trim() || !newClassLevel) {
-      const msg = "Please enter a name and select a level.";
-      if (Platform.OS === 'web') alert(msg);
-      else Alert.alert("Validation Error", msg);
+      showToast({ message: "Please enter a name and select a level.", type: "error" });
       return;
     }
     setLoading(true);
@@ -156,6 +152,7 @@ export default function ClassManagementScreen() {
         name: newClassNameInput.trim(),
         level: newClassLevel,
         department,
+        schoolId: SCHOOL_CONFIG.schoolId,
         order: classes.length,
         createdAt: serverTimestamp(),
       });
@@ -173,11 +170,9 @@ export default function ClassManagementScreen() {
       setShowAddModal(false);
       setNewClassLevel(null);
       setNewClassNameInput("");
-      if (Platform.OS === 'web') alert("Class created.");
-      else Alert.alert("Success", "Class created.");
+      showToast({ message: "Class created.", type: "success" });
     } catch {
-      if (Platform.OS === 'web') alert("Failed to create class.");
-      else Alert.alert("Error", "Failed to create class.");
+      showToast({ message: "Failed to create class.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -188,10 +183,10 @@ export default function ClassManagementScreen() {
       try {
         await deleteDoc(doc(db, "classes", cls.id));
         setClasses((p) => p.filter((c) => c.id !== cls.id));
+        showToast({ message: `${cls.name} deleted successfully.`, type: "success" });
       } catch (e) {
         console.error("Delete failed:", e);
-        if (Platform.OS === 'web') alert("Delete failed");
-        else Alert.alert("Error", "Delete failed");
+        showToast({ message: "Delete failed.", type: "error" });
       }
     };
 

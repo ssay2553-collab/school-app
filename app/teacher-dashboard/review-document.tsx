@@ -31,9 +31,12 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useCallback, useMemo } from "react";
 
+import { useToast } from "../../contexts/ToastContext";
+
 export default function ReviewDocument() {
   const { submissionId } = useLocalSearchParams();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [submission, setSubmission] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -87,10 +90,11 @@ export default function ReviewDocument() {
 
   const handleRework = async () => {
     if (!feedback) {
-      return Alert.alert(
-        "Feedback Required",
-        "Please explain what needs correction.",
-      );
+      showToast({
+        message: "Feedback Required: Please explain what needs correction.",
+        type: "info",
+      });
+      return;
     }
 
     setSaving(true);
@@ -106,11 +110,17 @@ export default function ReviewDocument() {
         updatedAt: serverTimestamp(),
       });
 
-      Alert.alert("Rework Sent", "Student has been asked to revise.");
+      showToast({
+        message: "Rework Sent: Student has been asked to revise.",
+        type: "success",
+      });
       router.back();
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Failed to request rework.");
+      showToast({
+        message: "Error: Failed to request rework.",
+        type: "error",
+      });
     } finally {
       setSaving(false);
     }
@@ -128,7 +138,10 @@ export default function ReviewDocument() {
           setMarks(data.marks?.toString() || "");
           setFeedback(data.feedback || "");
         } else {
-          Alert.alert("Error", "Submission not found");
+          showToast({
+            message: "Error: Submission not found",
+            type: "error",
+          });
           router.back();
         }
       } catch (error) {
@@ -143,10 +156,11 @@ export default function ReviewDocument() {
 
   const handleSaveGrade = async () => {
     if (!marks || isNaN(Number(marks))) {
-      return Alert.alert(
-        "Invalid Marks",
-        "Please enter a numeric value for marks.",
-      );
+      showToast({
+        message: "Invalid Marks: Please enter a numeric value for marks.",
+        type: "info",
+      });
+      return;
     }
 
     setSaving(true);
@@ -169,7 +183,7 @@ export default function ReviewDocument() {
           doc(db, "users", submission.studentId),
         );
         if (studentSnap.exists()) {
-          const studentData = studentSnap.data();
+          const studentData = studentSnap.data() as any;
           const parentUids = studentData.parentUids || [];
           for (const pUid of parentUids) {
             await addDoc(collection(db, "notifications"), {
@@ -185,11 +199,17 @@ export default function ReviewDocument() {
         }
       }
 
-      Alert.alert("Success", "Grade and feedback saved successfully!");
+      showToast({
+        message: "Success: Grade and feedback saved successfully!",
+        type: "success",
+      });
       router.back();
     } catch (error) {
       console.error("Error saving grade:", error);
-      Alert.alert("Error", "Failed to save grade.");
+      showToast({
+        message: "Error: Failed to save grade.",
+        type: "error",
+      });
     } finally {
       setSaving(false);
     }

@@ -76,7 +76,7 @@ export default function AttendanceOverview() {
       const classesSnap = await getDocsCacheFirst(collection(db, "classes") as any);
       let classList = classesSnap.docs.map(d => ({
         id: d.id,
-        name: d.data().name || d.id,
+        name: (d.data() as any).name || d.id,
         totalStudents: 0,
         present: 0,
         absent: 0,
@@ -91,7 +91,7 @@ export default function AttendanceOverview() {
       let globalStudentTotal = 0;
 
       studentsSnap.forEach(doc => {
-        const data = doc.data();
+        const data = doc.data() as any;
         if (data.classId) {
           studentCounts[data.classId] = (studentCounts[data.classId] || 0) + 1;
           globalStudentTotal++;
@@ -109,7 +109,7 @@ export default function AttendanceOverview() {
       const attendanceMap: Record<string, { present: number, absent: number }> = {};
 
       attendanceSnap.forEach(doc => {
-        const data = doc.data();
+        const data = doc.data() as any;
         const cid = data.classId;
         const students = data.students || {};
         let p = 0, a = 0;

@@ -15,6 +15,7 @@ import {
 import SVGIcon from "../../components/SVGIcon";
 import { SHADOWS, COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
@@ -28,6 +29,7 @@ interface AttendanceDoc {
 
 export default function StudentAttendanceScreen() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
 
   const [presentCount, setPresentCount] = useState(0);
@@ -87,7 +89,7 @@ export default function StudentAttendanceScreen() {
         let absent = 0;
 
         snapshot.forEach((doc) => {
-          const data = doc.data() as AttendanceDoc;
+          const data = doc.data() as any;
           const status = data.students?.[appUser.uid]?.status;
 
           if (status === "present") present++;
@@ -98,6 +100,7 @@ export default function StudentAttendanceScreen() {
         setAbsentCount(absent);
       } catch (error) {
         console.error("Error fetching attendance summary:", error);
+        showToast({ message: "Failed to load attendance data.", type: "error" });
       } finally {
         setLoading(false);
         setRefreshing(false);

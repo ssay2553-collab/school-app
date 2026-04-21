@@ -15,6 +15,7 @@ import * as Notifications from "expo-notifications";
 
 import { AuthProvider, useAuth } from "../contexts/AuthContext";
 import { ThemeProvider } from "../contexts/ThemeContext";
+import { ToastProvider } from "../contexts/ToastContext";
 
 import DevSchoolSwitcher from "./DevSchoolSwitcher";
 import { PWAInstallPrompt } from "../components/PWAInstallPrompt";
@@ -154,7 +155,9 @@ export default function Layout() {
       <GestureHandlerRootView style={styles.root}>
         <AuthProvider>
           <ThemeProvider>
-            <MainLayout />
+            <ToastProvider>
+              <MainLayout />
+            </ToastProvider>
           </ThemeProvider>
         </AuthProvider>
       </GestureHandlerRootView>

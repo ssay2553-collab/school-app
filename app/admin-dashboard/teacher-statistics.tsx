@@ -103,7 +103,8 @@ export default function TeacherStatistics() {
       const classesSnap = await getDocs(collection(db, "classes"));
       const classMap: Record<string, string> = {};
       classesSnap.forEach(doc => {
-        classMap[doc.id] = doc.data().name || doc.data().className || doc.id;
+        const data = doc.data() as any;
+        classMap[doc.id] = data.name || data.className || doc.id;
       });
 
       // 1. Batch Fetch all required collections for the school

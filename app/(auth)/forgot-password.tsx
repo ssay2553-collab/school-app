@@ -3,7 +3,6 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -13,28 +12,27 @@ import {
 import * as Animatable from "react-native-animatable";
 import { COLORS, SIZES } from "../../constants/theme";
 import { auth } from "../../firebaseConfig";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   const handleResetPassword = async () => {
     if (!email.trim()) {
-      Alert.alert("Email Required", "Please enter your email address.");
+      showToast({ message: "Please enter your email address.", type: "error" });
       return;
     }
     setLoading(true);
     try {
       await sendPasswordResetEmail(auth, email.trim().toLowerCase());
-      Alert.alert(
-        "Check Your Email",
-        "A link to reset your password has been sent to your email address."
-      );
+      showToast({ message: "A link to reset your password has been sent to your email address.", type: "success" });
       router.back();
     } catch (error: any) {
       console.error(error);
-      Alert.alert("Error", error.message || "Could not send reset email.");
+      showToast({ message: error.message || "Could not send reset email.", type: "error" });
     } finally {
       setLoading(false);
     }

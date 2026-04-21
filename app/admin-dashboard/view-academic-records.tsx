@@ -44,6 +44,8 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { getGradeDetails, sortClasses } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
+import { useToast } from "../../contexts/ToastContext";
+
 const storage = getStorage();
 
 type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
@@ -124,6 +126,7 @@ StudentItem.displayName = "StudentItem";
 export default function ViewAcademicRecords() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
 
   const [loading, setLoading] = useState(true);
@@ -202,7 +205,7 @@ export default function ViewAcademicRecords() {
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
-        const subs = snap.docs.map((d) => d.data().subject).sort();
+        const subs = snap.docs.map((d) => (d.data() as any).subject).sort();
         setAvailableSubjects(subs);
 
         if (subs.length > 0) {
@@ -227,10 +230,10 @@ export default function ViewAcademicRecords() {
 
   const loadData = useCallback(async () => {
     if (!selectedClassId || !selectedSubject) {
-      return Alert.alert(
-        "Selection Required",
-        "Please select a class and an approved subject.",
-      );
+      return showToast({
+        message: "Please select a class and an approved subject.",
+        type: "error",
+      });
     }
 
     setListLoading(true);
@@ -260,7 +263,7 @@ export default function ViewAcademicRecords() {
       const coreSubjects = ["mathematics", "science", "english"];
 
       allRecordsSnap.docs.forEach((doc) => {
-        const data = doc.data();
+        const data = doc.data() as any;
         const subName = (data.subject || "").toLowerCase();
         const students = data.students || [];
 
@@ -357,7 +360,7 @@ export default function ViewAcademicRecords() {
       }
     } catch (e) {
       console.error("Load Data Error:", e);
-      Alert.alert("Error", "Could not fetch records.");
+      showToast({ message: "Could not fetch records.", type: "error" });
     } finally {
       setListLoading(false);
     }
@@ -374,7 +377,7 @@ export default function ViewAcademicRecords() {
       const snap = await getDocsCacheFirst(collection(db, "classes") as any);
       const list = snap.docs.map((d) => ({
         id: d.id,
-        name: d.data()?.name || d.id,
+        name: (d.data() as any)?.name || d.id,
       }));
       const sorted = sortClasses(list);
       setClasses(sorted);
@@ -445,7 +448,7 @@ export default function ViewAcademicRecords() {
         );
       const snap = await getDoc(doc(db, "student-reports", reportId));
       if (snap.exists()) {
-        const d = snap.data();
+        const d = snap.data() as any;
         if (d.assessment?.conduct) setConduct(d.assessment.conduct);
         if (d.assessment?.attitude) setAttitude(d.assessment.attitude);
         if (d.assessment?.interest) setInterest(d.assessment.interest);
@@ -492,13 +495,13 @@ export default function ViewAcademicRecords() {
       );
 
       setMetadataModalVisible(false);
-      Alert.alert(
-        "Success",
-        "Terminal metadata saved for " + editingStudent.fullName,
-      );
+      showToast({
+        message: "Terminal metadata saved for " + editingStudent.fullName,
+        type: "success",
+      });
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to save metadata.");
+      showToast({ message: "Failed to save metadata.", type: "error" });
     } finally {
       setSavingMetadata(false);
     }
@@ -526,11 +529,14 @@ export default function ViewAcademicRecords() {
           "profile.signatureUrl": downloadURL,
         });
         setSignatureUrl(downloadURL);
-        Alert.alert("Success", "Institution signature updated successfully!");
+        showToast({
+          message: "Institution signature updated successfully!",
+          type: "success",
+        });
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Failed to upload signature.");
+      showToast({ message: "Failed to upload signature.", type: "error" });
     } finally {
       setUploadingSig(false);
     }
@@ -885,13 +891,16 @@ export default function ViewAcademicRecords() {
                           );
                         }
                         await batch.commit();
-                        Alert.alert(
-                          "Success",
-                          "Settings applied to all students in this view.",
-                        );
+                        showToast({
+                          message: "Settings applied to all students.",
+                          type: "success",
+                        });
                       } catch (e) {
                         console.error(e);
-                        Alert.alert("Error", "Bulk update failed.");
+                        showToast({
+                          message: "Bulk update failed.",
+                          type: "error",
+                        });
                       } finally {
                         setListLoading(false);
                       }

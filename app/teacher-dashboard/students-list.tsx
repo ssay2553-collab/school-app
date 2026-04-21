@@ -28,6 +28,7 @@ import {
 import { useRouter } from "expo-router";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import SVGIcon from "../../components/SVGIcon";
 
@@ -54,6 +55,7 @@ const isLargeScreen = width > 768;
 export default function PromoteStudentsScreen() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
 
   // --- STATE --- //
   const [loading, setLoading] = useState(true);
@@ -104,12 +106,12 @@ export default function PromoteStudentsScreen() {
       setLoading(true);
       try {
         const userSnap = await getDoc(doc(db, "users", appUser.uid));
-        if (!userSnap.exists() || !userSnap.data().classes) {
+        if (!userSnap.exists() || !(userSnap.data() as any).classes) {
           setTeacherClasses([]);
           return;
         }
 
-        const classIds = userSnap.data().classes;
+        const classIds = (userSnap.data() as any).classes;
         if (classIds.length > 0) {
           const q = query(
             collection(db, "classes"),
@@ -127,7 +129,10 @@ export default function PromoteStudentsScreen() {
         }
       } catch {
         console.error("Error fetching teacher classes");
-        Alert.alert("Error", "Could not fetch your assigned classes.");
+        showToast({
+          message: "Could not fetch your assigned classes.",
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }
@@ -177,7 +182,10 @@ export default function PromoteStudentsScreen() {
       setStudents(list);
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Could not fetch students for this class.");
+      showToast({
+        message: "Could not fetch students for this class.",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -211,15 +219,18 @@ export default function PromoteStudentsScreen() {
         });
         await batch.commit();
 
-        Alert.alert(
-          "Success",
-          `All students have been ${action.toLowerCase()}d.`,
-        );
+        showToast({
+          message: `All students have been ${action.toLowerCase()}d.`,
+          type: "success",
+        });
         fetchStudents(selectedClass!.id); // Refresh list
         closeModal();
       } catch (err) {
         console.error(err);
-        Alert.alert("Error", `Failed to ${action.toLowerCase()} all students.`);
+        showToast({
+          message: `Failed to ${action.toLowerCase()} all students.`,
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }
@@ -231,15 +242,18 @@ export default function PromoteStudentsScreen() {
         const studentRef = doc(db, "users", selectedStudent.uid);
         await updateDoc(studentRef, { classId: targetClassId });
 
-        Alert.alert(
-          "Success",
-          `${selectedStudent.profile.firstName} has been ${action.toLowerCase()}d.`,
-        );
+        showToast({
+          message: `${selectedStudent.profile.firstName} has been ${action.toLowerCase()}d.`,
+          type: "success",
+        });
         fetchStudents(selectedClass!.id); // Refresh list
         closeModal();
       } catch (err) {
         console.error(err);
-        Alert.alert("Error", `Failed to ${action.toLowerCase()} student.`);
+        showToast({
+          message: `Failed to ${action.toLowerCase()} student.`,
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }

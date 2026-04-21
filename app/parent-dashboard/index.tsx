@@ -51,7 +51,7 @@ export default function ParentDashboard() {
       try {
         const snap = await getDoc(doc(db, "users", appUser.uid));
         if (snap.exists()) {
-          const p = snap.data().profile;
+          const p = (snap.data() as any).profile;
           if (p) setFullName(`${p.firstName || ""} ${p.lastName || ""}`);
         }
       } catch (err) {

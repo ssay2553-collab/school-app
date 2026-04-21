@@ -44,11 +44,14 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
+import { useToast } from "../../contexts/ToastContext";
+
 const { width } = Dimensions.get("window");
 
 export default function StudentFeeHistoryScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
+  const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
 
   const schoolId = (
@@ -105,7 +108,7 @@ export default function StudentFeeHistoryScreen() {
         const snap = await getDocsCacheFirst(collection(db, "classes") as any);
         let list = snap.docs.map((d) => ({
           id: d.id,
-          name: d.data().name || d.id,
+          name: (d.data() as any).name || d.id,
         }));
         list = sortClasses(list);
         setClasses(list);
@@ -132,12 +135,15 @@ export default function StudentFeeHistoryScreen() {
         );
         const snap = await getDocsCacheFirst(q as any);
         const list = snap.docs
-          .map((d) => ({
-            uid: d.id,
-            name:
-              `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim() ||
-              "Student",
-          }))
+          .map((d) => {
+            const data = d.data() as any;
+            return {
+              uid: d.id,
+              name:
+                `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() ||
+                "Student",
+            };
+          })
           .sort((a, b) => a.name.localeCompare(b.name));
         setStudents(list);
         if (!selectedStudentUid && list.length > 0)
@@ -208,13 +214,16 @@ export default function StudentFeeHistoryScreen() {
               });
 
               await batch.commit();
-              Alert.alert(
-                "Success",
-                "Transaction deleted and balance reverted.",
-              );
+              showToast({
+                message: "Transaction deleted and balance reverted.",
+                type: "success",
+              });
             } catch (error) {
               console.error(error);
-              Alert.alert("Error", "Failed to delete transaction.");
+              showToast({
+                message: "Failed to delete transaction.",
+                type: "error",
+              });
             } finally {
               setDeleting(false);
             }
@@ -370,7 +379,7 @@ export default function StudentFeeHistoryScreen() {
       }
     } catch (err) {
       console.error("PDF generation failed", err);
-      Alert.alert("Error", "Could not generate PDF receipt");
+      showToast({ message: "Could not generate PDF receipt", type: "error" });
     }
   };
 

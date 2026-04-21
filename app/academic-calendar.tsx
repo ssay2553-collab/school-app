@@ -40,6 +40,7 @@ import SVGIcon from "../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../constants/Config";
 import { COLORS, SHADOWS } from "../constants/theme";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
 import { db } from "../firebaseConfig";
 
 type CalendarEvent = {
@@ -79,6 +80,7 @@ const ADMIN_PRIVILEGED_ROLES = [
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function AcademicCalendar() {
+  const { showToast } = useToast();
   const { appUser } = useAuth();
   const router = useRouter();
   const [allRawEvents, setAllRawEvents] = useState<CalendarEvent[]>([]);
@@ -189,7 +191,7 @@ export default function AcademicCalendar() {
       );
       const snapshot = await getDocs(q);
       const list = snapshot.docs.map(
-        (d) => ({ id: d.id, ...d.data() }) as CalendarEvent,
+        (d) => ({ id: d.id, ...(d.data() as any) }) as CalendarEvent,
       );
       setAllRawEvents(list);
       applyFilters(list);
@@ -213,7 +215,7 @@ export default function AcademicCalendar() {
       q,
       (snapshot) => {
         const list = snapshot.docs.map(
-          (d) => ({ id: d.id, ...d.data() }) as CalendarEvent,
+          (d) => ({ id: d.id, ...(d.data() as any) }) as CalendarEvent,
         );
         setAllRawEvents(list);
         applyFilters(list);
@@ -281,7 +283,7 @@ export default function AcademicCalendar() {
 
   const handleSaveSettings = async () => {
     if (!termConfig.academicYear) {
-      Alert.alert("Error", "Please enter the academic year (e.g., 2023/2024)");
+      showToast({ message: "Please enter the academic year (e.g., 2023/2024)", type: "info" });
       return;
     }
     setSavingSettings(true);
@@ -294,10 +296,10 @@ export default function AcademicCalendar() {
         updatedBy: appUser?.uid,
       });
       setSettingsModalVisible(false);
-      Alert.alert("Success", "Academic configuration updated!");
+      showToast({ message: "Academic configuration updated!", type: "success" });
     } catch (error) {
       console.error("Save settings error:", error);
-      Alert.alert("Error", "Failed to save configuration.");
+      showToast({ message: "Failed to save configuration.", type: "error" });
     } finally {
       setSavingSettings(false);
     }
@@ -305,7 +307,7 @@ export default function AcademicCalendar() {
 
   const handleSaveEvent = async () => {
     if (!editingEvent?.title || !editingEvent?.date) {
-      Alert.alert("Error", "Please fill in all required fields.");
+      showToast({ message: "Please fill in all required fields.", type: "info" });
       return;
     }
     setIsSubmitting(true);
@@ -327,17 +329,19 @@ export default function AcademicCalendar() {
       };
       if (id) {
         await updateDoc(doc(db, "academic_calendar", id), eventData);
+        showToast({ message: "Event updated", type: "success" });
       } else {
         await addDoc(collection(db, "academic_calendar"), {
           ...eventData,
           createdBy: appUser?.uid,
           createdAt: serverTimestamp(),
         });
+        showToast({ message: "Event created", type: "success" });
       }
       setModalVisible(false);
       setEditingEvent(null);
     } catch (error) {
-      Alert.alert("Error", "Failed to save event.");
+      showToast({ message: "Failed to save event.", type: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -352,8 +356,9 @@ export default function AcademicCalendar() {
         onPress: async () => {
           try {
             await deleteDoc(doc(db, "academic_calendar", id));
+            showToast({ message: "Event deleted", type: "success" });
           } catch (error) {
-            Alert.alert("Error", "Failed to delete.");
+            showToast({ message: "Failed to delete.", type: "error" });
           }
         },
       },
@@ -448,7 +453,7 @@ export default function AcademicCalendar() {
           />
         }
       >
-        <Animatable.View animation="fadeInDown" style={styles.termBar}>
+        <Animatable.View animation={Platform.OS === 'web' ? undefined : "fadeInDown"} style={styles.termBar}>
           <View style={styles.termInfo}>
             <Text style={styles.termYear}>
               {termConfig.academicYear || "Set Year"}
@@ -1081,7 +1086,7 @@ const styles = StyleSheet.create<any>({
     color: "#94A3B8",
     marginTop: 15,
     marginBottom: 8,
-    letterSpacing: 1,
+    ...(Platform.OS !== "android" && { letterSpacing: 1 }),
   },
   input: {
     backgroundColor: "#F8FAFC",

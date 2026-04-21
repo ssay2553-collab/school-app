@@ -39,6 +39,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
+import { useToast } from "../../contexts/ToastContext";
+
 const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 Hours
 
 type Expenditure = {
@@ -57,6 +59,7 @@ type Expenditure = {
 export default function ExpenditureScreen() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
   const insets = useSafeAreaInsets();
 
@@ -97,10 +100,10 @@ export default function ExpenditureScreen() {
 
   useEffect(() => {
     if (appUser && !canView) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to view expenditures.",
-      );
+      showToast({
+        message: "Access Denied: You do not have permission to view expenditures.",
+        type: "error",
+      });
       router.replace("/admin-dashboard");
     }
   }, [appUser, canView]);
@@ -146,7 +149,7 @@ export default function ExpenditureScreen() {
       q,
       (snapshot) => {
         const list = snapshot.docs.map((d) => {
-          const data = d.data();
+          const data = d.data() as any;
           return {
             id: d.id,
             ...data,
@@ -249,10 +252,10 @@ export default function ExpenditureScreen() {
       setSelectedYear(prevYear);
       setSelectedTerm(prevTerm);
       setIsPreviousTerm(true);
-      Alert.alert(
-        "Viewing Archive",
-        `Showing records for ${prevYear} - ${prevTerm}`,
-      );
+      showToast({
+        message: `Viewing Archive: ${prevYear} - ${prevTerm}`,
+        type: "info",
+      });
     }
   };
 
@@ -264,15 +267,22 @@ export default function ExpenditureScreen() {
 
   const addExpenditure = async () => {
     if (!canEdit)
-      return Alert.alert("Denied", "You don't have permission to add entries.");
+      return showToast({
+        message: "You don't have permission to add entries.",
+        type: "error",
+      });
 
     const cleanItemName = itemName.trim();
     const cleanAmount = parseFloat(amount);
 
     if (!cleanItemName || isNaN(cleanAmount))
-      return Alert.alert("Required", "Please provide a valid item name and amount.");
+      return showToast({
+        message: "Please provide a valid item name and amount.",
+        type: "error",
+      });
 
-    if (!appUser) return Alert.alert("Auth Error", "Session expired.");
+    if (!appUser)
+      return showToast({ message: "Session expired.", type: "error" });
 
     setSaving(true);
     try {
@@ -291,8 +301,9 @@ export default function ExpenditureScreen() {
       setModalVisible(false);
       setItemName("");
       setAmount("");
+      showToast({ message: "Expenditure added successfully.", type: "success" });
     } catch (e) {
-      Alert.alert("Error", "Save failed.");
+      showToast({ message: "Save failed.", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -301,29 +312,41 @@ export default function ExpenditureScreen() {
   const handleDeleteExpenditure = (item: Expenditure) => {
     if (!canEdit) return;
 
-    Alert.alert(
-      "Confirm Delete",
-      `Are you sure you want to remove "${item.item}"? This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setDeletingId(item.id);
-            try {
-              const deleteFn = httpsCallable(functions, "deleteExpenditure");
-              await deleteFn({ expenditureId: item.id });
-            } catch (e: any) {
-              console.error("Delete function error:", e);
-              Alert.alert("Error", e.message || "Could not delete entry.");
-            } finally {
-              setDeletingId(null);
-            }
+    const performDelete = async () => {
+      setDeletingId(item.id);
+      try {
+        const deleteFn = httpsCallable(functions, "deleteExpenditure");
+        await deleteFn({ expenditureId: item.id });
+        showToast({ message: "Entry deleted.", type: "success" });
+      } catch (e: any) {
+        console.error("Delete function error:", e);
+        showToast({
+          message: e.message || "Could not delete entry.",
+          type: "error",
+        });
+      } finally {
+        setDeletingId(null);
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Are you sure you want to remove "${item.item}"? This action cannot be undone.`)) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        "Confirm Delete",
+        `Are you sure you want to remove "${item.item}"? This action cannot be undone.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: performDelete,
           },
-        },
-      ],
-    );
+        ],
+      );
+    }
   };
 
   if (!canView) return null;

@@ -24,16 +24,18 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { auth, db, storage } from "../../firebaseConfig";
 
 export default function StudentSettings() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   
   const [dob, setDob] = useState<Date | null>(
-    appUser?.dateOfBirth ? appUser.dateOfBirth.toDate() : null
+    appUser?.dateOfBirth ? (appUser.dateOfBirth as any).toDate() : null
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -60,7 +62,7 @@ export default function StudentSettings() {
           router.replace("/");
         }
       } catch (err) {
-        Alert.alert("Error", "Logout failed. Please try again.");
+        showToast({ message: "Logout failed. Please try again.", type: "error" });
       } finally {
         setLoading(false);
       }
@@ -80,7 +82,7 @@ export default function StudentSettings() {
 
   const handleUpdateName = async () => {
     if (!firstName.trim() || !lastName.trim()) {
-      return Alert.alert("Required", "First name and surname are required.");
+      return showToast({ message: "First name and surname are required.", type: "error" });
     }
 
     if (!appUser) return;
@@ -90,11 +92,11 @@ export default function StudentSettings() {
         "profile.firstName": firstName.trim(),
         "profile.lastName": lastName.trim()
       });
-      Alert.alert("Success", "Profile name updated!");
+      showToast({ message: "Profile name updated!", type: "success" });
       setNameModalVisible(false);
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Failed to update name.");
+      showToast({ message: "Failed to update name.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -102,13 +104,13 @@ export default function StudentSettings() {
 
   const handleUpdatePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      return Alert.alert("Required", "Please fill in all password fields.");
+      return showToast({ message: "Please fill in all password fields.", type: "error" });
     }
     if (newPassword !== confirmPassword) {
-      return Alert.alert("Mismatch", "New passwords do not match.");
+      return showToast({ message: "New passwords do not match.", type: "error" });
     }
     if (newPassword.length < 6) {
-      return Alert.alert("Short Password", "New password must be at least 6 characters.");
+      return showToast({ message: "New password must be at least 6 characters.", type: "error" });
     }
 
     setPwUpdating(true);
@@ -123,7 +125,7 @@ export default function StudentSettings() {
       // Now update the password
       await updatePassword(user, newPassword);
       
-      Alert.alert("Success", "Password updated successfully!");
+      showToast({ message: "Password updated successfully!", type: "success" });
       setPwModalVisible(false);
       setCurrentPassword("");
       setNewPassword("");
@@ -132,7 +134,7 @@ export default function StudentSettings() {
       console.error(error);
       let msg = "Failed to update password.";
       if (error.code === 'auth/wrong-password') msg = "The current password you entered is incorrect.";
-      Alert.alert("Error", msg);
+      showToast({ message: msg, type: "error" });
     } finally {
       setPwUpdating(false);
     }
@@ -151,7 +153,7 @@ export default function StudentSettings() {
         uploadProfileImage(result.assets[0].uri);
       }
     } catch (e) {
-      Alert.alert("Error", "Failed to open library.");
+      showToast({ message: "Failed to open library.", type: "error" });
     }
   };
 
@@ -169,10 +171,10 @@ export default function StudentSettings() {
         "profile.profileImage": downloadURL
       });
       
-      Alert.alert("Success", "Profile picture updated!");
+      showToast({ message: "Profile picture updated!", type: "success" });
     } catch (err) {
       console.error(err);
-      Alert.alert("Upload Failed", "Could not save image.");
+      showToast({ message: "Could not save image.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -186,9 +188,9 @@ export default function StudentSettings() {
       await updateDoc(doc(db, "users", appUser.uid), {
         dateOfBirth: Timestamp.fromDate(selectedDate)
       });
-      Alert.alert("Success", "Date of Birth updated!");
+      showToast({ message: "Date of Birth updated!", type: "success" });
     } catch (e) {
-      Alert.alert("Error", "Failed to update DOB.");
+      showToast({ message: "Failed to update DOB.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -324,7 +326,7 @@ export default function StudentSettings() {
                   <Text style={styles.settingLabel}>Family Link Code</Text>
                   <Text style={[styles.settingValue, { letterSpacing: 2, color: COLORS.secondary }]}>{appUser?.parentLinkCode || "------"}</Text>
                 </View>
-                <TouchableOpacity onPress={() => Alert.alert("Parent Link", "Provide this code to your parents so they can link their account to your profile.")}>
+                <TouchableOpacity onPress={() => showToast({ message: "Provide this code to your parents so they can link their account to your profile.", type: "info" })}>
                     <SVGIcon name="information-circle" size={20} color="#94A3B8" />
                 </TouchableOpacity>
              </View>

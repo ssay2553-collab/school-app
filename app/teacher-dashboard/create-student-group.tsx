@@ -46,6 +46,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
 
@@ -142,7 +143,7 @@ const GroupChatView = ({
       q,
       (snap) => {
         const newMsgs = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }) as Message)
+          .map((d) => ({ id: d.id, ...(d.data() as any) }) as Message)
           .filter((m) => !m.deletedFor?.includes(appUser.uid));
 
         if (
@@ -249,6 +250,7 @@ const GroupChatView = ({
 ====================================================== */
 export default function TeacherStudentGroups() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [view, setView] = useState<"LIST" | "CREATE" | "CHAT" | "EDIT">("LIST");
   const [groups, setGroups] = useState<Group[]>([]);
@@ -313,8 +315,8 @@ export default function TeacherStudentGroups() {
       const staffList = snap.docs
         .map((d) => ({
           id: d.id,
-          fullName: `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim() || "Staff",
-          role: d.data().role,
+          fullName: `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim() || "Staff",
+          role: (d.data() as any).role,
         }))
         .filter((s) => s.id !== appUser?.uid); // Don't include self
       setStaff(staffList);
@@ -332,7 +334,7 @@ export default function TeacherStudentGroups() {
     );
     const unsubscribe = onSnapshot(q, (snap) => {
       let groupsData = snap.docs.map(
-        (d) => ({ id: d.id, ...d.data() }) as Group,
+        (d) => ({ id: d.id, ...(d.data() as any) }) as Group,
       );
       groupsData.sort(
         (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0),
@@ -348,7 +350,7 @@ export default function TeacherStudentGroups() {
     setLoading(true);
     try {
       const userSnap = await getDoc(doc(db, "users", appUser.uid));
-      const classIds = userSnap.data()?.classes || [];
+      const classIds = (userSnap.data() as any)?.classes || [];
       const q = query(
         collection(db, "classes"),
         where(documentId(), "in", classIds),
@@ -357,7 +359,7 @@ export default function TeacherStudentGroups() {
 
       const list = snap.docs.map((d) => ({
         id: d.id,
-        name: d.data().name || d.id,
+        name: (d.data() as any).name || d.id,
       }));
       // Logical Sort
       setTeacherClasses(sortClasses(list));
@@ -369,7 +371,7 @@ export default function TeacherStudentGroups() {
       setSelectedStaffIds([]);
       setView("CREATE");
     } catch {
-      Alert.alert("Error", "Could not fetch classes.");
+      showToast({ message: "Could not fetch classes.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -379,7 +381,7 @@ export default function TeacherStudentGroups() {
     setLoading(true);
     try {
       const userSnap = await getDoc(doc(db, "users", appUser!.uid));
-      const classIds = userSnap.data()?.classes || [];
+      const classIds = (userSnap.data() as any)?.classes || [];
       const q = query(
         collection(db, "classes"),
         where(documentId(), "in", classIds),
@@ -388,7 +390,7 @@ export default function TeacherStudentGroups() {
 
       const list = snap.docs.map((d) => ({
         id: d.id,
-        name: d.data().name || d.id,
+        name: (d.data() as any).name || d.id,
       }));
       setTeacherClasses(sortClasses(list));
       await fetchStaff();
@@ -400,7 +402,7 @@ export default function TeacherStudentGroups() {
       setSelectedStaffIds(group.staffIds || []);
       setView("EDIT");
     } catch {
-      Alert.alert("Error", "Could not load edit screen.");
+      showToast({ message: "Could not load edit screen.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -421,7 +423,7 @@ export default function TeacherStudentGroups() {
             snap.docs.map((d) => ({
               id: d.id,
               fullName:
-                `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
+                `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
             })),
           );
         } catch (e) {
@@ -436,10 +438,10 @@ export default function TeacherStudentGroups() {
 
   const handleCreateOrUpdate = async () => {
     if (!groupName.trim() || selectedStudentIds.length === 0)
-      return Alert.alert(
-        "Required",
-        "Please provide a name and select students",
-      );
+      return showToast({
+        message: "Please provide a name and select students",
+        type: "error"
+      });
     setLoading(true);
     try {
       if (view === "EDIT" && activeGroup) {
@@ -448,7 +450,7 @@ export default function TeacherStudentGroups() {
           studentIds: selectedStudentIds,
           staffIds: selectedStaffIds,
         });
-        Alert.alert("Success", "Group updated.");
+        showToast({ message: "Group updated.", type: "success" });
       } else {
         await addDoc(collection(db, "studentGroups"), {
           name: groupName.trim(),
@@ -458,11 +460,11 @@ export default function TeacherStudentGroups() {
           staffIds: selectedStaffIds,
           createdAt: serverTimestamp(),
         });
-        Alert.alert("Success", "Group created.");
+        showToast({ message: "Group created.", type: "success" });
       }
       setView("LIST");
     } catch {
-      Alert.alert("Error", "Failed to process request");
+      showToast({ message: "Failed to process request", type: "error" });
     } finally {
       setLoading(false);
     }

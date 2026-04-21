@@ -34,9 +34,12 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 
+import { useToast } from "../../contexts/ToastContext";
+
 export default function AdminGuestChat() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [tickets, setTickets] = useState<any[]>([]);
   const [activeTicketId, setActiveTicketId] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -160,7 +163,7 @@ export default function AdminGuestChat() {
       setActiveTicketId(ticketId);
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Could not claim ticket");
+      showToast({ message: "Could not claim ticket", type: "error" });
     }
   };
 
@@ -180,9 +183,9 @@ export default function AdminGuestChat() {
                 handledAt: serverTimestamp(),
               });
               setActiveTicketId(null);
-              Alert.alert("Success", "Ticket resolved.");
+              showToast({ message: "Ticket resolved.", type: "success" });
             } catch {
-              Alert.alert("Error", "Failed to update status.");
+              showToast({ message: "Failed to update status.", type: "error" });
             }
           },
         },
@@ -195,10 +198,10 @@ export default function AdminGuestChat() {
     const ticket = tickets.find((t) => t.id === activeTicketId);
     if (!ticket) return;
     if (ticket.claimedByUid && ticket.claimedByUid !== appUser.uid) {
-      Alert.alert(
-        "Locked",
-        `This ticket is handled by ${ticket.claimedByRole}`,
-      );
+      showToast({
+        message: `This ticket is handled by ${ticket.claimedByRole}`,
+        type: "error",
+      });
       return;
     }
     const textToSend = input.trim();
@@ -218,7 +221,7 @@ export default function AdminGuestChat() {
       playSound("sent");
     } catch (error) {
       console.error("Error sending message:", error);
-      Alert.alert("Error", "Message failed to send.");
+      showToast({ message: "Message failed to send.", type: "error" });
     }
   };
 

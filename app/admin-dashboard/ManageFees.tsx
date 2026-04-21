@@ -57,6 +57,8 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
+import { useToast } from "../../contexts/ToastContext";
+
 const { width, height } = Dimensions.get("window");
 
 const VIBE = {
@@ -92,6 +94,7 @@ type StudentDraft = {
 
 export default function ManageFees() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const acadConfig = useAcademicConfig();
 
@@ -175,10 +178,10 @@ export default function ManageFees() {
 
   useEffect(() => {
     if (appUser && !canView) {
-      Alert.alert(
-        "Access Denied",
-        "You do not have permission to view fees management.",
-      );
+      showToast({
+        message: "You do not have permission to view fees management.",
+        type: "error",
+      });
       router.replace("/admin-dashboard");
     }
   }, [appUser, canView]);
@@ -264,7 +267,7 @@ export default function ManageFees() {
       const snap = await getDocsCacheFirst(collection(db, "classes") as any);
       const list = snap.docs.map((d) => ({
         id: d.id,
-        name: d.data().name || d.id,
+        name: (d.data() as any).name || d.id,
       }));
       const sorted = sortClasses(list);
       setClasses(sorted);
@@ -327,7 +330,7 @@ export default function ManageFees() {
         }
 
         // Filter out students on scholarship
-        const studentDocs = snap.docs.filter((d) => !d.data().onScholarship);
+        const studentDocs = snap.docs.filter((d) => !(d.data() as any).onScholarship);
         const studentIds = studentDocs.map((d) => d.id);
 
         let feesMap = new Map();
@@ -352,14 +355,14 @@ export default function ManageFees() {
           );
           feesSnaps.forEach((fsnap) =>
             fsnap.docs.forEach((d) =>
-              feesMap.set(d.data().studentUid, d.data()),
+              feesMap.set((d.data() as any).studentUid, d.data()),
             ),
           );
         }
 
         const batch: StudentDraft[] = studentDocs.map((d) => {
-          const feeData = feesMap.get(d.id);
-          const userData = d.data();
+          const feeData = feesMap.get(d.id) as any;
+          const userData = d.data() as any;
           return {
             uid: d.id,
             fullName:
@@ -422,11 +425,11 @@ export default function ManageFees() {
         where("date", "==", dateStr),
       );
       const snap = await getDocs(q);
-      const list = snap.docs.map((d) => d.data());
+      const list = snap.docs.map((d) => d.data() as any);
       setDailyPayments(list);
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to fetch daily payments");
+      showToast({ message: "Failed to fetch daily payments", type: "error" });
     } finally {
       setLoadingDaily(false);
     }
@@ -489,16 +492,18 @@ export default function ManageFees() {
       const { uri } = await Print.printToFileAsync({ html });
       await Sharing.shareAsync(uri);
     } catch {
-      Alert.alert("Error", "Export failed");
+      showToast({ message: "Export failed", type: "error" });
     }
   };
 
   const saveFees = async () => {
-    if (!canEdit)
-      return Alert.alert(
-        "Denied",
-        "You don't have permission to modify billing.",
-      );
+    if (!canEdit) {
+      showToast({
+        message: "Access Denied: You don't have permission to modify billing.",
+        type: "error",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const batch = writeBatch(db);
@@ -546,7 +551,7 @@ export default function ManageFees() {
       Alert.alert("Success", "Billing updated successfully.");
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Save failed");
+      showToast({ message: "Save failed", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -554,13 +559,13 @@ export default function ManageFees() {
 
   const handleLogPayment = async () => {
     if (!canEdit)
-      return Alert.alert(
-        "Denied",
-        "You don't have permission to record payments.",
-      );
+      return showToast({
+        message: "You don't have permission to record payments.",
+        type: "error",
+      });
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || !selectedStudent || !receivedFrom.trim())
-      return Alert.alert("Error", "Incomplete data");
+      return showToast({ message: "Incomplete data", type: "error" });
     setSaving(true);
     try {
       const recordId = `${selectedStudent.uid}_${academicYear.replace(/\//g, "-")}_${term.replace(/\s+/g, "")}`;
@@ -598,9 +603,12 @@ export default function ManageFees() {
       setReceivedFrom("");
       setPaymentModalVisible(false);
       fetchStudents(true);
-      Alert.alert("Success", `Payment recorded. Receipt: ${serial}`);
+      showToast({
+        message: `Payment recorded. Receipt: ${serial}`,
+        type: "success",
+      });
     } catch {
-      Alert.alert("Error", "Payment failed");
+      showToast({ message: "Payment failed", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -637,12 +645,12 @@ export default function ManageFees() {
               await batch.commit();
               fetchStudents(true);
               setPaymentModalVisible(false);
-              Alert.alert(
-                "Success",
-                "Transaction reverted and balance updated.",
-              );
+              showToast({
+                message: "Transaction reverted and balance updated.",
+                type: "success",
+              });
             } catch {
-              Alert.alert("Error", "Failed to delete");
+              showToast({ message: "Failed to delete", type: "error" });
             } finally {
               setSaving(false);
             }
@@ -1763,6 +1771,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     minWidth: 40,
     padding: 0,
+    ...(Platform.OS === 'android' ? {} : { letterSpacing: 0.5 }),
   },
   actionIcons: { flexDirection: "row", alignItems: "center", gap: 12 },
   historyCircle: {
@@ -2042,7 +2051,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "900",
     color: VIBE.primary,
-    letterSpacing: 1,
+    ...(Platform.OS !== "android" && { letterSpacing: 1 }),
   },
   dailyTotalValue: {
     fontSize: 24,

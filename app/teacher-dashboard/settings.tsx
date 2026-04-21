@@ -18,11 +18,13 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { auth, db } from "../../firebaseConfig";
 import { doc, updateDoc, deleteField } from "firebase/firestore";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function SettingsScreen() {
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const router = useRouter();
+  const { showToast } = useToast();
 
   const handleBack = useCallback(() => {
     if (router.canGoBack()) {
@@ -65,7 +67,7 @@ export default function SettingsScreen() {
             // Redirect to root hub instead of /login
             router.replace("/"); 
           } catch (error: any) {
-            Alert.alert("Error", error.message);
+            showToast({ message: error.message, type: "error" });
           } finally {
             setLogoutLoading(false);
           }
@@ -89,14 +91,11 @@ export default function SettingsScreen() {
               const user = auth.currentUser;
               if (user) {
                 await deleteUser(user);
-                Alert.alert(
-                  "Account Deleted",
-                  "Your account has been removed successfully.",
-                );
+                showToast({ message: "Your account has been removed successfully.", type: "success" });
                 router.replace("/");
               }
             } catch (error: any) {
-              Alert.alert("Error", error.message);
+              showToast({ message: error.message, type: "error" });
             } finally {
               setDeleteLoading(false);
             }

@@ -32,6 +32,7 @@ import { getSchoolLogo } from "../../constants/Logos";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import { useToast } from "../../contexts/ToastContext";
 import { sortClasses } from "../../lib/classHelpers";
 
 interface ClassItem {
@@ -42,6 +43,7 @@ interface ClassItem {
 export default function GenerateStudentCode() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -74,7 +76,7 @@ export default function GenerateStudentCode() {
         const snap = await getDocs(collection(db, "classes"));
         const list: ClassItem[] = [];
         snap.forEach((d) =>
-          list.push({ id: d.id, name: d.data().name || d.id }),
+          list.push({ id: d.id, name: (d.data() as any).name || d.id }),
         );
         setClasses(sortClasses(list));
       } catch (err) {
@@ -91,7 +93,7 @@ export default function GenerateStudentCode() {
 
   const handleGenerateCode = async () => {
     if (!selectedClassId) {
-      Alert.alert("Required", "Please select a target class.");
+      showToast({ message: "Please select a target class.", type: "error" });
       return;
     }
 
@@ -115,7 +117,7 @@ export default function GenerateStudentCode() {
       setGeneratedCode(code);
     } catch (error) {
       console.error("Error generating code:", error);
-      Alert.alert("Error", "Could not generate security token.");
+      showToast({ message: "Could not generate security token.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -124,7 +126,7 @@ export default function GenerateStudentCode() {
   const copyToClipboard = async () => {
     if (generatedCode) {
       await Clipboard.setStringAsync(generatedCode);
-      Alert.alert("Copied", "Token copied to clipboard.");
+      showToast({ message: "Token copied to clipboard.", type: "success" });
     }
   };
 

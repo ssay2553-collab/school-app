@@ -92,7 +92,7 @@ export default function ViewAcademicRecordDetails() {
         let nameFound = "";
 
         scoresSnap.docs.forEach((d) => {
-          const data = d.data();
+          const data = d.data() as any;
           const studentsList = data.students || [];
 
           const sortedBySubject = [...studentsList].sort((a, b) => {
@@ -163,7 +163,7 @@ export default function ViewAcademicRecordDetails() {
 
         const adminSnap = await getDocsFromServer(qAdmin);
         const headAdmin = adminSnap.docs.find((d) => {
-          const r = (d.data().adminRole || "").toLowerCase();
+          const r = ((d.data() as any).adminRole || "").toLowerCase();
           return [
             "proprietor",
             "head",
@@ -177,14 +177,14 @@ export default function ViewAcademicRecordDetails() {
           ].some((title) => r.includes(title));
         });
 
-        if (headAdmin && headAdmin.data().profile?.signatureUrl) {
-          setAdminSig(headAdmin.data().profile?.signatureUrl);
+        if (headAdmin && (headAdmin.data() as any).profile?.signatureUrl) {
+          setAdminSig((headAdmin.data() as any).profile?.signatureUrl);
         } else {
           const anySigAdmin = adminSnap.docs.find(
-            (d) => d.data().profile?.signatureUrl,
+            (d) => (d.data() as any).profile?.signatureUrl,
           );
           if (anySigAdmin) {
-            setAdminSig(anySigAdmin.data().profile?.signatureUrl);
+            setAdminSig((anySigAdmin.data() as any).profile?.signatureUrl);
           }
         }
 
@@ -196,7 +196,7 @@ export default function ViewAcademicRecordDetails() {
             );
           const reportSnap = await getDoc(doc(db, "student-reports", reportId));
           if (reportSnap.exists()) {
-            const r = reportSnap.data();
+            const r = reportSnap.data() as any;
             setAdminRemarks(r.adminRemarks || "");
             setTeacherRemarks(r.teacherRemarks || "");
             setConduct(r.assessment?.conduct || "Excellent");
@@ -286,7 +286,7 @@ export default function ViewAcademicRecordDetails() {
         const snap = await getDocs(qAll);
         let allStudents: any = {};
         snap.docs.forEach((doc) => {
-          const data = doc.data();
+          const data = doc.data() as any;
           (data.students || []).forEach((s: any) => {
             if (!allStudents[s.studentId]) {
               allStudents[s.studentId] = { name: s.fullName, total: 0 };

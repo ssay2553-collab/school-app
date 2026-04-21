@@ -37,6 +37,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
@@ -61,6 +62,7 @@ interface Parent {
 
 export default function ChatWithParent() {
   const router = useRouter();
+  const { showToast } = useToast();
   const { appUser } = useAuth();
   const [parents, setParents] = useState<Parent[]>([]);
   const [filteredParents, setFilteredParents] = useState<Parent[]>([]);
@@ -242,10 +244,7 @@ export default function ChatWithParent() {
     try {
       if (Platform.OS === "web") {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          Alert.alert(
-            "Unsupported",
-            "Audio recording is not supported in this browser.",
-          );
+          showToast({ message: "Audio recording is not supported in this browser.", type: "error" });
           return;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -255,10 +254,7 @@ export default function ChatWithParent() {
         const MediaRec =
           (window as any).MediaRecorder || (global as any).MediaRecorder;
         if (!MediaRec) {
-          Alert.alert(
-            "Unsupported",
-            "MediaRecorder is not available in this environment.",
-          );
+          showToast({ message: "MediaRecorder is not available in this environment.", type: "error" });
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -345,7 +341,7 @@ export default function ChatWithParent() {
       webBlobRef.current = null;
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Failed to upload audio");
+      showToast({ message: "Failed to upload audio", type: "error" });
     } finally {
       setUploading(false);
     }
@@ -394,7 +390,7 @@ export default function ChatWithParent() {
     } catch (err) {
       console.error("Send error", err);
       if (type === "text") setInput(currentInput);
-      Alert.alert("Error", "Failed to send message");
+      showToast({ message: "Failed to send message", type: "error" });
     }
   };
 

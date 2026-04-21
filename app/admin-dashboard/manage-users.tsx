@@ -43,6 +43,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db, functions } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
@@ -113,6 +114,7 @@ const PERMISSION_LEVELS: { label: string; value: PermissionLevel }[] = [
 
 export default function ManageUsers() {
   const router = useRouter();
+  const { showToast } = useToast();
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
 
@@ -181,7 +183,7 @@ export default function ManageUsers() {
 
   useEffect(() => {
     if (appUser && !hasManageUsersAccess) {
-      Alert.alert("Access Denied", "Unauthorized management access.");
+      showToast({ message: "Unauthorized management access.", type: "error" });
       router.replace("/admin-dashboard");
     }
   }, [appUser, hasManageUsersAccess]);
@@ -192,7 +194,7 @@ export default function ManageUsers() {
         const snap = await getDocsCacheFirst(collection(db, "classes") as any);
         const list = snap.docs.map((d: any) => ({
           id: d.id,
-          name: d.data().name || d.id,
+          name: (d.data() as any).name || d.id,
         }));
         setAllClasses(sortClasses(list));
       } catch (e) {
@@ -237,7 +239,7 @@ export default function ManageUsers() {
         q,
         (snap) => {
           const fetchedList = snap.docs.map(
-            (d: any) => ({ uid: d.id, ...d.data() }) as User,
+            (d: any) => ({ uid: d.id, ...(d.data() as any) }) as User,
           );
           if (selectedRole === "student") {
             fetchedList.sort((a, b) => {
@@ -332,9 +334,9 @@ export default function ManageUsers() {
             }
           : null,
       );
-      Alert.alert("Success", "Parent unlinked from student record.");
+      showToast({ message: "Parent unlinked from student record.", type: "success" });
     } catch (err) {
-      Alert.alert("Error", "Failed to unlink parent.");
+      showToast({ message: "Failed to unlink parent.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -361,9 +363,9 @@ export default function ManageUsers() {
         permissions: sanitized,
       });
       setAssignmentModal({ type: "none", target: null });
-      Alert.alert("Success", "Admin permissions updated.");
+      showToast({ message: "Admin permissions updated.", type: "success" });
     } catch {
-      Alert.alert("Error", "Failed to update permissions.");
+      showToast({ message: "Failed to update permissions.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -381,9 +383,9 @@ export default function ManageUsers() {
       setAssignmentModal({ type: "none", target: null });
       setCustomRoleText("");
       setDeptText("");
-      Alert.alert("Success", `Role assigned: ${roleName}`);
+      showToast({ message: `Role assigned: ${roleName}`, type: "success" });
     } catch {
-      Alert.alert("Error", "Failed to assign role.");
+      showToast({ message: "Failed to assign role.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -393,7 +395,7 @@ export default function ManageUsers() {
     const teacher = assignmentModal.target;
     if (!teacher) return;
     if (!department || !department.trim())
-      return Alert.alert("Error", "Please enter a department name.");
+      return showToast({ message: "Please enter a department name.", type: "error" });
     setUpdating(true);
     try {
       await updateDoc(doc(db, "users", teacher.uid), {
@@ -403,10 +405,10 @@ export default function ManageUsers() {
       });
       setAssignmentModal({ type: "none", target: null });
       setDeptText("");
-      Alert.alert("Success", `Assigned Dept Head (${department.trim()})`);
+      showToast({ message: `Assigned Dept Head (${department.trim()})`, type: "success" });
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to assign dept head.");
+      showToast({ message: "Failed to assign dept head.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -465,10 +467,10 @@ export default function ManageUsers() {
                     }
                   : prev,
               );
-              Alert.alert("Success", "Role removed.");
+              showToast({ message: "Role removed.", type: "success" });
             } catch (e) {
               console.error(e);
-              Alert.alert("Error", "Failed to remove role.");
+              showToast({ message: "Failed to remove role.", type: "error" });
             } finally {
               setUpdating(false);
             }
@@ -492,7 +494,7 @@ export default function ManageUsers() {
         });
       if (targetClassId && !isAlreadyAssigned) {
         const classDoc = await getDoc(doc(db, "classes", targetClassId));
-        const oldId = classDoc.data()?.classTeacherId;
+        const oldId = (classDoc.data() as any)?.classTeacherId;
         if (oldId && oldId !== teacher.uid)
           batch.update(doc(db, "users", oldId), { classTeacherOf: null });
       }
@@ -507,9 +509,9 @@ export default function ManageUsers() {
         });
       await batch.commit();
       setAssignmentModal({ type: "none", target: null });
-      Alert.alert("Success", "Class Teacher assigned.");
+      showToast({ message: "Class Teacher assigned.", type: "success" });
     } catch {
-      Alert.alert("Error", "Assignment failed.");
+      showToast({ message: "Assignment failed.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -517,10 +519,10 @@ export default function ManageUsers() {
 
   const handleToggleScholarship = async (user: User) => {
     if (!isSuperAdmin)
-      return Alert.alert(
-        "Denied",
-        "Only super admins can update scholarship status.",
-      );
+      return showToast({
+        message: "Only super admins can update scholarship status.",
+        type: "error",
+      });
     setUpdating(true);
     try {
       const newVal = !user.onScholarship;
@@ -528,12 +530,12 @@ export default function ManageUsers() {
       setViewingUser((prev) =>
         prev ? { ...prev, onScholarship: newVal } : null,
       );
-      Alert.alert(
-        "Success",
-        `Student is ${newVal ? "now" : "no longer"} on scholarship.`,
-      );
+      showToast({
+        message: `Student is ${newVal ? "now" : "no longer"} on scholarship.`,
+        type: "success",
+      });
     } catch {
-      Alert.alert("Error", "Update failed.");
+      showToast({ message: "Update failed.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -547,17 +549,17 @@ export default function ManageUsers() {
       currentClassName.toLowerCase().includes("grade 9");
 
     if (!isBasic9)
-      return Alert.alert(
-        "Invalid Action",
-        "Graduation can only be triggered from the Basic 9 student list.",
-      );
+      return showToast({
+        message: "Graduation can only be triggered from the Basic 9 student list.",
+        type: "error",
+      });
 
     const basic9Students = users.filter((u) => u.status !== "archived");
     if (basic9Students.length === 0)
-      return Alert.alert(
-        "Empty List",
-        "No active Basic 9 students found to graduate.",
-      );
+      return showToast({
+        message: "No active Basic 9 students found to graduate.",
+        type: "error",
+      });
 
     Alert.alert(
       "Confirm Graduation",
@@ -589,12 +591,12 @@ export default function ManageUsers() {
                 await batch.commit();
               }
 
-              Alert.alert(
-                "Success",
-                `Graduation for ${currentYear} completed.`,
-              );
+              showToast({
+                message: `Graduation for ${currentYear} completed.`,
+                type: "success",
+              });
             } catch (e) {
-              Alert.alert("Error", "Graduation process failed.");
+              showToast({ message: "Graduation process failed.", type: "error" });
             } finally {
               setUpdating(false);
             }
@@ -617,9 +619,9 @@ export default function ManageUsers() {
           });
         await batch.commit();
       }
-      Alert.alert("Success", "Role removed.");
+      showToast({ message: "Role removed.", type: "success" });
     } catch {
-      Alert.alert("Error", "Remove failed.");
+      showToast({ message: "Remove failed.", type: "error" });
     }
   };
 
@@ -638,10 +640,10 @@ export default function ManageUsers() {
             try {
               const deleteFn = httpsCallable(functions, "deleteUserAccount");
               await deleteFn({ uid: user.uid });
-              Alert.alert("Success", "Account deleted.");
+              showToast({ message: "Account deleted.", type: "success" });
             } catch {
               await deleteDoc(doc(db, "users", user.uid));
-              Alert.alert("Success", "Database entry removed.");
+              showToast({ message: "Database entry removed.", type: "success" });
             } finally {
               setDeletingUid(null);
               setViewingUser(null);
@@ -1649,10 +1651,10 @@ export default function ManageUsers() {
                     ]}
                     onPress={() => {
                       if (!customRoleText || !customRoleText.trim())
-                        return Alert.alert(
-                          "Error",
-                          "Please enter a role name.",
-                        );
+                        return showToast({
+                          message: "Please enter a role name.",
+                          type: "error",
+                        });
                       handleAssignRole(customRoleText.trim());
                     }}
                     disabled={updating}

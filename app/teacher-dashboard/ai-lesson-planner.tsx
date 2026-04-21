@@ -24,6 +24,7 @@ import * as Animatable from 'react-native-animatable';
 import { Picker } from '@react-native-picker/picker';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebaseConfig';
+import { useToast } from '../../contexts/ToastContext';
 import {
   collection,
   addDoc,
@@ -45,6 +46,7 @@ const isLargeScreen = width > 768;
 export default function AILessonPlanner() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const primary = SCHOOL_CONFIG.primaryColor;
 
   const teacherSubjects = appUser?.subjects || [];
@@ -98,7 +100,7 @@ export default function AILessonPlanner() {
         where("__name__", "in", appUser.classes)
       );
       const snap = await getDocs(q);
-      const list = snap.docs.map(doc => ({ id: doc.id, name: doc.data().name }));
+      const list = snap.docs.map(doc => ({ id: doc.id, name: (doc.data() as any).name }));
       setAvailableClasses(list);
 
       if (list.length === 1) {
@@ -131,7 +133,7 @@ export default function AILessonPlanner() {
 
       const usage: Record<string, number> = {};
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
+        const data = doc.data() as any;
         usage[data.subject] = (usage[data.subject] || 0) + 1;
       });
       setWeeklyUsage(usage);
@@ -142,12 +144,12 @@ export default function AILessonPlanner() {
 
   const handleGenerate = async () => {
     if (!GEMINI_API_KEY) {
-        Alert.alert("API Key Missing", "AI generation is not configured. Please contact support.");
+        showToast({ message: "AI generation is not configured. Please contact support.", type: "error" });
         return;
     }
 
     if (!form.subject || !form.strand || !form.topic || !form.classLevel || !form.duration) {
-      Alert.alert("Required Fields", "Please fill in all details.");
+      showToast({ message: "Please fill in all details.", type: "error" });
       return;
     }
 
@@ -155,10 +157,7 @@ export default function AILessonPlanner() {
 
     const currentUsage = weeklyUsage[form.subject] || 0;
     if (currentUsage >= 3) {
-      Alert.alert(
-        "Weekly Limit Reached",
-        `You have reached your limit of 3 generations for ${form.subject} this week. Limits reset on Sunday.`
-      );
+      showToast({ message: `You have reached your limit of 3 generations for ${form.subject} this week.`, type: "error" });
       return;
     }
 
@@ -211,7 +210,7 @@ export default function AILessonPlanner() {
       fetchWeeklyUsage(); // Update UI
     } catch (error) {
       console.error("AI Error:", error);
-      Alert.alert("Generation Failed", "Could not generate plan. Please try again.");
+      showToast({ message: "Could not generate plan. Please try again.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -235,10 +234,10 @@ export default function AILessonPlanner() {
         plan: generatedPlan,
         createdAt: serverTimestamp(),
       });
-      Alert.alert("Saved!", "Your lesson plan has been saved to the Pedagogy Vault.");
+      showToast({ message: "Lesson plan saved to the Pedagogy Vault.", type: "success" });
     } catch (error) {
       console.error("Save error:", error);
-      Alert.alert("Error", "Could not save to vault.");
+      showToast({ message: "Could not save to vault.", type: "error" });
     } finally {
       setLoading(false);
     }

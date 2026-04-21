@@ -32,6 +32,7 @@ import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEdit
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 
 const NOTES_KEY = "@teacher_notes_v1";
@@ -54,6 +55,7 @@ const isLargeScreen = width > 768;
 export default function TeacherNoteScreen() {
   const router = useRouter();
   const { appUser, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
   const mountedRef = useRef(true);
 
   const [title, setTitle] = useState("");
@@ -164,11 +166,11 @@ export default function TeacherNoteScreen() {
         docId: d.id,
         id: d.id + "_remote",
         uid: appUser.uid,
-        title: d.data().title,
-        content: d.data().content,
-        pinned: d.data().pinned ?? false,
-        createdAt: d.data().createdAt?.toMillis() ?? Date.now(),
-        updatedAt: d.data().updatedAt?.toMillis(),
+        title: (d.data() as any).title,
+        content: (d.data() as any).content,
+        pinned: (d.data() as any).pinned ?? false,
+        createdAt: (d.data() as any).createdAt?.toMillis() ?? Date.now(),
+        updatedAt: (d.data() as any).updatedAt?.toMillis(),
         synced: true,
       }));
 

@@ -28,10 +28,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { auth, db, storage } from "../../firebaseConfig";
 
 export default function SubmitAssignment() {
   const router = useRouter();
+  const { showToast } = useToast();
   const { prefillNoteId, prefillTitle, prefillContent } = useLocalSearchParams();
 
   const [assignmentCode, setAssignmentCode] = useState("");
@@ -65,6 +68,7 @@ export default function SubmitAssignment() {
       setFile(picked);
     } catch (error) {
       console.log("Error picking file", error);
+      showToast({ message: "Error picking file", type: "error" });
     }
   };
 
@@ -72,20 +76,13 @@ export default function SubmitAssignment() {
     router.push("/student-dashboard/note");
   };
 
-  const showToast = (text: string, type: "success" | "error" | "info" = "info") => {
-    setMessage({ text, type });
-    // Keep success messages a bit longer if we are redirecting
-    setTimeout(() => setMessage(null), type === "success" ? 3000 : 5000);
-  };
-
   const handleSubmit = async () => {
     if (!assignmentCode.trim() || (!file && !prefillNoteId) || !studentId) {
-      showToast("Assignment code and a submission (file or note) are required.", "error");
+      showToast({ message: "Assignment code and a submission (file or note) are required.", type: "error" });
       return;
     }
 
     setLoading(true);
-    setMessage(null);
 
     try {
       // 1. Verify Assignment Code
@@ -97,13 +94,13 @@ export default function SubmitAssignment() {
 
       if (snap.empty) {
         setLoading(false);
-        showToast("Invalid assignment code. Please check and try again.", "error");
+        showToast({ message: "Invalid assignment code. Please check and try again.", type: "error" });
         return;
       }
 
       const assignmentDoc = snap.docs[0];
       const assignmentId = assignmentDoc.id;
-      const assignmentData = assignmentDoc.data();
+      const assignmentData = assignmentDoc.data() as any;
 
       // 2. Handle Upload or Rich-Text submission
       let submissionData: any = {
@@ -138,7 +135,7 @@ export default function SubmitAssignment() {
       // 3. Save Submission
       await addDoc(collection(db, "submissions"), submissionData);
 
-      showToast("Assignment submitted successfully!", "success");
+      showToast({ message: "Assignment submitted successfully!", type: "success" });
 
       // Give the user a moment to see the success message before redirecting
       setTimeout(() => {
@@ -147,7 +144,7 @@ export default function SubmitAssignment() {
 
     } catch (error) {
       console.error("Submission error:", error);
-      showToast("Failed to submit assignment. Please check your connection.", "error");
+      showToast({ message: "Failed to submit assignment. Please check your connection.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -163,51 +160,6 @@ export default function SubmitAssignment() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {message && (
-          <View
-            style={[
-              styles.messageBanner,
-              message.type === "error"
-                ? styles.errorBanner
-                : message.type === "success"
-                ? styles.successBanner
-                : styles.infoBanner,
-            ]}
-          >
-            <SVGIcon
-              name={
-                message.type === "error"
-                  ? "alert-circle"
-                  : message.type === "success"
-                  ? "checkmark-circle"
-                  : "information-circle"
-              }
-              size={20}
-              color={
-                message.type === "error"
-                  ? COLORS.error || "#ef4444"
-                  : message.type === "success"
-                  ? COLORS.success || "#10b981"
-                  : "#3b82f6"
-              }
-            />
-            <Text
-              style={[
-                styles.messageText,
-                {
-                  color:
-                    message.type === "error"
-                      ? "#991b1b"
-                      : message.type === "success"
-                      ? "#065f46"
-                      : "#1e40af",
-                },
-              ]}
-            >
-              {message.text}
-            </Text>
-          </View>
-        )}
         <View style={styles.card}>
           <Text style={styles.label}>Assignment Code</Text>
           <TextInput

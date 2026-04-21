@@ -22,6 +22,7 @@ import { COLORS, SHADOWS } from '../../constants/theme';
 import { useSchoolConfig, SCHOOL_CONFIG } from '../../constants/Config';
 import * as Animatable from 'react-native-animatable';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { db } from '../../firebaseConfig';
 import {
   collection,
@@ -85,6 +86,7 @@ const RESOURCES = [
 export default function PedagogyVault() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const config = useSchoolConfig();
   const primary = config.brandPrimary || COLORS.primary;
 
@@ -234,7 +236,7 @@ export default function PedagogyVault() {
       }
     } catch (error) {
       console.error("PDF Export Error:", error);
-      Alert.alert("Error", "Failed to generate PDF.");
+      showToast({ message: "Failed to generate PDF.", type: "error" });
     }
   };
 

@@ -49,6 +49,8 @@ import { COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, storage } from "../../firebaseConfig";
 
+import { useToast } from "../../contexts/ToastContext";
+
 type GalleryItem = {
   id: string;
   url: string;
@@ -186,6 +188,7 @@ const FullScreenItem: React.FC<FullScreenItemProps> = ({
 };
 export default function AdminGalleryUpload() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const { width, height } = useWindowDimensions();
 
   const [selectedFile, setSelectedFile] =
@@ -234,7 +237,7 @@ export default function AdminGalleryUpload() {
   }, []);
 
   const pickMedia = async () => {
-    if (!canManageGallery) return Alert.alert("Restricted");
+    if (!canManageGallery) return showToast({ message: "Restricted: Admin access required.", type: "error" });
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
@@ -248,7 +251,7 @@ export default function AdminGalleryUpload() {
         (file.fileSize as number | undefined) &&
         (file.fileSize as number) > MAX_FILE_SIZE
       ) {
-        return Alert.alert("File Too Large");
+        return showToast({ message: "File Too Large (Max 30MB)", type: "warning" });
       }
       setSelectedFile(file);
     }
@@ -297,7 +300,7 @@ export default function AdminGalleryUpload() {
         },
       );
     } catch (e) {
-      Alert.alert("Upload Error");
+      showToast({ message: "Upload Error", type: "error" });
       setIsUploading(false);
     }
   };
@@ -338,7 +341,7 @@ export default function AdminGalleryUpload() {
       // 📱 Mobile → open native share (Instagram, TikTok etc will appear)
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
-        Alert.alert("Not supported");
+        showToast({ message: "Sharing not supported on this device.", type: "info" });
         return;
       }
 
@@ -352,7 +355,7 @@ export default function AdminGalleryUpload() {
 
       await Sharing.shareAsync(downloadRes.uri);
     } catch (e) {
-      Alert.alert("Sharing failed");
+      showToast({ message: "Sharing failed", type: "error" });
     } finally {
       setSharingId(null);
     }
@@ -384,7 +387,7 @@ export default function AdminGalleryUpload() {
             setModalVisible(false);
           } catch (e) {
             console.error(e);
-            Alert.alert("Error", "Delete failed");
+            showToast({ message: "Delete failed", type: "error" });
           }
         },
       },

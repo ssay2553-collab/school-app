@@ -5,9 +5,11 @@ import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function UpgradeScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [hasUpdate, setHasUpdate] = useState(false);
 
@@ -18,7 +20,7 @@ export default function UpgradeScreen() {
         await new Promise((res) => setTimeout(res, 1000));
         setHasUpdate(false);
       } catch  {
-        Alert.alert("Error", "Could not check for updates.");
+        showToast({ message: "Could not check for updates.", type: "error" });
       } finally {
         setLoading(false);
       }
@@ -63,7 +65,7 @@ export default function UpgradeScreen() {
               >
                 <TouchableOpacity
                   style={[styles.button, { backgroundColor: SCHOOL_CONFIG.primaryColor || COLORS.primary }]}
-                  onPress={() => Alert.alert("Upgrade", "Redirecting to store...")}
+                  onPress={() => showToast({ message: "Redirecting to store...", type: "info" })}
                 >
                   <Text style={styles.buttonText}>Upgrade Now</Text>
                 </TouchableOpacity>

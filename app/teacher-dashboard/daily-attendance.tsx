@@ -26,6 +26,7 @@ import {
   Dimensions,
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -34,6 +35,7 @@ import { useRouter } from "expo-router";
 import moment from "moment";
 import SVGIcon from "../../components/SVGIcon";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { useToast } from "../../contexts/ToastContext";
 
 const FILTERS_KEY = "@attendance_filters_v1";
 
@@ -67,6 +69,7 @@ export default function DailyAttendanceScreen() {
   const { appUser } = useAuth();
   const router = useRouter();
   const acadConfig = useAcademicConfig();
+  const { showToast } = useToast();
 
   const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,7 +129,8 @@ export default function DailyAttendanceScreen() {
   const isOfficialClassTeacher = useMemo(() => {
     if (!classId || !appUser) return false;
     const selectedClass = availableClasses.find(c => c.id === classId);
-    return selectedClass?.classTeacherId === appUser.uid || appUser.classTeacherOf === classId || appUser.role === "admin";
+    const userRole = (appUser.role || "").toLowerCase();
+    return selectedClass?.classTeacherId === appUser.uid || appUser.classTeacherOf === classId || userRole === "admin";
   }, [classId, availableClasses, appUser]);
 
   useEffect(() => {
@@ -134,7 +138,8 @@ export default function DailyAttendanceScreen() {
     const loadClasses = async () => {
       try {
         let q;
-        if (appUser.role === "admin") {
+        const userRole = (appUser.role || "").toLowerCase();
+        if (userRole === "admin") {
             q = query(collection(db, "classes"));
         } else {
             const teacherClasses = appUser.classes || [];
@@ -147,11 +152,15 @@ export default function DailyAttendanceScreen() {
             q = query(collection(db, "classes"), where("__name__", "in", chunkedClasses));
         }
         const snap = await getDocs(q);
-        const list = snap.docs.map(d => ({
-          id: d.id,
-          name: d.data().name || d.id,
-          classTeacherId: d.data().classTeacherId
-        }));
+        const list = snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as any))
+          // Safe filtering for multi-tenancy: include legacy docs (no schoolId) or current school docs
+          .filter((d: any) => !d.schoolId || d.schoolId === SCHOOL_CONFIG.schoolId)
+          .map(d => ({
+            id: d.id,
+            name: d.name || d.id,
+            classTeacherId: d.classTeacherId
+          }));
         const sorted = sortClasses(list);
         setAvailableClasses(sorted);
 
@@ -184,7 +193,7 @@ export default function DailyAttendanceScreen() {
       
       const q = query(collection(db, "users"), ...constraints);
       const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const data = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
       
       const newLastVisible = snap.docs[snap.docs.length - 1] || null;
       const newHasMore = snap.docs.length === 30;
@@ -209,7 +218,7 @@ export default function DailyAttendanceScreen() {
         
         const ref = doc(db, "attendance", attendanceId);
         const snap = await getDoc(ref);
-        const data = snap.exists() ? snap.data() : { students: {} };
+        const data = snap.exists() ? (snap.data() as any) : { students: {} };
         setServerAttendance(data.students || {});
         setLocalAttendance(data.students || {});
       } catch (e) { console.error(e); }
@@ -223,7 +232,13 @@ export default function DailyAttendanceScreen() {
   };
 
   const markLocal = (studentId: string, status: "present" | "absent") => {
-    if (!isOfficialClassTeacher) return Alert.alert("Restricted", "Only assigned Class Teacher/Admin can mark attendance.");
+    if (!isOfficialClassTeacher) {
+      showToast({
+        message: "Only assigned Class Teacher/Admin can mark attendance.",
+        type: "error",
+      });
+      return;
+    }
     
     setLocalAttendance(prev => ({
       ...prev,
@@ -244,6 +259,7 @@ export default function DailyAttendanceScreen() {
       
       batch.set(ref, {
         classId,
+        schoolId: SCHOOL_CONFIG.schoolId,
         date: selectedDate,
         academicYear,
         term,
@@ -254,9 +270,15 @@ export default function DailyAttendanceScreen() {
 
       await batch.commit();
       setServerAttendance(localAttendance);
-      Alert.alert("Success", "Attendance saved for " + moment(selectedDate).format("MMM Do"));
+      showToast({
+        message: "Attendance saved successfully for " + moment(selectedDate).format("MMM Do"),
+        type: "success",
+      });
     } catch (e) {
-      Alert.alert("Error", "Failed to save. Check your connection.");
+      showToast({
+        message: "Failed to save. Check your connection.",
+        type: "error",
+      });
     } finally {
       setSaving(false);
     }

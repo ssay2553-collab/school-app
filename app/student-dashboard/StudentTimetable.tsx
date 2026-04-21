@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 
@@ -76,6 +77,7 @@ const TimetableCard = React.memo(({ item, type = 'lesson' }: { item: Lesson, typ
 
 export default function StudentTimetable() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [timetable, setTimetable] = useState<ClassTimetable | null>(null);
   const [selectedDay, setSelectedDay] = useState("");
   const [loading, setLoading] = useState(true);
@@ -117,6 +119,7 @@ export default function StudentTimetable() {
       }
     } catch (error) {
       console.error("Timetable fetch error:", error);
+      showToast({ message: "Failed to load timetable.", type: "error" });
     } finally {
       setLoading(false);
     }

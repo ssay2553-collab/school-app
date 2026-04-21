@@ -5,7 +5,6 @@ import { doc, getDoc } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -25,6 +24,7 @@ import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { getSchoolLogo } from "../../../constants/Logos";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import { auth, db } from "../../../firebaseConfig";
+import { useToast } from "../../../contexts/ToastContext";
 
 export default function StudentLoginScreen() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function StudentLoginScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
@@ -45,9 +45,9 @@ export default function StudentLoginScreen() {
   const isWeb = Platform.OS === "web";
 
   const handleLogin = async () => {
-    setErrorMessage(null);
     if (!email.trim() || !password.trim()) {
-      return setErrorMessage("Type your credentials first! 🚀");
+      showToast({ message: "Type your credentials first! 🚀", type: "error" });
+      return;
     }
 
     setLoading(true);
@@ -60,7 +60,8 @@ export default function StudentLoginScreen() {
 
       const userDoc = await getDoc(doc(db, "users", cred.user.uid));
       const userData = userDoc.data();
-      const role = userData?.role || userData?.profile?.role;
+      const rawRole = userData?.role || userData?.profile?.role;
+      const role = typeof rawRole === 'string' ? rawRole.toLowerCase() : "";
 
       if (!userDoc.exists() || role !== "student") {
         await auth.signOut();
@@ -77,8 +78,7 @@ export default function StudentLoginScreen() {
       ) {
         message = "Oops! Wrong email or password. Try again! ✨";
       }
-      setErrorMessage(message);
-      if (Platform.OS !== "web") Alert.alert("Login Info", message);
+      showToast({ message, type: "error" });
     } finally {
       setLoading(false);
     }
@@ -142,16 +142,6 @@ export default function StudentLoginScreen() {
                 Time for some magic learning! 🎓
               </Text>
             </Animatable.View>
-
-            {errorMessage && (
-              <Animatable.View animation="shake" style={styles.errorBanner}>
-                <SVGIcon name="close-circle" size={20} color="#fff" />
-                <Text style={styles.errorText}>{errorMessage}</Text>
-                <TouchableOpacity onPress={() => setErrorMessage(null)}>
-                  <SVGIcon name="close" size={20} color="#fff" />
-                </TouchableOpacity>
-              </Animatable.View>
-            )}
 
             <Animatable.View
               animation={isWeb ? undefined : "fadeInUp"}

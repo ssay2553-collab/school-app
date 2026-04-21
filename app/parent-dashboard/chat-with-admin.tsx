@@ -24,6 +24,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 
 interface ChatMessage {
@@ -37,6 +38,7 @@ interface ChatMessage {
 
 export default function ChatWithAdmin() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [recording, setRecording] = useState<any | null>(null);
@@ -86,10 +88,7 @@ export default function ChatWithAdmin() {
     try {
       if (Platform.OS === "web") {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          Alert.alert(
-            "Unsupported",
-            "Audio recording is not supported in this browser.",
-          );
+          showToast({ message: "Audio recording is not supported in this browser.", type: "error" });
           return;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -99,7 +98,7 @@ export default function ChatWithAdmin() {
         const MediaRec =
           (window as any).MediaRecorder || (global as any).MediaRecorder;
         if (!MediaRec) {
-          Alert.alert("Unsupported", "MediaRecorder not available.");
+          showToast({ message: "MediaRecorder not available.", type: "error" });
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -117,7 +116,7 @@ export default function ChatWithAdmin() {
 
       const permission = await Audio.requestPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert("Permission required", "Microphone access is needed");
+        showToast({ message: "Microphone access is needed", type: "error" });
         return;
       }
       await Audio.setAudioModeAsync({
@@ -182,7 +181,7 @@ export default function ChatWithAdmin() {
       }
       webBlobRef.current = null;
     } catch (err) {
-      Alert.alert("Error", "Failed to send voice message");
+      showToast({ message: "Failed to send voice message", type: "error" });
     } finally {
       setUploading(false);
     }
@@ -236,7 +235,7 @@ export default function ChatWithAdmin() {
       });
     } catch (err) {
       if (type === "text") setInput(currentInput);
-      Alert.alert("Error", "Failed to send message.");
+      showToast({ message: "Failed to send message.", type: "error" });
     }
   };
 

@@ -14,7 +14,6 @@ import {
 import React, { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -31,6 +30,7 @@ import {
 import * as Animatable from "react-native-animatable";
 import { getSchoolLogo } from "../../../constants/Logos";
 import { SHADOWS, COLORS } from "../../../constants/theme";
+import { useToast } from "../../../contexts/ToastContext";
 import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import SVGIcon from "../../../components/SVGIcon";
@@ -46,6 +46,7 @@ interface ChildDetail {
 
 export default function ParentSignup() {
   const router = useRouter();
+  const { showToast } = useToast();
   const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
   const schoolName = SCHOOL_CONFIG.name;
@@ -148,24 +149,30 @@ export default function ParentSignup() {
 
     // Validation
     if (!firstName.trim() || !lastName.trim()) {
-      return Alert.alert("Required", "Please enter your full name.");
+      showToast({ message: "Please enter your full name.", type: "error" });
+      return;
     }
     if (phone.trim().length < 9) {
-      return Alert.alert("Invalid Phone", "Please enter a valid phone number.");
+      showToast({ message: "Please enter a valid phone number.", type: "error" });
+      return;
     }
     if (!email.trim()) {
-      return Alert.alert("Required", "Please enter an email address.");
+      showToast({ message: "Please enter an email address.", type: "error" });
+      return;
     }
     if (password.length < 6) {
-      return Alert.alert("Weak Password", "Password must be at least 6 characters.");
+      showToast({ message: "Password must be at least 6 characters.", type: "error" });
+      return;
     }
     if (password !== confirmPassword) {
-      return Alert.alert("Error", "Passwords do not match.");
+      showToast({ message: "Passwords do not match.", type: "error" });
+      return;
     }
 
     const linkedChildren = children.filter(c => c.isValid);
     if (linkedChildren.length === 0) {
-      return Alert.alert("Link Code Required", "Please enter at least one valid student link code. Contact the school if you don't have one.");
+      showToast({ message: "Please enter at least one valid student link code. Contact the school if you don't have one.", type: "error" });
+      return;
     }
 
     setIsLoading(true);
@@ -223,24 +230,13 @@ export default function ParentSignup() {
 
       await batch.commit();
       
-      const successMsg = "Your parent account has been created! You can now log in to view your children's progress.";
-      if (Platform.OS === 'web') {
-        window.alert("Success 🎉\n" + successMsg);
-        router.replace("/(auth)/login/parent");
-      } else {
-        Alert.alert("Success 🎉", successMsg);
-        router.replace("/(auth)/login/parent");
-      }
+      showToast({ message: "Your parent account has been created! You can now log in.", type: "success" });
+      router.replace("/(auth)/login/parent");
     } catch (err: any) {
       console.error("Signup error:", err);
       let msg = err.message;
       if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
-
-      if (Platform.OS === 'web') {
-        window.alert("Signup Failed\n" + msg);
-      } else {
-        Alert.alert("Signup Failed", msg);
-      }
+      showToast({ message: msg, type: "error" });
     } finally {
       setIsLoading(false);
     }

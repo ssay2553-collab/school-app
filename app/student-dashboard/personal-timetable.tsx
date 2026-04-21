@@ -22,6 +22,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
+import { useToast } from "../../contexts/ToastContext";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const CACHE_KEY = "personal_timetable_cache";
@@ -40,6 +41,7 @@ interface PersonalTimetableData {
 
 const PersonalTimetable = () => {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [timetable, setTimetable] = useState<PersonalTimetableData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ const PersonalTimetable = () => {
         finalStatus = status;
       }
       if (finalStatus !== "granted") {
-        Alert.alert("Notifications", "Please enable notifications to get study reminders! 🔔");
+        showToast({ message: "Please enable notifications to get study reminders! 🔔", type: "info" });
       }
     })();
   }, []);
@@ -148,9 +150,9 @@ const PersonalTimetable = () => {
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updatedData));
       setTimetable(updatedData);
       await scheduleAllNotifications(updatedData);
-      Alert.alert("All Set! ✅", "Your study plan is updated and reminders are set!");
+      showToast({ message: "Your study plan is updated and reminders are set!", type: "success" });
     } catch (error) {
-      Alert.alert("Oops!", "Could not save your plan right now.");
+      showToast({ message: "Could not save your plan right now.", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -174,14 +176,14 @@ const PersonalTimetable = () => {
   };
 
   const saveEntry = () => {
-    if (!tempSubject.trim()) return Alert.alert("Wait!", "What subject are we studying?");
+    if (!tempSubject.trim()) return showToast({ message: "What subject are we studying?", type: "warning" });
     if (!timetable) return;
     const timeString = `${tempTime.getHours().toString().padStart(2, "0")}:${tempTime.getMinutes().toString().padStart(2, "0")}`;
     const updatedData = { ...timetable };
     const dayData = { ...updatedData[selectedDay] };
     const list = [...dayData[editMode]];
     if (editIndex !== null) { list[editIndex] = { subject: tempSubject, time: timeString }; }
-    else { if (list.length >= 2) return Alert.alert("Whoa!", "Let's stick to 2 subjects for now!"); list.push({ subject: tempSubject, time: timeString }); }
+    else { if (list.length >= 2) return showToast({ message: "Let's stick to 2 subjects for now!", type: "warning" }); list.push({ subject: tempSubject, time: timeString }); }
     dayData[editMode] = list;
     updatedData[selectedDay] = dayData;
     handleSave(updatedData);

@@ -33,6 +33,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
@@ -60,6 +61,7 @@ const generateChatId = (uid1: string, uid2: string) =>
 
 export default function ParentChatWithTeacher() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [stage, setStage] = useState<
     "select_child" | "select_teacher" | "chat"
   >("select_child");
@@ -207,10 +209,7 @@ export default function ParentChatWithTeacher() {
     try {
       if (Platform.OS === "web") {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          Alert.alert(
-            "Unsupported",
-            "Audio recording is not supported in this browser.",
-          );
+          showToast({ message: "Audio recording is not supported in this browser.", type: "error" });
           return;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -220,7 +219,7 @@ export default function ParentChatWithTeacher() {
         const MediaRec =
           (window as any).MediaRecorder || (global as any).MediaRecorder;
         if (!MediaRec) {
-          Alert.alert("Unsupported", "MediaRecorder not available.");
+          showToast({ message: "MediaRecorder not available.", type: "error" });
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -300,7 +299,7 @@ export default function ParentChatWithTeacher() {
       webBlobRef.current = null;
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Failed to upload audio");
+      showToast({ message: "Failed to upload audio", type: "error" });
     } finally {
       setUploading(false);
     }

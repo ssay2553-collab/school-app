@@ -16,6 +16,7 @@ import {
 import * as Animatable from "react-native-animatable";
 import { SHADOWS, COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { LinearGradient } from "expo-linear-gradient";
 import SVGIcon from "../../components/SVGIcon";
@@ -24,6 +25,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 export default function ParentProfileEditScreen() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,18 +47,18 @@ export default function ParentProfileEditScreen() {
         const userRef = doc(db, "users", appUser.uid);
         const snap = await getDoc(userRef);
         if (snap.exists()) {
-          const userData = snap.data();
+          const userData = snap.data() as any;
           const p = userData.profile || {};
           setForm({
             firstName: p.firstName || "",
             lastName: p.lastName || "",
-            email: p.email || appUser.profile?.email || "",
+            email: p.email || (appUser.profile as any)?.email || "",
             phone: p.phone || "",
           });
         }
       } catch (err) {
         console.error("Fetch parent failed:", err);
-        Alert.alert("Error", "Failed to load profile data.");
+        showToast({ message: "Failed to load profile data.", type: "error" });
       } finally {
         setLoading(false);
       }
@@ -69,7 +71,7 @@ export default function ParentProfileEditScreen() {
     if (!appUser) return;
 
     if (!form.firstName.trim() || !form.lastName.trim()) {
-      return Alert.alert("Validation", "Name cannot be empty.");
+      return showToast({ message: "Name cannot be empty.", type: "error" });
     }
 
     setSaving(true);
@@ -81,11 +83,11 @@ export default function ParentProfileEditScreen() {
         "profile.phone": form.phone,
       });
 
-      Alert.alert("Success", "Profile updated successfully!");
+      showToast({ message: "Profile updated successfully!", type: "success" });
       router.back();
     } catch (err) {
       console.error("Update profile failed:", err);
-      Alert.alert("Error", "Failed to update profile.");
+      showToast({ message: "Failed to update profile.", type: "error" });
     } finally {
       setSaving(false);
     }

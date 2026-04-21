@@ -28,12 +28,13 @@ import {
     StatusBar,
     Dimensions,
     Image,
+    Text,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import * as ImagePicker from "expo-image-picker";
 import SVGIcon from "../../../components/SVGIcon";
-import { ThemedText } from "../../../components/themed-text";
 import { SHADOWS, COLORS as THEME_COLORS } from "../../../constants/theme";
+import { useToast } from "../../../contexts/ToastContext";
 import { auth, db, storage } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -47,6 +48,7 @@ interface ClassItem {
 
 export default function StudentSignupScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
 
@@ -119,28 +121,28 @@ export default function StudentSignupScreen() {
   const validateStep = () => {
     if (step === 1) {
       if (!form.firstName.trim() || !form.lastName.trim()) {
-        Alert.alert("Required", "Please enter your full name.");
+        showToast({ message: "Please enter your full name.", type: "error" });
         return false;
       }
       if (!form.email.trim()) {
-        Alert.alert("Required", "Please enter an email address.");
+        showToast({ message: "Please enter an email address.", type: "error" });
         return false;
       }
       if (form.password.length < 6) {
-        Alert.alert("Weak Password", "Password must be at least 6 characters.");
+        showToast({ message: "Password must be at least 6 characters.", type: "error" });
         return false;
       }
       if (form.password !== form.confirmPassword) {
-        Alert.alert("Error", "Passwords do not match");
+        showToast({ message: "Passwords do not match", type: "error" });
         return false;
       }
     } else if (step === 2) {
       if (!form.gender) {
-        Alert.alert("Required", "Please select your gender.");
+        showToast({ message: "Please select your gender.", type: "error" });
         return false;
       }
       if (!form.selectedClassId) {
-        Alert.alert("Required", "Please select your class.");
+        showToast({ message: "Please select your class.", type: "error" });
         return false;
       }
     }
@@ -171,7 +173,7 @@ export default function StudentSignupScreen() {
 
   const handleSignup = async () => {
     if (!form.signupCode.trim()) {
-      return Alert.alert("Oops!", "Please enter your signup code.");
+      return showToast({ message: "Please enter your signup code.", type: "error" });
     }
 
     setLoading(true);
@@ -244,24 +246,13 @@ export default function StudentSignupScreen() {
       await batch.commit();
 
       const successMsg = "Account created successfully! Your student adventure starts now!";
-      if (Platform.OS === 'web') {
-        window.alert("Yay! 🎉\n" + successMsg);
-        router.replace("/(auth)/login/student");
-      } else {
-        Alert.alert("Yay! 🎉", successMsg, [
-          { text: "Let's Go!", onPress: () => router.replace("/(auth)/login/student") },
-        ]);
-      }
+      showToast({ message: successMsg, type: "success" });
+      router.replace("/(auth)/login/student");
     } catch (err: any) {
       console.error("Signup error details:", err);
       let msg = err.message;
       if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
-
-      if (Platform.OS === 'web') {
-        window.alert("Signup Failed\n" + msg);
-      } else {
-        Alert.alert("Signup Failed", msg || "An unexpected error occurred.");
-      }
+      showToast({ message: msg || "An unexpected error occurred.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -275,7 +266,7 @@ export default function StudentSignupScreen() {
             {step > s ? (
               <SVGIcon name="checkmark" size={16} color={primary} />
             ) : (
-              <ThemedText style={[styles.stepNumber, step >= s && { color: primary }]}>{s}</ThemedText>
+              <Text style={[styles.stepNumber, step >= s && { color: primary }]}>{s}</Text>
             )}
           </View>
           {s < 3 && <View style={[styles.stepLine, step > s && { backgroundColor: '#fff' }]} />}
@@ -294,15 +285,15 @@ export default function StudentSignupScreen() {
             <View style={styles.iconCircle}>
               <SVGIcon name="school" size={40} color={primary} />
             </View>
-            <ThemedText type="title" style={styles.title}>Student Registry</ThemedText>
-            <ThemedText style={styles.subtitle}>Step {step} of 3</ThemedText>
+            <Text style={[styles.themedDefault, styles.title]}>Student Registry</Text>
+            <Text style={[styles.themedDefault, styles.subtitle]}>Step {step} of 3</Text>
             {renderStepIndicator()}
           </Animatable.View>
 
           {step === 1 && (
             <Animatable.View animation="fadeInRight" useNativeDriver={useNativeDriver} style={styles.stepContainer}>
               <View style={styles.card}>
-                <ThemedText style={styles.cardHeader}>Account Details</ThemedText>
+                <Text style={[styles.themedDefault, styles.cardHeader]}>Account Details</Text>
                 
                 <View style={styles.avatarPickerContainer}>
                    <TouchableOpacity onPress={pickImage} style={styles.avatarBtn} disabled={loading}>
@@ -343,10 +334,10 @@ export default function StudentSignupScreen() {
           {step === 2 && (
             <Animatable.View animation="fadeInRight" useNativeDriver={useNativeDriver} style={styles.stepContainer}>
                <View style={styles.card}>
-                 <ThemedText style={styles.cardHeader}>Student Profile</ThemedText>
+                 <Text style={[styles.themedDefault, styles.cardHeader]}>Student Profile</Text>
                  
                  <View style={styles.inputGroup}>
-                   <ThemedText style={styles.inputLabel}>GENDER</ThemedText>
+                   <Text style={[styles.themedDefault, styles.inputLabel]}>GENDER</Text>
                    <View style={styles.pickerWrapper}>
                      <Picker
                        selectedValue={form.gender}
@@ -362,7 +353,7 @@ export default function StudentSignupScreen() {
                  </View>
 
                  <View style={styles.inputGroup}>
-                   <ThemedText style={styles.inputLabel}>DATE OF BIRTH</ThemedText>
+                   <Text style={[styles.themedDefault, styles.inputLabel]}>DATE OF BIRTH</Text>
                    {Platform.OS === 'web' ? (
                      <View style={styles.datePickerBtn}>
                         <input
@@ -393,9 +384,9 @@ export default function StudentSignupScreen() {
                          onPress={() => setShowDatePicker(true)}
                          activeOpacity={0.7}
                         >
-                          <ThemedText style={[styles.dateText, !form.dateOfBirth && { color: "#94A3B8" }]}>
+                          <Text style={[styles.themedDefault, styles.dateText, !form.dateOfBirth && { color: "#94A3B8" }]}>
                             {form.dateOfBirth ? form.dateOfBirth.toLocaleDateString() : "Select Date of Birth"}
-                          </ThemedText>
+                          </Text>
                           <SVGIcon name="calendar" size={20} color={primary} />
                        </TouchableOpacity>
 
@@ -416,7 +407,7 @@ export default function StudentSignupScreen() {
                  </View>
 
                  <View style={styles.inputGroup}>
-                   <ThemedText style={styles.inputLabel}>YOUR CLASS</ThemedText>
+                   <Text style={[styles.themedDefault, styles.inputLabel]}>YOUR CLASS</Text>
                    <View style={styles.pickerWrapper}>
                      <Picker
                        selectedValue={form.selectedClassId}
@@ -441,8 +432,8 @@ export default function StudentSignupScreen() {
                 <View style={[styles.iconBadge, { backgroundColor: primary + '15' }]}>
                   <SVGIcon name="key" size={32} color={primary} />
                 </View>
-                <ThemedText style={styles.codeTitle}>Magic Signup Code</ThemedText>
-                <ThemedText style={styles.codeSubtitle}>Enter the secret code from your teacher to join your class.</ThemedText>
+                <Text style={[styles.themedDefault, styles.codeTitle]}>Magic Signup Code</Text>
+                <Text style={[styles.themedDefault, styles.codeSubtitle]}>Enter the secret code from your teacher to join your class.</Text>
                 
                 <TextInput
                   style={styles.codeInput}
@@ -463,7 +454,7 @@ export default function StudentSignupScreen() {
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <View style={styles.joinBtnContent}>
-                      <ThemedText style={styles.joinBtnText}>Join Your Class Now</ThemedText>
+                      <Text style={[styles.themedDefault, styles.joinBtnText]}>Join Your Class Now</Text>
                       <View style={styles.joinBtnIcon}>
                         <SVGIcon name="arrow-forward" size={18} color={primary} />
                       </View>
@@ -471,9 +462,9 @@ export default function StudentSignupScreen() {
                   )}
                 </TouchableOpacity>
 
-                <ThemedText style={styles.secureText}>
+                <Text style={[styles.themedDefault, styles.secureText]}>
                    <SVGIcon name="lock-closed" size={12} color="#94A3B8" /> Secure 256-bit Registry
-                </ThemedText>
+                </Text>
               </View>
             </Animatable.View>
           )}
@@ -481,7 +472,7 @@ export default function StudentSignupScreen() {
           <View style={styles.footer}>
             {step > 1 && (
               <TouchableOpacity onPress={prevStep} style={styles.backBtn}>
-                <ThemedText style={styles.backBtnText}>Back</ThemedText>
+                <Text style={[styles.themedDefault, styles.backBtnText]}>Back</Text>
               </TouchableOpacity>
             )}
             {step < 3 && (
@@ -490,7 +481,7 @@ export default function StudentSignupScreen() {
                 style={[styles.nextBtn, { backgroundColor: '#fff', flex: step === 1 ? 1 : 2 }]}
                 disabled={loading}
               >
-                <ThemedText style={[styles.nextBtnText, { color: primary }]}>Continue</ThemedText>
+                <Text style={[styles.themedDefault, styles.nextBtnText, { color: primary }]}>Continue</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -504,7 +495,7 @@ export default function StudentSignupScreen() {
 
 const InputField = ({ label, isPassword, onTogglePassword, showPassword, ...props }: any) => (
   <View style={styles.inputGroup}>
-    <ThemedText style={styles.inputLabel}>{(label || "").toUpperCase()}</ThemedText>
+    <Text style={[styles.themedDefault, styles.inputLabel]}>{(label || "").toUpperCase()}</Text>
     <View style={styles.inputWrapper}>
       <TextInput 
         style={styles.input} 
@@ -522,6 +513,11 @@ const InputField = ({ label, isPassword, onTogglePassword, showPassword, ...prop
 );
 
 const styles = StyleSheet.create({
+  themedDefault: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: '#1E293B', // Default text color if not specified
+  },
   scrollContent: { padding: 24, flexGrow: 1 },
   header: { marginBottom: 30, alignItems: "center" },
   iconCircle: {
@@ -604,7 +600,6 @@ const styles = StyleSheet.create({
     textAlign: "center", 
     fontSize: 24, 
     fontWeight: "900", 
-    letterSpacing: 6,
     color: '#0F172A',
     marginBottom: 25,
     borderWidth: 2,

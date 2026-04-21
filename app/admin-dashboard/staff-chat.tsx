@@ -37,6 +37,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
@@ -76,6 +77,7 @@ const generateChatId = (uid1: string, uid2: string) =>
 
 export default function StaffChat() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [stage, setStage] = useState<"list" | "chat">("list");
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -136,7 +138,7 @@ export default function StaffChat() {
         const snap = await getDocs(q);
         const list = snap.docs
           .map((d) => {
-            const data = d.data();
+            const data = d.data() as any;
             return {
               uid: d.id,
               fullName:
@@ -185,7 +187,7 @@ export default function StaffChat() {
 
     const unsub = onSnapshot(q, (snap) => {
       const msgs = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as Message)
+        .map((d) => ({ id: d.id, ...(d.data() as any) }) as Message)
         .reverse();
 
       if (!isFirstLoad.current && msgs.length > messagesLenRef.current) {
@@ -218,10 +220,7 @@ export default function StaffChat() {
     try {
       if (Platform.OS === "web") {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          Alert.alert(
-            "Unsupported",
-            "Audio recording is not supported in this browser.",
-          );
+          showToast({ message: "Audio recording is not supported in this browser.", type: "error" });
           return;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -231,7 +230,7 @@ export default function StaffChat() {
         const MediaRec =
           (window as any).MediaRecorder || (global as any).MediaRecorder;
         if (!MediaRec) {
-          Alert.alert("Unsupported", "MediaRecorder not available.");
+          showToast({ message: "MediaRecorder not available.", type: "error" });
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -314,7 +313,7 @@ export default function StaffChat() {
       playSound("sent");
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to send voice message");
+      showToast({ message: "Failed to send voice message", type: "error" });
     } finally {
       setUploading(false);
     }
@@ -335,7 +334,7 @@ export default function StaffChat() {
       playSound("sent");
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to send message");
+      showToast({ message: "Failed to send message", type: "error" });
     }
   };
 

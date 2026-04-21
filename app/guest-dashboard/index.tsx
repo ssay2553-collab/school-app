@@ -14,6 +14,7 @@ import {
   Linking,
   Alert
 } from "react-native";
+import { useToast } from "../../contexts/ToastContext";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
@@ -28,6 +29,7 @@ import { auth } from "../../firebaseConfig";
 const { width } = Dimensions.get("window");
 
 export default function GuestDashboard() {
+  const { showToast } = useToast();
   const router = useRouter();
   const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
@@ -63,7 +65,7 @@ export default function GuestDashboard() {
             router.replace("/");
           } catch (err) {
             console.error(err);
-            Alert.alert("Error", "Could not sign out.");
+            showToast({ message: "Could not sign out.", type: "error" });
           }
         },
       },
@@ -78,14 +80,14 @@ export default function GuestDashboard() {
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert(
-          "Not Supported",
-          "Phone calls are not supported on this device.",
-        );
+        showToast({
+          message: "Phone calls are not supported on this device.",
+          type: "info",
+        });
       }
     } catch (err) {
       console.error("Linking error:", err);
-      Alert.alert("Error", "Could not open dialer.");
+      showToast({ message: "Could not open dialer.", type: "error" });
     }
   };
 

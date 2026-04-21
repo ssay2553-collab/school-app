@@ -14,12 +14,14 @@ import {
   TouchableOpacity,
   View,
   Image,
+  Platform,
 } from 'react-native';
 import * as Animatable from "react-native-animatable";
 import Constants from 'expo-constants';
 import { getSchoolLogo } from "../../constants/Logos";
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { db } from '../../firebaseConfig';
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import SVGIcon from "../../components/SVGIcon";
@@ -32,6 +34,7 @@ interface ClassItem {
 
 const GenerateCodeScreen = () => {
   const router = useRouter();
+  const { showToast } = useToast();
   const { appUser, loading: authLoading } = useAuth();
   const [role, setRole] = useState<'student' | 'teacher'>('student');
   const [classes, setClasses] = useState<ClassItem[]>([]);
@@ -46,6 +49,9 @@ const GenerateCodeScreen = () => {
   const primary = SCHOOL_CONFIG.primaryColor;
   const brandPrimary = SCHOOL_CONFIG.brandPrimary;
   
+  const isWeb = Platform.OS === 'web';
+  const useNativeDriver = !isWeb;
+
   const bg = "#F8FAFC";
   const cardBg = "#FFFFFF";
 
@@ -75,7 +81,7 @@ const GenerateCodeScreen = () => {
   const handleGenerateCode = async () => {
     if (!isAuthorized) return;
     if (role === 'student' && !selectedClassId) {
-      Alert.alert('Required', 'Please select a class for the student code.');
+      showToast({ message: 'Please select a class for the student code.', type: 'error' });
       return;
     }
 
@@ -102,7 +108,7 @@ const GenerateCodeScreen = () => {
       setGeneratedCode(code);
     } catch (error) {
       console.error('Error generating code:', error);
-      Alert.alert('Error', 'Could not generate code.');
+      showToast({ message: 'Could not generate code.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -111,7 +117,7 @@ const GenerateCodeScreen = () => {
   const copyToClipboard = async () => {
     if (generatedCode) {
       await Clipboard.setStringAsync(generatedCode);
-      Alert.alert('Copied', 'Code copied to clipboard.');
+      showToast({ message: 'Code copied to clipboard.', type: 'success' });
     }
   };
 
@@ -179,7 +185,12 @@ const GenerateCodeScreen = () => {
           </View>
 
           {role === 'student' && (
-            <Animatable.View animation="fadeIn" duration={400} style={styles.inputGroup}>
+            <Animatable.View
+              animation={isWeb ? undefined : "fadeIn"}
+              duration={400}
+              useNativeDriver={useNativeDriver}
+              style={styles.inputGroup}
+            >
               <View style={[styles.pickerBox, { borderColor: "#E2E8F0" }]}>
                 <Text style={[styles.miniLabel, { color: "#94A3B8" }]}>ASSIGN TO CLASS</Text>
                 {fetchingClasses ? (
@@ -218,7 +229,11 @@ const GenerateCodeScreen = () => {
         </View>
 
         {generatedCode && (
-          <Animatable.View animation="bounceIn" style={[styles.resultCard, { backgroundColor: "#fff", borderColor: brandPrimary, borderWidth: 2 }]}>
+          <Animatable.View
+            animation={isWeb ? undefined : "bounceIn"}
+            useNativeDriver={useNativeDriver}
+            style={[styles.resultCard, { backgroundColor: "#fff", borderColor: brandPrimary, borderWidth: 2 }]}
+          >
             <View style={styles.resultHeader}>
                 <View style={[styles.indicator, { backgroundColor: COLORS.success }]} />
                 <Text style={[styles.resultLabel, { color: "#64748B" }]}>SECURE TOKEN READY</Text>

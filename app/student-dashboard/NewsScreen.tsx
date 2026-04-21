@@ -9,9 +9,11 @@ import { fetchCategories, fetchNewsForAudience } from "../../lib/newsFetcher";
 import { NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function StudentNewsScreen({ className }: { className?: string }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<string>("All");
@@ -39,6 +41,7 @@ export default function StudentNewsScreen({ className }: { className?: string })
         setCategories(uniqueCategories);
       } catch (err) {
         console.error("Error fetching student news:", err);
+        showToast({ message: "Failed to load school news.", type: "error" });
       } finally {
         setLoading(false);
       }

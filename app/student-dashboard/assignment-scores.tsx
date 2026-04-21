@@ -32,6 +32,7 @@ import {
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
 import * as Animatable from "react-native-animatable";
@@ -57,6 +58,7 @@ const PAGE_SIZE = 10;
 
 export default function AssignmentScores() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [scores, setScores] = useState<ScoreRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,6 +127,7 @@ export default function AssignmentScores() {
         hasMore.current = snap.docs.length === PAGE_SIZE;
       } catch (e) {
         console.error("Fetch Scores Error:", e);
+        showToast({ message: "Failed to load assignment scores.", type: "error" });
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -159,6 +162,7 @@ export default function AssignmentScores() {
         }
       } catch (e) {
         console.error("Error fetching assignment meta:", e);
+        showToast({ message: "Could not load assignment details.", type: "error" });
       } finally {
         setFetchingDetails(false);
       }

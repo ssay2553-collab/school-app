@@ -29,10 +29,12 @@ import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { SHADOWS } from "../../../constants/theme";
+import { useToast } from "../../../contexts/ToastContext";
 import { auth, db } from "../../../firebaseConfig";
 
 export default function AdminSignup() {
   const router = useRouter();
+  const { showToast } = useToast();
 
   const schoolName = Constants.expoConfig?.name || "School";
   const schoolEmail =
@@ -50,24 +52,18 @@ export default function AdminSignup() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const notify = (title: string, message: string) => {
-    setErrorMessage(`${title}: ${message}`);
-    if (Platform.OS === "web") {
-      if (typeof window !== "undefined") {
-        window.alert(`${title}\n\n${message}`);
-      }
-    } else {
-      Alert.alert(title, message);
-    }
+    showToast({
+      message: `${title}: ${message}`,
+      type: title === "Success" ? "success" : "error",
+    });
   };
 
   const handleSignup = async () => {
-    setErrorMessage(null);
     if (
       !firstName.trim() ||
       !lastName.trim() ||
@@ -204,12 +200,6 @@ export default function AdminSignup() {
               Register as a school administrator (Max 4)
             </Text>
           </Animatable.View>
-
-          {errorMessage && (
-            <Animatable.View animation="shake" style={styles.errorBox}>
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            </Animatable.View>
-          )}
 
           <Animatable.View
             animation="fadeInUp"

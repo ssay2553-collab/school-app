@@ -16,6 +16,7 @@ import { auth, db } from "../../firebaseConfig";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
+import { useToast } from "../../contexts/ToastContext";
 
 // FAQ document IDs
 const faqKeys = [
@@ -43,6 +44,7 @@ const faqKeys = [
 
 export default function FAQEditor() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [faqData, setFaqData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export default function FAQEditor() {
       try {
         const user = auth.currentUser;
         if (!user) {
-          Alert.alert("Not signed in", "Please log in again.");
+          showToast({ message: "Please log in again.", type: "error" });
           setLoading(false);
           return;
         }
@@ -66,7 +68,7 @@ export default function FAQEditor() {
         setFaqData(loaded);
       } catch (error: any) {
         console.error("FAQ load error:", error);
-        Alert.alert("Access denied", "You do not have permission to view or edit FAQs.");
+        showToast({ message: "You do not have permission to view or edit FAQs.", type: "error" });
       } finally {
         setLoading(false);
       }
@@ -78,10 +80,10 @@ export default function FAQEditor() {
     try {
       setSavingKey(key);
       await setDoc(doc(db, "faqs", key), { answer: faqData[key] || "" }, { merge: true });
-      Alert.alert("Saved", "FAQ updated successfully.");
+      showToast({ message: "FAQ updated successfully.", type: "success" });
     } catch (error) {
       console.error("Save FAQ error:", error);
-      Alert.alert("Error", "Could not save FAQ.");
+      showToast({ message: "Could not save FAQ.", type: "error" });
     } finally {
       setSavingKey(null);
     }

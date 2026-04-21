@@ -18,7 +18,6 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     FlatList,
     Linking,
     RefreshControl,
@@ -36,6 +35,7 @@ import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 
 /* ---------------- TYPES ---------------- */
@@ -117,6 +117,7 @@ const SubmissionItem = React.memo(({
   onUpdateStandardMark: (subId: string, text: string) => void;
   onUpdateFeedback: (subId: string, text: string) => void;
 }) => {
+  const { showToast } = useToast();
   const calculateTotal = () => {
     if (item.type === "standard") return standardMarkValue || "0";
     return Object.values(qScoreValue || {}).reduce(
@@ -155,7 +156,7 @@ const SubmissionItem = React.memo(({
             onPress={() => {
               if (item.fileUrl) {
                 Linking.openURL(item.fileUrl).catch(() => {
-                  Alert.alert("Error", "Could not open the submission file.");
+                  showToast({ message: "Could not open the submission file.", type: "error" });
                 });
               }
             }}
@@ -243,6 +244,7 @@ const SubmissionItem = React.memo(({
 
 export default function MarkAssignment() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const teacherId = appUser?.uid;
 
@@ -314,7 +316,7 @@ export default function MarkAssignment() {
           if (classSnap.exists()) {
             classInfos.push({
               id: classId,
-              name: classSnap.data().name || classId,
+              name: (classSnap.data() as any).name || classId,
             });
           } else {
             classInfos.push({ id: classId, name: classId });
@@ -380,7 +382,7 @@ export default function MarkAssignment() {
 
         const data = snap.docs.map((d) => ({
           id: d.id,
-          ...d.data(),
+          ...(d.data() as any),
         })) as Assignment[];
 
         if (isFirstLoad) {
@@ -434,7 +436,7 @@ export default function MarkAssignment() {
         const snap = await getDocs(q);
         const fetchedSubmissions = snap.docs.map((d) => ({
           id: d.id,
-          ...d.data(),
+          ...(d.data() as any),
         })) as Submission[];
 
         fetchedSubmissions.sort(
@@ -478,7 +480,8 @@ export default function MarkAssignment() {
       if (sub.type === "standard") {
         const val = currentStandardMarks[sub.id];
         if (!val || isNaN(Number(val))) {
-          return Alert.alert("Invalid Score", "Please enter a numeric score.");
+          showToast({ message: "Please enter a numeric score.", type: "error" });
+          return;
         }
         totalScore = Number(val);
       } else {
@@ -489,7 +492,8 @@ export default function MarkAssignment() {
           const i = parseInt(idx);
           const scoreStr = submissionQInputs[i];
           if (!scoreStr || isNaN(Number(scoreStr))) {
-            return Alert.alert("Incomplete", `Please score question ${i + 1}.`);
+            showToast({ message: `Please score question ${i + 1}.`, type: "error" });
+            return;
           }
           const score = Number(scoreStr);
           finalQuestionScores[i] = score;
@@ -508,7 +512,7 @@ export default function MarkAssignment() {
 
         const studentSnap = await getDoc(doc(db, "users", sub.studentId));
         if (studentSnap.exists()) {
-          const studentData = studentSnap.data();
+          const studentData = studentSnap.data() as any;
           const parentUids = studentData.parentUids || [];
 
           if (parentUids.length > 0) {
@@ -527,13 +531,13 @@ export default function MarkAssignment() {
         }
 
         setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
-        Alert.alert(
-          "Success",
-          `Assignment marked! Total Score: ${totalScore}. Parent has been notified.`,
-        );
+        showToast({
+          message: `Assignment marked! Total Score: ${totalScore}. Parent has been notified.`,
+          type: "success"
+        });
       } catch (error) {
         console.error("Marking Error:", error);
-        Alert.alert("Error", "Failed to submit marks.");
+        showToast({ message: "Failed to submit marks.", type: "error" });
       }
     },
     [selectedAssignment],

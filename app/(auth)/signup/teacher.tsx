@@ -12,7 +12,6 @@ import {
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Modal,
     Platform,
@@ -28,6 +27,8 @@ import {
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../../components/SVGIcon";
 import { SHADOWS, COLORS as THEME_COLORS } from "../../../constants/theme";
+import { useAuth } from "../../../contexts/AuthContext";
+import { useToast } from "../../../contexts/ToastContext";
 import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, CurriculumType } from "../../../constants/Curriculum";
@@ -36,6 +37,7 @@ const COLORS = { ...THEME_COLORS, gold: "#FFD700", orange: "#FFA500" };
 
 export default function TeacherSignupScreen() {
   const router = useRouter();
+  const { showToast } = useToast();
   const primary = SCHOOL_CONFIG.primaryColor;
   const schoolId = SCHOOL_CONFIG.schoolId;
   const surface = SCHOOL_CONFIG.surfaceColor;
@@ -66,32 +68,32 @@ export default function TeacherSignupScreen() {
   const validateStep = () => {
     if (step === 1) {
       if (!form.firstName.trim() || !form.surname.trim()) {
-        Alert.alert("Required", "Please enter your full name.");
+        showToast({ message: "Please enter your full name.", type: "error" });
         return false;
       }
       if (!form.email.trim()) {
-        Alert.alert("Required", "Please enter an email address.");
+        showToast({ message: "Please enter an email address.", type: "error" });
         return false;
       }
       if (form.phone.length < 9) {
-        Alert.alert("Invalid Phone", "Please enter a valid phone number.");
+        showToast({ message: "Please enter a valid phone number.", type: "error" });
         return false;
       }
       if (form.password.length < 6) {
-        Alert.alert("Weak Password", "Password must be at least 6 characters.");
+        showToast({ message: "Password must be at least 6 characters.", type: "error" });
         return false;
       }
       if (form.password !== form.confirmPassword) {
-        Alert.alert("Mismatch", "Passwords do not match.");
+        showToast({ message: "Passwords do not match.", type: "error" });
         return false;
       }
     } else if (step === 2) {
       if (selectedClasses.length === 0) {
-        Alert.alert("Required", "Please select at least one class you teach.");
+        showToast({ message: "Please select at least one class you teach.", type: "error" });
         return false;
       }
       if (selectedSubjects.length === 0 && otherSubjects.length === 0) {
-        Alert.alert("Required", "Please select or add at least one subject.");
+        showToast({ message: "Please select or add at least one subject.", type: "error" });
         return false;
       }
     }
@@ -106,8 +108,7 @@ export default function TeacherSignupScreen() {
 
   const handleSignup = async () => {
     if (!form.signupCode.trim()) {
-      if (Platform.OS === 'web') window.alert("Signup code required.");
-      else Alert.alert("Error", "Signup code required.");
+      showToast({ message: "Signup code required.", type: "error" });
       return;
     }
     setLoading(true);
@@ -118,9 +119,7 @@ export default function TeacherSignupScreen() {
 
       if (snap.empty) {
         setLoading(false);
-        const msg = "This signup code is not valid. Please check with your admin.";
-        if (Platform.OS === 'web') window.alert(msg);
-        else Alert.alert("Invalid Code", msg);
+        showToast({ message: "This signup code is not valid. Please check with your admin.", type: "error" });
         return;
       }
 
@@ -129,29 +128,27 @@ export default function TeacherSignupScreen() {
 
       if (codeData.used) {
         setLoading(false);
-        const msg = "This code has already been used by another teacher.";
-        if (Platform.OS === 'web') window.alert(msg);
-        else Alert.alert("Used Code", msg);
+        showToast({ message: "This code has already been used by another teacher.", type: "error" });
         return;
       }
 
       if (codeData.intendedForRole !== "teacher") {
         setLoading(false);
-        const msg = "This code is not meant for a teacher account.";
-        if (Platform.OS === 'web') window.alert(msg);
-        else Alert.alert("Wrong Code", msg);
+        showToast({ message: "This code is not meant for a teacher account.", type: "error" });
         return;
       }
 
       const cleanEmail = form.email.trim().toLowerCase();
       const cred = await createUserWithEmailAndPassword(auth, cleanEmail, form.password);
-      
+
       // Ensure session is fresh for Firestore rules
       if (cred.user) {
         await cred.user.getIdToken(true);
       }
 
       const batch = writeBatch(db);
+
+      // User Profile
       batch.set(doc(db, "users", cred.user.uid), {
         uid: cred.user.uid,
         role: "teacher",
@@ -173,23 +170,13 @@ export default function TeacherSignupScreen() {
       batch.update(doc(db, "signupCodes", codeDoc.id), { used: true, usedBy: cred.user.uid });
       await batch.commit();
       
-      const successMsg = "Account created successfully! You can now log in.";
-      if (Platform.OS === 'web') {
-        window.alert("Success 🎉\n" + successMsg);
-        router.replace("/(auth)/login/teacher");
-      } else {
-        Alert.alert("Success 🎉", successMsg);
-        setTimeout(() => {
-          router.replace("/(auth)/login/teacher");
-        }, 1000);
-      }
+      showToast({ message: "Account created successfully! You can now log in.", type: "success" });
+      router.replace("/(auth)/login/teacher");
     } catch (err: any) {
       console.error("Teacher signup error:", err);
       let msg = err.message;
       if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
-
-      if (Platform.OS === 'web') window.alert("Signup Failed\n" + msg);
-      else Alert.alert("Signup Failed", msg);
+      showToast({ message: msg, type: "error" });
     } finally { setLoading(false); }
   };
 
@@ -363,7 +350,7 @@ const styles = StyleSheet.create({
   codeCard: { backgroundColor: "#fff", borderRadius: 24, padding: 30, alignItems: "center", ...SHADOWS.medium },
   codeTitle: { fontSize: 20, fontWeight: "800", marginTop: 15, color: "#0F172A" },
   codeSubtitle: { textAlign: "center", color: "#64748B", marginTop: 8, marginBottom: 25 },
-  codeInput: { width: '100%', height: 60, backgroundColor: "#F1F5F9", borderRadius: 16, textAlign: "center", fontSize: 24, fontWeight: "900", letterSpacing: 6 },
+  codeInput: { width: '100%', height: 60, backgroundColor: "#F1F5F9", borderRadius: 16, textAlign: "center", fontSize: 24, fontWeight: "900" },
   footer: { flexDirection: "row", gap: 12, marginTop: 30 },
   backBtn: { flex: 1, height: 55, justifyContent: "center", alignItems: "center", borderRadius: 16, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E2E8F0" },
   backBtnText: { fontWeight: "700", color: "#64748B" },

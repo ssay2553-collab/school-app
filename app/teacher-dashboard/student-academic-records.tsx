@@ -36,6 +36,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { getGradeDetails, sortClasses } from "../../lib/classHelpers";
+import { useToast } from "../../contexts/ToastContext";
 
 const storage = getStorage();
 
@@ -198,6 +199,7 @@ export default function StudentAcademicRecords() {
   const router = useRouter();
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
+  const { showToast } = useToast();
 
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -305,8 +307,8 @@ export default function StudentAcademicRecords() {
           const snap = await getDocsFromServer(q);
           const list = snap.docs.map((d) => ({
             id: d.id,
-            name: d.data().name || d.id,
-            classTeacherId: d.data().classTeacherId,
+            name: (d.data() as any).name || d.id,
+            classTeacherId: (d.data() as any).classTeacherId,
           }));
           const sorted = sortClasses(list);
           setTeacherClasses(sorted);
@@ -347,25 +349,28 @@ export default function StudentAcademicRecords() {
             where("classId", "==", selectedClassId),
           );
           const snap = await getDocsFromServer(q);
-          const list: StudentScoreRecord[] = snap.docs.map((d) => ({
-            studentId: d.id,
-            fullName:
-              `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
-            catA: "",
-            catB: "",
-            groupWork: "",
-            projectWork: "",
-            total60: 0,
-            classScore: "0",
-            examsMark: "",
-            exam50: "0",
-            finalScore: "0",
-            grade: "N/A",
-            conduct: "Excellent",
-            interest: "High",
-            attitude: "Positive",
-            teacherRemarks: "",
-          }));
+          const list: StudentScoreRecord[] = snap.docs.map((d) => {
+            const data = d.data() as any;
+            return {
+              studentId: d.id,
+              fullName:
+                `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
+              catA: "",
+              catB: "",
+              groupWork: "",
+              projectWork: "",
+              total60: 0,
+              classScore: "0",
+              examsMark: "",
+              exam50: "0",
+              finalScore: "0",
+              grade: "N/A",
+              conduct: "Excellent",
+              interest: "High",
+              attitude: "Positive",
+              teacherRemarks: "",
+            };
+          });
           setAllStudents(list);
           setServerStudents(JSON.parse(JSON.stringify(list)));
         }
@@ -408,8 +413,10 @@ export default function StudentAcademicRecords() {
   };
 
   const saveRecord = async () => {
-    if (!selectedClassId || !selectedSubject || !term || !selectedYear)
-      return Alert.alert("Error", "Missing fields.");
+    if (!selectedClassId || !selectedSubject || !term || !selectedYear) {
+      showToast({ message: "Missing fields.", type: "error" });
+      return;
+    }
     try {
       const yearSlug = selectedYear.replace(/\//g, "-");
       const reportSlug = reportType.replace(/\s+/g, "");
@@ -431,10 +438,10 @@ export default function StudentAcademicRecords() {
         containsBehavioralData: isClassTeacher && reportType === "End of Term",
       });
       setServerStudents(JSON.parse(JSON.stringify(allStudents)));
-      Alert.alert("Success", "Academic ledger saved successfully.");
+      showToast({ message: "Academic ledger saved successfully.", type: "success" });
       router.back();
     } catch (err) {
-      Alert.alert("Error", "Failed to save records.");
+      showToast({ message: "Failed to save records.", type: "error" });
     }
   };
 
@@ -460,11 +467,11 @@ export default function StudentAcademicRecords() {
           "profile.signatureUrl": downloadURL,
         });
         setSignatureUrl(downloadURL);
-        Alert.alert("Success", "Signature uploaded successfully!");
+        showToast({ message: "Signature uploaded successfully!", type: "success" });
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Failed to upload signature.");
+      showToast({ message: "Failed to upload signature.", type: "error" });
     } finally {
       setUploadingSig(false);
     }

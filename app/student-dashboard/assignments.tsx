@@ -34,6 +34,7 @@ import { useRouter } from "expo-router";
 import * as Animatable from "react-native-animatable";
 import * as Clipboard from "expo-clipboard";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { useToast } from "../../contexts/ToastContext";
 
 interface Question {
   text: string;
@@ -58,6 +59,7 @@ interface Assignment {
 
 export default function Assignments() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +87,7 @@ export default function Assignments() {
       const snapshot = await getDocs(q);
       const allAssignments = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
-        ...docSnap.data(),
+        ...(docSnap.data() as any),
       })) as Assignment[];
 
       const subQ = query(
@@ -94,7 +96,7 @@ export default function Assignments() {
       );
       const subSnapshot = await getDocs(subQ);
       const submittedAssignmentIds = subSnapshot.docs.map(
-        (doc) => doc.data().assignmentId,
+        (doc) => (doc.data() as any).assignmentId,
       );
 
       const pendingAssignments = allAssignments.filter(
@@ -105,7 +107,7 @@ export default function Assignments() {
       setAssignments(pendingAssignments.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)));
     } catch (error: any) {
       console.error("Fetch Assignments Error:", error);
-      Alert.alert("Error", "Failed to load assignments.");
+      showToast({ message: "Failed to load assignments.", type: "error" });
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -138,10 +140,10 @@ export default function Assignments() {
       activeAssignment.questions &&
       Object.keys(answers).length < questionCount
     ) {
-      return Alert.alert(
-        "Incomplete",
-        "Please answer all questions before submitting.",
-      );
+      return showToast({
+        message: "Please answer all questions before submitting.",
+        type: "warning"
+      });
     }
 
     setSubmitting(true);
@@ -169,14 +171,14 @@ export default function Assignments() {
       };
 
       await addDoc(collection(db, "submissions"), submissionData);
-      Alert.alert(
-        "Success! 🎉",
-        "Your assignment has been submitted successfully!",
-      );
+      showToast({
+        message: "Your assignment has been submitted successfully!",
+        type: "success"
+      });
       setActiveAssignment(null);
       fetchAssignments();
     } catch (error: any) {
-      Alert.alert("Error", error.message);
+      showToast({ message: error.message || "Failed to submit assignment", type: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -193,7 +195,7 @@ export default function Assignments() {
 
   const copyToClipboard = async (text: string) => {
     await Clipboard.setStringAsync(text);
-    Alert.alert("Copied", "Assignment code copied to clipboard!");
+    showToast({ message: "Assignment code copied to clipboard!", type: "success" });
   };
 
   const renderAssignmentItem = ({ item, index }: { item: Assignment, index: number }) => {

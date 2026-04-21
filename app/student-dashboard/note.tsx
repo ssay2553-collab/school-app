@@ -32,6 +32,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import { useToast } from "../../contexts/ToastContext";
 
 const NOTES_KEY = "@student_notes_v1";
 
@@ -53,6 +54,7 @@ const isLargeScreen = width > 768;
 export default function StudentNoteScreen() {
   const router = useRouter();
   const { appUser, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
   const mountedRef = useRef(true);
 
   const [title, setTitle] = useState("");
@@ -115,11 +117,11 @@ export default function StudentNoteScreen() {
         docId: d.id,
         id: d.id + "_remote",
         uid: appUser.uid,
-        title: d.data().title,
-        content: d.data().content,
-        pinned: d.data().pinned ?? false,
-        createdAt: d.data().createdAt?.toMillis() ?? Date.now(),
-        updatedAt: d.data().updatedAt?.toMillis(),
+        title: (d.data() as any).title,
+        content: (d.data() as any).content,
+        pinned: (d.data() as any).pinned ?? false,
+        createdAt: (d.data() as any).createdAt?.toMillis() ?? Date.now(),
+        updatedAt: (d.data() as any).updatedAt?.toMillis(),
         synced: true,
       }));
 
@@ -218,8 +220,10 @@ export default function StudentNoteScreen() {
 
       const syncedNext = next.map(n => n.id === newNote.id ? { ...n, docId: docRef.id, synced: true } : n);
       await persistLocalNotes(syncedNext);
+      showToast({ message: "Note saved successfully!", type: "success" });
     } catch (e) {
       console.warn("Firestore sync failed:", e);
+      showToast({ message: "Note saved locally, but sync failed.", type: "info" });
     }
 
     setTitle("");
@@ -254,8 +258,10 @@ export default function StudentNoteScreen() {
 
         const syncedNext = next.map(n => n.id === id ? { ...n, synced: true } : n);
         await persistLocalNotes(syncedNext);
+        showToast({ message: "Note updated successfully!", type: "success" });
       } catch (e) {
         console.warn("Firestore update sync failed:", e);
+        showToast({ message: "Note updated locally, but sync failed.", type: "info" });
       }
     }
 
@@ -273,8 +279,10 @@ export default function StudentNoteScreen() {
     if (removed?.docId) {
       try {
         await deleteDoc(doc(db, "student_notes", removed.docId));
+        showToast({ message: "Note deleted successfully.", type: "success" });
       } catch (e) {
         console.warn(e);
+        showToast({ message: "Note deleted locally, but sync failed.", type: "info" });
       }
     }
   };

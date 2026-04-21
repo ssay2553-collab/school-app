@@ -38,6 +38,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
@@ -48,6 +49,7 @@ export default function StudentFeeHistory() {
   const router = useRouter();
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
+  const { showToast } = useToast();
 
   const schoolId = (
     Constants.expoConfig?.extra?.schoolId || "afahjoy"
@@ -107,7 +109,7 @@ export default function StudentFeeHistory() {
         const snap = await getDocs(q);
         const list = snap.docs.map((d) => ({
           id: d.id,
-          name: `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
+          name: `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
         }));
         setChildren(list);
         if (list.length > 0) setSelectedChildId((prev) => prev || list[0].id);
@@ -123,7 +125,7 @@ export default function StudentFeeHistory() {
     if (!selectedChildId) return;
     const loadStudentData = async () => {
       const studentDoc = await getDoc(doc(db, "users", selectedChildId));
-      if (studentDoc.exists()) setStudentData(studentDoc.data());
+      if (studentDoc.exists()) setStudentData(studentDoc.data() as any);
     };
     loadStudentData();
   }, [selectedChildId]);
@@ -135,7 +137,7 @@ export default function StudentFeeHistory() {
     const cleanTerm = selectedTerm.replace(/\s/g, "");
     const recordId = `${selectedChildId}_${cleanYear}_${cleanTerm}`;
     const unsub = onSnapshot(doc(db, "studentFeeRecords", recordId), (snap) => {
-      setRecord(snap.exists() ? snap.data() : null);
+      setRecord(snap.exists() ? (snap.data() as any) : null);
       setFetchingRecord(false);
     });
     return () => unsub();
@@ -283,7 +285,7 @@ export default function StudentFeeHistory() {
         document.body.removeChild(link);
       }
     } catch {
-      Alert.alert("Error", "Could not generate PDF statement");
+      showToast({ message: "Could not generate PDF statement", type: "error" });
     }
   };
 

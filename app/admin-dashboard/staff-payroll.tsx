@@ -41,6 +41,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
+import { useToast } from "../../contexts/ToastContext";
+
 const CACHE_KEY = "STAFF_PAYROLL_CACHE_V3";
 
 type Staff = {
@@ -54,6 +56,7 @@ type Staff = {
 export default function StaffPayrollScreen() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
   
   // Access Control
@@ -84,7 +87,10 @@ export default function StaffPayrollScreen() {
 
   useEffect(() => {
     if (appUser && !canView) {
-      Alert.alert("Access Denied", "You do not have permission to view staff payroll.");
+      showToast({
+        message: "You do not have permission to view staff payroll.",
+        type: "error",
+      });
       router.replace("/admin-dashboard");
     }
   }, [appUser, canView]);
@@ -140,7 +146,7 @@ export default function StaffPayrollScreen() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const combined = snapshot.docs.map((d) => {
-        const data = d.data();
+        const data = d.data() as any;
         const role = data.role === "admin" ? "Administrator" : (data.role === "teacher" ? "Teacher" : "Non-Teaching");
         const firstName = data.profile?.firstName || "";
         const lastName = data.profile?.lastName || "";
@@ -193,25 +199,33 @@ export default function StaffPayrollScreen() {
 
     const newSalary = parseFloat(val);
     if (isNaN(newSalary) || !canEditSalary) {
-      return Alert.alert("Invalid Amount", "Please enter a valid numeric salary.");
+      return showToast({
+        message: "Please enter a valid numeric salary.",
+        type: "error",
+      });
     }
 
     setUpdatingId(item.id);
     try {
       await updateDoc(doc(db, "users", item.id), { salary: newSalary });
       // Total will auto-update via onSnapshot listener
-      Alert.alert("Success", "Salary updated.");
+      showToast({ message: "Salary updated.", type: "success" });
     } catch (error) {
       console.error("Update salary error:", error);
-      Alert.alert("Error", "Update failed.");
+      showToast({ message: "Update failed.", type: "error" });
     } finally {
       setUpdatingId(null);
     }
   };
 
   const handleAddNonTeaching = async () => {
-    if (!canEditSalary) return Alert.alert("Denied", "You don't have permission to add staff.");
-    if (!newStaffName || !newStaffSalary) return Alert.alert("Required", "Please fill all fields.");
+    if (!canEditSalary)
+      return showToast({
+        message: "You don't have permission to add staff.",
+        type: "error",
+      });
+    if (!newStaffName || !newStaffSalary)
+      return showToast({ message: "Please fill all fields.", type: "error" });
     setAddingStaff(true);
     try {
       const names = newStaffName.trim().split(" ");
@@ -234,13 +248,17 @@ export default function StaffPayrollScreen() {
       setNewStaffName("");
       setNewStaffSalary("");
       // Fetch will happen automatically via onSnapshot
-      Alert.alert("Success", "Staff registered.");
-    } catch { Alert.alert("Error", "Could not add staff."); } finally { setAddingStaff(false); }
+      showToast({ message: "Staff registered.", type: "success" });
+    } catch {
+      showToast({ message: "Could not add staff.", type: "error" });
+    } finally {
+      setAddingStaff(false);
+    }
   };
 
   const handlePostToExpenditure = async () => {
-    if (!selectedMonth) return Alert.alert("Required", "Select a month first.");
-    if (!selectedYear || !selectedTerm) return Alert.alert("Config Error", "Academic year and term must be set in settings.");
+    if (!selectedMonth) return showToast({ message: "Select a month first.", type: "warning" });
+    if (!selectedYear || !selectedTerm) return showToast({ message: "Academic year and term must be set in settings.", type: "error" });
     
     setIsFinalizing(true);
     try {
@@ -249,7 +267,7 @@ export default function StaffPayrollScreen() {
       const existing = await getDocs(q);
       if (!existing.empty) {
         setIsFinalizing(false);
-        return Alert.alert("Already Posted", "This payroll period has already been recorded in expenditures.");
+        return showToast({ message: "This payroll period has already been recorded in expenditures.", type: "info" });
       }
       await addDoc(collection(db, "expenditures"), {
         item: itemLabel,
@@ -262,7 +280,7 @@ export default function StaffPayrollScreen() {
         term: selectedTerm,
         createdAt: serverTimestamp(),
       });
-      Alert.alert("Success", "Payroll posted to expenditures.");
+      showToast({ message: "Payroll posted to expenditures.", type: "success" });
     } finally { setIsFinalizing(false); }
   };
 

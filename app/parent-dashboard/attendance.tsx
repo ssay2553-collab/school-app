@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SHADOWS, COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
 import SVGIcon from "../../components/SVGIcon";
@@ -30,6 +31,7 @@ interface StudentAttendance {
 export default function AttendanceScreen() {
   const { appUser } = useAuth();
   const router = useRouter();
+  const { showToast } = useToast();
   const [studentAttendances, setStudentAttendances] = useState<StudentAttendance[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,7 +70,7 @@ export default function AttendanceScreen() {
           }
 
           if (!studentSnap.exists()) return null;
-          const studentData = studentSnap.data();
+          const studentData = studentSnap.data() as any;
           const { classId, profile } = studentData;
           if (!classId || !profile) return null;
 
@@ -86,7 +88,7 @@ export default function AttendanceScreen() {
 
           let status = "not_marked";
           if (attendanceSnap.exists()) {
-            status = attendanceSnap.data().students?.[studentId]?.status ?? "not_marked";
+            status = (attendanceSnap.data() as any).students?.[studentId]?.status ?? "not_marked";
           }
 
           return {
@@ -102,6 +104,7 @@ export default function AttendanceScreen() {
         setStudentAttendances(resolved);
       } catch (err) {
         console.error(err);
+        showToast({ message: "Failed to fetch attendance records.", type: "error" });
       } finally {
         setLoading(false);
       }

@@ -16,6 +16,7 @@ import * as WebBrowser from 'expo-web-browser';
 import SVGIcon from '../../components/SVGIcon';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useSchoolConfig } from '../../constants/Config';
+import { useToast } from '../../contexts/ToastContext';
 import * as Animatable from 'react-native-animatable';
 
 const { width } = Dimensions.get('window');
@@ -57,6 +58,7 @@ const RESOURCES = [
 
 export default function StudyResources() {
   const router = useRouter();
+  const { showToast } = useToast();
   const config = useSchoolConfig();
   const primary = config.brandPrimary || COLORS.primary;
 
@@ -73,6 +75,7 @@ export default function StudyResources() {
       }
     } catch (error) {
       console.error('Error opening browser:', error);
+      showToast({ message: "Could not open the study resource.", type: "error" });
       const supported = await Linking.canOpenURL(url);
       if (supported) {
         await Linking.openURL(url);

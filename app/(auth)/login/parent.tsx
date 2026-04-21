@@ -4,7 +4,6 @@ import { doc, getDoc } from "firebase/firestore";
 import React, { useState, useEffect, useRef } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -26,6 +25,7 @@ import { SHADOWS, COLORS } from "../../../constants/theme";
 import { auth, db } from "../../../firebaseConfig";
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
+import { useToast } from "../../../contexts/ToastContext";
 
 export default function ParentLoginScreen() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function ParentLoginScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { showToast } = useToast();
   const emailInputRef = useRef<TextInput>(null);
 
   const schoolId = SCHOOL_CONFIG.schoolId;
@@ -58,9 +58,9 @@ export default function ParentLoginScreen() {
     }
     
     Keyboard.dismiss();
-    setErrorMessage(null);
     if (!email.trim() || !password.trim()) {
-      return setErrorMessage("Credentials required.");
+      showToast({ message: "Credentials required.", type: "error" });
+      return;
     }
     
     setLoading(true);
@@ -69,7 +69,8 @@ export default function ParentLoginScreen() {
       
       const userDoc = await getDoc(doc(db, "users", cred.user.uid));
       const userData = userDoc.data();
-      const role = userData?.role || userData?.profile?.role;
+      const rawRole = userData?.role || userData?.profile?.role;
+      const role = typeof rawRole === 'string' ? rawRole.toLowerCase() : "";
 
       if (!userDoc.exists() || role !== "parent") {
           await auth.signOut();
@@ -83,8 +84,7 @@ export default function ParentLoginScreen() {
       if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
         message = "Invalid email or password.";
       }
-      setErrorMessage(message);
-      if (Platform.OS !== 'web') Alert.alert("Login Error", message);
+      showToast({ message, type: "error" });
     } finally {
       setLoading(false);
     }
@@ -125,16 +125,6 @@ export default function ParentLoginScreen() {
               <Text style={styles.title}>Parent Portal</Text>
               <Text style={styles.subtitle}>Secure access to academic records</Text>
             </Animatable.View>
-
-            {errorMessage && (
-              <Animatable.View animation="shake" style={styles.errorBanner}>
-                <SVGIcon name="close-circle" size={20} color="#fff" />
-                <Text style={styles.errorText}>{errorMessage}</Text>
-                <TouchableOpacity onPress={() => setErrorMessage(null)}>
-                  <SVGIcon name="close" size={20} color="#fff" />
-                </TouchableOpacity>
-              </Animatable.View>
-            )}
 
             <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
               <View style={styles.inputGroup}>

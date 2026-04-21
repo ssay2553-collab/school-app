@@ -40,6 +40,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 
+import { useToast } from "../../contexts/ToastContext";
+
 const storage = getStorage();
 
 const uriToBlob = async (uri: string): Promise<Blob> => {
@@ -56,6 +58,7 @@ const AUDIENCE_COLORS = {
 
 export default function NewsCenter() {
   const { appUser, loading } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [screenLoading, setScreenLoading] = useState(true);
@@ -131,10 +134,16 @@ export default function NewsCenter() {
     try {
       const triggerFn = httpsCallable(functions, "triggerBirthdayCheckManually");
       const result: any = await triggerFn();
-      Alert.alert("Birthday Check", `Successfully processed birthdays. Posted ${result.data.count} new wishes!`);
+      showToast({
+        message: `Birthday Check: Processed ${result.data.count} new wishes!`,
+        type: "success",
+      });
       fetchNews();
     } catch (err: any) {
-      Alert.alert("Error", err.message || "Failed to trigger birthday check.");
+      showToast({
+        message: err.message || "Failed to trigger birthday check.",
+        type: "error",
+      });
     } finally {
       setBdayTriggerLoading(false);
     }
@@ -152,16 +161,16 @@ export default function NewsCenter() {
       }
     } catch (err) {
       console.error("Pick media error:", err);
-      Alert.alert("Error", "Could not access library.");
+      showToast({ message: "Could not access library.", type: "error" });
     }
   };
 
   const handlePostNews = async () => {
     if (!title.trim() || !content.trim()) {
-      return Alert.alert(
-        "Required Fields",
-        "Please provide both a title and content.",
-      );
+      return showToast({
+        message: "Please provide both a title and content.",
+        type: "error",
+      });
     }
     setScreenLoading(true);
     try {
@@ -197,11 +206,11 @@ export default function NewsCenter() {
       setMedia(null);
       setExpiryDate(null);
       setMode("view");
-      Alert.alert("Success", "News broadcast published.");
+      showToast({ message: "News broadcast published.", type: "success" });
       fetchNews();
     } catch (error: any) {
       console.error("Post news error:", error);
-      Alert.alert("Error", `Failed to publish: ${error.message}`);
+      showToast({ message: `Failed to publish: ${error.message}`, type: "error" });
     } finally {
       setScreenLoading(false);
     }
@@ -217,8 +226,13 @@ export default function NewsCenter() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteDoc(doc(db, "news", id));
-            setNews((prev) => prev.filter((n) => n.id !== id));
+            try {
+              await deleteDoc(doc(db, "news", id));
+              setNews((prev) => prev.filter((n) => n.id !== id));
+              showToast({ message: "Announcement deleted.", type: "success" });
+            } catch (err) {
+              showToast({ message: "Could not delete news.", type: "error" });
+            }
           },
         },
       ],

@@ -1,6 +1,7 @@
 import { Stack, useRouter } from "expo-router";
 import React from "react";
 import { TouchableOpacity, View, Image, Text, StyleSheet, Alert, Platform } from "react-native";
+import { useToast } from "../../contexts/ToastContext";
 import { auth } from "../../firebaseConfig";
 import { signOut } from "firebase/auth";
 import { SHADOWS } from "../../constants/theme";
@@ -10,6 +11,7 @@ import Constants from 'expo-constants';
 import SVGIcon from "../../components/SVGIcon";
 
 export default function GuestDashboardLayout() {
+  const { showToast } = useToast();
   const router = useRouter();
   const schoolId = Constants.expoConfig?.extra?.schoolId || 'school';
   const schoolLogo = getSchoolLogo(schoolId);
@@ -24,7 +26,7 @@ export default function GuestDashboardLayout() {
       }
       router.replace("/");
     } catch {
-      if (Platform.OS !== 'web') Alert.alert("Error", "Could not sign out.");
+      if (Platform.OS !== 'web') showToast({ message: "Could not sign out.", type: "error" });
     }
   };
 

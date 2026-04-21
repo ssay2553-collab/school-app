@@ -100,9 +100,9 @@ export default function AdminDashboard() {
       ]);
 
       const data = {
-        totalStudents: studentsSnap.data().count || 0,
+        totalStudents: (studentsSnap.data() as any).count || 0,
         totalStaff:
-          (teacherSnap.data().count || 0) + (ntSnap.data().count || 0),
+          ((teacherSnap.data() as any).count || 0) + ((ntSnap.data() as any).count || 0),
       };
 
       setStats({ ...data, loading: false });

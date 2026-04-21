@@ -3,7 +3,6 @@ import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -20,8 +19,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { SHADOWS } from "../../../constants/theme";
-import { auth } from "../../../firebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../../../firebaseConfig";
 import { StatusBar } from "expo-status-bar";
+import { useToast } from "../../../contexts/ToastContext";
 
 const { height } = Dimensions.get("window");
 
@@ -31,6 +32,7 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { showToast } = useToast();
 
   // Brand Colors
   const primary = SCHOOL_CONFIG.primaryColor;
@@ -40,13 +42,33 @@ export default function AdminLogin() {
   const surface = SCHOOL_CONFIG.surfaceColor;
 
   const handleLogin = async () => {
-    if (!email || !password) return Alert.alert("Error", "Please fill in all fields");
+    if (!email || !password) {
+      showToast({ message: "Please fill in all fields", type: "error" });
+      return;
+    }
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+
+      const userDoc = await getDoc(doc(db, "users", cred.user.uid));
+      const userData = userDoc.data();
+      const rawRole = userData?.role || userData?.profile?.role || userData?.adminRole;
+      const role = typeof rawRole === 'string' ? rawRole.toLowerCase() : "";
+
+      // Allow "admin" or "super-admin" or similar roles
+      if (!userDoc.exists() || !role.includes("admin")) {
+          await auth.signOut();
+          throw new Error("This account does not have admin privileges.");
+      }
+
       router.replace("/admin-dashboard");
     } catch (error: any) {
-      Alert.alert("Login Failed", error.message);
+      console.error("Admin login error:", error);
+      let message = error.message || "Login Failed";
+      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
+        message = "Invalid email or password.";
+      }
+      showToast({ message, type: "error" });
     } finally {
       setLoading(false);
     }

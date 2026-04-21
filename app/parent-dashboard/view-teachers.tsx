@@ -78,7 +78,7 @@ export default function ViewTeachers() {
         const childSnap = await getDocs(childQuery);
         const classIds = new Set<string>();
         childSnap.forEach(doc => {
-          const data = doc.data();
+          const data = doc.data() as any;
           if (data.classId) classIds.add(data.classId);
         });
         

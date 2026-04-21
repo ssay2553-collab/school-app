@@ -19,13 +19,15 @@ import { useAuth } from "../../contexts/AuthContext";
 import { auth } from "../../firebaseConfig";
 import SVGIcon from "../../components/SVGIcon";
 import { getSchoolLogo } from "../../constants/Logos";
+import { useToast } from "../../contexts/ToastContext";
 import Constants from 'expo-constants';
 
 export default function ParentDashboardLayout() {
   const router = useRouter();
   const { appUser, loading } = useAuth();
   const config = useSchoolConfig();
-  
+  const { showToast } = useToast();
+
   const schoolId = config.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
   const primary = config.primaryColor;
@@ -33,7 +35,10 @@ export default function ParentDashboardLayout() {
 
   useEffect(() => {
     if (!loading && appUser && appUser.role !== "parent" && appUser.role !== "admin") {
-      Alert.alert("Access Denied", "You are not authorized to access the Parent Portal.");
+      showToast({
+        message: "You are not authorized to access the Parent Portal.",
+        type: "error",
+      });
       router.replace("/");
     }
   }, [appUser, loading]);
@@ -48,7 +53,10 @@ export default function ParentDashboardLayout() {
         if (Platform.OS === 'web') {
             alert("Failed to sign out. Please try again.");
         } else {
-            Alert.alert("Error", "Logout failed. Please try again.");
+            showToast({
+              message: "Logout failed. Please try again.",
+              type: "error",
+            });
         }
       }
     };

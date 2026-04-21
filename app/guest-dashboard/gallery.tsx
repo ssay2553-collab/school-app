@@ -3,6 +3,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
+import { useToast } from "../../contexts/ToastContext";
 import {
     collection,
     limit,
@@ -44,6 +45,7 @@ import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 const PAGE_SIZE = 12;
 
 const GuestDashboardGallery = () => {
+  const { showToast } = useToast();
   const { width, height } = useWindowDimensions();
   const [gallery, setGallery] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -160,13 +162,14 @@ const GuestDashboardGallery = () => {
         const isAvailable = await Sharing.isAvailableAsync();
         if (isAvailable) {
           await Sharing.shareAsync(downloadRes.uri);
+          showToast({ message: "Media ready to save!", type: "success" });
         } else {
-          Alert.alert("Error", "Saving media is not supported on this device.");
+          showToast({ message: "Saving media is not supported on this device.", type: "info" });
         }
       }
     } catch (error) {
       console.error("Download error:", error);
-      Alert.alert("Error", "Failed to process media.");
+      showToast({ message: "Failed to process media.", type: "error" });
     } finally {
       setDownloadingId(null);
     }

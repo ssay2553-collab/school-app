@@ -5,7 +5,6 @@ import { doc, getDoc } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -25,6 +24,7 @@ import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { getSchoolLogo } from "../../../constants/Logos";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import { auth, db } from "../../../firebaseConfig";
+import { useToast } from "../../../contexts/ToastContext";
 
 export default function TeacherLoginScreen() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function TeacherLoginScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { showToast } = useToast();
 
   const schoolId = SCHOOL_CONFIG.schoolId || "school";
   const schoolLogo = getSchoolLogo(schoolId);
@@ -45,9 +45,9 @@ export default function TeacherLoginScreen() {
   const isWeb = Platform.OS === "web";
 
   const handleLogin = async () => {
-    setErrorMessage(null);
     if (!email.trim() || !password.trim()) {
-      return setErrorMessage("Please enter your credentials.");
+      showToast({ message: "Please enter your credentials.", type: "error" });
+      return;
     }
 
     setLoading(true);
@@ -60,7 +60,8 @@ export default function TeacherLoginScreen() {
 
       const userDoc = await getDoc(doc(db, "users", cred.user.uid));
       const userData = userDoc.data();
-      const role = userData?.role || userData?.profile?.role;
+      const rawRole = userData?.role || userData?.profile?.role;
+      const role = typeof rawRole === 'string' ? rawRole.toLowerCase() : "";
 
       if (!userDoc.exists() || role !== "teacher") {
         await auth.signOut();
@@ -77,8 +78,7 @@ export default function TeacherLoginScreen() {
       ) {
         message = "Invalid email or password.";
       }
-      setErrorMessage(message);
-      if (!isWeb) Alert.alert("Login Error", message);
+      showToast({ message, type: "error" });
     } finally {
       setLoading(false);
     }
@@ -144,16 +144,6 @@ export default function TeacherLoginScreen() {
               <Text style={styles.subtitle}>Sign in to manage academics</Text>
             </Animatable.View>
 
-            {errorMessage && (
-              <Animatable.View animation="shake" style={styles.errorBanner}>
-                <SVGIcon name="close-circle" size={20} color="#fff" />
-                <Text style={styles.errorText}>{errorMessage}</Text>
-                <TouchableOpacity onPress={() => setErrorMessage(null)}>
-                  <SVGIcon name="close" size={20} color="#fff" />
-                </TouchableOpacity>
-              </Animatable.View>
-            )}
-
             <Animatable.View
               animation={isWeb ? undefined : "fadeInUp"}
               duration={800}
@@ -168,7 +158,6 @@ export default function TeacherLoginScreen() {
                   autoCapitalize="none"
                   value={email}
                   onChangeText={(v) => {
-                    setErrorMessage(null);
                     setEmail(v);
                   }}
                   keyboardType="email-address"
@@ -187,7 +176,6 @@ export default function TeacherLoginScreen() {
                     secureTextEntry={!showPassword}
                     value={password}
                     onChangeText={(v) => {
-                      setErrorMessage(null);
                       setPassword(v);
                     }}
                     editable={!loading}

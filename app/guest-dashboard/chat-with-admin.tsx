@@ -24,6 +24,7 @@ import {
     View,
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
+import { useToast } from "../../contexts/ToastContext";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { AuthUser, db } from "../../firebaseConfig";
@@ -35,6 +36,7 @@ interface Message {
 }
 
 export default function GuestChat() {
+  const { showToast } = useToast();
   const [ticketId, setTicketId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -82,6 +84,7 @@ export default function GuestChat() {
         }
       } catch (error) {
         console.error("Chat Init Error:", error);
+        showToast({ message: "Could not initialize support chat.", type: "error" });
       } finally {
         setLoading(false);
       }
@@ -120,6 +123,7 @@ export default function GuestChat() {
       });
     } catch (e) {
       console.error("Send Error:", e);
+      showToast({ message: "Message failed to send.", type: "error" });
     }
   };
 

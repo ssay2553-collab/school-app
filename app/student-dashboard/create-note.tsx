@@ -15,9 +15,11 @@ import { addDoc, collection, getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import SVGIcon from "../../components/SVGIcon";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function CreateNote() {
   const router = useRouter();
+  const { showToast } = useToast();
   const { category } = useLocalSearchParams();
 
   const auth = getAuth();
@@ -30,7 +32,7 @@ export default function CreateNote() {
 
   const saveNote = async () => {
     if (!topic.trim() || !content.trim()) {
-      Alert.alert("INPUT_ERROR", "All data fields must be populated.");
+      showToast({ message: "All data fields must be populated.", type: "warning" });
       return;
     }
 
@@ -46,11 +48,11 @@ export default function CreateNote() {
         synced: true,
       });
 
-      Alert.alert("DATA_COMMITTED", "Knowledge entry successfully added to matrix.");
+      showToast({ message: "Knowledge entry successfully added to matrix.", type: "success" });
       router.back();
     } catch (error) {
       console.log(error);
-      Alert.alert("CRITICAL_FAILURE", "Failed to commit data to central server.");
+      showToast({ message: "Failed to commit data to central server.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -125,7 +127,6 @@ const styles = StyleSheet.create({
     color: "#F8FAFC",
     fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 1,
   },
   contentInput: {
     backgroundColor: "rgba(0,0,0,0.2)",

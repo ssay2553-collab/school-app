@@ -43,6 +43,8 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { getGradeDetails, sortClasses } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
+import { useToast } from "../../contexts/ToastContext";
+
 type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
 
 interface SubjectInfo {
@@ -276,6 +278,7 @@ StudentScoreCard.displayName = "StudentScoreCard";
 export default function EditStudentScores() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
 
   const [loading, setLoading] = useState(true);
@@ -348,7 +351,7 @@ export default function EditStudentScores() {
       const snap = await getDocsCacheFirst(collection(db, "classes") as any);
       const list = snap.docs.map((d) => ({
         id: d.id,
-        name: d.data().name || d.id,
+        name: (d.data() as any).name || d.id,
       }));
       const sorted = sortClasses(list);
       setClasses(sorted);
@@ -386,12 +389,15 @@ export default function EditStudentScores() {
       );
       const snap = await getDocsFromServer(q);
       const subsList: SubjectInfo[] = snap.docs
-        .map((d) => ({
-          name: d.data().subject,
-          status: d.data().status || "pending",
-          reportType: d.data().reportType || "End of Term",
-          hasBehavioral: d.data().containsBehavioralData,
-        }))
+        .map((d) => {
+          const data = d.data() as any;
+          return {
+            name: data.subject,
+            status: data.status || "pending",
+            reportType: data.reportType || "End of Term",
+            hasBehavioral: data.containsBehavioralData,
+          };
+        })
         .sort((a, b) => a.name.localeCompare(b.name));
       setSubjects(subsList);
       if (subsList.length > 0) {
@@ -423,10 +429,10 @@ export default function EditStudentScores() {
 
   const loadSubmission = async () => {
     if (!selectedClassId || !selectedSubject || !selectedYear || !term)
-      return Alert.alert(
-        "Selection Required",
-        "Please select Year, Class and Subject.",
-      );
+      return showToast({
+        message: "Please select Year, Class and Subject.",
+        type: "error",
+      });
     setListLoading(true);
     try {
       const yearSlug = selectedYear.replace(/\//g, "-");
@@ -435,7 +441,7 @@ export default function EditStudentScores() {
       const snap = await getDoc(doc(db, "academicRecords", docId));
       if (snap.exists()) {
         setRecordId(snap.id);
-        const students = snap.data().students || [];
+        const students = (snap.data() as any).students || [];
         allStudents.forEach((s: any) => {
           masterDataRef.current[s.studentId] = s;
         });
@@ -444,17 +450,17 @@ export default function EditStudentScores() {
         setVisibleStudents(students.slice(0, PAGE_SIZE));
         setPage(1);
       } else {
-        Alert.alert(
-          "No Records",
-          `No submissions found for ${selectedSubject} in the selected period.`,
-        );
+        showToast({
+          message: `No submissions found for ${selectedSubject} in the selected period.`,
+          type: "info",
+        });
         setRecordId(null);
         setAllStudents([]);
         setVisibleStudents([]);
       }
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Failed to load records.");
+      showToast({ message: "Failed to load records.", type: "error" });
     } finally {
       setListLoading(false);
     }
@@ -487,7 +493,10 @@ export default function EditStudentScores() {
     if (selectedReportType === "End of Term") {
       const invalid = studentsToSave.find((s) => s.total60 > 60);
       if (invalid)
-        return Alert.alert("Error", `${invalid.fullName}'s Total exceeds 60.`);
+        return showToast({
+          message: `${invalid.fullName}'s Total exceeds 60.`,
+          type: "error",
+        });
     }
     setSaving(true);
     try {
@@ -499,11 +508,14 @@ export default function EditStudentScores() {
       });
       initialDataRef.current = JSON.stringify(studentsToSave);
       setAllStudents(studentsToSave);
-      Alert.alert("Approved", "Scores updated and records marked as approved.");
+      showToast({
+        message: "Scores updated and records marked as approved.",
+        type: "success",
+      });
       fetchSubjects();
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Update failed.");
+      showToast({ message: "Update failed.", type: "error" });
     } finally {
       setSaving(false);
     }
@@ -526,13 +538,13 @@ export default function EditStudentScores() {
               setRecordId(null);
               setAllStudents([]);
               setVisibleStudents([]);
-              Alert.alert(
-                "Deleted",
-                "The records have been removed successfully.",
-              );
+              showToast({
+                message: "The records have been removed successfully.",
+                type: "success",
+              });
               fetchSubjects();
             } catch (err) {
-              Alert.alert("Error", "Could not delete records.");
+              showToast({ message: "Could not delete records.", type: "error" });
             } finally {
               setDeleting(false);
             }

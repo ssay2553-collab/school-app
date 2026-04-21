@@ -28,6 +28,7 @@ import SVGIcon from "../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../constants/Config";
 import { SHADOWS } from "../constants/theme";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
 import { db } from "../firebaseConfig";
 import { copyToClipboard } from "../utils/copyToClipboard";
 
@@ -41,6 +42,7 @@ const { width } = Dimensions.get("window");
 export default function AISearch() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [queryText, setQueryText] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -80,12 +82,12 @@ export default function AISearch() {
   const handleSearch = async () => {
     if (!queryText.trim()) return;
     if (!GEMINI_API_KEY) {
-      Alert.alert("Error", "Search service not configured.");
+      showToast({ message: "Search service not configured.", type: "error" });
       return;
     }
 
     if (weeklyCount >= LIMIT) {
-      Alert.alert("Limit Reached", `You've used your ${LIMIT} free AI searches for today. Limits reset at midnight.`);
+      showToast({ message: `You've used your ${LIMIT} free AI searches for today.`, type: "info" });
       return;
     }
 
@@ -121,7 +123,7 @@ export default function AISearch() {
         throw new Error("No response from AI");
       }
     } catch (e) {
-      Alert.alert("Search Error", "Could not complete search. Please try again.");
+      showToast({ message: "Could not complete search. Please try again.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -131,8 +133,7 @@ export default function AISearch() {
     if (!result) return;
     const ok = await copyToClipboard(result);
     if (ok) {
-      if (Platform.OS === "web") window.alert("Response copied to clipboard! 📋");
-      else Alert.alert("Copied!", "Response copied to clipboard! 📋");
+      showToast({ message: "Response copied to clipboard! 📋", type: "success" });
     }
   };
 

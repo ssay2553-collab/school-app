@@ -3,7 +3,6 @@ import { doc, getDoc } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -19,10 +18,12 @@ import { SHADOWS } from "../../../constants/theme";
 import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import SVGIcon from "../../../components/SVGIcon";
+import { useToast } from "../../../contexts/ToastContext";
 
 export default function GuestLogin() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
   const schoolName = SCHOOL_CONFIG.name;
   const primary = SCHOOL_CONFIG.primaryColor;
   const surface = SCHOOL_CONFIG.surfaceColor;
@@ -33,11 +34,8 @@ export default function GuestLogin() {
       const user = auth.currentUser;
 
       if (!user) {
-        Alert.alert(
-          "No Session Found", 
-          "Please register your details first to explore as a guest.",
-          [{ text: "Go to Signup", onPress: () => router.push("/(auth)/signup/guest") }]
-        );
+        showToast({ message: "Please register your details first to explore as a guest.", type: "error" });
+        router.push("/(auth)/signup/guest");
         setLoading(false);
         return;
       }
@@ -48,15 +46,12 @@ export default function GuestLogin() {
       if (userDoc.exists() && userDoc.data().role === "guest") {
         router.replace("/guest-dashboard");
       } else {
-        Alert.alert(
-          "Profile Missing", 
-          "You are signed in but haven't registered your guest info yet.",
-          [{ text: "Register Info", onPress: () => router.push("/(auth)/signup/guest") }]
-        );
+        showToast({ message: "You are signed in but haven't registered your guest info yet.", type: "error" });
+        router.push("/(auth)/signup/guest");
       }
     } catch (err) {
       console.error("Guest Login Error:", err);
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+      showToast({ message: "An unexpected error occurred. Please try again.", type: "error" });
     } finally {
       setLoading(false);
     }

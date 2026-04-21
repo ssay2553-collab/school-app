@@ -32,12 +32,14 @@ import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 export default function GroupChat() {
   const { groupId, groupName } = useLocalSearchParams();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
@@ -83,7 +85,7 @@ export default function GroupChat() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      const newMsgs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const newMsgs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 
       if (
         messagesLenRef.current > 0 &&
@@ -112,10 +114,10 @@ export default function GroupChat() {
     try {
       if (Platform.OS === "web") {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          Alert.alert(
-            "Unsupported",
-            "Audio recording is not supported in this browser.",
-          );
+          showToast({
+            message: "Audio recording is not supported in this browser.",
+            type: "error",
+          });
           return;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -125,7 +127,7 @@ export default function GroupChat() {
         const MediaRec =
           (window as any).MediaRecorder || (global as any).MediaRecorder;
         if (!MediaRec) {
-          Alert.alert("Unsupported", "MediaRecorder not available.");
+          showToast({ message: "MediaRecorder not available.", type: "error" });
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -219,7 +221,7 @@ export default function GroupChat() {
       playSound("sent");
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to send voice message");
+      showToast({ message: "Failed to send voice message", type: "error" });
     } finally {
       setUploading(false);
     }
@@ -244,6 +246,7 @@ export default function GroupChat() {
       playSound("sent");
     } catch (e) {
       console.error("Send Message Error:", e);
+      showToast({ message: "Failed to send message.", type: "error" });
     }
   };
 

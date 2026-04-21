@@ -26,10 +26,12 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { auth, db, storage } from "../../firebaseConfig";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function TeacherProfileEdit() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [classNames, setClassNames] = useState<string[]>([]);
@@ -157,7 +159,7 @@ export default function TeacherProfileEdit() {
           router.replace("/");
         }
       } catch (err) {
-        Alert.alert("Error", "Logout failed. Please try again.");
+        showToast({ message: "Logout failed. Please try again.", type: "error" });
       } finally {
         setLoading(false);
       }
@@ -177,7 +179,8 @@ export default function TeacherProfileEdit() {
 
   const handleUpdateName = async () => {
     if (!firstName.trim() || !lastName.trim()) {
-      return Alert.alert("Required", "First name and surname are required.");
+      showToast({ message: "First name and surname are required.", type: "error" });
+      return;
     }
 
     if (!appUser) return;
@@ -187,11 +190,11 @@ export default function TeacherProfileEdit() {
         "profile.firstName": firstName.trim(),
         "profile.lastName": lastName.trim()
       });
-      Alert.alert("Success", "Profile name updated!");
+      showToast({ message: "Profile name updated!", type: "success" });
       setNameModalVisible(false);
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Failed to update name.");
+      showToast({ message: "Failed to update name.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -205,11 +208,11 @@ export default function TeacherProfileEdit() {
         "profile.phone": phone.trim(),
         "profile.gender": gender
       });
-      Alert.alert("Success", "Personal details updated!");
+      showToast({ message: "Personal details updated!", type: "success" });
       setPersonalModalVisible(false);
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Failed to update personal details.");
+      showToast({ message: "Failed to update personal details.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -224,11 +227,11 @@ export default function TeacherProfileEdit() {
         "profile.experience": experience.trim(),
         "profile.education": education.trim()
       });
-      Alert.alert("Success", "Professional profile updated!");
+      showToast({ message: "Professional profile updated!", type: "success" });
       setProfModalVisible(false);
     } catch (err) {
       console.error(err);
-      Alert.alert("Error", "Failed to update professional profile.");
+      showToast({ message: "Failed to update professional profile.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -236,13 +239,16 @@ export default function TeacherProfileEdit() {
 
   const handleUpdatePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      return Alert.alert("Required", "Please fill in all password fields.");
+      showToast({ message: "Please fill in all password fields.", type: "error" });
+      return;
     }
     if (newPassword !== confirmPassword) {
-      return Alert.alert("Mismatch", "New passwords do not match.");
+      showToast({ message: "New passwords do not match.", type: "error" });
+      return;
     }
     if (newPassword.length < 6) {
-      return Alert.alert("Short Password", "New password must be at least 6 characters.");
+      showToast({ message: "New password must be at least 6 characters.", type: "error" });
+      return;
     }
 
     setPwUpdating(true);
@@ -255,7 +261,7 @@ export default function TeacherProfileEdit() {
 
       await updatePassword(user, newPassword);
 
-      Alert.alert("Success", "Password updated successfully!");
+      showToast({ message: "Password updated successfully!", type: "success" });
       setPwModalVisible(false);
       setCurrentPassword("");
       setNewPassword("");
@@ -264,7 +270,7 @@ export default function TeacherProfileEdit() {
       console.error(error);
       let msg = "Failed to update password.";
       if (error.code === 'auth/wrong-password') msg = "The current password you entered is incorrect.";
-      Alert.alert("Error", msg);
+      showToast({ message: msg, type: "error" });
     } finally {
       setPwUpdating(false);
     }
@@ -283,7 +289,7 @@ export default function TeacherProfileEdit() {
         uploadProfileImage(result.assets[0].uri);
       }
     } catch (e) {
-      Alert.alert("Error", "Failed to open library.");
+      showToast({ message: "Failed to open library.", type: "error" });
     }
   };
 
@@ -301,10 +307,10 @@ export default function TeacherProfileEdit() {
         "profile.profileImage": downloadURL
       });
 
-      Alert.alert("Success", "Profile picture updated!");
+      showToast({ message: "Profile picture updated!", type: "success" });
     } catch (err) {
       console.error(err);
-      Alert.alert("Upload Failed", "Could not save image.");
+      showToast({ message: "Could not save image.", type: "error" });
     } finally {
       setUpdating(false);
     }

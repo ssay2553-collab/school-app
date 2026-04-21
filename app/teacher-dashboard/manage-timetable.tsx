@@ -36,7 +36,9 @@ import {
   BackHandler
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import { useRouter } from "expo-router";
@@ -71,6 +73,7 @@ export default function CreateLessonTimetable() {
   const router = useRouter();
   const mounted = useRef(true);
   const { appUser } = useAuth();
+  const { showToast } = useToast();
 
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
@@ -132,11 +135,15 @@ export default function CreateLessonTimetable() {
         ? await getDocsFromServer(collection(db, "classes"))
         : await getDocsCacheFirst(collection(db, "classes") as any);
         
-      const list: ClassData[] = snap.docs.map((d) => ({ 
-        id: d.id, 
-        name: d.data()?.name || d.id, 
-        curriculum: d.data()?.curriculum 
-      }));
+      const list: ClassData[] = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() } as any))
+        // Safe filtering: allow legacy (no schoolId) and current schoolId
+        .filter((d: any) => !d.schoolId || d.schoolId === SCHOOL_CONFIG.schoolId)
+        .map((d) => ({
+          id: d.id,
+          name: d.name || d.id,
+          curriculum: d.curriculum
+        }));
       const sorted = sortClasses(list);
       
       if (!mounted.current) return;
@@ -178,7 +185,7 @@ export default function CreateLessonTimetable() {
         return;
       }
 
-      const data = snap.data();
+      const data = snap.data() as any;
       const days = data?.timetableDays || {};
       let maxCols = 6;
       Object.values(days).forEach((pArr: any) => { 
@@ -209,7 +216,7 @@ export default function CreateLessonTimetable() {
       const subjects = new Set<string>();
       
       snap.forEach(d => {
-        const data = d.data();
+        const data = d.data() as any;
         if (Array.isArray(data.subjects)) {
           data.subjects.forEach((s: string) => {
             if (s && !GES_SUBJECTS.includes(s) && !CAMBRIDGE_SUBJECTS.includes(s) && !COMMON_ACTIVITIES.includes(s)) {
@@ -266,13 +273,12 @@ export default function CreateLessonTimetable() {
         timetableDays, 
         numColumns, 
         curriculum,
-        updatedAt: serverTimestamp() 
+        schoolId: SCHOOL_CONFIG.schoolId,
+        updatedAt: serverTimestamp()
       }, { merge: true });
-      if (Platform.OS === 'web') alert("Weekly timetable updated successfully.");
-      else Alert.alert("Saved", "Weekly timetable updated successfully.");
+      showToast({ message: "Weekly timetable updated successfully.", type: "success" });
     } catch (e) { 
-      if (Platform.OS === 'web') alert("Could not save timetable.");
-      else Alert.alert("Error", "Could not save timetable."); 
+      showToast({ message: "Could not save timetable.", type: "error" });
     } finally { if (mounted.current) setSaving(false); }
   }
 
@@ -448,7 +454,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: "900" },
   subtitle: { fontSize: 13, color: "#64748B", marginTop: 2 },
   sectionHeader: { paddingHorizontal: 20, marginTop: 15, marginBottom: 10 },
-  sectionTitle: { fontSize: 11, fontWeight: "900", color: "#94A3B8", textTransform: "uppercase", letterSpacing: 1 },
+  sectionTitle: { fontSize: 11, fontWeight: "900", color: "#94A3B8", textTransform: "uppercase", ...(Platform.OS !== "android" && { letterSpacing: 1 }) },
   chipScroll: { paddingLeft: 20, marginBottom: 10 },
   chip: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 12, backgroundColor: "#fff", marginRight: 10, borderWidth: 1, borderColor: "#E2E8F0", ...SHADOWS.small },
   chipText: { fontSize: 13, fontWeight: "700", color: "#475569" },

@@ -4,7 +4,6 @@ import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -21,24 +20,28 @@ import { COLORS, SHADOWS } from "../../../constants/theme";
 import { auth, db } from "../../../firebaseConfig";
 import Constants from 'expo-constants';
 import SVGIcon from "../../../components/SVGIcon";
+import { useToast } from "../../../contexts/ToastContext";
 
 export default function GuestSignup() {
   const router = useRouter();
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const { showToast } = useToast();
 
   const schoolId = Constants.expoConfig?.extra?.schoolId || 'afahjoy';
   const isBeano = schoolId === 'beano';
 
   const handleGuestSignup = async () => {
     if (!fullName || !phone) {
-      return Alert.alert("Required Information", "Please provide your name and phone number to continue.");
+      showToast({ message: "Please provide your name and phone number to continue.", type: "error" });
+      return;
     }
 
     const phoneRegex = /^[0-9]{10,15}$/;
     if (!phoneRegex.test(phone.trim())) {
-      return Alert.alert("Invalid Phone", "Please enter a valid phone number.");
+      showToast({ message: "Please enter a valid phone number.", type: "error" });
+      return;
     }
 
     setLoading(true);
@@ -58,12 +61,11 @@ export default function GuestSignup() {
         createdAt: serverTimestamp(),
       });
 
-      Alert.alert("Success", "Your guest profile has been created successfully.", [
-        { text: "Go to Dashboard", onPress: () => router.replace("/guest-dashboard") }
-      ]);
+      showToast({ message: "Your guest profile has been created successfully.", type: "success" });
+      router.replace("/guest-dashboard");
     } catch (err: any) {
       console.error("Guest Signup Error:", err);
-      Alert.alert("Error", "Could not create guest account. Please try again.");
+      showToast({ message: "Could not create guest account. Please try again.", type: "error" });
     } finally {
       setLoading(false);
     }

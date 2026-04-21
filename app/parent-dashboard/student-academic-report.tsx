@@ -32,6 +32,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { getGradeDetails, calculatePerformanceFromList } from "../../lib/classHelpers";
@@ -44,6 +45,7 @@ type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
 export default function StudentAcademicReport() {
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
+  const { showToast } = useToast();
 
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
@@ -95,8 +97,8 @@ export default function StudentAcademicReport() {
           const snap = await getDocsCacheFirst(q);
           const list = snap.docs.map((d) => ({
             id: d.id,
-            name: `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
-            classId: d.data().classId || d.data().profile?.classId || "",
+            name: `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
+            classId: (d.data() as any).classId || (d.data() as any).profile?.classId || "",
           }));
           setChildren(list);
           if (list.length > 0) setSelectedChildId(list[0].id);
@@ -136,10 +138,10 @@ export default function StudentAcademicReport() {
 
   const loadReport = async () => {
     if (!selectedChildId) {
-      return Alert.alert("Selection Required", "Please select a student first.");
+      return showToast({ message: "Please select a student first.", type: "error" });
     }
     if (!selectedYear) {
-      return Alert.alert("Selection Required", "Please select an academic year.");
+      return showToast({ message: "Please select an academic year.", type: "error" });
     }
 
     setFetchingReport(true);
@@ -154,10 +156,7 @@ export default function StudentAcademicReport() {
       console.log(`[Report] Loading for child: ${selectedChildId}, Class: ${classId}, Year: ${selectedYear}, Term: ${selectedTerm}, Type: ${selectedReportType}`);
 
       if (!classId) {
-        Alert.alert(
-          "Profile Incomplete",
-          "This student is not assigned to a class. Please contact the school administrator."
-        );
+        showToast({ message: "This student is not assigned to a class. Please contact the school administrator.", type: "error" });
         setFetchingReport(false);
         return;
       }
@@ -178,7 +177,7 @@ export default function StudentAcademicReport() {
       let results: any[] = [];
 
       scoresSnap.docs.forEach((d) => {
-        const data = d.data();
+        const data = d.data() as any;
         const studentsList = data.students || [];
 
         const sortedBySubject = [...studentsList].sort((a, b) => {
@@ -228,20 +227,14 @@ export default function StudentAcademicReport() {
 
       if (scoresSnap.size === 0) {
         console.warn(`[Report] No approved academic records found for Class: ${classId}, Year: ${selectedYear}, Term: ${selectedTerm}`);
-        Alert.alert(
-          "Not Ready",
-          "No approved academic records found for this period. Please check if records have been approved by the administration.",
-        );
+        showToast({ message: "No approved academic records found for this period.", type: "info" });
         setFetchingReport(false);
         return;
       }
 
       if (results.length === 0) {
         console.warn(`[Report] No entry found for student ${selectedChildId} in ${scoresSnap.size} approved subject records.`);
-        Alert.alert(
-          "Missing Record",
-          "Your child was not found in the approved records for this period. Please contact the class teacher.",
-        );
+        showToast({ message: "Your child was not found in the approved records for this period.", type: "error" });
         setFetchingReport(false);
         return;
       }
@@ -261,7 +254,7 @@ export default function StudentAcademicReport() {
         const allSnap = await getDocsFromServer(qAllReports);
         const studentTotals: { [id: string]: number } = {};
         allSnap.docs.forEach((d) => {
-          const dData = d.data();
+          const dData = d.data() as any;
           (dData.students || []).forEach((s: any) => {
             const val = parseFloat(
               s.finalScore ??
@@ -303,7 +296,7 @@ export default function StudentAcademicReport() {
 
       const adminSnap = await getDocsFromServer(qAdmin);
       const headAdmin = adminSnap.docs.find((d) => {
-        const r = (d.data().adminRole || "").toLowerCase();
+        const r = ((d.data() as any).adminRole || "").toLowerCase();
         return [
           "proprietor",
           "head",
@@ -317,14 +310,14 @@ export default function StudentAcademicReport() {
         ].some((title) => r.includes(title));
       });
 
-      if (headAdmin && headAdmin.data().profile?.signatureUrl) {
-        setAdminSig(headAdmin.data().profile?.signatureUrl);
+      if (headAdmin && (headAdmin.data() as any).profile?.signatureUrl) {
+        setAdminSig((headAdmin.data() as any).profile?.signatureUrl);
       } else {
         const anySigAdmin = adminSnap.docs.find(
-          (d) => d.data().profile?.signatureUrl,
+          (d) => (d.data() as any).profile?.signatureUrl,
         );
         if (anySigAdmin) {
-          setAdminSig(anySigAdmin.data().profile?.signatureUrl);
+          setAdminSig((anySigAdmin.data() as any).profile?.signatureUrl);
         }
       }
 
@@ -335,13 +328,13 @@ export default function StudentAcademicReport() {
         );
       const snap = await getDoc(doc(db, "student-reports", reportId));
       if (snap.exists()) {
-        setReport(snap.data());
+        setReport(snap.data() as any);
       } else {
         setReport({ studentName: child.name, classId });
       }
     } catch (err) {
       console.error("Load report error:", err);
-      Alert.alert("Error", "Failed to load report.");
+      showToast({ message: "Failed to load report.", type: "error" });
     } finally {
       setFetchingReport(false);
     }
@@ -557,7 +550,7 @@ export default function StudentAcademicReport() {
       }
     } catch (e) {
       console.error("PDF generation error:", e);
-      Alert.alert("Error", "Could not generate PDF.");
+      showToast({ message: "Could not generate PDF.", type: "error" });
     }
   };
 

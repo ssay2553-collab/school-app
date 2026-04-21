@@ -201,7 +201,7 @@ export default function TeacherTimetable() {
         );
         const classSnaps = await getDocs(classesQuery);
         classSnaps.forEach((doc) => {
-          nameResult[doc.id] = doc.data().name || doc.id;
+          nameResult[doc.id] = (doc.data() as any).name || doc.id;
         });
 
         const ttQuery = query(

@@ -35,6 +35,7 @@ import NewsCard from "../../components/news/NewsCard";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import { useToast } from "../../contexts/ToastContext";
 import { Audience, NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -59,6 +60,7 @@ const AUDIENCE_COLORS = {
 
 export default function TeacherNewsScreen() {
   const { appUser, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   
   const [news, setNews] = useState<NewsItem[]>([]);
@@ -184,13 +186,13 @@ export default function TeacherNewsScreen() {
       }
     } catch (err) {
       console.error("Pick media error:", err);
-      Alert.alert("Error", "Could not access library.");
+      showToast({ message: "Could not access library.", type: "error" });
     }
   };
 
   const handlePostNews = async () => {
     if (!title.trim() || !content.trim()) {
-      return Alert.alert("Required", "Please provide both a title and content.");
+      return showToast({ message: "Please provide both a title and content.", type: "error" });
     }
     setPosting(true);
     try {
@@ -220,11 +222,11 @@ export default function TeacherNewsScreen() {
       setMedia(null);
       setExpiryDate(null);
       setMode("view");
-      Alert.alert("Success", "Announcement published.");
+      showToast({ message: "Announcement published.", type: "success" });
       loadData();
     } catch (error: any) {
       console.error("Post news error:", error);
-      Alert.alert("Error", "Failed to publish announcement.");
+      showToast({ message: "Failed to publish announcement.", type: "error" });
     } finally {
       setPosting(false);
     }

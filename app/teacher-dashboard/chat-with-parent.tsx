@@ -39,6 +39,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { sortClasses } from "../../lib/classHelpers";
@@ -60,6 +61,7 @@ const generateChatId = (uid1: string, uid2: string) =>
 
 export default function TeacherChatWithParent() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
   const [stage, setStage] = useState<
     "select_class" | "select_student" | "select_parent" | "chat"
@@ -253,10 +255,7 @@ export default function TeacherChatWithParent() {
       if (Platform.OS === "web") {
         // Web fallback using MediaRecorder / getUserMedia
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          Alert.alert(
-            "Unsupported",
-            "Audio recording is not supported in this browser.",
-          );
+          showToast({ message: "Audio recording is not supported in this browser.", type: "error" });
           return;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -266,10 +265,7 @@ export default function TeacherChatWithParent() {
         const MediaRec =
           (window as any).MediaRecorder || (global as any).MediaRecorder;
         if (!MediaRec) {
-          Alert.alert(
-            "Unsupported",
-            "MediaRecorder is not available in this environment.",
-          );
+          showToast({ message: "MediaRecorder is not available in this environment.", type: "error" });
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -297,7 +293,7 @@ export default function TeacherChatWithParent() {
       setRecording(recording);
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to start recording.");
+      showToast({ message: "Failed to start recording.", type: "error" });
     }
   };
 
@@ -365,7 +361,7 @@ export default function TeacherChatWithParent() {
       playSound("sent");
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to send voice message");
+      showToast({ message: "Failed to send voice message", type: "error" });
     } finally {
       setUploading(false);
     }
@@ -384,7 +380,7 @@ export default function TeacherChatWithParent() {
       });
       playSound("sent");
     } catch {
-      Alert.alert("Error", "Message failed to send.");
+      showToast({ message: "Message failed to send.", type: "error" });
     }
   };
 

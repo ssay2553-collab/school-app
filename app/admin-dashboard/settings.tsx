@@ -3,12 +3,14 @@ import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View, StatusBar, Alert, Platform } from "react-native";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useToast } from "../../contexts/ToastContext";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebaseConfig";
 import SVGIcon from "../../components/SVGIcon";
 
 export default function AdminSettingsScreen() {
   const { theme, isDarkMode, toggleTheme } = useTheme();
+  const { showToast } = useToast();
   const router = useRouter();
 
   const performLogout = async () => {
@@ -18,7 +20,7 @@ export default function AdminSettingsScreen() {
       router.replace("/");
     } catch (e) {
       console.error("Logout error", e);
-      if (Platform.OS !== 'web') Alert.alert("Error", "Failed to log out.");
+      showToast({ message: "Failed to log out.", type: "error" });
     }
   };
 

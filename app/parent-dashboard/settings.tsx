@@ -27,11 +27,13 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
+import { useToast } from "../../contexts/ToastContext";
 import { auth, db } from "../../firebaseConfig";
 
 export default function ParentSettingsScreen() {
   const { theme } = useTheme();
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [linkLoading, setLinkLoading] = useState(false);
@@ -40,7 +42,7 @@ export default function ParentSettingsScreen() {
 
   const handleLinkStudent = async () => {
     if (!linkCode.trim()) {
-      return Alert.alert("Required", "Please enter a student link code.");
+      return showToast({ message: "Please enter a student link code.", type: "error" });
     }
 
     if (!appUser) return;
@@ -58,28 +60,22 @@ export default function ParentSettingsScreen() {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        Alert.alert("Invalid Code", "No student found with this link code.");
+        showToast({ message: "No student found with this link code.", type: "error" });
         return;
       }
 
       const studentDoc = querySnapshot.docs[0];
-      const studentData = studentDoc.data();
+      const studentData = studentDoc.data() as any;
       const studentId = studentDoc.id;
 
       if (appUser.childrenIds?.includes(studentId)) {
-        Alert.alert(
-          "Already Linked",
-          "You are already linked to this student.",
-        );
+        showToast({ message: "You are already linked to this student.", type: "info" });
         return;
       }
 
       const currentParents = studentData.parentUids || [];
       if (currentParents.length >= 2) {
-        Alert.alert(
-          "Limit Reached",
-          "This student already has 2 parents linked.",
-        );
+        showToast({ message: "This student already has 2 parents linked.", type: "error" });
         return;
       }
 
@@ -96,14 +92,14 @@ export default function ParentSettingsScreen() {
 
       await batch.commit();
 
-      Alert.alert(
-        "Success",
-        `Successfully linked to ${studentData.profile?.firstName || "student"}.`,
-      );
+      showToast({
+        message: `Successfully linked to ${studentData.profile?.firstName || "student"}.`,
+        type: "success",
+      });
       setLinkCode("");
     } catch (error: any) {
       console.error(error);
-      Alert.alert("Error", error.message);
+      showToast({ message: error.message, type: "error" });
     } finally {
       setLinkLoading(false);
     }
@@ -121,7 +117,7 @@ export default function ParentSettingsScreen() {
             await signOut(auth);
             router.replace("/");
           } catch (error: any) {
-            Alert.alert("Error", error.message);
+            showToast({ message: error.message, type: "error" });
           } finally {
             setLogoutLoading(false);
           }
@@ -145,14 +141,11 @@ export default function ParentSettingsScreen() {
               const user = auth.currentUser;
               if (user) {
                 await deleteUser(user);
-                Alert.alert(
-                  "Account Deleted",
-                  "Your account has been removed successfully.",
-                );
+                showToast({ message: "Your account has been removed successfully.", type: "success" });
                 router.replace("/");
               }
             } catch (error: any) {
-              Alert.alert("Error", error.message);
+              showToast({ message: error.message, type: "error" });
             } finally {
               setDeleteLoading(false);
             }

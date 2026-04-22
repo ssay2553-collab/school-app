@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
 import { doc, updateDoc, query, collection, where, getDocs } from "firebase/firestore";
@@ -21,15 +21,18 @@ import {
   BackHandler,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { auth, db, storage } from "../../firebaseConfig";
 import { useToast } from "../../contexts/ToastContext";
+import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, CurriculumType } from "../../constants/Curriculum";
 
 export default function TeacherProfileEdit() {
   const router = useRouter();
+  const { focus } = useLocalSearchParams();
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -46,6 +49,15 @@ export default function TeacherProfileEdit() {
   const [personalModalVisible, setPersonalModalVisible] = useState(false);
   const [phone, setPhone] = useState(appUser?.profile?.phone || "");
   const [gender, setGender] = useState(appUser?.profile?.gender || "");
+  const [dob, setDob] = useState<Date>(appUser?.profile?.dob ? new Date(appUser.profile.dob) : new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Work Assignments state
+  const [workModalVisible, setWorkModalVisible] = useState(false);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>(appUser?.classes || []);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(appUser?.subjects || []);
+  const [curriculum, setCurriculum] = useState<CurriculumType>((appUser?.curriculum as CurriculumType) || "GES");
+  const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>([]);
 
   // Professional Profile state
   const [profModalVisible, setProfModalVisible] = useState(false);
@@ -77,25 +89,54 @@ export default function TeacherProfileEdit() {
       setPwModalVisible(false);
       return true;
     }
+    if (workModalVisible) {
+      setWorkModalVisible(false);
+      return true;
+    }
     if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/teacher-dashboard");
     }
     return true;
-  }, [nameModalVisible, personalModalVisible, profModalVisible, pwModalVisible, router]);
+  }, [nameModalVisible, personalModalVisible, profModalVisible, pwModalVisible, workModalVisible, router]);
 
   useEffect(() => {
-    if (appUser?.profile) {
-      setFirstName(appUser.profile.firstName || "");
-      setLastName(appUser.profile.lastName || "");
-      setBio(appUser.profile.bio || "");
-      setExperience(appUser.profile.experience || "");
-      setEducation(appUser.profile.education || "");
-      setPhone(appUser.profile.phone || "");
-      setGender(appUser.profile.gender || "");
+    if (appUser) {
+      if (appUser.profile) {
+        setFirstName(appUser.profile.firstName || "");
+        setLastName(appUser.profile.lastName || "");
+        setBio(appUser.profile.bio || "");
+        setExperience(appUser.profile.experience || "");
+        setEducation(appUser.profile.education || "");
+        setPhone(appUser.profile.phone || "");
+        setGender(appUser.profile.gender || "");
+        setDob(appUser.profile.dob ? new Date(appUser.profile.dob) : new Date());
+      }
+      setSelectedClasses(appUser.classes || []);
+      setSelectedSubjects(appUser.subjects || []);
+      setCurriculum((appUser.curriculum as CurriculumType) || "GES");
     }
   }, [appUser]);
+
+  useEffect(() => {
+    if (focus === 'work') {
+      setWorkModalVisible(true);
+    }
+  }, [focus]);
+
+  useEffect(() => {
+    const fetchAllClasses = async () => {
+      try {
+        const snap = await getDocs(collection(db, "classes"));
+        const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name || d.id }));
+        setAllClasses(list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
+      } catch (err) {
+        console.error("Error fetching all classes:", err);
+      }
+    };
+    fetchAllClasses();
+  }, []);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
@@ -206,13 +247,42 @@ export default function TeacherProfileEdit() {
     try {
       await updateDoc(doc(db, "users", appUser.uid), {
         "profile.phone": phone.trim(),
-        "profile.gender": gender
+        "profile.gender": gender,
+        "profile.dob": dob.toISOString()
       });
       showToast({ message: "Personal details updated!", type: "success" });
       setPersonalModalVisible(false);
     } catch (err) {
       console.error(err);
       showToast({ message: "Failed to update personal details.", type: "error" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateWork = async () => {
+    if (!appUser) return;
+    if (selectedClasses.length === 0) {
+      showToast({ message: "Please select at least one class.", type: "error" });
+      return;
+    }
+    if (selectedSubjects.length === 0) {
+      showToast({ message: "Please select at least one subject.", type: "error" });
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "users", appUser.uid), {
+        classes: selectedClasses,
+        subjects: selectedSubjects,
+        curriculum: curriculum
+      });
+      showToast({ message: "Work assignments updated!", type: "success" });
+      setWorkModalVisible(false);
+    } catch (err) {
+      console.error(err);
+      showToast({ message: "Failed to update work assignments.", type: "error" });
     } finally {
       setUpdating(false);
     }
@@ -369,9 +439,9 @@ export default function TeacherProfileEdit() {
                   <SVGIcon name="call" size={20} color={COLORS.primary} />
                 </View>
                 <View style={styles.settingTextContent}>
-                  <Text style={styles.settingLabel}>Contact & Gender</Text>
+                  <Text style={styles.settingLabel}>Contact & Identity</Text>
                   <Text style={styles.settingValue}>
-                    {appUser?.profile?.phone || "No Phone"} • {appUser?.profile?.gender || "Not specified"}
+                    {appUser?.profile?.phone || "No Phone"} • {appUser?.profile?.gender || "Not specified"} • {appUser?.profile?.dob ? new Date(appUser.profile.dob).toLocaleDateString() : "No DOB"}
                   </Text>
                 </View>
                 <SVGIcon name="create-outline" size={16} color={COLORS.primary} />
@@ -423,17 +493,18 @@ export default function TeacherProfileEdit() {
                 value={appUser?.schoolId?.toUpperCase() || "N/A"}
              />
              <View style={styles.divider} />
-             <View style={styles.settingItem}>
+             <TouchableOpacity style={styles.settingItem} onPress={() => setWorkModalVisible(true)}>
                 <View style={styles.settingIconBox}>
                   <SVGIcon name="book" size={20} color={COLORS.primary} />
                 </View>
                 <View style={styles.settingTextContent}>
-                  <Text style={styles.settingLabel}>Assigned Classes</Text>
-                  <Text style={styles.settingValue}>
+                  <Text style={styles.settingLabel}>Assigned Classes & Subjects</Text>
+                  <Text style={styles.settingValue} numberOfLines={1}>
                     {classNames.length > 0 ? classNames.join(", ") : "None assigned"}
                   </Text>
                 </View>
-             </View>
+                <SVGIcon name="create-outline" size={16} color={COLORS.primary} />
+             </TouchableOpacity>
              {appUser?.classTeacherOf && (
                <>
                  <View style={styles.divider} />
@@ -521,7 +592,7 @@ export default function TeacherProfileEdit() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Contact & Gender</Text>
+              <Text style={styles.modalTitle}>Contact & Identity</Text>
               <TouchableOpacity onPress={() => setPersonalModalVisible(false)}>
                 <SVGIcon name="close" size={24} color="#64748B" />
               </TouchableOpacity>
@@ -551,6 +622,29 @@ export default function TeacherProfileEdit() {
                 </Picker>
               </View>
 
+              <Text style={styles.modalLabel}>DATE OF BIRTH</Text>
+              <TouchableOpacity
+                style={styles.modalInput}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={{ marginTop: 15, fontSize: 16, fontWeight: '600' }}>
+                  {dob.toLocaleDateString()}
+                </Text>
+              </TouchableOpacity>
+
+              {showDatePicker && (
+                <DateTimePicker
+                  value={dob}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(Platform.OS === 'ios');
+                    if (selectedDate) setDob(selectedDate);
+                  }}
+                  maximumDate={new Date()}
+                />
+              )}
+
               <TouchableOpacity
                 style={[styles.modalBtn, { backgroundColor: COLORS.primary }]}
                 onPress={handleUpdatePersonal}
@@ -559,6 +653,68 @@ export default function TeacherProfileEdit() {
                 {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Save Changes</Text>}
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* WORK ASSIGNMENTS MODAL */}
+      <Modal visible={workModalVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { height: '80%' }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Classes & Subjects</Text>
+              <TouchableOpacity onPress={() => setWorkModalVisible(false)}>
+                <SVGIcon name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <Text style={styles.modalLabel}>ASSIGNED CLASSES</Text>
+              <View style={styles.chipGrid}>
+                {allClasses.map(c => (
+                  <TouchableOpacity
+                    key={c.id}
+                    onPress={() => setSelectedClasses(prev => prev.includes(c.id) ? prev.filter(id => id !== c.id) : [...prev, c.id])}
+                    style={[styles.chip, selectedClasses.includes(c.id) && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                  >
+                    <Text style={[styles.chipText, selectedClasses.includes(c.id) && { color: '#fff' }]}>{c.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.modalLabel}>CURRICULUM</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={curriculum}
+                  onValueChange={(v) => { setCurriculum(v as CurriculumType); setSelectedSubjects([]); }}
+                  style={styles.picker}
+                >
+                  <Picker.Item label="GES (National)" value="GES" />
+                  <Picker.Item label="Cambridge (IGCSE)" value="Cambridge" />
+                </Picker>
+              </View>
+
+              <Text style={styles.modalLabel}>{curriculum} SUBJECTS</Text>
+              <View style={styles.chipGrid}>
+                {(curriculum === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS).map(s => (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => setSelectedSubjects(prev => prev.includes(s) ? prev.filter(item => item !== s) : [...prev, s])}
+                    style={[styles.chip, selectedSubjects.includes(s) && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                  >
+                    <Text style={[styles.chipText, selectedSubjects.includes(s) && { color: '#fff' }]}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: COLORS.primary, marginBottom: 20 }]}
+                onPress={handleUpdateWork}
+                disabled={updating}
+              >
+                {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalBtnText}>Update Assignments</Text>}
+              </TouchableOpacity>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -797,6 +953,9 @@ const styles = StyleSheet.create({
   modalBody: { gap: 15 },
   modalLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
   modalInput: { backgroundColor: '#F1F5F9', height: 55, borderRadius: 15, paddingHorizontal: 15, fontSize: 16, fontWeight: '600' },
+  chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 5, marginBottom: 15 },
+  chip: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
+  chipText: { fontSize: 13, fontWeight: '700', color: '#475569' },
   pickerWrapper: {
     backgroundColor: '#F1F5F9',
     borderRadius: 15,

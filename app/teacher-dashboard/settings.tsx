@@ -115,6 +115,12 @@ export default function SettingsScreen() {
           color: "#6366f1",
           onPress: () => router.push("/teacher-dashboard/profile-edit"),
         },
+        {
+          label: "Classes & Subjects",
+          icon: "book",
+          color: "#F59E0B",
+          onPress: () => router.push({ pathname: "/teacher-dashboard/profile-edit", params: { focus: "work" } }),
+        },
       ],
     },
     {

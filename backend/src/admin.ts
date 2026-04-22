@@ -63,6 +63,77 @@ export const deleteUserAccount = onCall(async (req) => {
 });
 
 /**
+ * Callable admin helper to update a user's Auth Email.
+ */
+export const updateUserEmail = onCall(async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Unauthenticated");
+
+  const { uid, newEmail } = req.data || {};
+  if (!uid || !newEmail) throw new HttpsError("invalid-argument", "Missing uid or newEmail");
+
+  const db = admin.firestore();
+  const callerDoc = await db.collection("users").doc(auth.uid).get();
+  const callerData = callerDoc.data();
+  const isSuperAdmin = auth.token?.role === "admin" || (callerData?.role === "admin" && (callerData?.adminRole === "proprietor" || callerData?.adminRole === "headmaster"));
+  const hasManageUsers = callerData?.permissions?.["manage-users"] === "full" || isSuperAdmin;
+
+  // Teachers can also update their own students if permitted (optional logic)
+  let authorized = hasManageUsers;
+
+  if (!authorized && callerData?.role === "teacher") {
+    const targetUser = await db.collection("users").doc(uid).get();
+    if (targetUser.exists && targetUser.data()?.role === "student" && callerData?.classes?.includes(targetUser.data()?.classId)) {
+        authorized = true;
+    }
+  }
+
+  if (!authorized) throw new HttpsError("permission-denied", "Unauthorized");
+
+  try {
+    await admin.auth().updateUser(uid, { email: newEmail });
+    await db.collection("users").doc(uid).update({ "profile.email": newEmail });
+    return { status: 200, message: "Email updated successfully" };
+  } catch (error: any) {
+    throw new HttpsError("internal", error.message);
+  }
+});
+
+/**
+ * Callable admin helper to update a user's Auth Password.
+ */
+export const updateUserPassword = onCall(async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Unauthenticated");
+
+  const { uid, newPassword } = req.data || {};
+  if (!uid || !newPassword) throw new HttpsError("invalid-argument", "Missing uid or newPassword");
+
+  const db = admin.firestore();
+  const callerDoc = await db.collection("users").doc(auth.uid).get();
+  const callerData = callerDoc.data();
+  const isSuperAdmin = auth.token?.role === "admin" || (callerData?.role === "admin" && (callerData?.adminRole === "proprietor" || callerData?.adminRole === "headmaster"));
+  const hasManageUsers = callerData?.permissions?.["manage-users"] === "full" || isSuperAdmin;
+
+  let authorized = hasManageUsers;
+  if (!authorized && callerData?.role === "teacher") {
+    const targetUser = await db.collection("users").doc(uid).get();
+    if (targetUser.exists && targetUser.data()?.role === "student" && callerData?.classes?.includes(targetUser.data()?.classId)) {
+        authorized = true;
+    }
+  }
+
+  if (!authorized) throw new HttpsError("permission-denied", "Unauthorized");
+
+  try {
+    await admin.auth().updateUser(uid, { password: newPassword });
+    return { status: 200, message: "Password updated successfully" };
+  } catch (error: any) {
+    throw new HttpsError("internal", error.message);
+  }
+});
+
+/**
  * Callable admin helper to delete many documents server-side.
  * payload: { collectionPath: string, docIds: string[] }
  */

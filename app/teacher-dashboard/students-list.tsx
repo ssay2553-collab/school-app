@@ -1,4 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import {
     collection,
     doc,
@@ -8,11 +9,13 @@ import {
     getDocsFromCache,
     getDocsFromServer,
     query,
+    Timestamp,
     updateDoc,
     where,
     writeBatch,
 } from "firebase/firestore";
-import React, { useEffect, useState, useCallback } from "react";
+import { httpsCallable } from "firebase/functions";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -24,12 +27,16 @@ import {
     View,
     Dimensions,
     BackHandler,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { db } from "../../firebaseConfig";
+import { db, functions } from "../../firebaseConfig";
 import SVGIcon from "../../components/SVGIcon";
 
 // --- TYPES --- //
@@ -43,9 +50,11 @@ interface StudentData {
   profile: {
     firstName: string;
     lastName: string;
+    email?: string;
     studentID?: string;
   };
   classId: string;
+  dateOfBirth?: any;
 }
 
 const { width } = Dimensions.get("window");
@@ -70,6 +79,23 @@ export default function PromoteStudentsScreen() {
   const [isBulkMode, setIsBulkMode] = useState(false);
 
   const [targetClassId, setTargetClassId] = useState<string | null>(null);
+
+  const [assignmentModal, setAssignmentModal] = useState<{
+    type: "none" | "edit_profile" | "edit_email" | "edit_password" | "promote_repeat";
+  }>({ type: "none" });
+
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editDob, setEditDob] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  const isClassTeacher = useMemo(() => {
+    if (!selectedClass || !appUser) return false;
+    return appUser.classTeacherOf === selectedClass.id || appUser.role === "admin";
+  }, [selectedClass, appUser]);
 
   const handleBack = useCallback(() => {
     if (selectedClass) {
@@ -202,10 +228,74 @@ export default function PromoteStudentsScreen() {
   const closeModal = () => {
     setSelectedStudent(null);
     setIsBulkMode(false);
+    setAssignmentModal({ type: "none" });
+    setUpdating(false);
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!selectedStudent || !isClassTeacher) return;
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      return showToast({ message: "Names cannot be empty.", type: "error" });
+    }
+    setUpdating(true);
+    try {
+      const updates: any = {
+        "profile.firstName": editFirstName.trim(),
+        "profile.lastName": editLastName.trim(),
+      };
+      if (editDob) {
+        updates.dateOfBirth = Timestamp.fromDate(editDob);
+      }
+      await updateDoc(doc(db, "users", selectedStudent.uid), updates);
+
+      showToast({ message: "Profile updated.", type: "success" });
+      fetchStudents(selectedClass!.id);
+      closeModal();
+    } catch {
+      showToast({ message: "Update failed.", type: "error" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateUserEmail = async () => {
+    if (!selectedStudent || !editEmail.trim() || !isClassTeacher) return;
+    setUpdating(true);
+    try {
+      const updateEmailFn = httpsCallable(functions, "updateUserEmail");
+      await updateEmailFn({ uid: selectedStudent.uid, newEmail: editEmail.trim() });
+
+      showToast({ message: "Email updated successfully.", type: "success" });
+      fetchStudents(selectedClass!.id);
+      closeModal();
+    } catch (err: any) {
+      showToast({ message: err.message || "Failed to update email.", type: "error" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateUserPassword = async () => {
+    if (!selectedStudent || !editPassword.trim() || !isClassTeacher) return;
+    if (editPassword.length < 6) {
+      return showToast({ message: "Password must be at least 6 characters.", type: "error" });
+    }
+    setUpdating(true);
+    try {
+      const updatePwFn = httpsCallable(functions, "updateUserPassword");
+      await updatePwFn({ uid: selectedStudent.uid, newPassword: editPassword.trim() });
+      setEditPassword("");
+      showToast({ message: "Password updated successfully.", type: "success" });
+      closeModal();
+    } catch (err: any) {
+      showToast({ message: err.message || "Failed to update password.", type: "error" });
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const handleUpdate = async (action: "Promote" | "Repeat") => {
-    if (!targetClassId) return;
+    if (!targetClassId || !isClassTeacher) return;
 
     if (isBulkMode) {
       // Handle bulk update
@@ -325,28 +415,30 @@ export default function PromoteStudentsScreen() {
       <Text style={styles.header}>Students in {selectedClass.name}</Text>
 
       {/* --- Bulk Action Buttons --- */}
-      <View style={styles.bulkActionRow}>
-        <TouchableOpacity
-          style={[styles.bulkButton, { backgroundColor: COLORS.success }]}
-          onPress={() => {
-            setIsBulkMode(true);
-            setTargetClassId(selectedClass.id);
-          }}
-        >
-          <SVGIcon name="school" size={18} color="#fff" />
-          <Text style={styles.bulkButtonText}>Promote All</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.bulkButton, { backgroundColor: COLORS.danger }]}
-          onPress={() => {
-            setIsBulkMode(true);
-            setTargetClassId(selectedClass.id);
-          }}
-        >
-          <SVGIcon name="refresh" size={18} color="#fff" />
-          <Text style={styles.bulkButtonText}>Repeat All</Text>
-        </TouchableOpacity>
-      </View>
+      {isClassTeacher && (
+        <View style={styles.bulkActionRow}>
+          <TouchableOpacity
+            style={[styles.bulkButton, { backgroundColor: COLORS.success }]}
+            onPress={() => {
+              setIsBulkMode(true);
+              setTargetClassId(selectedClass.id);
+            }}
+          >
+            <SVGIcon name="school" size={18} color="#fff" />
+            <Text style={styles.bulkButtonText}>Promote All</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.bulkButton, { backgroundColor: COLORS.danger }]}
+            onPress={() => {
+              setIsBulkMode(true);
+              setTargetClassId(selectedClass.id);
+            }}
+          >
+            <SVGIcon name="refresh" size={18} color="#fff" />
+            <Text style={styles.bulkButtonText}>Repeat All</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {loading ? (
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -366,7 +458,7 @@ export default function PromoteStudentsScreen() {
                 setTargetClassId(item.classId); // Default picker to current class
               }}
             >
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text
                   style={styles.itemTitle}
                 >{`${item.profile.firstName} ${item.profile.lastName}`}</Text>
@@ -374,7 +466,43 @@ export default function PromoteStudentsScreen() {
                   ID: {item.profile.studentID || "N/A"}
                 </Text>
               </View>
-              <SVGIcon name="create" size={20} color={COLORS.gray} />
+              {isClassTeacher && (
+                <View style={styles.actionIcons}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedStudent(item);
+                      setEditFirstName(item.profile.firstName);
+                      setEditLastName(item.profile.lastName);
+                      setEditDob(item.dateOfBirth ? (item.dateOfBirth.toDate ? item.dateOfBirth.toDate() : new Date(item.dateOfBirth)) : null);
+                      setAssignmentModal({ type: "edit_profile" });
+                    }}
+                    style={styles.iconBtn}
+                  >
+                    <SVGIcon name="person" size={18} color={COLORS.primary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedStudent(item);
+                      setEditEmail(item.profile.email || "");
+                      setEditPassword("");
+                      setAssignmentModal({ type: "edit_email" });
+                    }}
+                    style={styles.iconBtn}
+                  >
+                    <SVGIcon name="mail" size={18} color={COLORS.secondary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedStudent(item);
+                      setTargetClassId(item.classId);
+                      setAssignmentModal({ type: "promote_repeat" });
+                    }}
+                    style={styles.iconBtn}
+                  >
+                    <SVGIcon name="swap-horizontal" size={18} color={COLORS.gray} />
+                  </TouchableOpacity>
+                </View>
+              )}
             </TouchableOpacity>
           )}
         />
@@ -382,7 +510,7 @@ export default function PromoteStudentsScreen() {
 
       {/* --- PROMOTION/REPETITION MODAL --- */}
       <Modal
-        visible={!!selectedStudent || isBulkMode}
+        visible={assignmentModal.type === "promote_repeat" || isBulkMode}
         transparent
         animationType="slide"
       >
@@ -472,6 +600,123 @@ export default function PromoteStudentsScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* --- EDIT MODALS --- */}
+      <Modal
+        visible={assignmentModal.type !== "none" && assignmentModal.type !== "promote_repeat"}
+        transparent
+        animationType="slide"
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {assignmentModal.type.replace("_", " ").toUpperCase()}
+              </Text>
+              <TouchableOpacity onPress={closeModal}>
+                <SVGIcon name="close" size={24} color="#94A3B8" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+              {assignmentModal.type === "edit_profile" && (
+                <View>
+                  <Text style={styles.inputLabel}>FIRST NAME</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editFirstName}
+                    onChangeText={setEditFirstName}
+                    placeholder="First Name"
+                  />
+                  <Text style={[styles.inputLabel, { marginTop: 15 }]}>LAST NAME</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editLastName}
+                    onChangeText={setEditLastName}
+                    placeholder="Last Name"
+                  />
+                  <Text style={[styles.inputLabel, { marginTop: 15 }]}>DATE OF BIRTH</Text>
+                  <TouchableOpacity
+                    style={styles.textInput}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={{ color: editDob ? "#1E293B" : "#94A3B8" }}>
+                      {editDob ? editDob.toLocaleDateString() : "Select Date"}
+                    </Text>
+                  </TouchableOpacity>
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={editDob || new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={(event, date) => {
+                        setShowDatePicker(false);
+                        if (date) setEditDob(date);
+                      }}
+                    />
+                  )}
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
+                    onPress={handleUpdateProfile}
+                    disabled={updating}
+                  >
+                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {assignmentModal.type === "edit_email" && (
+                <View>
+                  <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editEmail}
+                    onChangeText={setEditEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
+                    onPress={handleUpdateUserEmail}
+                    disabled={updating}
+                  >
+                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Email</Text>}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.secondary, marginTop: 10 }]}
+                    onPress={() => setAssignmentModal({ type: "edit_password" })}
+                  >
+                    <Text style={styles.saveBtnText}>Change Password Instead</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {assignmentModal.type === "edit_password" && (
+                <View>
+                  <Text style={styles.inputLabel}>NEW PASSWORD</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editPassword}
+                    onChangeText={setEditPassword}
+                    secureTextEntry
+                    placeholder="Min 6 characters"
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
+                    onPress={handleUpdateUserPassword}
+                    disabled={updating}
+                  >
+                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Password</Text>}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -581,5 +826,51 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginLeft: 8,
     fontSize: 12,
+  },
+  actionIcons: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  iconBtn: {
+    padding: 8,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#94A3B8",
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  textInput: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    fontSize: 14,
+    color: "#1E293B",
+  },
+  saveBtn: {
+    height: 55,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 25,
+  },
+  saveBtnText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 15,
   },
 });

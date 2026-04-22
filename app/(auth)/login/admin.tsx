@@ -173,6 +173,13 @@ export default function AdminLogin() {
                     </>
                   )}
                 </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => router.push("/(auth)/forgot-password")}
+                  style={styles.forgotBtn}
+                >
+                  <Text style={styles.forgotText}>Reset Password</Text>
+                </TouchableOpacity>
               </Animatable.View>
 
               <View style={styles.signupSeparator}>
@@ -323,6 +330,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  forgotBtn: {
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  forgotText: {
+    color: '#64748b',
+    fontSize: 14,
+    fontWeight: '600',
   },
   signupSeparator: {
     flexDirection: 'row',

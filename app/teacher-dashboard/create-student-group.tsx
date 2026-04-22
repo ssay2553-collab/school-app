@@ -15,6 +15,7 @@ import {
   serverTimestamp,
   updateDoc,
   where,
+  or,
 } from "firebase/firestore";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
@@ -49,6 +50,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
+import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 /* ================= TYPES ================= */
 type Message = {
@@ -95,6 +97,7 @@ const GroupChatView = ({
   onBack: () => void;
 }) => {
   const { appUser } = useAuth();
+  const { markChatRead } = useUnreadCounts();
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesRef = useRef<Message[]>([]);
   const [messageText, setMessageText] = useState("");
@@ -108,6 +111,10 @@ const GroupChatView = ({
   const senderName =
     `${appUser?.profile?.firstName || ""} ${appUser?.profile?.lastName || ""}`.trim() ||
     "Teacher";
+
+  useEffect(() => {
+    markChatRead("group", group.id);
+  }, [group.id]);
 
   useEffect(() => {
     return () => {
@@ -284,7 +291,11 @@ export default function TeacherStudentGroups() {
       if (router.canGoBack()) {
         router.back();
       } else {
-        router.replace("/teacher-dashboard");
+        if (appUser?.role === "admin") {
+          router.replace("/admin-dashboard");
+        } else {
+          router.replace("/teacher-dashboard");
+        }
       }
     }
     return true;
@@ -330,7 +341,10 @@ export default function TeacherStudentGroups() {
     setLoading(true);
     const q = query(
       collection(db, "studentGroups"),
-      where("teacherId", "==", appUser.uid),
+      or(
+        where("teacherId", "==", appUser.uid),
+        where("staffIds", "array-contains", appUser.uid)
+      )
     );
     const unsubscribe = onSnapshot(q, (snap) => {
       let groupsData = snap.docs.map(
@@ -567,36 +581,45 @@ export default function TeacherStudentGroups() {
                     <SVGIcon name="chevron-forward" size={20} color="#CBD5E1" />
                   </TouchableOpacity>
                   <View style={styles.cardActions}>
-                    <TouchableOpacity
-                      onPress={() => startEdit(g)}
-                      style={styles.actionBtn}
-                    >
-                      <SVGIcon
-                        name="create-outline"
-                        size={18}
-                        color="#64748B"
-                      />
-                      <Text style={styles.actionText}>Edit Members</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() =>
-                        Alert.alert("Delete", "Remove this group?", [
-                          { text: "Cancel" },
-                          {
-                            text: "Delete",
-                            style: "destructive",
-                            onPress: () =>
-                              deleteDoc(doc(db, "studentGroups", g.id)),
-                          },
-                        ])
-                      }
-                      style={styles.actionBtn}
-                    >
-                      <SVGIcon name="trash-outline" size={18} color="#ef4444" />
-                      <Text style={[styles.actionText, { color: "#ef4444" }]}>
-                        Delete
-                      </Text>
-                    </TouchableOpacity>
+                    {(g.teacherId === appUser?.uid || appUser?.role === 'admin') && (
+                      <>
+                        <TouchableOpacity
+                          onPress={() => startEdit(g)}
+                          style={styles.actionBtn}
+                        >
+                          <SVGIcon
+                            name="create-outline"
+                            size={18}
+                            color="#64748B"
+                          />
+                          <Text style={styles.actionText}>Edit Members</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() =>
+                            Alert.alert("Delete", "Remove this group?", [
+                              { text: "Cancel" },
+                              {
+                                text: "Delete",
+                                style: "destructive",
+                                onPress: () =>
+                                  deleteDoc(doc(db, "studentGroups", g.id)),
+                              },
+                            ])
+                          }
+                          style={styles.actionBtn}
+                        >
+                          <SVGIcon name="trash-outline" size={18} color="#ef4444" />
+                          <Text style={[styles.actionText, { color: "#ef4444" }]}>
+                            Delete
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                    {g.teacherId !== appUser?.uid && appUser?.role !== 'admin' && (
+                       <View style={styles.actionBtn}>
+                          <Text style={[styles.actionText, { opacity: 0.6 }]}>Collaborator View</Text>
+                       </View>
+                    )}
                   </View>
                 </Animatable.View>
               ))

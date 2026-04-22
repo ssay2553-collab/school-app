@@ -1,4 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
     arrayRemove,
@@ -139,12 +140,23 @@ export default function ManageUsers() {
     type:
       | "none"
       | "assign_as"
+      | "assign_more"
       | "class_teacher"
       | "dept_head"
       | "permissions"
+      | "edit_profile"
+      | "edit_email"
+      | "edit_password"
       | "other";
     target: User | null;
   }>({ type: "none", target: null });
+
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [editDob, setEditDob] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [customRoleText, setCustomRoleText] = useState("");
   const [deptText, setDeptText] = useState("");
@@ -157,8 +169,26 @@ export default function ManageUsers() {
 
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
   const isSuperAdmin = ["proprietor", "headmaster"].includes(currentUserRole);
-  const hasManageUsersAccess =
-    appUser?.permissions?.["manage-users"] === "full" || isSuperAdmin;
+  const isClassTeacher = !!appUser?.classTeacherOf;
+
+  const hasManageUsersAccess = useMemo(() => {
+    if (!appUser) return false;
+    if (isSuperAdmin) return true;
+    if (appUser.role === "admin") return true;
+    if (appUser.role === "teacher") return true; // All teachers can at least view
+    const perm = appUser.permissions?.["manage-users"];
+    return perm && perm !== "deny";
+  }, [appUser, isSuperAdmin]);
+
+  const canEdit = useMemo(() => {
+    if (!appUser) return false;
+    if (isSuperAdmin) return true;
+    if (appUser.role === "admin") {
+      const perm = appUser.permissions?.["manage-users"];
+      return !perm || perm === "full" || perm === "edit";
+    }
+    return isClassTeacher; // Teachers must be class teachers to edit
+  }, [appUser, isSuperAdmin, isClassTeacher]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -373,7 +403,7 @@ export default function ManageUsers() {
 
   const handleAssignRole = async (roleName: string) => {
     const teacher = assignmentModal.target;
-    if (!teacher) return;
+    if (!teacher || !canEdit) return;
     setUpdating(true);
     try {
       await updateDoc(doc(db, "users", teacher.uid), {
@@ -393,7 +423,7 @@ export default function ManageUsers() {
 
   const handleAssignDeptHead = async (department: string) => {
     const teacher = assignmentModal.target;
-    if (!teacher) return;
+    if (!teacher || !canEdit) return;
     if (!department || !department.trim())
       return showToast({ message: "Please enter a department name.", type: "error" });
     setUpdating(true);
@@ -415,7 +445,7 @@ export default function ManageUsers() {
   };
 
   const handleRemoveAssignedRole = async (roleName: string, user: User) => {
-    if (!user) return;
+    if (!user || !canEdit) return;
     Alert.alert(
       "Confirm",
       `Remove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`,
@@ -482,7 +512,7 @@ export default function ManageUsers() {
 
   const handleAssignClassTeacher = async (targetClassId: string) => {
     const teacher = assignmentModal.target;
-    if (!teacher) return;
+    if (!teacher || !canEdit) return;
     setUpdating(true);
     try {
       const isAlreadyAssigned = teacher.classTeacherOf === targetClassId;
@@ -518,7 +548,7 @@ export default function ManageUsers() {
   };
 
   const handleToggleScholarship = async (user: User) => {
-    if (!isSuperAdmin)
+    if (!isSuperAdmin || !canEdit)
       return showToast({
         message: "Only super admins can update scholarship status.",
         type: "error",
@@ -542,6 +572,7 @@ export default function ManageUsers() {
   };
 
   const handleArchiveBasic9 = async () => {
+    if (!canEdit) return;
     const currentClassName =
       allClasses.find((c) => c.id === selectedClassId)?.name || "";
     const isBasic9 =
@@ -607,6 +638,7 @@ export default function ManageUsers() {
   };
 
   const handleRemoveRole = async (user: User, role: string) => {
+    if (!canEdit) return;
     try {
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, { assignedRoles: arrayRemove(role) });
@@ -626,7 +658,7 @@ export default function ManageUsers() {
   };
 
   const handleDeleteUser = (user: User) => {
-    if (user.uid === appUser?.uid) return;
+    if (user.uid === appUser?.uid || !canEdit) return;
     Alert.alert(
       "Critical Action",
       `Permanently delete ${user.profile.firstName}?`,
@@ -655,6 +687,7 @@ export default function ManageUsers() {
   };
 
   const openPermissionModal = (user: User) => {
+    if (!canEdit) return;
     // Initialize tempPermissions with explicit defaults and validate incoming values
     const defaults: Record<string, PermissionLevel> = PERMISSION_KEYS.reduce(
       (acc, p) => ({ ...acc, [p.key]: "deny" as PermissionLevel }),
@@ -678,6 +711,79 @@ export default function ManageUsers() {
 
     setTempPermissions(merged);
     setAssignmentModal({ type: "permissions", target: user });
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!assignmentModal.target || !canEdit) return;
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      return showToast({ message: "Names cannot be empty.", type: "error" });
+    }
+    setUpdating(true);
+    try {
+      const updates: any = {
+        "profile.firstName": editFirstName.trim(),
+        "profile.lastName": editLastName.trim(),
+      };
+      if (editDob) {
+        updates.dateOfBirth = Timestamp.fromDate(editDob);
+      }
+      await updateDoc(doc(db, "users", assignmentModal.target.uid), updates);
+
+      // Update local state for the viewing user if it matches
+      if (viewingUser?.uid === assignmentModal.target.uid) {
+        setViewingUser({
+          ...viewingUser,
+          profile: { ...viewingUser.profile, firstName: editFirstName.trim(), lastName: editLastName.trim() },
+          dateOfBirth: editDob ? Timestamp.fromDate(editDob) : viewingUser.dateOfBirth
+        });
+      }
+
+      setAssignmentModal({ type: "none", target: null });
+      showToast({ message: "Profile updated.", type: "success" });
+    } catch {
+      showToast({ message: "Update failed.", type: "error" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateUserEmail = async () => {
+    if (!assignmentModal.target || !editEmail.trim() || !canEdit) return;
+    setUpdating(true);
+    try {
+      const updateEmailFn = httpsCallable(functions, "updateUserEmail");
+      await updateEmailFn({ uid: assignmentModal.target.uid, newEmail: editEmail.trim() });
+
+      if (viewingUser?.uid === assignmentModal.target.uid) {
+        setViewingUser({ ...viewingUser, profile: { ...viewingUser.profile, email: editEmail.trim() } });
+      }
+
+      setAssignmentModal({ type: "none", target: null });
+      showToast({ message: "Email updated successfully.", type: "success" });
+    } catch (err: any) {
+      showToast({ message: err.message || "Failed to update email.", type: "error" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateUserPassword = async () => {
+    if (!assignmentModal.target || !editPassword.trim() || !canEdit) return;
+    if (editPassword.length < 6) {
+      return showToast({ message: "Password must be at least 6 characters.", type: "error" });
+    }
+    setUpdating(true);
+    try {
+      const updatePwFn = httpsCallable(functions, "updateUserPassword");
+      await updatePwFn({ uid: assignmentModal.target.uid, newPassword: editPassword.trim() });
+      setAssignmentModal({ type: "none", target: null });
+      setEditPassword("");
+      showToast({ message: "Password updated successfully.", type: "success" });
+    } catch (err: any) {
+      showToast({ message: err.message || "Failed to update password.", type: "error" });
+    } finally {
+      setUpdating(false);
+    }
   };
 
   const formatDate = (date: any) => {
@@ -851,7 +957,7 @@ export default function ManageUsers() {
             <TouchableOpacity
               style={styles.userCard}
               onLongPress={() =>
-                item.role === "teacher" &&
+                canEdit && item.role === "teacher" &&
                 setAssignmentModal({ type: "assign_as", target: item })
               }
               onPress={() => {
@@ -1014,7 +1120,7 @@ export default function ManageUsers() {
                                   color="#4f46e5"
                                 />
                                 <Text style={styles.modernRoleText}>{r}</Text>
-                                {hasManageUsersAccess && (
+                                {canEdit && (
                                   <TouchableOpacity
                                     onPress={() =>
                                       handleRemoveAssignedRole(r, viewingUser)
@@ -1326,8 +1432,8 @@ export default function ManageUsers() {
                                   "Contact linked"}
                               </Text>
                             </View>
-                            {/* UNLINK BUTTON FOR ADMINS */}
-                            {viewingUser.role === "student" && (
+                            {/* UNLINK BUTTON FOR ADMINS/CLASS TEACHERS */}
+                            {viewingUser.role === "student" && canEdit && (
                               <TouchableOpacity
                                 style={styles.unlinkBtn}
                                 onPress={() => {
@@ -1356,7 +1462,7 @@ export default function ManageUsers() {
                   )}
 
                   <View style={styles.btnStack}>
-                    {viewingUser.role === "admin" && isSuperAdmin && (
+                    {canEdit && viewingUser.role === "admin" && isSuperAdmin && (
                       <TouchableOpacity
                         style={[
                           styles.actionButton,
@@ -1369,7 +1475,7 @@ export default function ManageUsers() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {viewingUser.role === "teacher" && (
+                    {canEdit && viewingUser.role === "teacher" && (
                       <TouchableOpacity
                         style={[
                           styles.actionButton,
@@ -1388,7 +1494,7 @@ export default function ManageUsers() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {viewingUser.role === "student" && isSuperAdmin && (
+                    {canEdit && viewingUser.role === "student" && isSuperAdmin && (
                       <TouchableOpacity
                         style={[
                           styles.actionButton,
@@ -1416,19 +1522,52 @@ export default function ManageUsers() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        { backgroundColor: "#fee2e2", marginTop: 12 },
-                      ]}
-                      onPress={() => handleDeleteUser(viewingUser)}
-                    >
-                      <Text
-                        style={[styles.actionButtonText, { color: "#ef4444" }]}
+                    {viewingUser.role === "student" && canEdit && (
+                      <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginTop: 12 }}>
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            { backgroundColor: COLORS.primary, flex: 1, marginHorizontal: 0 },
+                          ]}
+                          onPress={() => {
+                            setEditFirstName(viewingUser.profile.firstName);
+                            setEditLastName(viewingUser.profile.lastName);
+                            setEditDob(viewingUser.dateOfBirth ? (viewingUser.dateOfBirth.toDate ? viewingUser.dateOfBirth.toDate() : new Date(viewingUser.dateOfBirth)) : null);
+                            setAssignmentModal({ type: "edit_profile", target: viewingUser });
+                          }}
+                        >
+                          <Text style={styles.actionButtonText}>Edit Name/DOB</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            { backgroundColor: COLORS.secondary, flex: 1, marginHorizontal: 0 },
+                          ]}
+                          onPress={() => {
+                            setEditEmail(viewingUser.profile.email || "");
+                            setEditPassword("");
+                            setAssignmentModal({ type: "edit_email", target: viewingUser });
+                          }}
+                        >
+                          <Text style={styles.actionButtonText}>Edit Auth</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                    {canEdit && (
+                      <TouchableOpacity
+                        style={[
+                          styles.actionButton,
+                          { backgroundColor: "#fee2e2", marginTop: 12 },
+                        ]}
+                        onPress={() => handleDeleteUser(viewingUser)}
                       >
-                        Delete Account
-                      </Text>
-                    </TouchableOpacity>
+                        <Text
+                          style={[styles.actionButtonText, { color: "#ef4444" }]}
+                        >
+                          Delete Account
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               )}
@@ -1463,7 +1602,98 @@ export default function ManageUsers() {
               contentContainerStyle={{ padding: 25, paddingBottom: 60 }}
               showsVerticalScrollIndicator={false}
             >
-              {assignmentModal.type === "assign_as" && (
+              {assignmentModal.type === "edit_profile" && (
+                <View>
+                  <Text style={styles.modalLabel}>FIRST NAME</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editFirstName}
+                    onChangeText={setEditFirstName}
+                    placeholder="First Name"
+                  />
+                  <Text style={[styles.modalLabel, { marginTop: 15 }]}>LAST NAME</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editLastName}
+                    onChangeText={setEditLastName}
+                    placeholder="Last Name"
+                  />
+                  <Text style={[styles.modalLabel, { marginTop: 15 }]}>DATE OF BIRTH</Text>
+                  <TouchableOpacity
+                    style={styles.textInput}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={{ color: editDob ? "#1E293B" : "#94A3B8" }}>
+                      {editDob ? editDob.toLocaleDateString() : "Select Date"}
+                    </Text>
+                  </TouchableOpacity>
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={editDob || new Date()}
+                      mode="date"
+                      display="default"
+                      onChange={(event, date) => {
+                        setShowDatePicker(false);
+                        if (date) setEditDob(date);
+                      }}
+                    />
+                  )}
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
+                    onPress={handleUpdateProfile}
+                    disabled={updating}
+                  >
+                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Profile Changes</Text>}
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {assignmentModal.type === "edit_email" && (
+                <View>
+                  <Text style={styles.modalLabel}>EMAIL ADDRESS</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editEmail}
+                    onChangeText={setEditEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
+                    onPress={handleUpdateUserEmail}
+                    disabled={updating}
+                  >
+                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Email</Text>}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.secondary, marginTop: 10 }]}
+                    onPress={() => setAssignmentModal({ ...assignmentModal, type: "edit_password" })}
+                  >
+                    <Text style={styles.saveBtnText}>Change Password Instead</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {assignmentModal.type === "edit_password" && (
+                <View>
+                  <Text style={styles.modalLabel}>NEW PASSWORD</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editPassword}
+                    onChangeText={setEditPassword}
+                    secureTextEntry
+                    placeholder="Min 6 characters"
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
+                    onPress={handleUpdateUserPassword}
+                    disabled={updating}
+                  >
+                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Password</Text>}
+                  </TouchableOpacity>
+                </View>
+              )}
+              {assignmentModal.type === "assign_more" && (
                 <>
                   <View style={styles.switchRow}>
                     <View>
@@ -2036,6 +2266,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   pickerLabel: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#475569",
+    marginBottom: 6,
+  },
+  modalLabel: {
     fontSize: 12,
     fontWeight: "900",
     color: "#475569",

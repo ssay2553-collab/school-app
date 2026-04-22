@@ -1,4 +1,4 @@
-// users.ts
+import { CurriculumType } from "../constants/Curriculum";
 
 export type UserRole = "guest" | "admin" | "teacher" | "parent" | "student";
 
@@ -15,6 +15,7 @@ export interface UserProfile {
   experience?: string;
   education?: string;
   gender?: string;
+  dob?: any;
 }
 
 export interface AppUser {
@@ -36,6 +37,7 @@ export interface AppUser {
 
   // School association
   schoolId?: string;
+  curriculum?: CurriculumType;
 
   // Updated: Flexible admin roles and permission mapping
   adminRole?: string;

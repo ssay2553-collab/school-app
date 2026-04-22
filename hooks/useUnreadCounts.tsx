@@ -9,6 +9,7 @@ import {
     query,
     Timestamp,
     where,
+    or,
 } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, ToastAndroid } from "react-native";
@@ -34,7 +35,11 @@ export default function useUnreadCounts() {
     // Watch student groups that include this user
     const q = query(
       collection(db, "studentGroups"),
-      where("studentIds", "array-contains", appUser.uid),
+      or(
+        where("studentIds", "array-contains", appUser.uid),
+        where("teacherId", "==", appUser.uid),
+        where("staffIds", "array-contains", appUser.uid)
+      )
     );
     const unsub = onSnapshot(q, (snap) => {
       const ids: string[] = snap.docs.map((d) => d.id);

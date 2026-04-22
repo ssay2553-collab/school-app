@@ -24,6 +24,7 @@ import {
   StatusBar,
   ScrollView,
   Dimensions,
+  Platform,
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -36,6 +37,8 @@ import moment from "moment";
 import SVGIcon from "../../components/SVGIcon";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
+
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const FILTERS_KEY = "@attendance_filters_v1";
 
@@ -82,6 +85,7 @@ export default function DailyAttendanceScreen() {
   const [term, setTerm] = useState<string>("");
   const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string; classTeacherId?: string }[]>([]);
   
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [localAttendance, setLocalAttendance] = useState<Record<string, any>>({});
   const [serverAttendance, setServerAttendance] = useState<Record<string, any>>({});
 
@@ -226,6 +230,11 @@ export default function DailyAttendanceScreen() {
     loadAttendance();
   }, [classId, selectedDate, academicYear, term]);
 
+  useEffect(() => {
+    if (acadConfig.academicYear) setAcademicYear(acadConfig.academicYear);
+    if (acadConfig.currentTerm) setTerm(acadConfig.currentTerm);
+  }, [acadConfig]);
+
   const changeDate = (days: number) => {
     const newDate = moment(selectedDate).add(days, 'days').format("YYYY-MM-DD");
     setSelectedDate(newDate);
@@ -248,6 +257,13 @@ export default function DailyAttendanceScreen() {
 
   const saveToFirestore = async () => {
     if (!classId || !appUser || !academicYear || !term) return;
+    if (!isOfficialClassTeacher) {
+      showToast({
+        message: "Only assigned Class Teacher/Admin can save attendance.",
+        type: "error",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const cleanYear = academicYear.replace(/\//g, "-");
@@ -359,12 +375,57 @@ export default function DailyAttendanceScreen() {
 
       <View style={styles.dateBar}>
          <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateNavBtn}><SVGIcon name="chevron-back" size={20} color="#64748B" /></TouchableOpacity>
-         <View style={styles.dateDisplay}>
-            <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
-            <Text style={styles.dateText}>{moment(selectedDate).format("dddd, MMMM D, YYYY")}</Text>
-         </View>
-         <TouchableOpacity onPress={() => changeDate(1)} style={styles.dateNavBtn}><SVGIcon name="chevron-forward" size={20} color="#64748B" /></TouchableOpacity>
+
+         {Platform.OS === 'web' ? (
+           <View style={styles.dateDisplay}>
+             <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+             <input
+                type="date"
+                value={selectedDate}
+                max={moment().format("YYYY-MM-DD")}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{
+                  border: 'none',
+                  background: 'none',
+                  fontSize: '14px',
+                  color: '#1E293B',
+                  fontWeight: '800',
+                  fontFamily: 'inherit',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              />
+           </View>
+         ) : (
+           <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateDisplay}>
+              <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.dateText}>{moment(selectedDate).format("dddd, MMMM D, YYYY")}</Text>
+           </TouchableOpacity>
+         )}
+
+         <TouchableOpacity
+           onPress={() => changeDate(1)}
+           style={[styles.dateNavBtn, moment(selectedDate).isSame(moment(), 'day') && { opacity: 0.3 }]}
+           disabled={moment(selectedDate).isSame(moment(), 'day')}
+         >
+           <SVGIcon name="chevron-forward" size={20} color="#64748B" />
+         </TouchableOpacity>
       </View>
+
+      {Platform.OS !== 'web' && showDatePicker && (
+        <DateTimePicker
+          value={moment(selectedDate).toDate()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          maximumDate={new Date()}
+          onChange={(event, date) => {
+            setShowDatePicker(false);
+            if (date) {
+              setSelectedDate(moment(date).format("YYYY-MM-DD"));
+            }
+          }}
+        />
+      )}
 
       <View style={styles.filterArea}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.classScroll}>

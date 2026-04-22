@@ -181,6 +181,12 @@ export default function AdminDashboard() {
       title: "Academics",
       items: [
         {
+          title: "Student Groups",
+          route: "/teacher-dashboard/create-student-group",
+          icon: "chatbubbles",
+          color: "#06b6d4",
+        },
+        {
           title: "Student Results",
           route: "/admin-dashboard/view-academic-records",
           icon: "library",
@@ -406,7 +412,7 @@ export default function AdminDashboard() {
                           {item.title}
                         </Text>
                         {item.route &&
-                        String(item.route).includes("chat") &&
+                        (String(item.route).includes("chat") || String(item.route).includes("group")) &&
                         totalUnread > 0 ? (
                           <View
                             style={{ position: "absolute", top: 8, right: columnCount === 3 ? 8 : 12 }}

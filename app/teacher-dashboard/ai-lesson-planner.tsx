@@ -37,8 +37,8 @@ import {
 
 import Constants from "expo-constants";
 
-const GEMINI_API_KEY = Constants.expoConfig?.extra?.geminiApiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../firebaseConfig';
 
 const { width } = Dimensions.get('window');
 const isLargeScreen = width > 768;
@@ -143,17 +143,10 @@ export default function AILessonPlanner() {
   };
 
   const handleGenerate = async () => {
-    if (!GEMINI_API_KEY) {
-        showToast({ message: "AI generation is not configured. Please contact support.", type: "error" });
-        return;
-    }
-
     if (!form.subject || !form.strand || !form.topic || !form.classLevel || !form.duration) {
       showToast({ message: "Please fill in all details.", type: "error" });
       return;
     }
-
-    const selectedClassName = availableClasses.find(c => c.id === form.classLevel)?.name || form.classLevel;
 
     const currentUsage = weeklyUsage[form.subject] || 0;
     if (currentUsage >= 3) {
@@ -163,54 +156,25 @@ export default function AILessonPlanner() {
 
     setLoading(true);
 
-    const prompt = `
-      Act as an expert teacher. Generate a simple, practical lesson plan for:
-      Subject: ${form.subject}
-      Class: ${selectedClassName}
-      Strand: ${form.strand}
-      Sub-strand (Topic): ${form.topic}
-      Duration: ${form.duration}
-
-      The lesson must be suitable for the class level. Avoid long explanations.
-      Use clear bullet points.
-
-      Return ONLY a JSON object with these keys:
-      - objectives (array of strings)
-      - introduction (array of strings)
-      - teachingActivities (array of strings)
-      - materials (array of strings)
-      - classActivities (array of strings)
-      - assessment (array of strings)
-      - conclusion (array of strings)
-      - homework (array of strings)
-    `;
-
     try {
-      const response = await fetch(GEMINI_ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseMimeType: "application/json" }
-        })
-      });
+      const selectedClassName = availableClasses.find(c => c.id === form.classLevel)?.name || form.classLevel;
+      const genFn = httpsCallable(functions, 'generateLessonPlan');
 
-      const data = await response.json();
-      const rawText = data.candidates[0].content.parts[0].text;
-      const parsedPlan = JSON.parse(rawText);
-      setGeneratedPlan(parsedPlan);
-
-      // Track usage in Firestore
-      await addDoc(collection(db, 'ai_generations'), {
-        userId: appUser?.uid,
+      const { data } = await genFn({
         subject: form.subject,
-        createdAt: serverTimestamp(),
+        strand: form.strand,
+        topic: form.topic,
+        classLevel: selectedClassName,
+        duration: form.duration
       });
 
+      setGeneratedPlan(data);
       fetchWeeklyUsage(); // Update UI
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Error:", error);
-      showToast({ message: "Could not generate plan. Please try again.", type: "error" });
+      let msg = "Could not generate plan. Please try again.";
+      if (error.code === 'resource-exhausted') msg = error.message;
+      showToast({ message: msg, type: "error" });
     } finally {
       setLoading(false);
     }

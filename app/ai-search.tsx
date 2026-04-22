@@ -34,8 +34,8 @@ import { copyToClipboard } from "../utils/copyToClipboard";
 
 import Constants from "expo-constants";
 
-const GEMINI_API_KEY = Constants.expoConfig?.extra?.geminiApiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+import { httpsCallable } from "firebase/functions";
+import { functions } from "../firebaseConfig";
 
 const { width } = Dimensions.get("window");
 
@@ -81,13 +81,12 @@ export default function AISearch() {
 
   const handleSearch = async () => {
     if (!queryText.trim()) return;
-    if (!GEMINI_API_KEY) {
-      showToast({ message: "Search service not configured.", type: "error" });
-      return;
-    }
 
     if (weeklyCount >= LIMIT) {
-      showToast({ message: `You've used your ${LIMIT} free AI searches for today.`, type: "info" });
+      showToast({
+        message: `You've used your ${LIMIT} free AI searches for today.`,
+        type: "info",
+      });
       return;
     }
 
@@ -95,35 +94,23 @@ export default function AISearch() {
     setResult(null);
 
     try {
-      const prompt = `You are an educational assistant for the ${SCHOOL_CONFIG.name} app.
-      Answer this question clearly and concisely for a student or teacher: ${queryText}`;
+      const searchFn = httpsCallable(functions, "aiSearch");
+      const { data } = (await searchFn({
+        queryText: queryText.trim(),
+        schoolName: SCHOOL_CONFIG.name,
+      })) as { data: { text: string } };
 
-      const response = await fetch(GEMINI_ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
-      });
-
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (text) {
-        setResult(text);
-        // Log the search
-        await addDoc(collection(db, "ai_searches"), {
-          userId: appUser?.uid,
-          role: appUser?.role,
-          query: queryText,
-          createdAt: Timestamp.now()
-        });
-        setWeeklyCount(prev => prev + 1);
+      if (data?.text) {
+        setResult(data.text);
+        setWeeklyCount((prev) => prev + 1);
       } else {
         throw new Error("No response from AI");
       }
-    } catch (e) {
-      showToast({ message: "Could not complete search. Please try again.", type: "error" });
+    } catch (e: any) {
+      console.error("Search Error:", e);
+      let msg = "Could not complete search. Please try again.";
+      if (e.code === "resource-exhausted") msg = e.message;
+      showToast({ message: msg, type: "error" });
     } finally {
       setLoading(false);
     }

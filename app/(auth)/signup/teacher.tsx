@@ -57,13 +57,17 @@ export default function TeacherSignupScreen() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const snap = await getDocs(collection(db, "classes"));
+        const q = query(
+          collection(db, "classes"),
+          where("schoolId", "==", schoolId)
+        );
+        const snap = await getDocs(q);
         const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name || d.id }));
         setClasses(list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
       } catch (err) { console.error(err); }
     };
     fetchClasses();
-  }, []);
+  }, [schoolId]);
 
   const validateStep = () => {
     if (step === 1) {

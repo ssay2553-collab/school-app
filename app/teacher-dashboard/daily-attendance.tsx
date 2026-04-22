@@ -362,6 +362,8 @@ export default function DailyAttendanceScreen() {
     );
   }
 
+  const noClassesAssigned = availableClasses.length === 0 && !loading;
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -373,89 +375,106 @@ export default function DailyAttendanceScreen() {
         </View>
       </View>
 
-      <View style={styles.dateBar}>
-         <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateNavBtn}><SVGIcon name="chevron-back" size={20} color="#64748B" /></TouchableOpacity>
+      {noClassesAssigned ? (
+        <View style={styles.center}>
+          <SVGIcon name="alert-circle-outline" size={64} color="#94A3B8" />
+          <Text style={[styles.emptyText, { marginTop: 16, textAlign: 'center', paddingHorizontal: 40 }]}>
+            No classes assigned to you for {SCHOOL_CONFIG.name}. Please contact your administrator to assign your classes.
+          </Text>
+          <TouchableOpacity
+            style={[styles.backBtn, { marginTop: 20, width: 'auto', paddingHorizontal: 20 }]}
+            onPress={handleBack}
+          >
+            <Text style={styles.backBtnText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          <View style={styles.dateBar}>
+             <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateNavBtn}><SVGIcon name="chevron-back" size={20} color="#64748B" /></TouchableOpacity>
 
-         {Platform.OS === 'web' ? (
-           <View style={styles.dateDisplay}>
-             <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
-             <input
-                type="date"
-                value={selectedDate}
-                max={moment().format("YYYY-MM-DD")}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={{
-                  border: 'none',
-                  background: 'none',
-                  fontSize: '14px',
-                  color: '#1E293B',
-                  fontWeight: '800',
-                  fontFamily: 'inherit',
-                  outline: 'none',
-                  cursor: 'pointer'
-                }}
-              />
-           </View>
-         ) : (
-           <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateDisplay}>
-              <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
-              <Text style={styles.dateText}>{moment(selectedDate).format("dddd, MMMM D, YYYY")}</Text>
-           </TouchableOpacity>
-         )}
+             {Platform.OS === 'web' ? (
+               <View style={styles.dateDisplay}>
+                 <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+                 <input
+                    type="date"
+                    value={selectedDate}
+                    max={moment().format("YYYY-MM-DD")}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    style={{
+                      border: 'none',
+                      background: 'none',
+                      fontSize: '14px',
+                      color: '#1E293B',
+                      fontWeight: '800',
+                      fontFamily: 'inherit',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  />
+               </View>
+             ) : (
+               <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateDisplay}>
+                  <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+                  <Text style={styles.dateText}>{moment(selectedDate).format("dddd, MMMM D, YYYY")}</Text>
+               </TouchableOpacity>
+             )}
 
-         <TouchableOpacity
-           onPress={() => changeDate(1)}
-           style={[styles.dateNavBtn, moment(selectedDate).isSame(moment(), 'day') && { opacity: 0.3 }]}
-           disabled={moment(selectedDate).isSame(moment(), 'day')}
-         >
-           <SVGIcon name="chevron-forward" size={20} color="#64748B" />
-         </TouchableOpacity>
-      </View>
-
-      {Platform.OS !== 'web' && showDatePicker && (
-        <DateTimePicker
-          value={moment(selectedDate).toDate()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          maximumDate={new Date()}
-          onChange={(event, date) => {
-            setShowDatePicker(false);
-            if (date) {
-              setSelectedDate(moment(date).format("YYYY-MM-DD"));
-            }
-          }}
-        />
-      )}
-
-      <View style={styles.filterArea}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.classScroll}>
-           {availableClasses.map(c => (
-             <TouchableOpacity key={c.id} onPress={() => setClassId(c.id)} style={[styles.classChip, classId === c.id && styles.classChipActive]}>
-                <Text style={[styles.classChipText, classId === c.id && styles.classChipTextActive]}>{c.name}</Text>
+             <TouchableOpacity
+               onPress={() => changeDate(1)}
+               style={[styles.dateNavBtn, moment(selectedDate).isSame(moment(), 'day') && { opacity: 0.3 }]}
+               disabled={moment(selectedDate).isSame(moment(), 'day')}
+             >
+               <SVGIcon name="chevron-forward" size={20} color="#64748B" />
              </TouchableOpacity>
-           ))}
-        </ScrollView>
-      </View>
+          </View>
 
-      <FlatList
-        data={students}
-        renderItem={renderStudentItem}
-        keyExtractor={item => item.id}
-        numColumns={isLargeScreen ? 2 : 1}
-        columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
-        contentContainerStyle={styles.list}
-        onEndReached={() => fetchStudents()}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ padding: 20 }} color={COLORS.primary} /> : null}
-        ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>No students found in this class.</Text></View>}
-      />
+          {Platform.OS !== 'web' && showDatePicker && (
+            <DateTimePicker
+              value={moment(selectedDate).toDate()}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              maximumDate={new Date()}
+              onChange={(event, date) => {
+                setShowDatePicker(false);
+                if (date) {
+                  setSelectedDate(moment(date).format("YYYY-MM-DD"));
+                }
+              }}
+            />
+          )}
 
-      {hasUnsavedChanges && (
-        <Animatable.View animation="slideInUp" duration={400} style={styles.footerAction}>
-           <TouchableOpacity style={styles.saveBtn} onPress={saveToFirestore} disabled={saving}>
-              {saving ? <ActivityIndicator color="#fff" /> : <><SVGIcon name="cloud-upload" size={20} color="#fff" /><Text style={styles.saveBtnText}>Save Changes Now</Text></>}
-           </TouchableOpacity>
-        </Animatable.View>
+          <View style={styles.filterArea}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.classScroll}>
+               {availableClasses.map(c => (
+                 <TouchableOpacity key={c.id} onPress={() => setClassId(c.id)} style={[styles.classChip, classId === c.id && styles.classChipActive]}>
+                    <Text style={[styles.classChipText, classId === c.id && styles.classChipTextActive]}>{c.name}</Text>
+                 </TouchableOpacity>
+               ))}
+            </ScrollView>
+          </View>
+
+          <FlatList
+            data={students}
+            renderItem={renderStudentItem}
+            keyExtractor={item => item.id}
+            numColumns={isLargeScreen ? 2 : 1}
+            columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
+            contentContainerStyle={styles.list}
+            onEndReached={() => fetchStudents()}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={loadingMore ? <ActivityIndicator style={{ padding: 20 }} color={COLORS.primary} /> : null}
+            ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>No students found in this class.</Text></View>}
+          />
+
+          {hasUnsavedChanges && (
+            <Animatable.View animation="slideInUp" duration={400} style={styles.footerAction}>
+               <TouchableOpacity style={styles.saveBtn} onPress={saveToFirestore} disabled={saving}>
+                  {saving ? <ActivityIndicator color="#fff" /> : <><SVGIcon name="cloud-upload" size={20} color="#fff" /><Text style={styles.saveBtnText}>Save Changes Now</Text></>}
+               </TouchableOpacity>
+            </Animatable.View>
+          )}
+        </>
       )}
     </SafeAreaView>
   );
@@ -466,6 +485,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   backBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  backBtnText: { color: '#1E293B', fontWeight: '800', fontSize: 14 },
   title: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   dateBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, backgroundColor: '#fff', margin: 15, borderRadius: 18, ...SHADOWS.small },

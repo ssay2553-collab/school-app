@@ -14,7 +14,8 @@ export * from "./chat";
 export * from "./attendance";
 export * from "./userActions"; 
 export * from "./finance";
-export * from "./birthdays"; // Added Birthday function
+export * from "./birthdays";
+export * from "./ai";
 
 /**
  * 🚀 CLOUD FUNCTION (V2): Aggregate Score Stats

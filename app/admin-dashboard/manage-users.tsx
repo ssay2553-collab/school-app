@@ -1475,25 +1475,29 @@ export default function ManageUsers() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {canEdit && viewingUser.role === "teacher" && (
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          { backgroundColor: COLORS.secondary || "#c53b59" },
-                        ]}
-                        onPress={() => {
-                          setNewsPermission(viewingUser.canCreateNews || false);
-                          setAssignmentModal({
-                            type: "assign_as",
-                            target: viewingUser,
-                          });
-                        }}
-                      >
-                        <Text style={styles.actionButtonText}>
-                          Modify Authority
-                        </Text>
-                      </TouchableOpacity>
-                    )}
+                    {canEdit &&
+                      (viewingUser.role === "teacher" ||
+                        viewingUser.role === "staff") && (
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            { backgroundColor: COLORS.secondary || "#c53b59" },
+                          ]}
+                          onPress={() => {
+                            setNewsPermission(
+                              viewingUser.canCreateNews || false,
+                            );
+                            setAssignmentModal({
+                              type: "assign_more",
+                              target: viewingUser,
+                            });
+                          }}
+                        >
+                          <Text style={styles.actionButtonText}>
+                            Modify Authority
+                          </Text>
+                        </TouchableOpacity>
+                      )}
                     {canEdit && viewingUser.role === "student" && isSuperAdmin && (
                       <TouchableOpacity
                         style={[

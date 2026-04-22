@@ -521,7 +521,8 @@ export default function ManageFees() {
         if (isNaN(bill)) continue;
         const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
         const totalPaid = s.hasRecordInTerm ? s.amountPaid : 0;
-        const newBalance = (s.previousBalance || 0) + bill - totalPaid;
+        // Subtract discount if it exists to ensure balance is accurate
+        const newBalance = (s.previousBalance || 0) + bill - (s.discount || 0) - totalPaid;
 
         batch.set(
           doc(db, "studentFeeRecords", recordId),
@@ -536,6 +537,7 @@ export default function ManageFees() {
             arrears: s.previousBalance,
             amountPaid: totalPaid,
             balance: newBalance,
+            // discount: s.discount, // Preserve existing discount via merge
             payments: s.hasRecordInTerm ? undefined : [],
             createdAt: s.hasRecordInTerm ? undefined : serverTimestamp(),
           },
@@ -663,11 +665,13 @@ export default function ManageFees() {
   const renderStudentItem = ({ item }: { item: StudentDraft }) => {
     const isSelected = selectedStudentUids.has(item.uid);
     const hasDebt = (item.currentBalance || 0) > 0;
+    // Show individual override OR bulk amount OR the already saved bill
     const currentBillValue =
-      individualBillOverrides[item.uid] || termBillAmount || "";
+      individualBillOverrides[item.uid] ??
+      (termBillAmount || (item.termBill > 0 ? String(item.termBill) : ""));
     const hasActiveBill =
-      !!currentBillValue && parseFloat(currentBillValue) > 0;
-    const hasOverride = !!individualBillOverrides[item.uid];
+      !!currentBillValue && parseFloat(String(currentBillValue)) > 0;
+    const hasOverride = individualBillOverrides[item.uid] !== undefined;
 
     return (
       <Animatable.View

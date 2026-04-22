@@ -32,6 +32,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, CurriculumType } from "../../../constants/Curriculum";
+import { getDocsCacheFirst } from "../../../lib/firestoreHelpers";
 
 const COLORS = { ...THEME_COLORS, gold: "#FFD700", orange: "#FFA500" };
 
@@ -57,14 +58,18 @@ export default function TeacherSignupScreen() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const q = query(
-          collection(db, "classes"),
-          where("schoolId", "==", schoolId)
-        );
-        const snap = await getDocs(q);
-        const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name || d.id }));
+        // Fetch classes and use "safe filter" to include legacy docs or school-specific ones
+        const q = query(collection(db, "classes"));
+        const snap = await getDocsCacheFirst(q as any);
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as any))
+          .filter((d) => !d.schoolId || d.schoolId === schoolId)
+          .map((d) => ({ id: d.id, name: d.name || d.id }));
+
         setClasses(list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
-      } catch (err) { console.error(err); }
+      } catch (err) {
+        console.error("fetchClasses error:", err);
+      }
     };
     fetchClasses();
   }, [schoolId]);

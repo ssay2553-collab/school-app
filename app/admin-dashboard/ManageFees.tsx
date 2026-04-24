@@ -90,6 +90,7 @@ type StudentDraft = {
   payments: any[];
   termBill: number;
   discount?: number;
+  editCount: number;
 };
 
 export default function ManageFees() {
@@ -382,6 +383,7 @@ export default function ManageFees() {
             payments: feeData?.payments || [],
             termBill: feeData?.termBill || 0,
             discount: feeData?.discount || 0,
+            editCount: feeData?.editCount || 0,
           };
         });
 
@@ -517,33 +519,65 @@ export default function ManageFees() {
       for (const uid of selectedUids) {
         const s = students.find((stud) => stud.uid === uid);
         if (!s) continue;
-        const bill = parseFloat(latestOverrides[uid] || termBillAmount);
-        if (isNaN(bill)) continue;
-        const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
-        const totalPaid = s.hasRecordInTerm ? s.amountPaid : 0;
-        // Subtract discount if it exists to ensure balance is accurate
-        const newBalance = (s.previousBalance || 0) + bill - (s.discount || 0) - totalPaid;
 
-        batch.set(
-          doc(db, "studentFeeRecords", recordId),
-          {
-            studentUid: uid,
-            studentName: s.fullName,
-            classId: s.classId,
-            className: s.className,
-            academicYear,
-            term,
-            termBill: bill,
-            arrears: s.previousBalance,
-            amountPaid: totalPaid,
-            balance: newBalance,
-            // discount: s.discount, // Preserve existing discount via merge
-            payments: s.hasRecordInTerm ? undefined : [],
-            createdAt: s.hasRecordInTerm ? undefined : serverTimestamp(),
-          },
-          { merge: true },
-        );
-        batch.update(doc(db, "users", uid), { walletBalance: newBalance });
+        const adjustmentStr = latestOverrides[uid] || termBillAmount;
+        const adjustment = parseFloat(adjustmentStr);
+        if (isNaN(adjustment) || adjustment === 0) continue;
+
+        const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
+        const totalPaid = s.hasRecordInTerm ? (s.amountPaid || 0) : 0;
+        const arrears = s.previousBalance || 0;
+        const discount = s.discount || 0;
+        const currentBill = s.hasRecordInTerm ? (s.termBill || 0) : 0;
+        const currentEditCount = s.editCount || 0;
+
+        if (currentEditCount >= 4) {
+          showToast({
+            message: `Student ${s.fullName} has reached the limit of 4 edits this term.`,
+            type: "error",
+          });
+          continue;
+        }
+
+        // Calculate the new total bill for the term by adding the adjustment
+        const newBill = currentBill + adjustment;
+
+        // Correct balance calculation: Arrears (debt before this term) + New Total Bill - Discount - Amount Paid this term
+        const newBalance = arrears + newBill - discount - totalPaid;
+
+        if (isNaN(newBalance)) {
+          console.error(`Invalid balance calculation for student ${uid}`);
+          continue;
+        }
+
+        const feeRecordData: any = {
+          studentUid: uid,
+          schoolId: SCHOOL_CONFIG.schoolId || "unknown",
+          studentName: s.fullName,
+          classId: s.classId,
+          className: s.className,
+          academicYear,
+          term,
+          termBill: newBill,
+          arrears: arrears,
+          amountPaid: totalPaid,
+          balance: newBalance,
+          editCount: currentEditCount + 1,
+          lastUpdated: serverTimestamp(),
+        };
+
+        // Initialize metadata for new term records
+        if (!s.hasRecordInTerm) {
+          feeRecordData.payments = [];
+          feeRecordData.createdAt = serverTimestamp();
+        }
+
+        batch.set(doc(db, "studentFeeRecords", recordId), feeRecordData, { merge: true });
+
+        batch.update(doc(db, "users", uid), {
+          walletBalance: newBalance,
+          schoolId: SCHOOL_CONFIG.schoolId || "unknown"
+        });
       }
       await batch.commit();
       setBillModalVisible(false);
@@ -576,6 +610,7 @@ export default function ManageFees() {
 
       const entry = {
         amount,
+        schoolId: SCHOOL_CONFIG.schoolId, // Multi-tenancy support
         method: paymentMethod,
         receivedFrom: receivedFrom.trim(),
         updatedBy: appUser?.adminRole || "Admin",
@@ -593,9 +628,11 @@ export default function ManageFees() {
         amountPaid: increment(amount),
         balance: increment(-amount),
         payments: arrayUnion(entry),
+        lastUpdated: serverTimestamp(),
       });
       batch.update(doc(db, "users", selectedStudent.uid), {
         walletBalance: increment(-amount),
+        schoolId: SCHOOL_CONFIG.schoolId // Fix potential missing schoolId
       });
       // Set to dedicated feePayments collection for efficient daily reporting
       batch.set(doc(db, "feePayments", serial), entry);
@@ -665,13 +702,15 @@ export default function ManageFees() {
   const renderStudentItem = ({ item }: { item: StudentDraft }) => {
     const isSelected = selectedStudentUids.has(item.uid);
     const hasDebt = (item.currentBalance || 0) > 0;
-    // Show individual override OR bulk amount OR the already saved bill
+
+    // In "adjustment" mode, we show what is being added/deducted rather than the total
     const currentBillValue =
-      individualBillOverrides[item.uid] ??
-      (termBillAmount || (item.termBill > 0 ? String(item.termBill) : ""));
+      individualBillOverrides[item.uid] ?? termBillAmount;
+
     const hasActiveBill =
-      !!currentBillValue && parseFloat(String(currentBillValue)) > 0;
+      !!currentBillValue && parseFloat(String(currentBillValue)) !== 0;
     const hasOverride = individualBillOverrides[item.uid] !== undefined;
+    const isEditLocked = item.editCount >= 4;
 
     return (
       <Animatable.View
@@ -749,45 +788,64 @@ export default function ManageFees() {
                     )}
                   </Text>
                 </View>
+                {item.termBill > 0 && (
+                  <Text style={{ fontSize: 10, color: VIBE.muted, fontWeight: '700', marginTop: 2 }}>
+                    Term Bill: ₵{item.termBill.toFixed(2)}
+                  </Text>
+                )}
               </View>
             </View>
 
             <View style={styles.rightSection}>
               {activeMode === "billing" ? (
-                <View
-                  style={[
-                    styles.billingBubble,
-                    hasActiveBill && styles.billingBubbleActive,
-                    hasOverride && styles.billingBubbleOverride,
-                  ]}
-                >
-                  <Text
+                <View style={{ alignItems: 'flex-end' }}>
+                  <View
                     style={[
-                      styles.bubbleSym,
-                      (hasActiveBill || hasOverride) && styles.textWhite,
+                      styles.billingBubble,
+                      hasActiveBill && styles.billingBubbleActive,
+                      hasOverride && styles.billingBubbleOverride,
                     ]}
                   >
-                    ₵
-                  </Text>
-                  <TextInput
-                    style={[
-                      styles.bubbleInput,
-                      (hasActiveBill || hasOverride) && styles.textWhite,
-                    ]}
-                    placeholder="0"
-                    placeholderTextColor={
-                      hasActiveBill ? "rgba(255,255,255,0.6)" : VIBE.muted
-                    }
-                    value={String(currentBillValue)}
-                    onChangeText={(v) =>
-                      setIndividualBillOverrides((p: Record<string, string>) => ({
-                        ...p,
-                        [item.uid]: v,
-                      }))
-                    }
-                    keyboardType="numeric"
-                    editable={canEdit}
-                  />
+                    <Text
+                      style={[
+                        styles.bubbleSym,
+                        (hasActiveBill || hasOverride) && styles.textWhite,
+                      ]}
+                    >
+                      ₵
+                    </Text>
+                    <TextInput
+                      style={[
+                        styles.bubbleInput,
+                        (hasActiveBill || hasOverride) && styles.textWhite,
+                      ]}
+                      placeholder="+/- ₵"
+                      placeholderTextColor={
+                        hasActiveBill ? "rgba(255,255,255,0.6)" : VIBE.muted
+                      }
+                      value={currentBillValue ? String(currentBillValue) : ""}
+                      onChangeText={(v) =>
+                        setIndividualBillOverrides((p: Record<string, string>) => ({
+                          ...p,
+                          [item.uid]: v,
+                        }))
+                      }
+                      keyboardType="numbers-and-punctuation"
+                      editable={canEdit && !isEditLocked}
+                    />
+                  </View>
+                  {isEditLocked && (
+                    <Text
+                      style={{
+                        fontSize: 8,
+                        color: VIBE.danger,
+                        fontWeight: "700",
+                        marginTop: 2,
+                      }}
+                    >
+                      EDIT LIMIT REACHED
+                    </Text>
+                  )}
                 </View>
               ) : (
                 <View style={styles.actionIcons}>
@@ -955,10 +1013,10 @@ export default function ManageFees() {
               <View style={styles.bulkInputContainer}>
                 <Text style={styles.bulkSym}>₵</Text>
                 <TextInput
-                  placeholder="Set Bulk Amount"
+                  placeholder="Adjust Debt (+/-)"
                   placeholderTextColor={VIBE.muted}
                   style={styles.bulkInput}
-                  keyboardType="numeric"
+                  keyboardType="numbers-and-punctuation"
                   value={termBillAmount}
                   onChangeText={setTermBillAmount}
                   editable={canEdit}
@@ -1371,9 +1429,9 @@ export default function ManageFees() {
       <Modal visible={billModalVisible} transparent animationType="fade">
         <View style={styles.overlayCenter}>
           <View style={styles.alertCard}>
-            <Text style={styles.alertTitle}>Finalize Billing?</Text>
+            <Text style={styles.alertTitle}>Bulk Billing?</Text>
             <Text style={styles.alertText}>
-              Apply rates to {selectedStudentUids.size} accounts?
+              Apply these adjustments to {selectedStudentUids.size} accounts?
             </Text>
             <View style={styles.alertBtnRow}>
               <TouchableOpacity

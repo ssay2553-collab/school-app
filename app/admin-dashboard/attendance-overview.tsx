@@ -25,6 +25,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+
 interface ClassStat {
   id: string;
   name: string;
@@ -48,6 +50,7 @@ export default function AttendanceOverview() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(moment().format("YYYY-MM-DD"));
   
+  const acadConfig = useAcademicConfig();
   const [classStats, setClassStats] = useState<ClassStat[]>([]);
   const [totals, setTotals] = useState({
     schoolTotal: 0,
@@ -244,6 +247,16 @@ export default function AttendanceOverview() {
                 <TouchableOpacity 
                   style={[styles.classCard, { backgroundColor: cardColor + '05' }]} 
                   activeOpacity={0.9}
+                  onPress={() => router.push({
+                    pathname: "/admin-dashboard/attendance-details",
+                    params: {
+                      classId: item.id,
+                      className: item.name,
+                      date: selectedDate,
+                      academicYear: acadConfig.academicYear,
+                      term: acadConfig.currentTerm
+                    }
+                  })}
                 >
                   <View style={[styles.cardHeaderStrip, { backgroundColor: cardColor }]}>
                     <SVGIcon name="school" size={18} color="#fff" />

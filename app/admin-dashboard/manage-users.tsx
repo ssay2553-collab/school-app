@@ -1,50 +1,47 @@
 import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
-    arrayRemove,
-    arrayUnion,
-    collection,
-    deleteDoc,
-    doc,
-    documentId,
-    getDoc,
-    limit,
-    onSnapshot,
-    query,
-    Timestamp,
-    updateDoc,
-    where,
-    writeBatch,
+  arrayRemove,
+  arrayUnion,
+  collection,
+  deleteDoc,
+  doc,
+  documentId,
+  getDoc,
+  limit,
+  onSnapshot,
+  query,
+  Timestamp,
+  updateDoc,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    BackHandler,
-    Dimensions,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
-import { useToast } from "../../contexts/ToastContext";
 import { db, functions } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
@@ -53,7 +50,7 @@ import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 const { width } = Dimensions.get("window");
 const DEFAULT_AVATAR = require("../../assets/default-avatar.png");
 
-type UserRole = "admin" | "teacher" | "parent" | "student" | "staff";
+type UserRole = "admin" | "teacher" | "parent" | "student";
 type PermissionLevel = "full" | "view" | "edit" | "deny";
 
 interface User {
@@ -65,9 +62,6 @@ interface User {
     phone?: string;
     gender?: string;
     profileImage?: string;
-    bio?: string;
-    experience?: string;
-    education?: string;
   };
   role: UserRole;
   adminRole?: string;
@@ -84,8 +78,6 @@ interface User {
   dateOfBirth?: any;
   walletBalance?: number;
   onScholarship?: boolean;
-  // Optional monthly salary for staff/admin records
-  salary?: number;
   status: "active" | "archived" | "disabled" | string;
   archivedAt?: any;
   archivedInYear?: string;
@@ -96,7 +88,6 @@ const roles: { name: string; role: UserRole; icon: string }[] = [
   { name: "Teachers", role: "teacher", icon: "people" },
   { name: "Parents", role: "parent", icon: "home" },
   { name: "Students", role: "student", icon: "school" },
-  { name: "Staff", role: "staff", icon: "briefcase" },
 ];
 
 const PERMISSION_KEYS = [
@@ -115,9 +106,20 @@ const PERMISSION_LEVELS: { label: string; value: PermissionLevel }[] = [
 
 export default function ManageUsers() {
   const router = useRouter();
-  const { showToast } = useToast();
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
+
+  const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
+  const isSuperAdmin = ["proprietor", "headmaster"].includes(currentUserRole);
+  const hasManageUsersAccess =
+    appUser?.permissions?.["manage-users"] === "full" || isSuperAdmin;
+
+  useEffect(() => {
+    if (appUser && !hasManageUsersAccess) {
+      Alert.alert("Access Denied", "Unauthorized management access.");
+      router.replace("/admin-dashboard");
+    }
+  }, [appUser, hasManageUsersAccess]);
 
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
@@ -140,23 +142,12 @@ export default function ManageUsers() {
     type:
       | "none"
       | "assign_as"
-      | "assign_more"
       | "class_teacher"
       | "dept_head"
       | "permissions"
-      | "edit_profile"
-      | "edit_email"
-      | "edit_password"
       | "other";
     target: User | null;
   }>({ type: "none", target: null });
-
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editPassword, setEditPassword] = useState("");
-  const [editDob, setEditDob] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const [customRoleText, setCustomRoleText] = useState("");
   const [deptText, setDeptText] = useState("");
@@ -167,64 +158,13 @@ export default function ManageUsers() {
   const [updating, setUpdating] = useState(false);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
 
-  const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = ["proprietor", "headmaster"].includes(currentUserRole);
-  const isClassTeacher = !!appUser?.classTeacherOf;
-
-  const hasManageUsersAccess = useMemo(() => {
-    if (!appUser) return false;
-    if (isSuperAdmin) return true;
-    if (appUser.role === "admin") return true;
-    if (appUser.role === "teacher") return true; // All teachers can at least view
-    const perm = appUser.permissions?.["manage-users"];
-    return perm && perm !== "deny";
-  }, [appUser, isSuperAdmin]);
-
-  const canEdit = useMemo(() => {
-    if (!appUser) return false;
-    if (isSuperAdmin) return true;
-    if (appUser.role === "admin") {
-      const perm = appUser.permissions?.["manage-users"];
-      return !perm || perm === "full" || perm === "edit";
-    }
-    return isClassTeacher; // Teachers must be class teachers to edit
-  }, [appUser, isSuperAdmin, isClassTeacher]);
-
-  useEffect(() => {
-    const onBackPress = () => {
-      if (assignmentModal.type !== "none") {
-        setAssignmentModal({ type: "none", target: null });
-        return true;
-      }
-      if (viewingUser) {
-        setViewingUser(null);
-        return true;
-      }
-      if (selectedRole) {
-        setSelectedRole(null);
-        return true;
-      }
-      return false;
-    };
-
-    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
-    return () => subscription.remove();
-  }, [viewingUser, selectedRole, assignmentModal]);
-
-  useEffect(() => {
-    if (appUser && !hasManageUsersAccess) {
-      showToast({ message: "Unauthorized management access.", type: "error" });
-      router.replace("/admin-dashboard");
-    }
-  }, [appUser, hasManageUsersAccess]);
-
   useEffect(() => {
     const fetchClasses = async () => {
       try {
         const snap = await getDocsCacheFirst(collection(db, "classes") as any);
         const list = snap.docs.map((d: any) => ({
           id: d.id,
-          name: (d.data() as any).name || d.id,
+          name: d.data().name || d.id,
         }));
         setAllClasses(sortClasses(list));
       } catch (e) {
@@ -248,14 +188,7 @@ export default function ManageUsers() {
         limit(100),
       );
 
-      if (selectedRole === "staff") {
-        q = query(
-          collection(db, "users"),
-          where("role", "==", "staff"),
-          where("status", "==", showArchived ? "archived" : "active"),
-          limit(100),
-        );
-      } else if (selectedRole === "student" && selectedClassId !== "all") {
+      if (selectedRole === "student" && selectedClassId !== "all") {
         q = query(
           collection(db, "users"),
           where("role", "==", "student"),
@@ -269,7 +202,7 @@ export default function ManageUsers() {
         q,
         (snap) => {
           const fetchedList = snap.docs.map(
-            (d: any) => ({ uid: d.id, ...(d.data() as any) }) as User,
+            (d: any) => ({ uid: d.id, ...d.data() }) as User,
           );
           if (selectedRole === "student") {
             fetchedList.sort((a, b) => {
@@ -305,7 +238,7 @@ export default function ManageUsers() {
       (u) =>
         u.profile?.firstName?.toLowerCase().includes(low) ||
         u.profile?.lastName?.toLowerCase().includes(low) ||
-        (u.profile?.email && u.profile.email.toLowerCase().includes(low)),
+        u.profile?.email?.toLowerCase().includes(low),
     );
   }, [users, searchQuery]);
 
@@ -364,9 +297,9 @@ export default function ManageUsers() {
             }
           : null,
       );
-      showToast({ message: "Parent unlinked from student record.", type: "success" });
+      Alert.alert("Success", "Parent unlinked from student record.");
     } catch (err) {
-      showToast({ message: "Failed to unlink parent.", type: "error" });
+      Alert.alert("Error", "Failed to unlink parent.");
     } finally {
       setUpdating(false);
     }
@@ -379,23 +312,20 @@ export default function ManageUsers() {
       // sanitize permissions to remove invalid/undefined values before sending to Firestore
       const sanitized: Record<string, PermissionLevel> = Object.entries(
         tempPermissions || {},
-      ).reduce(
-        (acc, [k, v]) => {
-          if (v === "full" || v === "view" || v === "edit" || v === "deny") {
-            acc[k] = v as PermissionLevel;
-          }
-          return acc;
-        },
-        {} as Record<string, PermissionLevel>,
-      );
+      ).reduce((acc, [k, v]) => {
+        if (v === "full" || v === "view" || v === "edit" || v === "deny") {
+          acc[k] = v as PermissionLevel;
+        }
+        return acc;
+      }, {} as Record<string, PermissionLevel>);
 
       await updateDoc(doc(db, "users", assignmentModal.target.uid), {
         permissions: sanitized,
       });
       setAssignmentModal({ type: "none", target: null });
-      showToast({ message: "Admin permissions updated.", type: "success" });
+      Alert.alert("Success", "Admin permissions updated.");
     } catch {
-      showToast({ message: "Failed to update permissions.", type: "error" });
+      Alert.alert("Error", "Failed to update permissions.");
     } finally {
       setUpdating(false);
     }
@@ -403,7 +333,7 @@ export default function ManageUsers() {
 
   const handleAssignRole = async (roleName: string) => {
     const teacher = assignmentModal.target;
-    if (!teacher || !canEdit) return;
+    if (!teacher) return;
     setUpdating(true);
     try {
       await updateDoc(doc(db, "users", teacher.uid), {
@@ -413,9 +343,9 @@ export default function ManageUsers() {
       setAssignmentModal({ type: "none", target: null });
       setCustomRoleText("");
       setDeptText("");
-      showToast({ message: `Role assigned: ${roleName}`, type: "success" });
+      Alert.alert("Success", `Role assigned: ${roleName}`);
     } catch {
-      showToast({ message: "Failed to assign role.", type: "error" });
+      Alert.alert("Error", "Failed to assign role.");
     } finally {
       setUpdating(false);
     }
@@ -423,9 +353,9 @@ export default function ManageUsers() {
 
   const handleAssignDeptHead = async (department: string) => {
     const teacher = assignmentModal.target;
-    if (!teacher || !canEdit) return;
+    if (!teacher) return;
     if (!department || !department.trim())
-      return showToast({ message: "Please enter a department name.", type: "error" });
+      return Alert.alert("Error", "Please enter a department name.");
     setUpdating(true);
     try {
       await updateDoc(doc(db, "users", teacher.uid), {
@@ -435,17 +365,17 @@ export default function ManageUsers() {
       });
       setAssignmentModal({ type: "none", target: null });
       setDeptText("");
-      showToast({ message: `Assigned Dept Head (${department.trim()})`, type: "success" });
+      Alert.alert("Success", `Assigned Dept Head (${department.trim()})`);
     } catch (e) {
       console.error(e);
-      showToast({ message: "Failed to assign dept head.", type: "error" });
+      Alert.alert("Error", "Failed to assign dept head.");
     } finally {
       setUpdating(false);
     }
   };
 
   const handleRemoveAssignedRole = async (roleName: string, user: User) => {
-    if (!user || !canEdit) return;
+    if (!user) return;
     Alert.alert(
       "Confirm",
       `Remove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`,
@@ -497,10 +427,10 @@ export default function ManageUsers() {
                     }
                   : prev,
               );
-              showToast({ message: "Role removed.", type: "success" });
+              Alert.alert("Success", "Role removed.");
             } catch (e) {
               console.error(e);
-              showToast({ message: "Failed to remove role.", type: "error" });
+              Alert.alert("Error", "Failed to remove role.");
             } finally {
               setUpdating(false);
             }
@@ -512,7 +442,7 @@ export default function ManageUsers() {
 
   const handleAssignClassTeacher = async (targetClassId: string) => {
     const teacher = assignmentModal.target;
-    if (!teacher || !canEdit) return;
+    if (!teacher) return;
     setUpdating(true);
     try {
       const isAlreadyAssigned = teacher.classTeacherOf === targetClassId;
@@ -524,7 +454,7 @@ export default function ManageUsers() {
         });
       if (targetClassId && !isAlreadyAssigned) {
         const classDoc = await getDoc(doc(db, "classes", targetClassId));
-        const oldId = (classDoc.data() as any)?.classTeacherId;
+        const oldId = classDoc.data()?.classTeacherId;
         if (oldId && oldId !== teacher.uid)
           batch.update(doc(db, "users", oldId), { classTeacherOf: null });
       }
@@ -539,20 +469,20 @@ export default function ManageUsers() {
         });
       await batch.commit();
       setAssignmentModal({ type: "none", target: null });
-      showToast({ message: "Class Teacher assigned.", type: "success" });
+      Alert.alert("Success", "Class Teacher assigned.");
     } catch {
-      showToast({ message: "Assignment failed.", type: "error" });
+      Alert.alert("Error", "Assignment failed.");
     } finally {
       setUpdating(false);
     }
   };
 
   const handleToggleScholarship = async (user: User) => {
-    if (!isSuperAdmin || !canEdit)
-      return showToast({
-        message: "Only super admins can update scholarship status.",
-        type: "error",
-      });
+    if (!isSuperAdmin)
+      return Alert.alert(
+        "Denied",
+        "Only super admins can update scholarship status.",
+      );
     setUpdating(true);
     try {
       const newVal = !user.onScholarship;
@@ -560,19 +490,18 @@ export default function ManageUsers() {
       setViewingUser((prev) =>
         prev ? { ...prev, onScholarship: newVal } : null,
       );
-      showToast({
-        message: `Student is ${newVal ? "now" : "no longer"} on scholarship.`,
-        type: "success",
-      });
+      Alert.alert(
+        "Success",
+        `Student is ${newVal ? "now" : "no longer"} on scholarship.`,
+      );
     } catch {
-      showToast({ message: "Update failed.", type: "error" });
+      Alert.alert("Error", "Update failed.");
     } finally {
       setUpdating(false);
     }
   };
 
   const handleArchiveBasic9 = async () => {
-    if (!canEdit) return;
     const currentClassName =
       allClasses.find((c) => c.id === selectedClassId)?.name || "";
     const isBasic9 =
@@ -580,17 +509,17 @@ export default function ManageUsers() {
       currentClassName.toLowerCase().includes("grade 9");
 
     if (!isBasic9)
-      return showToast({
-        message: "Graduation can only be triggered from the Basic 9 student list.",
-        type: "error",
-      });
+      return Alert.alert(
+        "Invalid Action",
+        "Graduation can only be triggered from the Basic 9 student list.",
+      );
 
     const basic9Students = users.filter((u) => u.status !== "archived");
     if (basic9Students.length === 0)
-      return showToast({
-        message: "No active Basic 9 students found to graduate.",
-        type: "error",
-      });
+      return Alert.alert(
+        "Empty List",
+        "No active Basic 9 students found to graduate.",
+      );
 
     Alert.alert(
       "Confirm Graduation",
@@ -622,12 +551,12 @@ export default function ManageUsers() {
                 await batch.commit();
               }
 
-              showToast({
-                message: `Graduation for ${currentYear} completed.`,
-                type: "success",
-              });
+              Alert.alert(
+                "Success",
+                `Graduation for ${currentYear} completed.`,
+              );
             } catch (e) {
-              showToast({ message: "Graduation process failed.", type: "error" });
+              Alert.alert("Error", "Graduation process failed.");
             } finally {
               setUpdating(false);
             }
@@ -638,7 +567,6 @@ export default function ManageUsers() {
   };
 
   const handleRemoveRole = async (user: User, role: string) => {
-    if (!canEdit) return;
     try {
       const userRef = doc(db, "users", user.uid);
       await updateDoc(userRef, { assignedRoles: arrayRemove(role) });
@@ -651,14 +579,14 @@ export default function ManageUsers() {
           });
         await batch.commit();
       }
-      showToast({ message: "Role removed.", type: "success" });
+      Alert.alert("Success", "Role removed.");
     } catch {
-      showToast({ message: "Remove failed.", type: "error" });
+      Alert.alert("Error", "Remove failed.");
     }
   };
 
   const handleDeleteUser = (user: User) => {
-    if (user.uid === appUser?.uid || !canEdit) return;
+    if (user.uid === appUser?.uid) return;
     Alert.alert(
       "Critical Action",
       `Permanently delete ${user.profile.firstName}?`,
@@ -672,10 +600,10 @@ export default function ManageUsers() {
             try {
               const deleteFn = httpsCallable(functions, "deleteUserAccount");
               await deleteFn({ uid: user.uid });
-              showToast({ message: "Account deleted.", type: "success" });
+              Alert.alert("Success", "Account deleted.");
             } catch {
               await deleteDoc(doc(db, "users", user.uid));
-              showToast({ message: "Database entry removed.", type: "success" });
+              Alert.alert("Success", "Database entry removed.");
             } finally {
               setDeletingUid(null);
               setViewingUser(null);
@@ -687,7 +615,6 @@ export default function ManageUsers() {
   };
 
   const openPermissionModal = (user: User) => {
-    if (!canEdit) return;
     // Initialize tempPermissions with explicit defaults and validate incoming values
     const defaults: Record<string, PermissionLevel> = PERMISSION_KEYS.reduce(
       (acc, p) => ({ ...acc, [p.key]: "deny" as PermissionLevel }),
@@ -695,9 +622,7 @@ export default function ManageUsers() {
     );
 
     const incoming = user.permissions || {};
-    const merged: Record<string, PermissionLevel> = Object.keys(
-      defaults,
-    ).reduce(
+    const merged: Record<string, PermissionLevel> = Object.keys(defaults).reduce(
       (acc, k) => {
         const val = (incoming as any)[k];
         acc[k] =
@@ -711,79 +636,6 @@ export default function ManageUsers() {
 
     setTempPermissions(merged);
     setAssignmentModal({ type: "permissions", target: user });
-  };
-
-  const handleUpdateProfile = async () => {
-    if (!assignmentModal.target || !canEdit) return;
-    if (!editFirstName.trim() || !editLastName.trim()) {
-      return showToast({ message: "Names cannot be empty.", type: "error" });
-    }
-    setUpdating(true);
-    try {
-      const updates: any = {
-        "profile.firstName": editFirstName.trim(),
-        "profile.lastName": editLastName.trim(),
-      };
-      if (editDob) {
-        updates.dateOfBirth = Timestamp.fromDate(editDob);
-      }
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), updates);
-
-      // Update local state for the viewing user if it matches
-      if (viewingUser?.uid === assignmentModal.target.uid) {
-        setViewingUser({
-          ...viewingUser,
-          profile: { ...viewingUser.profile, firstName: editFirstName.trim(), lastName: editLastName.trim() },
-          dateOfBirth: editDob ? Timestamp.fromDate(editDob) : viewingUser.dateOfBirth
-        });
-      }
-
-      setAssignmentModal({ type: "none", target: null });
-      showToast({ message: "Profile updated.", type: "success" });
-    } catch {
-      showToast({ message: "Update failed.", type: "error" });
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleUpdateUserEmail = async () => {
-    if (!assignmentModal.target || !editEmail.trim() || !canEdit) return;
-    setUpdating(true);
-    try {
-      const updateEmailFn = httpsCallable(functions, "updateUserEmail");
-      await updateEmailFn({ uid: assignmentModal.target.uid, newEmail: editEmail.trim() });
-
-      if (viewingUser?.uid === assignmentModal.target.uid) {
-        setViewingUser({ ...viewingUser, profile: { ...viewingUser.profile, email: editEmail.trim() } });
-      }
-
-      setAssignmentModal({ type: "none", target: null });
-      showToast({ message: "Email updated successfully.", type: "success" });
-    } catch (err: any) {
-      showToast({ message: err.message || "Failed to update email.", type: "error" });
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleUpdateUserPassword = async () => {
-    if (!assignmentModal.target || !editPassword.trim() || !canEdit) return;
-    if (editPassword.length < 6) {
-      return showToast({ message: "Password must be at least 6 characters.", type: "error" });
-    }
-    setUpdating(true);
-    try {
-      const updatePwFn = httpsCallable(functions, "updateUserPassword");
-      await updatePwFn({ uid: assignmentModal.target.uid, newPassword: editPassword.trim() });
-      setAssignmentModal({ type: "none", target: null });
-      setEditPassword("");
-      showToast({ message: "Password updated successfully.", type: "success" });
-    } catch (err: any) {
-      showToast({ message: err.message || "Failed to update password.", type: "error" });
-    } finally {
-      setUpdating(false);
-    }
   };
 
   const formatDate = (date: any) => {
@@ -957,7 +809,7 @@ export default function ManageUsers() {
             <TouchableOpacity
               style={styles.userCard}
               onLongPress={() =>
-                canEdit && item.role === "teacher" &&
+                item.role === "teacher" &&
                 setAssignmentModal({ type: "assign_as", target: item })
               }
               onPress={() => {
@@ -983,11 +835,9 @@ export default function ManageUsers() {
                 <Text style={styles.userSubText}>
                   {item.status === "archived"
                     ? `Archived (${item.archivedInYear || "N/A"})`
-                    : item.role === "staff"
-                      ? `Salary: ₵${(item.salary || 0).toLocaleString()}`
-                      : allClasses.find((c) => c.id === item.classId)?.name ||
-                        item.adminRole ||
-                        item.role.toUpperCase()}
+                    : allClasses.find((c) => c.id === item.classId)?.name ||
+                      item.adminRole ||
+                      item.role.toUpperCase()}
                 </Text>
                 <View style={styles.badgeRow}>
                   {item.role === "teacher" && item.classTeacherOf && (
@@ -1098,70 +948,67 @@ export default function ManageUsers() {
                       {viewingUser.profile?.firstName}{" "}
                       {viewingUser.profile?.lastName}
                     </Text>
-                    <View style={styles.roleBadgeContainer}>
-                      <Text style={styles.detailRole}>
-                        {viewingUser.adminRole ||
-                          viewingUser.role.toUpperCase()}
-                      </Text>
-                    </View>
-
+                    <Text style={styles.detailRole}>
+                      {viewingUser.adminRole || viewingUser.role.toUpperCase()}
+                    </Text>
                     {viewingUser.assignedRoles &&
                       viewingUser.assignedRoles.length > 0 && (
-                        <View style={styles.assignedRolesWrapper}>
-                          <Text style={styles.assignedRolesTitle}>
-                            SPECIAL ASSIGNMENTS
-                          </Text>
-                          <View style={styles.assignedRolesGrid}>
-                            {viewingUser.assignedRoles.map((r, idx) => (
-                              <View key={idx} style={styles.modernRoleBadge}>
-                                <SVGIcon
-                                  name="star"
-                                  size={12}
-                                  color="#4f46e5"
-                                />
-                                <Text style={styles.modernRoleText}>{r}</Text>
-                                {canEdit && (
-                                  <TouchableOpacity
-                                    onPress={() =>
-                                      handleRemoveAssignedRole(r, viewingUser)
-                                    }
-                                    style={styles.removeRoleBtn}
-                                  >
-                                    <SVGIcon
-                                      name="close-circle"
-                                      size={16}
-                                      color="#ef4444"
-                                    />
-                                  </TouchableOpacity>
-                                )}
-                              </View>
-                            ))}
-                            {viewingUser.departmentHeadOf && (
-                              <View
-                                style={[
-                                  styles.modernRoleBadge,
-                                  {
-                                    backgroundColor: "#fff7ed",
-                                    borderColor: "#fed7aa",
-                                  },
-                                ]}
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            flexWrap: "wrap",
+                            marginTop: 8,
+                            gap: 8,
+                          }}
+                        >
+                          {viewingUser.assignedRoles.map((r, idx) => (
+                            <View
+                              key={idx}
+                              style={[
+                                styles.badge,
+                                {
+                                  backgroundColor: "#eef2ff",
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  paddingHorizontal: 10,
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[styles.badgeText, { color: "#4f46e5" }]}
                               >
-                                <SVGIcon
-                                  name="business"
-                                  size={12}
-                                  color="#b45309"
-                                />
-                                <Text
-                                  style={[
-                                    styles.modernRoleText,
-                                    { color: "#b45309" },
-                                  ]}
+                                {r}
+                              </Text>
+                              {hasManageUsersAccess && (
+                                <TouchableOpacity
+                                  onPress={() =>
+                                    handleRemoveAssignedRole(r, viewingUser)
+                                  }
+                                  style={{ marginLeft: 8 }}
                                 >
-                                  Dept Head: {viewingUser.departmentHeadOf}
-                                </Text>
-                              </View>
-                            )}
-                          </View>
+                                  <SVGIcon
+                                    name="close"
+                                    size={12}
+                                    color="#374151"
+                                  />
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          ))}
+                          {viewingUser.departmentHeadOf ? (
+                            <View
+                              style={[
+                                styles.badge,
+                                { backgroundColor: "#fff7ed" },
+                              ]}
+                            >
+                              <Text
+                                style={[styles.badgeText, { color: "#b45309" }]}
+                              >
+                                Dept: {viewingUser.departmentHeadOf}
+                              </Text>
+                            </View>
+                          ) : null}
                         </View>
                       )}
                   </View>
@@ -1215,97 +1062,6 @@ export default function ManageUsers() {
                   )}
 
                   {viewingUser.role === "teacher" && (
-                    <>
-                      <View style={styles.infoSection}>
-                        <Text style={styles.infoLabel}>
-                          Teacher Professional Profile
-                        </Text>
-                        <View style={styles.infoGrid}>
-                          <View style={styles.infoRow}>
-                            <View style={styles.infoKeyRow}>
-                              <SVGIcon
-                                name="school"
-                                size={18}
-                                color="#94A3B8"
-                              />
-                              <Text style={styles.infoKey}>Education</Text>
-                            </View>
-                            <Text style={styles.infoValue}>
-                              {viewingUser.profile?.education || "N/A"}
-                            </Text>
-                          </View>
-                          <View style={styles.infoRow}>
-                            <View style={styles.infoKeyRow}>
-                              <SVGIcon
-                                name="briefcase"
-                                size={18}
-                                color="#94A3B8"
-                              />
-                              <Text style={styles.infoKey}>Experience</Text>
-                            </View>
-                            <Text style={styles.infoValue}>
-                              {viewingUser.profile?.experience
-                                ? `${viewingUser.profile.experience} Years`
-                                : "N/A"}
-                            </Text>
-                          </View>
-                        </View>
-                        {viewingUser.profile?.bio && (
-                          <View style={styles.adminBioBox}>
-                            <Text style={styles.adminBioText}>
-                              "{viewingUser.profile.bio}"
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-
-                      {(viewingUser.subjects?.length ?? 0) > 0 && (
-                        <View style={styles.infoSection}>
-                          <Text style={styles.infoLabel}>Subjects Handled</Text>
-                          <View style={styles.adminTagGrid}>
-                            {viewingUser.subjects?.map((s, i) => (
-                              <View key={i} style={styles.adminSubjectTag}>
-                                <Text style={styles.adminTagText}>{s}</Text>
-                              </View>
-                            ))}
-                          </View>
-                        </View>
-                      )}
-
-                      {(viewingUser.classes?.length ?? 0) > 0 && (
-                        <View style={styles.infoSection}>
-                          <Text style={styles.infoLabel}>Classes Assigned</Text>
-                          <View style={styles.adminTagGrid}>
-                            {viewingUser.classes?.map((c, i) => {
-                              const className =
-                                allClasses.find((cls) => cls.id === c)?.name ||
-                                c;
-                              return (
-                                <View
-                                  key={i}
-                                  style={[
-                                    styles.adminSubjectTag,
-                                    { backgroundColor: "#F1F5F9" },
-                                  ]}
-                                >
-                                  <Text
-                                    style={[
-                                      styles.adminTagText,
-                                      { color: "#475569" },
-                                    ]}
-                                  >
-                                    {className}
-                                  </Text>
-                                </View>
-                              );
-                            })}
-                          </View>
-                        </View>
-                      )}
-                    </>
-                  )}
-
-                  {viewingUser.role === "teacher" && (
                     <View style={styles.infoSection}>
                       <Text style={styles.infoLabel}>Teaching Assignments</Text>
                       <View style={styles.infoGrid}>
@@ -1326,74 +1082,35 @@ export default function ManageUsers() {
                   <View style={styles.infoSection}>
                     <Text style={styles.infoLabel}>Bio Information</Text>
                     <View style={styles.infoGrid}>
-                      {viewingUser.role !== "staff" && (
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoKey}>Email:</Text>
+                        <Text style={styles.infoValue}>
+                          {viewingUser.profile?.email || "N/A"}
+                        </Text>
+                      </View>
+                      {viewingUser.role !== "student" && (
                         <View style={styles.infoRow}>
-                          <View style={styles.infoKeyRow}>
-                            <SVGIcon name="mail" size={18} color="#94A3B8" />
-                            <Text style={styles.infoKey}>Email</Text>
-                          </View>
+                          <Text style={styles.infoKey}>Phone:</Text>
                           <Text style={styles.infoValue}>
-                            {viewingUser.profile?.email || "N/A"}
+                            {viewingUser.profile?.phone || "N/A"}
                           </Text>
                         </View>
                       )}
-                      {viewingUser.role !== "student" &&
-                        viewingUser.role !== "staff" && (
-                          <View style={styles.infoRow}>
-                            <View style={styles.infoKeyRow}>
-                              <SVGIcon name="call" size={18} color="#94A3B8" />
-                              <Text style={styles.infoKey}>Phone</Text>
-                            </View>
-                            <Text style={styles.infoValue}>
-                              {viewingUser.profile?.phone || "N/A"}
-                            </Text>
-                          </View>
-                        )}
-                      {viewingUser.role !== "staff" && (
-                        <View style={styles.infoRow}>
-                          <View style={styles.infoKeyRow}>
-                            <SVGIcon name="person" size={18} color="#94A3B8" />
-                            <Text style={styles.infoKey}>Gender</Text>
-                          </View>
-                          <Text style={styles.infoValue}>
-                            {viewingUser.profile?.gender || "N/A"}
-                          </Text>
-                        </View>
-                      )}
-                      {viewingUser.role !== "admin" &&
-                        viewingUser.role !== "parent" &&
-                        viewingUser.role !== "staff" && (
-                          <View style={styles.infoRow}>
-                            <View style={styles.infoKeyRow}>
-                              <SVGIcon
-                                name="calendar"
-                                size={18}
-                                color="#94A3B8"
-                              />
-                              <Text style={styles.infoKey}>Date of Birth</Text>
-                            </View>
-                            <Text style={styles.infoValue}>
-                              {formatDate(viewingUser.dateOfBirth)}
-                            </Text>
-                          </View>
-                        )}
-                      {viewingUser.role === "staff" && (
-                        <View style={styles.infoRow}>
-                          <View style={styles.infoKeyRow}>
-                            <SVGIcon name="cash" size={18} color="#94A3B8" />
-                            <Text style={styles.infoKey}>Monthly Salary</Text>
-                          </View>
-                          <Text style={styles.infoValue}>
-                            ₵{(viewingUser.salary || 0).toLocaleString()}
-                          </Text>
-                        </View>
-                      )}
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoKey}>Gender:</Text>
+                        <Text style={styles.infoValue}>
+                          {viewingUser.profile?.gender || "N/A"}
+                        </Text>
+                      </View>
+                      <View style={styles.infoRow}>
+                        <Text style={styles.infoKey}>Date of Birth:</Text>
+                        <Text style={styles.infoValue}>
+                          {formatDate(viewingUser.dateOfBirth)}
+                        </Text>
+                      </View>
                       {viewingUser.role === "student" && (
                         <View style={styles.infoRow}>
-                          <View style={styles.infoKeyRow}>
-                            <SVGIcon name="school" size={18} color="#94A3B8" />
-                            <Text style={styles.infoKey}>Current Class</Text>
-                          </View>
+                          <Text style={styles.infoKey}>Current Class:</Text>
                           <Text style={styles.infoValue}>
                             {allClasses.find(
                               (c) => c.id === viewingUser.classId,
@@ -1416,7 +1133,7 @@ export default function ManageUsers() {
                           <View key={u.uid} style={styles.linkedItem}>
                             <Image
                               source={
-                                u.profile?.profileImage && u.role !== "parent"
+                                u.profile?.profileImage
                                   ? { uri: u.profile.profileImage }
                                   : DEFAULT_AVATAR
                               }
@@ -1432,8 +1149,8 @@ export default function ManageUsers() {
                                   "Contact linked"}
                               </Text>
                             </View>
-                            {/* UNLINK BUTTON FOR ADMINS/CLASS TEACHERS */}
-                            {viewingUser.role === "student" && canEdit && (
+                            {/* UNLINK BUTTON FOR ADMINS */}
+                            {viewingUser.role === "student" && (
                               <TouchableOpacity
                                 style={styles.unlinkBtn}
                                 onPress={() => {
@@ -1462,7 +1179,7 @@ export default function ManageUsers() {
                   )}
 
                   <View style={styles.btnStack}>
-                    {canEdit && viewingUser.role === "admin" && isSuperAdmin && (
+                    {viewingUser.role === "admin" && isSuperAdmin && (
                       <TouchableOpacity
                         style={[
                           styles.actionButton,
@@ -1475,30 +1192,26 @@ export default function ManageUsers() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {canEdit &&
-                      (viewingUser.role === "teacher" ||
-                        viewingUser.role === "staff") && (
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            { backgroundColor: COLORS.secondary || "#c53b59" },
-                          ]}
-                          onPress={() => {
-                            setNewsPermission(
-                              viewingUser.canCreateNews || false,
-                            );
-                            setAssignmentModal({
-                              type: "assign_more",
-                              target: viewingUser,
-                            });
-                          }}
-                        >
-                          <Text style={styles.actionButtonText}>
-                            Modify Authority
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                    {canEdit && viewingUser.role === "student" && isSuperAdmin && (
+                    {viewingUser.role === "teacher" && (
+                      <TouchableOpacity
+                        style={[
+                          styles.actionButton,
+                          { backgroundColor: COLORS.secondary || "#c53b59" },
+                        ]}
+                        onPress={() => {
+                          setNewsPermission(viewingUser.canCreateNews || false);
+                          setAssignmentModal({
+                            type: "assign_as",
+                            target: viewingUser,
+                          });
+                        }}
+                      >
+                        <Text style={styles.actionButtonText}>
+                          Modify Authority
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {viewingUser.role === "student" && isSuperAdmin && (
                       <TouchableOpacity
                         style={[
                           styles.actionButton,
@@ -1526,52 +1239,19 @@ export default function ManageUsers() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {viewingUser.role === "student" && canEdit && (
-                      <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginTop: 12 }}>
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            { backgroundColor: COLORS.primary, flex: 1, marginHorizontal: 0 },
-                          ]}
-                          onPress={() => {
-                            setEditFirstName(viewingUser.profile.firstName);
-                            setEditLastName(viewingUser.profile.lastName);
-                            setEditDob(viewingUser.dateOfBirth ? (viewingUser.dateOfBirth.toDate ? viewingUser.dateOfBirth.toDate() : new Date(viewingUser.dateOfBirth)) : null);
-                            setAssignmentModal({ type: "edit_profile", target: viewingUser });
-                          }}
-                        >
-                          <Text style={styles.actionButtonText}>Edit Name/DOB</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            { backgroundColor: COLORS.secondary, flex: 1, marginHorizontal: 0 },
-                          ]}
-                          onPress={() => {
-                            setEditEmail(viewingUser.profile.email || "");
-                            setEditPassword("");
-                            setAssignmentModal({ type: "edit_email", target: viewingUser });
-                          }}
-                        >
-                          <Text style={styles.actionButtonText}>Edit Auth</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                    {canEdit && (
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          { backgroundColor: "#fee2e2", marginTop: 12 },
-                        ]}
-                        onPress={() => handleDeleteUser(viewingUser)}
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        { backgroundColor: "#fee2e2", marginTop: 12 },
+                      ]}
+                      onPress={() => handleDeleteUser(viewingUser)}
+                    >
+                      <Text
+                        style={[styles.actionButtonText, { color: "#ef4444" }]}
                       >
-                        <Text
-                          style={[styles.actionButtonText, { color: "#ef4444" }]}
-                        >
-                          Delete Account
-                        </Text>
-                      </TouchableOpacity>
-                    )}
+                        Delete Account
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               )}
@@ -1606,98 +1286,7 @@ export default function ManageUsers() {
               contentContainerStyle={{ padding: 25, paddingBottom: 60 }}
               showsVerticalScrollIndicator={false}
             >
-              {assignmentModal.type === "edit_profile" && (
-                <View>
-                  <Text style={styles.modalLabel}>FIRST NAME</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={editFirstName}
-                    onChangeText={setEditFirstName}
-                    placeholder="First Name"
-                  />
-                  <Text style={[styles.modalLabel, { marginTop: 15 }]}>LAST NAME</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={editLastName}
-                    onChangeText={setEditLastName}
-                    placeholder="Last Name"
-                  />
-                  <Text style={[styles.modalLabel, { marginTop: 15 }]}>DATE OF BIRTH</Text>
-                  <TouchableOpacity
-                    style={styles.textInput}
-                    onPress={() => setShowDatePicker(true)}
-                  >
-                    <Text style={{ color: editDob ? "#1E293B" : "#94A3B8" }}>
-                      {editDob ? editDob.toLocaleDateString() : "Select Date"}
-                    </Text>
-                  </TouchableOpacity>
-                  {showDatePicker && (
-                    <DateTimePicker
-                      value={editDob || new Date()}
-                      mode="date"
-                      display="default"
-                      onChange={(event, date) => {
-                        setShowDatePicker(false);
-                        if (date) setEditDob(date);
-                      }}
-                    />
-                  )}
-                  <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
-                    onPress={handleUpdateProfile}
-                    disabled={updating}
-                  >
-                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Profile Changes</Text>}
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {assignmentModal.type === "edit_email" && (
-                <View>
-                  <Text style={styles.modalLabel}>EMAIL ADDRESS</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={editEmail}
-                    onChangeText={setEditEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                  />
-                  <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
-                    onPress={handleUpdateUserEmail}
-                    disabled={updating}
-                  >
-                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Email</Text>}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: COLORS.secondary, marginTop: 10 }]}
-                    onPress={() => setAssignmentModal({ ...assignmentModal, type: "edit_password" })}
-                  >
-                    <Text style={styles.saveBtnText}>Change Password Instead</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {assignmentModal.type === "edit_password" && (
-                <View>
-                  <Text style={styles.modalLabel}>NEW PASSWORD</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={editPassword}
-                    onChangeText={setEditPassword}
-                    secureTextEntry
-                    placeholder="Min 6 characters"
-                  />
-                  <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
-                    onPress={handleUpdateUserPassword}
-                    disabled={updating}
-                  >
-                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Password</Text>}
-                  </TouchableOpacity>
-                </View>
-              )}
-              {assignmentModal.type === "assign_more" && (
+              {assignmentModal.type === "assign_as" && (
                 <>
                   <View style={styles.switchRow}>
                     <View>
@@ -1783,15 +1372,10 @@ export default function ManageUsers() {
                     <Text style={styles.permTitle}>{pk.label}</Text>
                     <View style={styles.permPickerBox}>
                       <Picker
-                        selectedValue={
-                          (tempPermissions[pk.key] || "deny") as any
-                        }
+                        selectedValue={(tempPermissions[pk.key] || "deny") as any}
                         onValueChange={(v) => {
                           const safe =
-                            v === "full" ||
-                            v === "view" ||
-                            v === "edit" ||
-                            v === "deny"
+                            v === "full" || v === "view" || v === "edit" || v === "deny"
                               ? (v as PermissionLevel)
                               : "deny";
                           setTempPermissions((prev) => ({
@@ -1885,10 +1469,10 @@ export default function ManageUsers() {
                     ]}
                     onPress={() => {
                       if (!customRoleText || !customRoleText.trim())
-                        return showToast({
-                          message: "Please enter a role name.",
-                          type: "error",
-                        });
+                        return Alert.alert(
+                          "Error",
+                          "Please enter a role name.",
+                        );
                       handleAssignRole(customRoleText.trim());
                     }}
                     disabled={updating}
@@ -2059,90 +1643,9 @@ const styles = StyleSheet.create({
   detailName: { fontSize: 24, fontWeight: "800", color: "#1E293B" },
   detailRole: {
     fontSize: 14,
-    color: "#fff",
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  roleBadgeContainer: {
-    backgroundColor: COLORS.primary || "#2e86de",
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginTop: 8,
-    ...SHADOWS.small,
-  },
-  assignedRolesWrapper: {
-    width: "100%",
-    marginTop: 20,
-    alignItems: "center",
-  },
-  assignedRolesTitle: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#94A3B8",
-    letterSpacing: 1.5,
-    marginBottom: 10,
-  },
-  assignedRolesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 10,
-  },
-  modernRoleBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#EEF2FF",
-    borderWidth: 1,
-    borderColor: "#C7D2FE",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 15,
-    gap: 8,
-  },
-  modernRoleText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#4F46E5",
-  },
-  removeRoleBtn: {
-    marginLeft: 4,
-  },
-  infoKeyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-  },
-  adminBioBox: {
-    backgroundColor: "#F8FAFC",
-    padding: 15,
-    borderRadius: 15,
-    marginTop: 15,
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primary || "#2e86de",
-  },
-  adminBioText: {
-    fontSize: 13,
-    color: "#64748B",
-    fontStyle: "italic",
-    lineHeight: 20,
-  },
-  adminTagGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  adminSubjectTag: {
-    backgroundColor: (COLORS.primary || "#2e86de") + "15",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  adminTagText: {
-    fontSize: 12,
-    fontWeight: "700",
     color: COLORS.primary || "#2e86de",
+    fontWeight: "700",
+    marginTop: 4,
   },
   financeCardRow: {
     flexDirection: "row",
@@ -2270,12 +1773,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   pickerLabel: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#475569",
-    marginBottom: 6,
-  },
-  modalLabel: {
     fontSize: 12,
     fontWeight: "900",
     color: "#475569",

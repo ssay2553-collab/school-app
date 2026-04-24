@@ -52,9 +52,15 @@ export default function StudentLoginScreen() {
 
     setLoading(true);
     try {
+      let finalEmail = email.trim().toLowerCase();
+      if (!finalEmail.includes("@")) {
+        // Apply the same auto-formatting used in signup
+        finalEmail = `${finalEmail}@${SCHOOL_CONFIG.schoolId || 'student'}.edueaz.com`;
+      }
+
       const cred = await signInWithEmailAndPassword(
         auth,
-        email.trim().toLowerCase(),
+        finalEmail,
         password,
       );
 
@@ -149,10 +155,10 @@ export default function StudentLoginScreen() {
               style={[styles.card, isWeb && { opacity: 1 }]}
             >
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>MY EMAIL</Text>
+                <Text style={styles.label}>EMAIL OR USERNAME</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="me@school.com"
+                  placeholder="e.g. kojo123"
                   placeholderTextColor="#94A3B8"
                   autoCapitalize="none"
                   value={email}

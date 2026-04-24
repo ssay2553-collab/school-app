@@ -39,6 +39,8 @@ import { auth, db, storage } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
+import { getDocsCacheFirst } from "../../../lib/firestoreHelpers";
+
 const { width } = Dimensions.get("window");
 
 interface ClassItem {
@@ -77,11 +79,14 @@ export default function StudentSignupScreen() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const snap = await getDocs(collection(db, "classes"));
-        const list: ClassItem[] = [];
-        snap.forEach((d) =>
-          list.push({ id: d.id, name: d.data().name || d.id }),
-        );
+        // Fetch classes and use "safe filter" to include legacy docs or school-specific ones
+        const q = query(collection(db, "classes"));
+        const snap = await getDocsCacheFirst(q as any);
+        const list = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() } as any))
+          .filter((d) => !d.schoolId || d.schoolId === SCHOOL_CONFIG.schoolId)
+          .map((d) => ({ id: d.id, name: d.name || d.id }));
+
         setClasses(list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
       } catch (err) {
         console.error("Failed to fetch classes:", err);
@@ -198,8 +203,15 @@ export default function StudentSignupScreen() {
         throw new Error("This code isn't for you or it's already been used! Check your class and code again.");
       }
 
+      // Auto-format "email" if they just entered a username
+      let finalEmail = form.email.trim().toLowerCase();
+      if (!finalEmail.includes("@")) {
+        // Append a virtual domain so Firebase Auth accepts it as an email format
+        finalEmail = `${finalEmail}@${SCHOOL_CONFIG.schoolId || 'student'}.edueaz.com`;
+      }
+
       // Create Authentication Entry
-      const cred = await createUserWithEmailAndPassword(auth, form.email.trim().toLowerCase(), form.password);
+      const cred = await createUserWithEmailAndPassword(auth, finalEmail, form.password);
       const userId = cred.user.uid;
 
       // Ensure session is fresh for Firestore rules
@@ -315,7 +327,7 @@ export default function StudentSignupScreen() {
 
                 <InputField label="FIRST NAME" placeholder="Your first name" value={form.firstName} onChangeText={(v: string) => setForm({ ...form, firstName: v })} />
                 <InputField label="LAST NAME" placeholder="Your last name" value={form.lastName} onChangeText={(v: string) => setForm({ ...form, lastName: v })} />
-                <InputField label="EMAIL" placeholder="you@school.com" value={form.email} onChangeText={(v: string) => setForm({ ...form, email: v })} autoCapitalize="none" keyboardType="email-address" />
+                <InputField label="EMAIL OR USERNAME" placeholder="e.g. kojo123" value={form.email} onChangeText={(v: string) => setForm({ ...form, email: v })} autoCapitalize="none" keyboardType="email-address" />
                 <InputField 
                   label="PASSWORD" 
                   placeholder="••••••••" 

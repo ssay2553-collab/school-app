@@ -544,6 +544,7 @@ export default function ManageFees() {
 
         // Correct balance calculation: Arrears (debt before this term) + New Total Bill - Discount - Amount Paid this term
         const newBalance = arrears + newBill - discount - totalPaid;
+        const totalPayable = arrears + newBill;
 
         if (isNaN(newBalance)) {
           console.error(`Invalid balance calculation for student ${uid}`);
@@ -562,6 +563,7 @@ export default function ManageFees() {
           arrears: arrears,
           amountPaid: totalPaid,
           balance: newBalance,
+          totalPayable: totalPayable,
           editCount: currentEditCount + 1,
           lastUpdated: serverTimestamp(),
         };
@@ -624,12 +626,33 @@ export default function ManageFees() {
         className: selectedStudent.className,
       };
 
-      batch.update(doc(db, "studentFeeRecords", recordId), {
-        amountPaid: increment(amount),
-        balance: increment(-amount),
-        payments: arrayUnion(entry),
-        lastUpdated: serverTimestamp(),
-      });
+      if (!selectedStudent.hasRecordInTerm) {
+        batch.set(doc(db, "studentFeeRecords", recordId), {
+          studentUid: selectedStudent.uid,
+          schoolId: SCHOOL_CONFIG.schoolId || "unknown",
+          studentName: selectedStudent.fullName,
+          classId: selectedStudent.classId,
+          className: selectedStudent.className,
+          academicYear,
+          term,
+          termBill: 0,
+          arrears: selectedStudent.previousBalance || 0,
+          amountPaid: amount,
+          balance: (selectedStudent.previousBalance || 0) - amount,
+          totalPayable: selectedStudent.previousBalance || 0,
+          payments: [entry],
+          editCount: 0,
+          createdAt: serverTimestamp(),
+          lastUpdated: serverTimestamp(),
+        });
+      } else {
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          amountPaid: increment(amount),
+          balance: increment(-amount),
+          payments: arrayUnion(entry),
+          lastUpdated: serverTimestamp(),
+        });
+      }
       batch.update(doc(db, "users", selectedStudent.uid), {
         walletBalance: increment(-amount),
         schoolId: SCHOOL_CONFIG.schoolId // Fix potential missing schoolId
@@ -1013,7 +1036,7 @@ export default function ManageFees() {
               <View style={styles.bulkInputContainer}>
                 <Text style={styles.bulkSym}>₵</Text>
                 <TextInput
-                  placeholder="Adjust Debt (+/-)"
+                  placeholder="Bulk Bill (+/-)"
                   placeholderTextColor={VIBE.muted}
                   style={styles.bulkInput}
                   keyboardType="numbers-and-punctuation"
@@ -1778,13 +1801,12 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    marginRight: 15,
     minWidth: 0,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 15,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -1795,18 +1817,18 @@ const styles = StyleSheet.create({
   debtLabel: { fontSize: 12, fontWeight: "600" },
   debtValue: { fontSize: 12, fontWeight: "800" },
   rightSection: {
-    width: 120,
+    marginLeft: 10,
     alignItems: "flex-end",
     justifyContent: "center",
   },
   billingBubble: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 15,
     backgroundColor: "#F1F5F9",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    minWidth: 90,
+    width: 80,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -1832,6 +1854,7 @@ const styles = StyleSheet.create({
     color: VIBE.text,
     textAlign: "center",
     minWidth: 40,
+    flexShrink: 1,
     padding: 0,
     ...(Platform.OS === 'android' ? {} : { letterSpacing: 0.5 }),
   },

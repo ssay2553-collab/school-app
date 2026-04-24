@@ -145,9 +145,16 @@ export default function ManageUsers() {
       | "class_teacher"
       | "dept_head"
       | "permissions"
-      | "other";
+      | "other"
+      | "edit_profile";
     target: User | null;
   }>({ type: "none", target: null });
+
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editDob, setEditDob] = useState<Date | null>(null);
 
   const [customRoleText, setCustomRoleText] = useState("");
   const [deptText, setDeptText] = useState("");
@@ -586,10 +593,16 @@ export default function ManageUsers() {
   };
 
   const handleDeleteUser = (user: User) => {
-    if (user.uid === appUser?.uid) return;
+    if (user.uid === appUser?.uid) {
+      return Alert.alert("Error", "You cannot delete your own account.");
+    }
+    if (!hasManageUsersAccess) {
+      return Alert.alert("Denied", "You do not have permission to delete users.");
+    }
+
     Alert.alert(
       "Critical Action",
-      `Permanently delete ${user.profile.firstName}?`,
+      `Permanently delete ${user.profile.firstName} (${user.role})? This action cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -598,12 +611,20 @@ export default function ManageUsers() {
           onPress: async () => {
             setDeletingUid(user.uid);
             try {
+              // Attempt to delete auth account via cloud function
               const deleteFn = httpsCallable(functions, "deleteUserAccount");
               await deleteFn({ uid: user.uid });
               Alert.alert("Success", "Account deleted.");
-            } catch {
-              await deleteDoc(doc(db, "users", user.uid));
-              Alert.alert("Success", "Database entry removed.");
+            } catch (error: any) {
+              console.error("Cloud function deletion failed:", error);
+              // Fallback: Delete Firestore document if cloud function fails or if admin wants to force cleanup
+              try {
+                await deleteDoc(doc(db, "users", user.uid));
+                Alert.alert("Success", "Database entry removed.");
+              } catch (dbError) {
+                console.error("Database deletion failed:", dbError);
+                Alert.alert("Error", "Failed to delete user record.");
+              }
             } finally {
               setDeletingUid(null);
               setViewingUser(null);
@@ -636,6 +657,81 @@ export default function ManageUsers() {
 
     setTempPermissions(merged);
     setAssignmentModal({ type: "permissions", target: user });
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!assignmentModal.target || !hasManageUsersAccess) return;
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      return Alert.alert("Error", "Names cannot be empty.");
+    }
+    setUpdating(true);
+    try {
+      const updates: any = {
+        "profile.firstName": editFirstName.trim(),
+        "profile.lastName": editLastName.trim(),
+        "profile.phone": editPhone.trim(),
+      };
+
+      if (editDob) {
+        updates.dateOfBirth = Timestamp.fromDate(editDob);
+      }
+
+      await updateDoc(doc(db, "users", assignmentModal.target.uid), updates);
+
+      // Update local state for the list
+      setUsers(prev => prev.map(u => u.uid === assignmentModal.target?.uid ? {
+        ...u,
+        profile: { ...u.profile, firstName: editFirstName.trim(), lastName: editLastName.trim(), phone: editPhone.trim() },
+        dateOfBirth: editDob ? Timestamp.fromDate(editDob) : u.dateOfBirth
+      } : u));
+
+      // Update viewing user if open
+      if (viewingUser?.uid === assignmentModal.target.uid) {
+        setViewingUser(prev => prev ? {
+          ...prev,
+          profile: { ...prev.profile, firstName: editFirstName.trim(), lastName: editLastName.trim(), phone: editPhone.trim() },
+          dateOfBirth: editDob ? Timestamp.fromDate(editDob) : prev.dateOfBirth
+        } : null);
+      }
+
+      Alert.alert("Success", "Profile updated.");
+      setAssignmentModal({ type: "none", target: null });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Update failed.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!assignmentModal.target || !editEmail.trim() || !hasManageUsersAccess) return;
+    setUpdating(true);
+    try {
+      const updateEmailFn = httpsCallable(functions, "updateUserEmail");
+      await updateEmailFn({ uid: assignmentModal.target.uid, newEmail: editEmail.trim() });
+
+      // Update Firestore doc
+      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
+        "profile.email": editEmail.trim()
+      });
+
+      Alert.alert("Success", "Email updated.");
+      setAssignmentModal({ type: "none", target: null });
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Failed to update email.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const openEditProfile = (user: User) => {
+    setEditFirstName(user.profile.firstName);
+    setEditLastName(user.profile.lastName);
+    setEditEmail(user.profile.email || "");
+    setEditPhone(user.profile.phone || "");
+    setEditDob(user.dateOfBirth?.toDate ? user.dateOfBirth.toDate() : user.dateOfBirth ? new Date(user.dateOfBirth) : null);
+    setAssignmentModal({ type: "edit_profile", target: user });
   };
 
   const formatDate = (date: any) => {
@@ -1242,6 +1338,15 @@ export default function ManageUsers() {
                     <TouchableOpacity
                       style={[
                         styles.actionButton,
+                        { backgroundColor: COLORS.success || "#05ac5b", marginBottom: 12 },
+                      ]}
+                      onPress={() => openEditProfile(viewingUser)}
+                    >
+                      <Text style={styles.actionButtonText}>Edit Profile Info</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
                         { backgroundColor: "#fee2e2", marginTop: 12 },
                       ]}
                       onPress={() => handleDeleteUser(viewingUser)}
@@ -1482,6 +1587,56 @@ export default function ManageUsers() {
                     ) : (
                       <Text style={styles.saveBtnText}>Assign Role</Text>
                     )}
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {assignmentModal.type === "edit_profile" && (
+                <View>
+                  <Text style={styles.pickerLabel}>First Name</Text>
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 15 }]}
+                    value={editFirstName}
+                    onChangeText={setEditFirstName}
+                  />
+                  <Text style={styles.pickerLabel}>Last Name</Text>
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 15 }]}
+                    value={editLastName}
+                    onChangeText={setEditLastName}
+                  />
+                  <Text style={styles.pickerLabel}>Phone Number</Text>
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 15 }]}
+                    value={editPhone}
+                    onChangeText={setEditPhone}
+                    keyboardType="phone-pad"
+                  />
+
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
+                    onPress={handleUpdateProfile}
+                    disabled={updating}
+                  >
+                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Profile</Text>}
+                  </TouchableOpacity>
+
+                  <View style={{ height: 30 }} />
+                  <Text style={[styles.pickerLabel, { color: COLORS.secondary }]}>Security - Update Email</Text>
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 15 }]}
+                    value={editEmail}
+                    onChangeText={setEditEmail}
+                    placeholder="New Email Address"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.secondary }]}
+                    onPress={handleUpdateEmail}
+                    disabled={updating}
+                  >
+                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Auth Email</Text>}
                   </TouchableOpacity>
                 </View>
               )}

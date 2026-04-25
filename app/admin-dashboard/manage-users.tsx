@@ -609,17 +609,22 @@ export default function ManageUsers() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            setDeletingUid(user.uid);
+            const uidToDelete = user.uid; // Capture in closure
+            setDeletingUid(uidToDelete);
             try {
               // Attempt to delete auth account via cloud function
               const deleteFn = httpsCallable(functions, "deleteUserAccount");
-              await deleteFn({ uid: user.uid });
+              await deleteFn({ uid: uidToDelete });
+
+              // Success with cloud function means user is gone from Auth and Firestore
+              setUsers(prev => prev.filter(u => u.uid !== uidToDelete));
               Alert.alert("Success", "Account deleted.");
             } catch (error: any) {
               console.error("Cloud function deletion failed:", error);
               // Fallback: Delete Firestore document if cloud function fails or if admin wants to force cleanup
               try {
-                await deleteDoc(doc(db, "users", user.uid));
+                await deleteDoc(doc(db, "users", uidToDelete));
+                setUsers(prev => prev.filter(u => u.uid !== uidToDelete));
                 Alert.alert("Success", "Database entry removed.");
               } catch (dbError) {
                 console.error("Database deletion failed:", dbError);

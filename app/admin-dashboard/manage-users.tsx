@@ -110,7 +110,7 @@ export default function ManageUsers() {
   const acadConfig = useAcademicConfig();
 
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = ["proprietor", "headmaster"].includes(currentUserRole);
+  const isSuperAdmin = ["proprietor", "headmaster", "ceo"].includes(currentUserRole);
   const hasManageUsersAccess =
     appUser?.permissions?.["manage-users"] === "full" || isSuperAdmin;
 
@@ -508,6 +508,59 @@ export default function ManageUsers() {
     }
   };
 
+  const handleToggleArchiveStatus = async (user: User) => {
+    if (!isSuperAdmin)
+      return Alert.alert("Denied", "Only super admins can archive students.");
+
+    const isArchived = user.status === "archived";
+    const title = isArchived ? "Restore Student" : "Student Stopped School?";
+    const msg = isArchived
+      ? `Restore ${user.profile.firstName} to active status? You will need to reassign their class.`
+      : `Set ${user.profile.firstName} as 'Stopped'? This will move them to the archive and hide them from active student lists.`;
+
+    const performToggle = async () => {
+      setUpdating(true);
+      try {
+        const updates: any = {
+          status: isArchived ? "active" : "archived",
+          archivedAt: isArchived ? null : Timestamp.now(),
+        };
+
+        // If archiving, we might want to store their last class for reference
+        if (!isArchived && user.classId) {
+          updates.previousClassId = user.classId;
+          updates.classId = "archived";
+        }
+
+        await updateDoc(doc(db, "users", user.uid), updates);
+
+        setViewingUser((prev) =>
+          prev ? { ...prev, ...updates } : null
+        );
+
+        if (Platform.OS === "web") {
+          window.alert(isArchived ? "Student restored." : "Student moved to archive.");
+        } else {
+          Alert.alert("Success", isArchived ? "Student restored." : "Student moved to archive.");
+        }
+      } catch (e) {
+        console.error(e);
+        Alert.alert("Error", "Action failed.");
+      } finally {
+        setUpdating(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(msg)) performToggle();
+    } else {
+      Alert.alert(title, msg, [
+        { text: "Cancel", style: "cancel" },
+        { text: isArchived ? "Restore" : "Set to Stopped", onPress: performToggle },
+      ]);
+    }
+  };
+
   const handleArchiveBasic9 = async () => {
     const currentClassName =
       allClasses.find((c) => c.id === selectedClassId)?.name || "";
@@ -594,50 +647,99 @@ export default function ManageUsers() {
 
   const handleDeleteUser = (user: User) => {
     if (user.uid === appUser?.uid) {
-      return Alert.alert("Error", "You cannot delete your own account.");
+      if (Platform.OS === "web") {
+        window.alert("Error: You cannot delete your own account.");
+      } else {
+        Alert.alert("Error", "You cannot delete your own account.");
+      }
+      return;
     }
     if (!hasManageUsersAccess) {
-      return Alert.alert("Denied", "You do not have permission to delete users.");
+      if (Platform.OS === "web") {
+        window.alert("Denied: You do not have permission to delete users.");
+      } else {
+        Alert.alert("Denied", "You do not have permission to delete users.");
+      }
+      return;
     }
 
-    Alert.alert(
-      "Critical Action",
-      `Permanently delete ${user.profile.firstName} (${user.role})? This action cannot be undone.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            const uidToDelete = user.uid; // Capture in closure
-            setDeletingUid(uidToDelete);
-            try {
-              // Attempt to delete auth account via cloud function
-              const deleteFn = httpsCallable(functions, "deleteUserAccount");
-              await deleteFn({ uid: uidToDelete });
+    const performDelete = async () => {
+      const uidToDelete = user.uid;
+      setDeletingUid(uidToDelete);
+      setUpdating(true);
+      try {
+        const batch = writeBatch(db);
+        if (user.role === "teacher" && user.classTeacherOf) {
+          batch.update(doc(db, "classes", user.classTeacherOf), {
+            classTeacherId: null,
+          });
+        }
+        if (user.role === "student" && user.parentUids?.length) {
+          user.parentUids.forEach((pUid) => {
+            batch.update(doc(db, "users", pUid), {
+              childrenIds: arrayRemove(uidToDelete),
+            });
+          });
+        }
+        if (user.role === "parent" && user.childrenIds?.length) {
+          user.childrenIds.forEach((sUid) => {
+            batch.update(doc(db, "users", sUid), {
+              parentUids: arrayRemove(uidToDelete),
+            });
+          });
+        }
+        await batch.commit();
 
-              // Success with cloud function means user is gone from Auth and Firestore
-              setUsers(prev => prev.filter(u => u.uid !== uidToDelete));
-              Alert.alert("Success", "Account deleted.");
-            } catch (error: any) {
-              console.error("Cloud function deletion failed:", error);
-              // Fallback: Delete Firestore document if cloud function fails or if admin wants to force cleanup
-              try {
-                await deleteDoc(doc(db, "users", uidToDelete));
-                setUsers(prev => prev.filter(u => u.uid !== uidToDelete));
-                Alert.alert("Success", "Database entry removed.");
-              } catch (dbError) {
-                console.error("Database deletion failed:", dbError);
-                Alert.alert("Error", "Failed to delete user record.");
-              }
-            } finally {
-              setDeletingUid(null);
-              setViewingUser(null);
-            }
-          },
-        },
-      ],
-    );
+        const deleteFn = httpsCallable(functions, "deleteUserAccount");
+        await deleteFn({ uid: uidToDelete });
+
+        setUsers((prev) => prev.filter((u) => u.uid !== uidToDelete));
+        if (Platform.OS === "web") {
+          window.alert("Success: Account and references removed.");
+        } else {
+          Alert.alert("Success", "Account and references removed.");
+        }
+      } catch (error: any) {
+        console.error("Deletion failed:", error);
+        try {
+          await deleteDoc(doc(db, "users", uidToDelete));
+          setUsers((prev) => prev.filter((u) => u.uid !== uidToDelete));
+          if (Platform.OS === "web") {
+            window.alert("Partial Success: Database entry removed, but Auth account may persist.");
+          } else {
+            Alert.alert("Partial Success", "Database entry removed, but Auth account may persist.");
+          }
+        } catch (dbError) {
+          if (Platform.OS === "web") {
+            window.alert("Error: Failed to delete user record.");
+          } else {
+            Alert.alert("Error", "Failed to delete user record.");
+          }
+        }
+      } finally {
+        setDeletingUid(null);
+        setUpdating(false);
+        setViewingUser(null);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        `Critical Action: Permanently delete ${user.profile.firstName} (${user.role})? This action cannot be undone.`
+      );
+      if (confirmed) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        "Critical Action",
+        `Permanently delete ${user.profile.firstName} (${user.role})? This action cannot be undone.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete", style: "destructive", onPress: performDelete },
+        ]
+      );
+    }
   };
 
   const openPermissionModal = (user: User) => {
@@ -1313,32 +1415,65 @@ export default function ManageUsers() {
                       </TouchableOpacity>
                     )}
                     {viewingUser.role === "student" && isSuperAdmin && (
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          {
-                            backgroundColor: viewingUser.onScholarship
-                              ? "#f1f5f9"
-                              : "#6366f1",
-                          },
-                        ]}
-                        onPress={() => handleToggleScholarship(viewingUser)}
-                      >
-                        <Text
+                      <>
+                        <TouchableOpacity
                           style={[
-                            styles.actionButtonText,
+                            styles.actionButton,
                             {
-                              color: viewingUser.onScholarship
-                                ? "#6366f1"
-                                : "#fff",
+                              backgroundColor: viewingUser.onScholarship
+                                ? "#f1f5f9"
+                                : "#6366f1",
+                              marginBottom: 12,
                             },
                           ]}
+                          onPress={() => handleToggleScholarship(viewingUser)}
                         >
-                          {viewingUser.onScholarship
-                            ? "Revoke Scholarship"
-                            : "Set on Scholarship"}
-                        </Text>
-                      </TouchableOpacity>
+                          <Text
+                            style={[
+                              styles.actionButtonText,
+                              {
+                                color: viewingUser.onScholarship
+                                  ? "#6366f1"
+                                  : "#fff",
+                              },
+                            ]}
+                          >
+                            {viewingUser.onScholarship
+                              ? "Revoke Scholarship"
+                              : "Set on Scholarship"}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            {
+                              backgroundColor:
+                                viewingUser.status === "archived"
+                                  ? "#ecfdf5"
+                                  : "#fef2f2",
+                              marginBottom: 12,
+                            },
+                          ]}
+                          onPress={() => handleToggleArchiveStatus(viewingUser)}
+                        >
+                          <Text
+                            style={[
+                              styles.actionButtonText,
+                              {
+                                color:
+                                  viewingUser.status === "archived"
+                                    ? "#10b981"
+                                    : "#ef4444",
+                              },
+                            ]}
+                          >
+                            {viewingUser.status === "archived"
+                              ? "Restore to Active"
+                              : "Set as Stopped (Archive)"}
+                          </Text>
+                        </TouchableOpacity>
+                      </>
                     )}
                     <TouchableOpacity
                       style={[
@@ -1355,12 +1490,17 @@ export default function ManageUsers() {
                         { backgroundColor: "#fee2e2", marginTop: 12 },
                       ]}
                       onPress={() => handleDeleteUser(viewingUser)}
+                      disabled={updating}
                     >
-                      <Text
-                        style={[styles.actionButtonText, { color: "#ef4444" }]}
-                      >
-                        Delete Account
-                      </Text>
+                      {updating && deletingUid === viewingUser.uid ? (
+                        <ActivityIndicator color="#ef4444" />
+                      ) : (
+                        <Text
+                          style={[styles.actionButtonText, { color: "#ef4444" }]}
+                        >
+                          Delete Account
+                        </Text>
+                      )}
                     </TouchableOpacity>
                   </View>
                 </View>

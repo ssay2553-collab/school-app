@@ -21,7 +21,7 @@ export const SCHOOL_LOGOS: Record<string, any> = {
   clis: require("../assets/clis.png"),
   stone: require("../assets/stone.png"),
   jewel: require("../assets/Jewel.png"),
-  lilies: require("../assets/lilies.png"),
+  abijah: require("../assets/adesua.png"),
 };
 
 export const getSchoolLogo = (schoolId?: string) => {

@@ -25,7 +25,7 @@
     "clis-dev": { "extends": "development", "env": { "SCHOOL_ID": "clis" } },
     "stone-dev": { "extends": "development", "env": { "SCHOOL_ID": "stone" } },
     "jewel-dev": { "extends": "development", "env": { "SCHOOL_ID": "jewel" } },
-    "lilies-dev": { "extends": "development", "env": { "SCHOOL_ID": "lilies" } },
+    "abijah-dev": { "extends": "development", "env": { "SCHOOL_ID": "abijah" } },
 
     "afahjoy-prod": {
       "distribution": "internal",
@@ -107,10 +107,10 @@
       "android": { "buildType": "apk" },
       "env": { "SCHOOL_ID": "jewel", "NODE_ENV": "production" }
     },
-    "lilies-prod": {
+    "abijah-prod": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
-      "env": { "SCHOOL_ID": "lilies", "NODE_ENV": "production" }
+      "env": { "SCHOOL_ID": "abijah", "NODE_ENV": "production" }
     }
   },
   "submit": {

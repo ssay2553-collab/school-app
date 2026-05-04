@@ -231,15 +231,54 @@ export default function ManageFees() {
 
   const isConfigMissing = !academicYear || !term;
 
-  const stats = useMemo(() => {
-    let expected = 0;
-    let received = 0;
-    students.forEach((s) => {
-      expected += (s.termBill || 0) + (s.previousBalance || 0);
-      received += s.amountPaid || 0;
-    });
-    return { expected, received, balance: expected - received };
-  }, [students]);
+  const [stats, setStats] = useState({ expected: 0, received: 0, balance: 0 });
+
+  useEffect(() => {
+    const fetchGlobalStats = async () => {
+      if (!academicYear || !term) return;
+      try {
+        const q = query(
+          collection(db, "studentFeeRecords"),
+          where("academicYear", "==", academicYear),
+          where("term", "==", term)
+        );
+        const snap = await getDocsCacheFirst(q as any);
+        let expected = 0;
+        let received = 0;
+
+        // Sum up from term records
+        snap.docs.forEach(d => {
+          const data = d.data() as any;
+          expected += (data.termBill || 0) + (data.arrears || 0);
+          received += (data.amountPaid || 0);
+        });
+
+        // For students without a term record yet, we need their arrears from the user doc
+        // However, usually "Expected" at a school level is best tracked via the fee records.
+        // If we want it strictly for the *selected class* or *all*, and include those without bills:
+
+        if (selectedClassId !== "all") {
+           // Filter the sums to the selected class
+           let clsExpected = 0;
+           let clsReceived = 0;
+           snap.docs.forEach(d => {
+             const data = d.data() as any;
+             if (data.classId === selectedClassId) {
+               clsExpected += (data.termBill || 0) + (data.arrears || 0);
+               clsReceived += (data.amountPaid || 0);
+             }
+           });
+           setStats({ expected: clsExpected, received: clsReceived, balance: clsExpected - clsReceived });
+        } else {
+           setStats({ expected, received, balance: expected - received });
+        }
+      } catch (e) {
+        console.error("Stats fetch error:", e);
+      }
+    };
+
+    fetchGlobalStats();
+  }, [academicYear, term, selectedClassId, students]); // students dependency to refresh when edits happen
 
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
@@ -313,10 +352,17 @@ export default function ManageFees() {
       } else setFetchingMore(true);
 
       try {
-        let q = query(
+        let baseQuery = query(
           collection(db, "users"),
           where("role", "==", "student"),
-          where("classId", "==", selectedClassId),
+        );
+
+        if (selectedClassId !== "all") {
+          baseQuery = query(baseQuery, where("classId", "==", selectedClassId));
+        }
+
+        let q = query(
+          baseQuery,
           orderBy("profile.firstName"),
           limit(PAGE_SIZE),
         );
@@ -371,7 +417,7 @@ export default function ManageFees() {
               "Student",
             classId: selectedClassId,
             className:
-              classes.find((c) => c.id === selectedClassId)?.name || "Class",
+              classes.find((c) => c.id === userData.classId)?.name || "Class",
             previousBalance: feeData
               ? feeData.arrears || 0
               : userData.walletBalance || 0,
@@ -531,9 +577,9 @@ export default function ManageFees() {
         const currentBill = s.hasRecordInTerm ? (s.termBill || 0) : 0;
         const currentEditCount = s.editCount || 0;
 
-        if (currentEditCount >= 4) {
+        if (currentEditCount >= 5) {
           showToast({
-            message: `Student ${s.fullName} has reached the limit of 4 edits this term.`,
+            message: `Student ${s.fullName} has reached the limit of 5 edits this term.`,
             type: "error",
           });
           continue;
@@ -733,7 +779,7 @@ export default function ManageFees() {
     const hasActiveBill =
       !!currentBillValue && parseFloat(String(currentBillValue)) !== 0;
     const hasOverride = individualBillOverrides[item.uid] !== undefined;
-    const isEditLocked = item.editCount >= 4;
+    const isEditLocked = item.editCount >= 5;
 
     return (
       <Animatable.View

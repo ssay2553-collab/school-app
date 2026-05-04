@@ -6,7 +6,11 @@ module.exports = ({ config }) => {
   require("dotenv").config();
 
   // 3. Priority: Command Line > .env > Default (Changed from Jewel to Eagles)
-  const rawId = cmdLineId || process.env.EXPO_PUBLIC_SCHOOL_ID || process.env.SCHOOL_ID || "eagles";
+  const rawId =
+    cmdLineId ||
+    process.env.EXPO_PUBLIC_SCHOOL_ID ||
+    process.env.SCHOOL_ID ||
+    "eagles";
 
   console.log(`\n=========================================`);
   console.log(`  TARGET SCHOOL: ${rawId.toUpperCase()}`);
@@ -53,7 +57,7 @@ module.exports = ({ config }) => {
       motto: "Knowledge is the key to Success",
       address: "Royal City, Papase No 2 - Kasoa",
       email: "",
-      primaryColor: "#6A1B9A",
+      primaryColor: "#6503a1ff",
       secondaryColor: "#F57C00",
       surfaceColor: "#f3e7c1ff",
       brandPrimary: "#F57C00",
@@ -133,7 +137,7 @@ module.exports = ({ config }) => {
       email: "",
       primaryColor: "#2c0964ff",
       secondaryColor: "#dd4364ff",
-      surfaceColor: "#dcabf3ff",
+      surfaceColor: "#bc7cdaff",
       brandPrimary: "#cc315fff",
       brandSecondary: "#140e53ff",
       easProjectId: "7cb0033f-318b-4aed-9879-8f1af372b5ce",
@@ -158,8 +162,8 @@ module.exports = ({ config }) => {
       address: "Oklu Nkwanta, Off Bawjiase Rd, Kasoa",
       email: "info@perfectendintersch.com",
       primaryColor: "#C1272D",
-      secondaryColor: "#1F4E79",
-      surfaceColor: "#d3e6a1ff",
+      secondaryColor: "#1d0fdbff",
+      surfaceColor: "#b9b9b9ff",
       brandPrimary: "#C1272D",
       brandSecondary: "#313030ff",
       easProjectId: "36819eb3-b12b-459a-b92c-e421fafb421b",
@@ -183,10 +187,10 @@ module.exports = ({ config }) => {
       motto: "God Our Hope",
       address: "Latebiokoshie, near Radio Gold",
       email: "",
-      primaryColor: "#7A7D82",
+      primaryColor: "#585858ff",
       secondaryColor: "#f3c976ff",
-      surfaceColor: "#FDF7FF",
-      brandPrimary: "#686764ff",
+      surfaceColor: "#cac199ff",
+      brandPrimary: "#555553ff",
       brandSecondary: "#f5cb78ff",
       easProjectId: "f894dcf0-0116-41b1-a48d-ab3f4e6c1bf6",
       firebase: {
@@ -210,11 +214,11 @@ module.exports = ({ config }) => {
       motto: "The Fear Of The Lord",
       address: "Kasoa New Market Rd, Kasoa, Ghana",
       email: "",
-      primaryColor: "#f0bf5eff",
-      secondaryColor: "#6b4c2a",
-      surfaceColor: "#d671b8ff",
-      brandPrimary: "#5e67eeff",
-      brandSecondary: "#f5c35eff",
+      primaryColor: "#f75ac7ff",
+      secondaryColor: "#fd8434ff",
+      surfaceColor: "#f0eab2ff",
+      brandPrimary: "#f75ac7ff",
+      brandSecondary: "#fd8434ff",
       easProjectId: "b76b4b94-fc26-46f0-b7ff-932fa1afac61",
       firebase: {
         apiKey: "AIzaSyBWAaIywN-rJyDUipU89yutw8bnIN5pr6I",
@@ -263,11 +267,11 @@ module.exports = ({ config }) => {
       motto: "Your Excellence is Assured",
       address: "Greater Accra Region, GA West Municipal",
       email: "",
-      primaryColor: "#D4AF37",
-      secondaryColor: "#228B22",
-      surfaceColor: "#FDF7FF",
-      brandPrimary: "#D4AF37",
-      brandSecondary: "#000000",
+      primaryColor: "#8a1010ff",
+      secondaryColor: "#150668ff",
+      surfaceColor: "#ce87e6ff",
+      brandPrimary: "#ffd95eff",
+      brandSecondary: "#150668ff",
       easProjectId: "b19bf821-a509-49dd-909e-ca094b5a5718",
       firebase: {
         apiKey: "AIzaSyBlWYOx1I_u8VwJf7puo8I0uFvktAo3yl8",
@@ -358,17 +362,17 @@ module.exports = ({ config }) => {
       },
     },
 
-    lilies: {
-      name: "BLS App",
+    abijah: {
+      name: "Abijah Adesua",
       slug: "lilies",
-      package: "com.saysmanage.lilies",
-      scheme: "lilies",
-      logo: "./assets/icon-lilies.png",
-      hotline: "0595974481",
-      fullName: "Bright Lilies School",
-      motto: "Solid Academic Foundation",
-      address: "Accra, Ghana",
-      email: "inquiries@brightlilies.com",
+      package: "com.saysmanage.abijah",
+      scheme: "abijah",
+      logo: "./assets/icon-abijah.png",
+      hotline: "0555211235",
+      fullName: "Abjah Adesua Skuul",
+      motto: "Dwen Hwe Kan",
+      address: "Papase No1, Off Kwao-Bondzie",
+      email: "abijahadeusua@gmail.com",
       primaryColor: "#1E3A8A",
       secondaryColor: "#D4AF37",
       surfaceColor: "#acad93ff",
@@ -376,12 +380,12 @@ module.exports = ({ config }) => {
       brandSecondary: "#1E3A8A",
       easProjectId: "37b03789-81fe-4e95-9d7f-86d0387f8462",
       firebase: {
-        apiKey: "AIzaSyBmV1tyq6Q5ctDCawWQqRKnvDjScltZhB4",
-        authDomain: "bright-lilies.firebaseapp.com",
-        projectId: "bright-lilies",
-        storageBucket: "bright-lilies.firebasestorage.app",
-        messagingSenderId: "732349796782",
-        appId: "1:732349796782:web:49980f6d6309889fd6b83f",
+        apiKey: "AIzaSyCYnvIb6_xKbx5yJSB8FL6KdYiLp7JU8Uo",
+        authDomain: "abijah-93b3a.firebaseapp.com",
+        projectId: "abijah-93b3a",
+        storageBucket: "abijah-93b3a.firebasestorage.app",
+        messagingSenderId: "249787820198",
+        appId: "1:249787820198:web:bcb684fa49456b61b26c67",
       },
     },
 

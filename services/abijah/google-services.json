@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "249787820198",
+    "project_id": "abijah-93b3a",
+    "storage_bucket": "abijah-93b3a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:249787820198:android:047302aa9215c292b26c67",
+        "android_client_info": {
+          "package_name": "com.saysmanage.abijah"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3KoWcO8y-zY7by2sPJzocKM9OmJNOEbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

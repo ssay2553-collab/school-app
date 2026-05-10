@@ -14,6 +14,9 @@ expo-env.d.ts
 # Ignore sensitive files globally to prevent accidental leaks
 google-services.json
 GoogleService-Info.plist
+# Allow school-specific configs in services/ for white-labeling
+!services/**/google-services.json
+!services/**/GoogleService-Info.plist
 
 # Local Environment (Security)
 .env

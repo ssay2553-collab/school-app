@@ -29,6 +29,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { auth, db, storage } from "../../firebaseConfig";
 import { useToast } from "../../contexts/ToastContext";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, CurriculumType } from "../../constants/Curriculum";
+import moment from "moment";
 
 export default function TeacherProfileEdit() {
   const router = useRouter();
@@ -636,22 +637,25 @@ export default function TeacherProfileEdit() {
 
               <Text style={styles.modalLabel}>DATE OF BIRTH</Text>
               {Platform.OS === 'web' ? (
-                <View style={[styles.modalInput, { justifyContent: 'center' }]}>
-                   <input
-                    type="date"
-                    value={dob instanceof Date && !isNaN(dob.getTime()) ? dob.toISOString().split('T')[0] : ''}
-                    onChange={(e) => setDob(new Date(e.target.value))}
+                <View style={[styles.modalInput, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
+                   <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+                   <TextInput
                     style={{
-                      background: 'transparent',
-                      border: 'none',
-                      height: '100%',
-                      width: '100%',
-                      outline: 'none',
-                      fontSize: '16px',
+                      flex: 1,
+                      backgroundColor: 'transparent',
+                      fontSize: 16,
                       fontWeight: '600',
-                      fontFamily: 'inherit',
-                      color: '#1E293B'
+                      color: '#1E293B',
+                      outlineStyle: 'none'
+                    } as any}
+                    defaultValue={dob instanceof Date && !isNaN(dob.getTime()) ? dob.toISOString().split('T')[0] : ''}
+                    onChangeText={(val) => {
+                      const parsed = moment(val, ["YYYY-MM-DD", "DD-MM-YYYY", "MM-DD-YYYY", "DD/MM/YYYY", "MM/DD/YYYY"], true);
+                      if (parsed.isValid()) {
+                        setDob(parsed.toDate());
+                      }
                     }}
+                    {...({ type: 'date' } as any)}
                   />
                 </View>
               ) : (

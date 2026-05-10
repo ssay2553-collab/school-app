@@ -78,8 +78,6 @@ export default function AILessonPlanner() {
     indicators: string[];
   } | null>(null);
   const [selectedIndicators, setSelectedIndicators] = useState<string[]>([]);
-  const [showIndicatorDropdown, setShowIndicatorDropdown] = useState(false);
-  const [showStrandSuggestions, setShowStrandSuggestions] = useState(false);
 
   const [form, setForm] = useState({
     subject: teacherSubjects.length === 1 ? teacherSubjects[0] : "",
@@ -696,7 +694,11 @@ export default function AILessonPlanner() {
                 <Text style={styles.label}>
                   {labels.indicator}s (Select one or more)
                 </Text>
-                <View style={styles.indicatorListContainer}>
+                <ScrollView
+                  style={styles.indicatorListContainer}
+                  nestedScrollEnabled={true}
+                  showsVerticalScrollIndicator={true}
+                >
                   {suggestedIndicators.indicators.map((ind, index) => (
                     <TouchableOpacity
                       key={index}
@@ -731,7 +733,7 @@ export default function AILessonPlanner() {
                       <Text style={styles.indicatorText}>{ind}</Text>
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
                 <Text style={styles.standardText}>
                   {suggestedIndicators.contentStandard}
                 </Text>
@@ -1304,6 +1306,11 @@ const styles = StyleSheet.create({
     color: "#1E293B",
     marginBottom: 20,
     fontWeight: "600",
+    ...Platform.select({
+      web: {
+        outlineStyle: "none",
+      } as any,
+    }),
   },
   pickerContainer: {
     backgroundColor: "#F1F5F9",
@@ -1621,6 +1628,11 @@ const styles = StyleSheet.create({
     color: "#1E293B",
     textAlignVertical: "top",
     fontWeight: "500",
+    ...Platform.select({
+      web: {
+        outlineStyle: "none",
+      } as any,
+    }),
   },
   modalSaveBtn: {
     height: 55,

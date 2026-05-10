@@ -3,6 +3,8 @@ import { useRouter } from "expo-router";
 import {
     addDoc,
     collection,
+    deleteDoc,
+    doc,
     getDocsFromServer,
     onSnapshot,
     orderBy,
@@ -38,8 +40,12 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import moment from "moment";
 
 import { useToast } from "../../contexts/ToastContext";
+
+// Guarded import for native-only library
+const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 
 const CACHE_EXPIRY = 1000 * 60 * 60 * 24; // 24 Hours
 
@@ -96,7 +102,8 @@ export default function ExpenditureScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [itemName, setItemName] = useState("");
   const [amount, setAmount] = useState("");
-  const [itemDate] = useState(new Date().toISOString().split("T")[0]);
+  const [itemDate, setItemDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     if (appUser && !canView) {
@@ -289,7 +296,7 @@ export default function ExpenditureScreen() {
       await addDoc(collection(db, "expenditures"), {
         item: cleanItemName,
         amount: cleanAmount,
-        date: itemDate,
+        date: itemDate instanceof Date ? itemDate.toISOString().split("T")[0] : itemDate,
         adminName: appUser?.profile?.firstName || "Admin",
         adminRole: appUser?.adminRole || "Administrator",
         status: "open",
@@ -315,11 +322,29 @@ export default function ExpenditureScreen() {
     const performDelete = async () => {
       setDeletingId(item.id);
       try {
-        const deleteFn = httpsCallable(functions, "deleteExpenditure");
-        await deleteFn({ expenditureId: item.id });
-        showToast({ message: "Entry deleted.", type: "success" });
+        // Perform direct client-side deletion
+        await deleteDoc(doc(db, "expenditures", item.id));
+
+        // Optional: Log to activity_logs for audit since we're doing it client-side
+        try {
+          await addDoc(collection(db, "activity_logs"), {
+            action: "DELETE_EXPENDITURE",
+            performedBy: appUser?.uid,
+            adminName: appUser?.profile?.firstName || "Unknown Admin",
+            details: {
+              item: item.item,
+              amount: item.amount,
+              expenditureDate: item.date,
+            },
+            timestamp: serverTimestamp(),
+          });
+        } catch (logErr) {
+          console.warn("Audit log failed, but expenditure was deleted:", logErr);
+        }
+
+        showToast({ message: "Entry deleted successfully.", type: "success" });
       } catch (e: any) {
-        console.error("Delete function error:", e);
+        console.error("Delete error:", e);
         showToast({
           message: e.message || "Could not delete entry.",
           type: "error",
@@ -584,6 +609,59 @@ export default function ExpenditureScreen() {
                 placeholderTextColor="#94A3B8"
               />
             </View>
+
+            <View style={styles.modalInputWrapper}>
+              <Text style={styles.modalInputLabel}>DATE OF EXPENDITURE</Text>
+              {Platform.OS === 'web' ? (
+                <View style={[styles.modalInput, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}>
+                   <SVGIcon name="calendar-outline" size={18} color={primaryBrand} />
+                   <TextInput
+                    style={{
+                      flex: 1,
+                      backgroundColor: 'transparent',
+                      fontSize: 16,
+                      fontWeight: '600',
+                      color: '#1E293B',
+                      outlineStyle: 'none'
+                    } as any}
+                    defaultValue={itemDate.toISOString().split('T')[0]}
+                    onChangeText={(val) => {
+                      const parsed = moment(val, ["YYYY-MM-DD", "DD-MM-YYYY", "MM-DD-YYYY", "DD/MM/YYYY", "MM/DD/YYYY"], true);
+                      if (parsed.isValid()) {
+                        setItemDate(parsed.toDate());
+                      }
+                    }}
+                    {...({ type: 'date' } as any)}
+                  />
+                </View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={[styles.modalInput, { flexDirection: 'row', alignItems: 'center', gap: 10 }]}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <SVGIcon name="calendar-outline" size={18} color={primaryBrand} />
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#1E293B' }}>
+                      {itemDate.toLocaleDateString()}
+                    </Text>
+                  </TouchableOpacity>
+
+                  {showDatePicker && DateTimePicker && (
+                    <DateTimePicker
+                      value={itemDate}
+                      mode="date"
+                      display="default"
+                      onChange={(event: any, selectedDate?: Date) => {
+                        setShowDatePicker(false);
+                        if (selectedDate) setItemDate(selectedDate);
+                      }}
+                      maximumDate={new Date()}
+                    />
+                  )}
+                </>
+              )}
+            </View>
+
             <TouchableOpacity
               style={[styles.saveBtn, { backgroundColor: secondaryBrand }]}
               onPress={addExpenditure}

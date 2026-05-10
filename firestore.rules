@@ -198,7 +198,7 @@ service cloud.firestore {
         request.resource.data.amount > 0;
       allow update: if hasPermission('expenditure', 'edit') && 
         (resource.data.status == 'open' || request.resource.data.status == 'closed');
-      allow delete: if false; 
+      allow delete: if hasPermission('expenditure', 'edit');
     }
 
    match /nonTeachingStaff/{staffId} {

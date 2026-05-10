@@ -1,5 +1,7 @@
 import { useRouter } from "expo-router";
-import { doc, getDoc } from "firebase/firestore";
+import { signInWithCustomToken } from "firebase/auth";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -10,23 +12,52 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
-import { SHADOWS } from "../../../constants/theme";
-import { auth, db } from "../../../firebaseConfig";
-import { SCHOOL_CONFIG } from "../../../constants/Config";
 import SVGIcon from "../../../components/SVGIcon";
+import { SCHOOL_CONFIG } from "../../../constants/Config";
+import { SHADOWS } from "../../../constants/theme";
 import { useToast } from "../../../contexts/ToastContext";
+import { auth, db, functions } from "../../../firebaseConfig";
 
 export default function GuestLogin() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState("");
+  const [pin, setPin] = useState("");
+  const [loginMode, setLoginMode] = useState<"guest" | "staff">("guest");
+
   const { showToast } = useToast();
   const schoolName = SCHOOL_CONFIG.name;
   const primary = SCHOOL_CONFIG.primaryColor;
   const surface = SCHOOL_CONFIG.surfaceColor;
+
+  const handleStaffLogin = async () => {
+    if (!username.trim() || pin.length !== 4) {
+      showToast({ message: "Enter valid username and 4-digit PIN", type: "error" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const loginWithPin = httpsCallable(functions, "loginWithPin");
+      const result = await loginWithPin({ username: username.trim(), pin });
+      const { token } = result.data as { token: string };
+
+      if (token) {
+        await signInWithCustomToken(auth, token);
+        router.replace("/staff-dashboard" as any); // Assuming a staff dashboard exists or redirect appropriately
+      }
+    } catch (err: any) {
+      console.error("Staff Login Error:", err);
+      showToast({ message: err.message || "Login failed. Check credentials.", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleGuestLogin = async () => {
     setLoading(true);
@@ -36,7 +67,6 @@ export default function GuestLogin() {
       if (!user) {
         showToast({ message: "Please register your details first to explore as a guest.", type: "error" });
         router.push("/(auth)/signup/guest");
-        setLoading(false);
         return;
       }
 
@@ -68,42 +98,100 @@ export default function GuestLogin() {
           
           <Animatable.View animation="fadeInDown" duration={800} style={styles.header}>
             <View style={[styles.logoBadge, { backgroundColor: primary + '15' }]}>
-              <SVGIcon name="flash" size={32} color={primary} />
+              <SVGIcon name={loginMode === "staff" ? "briefcase" : "flash"} size={32} color={primary} />
             </View>
-            <Text style={styles.title}>Guest Access</Text>
+            <Text style={styles.title}>{loginMode === "staff" ? "Staff Login" : "Guest Access"}</Text>
             <Text style={styles.subtitle}>Enter the {schoolName} portal</Text>
           </Animatable.View>
 
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              onPress={() => setLoginMode("guest")}
+              style={[styles.tab, loginMode === "guest" && { borderBottomColor: primary, borderBottomWidth: 3 }]}
+            >
+              <Text style={[styles.tabText, loginMode === "guest" && { color: primary, fontWeight: '700' }]}>Guest</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setLoginMode("staff")}
+              style={[styles.tab, loginMode === "staff" && { borderBottomColor: primary, borderBottomWidth: 3 }]}
+            >
+              <Text style={[styles.tabText, loginMode === "staff" && { color: primary, fontWeight: '700' }]}>Staff (PIN)</Text>
+            </TouchableOpacity>
+          </View>
+
           <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
-            <Text style={styles.infoText}>
-              If you have already registered your name and phone number, you can proceed to the dashboard.
-            </Text>
+            {loginMode === "guest" ? (
+              <>
+                <Text style={styles.infoText}>
+                  If you have already registered your name and phone number, you can proceed to the dashboard.
+                </Text>
 
-            <TouchableOpacity 
-              style={[styles.button, { backgroundColor: primary }]} 
-              onPress={handleGuestLogin} 
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Text style={styles.buttonText}>Enter Dashboard</Text>
-                  <View style={{ marginLeft: 8 }}>
-                    <SVGIcon name="arrow-forward" size={20} color="#fff" />
-                  </View>
-                </>
-              )}
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: primary }]}
+                  onPress={handleGuestLogin}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Text style={styles.buttonText}>Enter Dashboard</Text>
+                      <View style={{ marginLeft: 8 }}>
+                        <SVGIcon name="arrow-forward" size={20} color="#fff" />
+                      </View>
+                    </>
+                  )}
+                </TouchableOpacity>
 
-            <TouchableOpacity 
-              onPress={() => router.push("/(auth)/signup/guest")}
-              style={styles.signupBtn}
-            >
-              <Text style={styles.signupText}>
-                Need to register? <Text style={[styles.signupLink, { color: primary }]}>Sign Up</Text>
-              </Text>
-            </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => router.push("/(auth)/signup/guest")}
+                  style={styles.signupBtn}
+                >
+                  <Text style={styles.signupText}>
+                    Need to register? <Text style={[styles.signupLink, { color: primary }]}>Sign Up</Text>
+                  </Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>USERNAME</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="e.g. j.doe"
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                    editable={!loading}
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>4-DIGIT PIN</Text>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="••••"
+                    value={pin}
+                    onChangeText={(v) => setPin(v.replace(/[^0-9]/g, "").slice(0, 4))}
+                    keyboardType="number-pad"
+                    secureTextEntry
+                    editable={!loading}
+                  />
+                </View>
+
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: primary, marginTop: 10 }]}
+                  onPress={handleStaffLogin}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.buttonText}>Sign In</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </Animatable.View>
 
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -120,12 +208,18 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
   scrollContent: { padding: 24, flexGrow: 1, justifyContent: 'center' },
-  header: { marginBottom: 40, alignItems: 'center' },
+  header: { marginBottom: 30, alignItems: 'center' },
   logoBadge: { width: 64, height: 64, borderRadius: 20, justifyContent: "center", alignItems: "center", marginBottom: 16 },
   title: { fontSize: 28, fontWeight: "bold", color: "#0F172A" },
   subtitle: { fontSize: 16, color: "#64748B", marginTop: 4 },
+  tabContainer: { flexDirection: 'row', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  tabText: { fontSize: 14, color: '#94A3B8', fontWeight: '500' },
   card: { backgroundColor: "#FFFFFF", borderRadius: 24, padding: 24, ...SHADOWS.medium, borderWidth: 1, borderColor: '#F1F5F9' },
   infoText: { fontSize: 15, color: "#475569", textAlign: 'center', lineHeight: 22, marginBottom: 30 },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 11, fontWeight: "800", color: "#475569", marginBottom: 8, letterSpacing: 1 },
+  input: { backgroundColor: "#F1F5F9", borderRadius: 14, padding: 14, fontSize: 16, color: "#1E293B" },
   button: { padding: 18, borderRadius: 16, flexDirection: 'row', alignItems: "center", justifyContent: "center", ...SHADOWS.medium },
   buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
   signupBtn: { marginTop: 25, alignItems: 'center' },

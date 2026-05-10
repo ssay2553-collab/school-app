@@ -87,7 +87,11 @@ export default function AttendanceOverview() {
       }));
 
       // 2. Fetch Students (Cache-First) - This is the most expensive read, now optimized
-      const studentsQuery = query(collection(db, "users"), where("role", "==", "student"));
+      const studentsQuery = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("status", "in", ["active", "pending_activation"])
+      );
       const studentsSnap = await getDocsCacheFirst(studentsQuery as any);
       
       const studentCounts: Record<string, number> = {};

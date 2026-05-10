@@ -35,7 +35,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { getGradeDetails, calculatePerformanceFromList } from "../../lib/classHelpers";
+import {
+    getGradeDetails,
+    calculatePerformanceFromList,
+    calculateCompetitionRanking,
+} from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import { shareFile } from "../../utils/shareUtils";
 
@@ -195,8 +199,19 @@ export default function StudentAcademicReport() {
           );
           return valB - valA;
         });
-        const posInSub =
-          sortedBySubject.findIndex((s) => s.studentId === selectedChildId) + 1;
+
+        // Standard Competition Ranking for Subject Position
+        const subjectRankData = calculateCompetitionRanking(
+          studentsList.map((s: any) => ({
+            id: s.studentId,
+            total: parseFloat(
+              s.finalScore ??
+                (parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)).toFixed(2)
+            ),
+          })),
+          selectedChildId
+        );
+        const posInSub = subjectRankData.rank;
 
         const studentEntry = studentsList.find(
           (s: any) => s.studentId === selectedChildId,
@@ -263,13 +278,21 @@ export default function StudentAcademicReport() {
             studentTotals[s.studentId] = (studentTotals[s.studentId] || 0) + val;
           });
         });
-        const sortedTotals = Object.entries(studentTotals).sort(
-          (a, b) => b[1] - a[1],
+
+        const rankedData = Object.entries(studentTotals).map(([id, total]) => ({
+          id,
+          total,
+        }));
+        const overallRankInfo = calculateCompetitionRanking(
+          rankedData,
+          selectedChildId,
         );
-        const rank =
-          sortedTotals.findIndex(([id]) => id === selectedChildId) + 1;
-        const totalInClass = sortedTotals.length;
-        setOverallPosition(rank > 0 ? `${rank}/${totalInClass}` : "N/A");
+
+        if (overallRankInfo.rank > 0) {
+          setOverallPosition(`${overallRankInfo.rank}/${overallRankInfo.total}`);
+        } else {
+          setOverallPosition("N/A");
+        }
       } catch (e) {
         console.warn("Ranking error:", e);
         setOverallPosition("N/A");

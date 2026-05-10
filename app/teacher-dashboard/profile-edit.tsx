@@ -58,6 +58,8 @@ export default function TeacherProfileEdit() {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(appUser?.subjects || []);
   const [curriculum, setCurriculum] = useState<CurriculumType>((appUser?.curriculum as CurriculumType) || "GES");
   const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>([]);
+  const [customSubject, setCustomSubject] = useState("");
+  const [isOtherSelected, setIsOtherSelected] = useState(false);
 
   // Professional Profile state
   const [profModalVisible, setProfModalVisible] = useState(false);
@@ -114,8 +116,22 @@ export default function TeacherProfileEdit() {
         setDob(appUser.profile.dob ? new Date(appUser.profile.dob) : new Date());
       }
       setSelectedClasses(appUser.classes || []);
-      setSelectedSubjects(appUser.subjects || []);
-      setCurriculum((appUser.curriculum as CurriculumType) || "GES");
+      const subjects = appUser.subjects || [];
+      const curr = (appUser.curriculum as CurriculumType) || "GES";
+      setCurriculum(curr);
+
+      // Detect custom subjects not in predefined lists
+      const predefined = curr === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS;
+      const custom = subjects.find(s => !predefined.includes(s));
+      if (custom) {
+        setCustomSubject(custom);
+        setIsOtherSelected(true);
+        setSelectedSubjects(subjects.filter(s => predefined.includes(s)));
+      } else {
+        setSelectedSubjects(subjects);
+        setCustomSubject("");
+        setIsOtherSelected(false);
+      }
     }
   }, [appUser]);
 
@@ -142,18 +158,6 @@ export default function TeacherProfileEdit() {
     const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
     return () => backHandler.remove();
   }, [handleBack]);
-
-  useEffect(() => {
-    if (appUser?.profile) {
-      setFirstName(appUser.profile.firstName || "");
-      setLastName(appUser.profile.lastName || "");
-      setBio(appUser.profile.bio || "");
-      setExperience(appUser.profile.experience || "");
-      setEducation(appUser.profile.education || "");
-      setPhone(appUser.profile.phone || "");
-      setGender(appUser.profile.gender || "");
-    }
-  }, [appUser]);
 
   useEffect(() => {
     const fetchClassNames = async () => {
@@ -266,7 +270,15 @@ export default function TeacherProfileEdit() {
       showToast({ message: "Please select at least one class.", type: "error" });
       return;
     }
-    if (selectedSubjects.length === 0) {
+
+    let finalSubjects = [...selectedSubjects];
+    if (isOtherSelected && customSubject.trim()) {
+      if (!finalSubjects.includes(customSubject.trim())) {
+        finalSubjects.push(customSubject.trim());
+      }
+    }
+
+    if (finalSubjects.length === 0) {
       showToast({ message: "Please select at least one subject.", type: "error" });
       return;
     }
@@ -275,7 +287,7 @@ export default function TeacherProfileEdit() {
     try {
       await updateDoc(doc(db, "users", appUser.uid), {
         classes: selectedClasses,
-        subjects: selectedSubjects,
+        subjects: finalSubjects,
         curriculum: curriculum
       });
       showToast({ message: "Work assignments updated!", type: "success" });
@@ -623,26 +635,49 @@ export default function TeacherProfileEdit() {
               </View>
 
               <Text style={styles.modalLabel}>DATE OF BIRTH</Text>
-              <TouchableOpacity
-                style={styles.modalInput}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={{ marginTop: 15, fontSize: 16, fontWeight: '600' }}>
-                  {dob.toLocaleDateString()}
-                </Text>
-              </TouchableOpacity>
+              {Platform.OS === 'web' ? (
+                <View style={[styles.modalInput, { justifyContent: 'center' }]}>
+                   <input
+                    type="date"
+                    value={dob instanceof Date && !isNaN(dob.getTime()) ? dob.toISOString().split('T')[0] : ''}
+                    onChange={(e) => setDob(new Date(e.target.value))}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      height: '100%',
+                      width: '100%',
+                      outline: 'none',
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      fontFamily: 'inherit',
+                      color: '#1E293B'
+                    }}
+                  />
+                </View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={styles.modalInput}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={{ marginTop: 15, fontSize: 16, fontWeight: '600' }}>
+                      {dob.toLocaleDateString()}
+                    </Text>
+                  </TouchableOpacity>
 
-              {showDatePicker && (
-                <DateTimePicker
-                  value={dob}
-                  mode="date"
-                  display="default"
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(Platform.OS === 'ios');
-                    if (selectedDate) setDob(selectedDate);
-                  }}
-                  maximumDate={new Date()}
-                />
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={dob}
+                      mode="date"
+                      display="default"
+                      onChange={(event, selectedDate) => {
+                        setShowDatePicker(Platform.OS === 'ios');
+                        if (selectedDate) setDob(selectedDate);
+                      }}
+                      maximumDate={new Date()}
+                    />
+                  )}
+                </>
               )}
 
               <TouchableOpacity
@@ -686,7 +721,12 @@ export default function TeacherProfileEdit() {
               <View style={styles.pickerWrapper}>
                 <Picker
                   selectedValue={curriculum}
-                  onValueChange={(v) => { setCurriculum(v as CurriculumType); setSelectedSubjects([]); }}
+                  onValueChange={(v) => {
+                    setCurriculum(v as CurriculumType);
+                    setSelectedSubjects([]);
+                    setIsOtherSelected(false);
+                    setCustomSubject("");
+                  }}
                   style={styles.picker}
                 >
                   <Picker.Item label="GES (National)" value="GES" />
@@ -705,7 +745,25 @@ export default function TeacherProfileEdit() {
                     <Text style={[styles.chipText, selectedSubjects.includes(s) && { color: '#fff' }]}>{s}</Text>
                   </TouchableOpacity>
                 ))}
+                <TouchableOpacity
+                  onPress={() => setIsOtherSelected(!isOtherSelected)}
+                  style={[styles.chip, isOtherSelected && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                >
+                  <Text style={[styles.chipText, isOtherSelected && { color: '#fff' }]}>Other</Text>
+                </TouchableOpacity>
               </View>
+
+              {isOtherSelected && (
+                <>
+                  <Text style={styles.modalLabel}>SPECIFY OTHER SUBJECT</Text>
+                  <TextInput
+                    style={styles.modalInput}
+                    placeholder="Enter subject name"
+                    value={customSubject}
+                    onChangeText={setCustomSubject}
+                  />
+                </>
+              )}
 
               <TouchableOpacity
                 style={[styles.modalBtn, { backgroundColor: COLORS.primary, marginBottom: 20 }]}

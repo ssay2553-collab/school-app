@@ -12,10 +12,11 @@ export * from "./academics";
 export * from "./news";
 export * from "./chat";
 export * from "./attendance";
-export * from "./userActions"; 
 export * from "./finance";
 export * from "./birthdays";
 export * from "./ai";
+export * from "./auth";
+export * from "./admin";
 
 /**
  * 🚀 CLOUD FUNCTION (V2): Aggregate Score Stats

@@ -6,6 +6,7 @@ import {
     collection,
     doc,
     getDocs,
+    limit,
     query,
     serverTimestamp,
     Timestamp,
@@ -32,6 +33,7 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import SVGIcon from "../../../components/SVGIcon";
 import { SHADOWS, COLORS as THEME_COLORS } from "../../../constants/theme";
 import { useToast } from "../../../contexts/ToastContext";
@@ -48,6 +50,9 @@ interface ClassItem {
   name: string;
 }
 
+// Simple session cache to save data for bulk registrations
+let cachedClasses: ClassItem[] | null = null;
+
 export default function StudentSignupScreen() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -55,7 +60,7 @@ export default function StudentSignupScreen() {
   const secondary = SCHOOL_CONFIG.secondaryColor;
 
   const [step, setStep] = useState(1);
-  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [classes, setClasses] = useState<ClassItem[]>(cachedClasses || []);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -72,12 +77,72 @@ export default function StudentSignupScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isCodeVerified, setIsCodeVerified] = useState(false);
 
   // Disable native driver for web/electron to avoid warnings
   const useNativeDriver = Platform.OS !== 'web';
 
+  const verifyCode = async () => {
+    if (!form.signupCode.trim()) {
+      showToast({ message: "Please enter your signup code.", type: "error" });
+      return;
+    }
+    setLoading(true);
+    try {
+      const cleanCode = form.signupCode.trim().toUpperCase();
+
+      // 1. Check for a Pre-registered Profile (Bulk Import)
+      const pendingQuery = query(
+        collection(db, "users"),
+        where("signupCode", "==", cleanCode),
+        where("role", "==", "student"),
+        limit(1)
+      );
+      const pendingSnapshot = await getDocs(pendingQuery);
+      const pendingDoc = pendingSnapshot.docs.find(d => d.data().status === "pending_activation");
+
+      if (pendingDoc) {
+        const data = pendingDoc.data();
+        setForm(prev => ({
+          ...prev,
+          firstName: data.profile?.firstName || prev.firstName,
+          lastName: data.profile?.lastName || prev.lastName,
+          gender: data.profile?.gender || data.gender || "",
+          selectedClassId: data.classId || prev.selectedClassId,
+          dateOfBirth: data.dateOfBirth?.toDate ? data.dateOfBirth.toDate() : (data.dateOfBirth ? new Date(data.dateOfBirth) : null),
+        }));
+        showToast({ message: `Welcome ${data.profile?.firstName}! Profile found.`, type: "success" });
+        setIsCodeVerified(true);
+        setStep(2);
+        return;
+      }
+
+      // 2. Check generic signupCodes
+      const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        throw new Error("Invalid signup code. Please check with your teacher.");
+      }
+
+      const codeData = querySnapshot.docs[0].data();
+      if (codeData.classId) {
+        setForm(prev => ({ ...prev, selectedClassId: codeData.classId }));
+      }
+
+      showToast({ message: "Code verified! Please complete your account details.", type: "success" });
+      setIsCodeVerified(true);
+      setStep(2);
+    } catch (err: any) {
+      showToast({ message: err.message || "Verification failed.", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchClasses = async () => {
+      if (cachedClasses && cachedClasses.length > 0) return;
       try {
         // Fetch classes and use "safe filter" to include legacy docs or school-specific ones
         const q = query(collection(db, "classes"));
@@ -87,7 +152,9 @@ export default function StudentSignupScreen() {
           .filter((d) => !d.schoolId || d.schoolId === SCHOOL_CONFIG.schoolId)
           .map((d) => ({ id: d.id, name: d.name || d.id }));
 
-        setClasses(list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
+        const sorted = list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        setClasses(sorted);
+        cachedClasses = sorted;
       } catch (err) {
         console.error("Failed to fetch classes:", err);
       }
@@ -111,11 +178,17 @@ export default function StudentSignupScreen() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.4, // Reduced quality to prevent memory crashes on Android
+        quality: 1, // Full quality for the initial crop
       });
 
       if (!result.canceled) {
-        setForm({ ...form, profileImage: result.assets[0].uri });
+        // Resize to 300x300 - significantly reduces data regardless of quality setting
+        const manipResult = await ImageManipulator.manipulateAsync(
+          result.assets[0].uri,
+          [{ resize: { width: 300, height: 300 } }],
+          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+        );
+        setForm({ ...form, profileImage: manipResult.uri });
       }
     } catch (e) {
       console.error("Image pick error:", e);
@@ -125,6 +198,15 @@ export default function StudentSignupScreen() {
 
   const validateStep = () => {
     if (step === 1) {
+      if (!form.signupCode.trim()) {
+        showToast({ message: "Please enter your signup code.", type: "error" });
+        return false;
+      }
+      if (!isCodeVerified) {
+        verifyCode();
+        return false;
+      }
+    } else if (step === 2) {
       if (!form.firstName.trim() || !form.lastName.trim()) {
         showToast({ message: "Please enter your full name.", type: "error" });
         return false;
@@ -141,7 +223,7 @@ export default function StudentSignupScreen() {
         showToast({ message: "Passwords do not match", type: "error" });
         return false;
       }
-    } else if (step === 2) {
+    } else if (step === 3) {
       if (!form.gender) {
         showToast({ message: "Please select your gender.", type: "error" });
         return false;
@@ -185,28 +267,54 @@ export default function StudentSignupScreen() {
 
     try {
       const cleanCode = form.signupCode.trim().toUpperCase();
-      const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode));
-      const querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty) {
-        throw new Error("That signup code doesn't seem to fit. Check it again!");
+      // 1. Check for a Pre-registered Profile (Bulk Import)
+      const pendingQuery = query(
+        collection(db, "users"),
+        where("signupCode", "==", cleanCode),
+        where("role", "==", "student"),
+        limit(1)
+      );
+      const pendingSnapshot = await getDocs(pendingQuery);
+
+      const pendingDoc = pendingSnapshot.docs.find(d => d.data().status === "pending_activation");
+
+      let preRegisteredData: any = null;
+      let pendingDocId: string | null = null;
+
+      if (pendingDoc) {
+        pendingDocId = pendingDoc.id;
+        preRegisteredData = pendingDoc.data();
       }
 
-      const codeDoc = querySnapshot.docs[0];
-      const codeData = codeDoc.data();
+      // 2. Validate Code (either from pending profile or standard signupCodes collection)
+      let codeDocId: string | null = null;
 
-      if (codeData.expiresAt && Timestamp.now().toMillis() > codeData.expiresAt.toMillis()) {
-        throw new Error("This code has expired. Ask your teacher for a new one!");
-      }
+      if (!preRegisteredData) {
+        const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode));
+        const querySnapshot = await getDocs(q);
 
-      if (codeData.intendedForRole !== "student" || codeData.used || codeData.classId !== form.selectedClassId) {
-        throw new Error("This code isn't for you or it's already been used! Check your class and code again.");
+        if (querySnapshot.empty) {
+          throw new Error("That signup code doesn't seem to fit. Check it again!");
+        }
+
+        const codeDoc = querySnapshot.docs[0];
+        const codeData = codeDoc.data();
+
+        if (codeData.expiresAt && Timestamp.now().toMillis() > codeData.expiresAt.toMillis()) {
+          throw new Error("This code has expired. Ask your teacher for a new one!");
+        }
+
+        if (codeData.intendedForRole !== "student" || codeData.used || codeData.classId !== form.selectedClassId) {
+          throw new Error("This code isn't for you or it's already been used! Check your class and code again.");
+        }
+
+        codeDocId = codeDoc.id;
       }
 
       // Auto-format "email" if they just entered a username
       let finalEmail = form.email.trim().toLowerCase();
       if (!finalEmail.includes("@")) {
-        // Append a virtual domain so Firebase Auth accepts it as an email format
         finalEmail = `${finalEmail}@${SCHOOL_CONFIG.schoolId || 'student'}.edueaz.com`;
       }
 
@@ -214,7 +322,6 @@ export default function StudentSignupScreen() {
       const cred = await createUserWithEmailAndPassword(auth, finalEmail, form.password);
       const userId = cred.user.uid;
 
-      // Ensure session is fresh for Firestore rules
       if (cred.user) {
         await cred.user.getIdToken(true);
       }
@@ -229,41 +336,55 @@ export default function StudentSignupScreen() {
           profileImageUrl = await getDownloadURL(storageRef);
         } catch (imgErr) {
           console.error("Profile image upload failed:", imgErr);
-          // Don't fail the whole signup if just the image fails
         }
       }
 
       const batch = writeBatch(db);
-      batch.set(doc(db, "users", userId), {
+
+      // Merge logic: use pre-registered data if available
+      const userData = {
         uid: userId,
         role: "student",
-        schoolId: SCHOOL_CONFIG.schoolId,
+        schoolId: (preRegisteredData?.schoolId && preRegisteredData.schoolId !== "default")
+          ? preRegisteredData.schoolId
+          : SCHOOL_CONFIG.schoolId,
         status: "active",
-        classId: form.selectedClassId,
-        gender: form.gender, 
-        secretCode: codeDoc.id,
-        parentLinkCode: generateLinkCode(),
-        parentUids: [],
-        dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : null,
+        classId: preRegisteredData?.classId || form.selectedClassId,
+        gender: form.gender || preRegisteredData?.profile?.gender || "",
+        secretCode: cleanCode,
+        parentLinkCode: preRegisteredData?.parentLinkCode || generateLinkCode(),
+        parentUids: preRegisteredData?.parentUids || [],
+        dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : (preRegisteredData?.dateOfBirth || null),
+        walletBalance: preRegisteredData?.walletBalance || 0,
         profile: {
-          firstName: form.firstName.trim(),
-          lastName: form.lastName.trim(),
-          email: form.email.trim().toLowerCase(),
-          profileImage: profileImageUrl,
+          firstName: form.firstName.trim() || preRegisteredData?.profile?.firstName,
+          lastName: form.lastName.trim() || preRegisteredData?.profile?.lastName,
+          email: finalEmail,
+          phone: preRegisteredData?.profile?.phone || "",
+          gender: form.gender || preRegisteredData?.profile?.gender || "",
+          profileImage: profileImageUrl || preRegisteredData?.profile?.profileImage || null,
         },
         createdAt: serverTimestamp(),
-      });
+        claimedAt: serverTimestamp(),
+      };
 
-      batch.update(doc(db, "signupCodes", codeDoc.id), { used: true, usedBy: userId });
+      batch.set(doc(db, "users", userId), userData);
+
+      // Clean up
+      if (pendingDocId) {
+        batch.delete(doc(db, "users", pendingDocId));
+      } else if (codeDocId) {
+        batch.update(doc(db, "signupCodes", codeDocId), { used: true, usedBy: userId });
+      }
+
       await batch.commit();
 
-      const successMsg = "Account created successfully! Your student adventure starts now!";
-      showToast({ message: successMsg, type: "success" });
+      showToast({ message: "Account created successfully! Welcome to your school portal.", type: "success" });
       router.replace("/(auth)/login/student");
     } catch (err: any) {
       console.error("Signup error details:", err);
       let msg = err.message;
-      if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
+      if (err.code === 'auth/email-already-in-use') msg = "This email or username is already taken.";
       showToast({ message: msg || "An unexpected error occurred.", type: "error" });
     } finally {
       setLoading(false);
@@ -304,6 +425,52 @@ export default function StudentSignupScreen() {
 
           {step === 1 && (
             <Animatable.View animation="fadeInRight" useNativeDriver={useNativeDriver} style={styles.stepContainer}>
+              <View style={styles.codeCard}>
+                <View style={[styles.iconBadge, { backgroundColor: primary + '15' }]}>
+                  <SVGIcon name="key" size={32} color={primary} />
+                </View>
+                <Text style={[styles.themedDefault, styles.codeTitle]}>Magic Signup Code</Text>
+                <Text style={[styles.themedDefault, styles.codeSubtitle]}>Enter the secret code from your teacher to join your class.</Text>
+
+                <TextInput
+                  style={styles.codeInput}
+                  placeholder="ENTER CODE"
+                  placeholderTextColor="#94A3B8"
+                  value={form.signupCode}
+                  onChangeText={(v) => {
+                    setForm({ ...form, signupCode: v });
+                    setIsCodeVerified(false);
+                  }}
+                  autoCapitalize="characters"
+                />
+
+                <TouchableOpacity
+                  onPress={verifyCode}
+                  activeOpacity={0.8}
+                  style={[styles.joinBtn, { backgroundColor: primary }]}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <View style={styles.joinBtnContent}>
+                      <Text style={[styles.themedDefault, styles.joinBtnText]}>Verify Code</Text>
+                      <View style={styles.joinBtnIcon}>
+                        <SVGIcon name="shield-checkmark" size={18} color={primary} />
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+
+                <Text style={[styles.themedDefault, styles.secureText]}>
+                   <SVGIcon name="lock-closed" size={12} color="#94A3B8" /> Secure 256-bit Registry
+                </Text>
+              </View>
+            </Animatable.View>
+          )}
+
+          {step === 2 && (
+            <Animatable.View animation="fadeInRight" useNativeDriver={useNativeDriver} style={styles.stepContainer}>
               <View style={styles.card}>
                 <Text style={[styles.themedDefault, styles.cardHeader]}>Account Details</Text>
                 
@@ -343,7 +510,7 @@ export default function StudentSignupScreen() {
             </Animatable.View>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <Animatable.View animation="fadeInRight" useNativeDriver={useNativeDriver} style={styles.stepContainer}>
                <View style={styles.card}>
                  <Text style={[styles.themedDefault, styles.cardHeader]}>Student Profile</Text>
@@ -434,50 +601,25 @@ export default function StudentSignupScreen() {
                      </Picker>
                    </View>
                  </View>
-               </View>
-            </Animatable.View>
-          )}
 
-          {step === 3 && (
-            <Animatable.View animation="fadeInRight" useNativeDriver={useNativeDriver} style={styles.stepContainer}>
-              <View style={styles.codeCard}>
-                <View style={[styles.iconBadge, { backgroundColor: primary + '15' }]}>
-                  <SVGIcon name="key" size={32} color={primary} />
-                </View>
-                <Text style={[styles.themedDefault, styles.codeTitle]}>Magic Signup Code</Text>
-                <Text style={[styles.themedDefault, styles.codeSubtitle]}>Enter the secret code from your teacher to join your class.</Text>
-                
-                <TextInput
-                  style={styles.codeInput}
-                  placeholder="ENTER CODE"
-                  placeholderTextColor="#94A3B8"
-                  value={form.signupCode}
-                  onChangeText={(v) => setForm({ ...form, signupCode: v })}
-                  autoCapitalize="characters"
-                />
-                
-                <TouchableOpacity 
+                 <TouchableOpacity
                   onPress={handleSignup} 
                   activeOpacity={0.8}
-                  style={[styles.joinBtn, { backgroundColor: primary }]}
+                  style={[styles.joinBtn, { backgroundColor: primary, marginTop: 20 }]}
                   disabled={loading}
                 >
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <View style={styles.joinBtnContent}>
-                      <Text style={[styles.themedDefault, styles.joinBtnText]}>Join Your Class Now</Text>
+                      <Text style={[styles.themedDefault, styles.joinBtnText]}>Finish Signup</Text>
                       <View style={styles.joinBtnIcon}>
                         <SVGIcon name="arrow-forward" size={18} color={primary} />
                       </View>
                     </View>
                   )}
                 </TouchableOpacity>
-
-                <Text style={[styles.themedDefault, styles.secureText]}>
-                   <SVGIcon name="lock-closed" size={12} color="#94A3B8" /> Secure 256-bit Registry
-                </Text>
-              </View>
+               </View>
             </Animatable.View>
           )}
 

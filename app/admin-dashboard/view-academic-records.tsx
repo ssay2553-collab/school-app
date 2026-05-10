@@ -404,13 +404,39 @@ export default function ViewAcademicRecords() {
   const handleEditMetadata = async (student: ScoreData) => {
     setEditingStudent(student);
 
-    // Default values from teacher submission if they exist
-    setConduct(student.conduct || "Excellent");
-    setAttitude(student.attitude || "Very Positive");
-    setInterest(student.interest || "High");
-    setTeacherRemarks(student.teacherRemarks || "");
+    // 1. Initial Defaults
+    setConduct("Excellent");
+    setAttitude("Very Positive");
+    setInterest("High");
+    setTeacherRemarks("");
     setPromotedTo("");
     setNextTermBegins("");
+
+    // 2. Fetch Behavioral Records from Teacher Module (Source of truth for conduct/remarks)
+    try {
+      const yearSlug = selectedYear.replace(/\//g, "-");
+      const termSlug = term.replace(/\s+/g, "");
+      const behDocId = `behavioral_${selectedClassId}_${yearSlug}_${termSlug}`;
+      const behSnap = await getDoc(doc(db, "behavioralRecords", behDocId));
+
+      if (behSnap.exists()) {
+        const behData = behSnap.data();
+        const studentBeh = (behData.students || []).find(
+          (s: any) => s.studentId === student.studentId,
+        );
+        if (studentBeh) {
+          if (studentBeh.conduct) setConduct(studentBeh.conduct);
+          if (studentBeh.attitude) setAttitude(studentBeh.attitude);
+          if (studentBeh.interest) setInterest(studentBeh.interest);
+          if (studentBeh.teacherRemarks)
+            setTeacherRemarks(studentBeh.teacherRemarks);
+          if (studentBeh.promotedTo) setPromotedTo(studentBeh.promotedTo);
+        }
+      }
+    } catch (e) {
+      console.log("Error fetching behavioral defaults:", e);
+    }
+
     // Auto-generate admin remarks based on OVERALL Aggregate performance
     let autoRemarks = "";
     const agg = student.aggregate || 54;
@@ -439,7 +465,7 @@ export default function ViewAcademicRecords() {
 
     setMetadataModalVisible(true);
 
-    // Fetch existing metadata from student-reports if it exists (overrides teacher defaults)
+    // 3. Fetch existing metadata from student-reports if it exists (Admin overrides)
     try {
       const reportId =
         `${student.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(

@@ -1,27 +1,25 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
+  Timestamp,
   collection,
   getDocs,
   query,
-  where,
-  Timestamp,
-  addDoc
+  where
 } from "firebase/firestore";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform
+  View
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../components/SVGIcon";
@@ -32,7 +30,6 @@ import { useToast } from "../contexts/ToastContext";
 import { db } from "../firebaseConfig";
 import { copyToClipboard } from "../utils/copyToClipboard";
 
-import Constants from "expo-constants";
 
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../firebaseConfig";
@@ -47,6 +44,7 @@ export default function AISearch() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [weeklyCount, setWeeklyCount] = useState(0);
+  const [userClass, setUserClass] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   const primary = SCHOOL_CONFIG.primaryColor;
@@ -55,8 +53,28 @@ export default function AISearch() {
   useEffect(() => {
     if (appUser?.uid) {
       fetchDailyUsage();
+      if (appUser.role === "student" && appUser.classId) {
+        fetchStudentClass();
+      }
     }
   }, [appUser?.uid]);
+
+  const fetchStudentClass = async () => {
+    try {
+      if (!appUser || !appUser.classId) return;
+      const q = query(
+        collection(db, "classes"),
+        where("__name__", "==", appUser.classId),
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const data = snap.docs[0].data();
+        setUserClass(data.name);
+      }
+    } catch (e) {
+      console.error("Error fetching student class:", e);
+    }
+  };
 
   const getStartOfDay = () => {
     const now = new Date();
@@ -70,7 +88,7 @@ export default function AISearch() {
       const q = query(
         collection(db, "ai_searches"),
         where("userId", "==", appUser?.uid),
-        where("createdAt", ">=", Timestamp.fromDate(startOfDay))
+        where("createdAt", ">=", Timestamp.fromDate(startOfDay)),
       );
       const snap = await getDocs(q);
       setWeeklyCount(snap.size);
@@ -98,6 +116,7 @@ export default function AISearch() {
       const { data } = (await searchFn({
         queryText: queryText.trim(),
         schoolName: SCHOOL_CONFIG.name,
+        userClass: userClass,
       })) as { data: { text: string } };
 
       if (data?.text) {
@@ -120,7 +139,10 @@ export default function AISearch() {
     if (!result) return;
     const ok = await copyToClipboard(result);
     if (ok) {
-      showToast({ message: "Response copied to clipboard! 📋", type: "success" });
+      showToast({
+        message: "Response copied to clipboard! 📋",
+        type: "success",
+      });
     }
   };
 
@@ -132,15 +154,20 @@ export default function AISearch() {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[primary, "#1E293B"]} style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+          >
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>AI Fact Finder</Text>
           <View style={styles.usageBadge}>
-             <Text style={styles.usageText}>{LIMIT - weeklyCount} Left</Text>
+            <Text style={styles.usageText}>{LIMIT - weeklyCount} Left</Text>
           </View>
         </View>
-        <Text style={styles.headerDesc}>Ask me anything about your studies or school subjects!</Text>
+        <Text style={styles.headerDesc}>
+          Ask me anything about your studies or school subjects!
+        </Text>
       </LinearGradient>
 
       <ScrollView
@@ -176,9 +203,18 @@ export default function AISearch() {
         {result && (
           <Animatable.View animation="fadeInUp" style={styles.resultCard}>
             <View style={styles.resultHeader}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                  flex: 1,
+                }}
+              >
                 <SVGIcon name="bulb" size={20} color={primary} />
-                <Text style={[styles.resultTitle, { color: primary }]}>AI Response</Text>
+                <Text style={[styles.resultTitle, { color: primary }]}>
+                  AI Response
+                </Text>
               </View>
               <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
                 <SVGIcon name="copy-outline" size={20} color="#64748B" />
@@ -189,15 +225,15 @@ export default function AISearch() {
         )}
 
         {loading && (
-            <View style={styles.loadingState}>
-                <Animatable.Text
-                    animation="pulse"
-                    iterationCount="infinite"
-                    style={styles.loadingMsg}
-                >
-                    Consulting the knowledge base...
-                </Animatable.Text>
-            </View>
+          <View style={styles.loadingState}>
+            <Animatable.Text
+              animation="pulse"
+              iterationCount="infinite"
+              style={styles.loadingMsg}
+            >
+              Consulting the knowledge base...
+            </Animatable.Text>
+          </View>
         )}
       </ScrollView>
     </KeyboardAvoidingView>
@@ -213,7 +249,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
   },
-  headerTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  headerTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   backBtn: { padding: 5 },
   headerTitle: { fontSize: 22, fontWeight: "900", color: "#fff" },
   usageBadge: {
@@ -225,7 +265,12 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.3)",
   },
   usageText: { color: "#fff", fontSize: 12, fontWeight: "800" },
-  headerDesc: { color: "rgba(255,255,255,0.7)", fontSize: 13, marginTop: 10, fontWeight: "500" },
+  headerDesc: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    marginTop: 10,
+    fontWeight: "500",
+  },
   scrollContent: { padding: 20 },
   inputCard: {
     backgroundColor: "#fff",
@@ -260,10 +305,19 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     ...SHADOWS.small,
   },
-  resultHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+  resultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+  },
   resultTitle: { fontSize: 14, fontWeight: "900", textTransform: "uppercase" },
   copyBtn: { padding: 5, borderRadius: 8, backgroundColor: "#F1F5F9" },
-  resultText: { fontSize: 16, color: "#334155", lineHeight: 24, fontWeight: "500" },
+  resultText: {
+    fontSize: 16,
+    color: "#334155",
+    lineHeight: 24,
+    fontWeight: "500",
+  },
   loadingState: { padding: 40, alignItems: "center" },
   loadingMsg: { color: "#94A3B8", fontWeight: "600", fontSize: 14 },
 });

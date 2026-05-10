@@ -38,6 +38,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, functions } from "../../firebaseConfig";
 import SVGIcon from "../../components/SVGIcon";
+import { sortClasses } from "../../utils/classSorting";
 
 // --- TYPES --- //
 interface ClassData {
@@ -151,7 +152,7 @@ export default function PromoteStudentsScreen() {
             id: d.id,
             ...(d.data() as any),
           }));
-          setTeacherClasses(list);
+          setTeacherClasses(sortClasses(list));
         }
       } catch {
         console.error("Error fetching teacher classes");
@@ -182,7 +183,7 @@ export default function PromoteStudentsScreen() {
           id: d.id,
           name: d.data().name || d.id,
         }));
-        setAllClasses(list);
+        setAllClasses(sortClasses(list));
       } catch (err) {
         console.error("fetchAllClasses error:", err);
       }
@@ -199,6 +200,7 @@ export default function PromoteStudentsScreen() {
         collection(db, "users"),
         where("role", "==", "student"),
         where("classId", "==", classId),
+        where("status", "in", ["active", "pending_activation"]),
       );
       const snap = await getDocs(q);
       const list = snap.docs.map((d) => ({

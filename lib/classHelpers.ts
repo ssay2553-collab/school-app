@@ -132,6 +132,33 @@ export const calculatePerformanceFromList = (subjects: any[]) => {
 };
 
 /**
+ * Standard Competition Ranking (1, 2, 2, 4)
+ * Handles ties by giving them the same rank and skipping subsequent ranks.
+ */
+export const calculateCompetitionRanking = (
+  students: { id: string; total: number }[],
+  targetId: string,
+) => {
+  if (!students.length) return { rank: 0, total: 0 };
+
+  const sorted = [...students].sort((a, b) => b.total - a.total);
+  let rank = 1;
+  let targetRank = 0;
+
+  for (let i = 0; i < sorted.length; i++) {
+    if (i > 0 && sorted[i].total < sorted[i - 1].total) {
+      rank = i + 1;
+    }
+    if (sorted[i].id === targetId) {
+      targetRank = rank;
+      break;
+    }
+  }
+
+  return { rank: targetRank, total: sorted.length };
+};
+
+/**
  * Legacy support for simple grade string calculation
  */
 /**

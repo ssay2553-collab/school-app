@@ -355,6 +355,7 @@ export default function ManageFees() {
         let baseQuery = query(
           collection(db, "users"),
           where("role", "==", "student"),
+          where("status", "in", ["active", "pending_activation"]),
         );
 
         if (selectedClassId !== "all") {

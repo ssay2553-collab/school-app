@@ -56,6 +56,7 @@ export default function ParentSettingsScreen() {
         studentsRef,
         where("role", "==", "student"),
         where("parentLinkCode", "==", code),
+        where("status", "in", ["active", "pending_activation"])
       );
       const querySnapshot = await getDocs(q);
 

@@ -109,6 +109,13 @@ export default function TeacherDashboard() {
           color: "#8b5cf6",
         },
         {
+          title: "Class Remarks",
+          subtitle: "Conduct & Promo",
+          route: "/teacher-dashboard/behavioral-records",
+          icon: "chatbubble-ellipses",
+          color: "#10b981",
+        },
+        {
           title: "Assignments",
           subtitle: "Upload tasks",
           route: "/teacher-dashboard/upload-assignment",
@@ -130,11 +137,18 @@ export default function TeacherDashboard() {
           color: "#06b6d4",
         },
         {
+          title: "TLM Hub",
+          subtitle: "Teaching Materials",
+          route: "/teacher-dashboard/tlm-hub",
+          icon: "library",
+          color: "#f59e0b",
+        },
+        {
           title: "Pedagogy",
           subtitle: "Curriculum & Tools",
           route: "/teacher-dashboard/pedagogy-vault",
           icon: "briefcase",
-          color: "#f59e0b",
+          color: "#10b981",
         },
         {
           title: "AI Planner",
@@ -263,6 +277,22 @@ export default function TeacherDashboard() {
             </Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 12 }}>
+            {appUser?.role === "admin" && (
+                <TouchableOpacity
+                    onPress={() => router.push("/admin-dashboard")}
+                    style={[styles.settingsBtn, { width: 'auto', paddingHorizontal: 12 }]}
+                >
+                    <View
+                        style={[
+                            styles.settingsIconBg,
+                            { backgroundColor: "#10b981" + "15", flexDirection: 'row', gap: 6, width: 'auto', paddingHorizontal: 8 },
+                        ]}
+                    >
+                        <SVGIcon name="shield-checkmark" size={20} color="#10b981" />
+                        <Text style={{ color: '#10b981', fontSize: 10, fontWeight: '900' }}>ADMIN</Text>
+                    </View>
+                </TouchableOpacity>
+            )}
             <TouchableOpacity
                 onPress={() => router.push("/teacher-dashboard/note")}
                 style={styles.settingsBtn}

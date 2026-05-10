@@ -24,7 +24,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
@@ -32,7 +32,11 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
-import { getGradeDetails, calculatePerformanceFromList } from "../../lib/classHelpers";
+import {
+    calculatePerformanceFromList,
+    getGradeDetails,
+    calculateCompetitionRanking,
+} from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
@@ -62,8 +66,10 @@ export default function ViewAcademicRecordDetails() {
   const [interest, setInterest] = useState("High");
   const [promotedTo, setPromotedTo] = useState("");
   const [nextTermBegins, setNextTermBegins] = useState("");
+  const [attendance, setAttendance] = useState("");
 
   const [adminSig, setAdminSig] = useState("");
+  const [overallPosition, setOverallPosition] = useState<string>("-");
 
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
   const schoolId = (
@@ -110,8 +116,19 @@ export default function ViewAcademicRecordDetails() {
             );
             return valB - valA;
           });
-          const posInSub =
-            sortedBySubject.findIndex((s) => s.studentId === studentId) + 1;
+
+          // Standard Competition Ranking for Subject Position
+          const subjectRankData = calculateCompetitionRanking(
+            studentsList.map((s: any) => ({
+              id: s.studentId,
+              total: parseFloat(
+                s.finalScore ||
+                  (parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)).toFixed(2)
+              ),
+            })),
+            studentId
+          );
+          const posInSub = subjectRankData.rank;
 
           const studentEntry = studentsList.find(
             (s: any) => s.studentId === studentId,
@@ -189,6 +206,53 @@ export default function ViewAcademicRecordDetails() {
         }
 
         if (isFullReport) {
+          // 1. Fetch Teacher's Behavioral Input (Source of truth for conduct/remarks)
+          const yearSlug = academicYearState.replace(/\//g, "-");
+          const termSlug = termState.replace(/\s+/g, "");
+          const behDocId = `behavioral_${classIdState}_${yearSlug}_${termSlug}`;
+          const behSnap = await getDoc(doc(db, "behavioralRecords", behDocId));
+
+          if (behSnap.exists()) {
+            const behData = behSnap.data();
+            const studentBeh = (behData.students || []).find(
+              (s: any) => s.studentId === studentId,
+            );
+            if (studentBeh) {
+              setConduct(studentBeh.conduct || "Excellent");
+              setAttitude(studentBeh.attitude || "Positive");
+              setInterest(studentBeh.interest || "N/A");
+              setTeacherRemarks(studentBeh.teacherRemarks || "");
+              setPromotedTo(studentBeh.promotedTo || "");
+            }
+          }
+
+          // 1b. Fetch Actual Attendance Data from the 'attendance' collection
+          try {
+            const qAtt = query(
+              collection(db, "attendance"),
+              where("classId", "==", classIdState),
+              where("academicYear", "==", academicYearState),
+              where("term", "==", termState),
+            );
+            const attSnap = await getDocs(qAtt);
+            if (!attSnap.empty) {
+              let presentCount = 0;
+              let totalDays = attSnap.docs.length;
+
+              attSnap.docs.forEach((d) => {
+                const dayData = d.data();
+                const studentEntry = dayData.students?.[studentId];
+                if (studentEntry && studentEntry.status === "present") {
+                  presentCount++;
+                }
+              });
+              setAttendance(`${presentCount} / ${totalDays}`);
+            }
+          } catch (e) {
+            console.log("Error fetching attendance stats:", e);
+          }
+
+          // 2. Fetch Finalized Report (Overlay admin remarks or finalized data)
           const reportId =
             `${studentId}_${academicYearState}_${termState}_${reportType.replace(/\s+/g, "")}`.replace(
               /\//g,
@@ -197,13 +261,10 @@ export default function ViewAcademicRecordDetails() {
           const reportSnap = await getDoc(doc(db, "student-reports", reportId));
           if (reportSnap.exists()) {
             const r = reportSnap.data() as any;
-            setAdminRemarks(r.adminRemarks || "");
-            setTeacherRemarks(r.teacherRemarks || "");
-            setConduct(r.assessment?.conduct || "Excellent");
-            setAttitude(r.assessment?.attitude || "Very Positive");
-            setInterest(r.assessment?.interest || "High");
-            setPromotedTo(r.promotedTo || "");
-            setNextTermBegins(r.nextTermBegins || "");
+            if (r.adminRemarks) setAdminRemarks(r.adminRemarks);
+            if (r.nextTermBegins) setNextTermBegins(r.nextTermBegins);
+            // If report is finalized, it might overwrite behavioral if preferred,
+            // but usually behavioral from teacher is what's being looked for here.
           }
         }
       } catch (err) {
@@ -215,7 +276,11 @@ export default function ViewAcademicRecordDetails() {
     fetchAllData();
   }, [studentId, termState, classIdState, academicYearState, reportType]);
 
-  const { trs: TRS, tas: TAS, aggregate: AGGREGATE } = useMemo(() => {
+  const {
+    trs: TRS,
+    tas: TAS,
+    aggregate: AGGREGATE,
+  } = useMemo(() => {
     return calculatePerformanceFromList(subjectsData);
   }, [subjectsData]);
 
@@ -273,7 +338,7 @@ export default function ViewAcademicRecordDetails() {
       if (adminSig) sigDataUri = await getBase64FromUri(adminSig);
 
       // 🧠 CALCULATE OVERALL POSITION
-      let overallPosition = "-";
+      let computedPosition = "-";
       try {
         const qAll = query(
           collection(db, "academicRecords"),
@@ -297,14 +362,20 @@ export default function ViewAcademicRecordDetails() {
             allStudents[s.studentId].total += score;
           });
         });
-        const ranked = Object.entries(allStudents).sort(
-          (a: any, b: any) => b[1].total - a[1].total,
-        );
-        const index = ranked.findIndex(([id]) => id === studentId);
-        if (index !== -1) overallPosition = `${index + 1}/${ranked.length}`;
+
+        // 🧠 CALCULATE OVERALL POSITION (Standard Competition Ranking)
+        const rankedData = Object.entries(allStudents).map(([id, data]: any) => ({
+          id,
+          total: data.total,
+        }));
+        const overallRankInfo = calculateCompetitionRanking(rankedData, studentId);
+        if (overallRankInfo.rank > 0) {
+          computedPosition = `${overallRankInfo.rank}/${overallRankInfo.total}`;
+        }
       } catch (e) {
         console.log("Ranking error:", e);
       }
+      setOverallPosition(computedPosition);
 
       const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VERIFY-${studentId}`;
       const qrDataUri = await getBase64FromUri(qrUrl);
@@ -331,21 +402,21 @@ export default function ViewAcademicRecordDetails() {
 
         .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1pt solid #E2E8F0; }
         .info-grid td { padding: 8pt 12pt; font-size: 10pt; border: 1pt solid #E2E8F0; }
-        .label-cell { background-color: #F8FAFC; color: #64748B; font-weight: 800; width: 20%; font-size: 8pt; text-transform: uppercase; }
-        .value-cell { width: 30%; font-weight: 700; color: #1E293B; }
+        .label-cell { background-color: #F1F5F9; color: #475569; font-weight: 800; width: 25%; font-size: 8pt; text-transform: uppercase; }
+        .value-cell { width: 25%; font-weight: 700; color: #0f172a; }
 
-        table.results { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; border: 1pt solid #0b1220; }
-        table.results th { background-color: #1E293B !important; -webkit-print-color-adjust: exact; color: #fff; padding: 10pt 5pt; font-size: 9pt; border: 1pt solid #334155; text-transform: uppercase; }
-        table.results td { padding: 8pt 5pt; font-size: 10pt; border: 1pt solid #E2E8F0; text-align: center; font-weight: 600; color: #1E293B; }
-        table.results tr:nth-child(even) { background-color: #F8FAFC; }
-        .subj-name { text-align: left !important; padding-left: 12pt !important; font-weight: 800; text-transform: uppercase; }
+        table.results { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; border: 1.5pt solid #0f172a; }
+        table.results th { background-color: #0f172a !important; -webkit-print-color-adjust: exact; color: #fff; padding: 10pt 5pt; font-size: 9pt; border: 1pt solid #0f172a; text-transform: uppercase; }
+        table.results td { padding: 8pt 5pt; font-size: 10pt; border: 1pt solid #cbd5e1; text-align: center; font-weight: 600; color: #0f172a; }
+        table.results tr:nth-child(even) { background-color: #f8fafc; }
+        .subj-name { text-align: left !important; padding-left: 12pt !important; font-weight: 800; text-transform: uppercase; color: #0f172a; }
 
-        .summary-box { border: 1pt solid #E2E8F0; padding: 12pt; margin-bottom: 20px; background-color: #F1F5F9; border-radius: 4pt; }
-        .summary-text { font-size: 11pt; font-weight: 900; margin: 0; color: #1E293B; text-align: center; }
+        .summary-box { border: 1.5pt solid #0f172a; padding: 12pt; margin-bottom: 20px; background-color: #fff; }
+        .summary-text { font-size: 11pt; font-weight: 900; margin: 0; color: #0f172a; text-align: center; letter-spacing: 1pt; }
 
-        .remarks-box { margin-top: 10pt; border: 1pt solid #E2E8F0; padding: 12pt; border-radius: 4pt; background-color: #F8FAFC; }
-        .remark-line { margin-bottom: 8pt; font-size: 10pt; line-height: 1.4; color: #334155; }
-        .remark-header { font-weight: 900; color: #1E293B; margin-right: 8pt; font-size: 8.5pt; text-transform: uppercase; }
+        .remarks-box { margin-top: 10pt; border: 1pt solid #cbd5e1; padding: 15pt; border-radius: 0; background-color: #fff; }
+        .remark-line { margin-bottom: 10pt; font-size: 10pt; line-height: 1.5; color: #1e293b; border-bottom: 0.5pt dashed #cbd5e1; padding-bottom: 5pt; }
+        .remark-header { font-weight: 900; color: #0f172a; margin-right: 10pt; font-size: 8.5pt; text-transform: uppercase; }
 
         .footer { display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; }
         .sig-section { width: 40%; text-align: center; }
@@ -385,7 +456,7 @@ export default function ViewAcademicRecordDetails() {
           </tr>
           <tr>
             <td class="label-cell">Position</td><td class="value-cell">${overallPosition}</td>
-            <td class="label-cell">Generated</td><td class="value-cell">${generatedOn}</td>
+            <td class="label-cell">Attendance</td><td class="value-cell">${attendance || "N/A"}</td>
           </tr>
         </table>
 
@@ -402,22 +473,33 @@ export default function ViewAcademicRecordDetails() {
           <tbody>
           ${subjectsData
             .map((s) => {
-              const classScoreDisplay = isNaN(Number(s.classScore)) ? s.classScore : Number(s.classScore).toFixed(1);
-              const examsScoreDisplay = isNaN(Number(s.examsScore)) ? s.examsScore : Number(s.examsScore).toFixed(1);
-              const totalDisplay = isNaN(Number(s.total)) ? s.total : Number(s.total).toFixed(1);
+              const classScoreDisplay = isNaN(Number(s.classScore))
+                ? s.classScore
+                : Number(s.classScore).toFixed(1);
+              const examsScoreDisplay = isNaN(Number(s.examsScore))
+                ? s.examsScore
+                : Number(s.examsScore).toFixed(1);
+              const totalDisplay = isNaN(Number(s.total))
+                ? s.total
+                : Number(s.total).toFixed(1);
               return `
             <tr>
               <td class="subj-name">${s.subject}</td>
-              ${isFullReport ? `
+              ${
+                isFullReport
+                  ? `
                 <td>${classScoreDisplay}</td>
                 <td>${examsScoreDisplay}</td>
                 <td style="font-weight: 900;">${totalDisplay}</td>
-              ` : `<td>${totalDisplay}</td>`}
+              `
+                  : `<td>${totalDisplay}</td>`
+              }
               <td>${s.grade}</td>
               <td>${s.pos}</td>
               <td style="font-size: 9pt; text-align: left; padding-left: 5pt;">${s.remark}</td>
             </tr>`;
-            }).join("")}
+            })
+            .join("")}
           </tbody>
         </table>
 
@@ -488,14 +570,28 @@ export default function ViewAcademicRecordDetails() {
 
       <ScrollView contentContainerStyle={{ padding: 15 }}>
         {loading ? (
-          <ActivityIndicator size="large" color={primary} style={{ marginTop: 50 }} />
+          <ActivityIndicator
+            size="large"
+            color={primary}
+            style={{ marginTop: 50 }}
+          />
         ) : (
-          <Animatable.View animation="fadeInUp" duration={600} style={styles.paper}>
+          <Animatable.View
+            animation="fadeInUp"
+            duration={600}
+            style={styles.paper}
+          >
             {/* Letterhead */}
             <View style={styles.paperLetterhead}>
-              <Image source={schoolLogo} style={styles.paperLogo} resizeMode="contain" />
+              <Image
+                source={schoolLogo}
+                style={styles.paperLogo}
+                resizeMode="contain"
+              />
               <View style={{ flex: 1 }}>
-                <Text style={styles.paperSchoolName}>{SCHOOL_CONFIG.fullName}</Text>
+                <Text style={styles.paperSchoolName}>
+                  {SCHOOL_CONFIG.fullName}
+                </Text>
                 <Text style={styles.paperReportType}>
                   {reportType.toUpperCase()} PROGRESS REPORT
                 </Text>
@@ -510,26 +606,41 @@ export default function ViewAcademicRecordDetails() {
             <View style={styles.paperInfoGrid}>
               <View style={styles.paperInfoItem}>
                 <Text style={styles.paperInfoLabel}>STUDENT:</Text>
-                <Text style={styles.paperInfoValue}>{studentName || "N/A"}</Text>
+                <Text style={styles.paperInfoValue}>
+                  {studentName || "N/A"}
+                </Text>
               </View>
               <View style={styles.paperInfoItem}>
                 <Text style={styles.paperInfoLabel}>CLASS:</Text>
-                <Text style={styles.paperInfoValue}>{className || classIdState}</Text>
+                <Text style={styles.paperInfoValue}>
+                  {className || classIdState}
+                </Text>
               </View>
               <View style={styles.paperInfoItem}>
                 <Text style={styles.paperInfoLabel}>YEAR:</Text>
                 <Text style={styles.paperInfoValue}>{academicYearState}</Text>
               </View>
               <View style={styles.paperInfoItem}>
-                <Text style={styles.paperInfoLabel}>TERM:</Text>
-                <Text style={styles.paperInfoValue}>{termState}</Text>
+                <Text style={styles.paperInfoLabel}>POSITION:</Text>
+                <Text style={styles.paperInfoValue}>{overallPosition}</Text>
+              </View>
+              <View style={styles.paperInfoItem}>
+                <Text style={styles.paperInfoLabel}>ATTENDANCE:</Text>
+                <Text style={styles.paperInfoValue}>{attendance || "N/A"}</Text>
               </View>
             </View>
 
             {/* Table */}
             <View style={styles.paperTable}>
               <View style={styles.paperTableHeader}>
-                <Text style={[styles.paperHeaderCell, { flex: 2, textAlign: "left" }]}>SUBJECT</Text>
+                <Text
+                  style={[
+                    styles.paperHeaderCell,
+                    { flex: 2, textAlign: "left" },
+                  ]}
+                >
+                  SUBJECT
+                </Text>
                 {isFullReport && (
                   <>
                     <Text style={styles.paperHeaderCell}>CLS</Text>
@@ -538,7 +649,9 @@ export default function ViewAcademicRecordDetails() {
                 )}
                 <Text style={styles.paperHeaderCell}>TOT</Text>
                 <Text style={styles.paperHeaderCell}>GRD</Text>
-                <Text style={[styles.paperHeaderCell, { flex: 1.5 }]}>REMARK</Text>
+                <Text style={[styles.paperHeaderCell, { flex: 1.5 }]}>
+                  REMARK
+                </Text>
               </View>
               {subjectsData.length === 0 ? (
                 <View style={{ padding: 20, alignItems: "center" }}>
@@ -546,25 +659,53 @@ export default function ViewAcademicRecordDetails() {
                 </View>
               ) : (
                 subjectsData.map((s, i) => (
-                  <View key={i} style={[styles.paperTableRow, i % 2 !== 0 && { backgroundColor: "#F8FAFC" }]}>
-                    <Text style={[styles.paperCell, { flex: 2, textAlign: "left", fontWeight: "800" }]}>
+                  <View
+                    key={i}
+                    style={[
+                      styles.paperTableRow,
+                      i % 2 !== 0 && { backgroundColor: "#F8FAFC" },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.paperCell,
+                        { flex: 2, textAlign: "left", fontWeight: "800" },
+                      ]}
+                    >
                       {s.subject}
                     </Text>
                     {isFullReport && (
                       <>
                         <Text style={styles.paperCell}>
-                          {isNaN(Number(s.classScore)) ? s.classScore : Number(s.classScore).toFixed(0)}
+                          {isNaN(Number(s.classScore))
+                            ? s.classScore
+                            : Number(s.classScore).toFixed(0)}
                         </Text>
                         <Text style={styles.paperCell}>
-                          {isNaN(Number(s.examsScore)) ? s.examsScore : Number(s.examsScore).toFixed(0)}
+                          {isNaN(Number(s.examsScore))
+                            ? s.examsScore
+                            : Number(s.examsScore).toFixed(0)}
                         </Text>
                       </>
                     )}
-                    <Text style={[styles.paperCell, { fontWeight: "900", color: primary }]}>
-                      {isNaN(Number(s.total)) ? s.total : Number(s.total).toFixed(1)}
+                    <Text
+                      style={[
+                        styles.paperCell,
+                        { fontWeight: "900", color: primary },
+                      ]}
+                    >
+                      {isNaN(Number(s.total))
+                        ? s.total
+                        : Number(s.total).toFixed(1)}
                     </Text>
-                    <Text style={[styles.paperCell, { fontWeight: "700" }]}>{s.grade}</Text>
-                    <Text style={[styles.paperCell, { flex: 1.5, fontSize: 8 }]}>{s.remark}</Text>
+                    <Text style={[styles.paperCell, { fontWeight: "700" }]}>
+                      {s.grade}
+                    </Text>
+                    <Text
+                      style={[styles.paperCell, { flex: 1.5, fontSize: 8 }]}
+                    >
+                      {s.remark}
+                    </Text>
                   </View>
                 ))
               )}
@@ -576,8 +717,17 @@ export default function ViewAcademicRecordDetails() {
                   TRS: <Text style={{ color: "#1E293B" }}>{TRS}</Text> | TAS:{" "}
                   <Text style={{ color: "#1E293B" }}>{TAS}</Text>
                 </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 }}>
-                  <Text style={styles.paperSummaryLabel}>OVERALL AGGREGATE:</Text>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 10,
+                    marginTop: 4,
+                  }}
+                >
+                  <Text style={styles.paperSummaryLabel}>
+                    OVERALL AGGREGATE:
+                  </Text>
                   <Text style={styles.paperSummaryValue}>{AGGREGATE}</Text>
                 </View>
               </View>
@@ -586,24 +736,39 @@ export default function ViewAcademicRecordDetails() {
             <View style={styles.paperRemarksSection}>
               {isFullReport && (
                 <>
-                  <Text style={styles.paperSectionTitle}>BEHAVIORAL RATINGS</Text>
+                  <Text style={styles.paperSectionTitle}>
+                    BEHAVIORAL RATINGS
+                  </Text>
                   <Text style={styles.paperRemarkLine}>
-                    Conduct: <Text style={{ fontWeight: "700" }}>{conduct}</Text> | Attitude:{" "}
-                    <Text style={{ fontWeight: "700" }}>{attitude}</Text> | Interest:{" "}
+                    Conduct:{" "}
+                    <Text style={{ fontWeight: "700" }}>{conduct}</Text> |
+                    Attitude:{" "}
+                    <Text style={{ fontWeight: "700" }}>{attitude}</Text> |
+                    Interest:{" "}
                     <Text style={{ fontWeight: "700" }}>{interest}</Text>
                   </Text>
                 </>
               )}
 
-              <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>TEACHER'S REMARKS</Text>
-              <Text style={styles.paperRemarkText}>{teacherRemarks || "Satisfactory performance."}</Text>
+              <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>
+                TEACHER'S REMARKS
+              </Text>
+              <Text style={styles.paperRemarkText}>
+                {teacherRemarks || "Satisfactory performance."}
+              </Text>
 
-              <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>ADMIN REMARKS</Text>
-              <Text style={styles.paperRemarkText}>{adminRemarks || "Keep up the hard work."}</Text>
+              <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>
+                ADMIN REMARKS
+              </Text>
+              <Text style={styles.paperRemarkText}>
+                {adminRemarks || "Keep up the hard work."}
+              </Text>
 
               <View style={styles.paperNextTerm}>
                 <Text style={styles.paperNextTermLabel}>NEXT TERM BEGINS:</Text>
-                <Text style={styles.paperNextTermVal}>{nextTermBegins || "TBA"}</Text>
+                <Text style={styles.paperNextTermVal}>
+                  {nextTermBegins || "TBA"}
+                </Text>
               </View>
 
               {promotedTo ? (
@@ -620,7 +785,10 @@ export default function ViewAcademicRecordDetails() {
                 <View style={{ flex: 1 }} />
                 <View style={styles.paperSigItem}>
                   {adminSig ? (
-                    <Image source={{ uri: adminSig }} style={styles.paperSigImg} />
+                    <Image
+                      source={{ uri: adminSig }}
+                      style={styles.paperSigImg}
+                    />
                   ) : (
                     <View style={styles.paperSigSpace} />
                   )}
@@ -640,7 +808,9 @@ export default function ViewAcademicRecordDetails() {
               ) : (
                 <>
                   <SVGIcon name="download" size={20} color="#fff" />
-                  <Text style={styles.downloadBtnText}>Generate Official PDF</Text>
+                  <Text style={styles.downloadBtnText}>
+                    Generate Official PDF
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -682,13 +852,32 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#CBD5E1",
   },
-  paperLetterhead: { flexDirection: "row", alignItems: "center", marginBottom: 15 },
+  paperLetterhead: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+  },
   paperLogo: { width: 50, height: 50, marginRight: 15 },
   paperSchoolName: { fontSize: 16, fontWeight: "900", color: "#1E293B" },
-  paperSchoolInfo: { fontSize: 8, fontWeight: "600", color: "#64748B", marginTop: 2 },
-  paperReportType: { fontSize: 10, fontWeight: "800", color: "#64748B", marginTop: 2 },
+  paperSchoolInfo: {
+    fontSize: 8,
+    fontWeight: "600",
+    color: "#64748B",
+    marginTop: 2,
+  },
+  paperReportType: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#64748B",
+    marginTop: 2,
+  },
   paperDivider: { height: 2, backgroundColor: "#1E293B", marginVertical: 10 },
-  paperInfoGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 15 },
+  paperInfoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginBottom: 15,
+  },
   paperInfoItem: { width: "47%", marginBottom: 5 },
   paperInfoLabel: { fontSize: 8, fontWeight: "900", color: "#94A3B8" },
   paperInfoValue: { fontSize: 11, fontWeight: "700", color: "#1E293B" },
@@ -699,8 +888,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#E2E8F0",
   },
-  paperTableRow: { flexDirection: "row", borderBottomWidth: 1, borderColor: "#F1F5F9" },
-  paperCell: { flex: 1, padding: 8, fontSize: 10, textAlign: "center", color: "#475569" },
+  paperTableRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  paperCell: {
+    flex: 1,
+    padding: 8,
+    fontSize: 10,
+    textAlign: "center",
+    color: "#475569",
+  },
   paperHeaderCell: {
     flex: 1,
     padding: 8,
@@ -718,7 +917,12 @@ const styles = StyleSheet.create({
   },
   paperSummaryLabel: { fontSize: 10, fontWeight: "900", color: "#64748B" },
   paperSummaryValue: { fontSize: 18, fontWeight: "900", color: "#ef4444" },
-  paperRemarksSection: { borderTopWidth: 1, borderColor: "#E2E8F0", paddingTop: 15, marginBottom: 15 },
+  paperRemarksSection: {
+    borderTopWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingTop: 15,
+    marginBottom: 15,
+  },
   paperSectionTitle: {
     fontSize: 9,
     fontWeight: "900",
@@ -731,11 +935,21 @@ const styles = StyleSheet.create({
   paperNextTerm: { flexDirection: "row", marginTop: 10, gap: 5 },
   paperNextTermLabel: { fontSize: 10, fontWeight: "900" },
   paperNextTermVal: { fontSize: 10, fontWeight: "700", color: COLORS.primary },
-  paperSigRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 20, gap: 20 },
+  paperSigRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    gap: 20,
+  },
   paperSigItem: { flex: 1, alignItems: "center" },
   paperSigImg: { width: "100%", height: 40, resizeMode: "contain" },
   paperSigSpace: { height: 40 },
-  paperSigLine: { width: "100%", height: 1, backgroundColor: "#1E293B", marginVertical: 4 },
+  paperSigLine: {
+    width: "100%",
+    height: 1,
+    backgroundColor: "#1E293B",
+    marginVertical: 4,
+  },
   paperSigLabel: { fontSize: 8, fontWeight: "800", color: "#64748B" },
   downloadBtn: {
     flexDirection: "row",
@@ -745,5 +959,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 10,
   },
-  downloadBtnText: { color: "#fff", fontWeight: "900", marginLeft: 10, fontSize: 14 },
+  downloadBtnText: {
+    color: "#fff",
+    fontWeight: "900",
+    marginLeft: 10,
+    fontSize: 14,
+  },
 });

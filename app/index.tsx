@@ -61,6 +61,8 @@ export default function WelcomeScreen() {
           return router.replace("/parent-dashboard");
         case "guest":
           return router.replace("/guest-dashboard");
+        case "staff":
+          return router.replace("/staff-dashboard");
         default:
           return router.replace("/(auth)/login");
       }

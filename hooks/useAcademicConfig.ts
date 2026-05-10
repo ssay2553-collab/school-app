@@ -7,6 +7,7 @@ export interface AcademicConfig {
   currentTerm: string;
   termStart: any;
   termEnd: any;
+  schoolName: string;
   loading: boolean;
 }
 
@@ -16,6 +17,7 @@ export const useAcademicConfig = () => {
     currentTerm: "Term 1",
     termStart: null,
     termEnd: null,
+    schoolName: "",
     loading: true,
   });
 
@@ -28,6 +30,7 @@ export const useAcademicConfig = () => {
           currentTerm: data.currentTerm || "Term 1",
           termStart: data.termStart,
           termEnd: data.termEnd,
+          schoolName: data.schoolName || "",
           loading: false,
         });
       } else {

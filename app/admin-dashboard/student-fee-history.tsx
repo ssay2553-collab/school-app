@@ -131,6 +131,7 @@ export default function StudentFeeHistoryScreen() {
           collection(db, "users"),
           where("role", "==", "student"),
           where("classId", "==", selectedClassId),
+          where("status", "in", ["active", "pending_activation"]),
           orderBy("__name__"),
         );
         const snap = await getDocsCacheFirst(q as any);

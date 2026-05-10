@@ -431,6 +431,7 @@ export default function TeacherStudentGroups() {
             collection(db, "users"),
             where("role", "==", "student"),
             where("classId", "==", selectedClassId),
+            where("status", "in", ["active", "pending_activation"]),
           );
           const snap = await getDocs(q);
           setStudents(

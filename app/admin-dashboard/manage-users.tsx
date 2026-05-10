@@ -1,4 +1,6 @@
 import { Picker } from "@react-native-picker/picker";
+import * as Clipboard from "expo-clipboard";
+import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   arrayRemove,
@@ -29,6 +31,7 @@ import {
   Platform,
   RefreshControl,
   ScrollView,
+  Share,
   StatusBar,
   StyleSheet,
   Switch,
@@ -40,6 +43,8 @@ import {
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
+import { SCHOOL_CONFIG } from "../../constants/Config";
+import { CAMBRIDGE_SUBJECTS, GES_SUBJECTS } from "../../constants/Curriculum";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebaseConfig";
@@ -50,11 +55,13 @@ import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 const { width } = Dimensions.get("window");
 const DEFAULT_AVATAR = require("../../assets/default-avatar.png");
 
-type UserRole = "admin" | "teacher" | "parent" | "student";
+type UserRole = "admin" | "teacher" | "parent" | "student" | "staff";
 type PermissionLevel = "full" | "view" | "edit" | "deny";
 
 interface User {
   uid: string;
+  username?: string;
+  pin?: string;
   profile: {
     firstName: string;
     lastName: string;
@@ -75,6 +82,8 @@ interface User {
   parentUids?: string[];
   canCreateNews?: boolean;
   permissions?: Record<string, PermissionLevel>;
+  signupCode?: string;
+  secretCode?: string;
   dateOfBirth?: any;
   walletBalance?: number;
   onScholarship?: boolean;
@@ -86,6 +95,7 @@ interface User {
 const roles: { name: string; role: UserRole; icon: string }[] = [
   { name: "Admins", role: "admin", icon: "shield-checkmark" },
   { name: "Teachers", role: "teacher", icon: "people" },
+  { name: "Staff", role: "staff", icon: "briefcase" },
   { name: "Parents", role: "parent", icon: "home" },
   { name: "Students", role: "student", icon: "school" },
 ];
@@ -110,7 +120,9 @@ export default function ManageUsers() {
   const acadConfig = useAcademicConfig();
 
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = ["proprietor", "headmaster", "ceo"].includes(currentUserRole);
+  const isSuperAdmin = ["proprietor", "headmaster", "ceo"].includes(
+    currentUserRole,
+  );
   const hasManageUsersAccess =
     appUser?.permissions?.["manage-users"] === "full" || isSuperAdmin;
 
@@ -146,7 +158,10 @@ export default function ManageUsers() {
       | "dept_head"
       | "permissions"
       | "other"
-      | "edit_profile";
+      | "edit_profile"
+      | "upgrade_staff"
+      | "manage_classes"
+      | "manage_subjects";
     target: User | null;
   }>({ type: "none", target: null });
 
@@ -154,16 +169,122 @@ export default function ManageUsers() {
   const [editLastName, setEditLastName] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editGender, setEditGender] = useState("");
   const [editDob, setEditDob] = useState<Date | null>(null);
+
+  const [upgradeUsername, setUpgradeUsername] = useState("");
+  const [upgradePin, setUpgradePin] = useState("");
+  const [staffRoleText, setStaffRoleText] = useState("");
+  const [staffPhone, setStaffPhone] = useState("");
 
   const [customRoleText, setCustomRoleText] = useState("");
   const [deptText, setDeptText] = useState("");
   const [newsPermission, setNewsPermission] = useState(false);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+
   const [tempPermissions, setTempPermissions] = useState<
     Record<string, PermissionLevel>
   >({});
   const [updating, setUpdating] = useState(false);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
+
+  const handleBulkImport = async () => {
+    if (selectedRole !== "student") {
+      return Alert.alert(
+        "Selection Required",
+        "Please select the 'Students' role to use Bulk Import.",
+      );
+    }
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "text/comma-separated-values",
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets.length) return;
+
+      setLoading(true);
+      const fileUri = result.assets[0].uri;
+      const response = await fetch(fileUri);
+      const csvText = await response.text();
+
+      // Simple CSV Parsing
+      const rows = csvText.split(/\r?\n/).filter((line) => line.trim() !== "");
+      if (rows.length < 2)
+        throw new Error("CSV file is empty or missing data.");
+
+      const headers = rows[0].split(",").map((h) => h.trim().toLowerCase());
+      const studentData = rows.slice(1);
+
+      const batch = writeBatch(db);
+      let count = 0;
+
+      for (const row of studentData) {
+        const values = row.split(",").map((v) => v.trim());
+        if (values.length < 2) continue;
+
+        // Map columns based on headers or assume: firstName, lastName, gender, classInput
+        const firstName = values[0];
+        const lastName = values[1];
+        const gender = values[2] || "";
+        const classInput = values[3];
+
+        if (!firstName || !lastName) continue;
+
+        // Resolve classId from name or ID
+        let targetClassId = "";
+        if (classInput) {
+          const matchedClass = allClasses.find(
+            (c) =>
+              c.name.toLowerCase() === classInput.toLowerCase() ||
+              c.id === classInput,
+          );
+          targetClassId = matchedClass ? matchedClass.id : "";
+        } else {
+          targetClassId = selectedClassId === "all" ? "" : selectedClassId;
+        }
+
+        const signupCode = Math.random()
+          .toString(36)
+          .substring(2, 8)
+          .toUpperCase();
+        const tempId = doc(collection(db, "users")).id;
+
+        const newUserDoc = {
+          uid: tempId,
+          role: "student",
+          status: "pending_activation",
+          signupCode: signupCode,
+          classId: targetClassId,
+          profile: {
+            firstName,
+            lastName,
+            gender,
+          },
+          createdAt: Timestamp.now(),
+          schoolId: appUser?.schoolId || SCHOOL_CONFIG.schoolId || "default",
+        };
+
+        batch.set(doc(db, "users", tempId), newUserDoc);
+        count++;
+      }
+
+      if (count > 0) {
+        await batch.commit();
+        Alert.alert(
+          "Import Successful",
+          `Created ${count} pending student profiles. Provide students with their names to activate.`,
+        );
+      }
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert("Import Failed", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -191,7 +312,11 @@ export default function ManageUsers() {
       let q = query(
         collection(db, "users"),
         where("role", "==", selectedRole),
-        where("status", "==", showArchived ? "archived" : "active"),
+        where(
+          "status",
+          "in",
+          showArchived ? ["archived"] : ["active", "pending_activation"],
+        ),
         limit(100),
       );
 
@@ -200,7 +325,11 @@ export default function ManageUsers() {
           collection(db, "users"),
           where("role", "==", "student"),
           where("classId", "==", selectedClassId),
-          where("status", "==", showArchived ? "archived" : "active"),
+          where(
+            "status",
+            "in",
+            showArchived ? ["archived"] : ["active", "pending_activation"],
+          ),
           limit(100),
         );
       }
@@ -319,12 +448,15 @@ export default function ManageUsers() {
       // sanitize permissions to remove invalid/undefined values before sending to Firestore
       const sanitized: Record<string, PermissionLevel> = Object.entries(
         tempPermissions || {},
-      ).reduce((acc, [k, v]) => {
-        if (v === "full" || v === "view" || v === "edit" || v === "deny") {
-          acc[k] = v as PermissionLevel;
-        }
-        return acc;
-      }, {} as Record<string, PermissionLevel>);
+      ).reduce(
+        (acc, [k, v]) => {
+          if (v === "full" || v === "view" || v === "edit" || v === "deny") {
+            acc[k] = v as PermissionLevel;
+          }
+          return acc;
+        },
+        {} as Record<string, PermissionLevel>,
+      );
 
       await updateDoc(doc(db, "users", assignmentModal.target.uid), {
         permissions: sanitized,
@@ -347,12 +479,71 @@ export default function ManageUsers() {
         assignedRoles: arrayUnion(roleName),
         canCreateNews: newsPermission,
       });
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === teacher.uid
+            ? {
+                ...u,
+                assignedRoles: u.assignedRoles
+                  ? Array.from(new Set([...u.assignedRoles, roleName]))
+                  : [roleName],
+                canCreateNews: newsPermission,
+              }
+            : u,
+        ),
+      );
       setAssignmentModal({ type: "none", target: null });
       setCustomRoleText("");
       setDeptText("");
       Alert.alert("Success", `Role assigned: ${roleName}`);
     } catch {
       Alert.alert("Error", "Failed to assign role.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateClasses = async () => {
+    if (!assignmentModal.target) return;
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
+        classes: selectedClasses,
+      });
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === assignmentModal.target?.uid
+            ? { ...u, classes: selectedClasses }
+            : u,
+        ),
+      );
+      setAssignmentModal({ type: "none", target: null });
+      Alert.alert("Success", "Teacher classes updated.");
+    } catch (err) {
+      Alert.alert("Error", "Failed to update classes.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateSubjects = async () => {
+    if (!assignmentModal.target) return;
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
+        subjects: selectedSubjects,
+      });
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === assignmentModal.target?.uid
+            ? { ...u, subjects: selectedSubjects }
+            : u,
+        ),
+      );
+      setAssignmentModal({ type: "none", target: null });
+      Alert.alert("Success", "Teacher subjects updated.");
+    } catch (err) {
+      Alert.alert("Error", "Failed to update subjects.");
     } finally {
       setUpdating(false);
     }
@@ -534,14 +725,17 @@ export default function ManageUsers() {
 
         await updateDoc(doc(db, "users", user.uid), updates);
 
-        setViewingUser((prev) =>
-          prev ? { ...prev, ...updates } : null
-        );
+        setViewingUser((prev) => (prev ? { ...prev, ...updates } : null));
 
         if (Platform.OS === "web") {
-          window.alert(isArchived ? "Student restored." : "Student moved to archive.");
+          window.alert(
+            isArchived ? "Student restored." : "Student moved to archive.",
+          );
         } else {
-          Alert.alert("Success", isArchived ? "Student restored." : "Student moved to archive.");
+          Alert.alert(
+            "Success",
+            isArchived ? "Student restored." : "Student moved to archive.",
+          );
         }
       } catch (e) {
         console.error(e);
@@ -556,7 +750,10 @@ export default function ManageUsers() {
     } else {
       Alert.alert(title, msg, [
         { text: "Cancel", style: "cancel" },
-        { text: isArchived ? "Restore" : "Set to Stopped", onPress: performToggle },
+        {
+          text: isArchived ? "Restore" : "Set to Stopped",
+          onPress: performToggle,
+        },
       ]);
     }
   };
@@ -705,9 +902,14 @@ export default function ManageUsers() {
           await deleteDoc(doc(db, "users", uidToDelete));
           setUsers((prev) => prev.filter((u) => u.uid !== uidToDelete));
           if (Platform.OS === "web") {
-            window.alert("Partial Success: Database entry removed, but Auth account may persist.");
+            window.alert(
+              "Partial Success: Database entry removed, but Auth account may persist.",
+            );
           } else {
-            Alert.alert("Partial Success", "Database entry removed, but Auth account may persist.");
+            Alert.alert(
+              "Partial Success",
+              "Database entry removed, but Auth account may persist.",
+            );
           }
         } catch (dbError) {
           if (Platform.OS === "web") {
@@ -725,7 +927,7 @@ export default function ManageUsers() {
 
     if (Platform.OS === "web") {
       const confirmed = window.confirm(
-        `Critical Action: Permanently delete ${user.profile.firstName} (${user.role})? This action cannot be undone.`
+        `Critical Action: Permanently delete ${user.profile.firstName} (${user.role})? This action cannot be undone.`,
       );
       if (confirmed) {
         performDelete();
@@ -737,7 +939,7 @@ export default function ManageUsers() {
         [
           { text: "Cancel", style: "cancel" },
           { text: "Delete", style: "destructive", onPress: performDelete },
-        ]
+        ],
       );
     }
   };
@@ -750,7 +952,9 @@ export default function ManageUsers() {
     );
 
     const incoming = user.permissions || {};
-    const merged: Record<string, PermissionLevel> = Object.keys(defaults).reduce(
+    const merged: Record<string, PermissionLevel> = Object.keys(
+      defaults,
+    ).reduce(
       (acc, k) => {
         const val = (incoming as any)[k];
         acc[k] =
@@ -777,6 +981,7 @@ export default function ManageUsers() {
         "profile.firstName": editFirstName.trim(),
         "profile.lastName": editLastName.trim(),
         "profile.phone": editPhone.trim(),
+        "profile.gender": editGender,
       };
 
       if (editDob) {
@@ -786,19 +991,45 @@ export default function ManageUsers() {
       await updateDoc(doc(db, "users", assignmentModal.target.uid), updates);
 
       // Update local state for the list
-      setUsers(prev => prev.map(u => u.uid === assignmentModal.target?.uid ? {
-        ...u,
-        profile: { ...u.profile, firstName: editFirstName.trim(), lastName: editLastName.trim(), phone: editPhone.trim() },
-        dateOfBirth: editDob ? Timestamp.fromDate(editDob) : u.dateOfBirth
-      } : u));
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === assignmentModal.target?.uid
+            ? {
+                ...u,
+                profile: {
+                  ...u.profile,
+                  firstName: editFirstName.trim(),
+                  lastName: editLastName.trim(),
+                  phone: editPhone.trim(),
+                  gender: editGender,
+                },
+                dateOfBirth: editDob
+                  ? Timestamp.fromDate(editDob)
+                  : u.dateOfBirth,
+              }
+            : u,
+        ),
+      );
 
       // Update viewing user if open
       if (viewingUser?.uid === assignmentModal.target.uid) {
-        setViewingUser(prev => prev ? {
-          ...prev,
-          profile: { ...prev.profile, firstName: editFirstName.trim(), lastName: editLastName.trim(), phone: editPhone.trim() },
-          dateOfBirth: editDob ? Timestamp.fromDate(editDob) : prev.dateOfBirth
-        } : null);
+        setViewingUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                profile: {
+                  ...prev.profile,
+                  firstName: editFirstName.trim(),
+                  lastName: editLastName.trim(),
+                  phone: editPhone.trim(),
+                  gender: editGender,
+                },
+                dateOfBirth: editDob
+                  ? Timestamp.fromDate(editDob)
+                  : prev.dateOfBirth,
+              }
+            : null,
+        );
       }
 
       Alert.alert("Success", "Profile updated.");
@@ -811,16 +1042,115 @@ export default function ManageUsers() {
     }
   };
 
+  const handleUpgradeStaff = async () => {
+    if (!assignmentModal.target) return;
+    if (!upgradeUsername.trim() || upgradePin.length !== 4) {
+      return Alert.alert(
+        "Error",
+        "Please provide a username and a 4-digit PIN.",
+      );
+    }
+    setUpdating(true);
+    try {
+      const staffRef = doc(db, "users", assignmentModal.target.uid);
+      const updates = {
+        username: upgradeUsername.trim().toLowerCase(),
+        pin: upgradePin,
+        adminRole: staffRoleText.trim(),
+        "profile.phone": staffPhone.trim(),
+        hasLoginEnabled: true,
+      };
+
+      await updateDoc(staffRef, updates);
+
+      // Update local state
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.uid === assignmentModal.target?.uid
+            ? {
+                ...u,
+                ...updates,
+                profile: { ...u.profile, phone: staffPhone.trim() },
+              }
+            : u,
+        ),
+      );
+
+      if (viewingUser?.uid === assignmentModal.target.uid) {
+        setViewingUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                ...updates,
+                profile: { ...prev.profile, phone: staffPhone.trim() },
+              }
+            : null,
+        );
+      }
+
+      Alert.alert("Success", "Staff account upgraded for login.");
+      setAssignmentModal({ type: "none", target: null });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to upgrade staff account.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleRegenerateSignupCode = async (user: User) => {
+    if (user.status !== "pending_activation") return;
+
+    setUpdating(true);
+    try {
+      const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      await updateDoc(doc(db, "users", user.uid), {
+        signupCode: newCode,
+      });
+
+      const updatedUser = { ...user, signupCode: newCode };
+      setUsers((prev) =>
+        prev.map((u) => (u.uid === user.uid ? updatedUser : u)),
+      );
+      if (viewingUser?.uid === user.uid) setViewingUser(updatedUser);
+
+      Alert.alert(
+        "Code Regenerated",
+        `The new signup code for ${user.profile.firstName} is: ${newCode}`,
+      );
+    } catch (err) {
+      Alert.alert("Error", "Failed to regenerate signup code.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleShareCode = async (user: User) => {
+    const code = user.signupCode || user.secretCode;
+    if (!code) return;
+    try {
+      await Share.share({
+        message: `Hello ${user.profile.firstName}, your ${acadConfig.schoolName || "school"} portal access/reset token is: ${code}\n\nUse this code to claim your profile or reset your password securely.`,
+      });
+    } catch (error) {
+      console.error("Sharing failed", error);
+    }
+  };
+
   const handleUpdateEmail = async () => {
-    if (!assignmentModal.target || !editEmail.trim() || !hasManageUsersAccess) return;
+    if (!assignmentModal.target || !editEmail.trim() || !hasManageUsersAccess)
+      return;
     setUpdating(true);
     try {
       const updateEmailFn = httpsCallable(functions, "updateUserEmail");
-      await updateEmailFn({ uid: assignmentModal.target.uid, newEmail: editEmail.trim() });
+      await updateEmailFn({
+        uid: assignmentModal.target.uid,
+        newEmail: editEmail.trim(),
+      });
 
       // Update Firestore doc
       await updateDoc(doc(db, "users", assignmentModal.target.uid), {
-        "profile.email": editEmail.trim()
+        "profile.email": editEmail.trim(),
       });
 
       Alert.alert("Success", "Email updated.");
@@ -837,7 +1167,14 @@ export default function ManageUsers() {
     setEditLastName(user.profile.lastName);
     setEditEmail(user.profile.email || "");
     setEditPhone(user.profile.phone || "");
-    setEditDob(user.dateOfBirth?.toDate ? user.dateOfBirth.toDate() : user.dateOfBirth ? new Date(user.dateOfBirth) : null);
+    setEditGender(user.profile.gender || "");
+    setEditDob(
+      user.dateOfBirth?.toDate
+        ? user.dateOfBirth.toDate()
+        : user.dateOfBirth
+          ? new Date(user.dateOfBirth)
+          : null,
+    );
     setAssignmentModal({ type: "edit_profile", target: user });
   };
 
@@ -858,6 +1195,30 @@ export default function ManageUsers() {
     } catch {
       return "Invalid Date";
     }
+  };
+
+  const handleCopyAllCodes = async () => {
+    const pendingStudents = filteredUsers.filter(
+      (u) => u.status === "pending_activation" && u.signupCode,
+    );
+    if (pendingStudents.length === 0) {
+      return Alert.alert(
+        "No codes",
+        "No pending students with signup codes in the current view.",
+      );
+    }
+
+    const report = pendingStudents
+      .map(
+        (s) => `${s.profile.firstName} ${s.profile.lastName}: ${s.signupCode}`,
+      )
+      .join("\n");
+
+    await Clipboard.setStringAsync(report);
+    Alert.alert(
+      "Copied",
+      `Signup codes for ${pendingStudents.length} students copied to clipboard.`,
+    );
   };
 
   if (!hasManageUsersAccess) return null;
@@ -961,6 +1322,14 @@ export default function ManageUsers() {
           onChangeText={setSearchQuery}
           placeholderTextColor={COLORS.gray || "#9ca3af"}
         />
+        {selectedRole === "student" && (
+          <TouchableOpacity
+            onPress={handleCopyAllCodes}
+            style={{ marginLeft: 10 }}
+          >
+            <SVGIcon name="copy" size={20} color={COLORS.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {selectedRole === "student" && (
@@ -977,6 +1346,14 @@ export default function ManageUsers() {
               ))}
             </Picker>
           </View>
+
+          <TouchableOpacity
+            style={[styles.bulkArchiveBtn, { backgroundColor: "#10b981" }]}
+            onPress={handleBulkImport}
+          >
+            <SVGIcon name="cloud-upload" size={18} color="#fff" />
+            <Text style={styles.bulkArchiveText}>IMPORT</Text>
+          </TouchableOpacity>
 
           {isBasic9View && !showArchived && isSuperAdmin && (
             <TouchableOpacity
@@ -1012,7 +1389,7 @@ export default function ManageUsers() {
             <TouchableOpacity
               style={styles.userCard}
               onLongPress={() =>
-                item.role === "teacher" &&
+                (item.role === "teacher" || item.role === "admin") &&
                 setAssignmentModal({ type: "assign_as", target: item })
               }
               onPress={() => {
@@ -1038,9 +1415,11 @@ export default function ManageUsers() {
                 <Text style={styles.userSubText}>
                   {item.status === "archived"
                     ? `Archived (${item.archivedInYear || "N/A"})`
-                    : allClasses.find((c) => c.id === item.classId)?.name ||
-                      item.adminRole ||
-                      item.role.toUpperCase()}
+                    : item.status === "pending_activation"
+                      ? `Pending Activation (Code: ${item.signupCode})`
+                      : allClasses.find((c) => c.id === item.classId)?.name ||
+                        item.adminRole ||
+                        item.role.toUpperCase()}
                 </Text>
                 <View style={styles.badgeRow}>
                   {item.role === "teacher" && item.classTeacherOf && (
@@ -1264,7 +1643,114 @@ export default function ManageUsers() {
                     </View>
                   )}
 
-                  {viewingUser.role === "teacher" && (
+                  {(viewingUser.signupCode || viewingUser.secretCode) && (
+                    <View style={styles.infoSection}>
+                      <Text style={styles.infoLabel}>Security Tokens</Text>
+                      <View
+                        style={[
+                          styles.financeBox,
+                          {
+                            borderLeftColor: "#f59e0b",
+                            backgroundColor: "#fffbeb",
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[styles.financeLabel, { color: "#b45309" }]}
+                        >
+                          {viewingUser.status === "pending_activation" ? "SIGNUP CODE" : "RESET/SECRET TOKEN"}
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginTop: 4,
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.financeValue,
+                              {
+                                color: "#b45309",
+                                fontSize: 24,
+                                letterSpacing: 2,
+                              },
+                            ]}
+                          >
+                            {viewingUser.signupCode || viewingUser.secretCode || "N/A"}
+                          </Text>
+                          <View style={{ flexDirection: "row", gap: 8 }}>
+                            <TouchableOpacity
+                              onPress={() => handleShareCode(viewingUser)}
+                              style={{
+                                backgroundColor: COLORS.primary,
+                                paddingHorizontal: 12,
+                                paddingVertical: 6,
+                                borderRadius: 8,
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 4,
+                              }}
+                            >
+                              <SVGIcon
+                                name="share-outline"
+                                size={14}
+                                color="#fff"
+                              />
+                              <Text
+                                style={{
+                                  color: "#fff",
+                                  fontSize: 10,
+                                  fontWeight: "800",
+                                }}
+                              >
+                                SHARE
+                              </Text>
+                            </TouchableOpacity>
+                            {viewingUser.status === "pending_activation" && (
+                              <TouchableOpacity
+                                onPress={() =>
+                                  handleRegenerateSignupCode(viewingUser)
+                                }
+                                style={{
+                                  backgroundColor: "#b45309",
+                                  paddingHorizontal: 12,
+                                  paddingVertical: 6,
+                                  borderRadius: 8,
+                                }}
+                              >
+                                <Text
+                                  style={{
+                                    color: "#fff",
+                                    fontSize: 10,
+                                    fontWeight: "800",
+                                  }}
+                                >
+                                  REGENERATE
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                        <Text
+                          style={{
+                            fontSize: 10,
+                            color: "#d97706",
+                            marginTop: 8,
+                            fontWeight: "600",
+                          }}
+                        >
+                          {viewingUser.status === "pending_activation"
+                            ? "Provide this code to the student to claim their profile."
+                            : "This token can be used for secure password resets."}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {(viewingUser.role === "teacher" ||
+                    viewingUser.role === "admin") && (
                     <View style={styles.infoSection}>
                       <Text style={styles.infoLabel}>Teaching Assignments</Text>
                       <View style={styles.infoGrid}>
@@ -1278,6 +1764,42 @@ export default function ManageUsers() {
                               : "N/A"}
                           </Text>
                         </View>
+                        {(viewingUser.classes?.length || 0) > 0 && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoKey}>
+                              Assigned Classes:
+                            </Text>
+                            <Text
+                              style={[
+                                styles.infoValue,
+                                { flex: 1, textAlign: "right" },
+                              ]}
+                            >
+                              {viewingUser.classes
+                                ?.map(
+                                  (cid) =>
+                                    allClasses.find((c) => c.id === cid)
+                                      ?.name || cid,
+                                )
+                                .join(", ")}
+                            </Text>
+                          </View>
+                        )}
+                        {(viewingUser.subjects?.length || 0) > 0 && (
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoKey}>
+                              Assigned Subjects:
+                            </Text>
+                            <Text
+                              style={[
+                                styles.infoValue,
+                                { flex: 1, textAlign: "right" },
+                              ]}
+                            >
+                              {viewingUser.subjects?.join(", ")}
+                            </Text>
+                          </View>
+                        )}
                       </View>
                     </View>
                   )}
@@ -1395,7 +1917,33 @@ export default function ManageUsers() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {viewingUser.role === "teacher" && (
+                    {viewingUser.role === "staff" && (
+                      <TouchableOpacity
+                        style={[
+                          styles.actionButton,
+                          {
+                            backgroundColor: COLORS.primary || "#2e86de",
+                            marginBottom: 12,
+                          },
+                        ]}
+                        onPress={() => {
+                          setUpgradeUsername(viewingUser.username || "");
+                          setUpgradePin(viewingUser.pin || "");
+                          setStaffRoleText(viewingUser.adminRole || "");
+                          setStaffPhone(viewingUser.profile?.phone || "");
+                          setAssignmentModal({
+                            type: "upgrade_staff",
+                            target: viewingUser,
+                          });
+                        }}
+                      >
+                        <Text style={styles.actionButtonText}>
+                          Upgrade Account (Login)
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {(viewingUser.role === "teacher" ||
+                      viewingUser.role === "admin") && (
                       <TouchableOpacity
                         style={[
                           styles.actionButton,
@@ -1478,11 +2026,16 @@ export default function ManageUsers() {
                     <TouchableOpacity
                       style={[
                         styles.actionButton,
-                        { backgroundColor: COLORS.success || "#05ac5b", marginBottom: 12 },
+                        {
+                          backgroundColor: COLORS.success || "#05ac5b",
+                          marginBottom: 12,
+                        },
                       ]}
                       onPress={() => openEditProfile(viewingUser)}
                     >
-                      <Text style={styles.actionButtonText}>Edit Profile Info</Text>
+                      <Text style={styles.actionButtonText}>
+                        Edit Profile Info
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
@@ -1496,7 +2049,10 @@ export default function ManageUsers() {
                         <ActivityIndicator color="#ef4444" />
                       ) : (
                         <Text
-                          style={[styles.actionButtonText, { color: "#ef4444" }]}
+                          style={[
+                            styles.actionButtonText,
+                            { color: "#ef4444" },
+                          ]}
                         >
                           Delete Account
                         </Text>
@@ -1602,6 +2158,44 @@ export default function ManageUsers() {
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.actionCard}
+                      onPress={() => {
+                        setSelectedClasses(
+                          assignmentModal.target?.classes || [],
+                        );
+                        setAssignmentModal((p) => ({
+                          ...p,
+                          type: "manage_classes",
+                        }));
+                      }}
+                    >
+                      <SVGIcon
+                        name="layers"
+                        size={24}
+                        color={COLORS.primary || "#2e86de"}
+                      />
+                      <Text style={styles.actionLabel}>Classes</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionCard}
+                      onPress={() => {
+                        setSelectedSubjects(
+                          assignmentModal.target?.subjects || [],
+                        );
+                        setAssignmentModal((p) => ({
+                          ...p,
+                          type: "manage_subjects",
+                        }));
+                      }}
+                    >
+                      <SVGIcon
+                        name="book"
+                        size={24}
+                        color={COLORS.primary || "#2e86de"}
+                      />
+                      <Text style={styles.actionLabel}>Subjects</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionCard}
                       onPress={() =>
                         setAssignmentModal((p) => ({ ...p, type: "other" }))
                       }
@@ -1622,10 +2216,15 @@ export default function ManageUsers() {
                     <Text style={styles.permTitle}>{pk.label}</Text>
                     <View style={styles.permPickerBox}>
                       <Picker
-                        selectedValue={(tempPermissions[pk.key] || "deny") as any}
+                        selectedValue={
+                          (tempPermissions[pk.key] || "deny") as any
+                        }
                         onValueChange={(v) => {
                           const safe =
-                            v === "full" || v === "view" || v === "edit" || v === "deny"
+                            v === "full" ||
+                            v === "view" ||
+                            v === "edit" ||
+                            v === "deny"
                               ? (v as PermissionLevel)
                               : "deny";
                           setTempPermissions((prev) => ({
@@ -1656,6 +2255,112 @@ export default function ManageUsers() {
                   <Text style={styles.saveBtnText}>Commit Changes</Text>
                 </TouchableOpacity>
               )}
+              {assignmentModal.type === "manage_classes" && (
+                <View>
+                  <Text style={styles.pickerLabel}>Select Classes Taught</Text>
+                  <View style={styles.selectionGrid}>
+                    {allClasses.map((c) => {
+                      const isSelected = selectedClasses.includes(c.id);
+                      return (
+                        <TouchableOpacity
+                          key={c.id}
+                          style={[
+                            styles.selectionChip,
+                            isSelected && { backgroundColor: COLORS.primary },
+                          ]}
+                          onPress={() => {
+                            setSelectedClasses((prev) =>
+                              isSelected
+                                ? prev.filter((id) => id !== c.id)
+                                : [...prev, c.id],
+                            );
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.chipText,
+                              isSelected && { color: "#fff" },
+                            ]}
+                          >
+                            {c.name}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: COLORS.primary, marginTop: 20 },
+                    ]}
+                    onPress={handleUpdateClasses}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>
+                        Save Class Selection
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {assignmentModal.type === "manage_subjects" && (
+                <View>
+                  <Text style={styles.pickerLabel}>Select Subjects Taught</Text>
+                  <View style={styles.selectionGrid}>
+                    {[...new Set([...GES_SUBJECTS, ...CAMBRIDGE_SUBJECTS])]
+                      .sort()
+                      .map((s) => {
+                        const isSelected = selectedSubjects.includes(s);
+                        return (
+                          <TouchableOpacity
+                            key={s}
+                            style={[
+                              styles.selectionChip,
+                              isSelected && { backgroundColor: COLORS.primary },
+                            ]}
+                            onPress={() => {
+                              setSelectedSubjects((prev) =>
+                                isSelected
+                                  ? prev.filter((sub) => sub !== s)
+                                  : [...prev, s],
+                              );
+                            }}
+                          >
+                            <Text
+                              style={[
+                                styles.chipText,
+                                isSelected && { color: "#fff" },
+                              ]}
+                            >
+                              {s}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: COLORS.primary, marginTop: 20 },
+                    ]}
+                    onPress={handleUpdateSubjects}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>
+                        Save Subject Selection
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {assignmentModal.type === "class_teacher" && (
                 <View>
                   {allClasses.map((c) => (
@@ -1758,16 +2463,39 @@ export default function ManageUsers() {
                     keyboardType="phone-pad"
                   />
 
+                  <Text style={styles.pickerLabel}>Gender</Text>
+                  <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
+                    <Picker
+                      selectedValue={editGender}
+                      onValueChange={setEditGender}
+                    >
+                      <Picker.Item label="Not Specified" value="" />
+                      <Picker.Item label="Male" value="Male" />
+                      <Picker.Item label="Female" value="Female" />
+                    </Picker>
+                  </View>
+
                   <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: COLORS.primary },
+                    ]}
                     onPress={handleUpdateProfile}
                     disabled={updating}
                   >
-                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Profile</Text>}
+                    {updating ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Save Profile</Text>
+                    )}
                   </TouchableOpacity>
 
                   <View style={{ height: 30 }} />
-                  <Text style={[styles.pickerLabel, { color: COLORS.secondary }]}>Security - Update Email</Text>
+                  <Text
+                    style={[styles.pickerLabel, { color: COLORS.secondary }]}
+                  >
+                    Security - Update Email
+                  </Text>
                   <TextInput
                     style={[styles.textInput, { marginBottom: 15 }]}
                     value={editEmail}
@@ -1777,11 +2505,74 @@ export default function ManageUsers() {
                     autoCapitalize="none"
                   />
                   <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: COLORS.secondary }]}
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: COLORS.secondary },
+                    ]}
                     onPress={handleUpdateEmail}
                     disabled={updating}
                   >
-                    {updating ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Auth Email</Text>}
+                    {updating ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Update Auth Email</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {assignmentModal.type === "upgrade_staff" && (
+                <View>
+                  <Text style={styles.pickerLabel}>Staff Username</Text>
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 15 }]}
+                    value={upgradeUsername}
+                    onChangeText={setUpgradeUsername}
+                    placeholder="e.g. j.doe"
+                    autoCapitalize="none"
+                  />
+                  <Text style={styles.pickerLabel}>4-Digit Login PIN</Text>
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 15 }]}
+                    value={upgradePin}
+                    onChangeText={(v) =>
+                      setUpgradePin(v.replace(/[^0-9]/g, "").slice(0, 4))
+                    }
+                    placeholder="xxxx"
+                    keyboardType="number-pad"
+                    secureTextEntry
+                  />
+                  <Text style={styles.pickerLabel}>Assigned Role (Title)</Text>
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 15 }]}
+                    value={staffRoleText}
+                    onChangeText={setStaffRoleText}
+                    placeholder="e.g. Driver, Cook, Security"
+                  />
+                  <Text style={styles.pickerLabel}>Phone Number</Text>
+                  <TextInput
+                    style={[styles.textInput, { marginBottom: 15 }]}
+                    value={staffPhone}
+                    onChangeText={setStaffPhone}
+                    placeholder="024XXXXXXX"
+                    keyboardType="phone-pad"
+                  />
+
+                  <TouchableOpacity
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: COLORS.primary },
+                    ]}
+                    onPress={handleUpgradeStaff}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>
+                        Update & Enable Login
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               )}
@@ -2095,4 +2886,23 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   saveBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  selectionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 10,
+  },
+  selectionChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  chipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
+  },
 });

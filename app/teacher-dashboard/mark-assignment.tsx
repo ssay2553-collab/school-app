@@ -638,119 +638,120 @@ export default function MarkAssignment() {
           <Text style={styles.headerTitle}>Grading Center</Text>
           <SVGIcon name="library" size={24} color={COLORS.secondary} />
         </View>
+      </View>
 
-        <Animatable.View animation="fadeInDown" duration={500} style={styles.configCard}>
-          <Text style={styles.sectionLabel}>GRADING CONFIGURATION</Text>
+      <FlatList
+        ListHeaderComponent={
+          <Animatable.View animation="fadeInDown" duration={500} style={styles.configCard}>
+            <Text style={styles.sectionLabel}>GRADING CONFIGURATION</Text>
 
-          <Text style={styles.label}>TARGET CLASS</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {availableClasses.map((cls) => (
-              <TouchableOpacity
-                key={cls.id}
-                onPress={() => {
-                  setSelectedClass(cls.id);
-                  setSelectedAssignment(null);
-                }}
-                style={[
-                  styles.bubble,
-                  selectedClass === cls.id && {
-                    backgroundColor: COLORS.primary,
-                    borderColor: COLORS.primary,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    selectedClass === cls.id && { color: "#fff" },
-                  ]}
-                >
-                  {cls.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <Text style={styles.label}>SUBJECT</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {(appUser?.subjects || []).map((s: string) => (
-              <TouchableOpacity
-                key={s}
-                onPress={() => {
-                  setSelectedSubject(s);
-                  setSelectedAssignment(null);
-                }}
-                style={[
-                  styles.bubble,
-                  selectedSubject === s && {
-                    backgroundColor: COLORS.primary,
-                    borderColor: COLORS.primary,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    selectedSubject === s && { color: "#fff" },
-                  ]}
-                >
-                  {s}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <Text style={styles.label}>ASSIGNMENT TITLE</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {loading ? (
-              <ActivityIndicator
-                size="small"
-                color={COLORS.primary}
-                style={{ marginLeft: 10 }}
-              />
-            ) : assignments.length > 0 ? (
-              assignments.map((a) => (
+            <Text style={styles.label}>TARGET CLASS</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.bubbleRow}
+            >
+              {availableClasses.map((cls) => (
                 <TouchableOpacity
-                  key={a.id}
-                  onPress={() => setSelectedAssignment(a)}
+                  key={cls.id}
+                  onPress={() => {
+                    setSelectedClass(cls.id);
+                    setSelectedAssignment(null);
+                  }}
                   style={[
                     styles.bubble,
-                    selectedAssignment?.id === a.id && {
-                      backgroundColor: COLORS.secondary,
-                      borderColor: COLORS.secondary,
+                    selectedClass === cls.id && {
+                      backgroundColor: COLORS.primary,
+                      borderColor: COLORS.primary,
                     },
                   ]}
                 >
                   <Text
                     style={[
                       styles.bubbleText,
-                      selectedAssignment?.id === a.id && { color: "#fff" },
+                      selectedClass === cls.id && { color: "#fff" },
                     ]}
                   >
-                    {a.title}
+                    {cls.name}
                   </Text>
                 </TouchableOpacity>
-              ))
-            ) : (
-              <Text style={styles.emptyHint}>No assignments found</Text>
-            )}
-          </ScrollView>
-        </Animatable.View>
-      </View>
+              ))}
+            </ScrollView>
 
-      <FlatList
+            <Text style={styles.label}>SUBJECT</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.bubbleRow}
+            >
+              {(appUser?.subjects || []).map((s: string) => (
+                <TouchableOpacity
+                  key={s}
+                  onPress={() => {
+                    setSelectedSubject(s);
+                    setSelectedAssignment(null);
+                  }}
+                  style={[
+                    styles.bubble,
+                    selectedSubject === s && {
+                      backgroundColor: COLORS.primary,
+                      borderColor: COLORS.primary,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.bubbleText,
+                      selectedSubject === s && { color: "#fff" },
+                    ]}
+                  >
+                    {s}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={styles.label}>ASSIGNMENT TITLE</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.bubbleRow}
+            >
+              {loading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={COLORS.primary}
+                  style={{ marginLeft: 10 }}
+                />
+              ) : assignments.length > 0 ? (
+                assignments.map((a) => (
+                  <TouchableOpacity
+                    key={a.id}
+                    onPress={() => setSelectedAssignment(a)}
+                    style={[
+                      styles.bubble,
+                      selectedAssignment?.id === a.id && {
+                        backgroundColor: COLORS.secondary,
+                        borderColor: COLORS.secondary,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.bubbleText,
+                        selectedAssignment?.id === a.id && { color: "#fff" },
+                      ]}
+                    >
+                      {a.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <Text style={styles.emptyHint}>No assignments found</Text>
+              )}
+            </ScrollView>
+          </Animatable.View>
+        }
         data={submissions}
         keyExtractor={(item) => item.id}
         renderItem={renderSubmission}
@@ -794,7 +795,7 @@ export default function MarkAssignment() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F1F5F9" },
   headerArea: {
-    paddingBottom: 30,
+    paddingBottom: 40,
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
     ...SHADOWS.medium,
@@ -806,7 +807,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 15,
-    marginBottom: 20,
+    marginBottom: 0,
     zIndex: 1,
   },
   backBtn: {
@@ -822,7 +823,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 25,
     padding: 20,
-    marginHorizontal: 15,
+    marginTop: -30,
+    marginBottom: 15,
     ...SHADOWS.medium,
     borderWidth: 1,
     borderColor: "#F1F5F9",

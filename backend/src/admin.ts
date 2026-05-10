@@ -101,6 +101,42 @@ export const updateUserEmail = onCall(async (req) => {
 
 /**
  * Callable admin helper to update a user's Auth Password.
+ * Supports token-based reset by bypassing caller auth if a valid token is provided in the logic.
+ * BUT for security, we usually prefer the caller to be the admin.
+ * IN THIS CASE: The token-reset.tsx screen calls this.
+ * We need a version that can be called by the user themselves IF they have the token.
+ */
+export const resetUserPasswordWithToken = onCall(async (req) => {
+  const { uid, token, newPassword } = req.data || {};
+  if (!uid || !token || !newPassword) {
+    throw new HttpsError("invalid-argument", "Missing required fields.");
+  }
+
+  const db = admin.firestore();
+  const userDoc = await db.collection("users").doc(uid).get();
+
+  if (!userDoc.exists) {
+    throw new HttpsError("not-found", "User not found.");
+  }
+
+  const userData = userDoc.data();
+  const storedToken = userData?.signupCode || userData?.secretCode;
+
+  if (!storedToken || storedToken !== token.toUpperCase()) {
+    throw new HttpsError("permission-denied", "Invalid reset token.");
+  }
+
+  try {
+    await admin.auth().updateUser(uid, { password: newPassword });
+    return { status: 200, message: "Password updated successfully" };
+  } catch (error: any) {
+    console.error("resetUserPasswordWithToken error:", error);
+    throw new HttpsError("internal", error.message);
+  }
+});
+
+/**
+ * Callable admin helper to update a user's Auth Password.
  */
 export const updateUserPassword = onCall(async (req) => {
   const auth = req.auth;

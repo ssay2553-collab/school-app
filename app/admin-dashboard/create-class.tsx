@@ -88,7 +88,11 @@ export default function ClassManagementScreen() {
         }) as ClassItem)
         .filter((c: any) => !c.schoolId || c.schoolId === SCHOOL_CONFIG.schoolId);
 
-      const studentsQuery = query(collection(db, "users"), where("role", "==", "student"));
+      const studentsQuery = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("status", "in", ["active", "pending_activation"]),
+      );
       const studentsSnap = await getDocsCacheFirst(studentsQuery as any);
 
       const counts: Record<string, { total: number; male: number; female: number }> = {};

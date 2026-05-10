@@ -67,6 +67,10 @@ export default function TeacherDashboardLayout() {
     }
   };
 
+  const switchToAdmin = () => {
+    router.replace("/admin-dashboard");
+  };
+
   return (
     <View style={styles.container}>
       {/* HEADER */}
@@ -87,6 +91,13 @@ export default function TeacherDashboardLayout() {
           </View>
 
           <View style={styles.headerActions}>
+            {appUser?.role === "admin" && (
+              <TouchableOpacity onPress={switchToAdmin} style={styles.actionBtn}>
+                <SVGIcon name="shield-checkmark" size={18} color="#fff" />
+                <Text style={styles.btnText}>ADMIN VIEW</Text>
+              </TouchableOpacity>
+            )}
+
             {isWeb && (
               <TouchableOpacity onPress={handleBack} style={styles.actionBtn}>
                 <SVGIcon name="arrow-back" size={18} color="#fff" />

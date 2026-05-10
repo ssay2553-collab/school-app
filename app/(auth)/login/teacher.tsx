@@ -211,10 +211,10 @@ export default function TeacherLoginScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => router.push("/(auth)/forgot-password")}
+                onPress={() => router.push("/(auth)/token-reset")}
                 style={styles.forgotBtn}
               >
-                <Text style={styles.forgotText}>Reset Password</Text>
+                <Text style={styles.forgotText}>Reset Password (Token)</Text>
               </TouchableOpacity>
             </Animatable.View>
 

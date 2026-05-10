@@ -45,19 +45,29 @@ export default function AttendanceDetails() {
 
   const fetchDetails = useCallback(async () => {
     setLoading(true);
+    const schoolId = SCHOOL_CONFIG.schoolId;
     try {
-      // 1. Fetch Students in Class (Cache-First)
+      // 1. Fetch Students in Class (Resilient Query)
       const q = query(
         collection(db, "users"),
         where("role", "==", "student"),
         where("classId", "==", classId)
       );
       const studentsSnap = await getDocsCacheFirst(q as any);
-      const studentList = studentsSnap.docs.map(d => ({
-        id: d.id,
-        name: `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim() || d.id,
-        status: "not_marked" as const
-      }));
+
+      const studentList = studentsSnap.docs
+        .map(d => ({ id: d.id, ...d.data() } as any))
+        .filter(d => {
+          // Client-side filtering for status and schoolId to avoid index issues
+          const statusMatch = ["active", "pending_activation"].includes(d.status);
+          const schoolMatch = !d.schoolId || d.schoolId === schoolId || (schoolId === "lilies" && d.schoolId === "abijah");
+          return statusMatch && schoolMatch;
+        })
+        .map(d => ({
+          id: d.id,
+          name: `${d.profile?.firstName || ""} ${d.profile?.lastName || ""}`.trim() || d.id,
+          status: "not_marked" as const
+        }));
 
       // 2. Fetch Attendance Record (Try server for latest, but fallback to cache)
       // Note: We use the same ID format as in teacher-dashboard/daily-attendance.tsx

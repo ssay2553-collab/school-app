@@ -1,6 +1,6 @@
 import { CurriculumType } from "../constants/Curriculum";
 
-export type UserRole = "guest" | "admin" | "teacher" | "parent" | "student";
+export type UserRole = "guest" | "admin" | "teacher" | "parent" | "student" | "staff";
 
 export type PermissionLevel = "full" | "view" | "edit" | "deny";
 

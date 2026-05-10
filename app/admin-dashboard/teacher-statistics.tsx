@@ -108,12 +108,22 @@ export default function TeacherStatistics() {
       });
 
       // 1. Batch Fetch all required collections for the school
-      const [teacherSnap, allAssignmentsSnap, allGroupsSnap, weeklyLessonsSnap] = await Promise.all([
+      const [teacherSnap, allAssignmentsSnap, allGroupsSnap, vaultSnap] = await Promise.all([
         getDocs(query(collection(db, "users"), where("role", "==", "teacher"), where("schoolId", "==", SCHOOL_CONFIG.schoolId))),
         getDocs(query(collection(db, "assignments"), where("schoolId", "==", SCHOOL_CONFIG.schoolId))),
         getDocs(query(collection(db, "studentGroups"), where("schoolId", "==", SCHOOL_CONFIG.schoolId))),
-        getDocs(query(collection(db, "pedagogy_vault"), where("schoolId", "==", SCHOOL_CONFIG.schoolId), where("createdAt", ">=", Timestamp.fromDate(startOfWeek)), orderBy("createdAt", "desc")))
+        getDocs(query(collection(db, "pedagogy_vault"), where("schoolId", "==", SCHOOL_CONFIG.schoolId)))
       ]);
+
+      // Filter vault items by date in-memory to avoid composite index requirements
+      const startTimestamp = startOfWeek.getTime();
+      const weeklyLessons = vaultSnap.docs
+        .map(d => ({ id: d.id, ...d.data() } as any))
+        .filter(d => {
+          const createdAt = d.createdAt?.toMillis ? d.createdAt.toMillis() : (d.createdAt ? new Date(d.createdAt).getTime() : 0);
+          return createdAt >= startTimestamp;
+        })
+        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 
       // 2. Map data to teachers in memory (O(1) lookup)
       const assignmentMap: Record<string, any[]> = {};
@@ -131,10 +141,13 @@ export default function TeacherStatistics() {
       });
 
       const lessonsMap: Record<string, any[]> = {};
-      weeklyLessonsSnap.docs.forEach(d => {
-        const data = d.data();
-        if (!lessonsMap[data.userId]) lessonsMap[data.userId] = [];
-        lessonsMap[data.userId].push(data);
+      weeklyLessons.forEach(data => {
+        if (!lessonsMap[data.teacherId || data.userId]) {
+          const key = data.teacherId || data.userId;
+          if (key) lessonsMap[key] = [];
+        }
+        const key = data.teacherId || data.userId;
+        if (key) lessonsMap[key].push(data);
       });
 
       // 3. Assemble final teacher list

@@ -74,6 +74,10 @@ export default function DashboardLayout() {
     }
   };
 
+  const switchToTeacher = () => {
+    router.replace("/teacher-dashboard");
+  };
+
   const handleBack = () => {
     if (router.canGoBack()) {
       router.back();
@@ -114,6 +118,13 @@ export default function DashboardLayout() {
           </View>
 
           <View style={styles.headerActions}>
+            {appUser.role === "admin" && (appUser.classes?.length || 0) > 0 && (
+              <TouchableOpacity onPress={switchToTeacher} style={styles.actionBtn}>
+                <SVGIcon name="people" size={18} color="#fff" />
+                <Text style={styles.btnText}>TEACHER VIEW</Text>
+              </TouchableOpacity>
+            )}
+
             {isWeb && (
               <TouchableOpacity onPress={handleBack} style={styles.actionBtn}>
                 <SVGIcon name="arrow-back" size={18} color="#fff" />

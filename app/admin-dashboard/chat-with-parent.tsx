@@ -133,7 +133,11 @@ export default function ChatWithParent() {
 
         // 2. Fetch Students to link parents to children names
         const studentsSnap = await getDocs(
-          query(collection(db, "users"), where("role", "==", "student")),
+          query(
+            collection(db, "users"),
+            where("role", "==", "student"),
+            where("status", "in", ["active", "pending_activation"]),
+          ),
         );
         const studentMap: Record<string, { name: string; classId: string }> =
           {};

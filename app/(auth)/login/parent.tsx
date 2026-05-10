@@ -182,7 +182,7 @@ export default function ParentLoginScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  <TouchableOpacity onPress={(e) => handleNavigate("/(auth)/forgot-password", e)}>
+                  <TouchableOpacity onPress={(e) => handleNavigate("/(auth)/token-reset", e)}>
                       <Text style={styles.forgotText}>Forgot password?</Text>
                   </TouchableOpacity>
               </View>

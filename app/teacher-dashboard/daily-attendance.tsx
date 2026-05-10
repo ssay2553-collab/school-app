@@ -37,33 +37,11 @@ import moment from "moment";
 import SVGIcon from "../../components/SVGIcon";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
+import { sortClasses } from "../../utils/classSorting";
 
 import DateTimePicker from "@react-native-community/datetimepicker";
 
 const FILTERS_KEY = "@attendance_filters_v1";
-
-const sortClasses = (list: any[]) => {
-  return [...list].sort((a, b) => {
-    const nameA = (a.name || "").toUpperCase();
-    const nameB = (b.name || "").toUpperCase();
-    const levelOrder: Record<string, number> = {
-      'CRECHE': 1, 'NURSERY': 2, 'KG': 3, 'CLASS': 4, 'PRIMARY': 4, 'GRADE': 4, 'BASIC': 4, 'JHS': 5, 'SHS': 6
-    };
-    const getPriority = (name: string) => {
-      for (const key in levelOrder) {
-        if (name.includes(key)) return levelOrder[key];
-      }
-      return 10;
-    };
-    const prioA = getPriority(nameA);
-    const prioB = getPriority(nameB);
-    if (prioA !== prioB) return prioA - prioB;
-    const numA = parseInt(nameA.replace(/[^0-9]/g, "")) || 0;
-    const numB = parseInt(nameB.replace(/[^0-9]/g, "")) || 0;
-    if (numA !== numB) return numA - numB;
-    return nameA.localeCompare(nameB);
-  });
-};
 
 const { width } = Dimensions.get("window");
 const isLargeScreen = width > 768;
@@ -159,7 +137,10 @@ export default function DailyAttendanceScreen() {
         const list = snap.docs
           .map(d => ({ id: d.id, ...d.data() } as any))
           // Safe filtering for multi-tenancy: include legacy docs (no schoolId) or current school docs
-          .filter((d: any) => !d.schoolId || d.schoolId === SCHOOL_CONFIG.schoolId)
+          .filter((d: any) => {
+            const schoolId = SCHOOL_CONFIG.schoolId;
+            return !d.schoolId || d.schoolId === schoolId || (schoolId === "lilies" && d.schoolId === "abijah");
+          })
           .map(d => ({
             id: d.id,
             name: d.name || d.id,
@@ -192,7 +173,12 @@ export default function DailyAttendanceScreen() {
     else { setLoadingMore(true); loadingMoreRef.current = true; }
 
     try {
-      const constraints: any[] = [where("role", "==", "student"), where("classId", "==", classId), limit(30)];
+      const constraints: any[] = [
+        where("role", "==", "student"),
+        where("classId", "==", classId),
+        where("status", "in", ["active", "pending_activation"]),
+        limit(30)
+      ];
       if (!isFirstLoad && lastVisibleRef.current) constraints.push(startAfter(lastVisibleRef.current));
       
       const q = query(collection(db, "users"), ...constraints);

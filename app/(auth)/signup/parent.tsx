@@ -88,6 +88,7 @@ export default function ParentSignup() {
         collection(db, "users"),
         where("role", "==", "student"),
         where("parentLinkCode", "==", code),
+        where("status", "in", ["active", "pending_activation"]),
         limit(1)
       );
       const snap = await getDocs(q);
@@ -195,6 +196,7 @@ export default function ParentSignup() {
             collection(db, "users"), 
             where("role", "==", "student"), 
             where("parentLinkCode", "==", child.linkCode),
+            where("status", "in", ["active", "pending_activation"]),
             limit(1)
           );
           const studentSnap = await getDocs(studentQuery);
@@ -224,6 +226,7 @@ export default function ParentSignup() {
         },
         childrenIds: childrenUids,
         childrenClassIds: childrenClassIds,
+        schoolId: schoolId,
         status: "active",
         createdAt: serverTimestamp(),
       });

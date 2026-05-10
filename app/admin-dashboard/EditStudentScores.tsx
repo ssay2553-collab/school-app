@@ -76,16 +76,15 @@ const StudentScoreCard = React.memo(
       setLocalItem((prev: any) => {
         const updated = { ...prev, [field]: v };
         if (reportType === "End of Term") {
-          const catA = parseFloat(updated.catA) || 0;
-          const catB = parseFloat(updated.catB) || 0;
-          const gWork = parseFloat(updated.groupWork) || 0;
-          const pWork = parseFloat(updated.projectWork) || 0;
-          updated.total60 = catA + catB + gWork + pWork;
-          updated.classScore = (updated.total60 * (50 / 60)).toFixed(2);
+          if (field === "classScore" && parseFloat(v) > 50) {
+            return prev; // Don't update state if above 50
+          }
+          const classScoreRaw = parseFloat(updated.classScore) || 0;
+          updated.classScore50 = classScoreRaw.toFixed(2); // Directly use score (max 50)
           const examsMark = parseFloat(updated.examsMark) || 0;
           updated.exam50 = (examsMark * 0.5).toFixed(2);
           updated.finalScore = (
-            parseFloat(updated.classScore) + parseFloat(updated.exam50)
+            parseFloat(updated.classScore50) + parseFloat(updated.exam50)
           ).toFixed(2);
           updated.grade = getGradeDetails(parseFloat(updated.finalScore)).grade;
         } else {
@@ -115,47 +114,27 @@ const StudentScoreCard = React.memo(
           <View style={styles.scoreGrid}>
             <View style={styles.gridSection}>
               <Text style={styles.sectionLabel}>
-                CONTINUOUS ASSESSMENT (60%)
+                CLASS SCORE ASSESSMENT (MAX 50)
               </Text>
               <View style={styles.gridRow}>
-                <View style={styles.inputCol}>
-                  <Text style={styles.miniHeader}>CAT A</Text>
+                <View style={[styles.inputCol, { flex: 2 }]}>
+                  <Text style={styles.miniHeader}>CLASS SCORE (50)</Text>
                   <TextInput
                     style={styles.gridInput}
                     keyboardType="numeric"
-                    value={String(localItem.catA || "")}
-                    onChangeText={(v) => handleUpdate("catA", v)}
-                  />
-                </View>
-                <View style={styles.inputCol}>
-                  <Text style={styles.miniHeader}>CAT B</Text>
-                  <TextInput
-                    style={styles.gridInput}
-                    keyboardType="numeric"
-                    value={String(localItem.catB || "")}
-                    onChangeText={(v) => handleUpdate("catB", v)}
-                  />
-                </View>
-                <View style={styles.inputCol}>
-                  <Text style={styles.miniHeader}>GRP</Text>
-                  <TextInput
-                    style={styles.gridInput}
-                    keyboardType="numeric"
-                    value={String(localItem.groupWork || "")}
-                    onChangeText={(v) => handleUpdate("groupWork", v)}
-                  />
-                </View>
-                <View style={styles.inputCol}>
-                  <Text style={styles.miniHeader}>PRJ</Text>
-                  <TextInput
-                    style={styles.gridInput}
-                    keyboardType="numeric"
-                    value={String(localItem.projectWork || "")}
-                    onChangeText={(v) => handleUpdate("projectWork", v)}
+                    value={String(localItem.classScore || "")}
+                    placeholder="Max 50"
+                    onChangeText={(v) => {
+                      if (parseFloat(v) > 50) {
+                        Alert.alert("Error", "Class Score must not be above 50%");
+                        return;
+                      }
+                      handleUpdate("classScore", v);
+                    }}
                   />
                 </View>
                 <View style={styles.valueCol}>
-                  <Text style={styles.miniHeader}>50% WT</Text>
+                  <Text style={styles.miniHeader}>FINAL WT</Text>
                   <View
                     style={[
                       styles.gridValueBox,
@@ -163,7 +142,7 @@ const StudentScoreCard = React.memo(
                     ]}
                   >
                     <Text style={[styles.gridValueText, { color: primary }]}>
-                      {localItem.classScore}
+                      {localItem.classScore50}
                     </Text>
                   </View>
                 </View>
@@ -491,10 +470,10 @@ export default function EditStudentScores() {
       (s) => masterDataRef.current[s.studentId] || s,
     );
     if (selectedReportType === "End of Term") {
-      const invalid = studentsToSave.find((s) => s.total60 > 60);
+      const invalid = studentsToSave.find((s) => parseFloat(s.classScore) > 50);
       if (invalid)
         return showToast({
-          message: `${invalid.fullName}'s Total exceeds 60.`,
+          message: `${invalid.fullName}'s Class Score must not be above 50%.`,
           type: "error",
         });
     }

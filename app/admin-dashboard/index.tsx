@@ -86,6 +86,7 @@ export default function AdminDashboard() {
       const studentsQuery = query(
         collection(db, "users"),
         where("role", "==", "student"),
+        where("status", "in", ["active", "pending_activation"]),
       );
       const teacherQuery = query(
         collection(db, "users"),
@@ -314,12 +315,23 @@ export default function AdminDashboard() {
                   </View>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => router.push("/admin-dashboard/settings")}
-                style={styles.settingsBtn}
-              >
-                <SVGIcon name="settings-outline" size={24} color="#fff" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {appUser?.role === "admin" && (appUser?.assignedRoles?.includes("Teacher") || appUser?.classTeacherOf) && (
+                  <TouchableOpacity
+                    onPress={() => router.push("/teacher-dashboard")}
+                    style={[styles.switchRoleBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 6 }]}
+                  >
+                    <SVGIcon name="school" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>TEACHER</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => router.push("/admin-dashboard/settings")}
+                  style={styles.settingsBtn}
+                >
+                  <SVGIcon name="settings-outline" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.statsGrid}>
@@ -491,6 +503,14 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 15,
     backgroundColor: "rgba(255,255,255,0.15)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  switchRoleBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.25)",
     justifyContent: "center",
     alignItems: "center",
   },

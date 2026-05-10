@@ -31,23 +31,24 @@ service cloud.firestore {
        ROLE & PERMISSION CHECKS (Dynamic)
     =============================== */
     
- function isAdmin() {
-  return userData() != null
-    && userData().role == "admin";
-}
+    function getRole() {
+      return userData() != null
+        ? (('role' in userData()) ? userData().role : (('profile' in userData() && 'role' in userData().profile) ? userData().profile.role : null))
+        : null;
+    }
 
-   function isSuperAdmin() {
-  return userData() != null
-    && userData().role == "admin"
-    && (
-      userData().adminRole == "proprietor" ||
-      userData().adminRole == "headmaster" ||
-      userData().adminRole == "Proprietor" ||
-      userData().adminRole == "Headmaster" ||
-      userData().adminRole == "HEADMASTER" ||
-      userData().adminRole == "PROPRIETOR"
-    );
-}
+    function isAdmin() {
+      return getRole() == "admin";
+    }
+
+    function isSuperAdmin() {
+      let role = getRole();
+      let aRole = userData() != null ? (('adminRole' in userData()) ? userData().adminRole : null) : null;
+      return role == "admin" && aRole != null && (
+        aRole.lower() == "proprietor" ||
+        aRole.lower() == "headmaster"
+      );
+    }
 
     function getPermission(screen) {
       return userData() != null
@@ -57,32 +58,34 @@ service cloud.firestore {
         : "deny";
     }
     
-   function hasPermission(screen, level) {
-  return isAdmin() &&
-    (
-      isSuperAdmin() ||
-      hasScreenPermission(screen, level)
-    );
-}
+    function hasPermission(screen, level) {
+      return isAdmin() &&
+        (
+          isSuperAdmin() ||
+          hasScreenPermission(screen, level)
+        );
+    }
 
-function hasScreenPermission(screen, level) {
-  return
-    (getPermission(screen) == "full") ||
-    (getPermission(screen) == "edit" && (level == "edit" || level == "view")) ||
-    (getPermission(screen) == "view" && level == "view");
-}
+    function hasScreenPermission(screen, level) {
+      let p = getPermission(screen);
+      return
+        (p == "full") ||
+        (p == "edit" && (level == "edit" || level == "view")) ||
+        (p == "view" && level == "view");
+    }
 
 
     function isTeacher() {
-      return userData() != null && userData().role == 'teacher';
+      let role = getRole();
+      return role == 'teacher' || role == 'admin';
     }
 
     function isStudent() {
-      return userData() != null && userData().role == 'student';
+      return getRole() == 'student';
     }
 
     function isParent() {
-      return userData() != null && userData().role == 'parent';
+      return getRole() == 'parent';
     }
 
     function isClassTeacher(classId) {
@@ -121,10 +124,13 @@ function hasScreenPermission(screen, level) {
         || (isParent() && userId in userData().childrenIds)
         || (isTeacher() && resource.data.role == 'parent')
       )) || (
-        // Allow unauthenticated users to verify codes (essential for PWA/linking)
-        resource.data.role == 'student'
-        && 'parentLinkCode' in resource.data
-        && request.query.limit <= 1
+        // Allow unauthenticated users to verify codes (essential for signup/linking)
+        (
+          resource.data.status == 'pending_activation'
+          || 'signupCode' in resource.data
+          || 'parentLinkCode' in resource.data
+        )
+        && (request.method == 'get' || request.query.limit <= 1)
       );
 
       // Robust creation rule for new users
@@ -135,11 +141,6 @@ function hasScreenPermission(screen, level) {
       allow update: if
         isSuperAdmin()
         || hasPermission('manage-users', 'full')
-        || (
-          hasPermission('manage-fees', 'edit')
-          && resource.data.role == 'student'
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['walletBalance', 'schoolId'])
-        )
         || (
           isSignedIn() && uid() == userId
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
@@ -159,7 +160,8 @@ function hasScreenPermission(screen, level) {
           && (!('parentUids' in resource.data) || resource.data.parentUids.size() < 2)
         );
 
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin()
+        || (isSignedIn() && resource.data.status == 'pending_activation');
     }
 
     /* ===============================
@@ -277,8 +279,8 @@ function hasScreenPermission(screen, level) {
       allow read: if isSignedIn() && (
         isAdmin() || 
         resource.data.visibility == 'all' ||
-        (userData().role == 'teacher' && resource.data.visibility == 'teachers') ||
-        ((userData().role == 'parent' || userData().role == 'student') && resource.data.visibility == 'parents')
+        (isTeacher() && resource.data.visibility == 'teachers') ||
+        ((isParent() || isStudent()) && resource.data.visibility == 'parents')
       );
       allow create, update, delete: if isAdmin() || isEventOrganiser();
     }
@@ -319,10 +321,19 @@ function hasScreenPermission(screen, level) {
         || (isStudent() && resource.data.classId == userData().classId)
         || (isParent() && exists(/databases/$(database)/documents/users/$(uid())) && (resource.data.students.keys().hasAny(userData().childrenIds)));
       
-      allow write: if request.auth != null && isTeacher() && isClassTeacher(request.resource.data.classId);
-      allow delete: if false;
+     allow write: if isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
+      allow delete: if isAdmin();
     }
 
+ /* ===============================
+       BEHAVIORAL RECORDS
+    =============================== */
+    match /behavioralRecords/{id} {
+      allow read: if isAdmin() || isTeacher() || isStudent() || isParent();
+      allow write: if isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
+      allow delete: if isAdmin();
+    }
+    
     /* ===============================
        ASSIGNMENTS COLLECTION
     =============================== */
@@ -338,7 +349,7 @@ function hasScreenPermission(screen, level) {
     match /submissions/{submissionId} {
       allow read: if isAdmin() || isTeacher() || (isStudent() && resource.data.studentId == uid());
       allow create: if isStudent() && request.resource.data.studentId == uid();
-      allow update: if isAdmin() || (isTeacher() && request.resource.data.diff(resource.data).changedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores', 'status', 'updatedAt', 'contentHtml']));
+      allow update: if isAdmin() || (isTeacher() && request.resource.data.diff(resource.data).changedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores']));
       allow delete: if isAdmin();
     }
     
@@ -365,11 +376,13 @@ function hasScreenPermission(screen, level) {
     =============================== */
     match /gallery/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if hasPermission('gallery', 'edit');
+      allow delete: if hasPermission('gallery', 'full');
     }
     match /gallery_metadata/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, update: if hasPermission('gallery', 'edit');
+      allow delete: if hasPermission('gallery', 'full');
     }
 
     /* ===============================
@@ -463,7 +476,11 @@ function hasScreenPermission(screen, level) {
     =============================== */
     match /ai_generations/{id} {
       // Teachers can read their own usage and log new generations
-      allow read, create: if isSignedIn() && (isTeacher() || isAdmin()) && (resource == null || resource.data.userId == uid()) && (request.resource == null || request.resource.data.userId == uid());
+      allow read: if isSignedIn() && (isTeacher() || isAdmin()) && resource.data.userId == uid();
+
+      allow create: if isSignedIn() && (isTeacher() || isAdmin())
+        && request.resource.data.userId == uid()
+        && request.resource.data.subject in userData().subjects;
     }
 
     match /ai_searches/{id} {
@@ -478,6 +495,17 @@ function hasScreenPermission(screen, level) {
       allow update: if isSignedIn() && resource.data.userId == uid();
       allow delete: if isSignedIn() && resource.data.userId == uid();
     }
+
+    match /tlms/{id} {
+      // Teachers can save and read their own TLM materials
+      allow read, create: if isSignedIn() && (isTeacher() || isAdmin()) && (resource == null || resource.data.userId == uid()) && (request.resource == null || request.resource.data.userId == uid());
+      allow update, delete: if isSignedIn() && resource.data.userId == uid();
+    }
+    
+    match /curriculum/{docId} {
+  allow read: if request.auth != null; // Teachers need to read curriculum to plan lessons
+  allow write: if isSuperAdmin();      // Only admins can update the curriculum database
+}
 
     /* ===============================
        FALLBACK & CATCH-ALL

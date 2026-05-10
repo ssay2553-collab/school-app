@@ -31,8 +31,9 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { useToast } from "../../../contexts/ToastContext";
 import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
-import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, CurriculumType } from "../../../constants/Curriculum";
+import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, MONTESSORI_SUBJECTS, CurriculumType } from "../../../constants/Curriculum";
 import { getDocsCacheFirst } from "../../../lib/firestoreHelpers";
+import { sortClasses } from "../../../utils/classSorting";
 
 const COLORS = { ...THEME_COLORS, gold: "#FFD700", orange: "#FFA500" };
 
@@ -63,10 +64,15 @@ export default function TeacherSignupScreen() {
         const snap = await getDocsCacheFirst(q as any);
         const list = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as any))
-          .filter((d) => !d.schoolId || d.schoolId === schoolId)
+          .filter((d) => {
+            // Allow if no schoolId (legacy), matches current schoolId, or handles lilies/abijah alias
+            return !d.schoolId ||
+                   d.schoolId === schoolId ||
+                   (schoolId === "lilies" && d.schoolId === "abijah");
+          })
           .map((d) => ({ id: d.id, name: d.name || d.id }));
 
-        setClasses(list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
+        setClasses(sortClasses(list));
       } catch (err) {
         console.error("fetchClasses error:", err);
       }
@@ -209,7 +215,10 @@ export default function TeacherSignupScreen() {
     </View>
   );
 
-  const subjectList = curriculum === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS;
+  const subjectList =
+    curriculum === "GES" ? GES_SUBJECTS :
+    curriculum === "Cambridge" ? CAMBRIDGE_SUBJECTS :
+    MONTESSORI_SUBJECTS;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: surface }]}>
@@ -242,11 +251,14 @@ export default function TeacherSignupScreen() {
                
                <Text style={styles.sectionTitle}>Select Curriculum</Text>
                <View style={styles.curriculumRow}>
-                  <TouchableOpacity onPress={() => { setCurriculum("GES"); setSelectedSubjects([]); }} style={[styles.curriculumBtn, curriculum === "GES" && { backgroundColor: primary, borderColor: primary }]}>
+                  <TouchableOpacity onPress={() => { setCurriculum("GES"); setSelectedSubjects([]); setOtherSubjects([]); }} style={[styles.curriculumBtn, curriculum === "GES" && { backgroundColor: primary, borderColor: primary }]}>
                     <Text style={[styles.curriculumText, curriculum === "GES" && { color: "#fff" }]}>GES (National)</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => { setCurriculum("Cambridge"); setSelectedSubjects([]); }} style={[styles.curriculumBtn, curriculum === "Cambridge" && { backgroundColor: primary, borderColor: primary }]}>
+                  <TouchableOpacity onPress={() => { setCurriculum("Cambridge"); setSelectedSubjects([]); setOtherSubjects([]); }} style={[styles.curriculumBtn, curriculum === "Cambridge" && { backgroundColor: primary, borderColor: primary }]}>
                     <Text style={[styles.curriculumText, curriculum === "Cambridge" && { color: "#fff" }]}>Cambridge (IGCSE)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => { setCurriculum("Montessori"); setSelectedSubjects([]); setOtherSubjects([]); }} style={[styles.curriculumBtn, curriculum === "Montessori" && { backgroundColor: primary, borderColor: primary }]}>
+                    <Text style={[styles.curriculumText, curriculum === "Montessori" && { color: "#fff" }]}>Montessori</Text>
                   </TouchableOpacity>
                </View>
 

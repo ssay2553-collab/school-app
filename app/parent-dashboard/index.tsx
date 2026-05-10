@@ -63,7 +63,50 @@ export default function ParentDashboard() {
     fetchProfile();
   }, [appUser]);
 
+  const handleCall = async (number: string) => {
+    const cleanNumber = number.replace(/[^0-9+]/g, "");
+    const url = `tel:${cleanNumber}`;
+    try {
+      const { Linking, Alert } = require("react-native");
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        if (Platform.OS === 'web') {
+           window.alert("Phone calls are not supported on this device.");
+        } else {
+           Alert.alert("Info", "Phone calls are not supported on this device.");
+        }
+      }
+    } catch (err) {
+      console.error("Linking error:", err);
+    }
+  };
+
+  const phoneNumbers = config.hotline
+    ? config.hotline.split("/").map((n: string) => n.trim()).filter((n: string) => !!n)
+    : [];
+
   const sections = [
+    {
+      title: "EXPLORE CAMPUS",
+      items: [
+        {
+          title: "School Gallery",
+          subtitle: "Visual campus tour",
+          icon: "images",
+          color: "#6366f1",
+          path: "/parent-dashboard/gallery",
+        },
+        {
+          title: "Common FAQ",
+          subtitle: "Helpful info",
+          icon: "help-circle",
+          color: "#f59e0b",
+          path: "/parent-dashboard/FAQ",
+        },
+      ],
+    },
     {
       title: "STUDENT MONITORING",
       items: [
@@ -228,6 +271,71 @@ export default function ParentDashboard() {
         </LinearGradient>
 
         <View style={styles.mainContent}>
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <View
+                style={[
+                  styles.infoIcon,
+                  { backgroundColor: brandPrimary + "15" },
+                ]}
+              >
+                <SVGIcon
+                  name="location-outline"
+                  size={18}
+                  color={brandPrimary}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.infoLabel}>LOCATION</Text>
+                <Text style={styles.infoValue}>{config.address}</Text>
+              </View>
+            </View>
+            <View style={[styles.infoRow, { marginTop: 15 }]}>
+              <View
+                style={[
+                  styles.infoIcon,
+                  { backgroundColor: brandPrimary + "15" },
+                ]}
+              >
+                <SVGIcon name="mail-outline" size={18} color={brandPrimary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.infoLabel}>EMAIL US</Text>
+                <Text style={styles.infoValue}>
+                  {config.email || "info@school.edu"}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.callCardContainer}>
+            {phoneNumbers.map((phone: string, index: number) => (
+              <Animatable.View
+                key={phone}
+                animation="fadeIn"
+                duration={800}
+                delay={200 + index * 100}
+                style={styles.callCard}
+              >
+                <View
+                  style={[styles.callIconBox, { backgroundColor: "#ef444415" }]}
+                >
+                  <SVGIcon name="megaphone" size={24} color="#ef4444" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.callTitle}>School Hotline</Text>
+                  <Text style={styles.callPhone}>{phone}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.callActionBtn}
+                  onPress={() => handleCall(phone)}
+                >
+                  <Text style={styles.callActionText}>Call</Text>
+                </TouchableOpacity>
+              </Animatable.View>
+            ))}
+          </View>
+
           {sections.map((section, sIndex) => (
             <View key={section.title} style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -324,6 +432,68 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 30,
   },
+  infoCard: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 24,
+    marginBottom: 25,
+    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 15 },
+  infoIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  infoLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#94A3B8",
+    letterSpacing: 1,
+  },
+  infoValue: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginTop: 1,
+  },
+  callCardContainer: { marginBottom: 25, gap: 10 },
+  callCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 24,
+    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  callIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  callTitle: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#64748B",
+    textTransform: "uppercase",
+  },
+  callPhone: { fontSize: 16, fontWeight: "800", color: "#1E293B", marginTop: 2 },
+  callActionBtn: {
+    backgroundColor: "#ef4444",
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  callActionText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   section: { marginBottom: 30 },
   sectionHeader: {
     flexDirection: "row",

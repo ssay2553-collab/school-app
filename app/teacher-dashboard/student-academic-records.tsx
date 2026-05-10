@@ -1,42 +1,40 @@
-import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-    collection,
-    doc,
-    documentId,
-    getDoc,
-    getDocsFromServer,
-    query,
-    serverTimestamp,
-    setDoc,
-    updateDoc,
-    where,
+  collection,
+  doc,
+  documentId,
+  getDoc,
+  getDocs,
+  getDocsFromServer,
+  query,
+  serverTimestamp,
+  setDoc,
+  where
 } from "firebase/firestore";
-import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
+import { getStorage } from "firebase/storage";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    BackHandler,
-    Image,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  BackHandler,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { getGradeDetails, sortClasses } from "../../lib/classHelpers";
-import { useToast } from "../../contexts/ToastContext";
 
 const storage = getStorage();
 
@@ -51,149 +49,72 @@ type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
 interface StudentScoreRecord {
   studentId: string;
   fullName: string;
-  catA: string;
-  catB: string;
-  groupWork: string;
-  projectWork: string;
-  total60: number;
   classScore: string;
+  classScore50: string;
   examsMark: string;
   exam50: string;
   finalScore: string;
   grade: string;
-  conduct: string;
-  interest: string;
-  attitude: string;
-  teacherRemarks: string;
 }
 
 // Optimized Student Card Component
-const StudentCard = React.memo(({
+const StudentCard = React.memo(
+  ({
     student,
     onUpdate,
     reportType,
     isClassTeacher,
-    primaryColor
-}: {
+    primaryColor,
+  }: {
     student: StudentScoreRecord;
-    onUpdate: (id: string, field: keyof StudentScoreRecord, val: string) => void;
+    onUpdate: (
+      id: string,
+      field: keyof StudentScoreRecord,
+      val: string,
+    ) => void;
     reportType: ReportType;
     isClassTeacher: boolean;
     primaryColor: string;
-}) => {
+  }) => {
     return (
-        <View style={styles.studentCard}>
-            <View style={styles.cardHeader}>
-                <Text style={styles.studentName}>{student.fullName}</Text>
-                <View style={styles.gradeBadge}>
-                    <Text style={styles.gradeText}>{student.grade}</Text>
-                </View>
-            </View>
-            <View style={styles.scoresGrid}>
-                {reportType === "End of Term" ? (
-                    <>
-                        <View style={styles.scoreInput}>
-                            <Text style={styles.scoreLabel}>CAT A (15)</Text>
-                            <TextInput
-                                value={student.catA}
-                                onChangeText={(v) => onUpdate(student.studentId, "catA", v)}
-                                keyboardType="numeric"
-                                style={styles.input}
-                            />
-                        </View>
-                        <View style={styles.scoreInput}>
-                            <Text style={styles.scoreLabel}>CAT B (15)</Text>
-                            <TextInput
-                                value={student.catB}
-                                onChangeText={(v) => onUpdate(student.studentId, "catB", v)}
-                                keyboardType="numeric"
-                                style={styles.input}
-                            />
-                        </View>
-                        <View style={styles.scoreInput}>
-                            <Text style={styles.scoreLabel}>GROUP (15)</Text>
-                            <TextInput
-                                value={student.groupWork}
-                                onChangeText={(v) => onUpdate(student.studentId, "groupWork", v)}
-                                keyboardType="numeric"
-                                style={styles.input}
-                            />
-                        </View>
-                        <View style={styles.scoreInput}>
-                            <Text style={styles.scoreLabel}>PROJECT (15)</Text>
-                            <TextInput
-                                value={student.projectWork}
-                                onChangeText={(v) => onUpdate(student.studentId, "projectWork", v)}
-                                keyboardType="numeric"
-                                style={styles.input}
-                            />
-                        </View>
-                        <View style={styles.scoreInput}>
-                            <Text style={styles.scoreLabel}>EXAMS (100)</Text>
-                            <TextInput
-                                value={student.examsMark}
-                                onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)}
-                                keyboardType="numeric"
-                                style={styles.input}
-                            />
-                        </View>
-                        <View style={styles.totalBox}>
-                            <Text style={styles.totalLabel}>TOTAL (100)</Text>
-                            <Text style={styles.totalVal}>{student.finalScore}</Text>
-                        </View>
-                    </>
-                ) : (
-                    <View style={[styles.scoreInput, { flex: 1 }]}>
-                        <Text style={styles.scoreLabel}>TOTAL SCORE</Text>
-                        <TextInput
-                            value={student.examsMark}
-                            onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)}
-                            keyboardType="numeric"
-                            style={styles.input}
-                        />
-                    </View>
-                )}
-            </View>
-            {isClassTeacher && reportType === "End of Term" && (
-                <View style={styles.behavioralGrid}>
-                    <View style={styles.scoreInput}>
-                        <Text style={styles.scoreLabel}>CONDUCT</Text>
-                        <TextInput
-                            value={student.conduct}
-                            onChangeText={(v) => onUpdate(student.studentId, "conduct", v)}
-                            style={styles.input}
-                        />
-                    </View>
-                    <View style={styles.scoreInput}>
-                        <Text style={styles.scoreLabel}>INTEREST</Text>
-                        <TextInput
-                            value={student.interest}
-                            onChangeText={(v) => onUpdate(student.studentId, "interest", v)}
-                            style={styles.input}
-                        />
-                    </View>
-                    <View style={styles.scoreInput}>
-                        <Text style={styles.scoreLabel}>ATTITUDE</Text>
-                        <TextInput
-                            value={student.attitude}
-                            onChangeText={(v) => onUpdate(student.studentId, "attitude", v)}
-                            style={styles.input}
-                        />
-                    </View>
-                    <View style={[styles.scoreInput, { width: "100%" }]}>
-                        <Text style={styles.scoreLabel}>TEACHER REMARKS</Text>
-                        <TextInput
-                            value={student.teacherRemarks}
-                            onChangeText={(v) => onUpdate(student.studentId, "teacherRemarks", v)}
-                            style={styles.input}
-                            multiline
-                        />
-                    </View>
-                </View>
-            )}
+      <View style={styles.studentCard}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.studentName}>{student.fullName}</Text>
+          <View style={styles.gradeBadge}>
+            <Text style={styles.gradeText}>{student.grade}</Text>
+          </View>
         </View>
+        <View style={styles.scoresGrid}>
+          {/* Add your conditional rendering or other content here. The stray fragment was removed. */}
+          <View style={[styles.scoreInput, { flex: 1 }]}>
+            <Text style={styles.scoreLabel}>CLASS SCORE (MAX 50)</Text>
+            <TextInput
+              value={student.classScore}
+              onChangeText={(v) => onUpdate(student.studentId, "classScore", v)}
+              keyboardType="numeric"
+              placeholder="0.0"
+              style={styles.input}
+            />
+          </View>
+          <View style={[styles.scoreInput, { flex: 1 }]}>
+            <Text style={styles.scoreLabel}>EXAMS SCORE (MAX 100)</Text>
+            <TextInput
+              value={student.examsMark}
+              onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)}
+              keyboardType="numeric"
+              placeholder="0.0"
+              style={styles.input}
+            />
+          </View>
+          <View style={styles.totalBox}>
+            <Text style={styles.totalLabel}>TOTAL (100%)</Text>
+            <Text style={styles.totalVal}>{student.finalScore}</Text>
+          </View>
+        </View>
+      </View>
     );
-});
+  },
+);
 
 export default function StudentAcademicRecords() {
   const router = useRouter();
@@ -204,10 +125,6 @@ export default function StudentAcademicRecords() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [teacherClasses, setTeacherClasses] = useState<ClassData[]>([]);
-  const [uploadingSig, setUploadingSig] = useState(false);
-  const [signatureUrl, setSignatureUrl] = useState<string>(
-    (appUser?.profile as any)?.signatureUrl || "",
-  );
 
   // State for selections
   const [selectedClassId, setSelectedClassId] = useState("");
@@ -219,9 +136,110 @@ export default function StudentAcademicRecords() {
   const term = acadConfig.currentTerm || "";
 
   const [allStudents, setAllStudents] = useState<StudentScoreRecord[]>([]);
-  const [serverStudents, setServerStudents] = useState<StudentScoreRecord[]>([]);
+  const [serverStudents, setServerStudents] = useState<StudentScoreRecord[]>(
+    [],
+  );
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15; // Increased page size slightly since rendering is now efficient
+
+  const calculateScores = useCallback(
+    (student: StudentScoreRecord, type: ReportType) => {
+      const updated = { ...student };
+      if (type === "End of Term") {
+        const classScoreRaw = parseFloat(updated.classScore) || 0;
+        updated.classScore50 = classScoreRaw.toFixed(2); // Directly use the score as it's already capped at 50
+
+        const examsMark = parseFloat(updated.examsMark) || 0;
+        updated.exam50 = (examsMark * 0.5).toFixed(2);
+
+        const finalScoreNum =
+          parseFloat(updated.classScore50) + parseFloat(updated.exam50);
+        updated.finalScore = finalScoreNum.toFixed(2);
+        updated.grade = getGradeDetails(finalScoreNum).grade;
+      } else {
+        const examsMark = parseFloat(updated.examsMark) || 0;
+        updated.grade = getGradeDetails(examsMark).grade;
+      }
+      return updated;
+    },
+    [],
+  );
+
+  const syncRecords = useCallback(async () => {
+    // If we don't have these core values, we can't fetch or save a specific record
+    if (!selectedClassId || !selectedSubject || !selectedYear || !term) {
+      setAllStudents([]);
+      return;
+    }
+
+    setSyncing(true);
+    setError(null);
+    try {
+      const yearSlug = selectedYear.replace(/\//g, "-");
+      const reportSlug = reportType.replace(/\s+/g, "");
+      const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
+      const docSnap = await getDoc(doc(db, "academicRecords", docId));
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        const loadedStudents = (data.students || []).map(
+          (s: StudentScoreRecord) => calculateScores(s, reportType),
+        );
+        setAllStudents(loadedStudents);
+        setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
+      } else {
+        // Fetch all students in this class.
+        // Filtering by role and classId is usually indexed.
+        // We filter status in-memory to avoid "Missing Index" errors with complex where/in queries.
+        const q = query(
+          collection(db, "users"),
+          where("role", "==", "student"),
+          where("classId", "==", selectedClassId)
+        );
+
+        const snap = await getDocs(q);
+        const list: StudentScoreRecord[] = snap.docs
+          .map((d: any) => {
+            const data = d.data() as any;
+            // Only include active or pending students
+            if (!["active", "pending_activation"].includes(data.status)) return null;
+
+            return {
+              studentId: d.id,
+              fullName:
+                `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Unknown Student",
+              classScore: "",
+              classScore50: "0",
+              examsMark: "",
+              exam50: "0",
+              finalScore: "0",
+              grade: "N/A",
+            };
+          })
+          .filter((s: StudentScoreRecord | null): s is StudentScoreRecord => s !== null)
+          .sort((a: StudentScoreRecord, b: StudentScoreRecord) => a.fullName.localeCompare(b.fullName));
+
+        setAllStudents(list);
+        setServerStudents(JSON.parse(JSON.stringify(list)));
+      }
+      setPage(1);
+    } catch (err: any) {
+      console.error("syncRecords Error:", err);
+      setError("Unable to load student list. This might be a connection issue or a missing database index.");
+      showToast({ message: "Error loading students.", type: "error" });
+    } finally {
+      setSyncing(false);
+    }
+  }, [
+    selectedClassId,
+    selectedSubject,
+    selectedYear,
+    term,
+    reportType,
+    calculateScores,
+    showToast
+  ]);
 
   const hasUnsavedChanges = useMemo(() => {
     return JSON.stringify(allStudents) !== JSON.stringify(serverStudents);
@@ -243,8 +261,8 @@ export default function StudentAcademicRecords() {
           "You have modified student scores. Are you sure you want to discard them?",
           [
             { text: "Stay", style: "cancel" },
-            { text: "Discard", style: "destructive", onPress: handleBack }
-          ]
+            { text: "Discard", style: "destructive", onPress: handleBack },
+          ],
         );
         return true;
       }
@@ -263,35 +281,6 @@ export default function StudentAcademicRecords() {
     const selectedClass = teacherClasses.find((c) => c.id === selectedClassId);
     return selectedClass?.classTeacherId === appUser?.uid;
   }, [selectedClassId, teacherClasses, appUser]);
-
-  const calculateScores = useCallback(
-    (student: StudentScoreRecord, type: ReportType) => {
-      const updated = { ...student };
-      if (type === "End of Term") {
-        const catA = parseFloat(updated.catA) || 0;
-        const catB = parseFloat(updated.catB) || 0;
-        const groupWork = parseFloat(updated.groupWork) || 0;
-        const projectWork = parseFloat(updated.projectWork) || 0;
-
-        const total60 = catA + catB + groupWork + projectWork;
-        updated.total60 = total60;
-        updated.classScore = (total60 * (50 / 60)).toFixed(2);
-
-        const examsMark = parseFloat(updated.examsMark) || 0;
-        updated.exam50 = (examsMark * 0.5).toFixed(2);
-
-        const finalScoreNum =
-          parseFloat(updated.classScore) + parseFloat(updated.exam50);
-        updated.finalScore = finalScoreNum.toFixed(2);
-        updated.grade = getGradeDetails(finalScoreNum).grade;
-      } else {
-        const examsMark = parseFloat(updated.examsMark) || 0;
-        updated.grade = getGradeDetails(examsMark).grade;
-      }
-      return updated;
-    },
-    [],
-  );
 
   useEffect(() => {
     if (!appUser) return;
@@ -315,7 +304,11 @@ export default function StudentAcademicRecords() {
           if (sorted.length > 0 && !selectedClassId)
             setSelectedClassId(sorted[0].id);
         }
-        setSignatureUrl((appUser?.profile as any)?.signatureUrl || "");
+
+        // Auto-select first subject if none selected
+        if (appUser.subjects && appUser.subjects.length > 0 && !selectedSubject) {
+          setSelectedSubject(appUser.subjects[0]);
+        }
       } catch (err) {
         console.error("fetchTeacherMetadata Error:", err);
       } finally {
@@ -326,90 +319,37 @@ export default function StudentAcademicRecords() {
   }, [appUser]);
 
   useEffect(() => {
-    if (!selectedClassId || !selectedSubject || !selectedYear || !term) return;
-    const syncRecords = async () => {
-      setSyncing(true);
-      try {
-        const yearSlug = selectedYear.replace(/\//g, "-");
-        const reportSlug = reportType.replace(/\s+/g, "");
-        const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
-        const docSnap = await getDoc(doc(db, "academicRecords", docId));
-
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          const loadedStudents = (data.students || []).map(
-            (s: StudentScoreRecord) => calculateScores(s, reportType),
-          );
-          setAllStudents(loadedStudents);
-          setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
-        } else {
-          const q = query(
-            collection(db, "users"),
-            where("role", "==", "student"),
-            where("classId", "==", selectedClassId),
-          );
-          const snap = await getDocsFromServer(q);
-          const list: StudentScoreRecord[] = snap.docs.map((d) => {
-            const data = d.data() as any;
-            return {
-              studentId: d.id,
-              fullName:
-                `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
-              catA: "",
-              catB: "",
-              groupWork: "",
-              projectWork: "",
-              total60: 0,
-              classScore: "0",
-              examsMark: "",
-              exam50: "0",
-              finalScore: "0",
-              grade: "N/A",
-              conduct: "Excellent",
-              interest: "High",
-              attitude: "Positive",
-              teacherRemarks: "",
-            };
-          });
-          setAllStudents(list);
-          setServerStudents(JSON.parse(JSON.stringify(list)));
-        }
-        setPage(1);
-      } catch (err) {
-        console.error("syncRecords Error:", err);
-      } finally {
-        setSyncing(false);
-      }
-    };
     syncRecords();
-  }, [
-    selectedClassId,
-    selectedSubject,
-    selectedYear,
-    term,
-    reportType,
-    calculateScores,
-  ]);
+  }, [syncRecords]);
 
-  const updateStudentScore = useCallback((
-    studentId: string,
-    field: keyof StudentScoreRecord,
-    value: string,
-  ) => {
-    setAllStudents(prev => prev.map((s) => {
-      if (s.studentId === studentId) {
-        let updated = { ...s, [field]: value } as StudentScoreRecord;
-        if (["catA", "catB", "groupWork", "projectWork", "examsMark"].includes(field)) {
-          updated = calculateScores(updated, reportType);
-        }
-        return updated;
-      }
-      return s;
-    }));
-  }, [calculateScores, reportType]);
+  const updateStudentScore = useCallback(
+    (studentId: string, field: keyof StudentScoreRecord, value: string) => {
+      setAllStudents((prev) =>
+        prev.map((s) => {
+          if (s.studentId === studentId) {
+            if (field === "classScore" && parseFloat(value) > 50) {
+              showToast({
+                message: "Class Score must not be above 50%",
+                type: "error",
+              });
+              return s;
+            }
+
+            let updated = { ...s, [field]: value } as StudentScoreRecord;
+            if (["classScore", "examsMark"].includes(field)) {
+              updated = calculateScores(updated, reportType);
+            }
+            return updated;
+          }
+          return s;
+        }),
+      );
+    },
+    [calculateScores, reportType],
+  );
 
   const loadMore = () => {
-    setPage(p => p + 1);
+    setPage((p) => p + 1);
   };
 
   const saveRecord = async () => {
@@ -435,45 +375,15 @@ export default function StudentAcademicRecords() {
         students: allStudents,
         timestamp: serverTimestamp(),
         status: "pending",
-        containsBehavioralData: isClassTeacher && reportType === "End of Term",
       });
       setServerStudents(JSON.parse(JSON.stringify(allStudents)));
-      showToast({ message: "Academic ledger saved successfully.", type: "success" });
+      showToast({
+        message: "Academic ledger saved successfully.",
+        type: "success",
+      });
       router.back();
     } catch (err) {
       showToast({ message: "Failed to save records.", type: "error" });
-    }
-  };
-
-  const handleUploadSignature = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [2, 1],
-        quality: 0.5,
-      });
-
-      if (!result.canceled && result.assets[0].uri) {
-        setUploadingSig(true);
-        const uri = result.assets[0].uri;
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const storageRef = ref(storage, `signatures/${appUser?.uid}`);
-        await uploadBytes(storageRef, blob);
-        const downloadURL = await getDownloadURL(storageRef);
-
-        await updateDoc(doc(db, "users", appUser!.uid), {
-          "profile.signatureUrl": downloadURL,
-        });
-        setSignatureUrl(downloadURL);
-        showToast({ message: "Signature uploaded successfully!", type: "success" });
-      }
-    } catch (error) {
-      console.error(error);
-      showToast({ message: "Failed to upload signature.", type: "error" });
-    } finally {
-      setUploadingSig(false);
     }
   };
 
@@ -492,10 +402,7 @@ export default function StudentAcademicRecords() {
         style={styles.headerGradient}
       >
         <View style={styles.headerTitleRow}>
-          <TouchableOpacity
-            onPress={handleBack}
-            style={styles.backBtn}
-          >
+          <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 15 }}>
@@ -513,58 +420,20 @@ export default function StudentAcademicRecords() {
         contentContainerStyle={{ paddingBottom: 120 }}
         removeClippedSubviews={true} // Performance optimization for Android
       >
-        {isClassTeacher && (
-          <Animatable.View animation="fadeInDown" duration={500} style={styles.signatureCard}>
-            <View style={styles.sigHeader}>
-              <SVGIcon name="brush-outline" size={20} color={COLORS.primary} />
-              <Text style={styles.sigTitle}>Teacher's Digital Signature</Text>
-            </View>
-            <Text style={styles.sigSubtitle}>
-              Required for official terminal reports
-            </Text>
-            <View style={styles.sigContent}>
-              {signatureUrl ? (
-                <Image
-                  source={{ uri: signatureUrl }}
-                  style={styles.sigImage}
-                  resizeMode="contain"
-                />
-              ) : (
-                <View style={styles.sigPlaceholder}>
-                  <SVGIcon name="image-outline" size={32} color="#94A3B8" />
-                  <Text style={styles.sigPlaceholderText}>
-                    No Signature Uploaded
-                  </Text>
-                </View>
-              )}
-              <TouchableOpacity
-                style={[
-                  styles.sigUploadBtn,
-                  { backgroundColor: COLORS.primary },
-                ]}
-                onPress={handleUploadSignature}
-                disabled={uploadingSig}
-              >
-                {uploadingSig ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.sigUploadBtnText}>
-                    {signatureUrl ? "Replace Signature" : "Upload Signature"}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </Animatable.View>
-        )}
-
-        <Animatable.View animation="fadeInDown" duration={500} style={styles.configCard}>
+        <Animatable.View
+          animation="fadeInDown"
+          duration={500}
+          style={styles.configCard}
+        >
           <Text style={styles.sectionLabel}>LEDGER CONFIGURATION</Text>
 
           <View style={styles.lockedConfigRow}>
             <View style={styles.lockedConfigItem}>
               <Text style={styles.miniLabel}>ACADEMIC YEAR</Text>
               <View style={styles.lockedBadge}>
-                <Text style={styles.lockedBadgeText}>{selectedYear || "---"}</Text>
+                <Text style={styles.lockedBadgeText}>
+                  {selectedYear || "---"}
+                </Text>
               </View>
             </View>
             <View style={styles.lockedConfigItem}>
@@ -575,7 +444,7 @@ export default function StudentAcademicRecords() {
             </View>
           </View>
 
-          <Text style={[styles.label, {marginTop: 15}]}>REPORT TYPE</Text>
+          <Text style={[styles.label, { marginTop: 15 }]}>REPORT TYPE</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -673,16 +542,37 @@ export default function StudentAcademicRecords() {
                 {allStudents.length} Students
               </Text>
             </View>
-            {visibleStudents.map((student) => (
-              <StudentCard
-                key={student.studentId}
-                student={student}
-                onUpdate={updateStudentScore}
-                reportType={reportType}
-                isClassTeacher={isClassTeacher}
-                primaryColor={COLORS.primary}
-              />
-            ))}
+
+            {error && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+                <TouchableOpacity onPress={() => syncRecords()} style={styles.retryBtn}>
+                  <Text style={styles.retryBtnText}>RETRY</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {!error && allStudents.length === 0 ? (
+              <View style={styles.emptyState}>
+                <SVGIcon name="people-outline" size={48} color="#CBD5E1" />
+                <Text style={styles.emptyStateText}>
+                  {!selectedSubject ? "Please select a subject first" :
+                   !selectedYear ? "Academic Year not set in Admin Settings" :
+                   "No active students found in this class"}
+                </Text>
+              </View>
+            ) : (
+              visibleStudents.map((student) => (
+                <StudentCard
+                  key={student.studentId}
+                  student={student}
+                  onUpdate={updateStudentScore}
+                  reportType={reportType}
+                  isClassTeacher={isClassTeacher}
+                  primaryColor={COLORS.primary}
+                />
+              ))
+            )}
             {allStudents.length > visibleStudents.length && (
               <TouchableOpacity onPress={loadMore} style={styles.loadMoreBtn}>
                 <Text style={styles.loadMoreText}>LOAD MORE STUDENTS</Text>
@@ -821,11 +711,22 @@ const styles = StyleSheet.create({
   },
   bubbleText: { fontSize: 12, color: "#475569", fontWeight: "700" },
   bubbleTextActive: { color: "#fff" },
-  lockedConfigRow: { flexDirection: 'row', gap: 15, marginBottom: 5 },
+  lockedConfigRow: { flexDirection: "row", gap: 15, marginBottom: 5 },
   lockedConfigItem: { flex: 1 },
-  miniLabel: { fontSize: 9, fontWeight: "900", color: "#94A3B8", marginBottom: 6 },
-  lockedBadge: { backgroundColor: '#F1F5F9', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  lockedBadgeText: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
+  miniLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#94A3B8",
+    marginBottom: 6,
+  },
+  lockedBadge: {
+    backgroundColor: "#F1F5F9",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  lockedBadgeText: { fontSize: 13, fontWeight: "800", color: COLORS.primary },
   syncBox: { padding: 50, alignItems: "center" },
   syncText: { marginTop: 15, color: "#64748B", fontWeight: "700" },
   recordsList: { padding: 20 },
@@ -917,5 +818,46 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 16,
     letterSpacing: 1,
+  },
+  emptyState: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 40,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    marginTop: 10,
+    ...SHADOWS.small,
+  },
+  emptyStateText: {
+    marginTop: 15,
+    color: "#64748B",
+    fontWeight: "700",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  errorBox: {
+    padding: 20,
+    backgroundColor: "#FEF2F2",
+    borderRadius: 15,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  errorText: {
+    color: "#EF4444",
+    fontWeight: "600",
+    textAlign: "center",
+    fontSize: 12,
+  },
+  retryBtn: {
+    marginTop: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    backgroundColor: "#EF4444",
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 11,
   },
 });

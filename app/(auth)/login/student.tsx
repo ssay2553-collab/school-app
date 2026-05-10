@@ -225,9 +225,9 @@ export default function StudentLoginScreen() {
                 </View>
 
                 <TouchableOpacity
-                  onPress={() => router.push("/(auth)/forgot-password")}
+                  onPress={() => router.push("/(auth)/token-reset")}
                 >
-                  <Text style={styles.forgotText}>Lost my password</Text>
+                  <Text style={styles.forgotText}>Lost my password (Reset by Token)</Text>
                 </TouchableOpacity>
               </View>
             </Animatable.View>

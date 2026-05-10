@@ -172,6 +172,7 @@ export default function TeacherChatWithParent() {
         collection(db, "users"),
         where("role", "==", "student"),
         where("classId", "==", cls.id),
+        where("status", "in", ["active", "pending_activation"]),
       );
       const snap = await getDocs(q);
       setStudents(

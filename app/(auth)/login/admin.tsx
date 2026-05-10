@@ -175,7 +175,7 @@ export default function AdminLogin() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  onPress={() => router.push("/(auth)/forgot-password")}
+                  onPress={() => router.push("/(auth)/token-reset")}
                   style={styles.forgotBtn}
                 >
                   <Text style={styles.forgotText}>Reset Password</Text>

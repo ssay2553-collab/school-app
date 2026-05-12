@@ -56,8 +56,17 @@ export default function StaffPayrollScreen() {
   const acadConfig = useAcademicConfig();
 
   // Access Control
+  const isTeacherRole = appUser?.role?.toLowerCase() === "teacher";
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = ["proprietor", "headmaster"].includes(currentUserRole);
+  const isSuperAdmin = [
+    "proprietor",
+    "proprietress",
+    "headmaster",
+    "headmistress",
+    "director",
+    "manager",
+    "administrator",
+  ].includes(currentUserRole);
   const payrollPermission = appUser?.permissions?.["staff-payroll"] || "deny";
   const canView =
     isSuperAdmin ||
@@ -93,7 +102,7 @@ export default function StaffPayrollScreen() {
   useEffect(() => {
     if (appUser && !canView) {
       showToast({
-        message: "You do not have permission to view staff payroll.",
+        message: "Access Denied: You do not have permission to view payroll.",
         type: "error",
       });
       router.replace("/admin-dashboard");

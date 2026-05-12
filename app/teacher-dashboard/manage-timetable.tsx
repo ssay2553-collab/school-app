@@ -100,7 +100,17 @@ export default function CreateLessonTimetable() {
     if (!appUser) return false;
     const role = (appUser.role || "").toLowerCase();
     const adminRole = (appUser.adminRole || "").toLowerCase();
-    const adminRoles = ["admin", "headmaster", "proprietor", "secretary", "assistant", "ceo"];
+    const adminRoles = [
+      "admin",
+      "headmaster",
+      "headmistress",
+      "proprietor",
+      "proprietress",
+      "secretary",
+      "assistant",
+      "manager",
+      "director",
+    ];
     const isFullAdmin = adminRoles.some(r => role.includes(r) || adminRole.includes(r));
     if (isFullAdmin) return true;
     return appUser.classTeacherOf === selectedClass;

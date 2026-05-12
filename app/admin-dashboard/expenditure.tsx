@@ -70,10 +70,17 @@ export default function ExpenditureScreen() {
   const insets = useSafeAreaInsets();
 
   // Access Control
+  const isTeacherRole = appUser?.role?.toLowerCase() === "teacher";
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = ["proprietor", "headmaster", "ceo"].includes(
-    currentUserRole,
-  );
+  const isSuperAdmin = [
+    "proprietor",
+    "proprietress",
+    "headmaster",
+    "headmistress",
+    "director",
+    "manager",
+    "administrator",
+  ].includes(currentUserRole);
   const expPermission = appUser?.permissions?.["expenditure"] || "deny";
   const canView =
     isSuperAdmin ||

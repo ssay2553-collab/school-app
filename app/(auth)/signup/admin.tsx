@@ -127,10 +127,16 @@ export default function AdminSignup() {
 
       const batch = writeBatch(db);
 
-      // Default permissions for Proprietor/Headmaster
-      const isSuperAdmin = ["proprietor", "headmaster"].includes(
-        normalizedRole,
-      );
+      // Default permissions for Super Admin Roles
+      const isSuperAdmin = [
+        "proprietor",
+        "proprietress",
+        "headmaster",
+        "headmistress",
+        "director",
+        "manager",
+        "administrator",
+      ].includes(normalizedRole);
       const defaultPermission = isSuperAdmin ? "full" : "deny";
 
       // User Profile
@@ -147,6 +153,7 @@ export default function AdminSignup() {
         adminRole: adminRole.trim(),
         permissions: {
           "manage-fees": defaultPermission,
+          "manage-sales": defaultPermission,
           "staff-payroll": defaultPermission,
           expenditure: defaultPermission,
           "manage-users": defaultPermission,

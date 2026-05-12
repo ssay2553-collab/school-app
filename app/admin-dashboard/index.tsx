@@ -159,11 +159,19 @@ export default function AdminDashboard() {
       title: "Finance",
       items: [
         {
+          title: "Daily Financials",
+          route: "/admin-dashboard/DailyFinancials",
+          icon: "calculator",
+          color: "#10b981",
+        },
+        ...(appUser?.role?.toLowerCase() !== "teacher" ? [
+        {
           title: "Student Fees",
           route: "/admin-dashboard/ManageFees",
           icon: "cash",
           color: "#f59e0b",
         },
+        ] : []),
         {
           title: "Expenses",
           route: "/admin-dashboard/expenditure",

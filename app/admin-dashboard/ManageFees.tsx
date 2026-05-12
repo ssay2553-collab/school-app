@@ -101,17 +101,26 @@ export default function ManageFees() {
 
   // ACCESS CONTROL LOGIC
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = ["proprietor", "headmaster", "ceo"].includes(
-    currentUserRole,
-  );
+  const isTeacherRole = appUser?.role?.toLowerCase() === "teacher";
+  const isSuperAdmin = [
+    "proprietor",
+    "proprietress",
+    "headmaster",
+    "headmistress",
+    "director",
+    "manager",
+    "administrator",
+  ].includes(currentUserRole);
   const feePermission = appUser?.permissions?.["manage-fees"] || "deny";
   const canView =
-    isSuperAdmin ||
-    feePermission === "full" ||
-    feePermission === "view" ||
-    feePermission === "edit";
+    !isTeacherRole &&
+    (isSuperAdmin ||
+      feePermission === "full" ||
+      feePermission === "view" ||
+      feePermission === "edit");
   const canEdit =
-    isSuperAdmin || feePermission === "full" || feePermission === "edit";
+    !isTeacherRole &&
+    (isSuperAdmin || feePermission === "full" || feePermission === "edit");
 
   // Stabilize inputs using refs for batch updates to prevent render-loops during typing
   const individualBillOverridesRef = useRef<Record<string, string>>({});
@@ -180,7 +189,7 @@ export default function ManageFees() {
   useEffect(() => {
     if (appUser && !canView) {
       showToast({
-        message: "You do not have permission to view fees management.",
+        message: "Access Denied: You do not have permission to view fees management.",
         type: "error",
       });
       router.replace("/admin-dashboard");
@@ -671,6 +680,7 @@ export default function ManageFees() {
         studentName: selectedStudent.fullName,
         classId: selectedStudent.classId,
         className: selectedStudent.className,
+        type: "tuition",
       };
 
       if (!selectedStudent.hasRecordInTerm) {

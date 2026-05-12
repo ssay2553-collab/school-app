@@ -8,7 +8,8 @@ import {
   serverTimestamp,
   startAfter,
   where,
-  writeBatch
+  writeBatch,
+  increment
 } from "firebase/firestore";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -41,6 +42,8 @@ import { sortClasses } from "../../utils/classSorting";
 
 import DateTimePicker from "@react-native-community/datetimepicker";
 
+import { AppUser } from "../../types/users";
+
 const FILTERS_KEY = "@attendance_filters_v1";
 
 const { width } = Dimensions.get("window");
@@ -52,7 +55,7 @@ export default function DailyAttendanceScreen() {
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
 
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -112,7 +115,13 @@ export default function DailyAttendanceScreen() {
     if (!classId || !appUser) return false;
     const selectedClass = availableClasses.find(c => c.id === classId);
     const userRole = (appUser.role || "").toLowerCase();
-    return selectedClass?.classTeacherId === appUser.uid || appUser.classTeacherOf === classId || userRole === "admin";
+    const teacherClasses = appUser.classes || [];
+    return (
+      selectedClass?.classTeacherId === appUser.uid ||
+      appUser.classTeacherOf === classId ||
+      teacherClasses.includes(classId) ||
+      userRole === "admin"
+    );
   }, [classId, availableClasses, appUser]);
 
   useEffect(() => {
@@ -125,6 +134,11 @@ export default function DailyAttendanceScreen() {
             q = query(collection(db, "classes"));
         } else {
             const teacherClasses = appUser.classes || [];
+            if (appUser.classTeacherOf) {
+              if (!teacherClasses.includes(appUser.classTeacherOf)) {
+                teacherClasses.push(appUser.classTeacherOf);
+              }
+            }
             if (teacherClasses.length === 0) {
               setLoading(false);
               return;
@@ -183,7 +197,7 @@ export default function DailyAttendanceScreen() {
       
       const q = query(collection(db, "users"), ...constraints);
       const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+      const data = snap.docs.map(d => ({ uid: d.id, ...(d.data() as any) }));
       
       const newLastVisible = snap.docs[snap.docs.length - 1] || null;
       const newHasMore = snap.docs.length === 30;
@@ -258,7 +272,11 @@ export default function DailyAttendanceScreen() {
       
       const batch = writeBatch(db);
       const ref = doc(db, "attendance", attendanceId);
-      
+
+      // Auditing information
+      const staffName = `${appUser.profile?.firstName || ''} ${appUser.profile?.lastName || ''}`.trim() || "Staff";
+      const updatedBy = `${staffName} (${appUser.role || 'Teacher'})`;
+
       batch.set(ref, {
         classId,
         schoolId: SCHOOL_CONFIG.schoolId,
@@ -266,6 +284,7 @@ export default function DailyAttendanceScreen() {
         academicYear,
         term,
         markedBy: appUser.uid,
+        updatedBy: updatedBy,
         lastUpdated: serverTimestamp(),
         students: localAttendance
       }, { merge: true });
@@ -286,9 +305,9 @@ export default function DailyAttendanceScreen() {
     }
   };
 
-  const renderStudentItem = ({ item, index }: { item: any, index: number }) => {
-    const status = localAttendance[item.id]?.status ?? "not_marked";
-    const isUnsaved = localAttendance[item.id]?.status !== serverAttendance[item.id]?.status;
+  const renderStudentItem = ({ item, index }: { item: AppUser, index: number }) => {
+    const status = localAttendance[item.uid]?.status ?? "not_marked";
+    const isUnsaved = localAttendance[item.uid]?.status !== serverAttendance[item.uid]?.status;
     const cardStatusStyle = status === "present" ? styles.presentCard : status === "absent" ? styles.absentCard : {};
 
     return (
@@ -318,7 +337,7 @@ export default function DailyAttendanceScreen() {
           <View style={styles.actions}>
             <TouchableOpacity 
               style={[styles.actionBtn, status === "present" && styles.presentActive]} 
-              onPress={() => markLocal(item.id, "present")}
+              onPress={() => markLocal(item.uid, "present")}
               activeOpacity={0.7}
             >
               <SVGIcon name="checkmark-circle" size={20} color={status === 'present' ? '#fff' : '#10B981'} />
@@ -327,7 +346,7 @@ export default function DailyAttendanceScreen() {
             
             <TouchableOpacity 
               style={[styles.actionBtn, status === "absent" && styles.absentActive]} 
-              onPress={() => markLocal(item.id, "absent")}
+              onPress={() => markLocal(item.uid, "absent")}
               activeOpacity={0.7}
             >
               <SVGIcon name="close-circle" size={20} color={status === 'absent' ? '#fff' : '#EF4444'} />
@@ -443,7 +462,7 @@ export default function DailyAttendanceScreen() {
           <FlatList
             data={students}
             renderItem={renderStudentItem}
-            keyExtractor={item => item.id}
+            keyExtractor={item => item.uid}
             numColumns={isLargeScreen ? 2 : 1}
             columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
             contentContainerStyle={styles.list}

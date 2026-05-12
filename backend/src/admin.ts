@@ -75,7 +75,17 @@ export const updateUserEmail = onCall(async (req) => {
   const db = admin.firestore();
   const callerDoc = await db.collection("users").doc(auth.uid).get();
   const callerData = callerDoc.data();
-  const isSuperAdmin = auth.token?.role === "admin" || (callerData?.role === "admin" && (callerData?.adminRole === "proprietor" || callerData?.adminRole === "headmaster"));
+  const isSuperAdmin =
+    (callerData?.role === "admin" &&
+      [
+        "proprietor",
+        "proprietress",
+        "headmaster",
+        "headmistress",
+        "director",
+        "manager",
+        "administrator",
+      ].includes(callerData?.adminRole?.toLowerCase() || ""));
   const hasManageUsers = callerData?.permissions?.["manage-users"] === "full" || isSuperAdmin;
 
   // Teachers can also update their own students if permitted (optional logic)
@@ -148,7 +158,17 @@ export const updateUserPassword = onCall(async (req) => {
   const db = admin.firestore();
   const callerDoc = await db.collection("users").doc(auth.uid).get();
   const callerData = callerDoc.data();
-  const isSuperAdmin = auth.token?.role === "admin" || (callerData?.role === "admin" && (callerData?.adminRole === "proprietor" || callerData?.adminRole === "headmaster"));
+  const isSuperAdmin =
+    (callerData?.role === "admin" &&
+      [
+        "proprietor",
+        "proprietress",
+        "headmaster",
+        "headmistress",
+        "director",
+        "manager",
+        "administrator",
+      ].includes(callerData?.adminRole?.toLowerCase() || ""));
   const hasManageUsers = callerData?.permissions?.["manage-users"] === "full" || isSuperAdmin;
 
   let authorized = hasManageUsers;

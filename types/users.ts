@@ -54,6 +54,12 @@ export interface AppUser {
   classId?: string;
   parentUids?: string[];
   parentLinkCode?: string;
+  takesBus?: boolean;
+  isFeeding?: boolean;
+  busLocation?: string;
+  walletBalance?: number;
+  onScholarship?: boolean;
+  takesExtraClasses?: boolean;
 
   // Parent only
   childrenIds?: string[];

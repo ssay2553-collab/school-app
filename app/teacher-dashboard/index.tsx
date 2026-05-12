@@ -36,6 +36,11 @@ export default function TeacherDashboard() {
   const [assignmentCount, setAssignmentCount] = useState<number | null>(null);
   const { totalUnread, submissionUnread } = useUnreadCounts();
 
+  const isAdmin = appUser?.role === "admin";
+  const canFeeding = appUser?.permissions?.["feeding"] === "full" || appUser?.permissions?.["feeding"] === "edit";
+  const canBus = appUser?.permissions?.["record-bus-fee"] === "full" || appUser?.permissions?.["record-bus-fee"] === "edit";
+  const hasFinancialAccess = isAdmin || canFeeding || canBus;
+
   const primary = SCHOOL_CONFIG.primaryColor;
   const surface = SCHOOL_CONFIG.surfaceColor;
 
@@ -89,6 +94,14 @@ export default function TeacherDashboard() {
           icon: "key",
           color: "#ec4899",
         },
+          {
+            title: "Daily Financials",
+            subtitle: "Fee recording",
+            route: "/admin-dashboard/DailyFinancials",
+            icon: "cash",
+            color: "#10b981",
+            hidden: !hasFinancialAccess,
+          },
         {
           title: "My Notes",
           subtitle: "Personal scratchpad",
@@ -348,9 +361,9 @@ export default function TeacherDashboard() {
               <View style={styles.sectionLine} />
             </View>
             <View style={styles.grid}>
-              {section.items.map((item, iIdx) =>
-                renderItem(item, sIdx * 4 + iIdx),
-              )}
+              {section.items
+                .filter((item: any) => !item.hidden)
+                .map((item, iIdx) => renderItem(item, sIdx * 4 + iIdx))}
             </View>
           </View>
         ))}

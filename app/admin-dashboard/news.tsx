@@ -78,7 +78,7 @@ export default function NewsCenter() {
   const brandPrimary = SCHOOL_CONFIG.brandPrimary;
   const brandSecondary = SCHOOL_CONFIG.brandSecondary;
 
-  const canPostNews = appUser?.role === "admin" && appUser?.adminRole !== "CEO";
+  const canPostNews = appUser?.role === "admin";
   const [mode, setMode] = useState<"view" | "create">("view");
 
   const fetchNews = useCallback(async () => {

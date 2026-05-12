@@ -183,13 +183,12 @@ export default function ViewAcademicRecordDetails() {
           const r = ((d.data() as any).adminRole || "").toLowerCase();
           return [
             "proprietor",
-            "head",
-            "ceo",
+            "proprietress",
+            "headmaster",
+            "headmistress",
             "principal",
             "director",
             "administrator",
-            "bursar",
-            "owner",
             "manager",
           ].some((title) => r.includes(title));
         });

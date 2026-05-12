@@ -86,7 +86,7 @@ export const onNewAssignment = onDocumentCreated(
 
       const managersSnap = await db.collection("users")
         .where("role", "==", "admin")
-        .where("adminRole", "in", ["Headmaster", "Proprietor", "CEO", "Assistant Headmaster"])
+        .where("adminRole", "in", ["Headmaster", "Headmistress", "Proprietor", "Proprietress", "Assistant Headmaster", "Director", "Manager", "Administrator"])
         .get();
 
       const managerTokens: string[] = [];

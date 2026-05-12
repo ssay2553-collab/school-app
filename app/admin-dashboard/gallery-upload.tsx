@@ -209,10 +209,13 @@ export default function AdminGalleryUpload() {
         appUser &&
         [
           "Proprietor",
+          "Proprietress",
           "Headmaster",
+          "Headmistress",
           "Assistant Headmaster",
-          "CEO",
           "Secretary",
+          "Director",
+          "Manager",
         ].includes(appUser.adminRole ?? "")
       ),
     [appUser],

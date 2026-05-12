@@ -70,11 +70,14 @@ const VISIBILITY_OPTS = [
 
 const ADMIN_PRIVILEGED_ROLES = [
   "Proprietor",
+  "Proprietress",
   "Headmaster",
+  "Headmistress",
   "Assistant Headmaster",
   "Secretary",
-  "CEO",
   "Admin",
+  "Director",
+  "Manager",
 ];
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");

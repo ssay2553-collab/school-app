@@ -95,7 +95,11 @@ export default function PromoteStudentsScreen() {
 
   const isClassTeacher = useMemo(() => {
     if (!selectedClass || !appUser) return false;
-    return appUser.classTeacherOf === selectedClass.id || appUser.role === "admin";
+    return (
+      appUser.classTeacherOf === selectedClass.id ||
+      (appUser.classes && Array.isArray(appUser.classes) && appUser.classes.includes(selectedClass.id)) ||
+      appUser.role === "admin"
+    );
   }, [selectedClass, appUser]);
 
   const handleBack = useCallback(() => {

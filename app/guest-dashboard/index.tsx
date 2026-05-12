@@ -25,11 +25,13 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { auth } from "../../firebaseConfig";
+import { useAuth } from "../../contexts/AuthContext";
 
 const { width } = Dimensions.get("window");
 
 export default function GuestDashboard() {
   const { showToast } = useToast();
+  const { appUser } = useAuth();
   const router = useRouter();
   const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
@@ -96,6 +98,11 @@ export default function GuestDashboard() {
     .map((n: string) => n.trim())
     .filter((n: string) => !!n);
 
+  const isAdmin = appUser?.role === "admin";
+  const canFeeding = appUser?.permissions?.["feeding"] === "full" || appUser?.permissions?.["feeding"] === "edit";
+  const canBus = appUser?.permissions?.["record-bus-fee"] === "full" || appUser?.permissions?.["record-bus-fee"] === "edit";
+  const hasFinancialAccess = isAdmin || canFeeding || canBus;
+
   const sections = [
     {
       title: "EXPLORE CAMPUS",
@@ -109,6 +116,7 @@ export default function GuestDashboard() {
       items: [
         { title: "Direct Inquiry", subtitle: "Chat with admissions", route: "/guest-dashboard/chat-with-admin", icon: "chatbubbles", color: "#10b981" },
         { title: "Membership Upgrade", subtitle: "Full registration", route: "/guest-dashboard/upgrade-account", icon: "flash", color: "#ec4899" },
+        { title: "Daily Financials", subtitle: "Fee recording", route: "/admin-dashboard/DailyFinancials", icon: "cash", color: "#10b981", hidden: !hasFinancialAccess },
       ],
     },
   ];
@@ -233,7 +241,9 @@ export default function GuestDashboard() {
                   <View style={styles.sectionLine} />
               </View>
               <View style={styles.grid}>
-                {section.items.map((item, index) => renderCard(item, index + sIndex * 2))}
+                {section.items
+                  .filter((item: any) => !item.hidden)
+                  .map((item, index) => renderCard(item, index + sIndex * 2))}
               </View>
             </View>
           ))}

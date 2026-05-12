@@ -49,6 +49,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { useToast } from "../../contexts/ToastContext";
 import { sortClasses } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
@@ -87,6 +88,10 @@ interface User {
   dateOfBirth?: any;
   walletBalance?: number;
   onScholarship?: boolean;
+  takesBus?: boolean;
+  busLocation?: string;
+  isFeeding?: boolean;
+  takesExtraClasses?: boolean;
   status: "active" | "archived" | "disabled" | string;
   archivedAt?: any;
   archivedInYear?: string;
@@ -101,10 +106,18 @@ const roles: { name: string; role: UserRole; icon: string }[] = [
 ];
 
 const PERMISSION_KEYS = [
-  { key: "manage-fees", label: "Manage Fees" },
+  { key: "manage-fees", label: "Manage Fees & Billing" },
+  { key: "manage-sales", label: "Financial Records (Sales)" },
+  { key: "feeding", label: "Feeding Recording" },
+  { key: "record-bus-fee", label: "Bus Fee Recording" },
+  { key: "record-extra-classes", label: "Extra Classes Recording" },
+  { key: "edit-feeding-rate", label: "Edit Feeding Rate" },
+  { key: "edit-bus-rate", label: "Edit Bus Rate" },
+  { key: "edit-extra-classes-rate", label: "Edit Extra Classes Rate" },
   { key: "staff-payroll", label: "Staff Payroll" },
   { key: "expenditure", label: "Expenditure" },
   { key: "manage-users", label: "Manage Users" },
+  { key: "gallery", label: "Gallery Management" },
 ];
 
 const PERMISSION_LEVELS: { label: string; value: PermissionLevel }[] = [
@@ -118,11 +131,18 @@ export default function ManageUsers() {
   const router = useRouter();
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
+  const { showToast } = useToast();
 
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = ["proprietor", "headmaster", "ceo"].includes(
-    currentUserRole,
-  );
+  const isSuperAdmin = [
+    "proprietor",
+    "proprietress",
+    "manager",
+    "headmaster",
+    "headmistress",
+    "administrator",
+    "director",
+  ].includes(currentUserRole);
   const hasManageUsersAccess =
     appUser?.permissions?.["manage-users"] === "full" || isSuperAdmin;
 
@@ -171,6 +191,9 @@ export default function ManageUsers() {
   const [editPhone, setEditPhone] = useState("");
   const [editGender, setEditGender] = useState("");
   const [editDob, setEditDob] = useState<Date | null>(null);
+  const [editBusLocation, setEditBusLocation] = useState("");
+  const [editTakesBus, setEditTakesBus] = useState(false);
+  const [editOnScholarship, setEditOnScholarship] = useState(false);
 
   const [upgradeUsername, setUpgradeUsername] = useState("");
   const [upgradePin, setUpgradePin] = useState("");
@@ -183,6 +206,8 @@ export default function ManageUsers() {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
+  const [busLocations, setBusLocations] = useState<string[]>([]);
+
   const [tempPermissions, setTempPermissions] = useState<
     Record<string, PermissionLevel>
   >({});
@@ -190,13 +215,6 @@ export default function ManageUsers() {
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
 
   const handleBulkImport = async () => {
-    if (selectedRole !== "student") {
-      return Alert.alert(
-        "Selection Required",
-        "Please select the 'Students' role to use Bulk Import.",
-      );
-    }
-
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "text/comma-separated-values",
@@ -216,35 +234,22 @@ export default function ManageUsers() {
         throw new Error("CSV file is empty or missing data.");
 
       const headers = rows[0].split(",").map((h) => h.trim().toLowerCase());
-      const studentData = rows.slice(1);
+      const userData = rows.slice(1);
 
       const batch = writeBatch(db);
       let count = 0;
 
-      for (const row of studentData) {
+      for (const row of userData) {
         const values = row.split(",").map((v) => v.trim());
         if (values.length < 2) continue;
 
-        // Map columns based on headers or assume: firstName, lastName, gender, classInput
+        // Map columns based on headers or assume: firstName, lastName, gender, classOrRole
         const firstName = values[0];
         const lastName = values[1];
         const gender = values[2] || "";
-        const classInput = values[3];
+        const extraInput = values[3];
 
         if (!firstName || !lastName) continue;
-
-        // Resolve classId from name or ID
-        let targetClassId = "";
-        if (classInput) {
-          const matchedClass = allClasses.find(
-            (c) =>
-              c.name.toLowerCase() === classInput.toLowerCase() ||
-              c.id === classInput,
-          );
-          targetClassId = matchedClass ? matchedClass.id : "";
-        } else {
-          targetClassId = selectedClassId === "all" ? "" : selectedClassId;
-        }
 
         const signupCode = Math.random()
           .toString(36)
@@ -252,12 +257,11 @@ export default function ManageUsers() {
           .toUpperCase();
         const tempId = doc(collection(db, "users")).id;
 
-        const newUserDoc = {
+        const newUserDoc: any = {
           uid: tempId,
-          role: "student",
+          role: selectedRole,
           status: "pending_activation",
           signupCode: signupCode,
-          classId: targetClassId,
           profile: {
             firstName,
             lastName,
@@ -267,6 +271,27 @@ export default function ManageUsers() {
           schoolId: appUser?.schoolId || SCHOOL_CONFIG.schoolId || "default",
         };
 
+        if (selectedRole === "student") {
+          // Resolve classId from name or ID
+          let targetClassId = "";
+          if (extraInput) {
+            const matchedClass = allClasses.find(
+              (c) =>
+                c.name.toLowerCase() === extraInput.toLowerCase() ||
+                c.id === extraInput,
+            );
+            targetClassId = matchedClass ? matchedClass.id : "";
+          } else {
+            targetClassId = selectedClassId === "all" ? "" : selectedClassId;
+          }
+          newUserDoc.classId = targetClassId;
+        } else if (selectedRole === "admin" || selectedRole === "staff" || selectedRole === "teacher") {
+          // For staff roles, extraInput can be the specific adminRole title
+          if (extraInput) {
+            newUserDoc.adminRole = extraInput;
+          }
+        }
+
         batch.set(doc(db, "users", tempId), newUserDoc);
         count++;
       }
@@ -275,7 +300,7 @@ export default function ManageUsers() {
         await batch.commit();
         Alert.alert(
           "Import Successful",
-          `Created ${count} pending student profiles. Provide students with their names to activate.`,
+          `Created ${count} pending ${selectedRole} profiles. Provide them with their names to activate.`,
         );
       }
     } catch (error: any) {
@@ -300,6 +325,22 @@ export default function ManageUsers() {
       }
     };
     fetchClasses();
+  }, []);
+
+  useEffect(() => {
+    const fetchBusRates = async () => {
+      try {
+        const docRef = doc(db, "school_settings", "bus_rates");
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const rates = snap.data() as Record<string, number>;
+          setBusLocations(Object.keys(rates).sort());
+        }
+      } catch (e) {
+        console.error("Error fetching bus rates:", e);
+      }
+    };
+    fetchBusRates();
   }, []);
 
   useFocusEffect(
@@ -340,8 +381,14 @@ export default function ManageUsers() {
           const fetchedList = snap.docs.map(
             (d: any) => ({ uid: d.id, ...d.data() }) as User,
           );
+
+          // deduplicate by uid
+          const uniqueList = Array.from(
+            new Map(fetchedList.map((u) => [u.uid, u])).values(),
+          );
+
           if (selectedRole === "student") {
-            fetchedList.sort((a, b) => {
+            uniqueList.sort((a, b) => {
               const classA = a.classId || "";
               const classB = b.classId || "";
               if (classA !== classB) return classA.localeCompare(classB);
@@ -350,13 +397,13 @@ export default function ManageUsers() {
               );
             });
           } else {
-            fetchedList.sort((a, b) =>
+            uniqueList.sort((a, b) =>
               (a.profile?.firstName || "").localeCompare(
                 b.profile?.firstName || "",
               ),
             );
           }
-          setUsers(fetchedList);
+          setUsers(uniqueList);
           setLoading(false);
         },
         (err) => {
@@ -699,6 +746,79 @@ export default function ManageUsers() {
     }
   };
 
+  const handleToggleBusStatus = async (user: User) => {
+    setUpdating(true);
+    try {
+      const newVal = !user.takesBus;
+      await updateDoc(doc(db, "users", user.uid), { takesBus: newVal });
+
+      const updatedUser = { ...user, takesBus: newVal };
+      setViewingUser(updatedUser);
+      setUsers(prev => prev.map(u => u.uid === user.uid ? updatedUser : u));
+
+      Alert.alert(
+        "Success",
+        `Student ${newVal ? "now" : "no longer"} takes bus.`,
+      );
+    } catch {
+      Alert.alert("Error", "Update failed.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleUpdateBusLocation = async (user: User, location: string) => {
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, "users", user.uid), { busLocation: location });
+
+      const updatedUser = { ...user, busLocation: location };
+      setViewingUser(updatedUser);
+      setUsers(prev => prev.map(u => u.uid === user.uid ? updatedUser : u));
+
+      showToast?.({ message: "Bus location updated", type: "success" });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to update bus location.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleToggleFeedingStatus = async (user: User) => {
+    setUpdating(true);
+    try {
+      const newVal = !user.isFeeding;
+      await updateDoc(doc(db, "users", user.uid), { isFeeding: newVal });
+      setViewingUser((prev) => (prev ? { ...prev, isFeeding: newVal } : null));
+      Alert.alert(
+        "Success",
+        `Student ${newVal ? "now" : "no longer"} on feeding program.`,
+      );
+    } catch {
+      Alert.alert("Error", "Update failed.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleToggleExtraClassesStatus = async (user: User) => {
+    setUpdating(true);
+    try {
+      const newVal = !user.takesExtraClasses;
+      await updateDoc(doc(db, "users", user.uid), { takesExtraClasses: newVal });
+      setViewingUser((prev) => (prev ? { ...prev, takesExtraClasses: newVal } : null));
+      Alert.alert(
+        "Success",
+        `Student ${newVal ? "now" : "no longer"} enrolled for extra classes.`,
+      );
+    } catch {
+      Alert.alert("Error", "Update failed.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleToggleArchiveStatus = async (user: User) => {
     if (!isSuperAdmin)
       return Alert.alert("Denied", "Only super admins can archive students.");
@@ -982,6 +1102,9 @@ export default function ManageUsers() {
         "profile.lastName": editLastName.trim(),
         "profile.phone": editPhone.trim(),
         "profile.gender": editGender,
+        busLocation: editBusLocation.trim(),
+        takesBus: editTakesBus,
+        onScholarship: editOnScholarship,
       };
 
       if (editDob) {
@@ -1003,6 +1126,9 @@ export default function ManageUsers() {
                   phone: editPhone.trim(),
                   gender: editGender,
                 },
+                busLocation: editBusLocation.trim(),
+                takesBus: editTakesBus,
+                onScholarship: editOnScholarship,
                 dateOfBirth: editDob
                   ? Timestamp.fromDate(editDob)
                   : u.dateOfBirth,
@@ -1024,6 +1150,9 @@ export default function ManageUsers() {
                   phone: editPhone.trim(),
                   gender: editGender,
                 },
+                busLocation: editBusLocation.trim(),
+                takesBus: editTakesBus,
+                onScholarship: editOnScholarship,
                 dateOfBirth: editDob
                   ? Timestamp.fromDate(editDob)
                   : prev.dateOfBirth,
@@ -1168,6 +1297,9 @@ export default function ManageUsers() {
     setEditEmail(user.profile.email || "");
     setEditPhone(user.profile.phone || "");
     setEditGender(user.profile.gender || "");
+    setEditBusLocation(user.busLocation || "");
+    setEditTakesBus(!!user.takesBus);
+    setEditOnScholarship(!!user.onScholarship);
     setEditDob(
       user.dateOfBirth?.toDate
         ? user.dateOfBirth.toDate()
@@ -1332,8 +1464,8 @@ export default function ManageUsers() {
         )}
       </View>
 
-      {selectedRole === "student" && (
-        <View style={styles.filterRow}>
+      <View style={styles.filterRow}>
+        {selectedRole === "student" && (
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={selectedClassId}
@@ -1346,26 +1478,31 @@ export default function ManageUsers() {
               ))}
             </Picker>
           </View>
+        )}
 
+        {selectedRole === "student" && (
           <TouchableOpacity
-            style={[styles.bulkArchiveBtn, { backgroundColor: "#10b981" }]}
+            style={[
+              styles.bulkArchiveBtn,
+              { backgroundColor: "#10b981", flex: 0 },
+            ]}
             onPress={handleBulkImport}
           >
             <SVGIcon name="cloud-upload" size={18} color="#fff" />
-            <Text style={styles.bulkArchiveText}>IMPORT</Text>
+            <Text style={styles.bulkArchiveText}>IMPORT CSV</Text>
           </TouchableOpacity>
+        )}
 
-          {isBasic9View && !showArchived && isSuperAdmin && (
-            <TouchableOpacity
-              style={styles.bulkArchiveBtn}
-              onPress={handleArchiveBasic9}
-            >
-              <SVGIcon name="school" size={18} color="#fff" />
-              <Text style={styles.bulkArchiveText}>GRADUATE</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+        {isBasic9View && !showArchived && isSuperAdmin && (
+          <TouchableOpacity
+            style={styles.bulkArchiveBtn}
+            onPress={handleArchiveBasic9}
+          >
+            <SVGIcon name="school" size={18} color="#fff" />
+            <Text style={styles.bulkArchiveText}>GRADUATE</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       {loading ? (
         <ActivityIndicator
@@ -1835,6 +1972,14 @@ export default function ManageUsers() {
                       </View>
                       {viewingUser.role === "student" && (
                         <View style={styles.infoRow}>
+                          <Text style={styles.infoKey}>Bus Location:</Text>
+                          <Text style={styles.infoValue}>
+                            {viewingUser.busLocation || "N/A"}
+                          </Text>
+                        </View>
+                      )}
+                      {viewingUser.role === "student" && (
+                        <View style={styles.infoRow}>
                           <Text style={styles.infoKey}>Current Class:</Text>
                           <Text style={styles.infoValue}>
                             {allClasses.find(
@@ -1989,6 +2134,100 @@ export default function ManageUsers() {
                             {viewingUser.onScholarship
                               ? "Revoke Scholarship"
                               : "Set on Scholarship"}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            {
+                              backgroundColor: viewingUser.takesBus
+                                ? "#f1f5f9"
+                                : "#0ea5e9",
+                              marginBottom: 12,
+                            },
+                          ]}
+                          onPress={() => handleToggleBusStatus(viewingUser)}
+                        >
+                          <Text
+                            style={[
+                              styles.actionButtonText,
+                              {
+                                color: viewingUser.takesBus ? "#0ea5e9" : "#fff",
+                              },
+                            ]}
+                          >
+                            {viewingUser.takesBus ? "Remove from Bus" : "Add to Bus"}
+                          </Text>
+                        </TouchableOpacity>
+
+                        {viewingUser.takesBus && (
+                          <View style={{ marginBottom: 12 }}>
+                            <Text style={[styles.infoLabel, { marginBottom: 8 }]}>Assign Bus Location</Text>
+                            <View style={[styles.permPickerBox, { backgroundColor: '#f8fafc' }]}>
+                              <Picker
+                                selectedValue={viewingUser.busLocation || ""}
+                                onValueChange={(itemValue) => handleUpdateBusLocation(viewingUser, itemValue)}
+                                enabled={!updating}
+                              >
+                                <Picker.Item label="Select Location..." value="" />
+                                {busLocations.map((loc) => (
+                                  <Picker.Item key={loc} label={loc} value={loc} />
+                                ))}
+                              </Picker>
+                            </View>
+                          </View>
+                        )}
+
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            {
+                              backgroundColor: viewingUser.isFeeding
+                                ? "#f1f5f9"
+                                : "#10b981",
+                              marginBottom: 12,
+                            },
+                          ]}
+                          onPress={() => handleToggleFeedingStatus(viewingUser)}
+                        >
+                          <Text
+                            style={[
+                              styles.actionButtonText,
+                              {
+                                color: viewingUser.isFeeding ? "#10b981" : "#fff",
+                              },
+                            ]}
+                          >
+                            {viewingUser.isFeeding
+                              ? "Remove from Feeding"
+                              : "Add to Feeding"}
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            {
+                              backgroundColor: viewingUser.takesExtraClasses
+                                ? "#f1f5f9"
+                                : "#6366f1",
+                              marginBottom: 12,
+                            },
+                          ]}
+                          onPress={() => handleToggleExtraClassesStatus(viewingUser)}
+                        >
+                          <Text
+                            style={[
+                              styles.actionButtonText,
+                              {
+                                color: viewingUser.takesExtraClasses ? "#6366f1" : "#fff",
+                              },
+                            ]}
+                          >
+                            {viewingUser.takesExtraClasses
+                              ? "Remove from Extra Classes"
+                              : "Add to Extra Classes"}
                           </Text>
                         </TouchableOpacity>
 
@@ -2155,6 +2394,28 @@ export default function ManageUsers() {
                         color={COLORS.primary || "#2e86de"}
                       />
                       <Text style={styles.actionLabel}>Events</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionCard}
+                      onPress={() => handleAssignRole("Feeding Manager")}
+                    >
+                      <SVGIcon
+                        name="restaurant"
+                        size={24}
+                        color={COLORS.primary || "#2e86de"}
+                      />
+                      <Text style={styles.actionLabel}>Edit Feeding</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.actionCard}
+                      onPress={() => handleAssignRole("Bus Manager")}
+                    >
+                      <SVGIcon
+                        name="bus"
+                        size={24}
+                        color={COLORS.primary || "#2e86de"}
+                      />
+                      <Text style={styles.actionLabel}>Edit Bus</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={styles.actionCard}
@@ -2475,6 +2736,45 @@ export default function ManageUsers() {
                     </Picker>
                   </View>
 
+                  {assignmentModal.target?.role === "student" && (
+                    <>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                        <Text style={styles.pickerLabel}>Uses School Bus</Text>
+                        <Switch
+                          value={editTakesBus}
+                          onValueChange={setEditTakesBus}
+                          trackColor={{ false: "#767577", true: COLORS.primary }}
+                        />
+                      </View>
+
+                      {editTakesBus && (
+                        <>
+                          <Text style={styles.pickerLabel}>Bus Location / Stop</Text>
+                          <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
+                            <Picker
+                              selectedValue={editBusLocation}
+                              onValueChange={setEditBusLocation}
+                            >
+                              <Picker.Item label="Select Location" value="" />
+                              {busLocations.map((loc) => (
+                                <Picker.Item key={loc} label={loc} value={loc} />
+                              ))}
+                            </Picker>
+                          </View>
+                        </>
+                      )}
+
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                        <Text style={styles.pickerLabel}>On Scholarship</Text>
+                        <Switch
+                          value={editOnScholarship}
+                          onValueChange={setEditOnScholarship}
+                          trackColor={{ false: "#767577", true: COLORS.primary }}
+                        />
+                      </View>
+                    </>
+                  )}
+
                   <TouchableOpacity
                     style={[
                       styles.saveBtn,
@@ -2557,6 +2857,31 @@ export default function ManageUsers() {
                     placeholder="024XXXXXXX"
                     keyboardType="phone-pad"
                   />
+
+                  <View style={styles.actionGrid}>
+                    <TouchableOpacity
+                      style={[styles.actionCard, { flex: 0, width: '48%', marginBottom: 10 }]}
+                      onPress={() => handleAssignRole("Feeding Manager")}
+                    >
+                      <SVGIcon
+                        name="restaurant"
+                        size={20}
+                        color={COLORS.primary || "#2e86de"}
+                      />
+                      <Text style={styles.actionLabel}>Edit Feeding</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionCard, { flex: 0, width: '48%', marginBottom: 10 }]}
+                      onPress={() => handleAssignRole("Bus Manager")}
+                    >
+                      <SVGIcon
+                        name="bus"
+                        size={20}
+                        color={COLORS.primary || "#2e86de"}
+                      />
+                      <Text style={styles.actionLabel}>Edit Bus</Text>
+                    </TouchableOpacity>
+                  </View>
 
                   <TouchableOpacity
                     style={[
@@ -2656,11 +2981,13 @@ const styles = StyleSheet.create({
   bulkArchiveBtn: {
     backgroundColor: COLORS.primary || "#2e86de",
     height: 45,
-    paddingHorizontal: 15,
+    paddingHorizontal: 20,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 8,
+    maxWidth: width > 600 ? 250 : "auto",
     ...SHADOWS.small,
   },
   bulkArchiveText: { color: "#fff", fontWeight: "800", fontSize: 11 },

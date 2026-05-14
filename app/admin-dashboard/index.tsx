@@ -83,14 +83,17 @@ export default function AdminDashboard() {
       else if (!dashboardStatsMemoryCache)
         setStats((prev: Stats) => ({ ...prev, loading: true }));
 
+      const schoolId = SCHOOL_CONFIG.schoolId;
       const studentsQuery = query(
         collection(db, "users"),
         where("role", "==", "student"),
+        where("schoolId", "==", schoolId),
         where("status", "in", ["active", "pending_activation"]),
       );
       const teacherQuery = query(
         collection(db, "users"),
         where("role", "==", "teacher"),
+        where("schoolId", "==", schoolId),
       );
       const ntQuery = query(collection(db, "nonTeachingStaff"));
 

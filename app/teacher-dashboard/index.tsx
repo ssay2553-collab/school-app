@@ -98,7 +98,7 @@ export default function TeacherDashboard() {
             title: "Daily Financials",
             subtitle: "Fee recording",
             route: "/admin-dashboard/DailyFinancials",
-            icon: "cash",
+            icon: "calculator",
             color: "#10b981",
             hidden: !hasFinancialAccess,
           },

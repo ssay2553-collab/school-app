@@ -116,7 +116,7 @@ export default function GuestDashboard() {
       items: [
         { title: "Direct Inquiry", subtitle: "Chat with admissions", route: "/guest-dashboard/chat-with-admin", icon: "chatbubbles", color: "#10b981" },
         { title: "Membership Upgrade", subtitle: "Full registration", route: "/guest-dashboard/upgrade-account", icon: "flash", color: "#ec4899" },
-        { title: "Daily Financials", subtitle: "Fee recording", route: "/admin-dashboard/DailyFinancials", icon: "cash", color: "#10b981", hidden: !hasFinancialAccess },
+        { title: "Daily Financials", subtitle: "Fee recording", route: "/admin-dashboard/DailyFinancials", icon: "calculator", color: "#10b981", hidden: !hasFinancialAccess },
       ],
     },
   ];

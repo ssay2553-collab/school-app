@@ -33,7 +33,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Animatable from "react-native-animatable";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import moment from "moment";
 import SVGIcon from "../../components/SVGIcon";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
@@ -52,6 +52,14 @@ const isLargeScreen = width > 768;
 export default function DailyAttendanceScreen() {
   const { appUser } = useAuth();
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    classId?: string;
+    date?: string;
+    fromAdmin?: string;
+    className?: string;
+    academicYear?: string;
+    term?: string;
+  }>();
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
 
@@ -60,8 +68,8 @@ export default function DailyAttendanceScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const [classId, setClassId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState(moment().format("YYYY-MM-DD"));
+  const [classId, setClassId] = useState<string | null>(params.classId || null);
+  const [selectedDate, setSelectedDate] = useState(params.date || moment().format("YYYY-MM-DD"));
   const [academicYear, setAcademicYear] = useState("");
   const [term, setTerm] = useState<string>("");
   const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string; classTeacherId?: string }[]>([]);
@@ -79,12 +87,39 @@ export default function DailyAttendanceScreen() {
   }, [localAttendance, serverAttendance]);
 
   const handleBack = useCallback(() => {
+    const isAdmin = appUser?.role?.toLowerCase() === "admin" ||
+                    appUser?.role?.toLowerCase() === "superadmin" ||
+                    !!(appUser as any)?.adminRole;
+
+    if (params.fromAdmin === "true") {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace({
+          pathname: "/admin-dashboard/attendance-details",
+          params: {
+            classId: params.classId,
+            className: params.className,
+            date: params.date,
+            academicYear: params.academicYear,
+            term: params.term
+          }
+        });
+      }
+      return;
+    }
+
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/teacher-dashboard");
+      // Fallback logic for web/direct navigation
+      if (isAdmin) {
+        router.replace("/admin-dashboard/attendance-overview");
+      } else {
+        router.replace("/teacher-dashboard");
+      }
     }
-  }, [router]);
+  }, [router, params, appUser]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -120,7 +155,8 @@ export default function DailyAttendanceScreen() {
       selectedClass?.classTeacherId === appUser.uid ||
       appUser.classTeacherOf === classId ||
       teacherClasses.includes(classId) ||
-      userRole === "admin"
+      ["admin", "superadmin", "super admin"].includes(userRole) ||
+      (appUser as any).adminRole
     );
   }, [classId, availableClasses, appUser]);
 
@@ -181,33 +217,35 @@ export default function DailyAttendanceScreen() {
       if (isFirstLoad) setLoading(false);
       return;
     }
-    if (!isFirstLoad && (!hasMoreRef.current || loadingMoreRef.current)) return;
 
-    if (isFirstLoad) { setLoading(true); lastVisibleRef.current = null; hasMoreRef.current = true; }
-    else { setLoadingMore(true); loadingMoreRef.current = true; }
+    if (isFirstLoad) { setLoading(true); }
+    else if (!isFirstLoad) return; // No pagination needed for class lists
 
     try {
-      const constraints: any[] = [
+      const schoolId = SCHOOL_CONFIG.schoolId;
+      const q = query(
+        collection(db, "users"),
         where("role", "==", "student"),
-        where("classId", "==", classId),
-        where("status", "in", ["active", "pending_activation"]),
-        limit(30)
-      ];
-      if (!isFirstLoad && lastVisibleRef.current) constraints.push(startAfter(lastVisibleRef.current));
+        where("classId", "==", classId)
+      );
       
-      const q = query(collection(db, "users"), ...constraints);
       const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ uid: d.id, ...(d.data() as any) }));
+      const data = snap.docs
+        .map(d => ({ uid: d.id, ...(d.data() as any) }))
+        .filter(d => {
+            const statusMatch = ["active", "pending_activation"].includes(d.status);
+            const schoolMatch = !d.schoolId || d.schoolId === schoolId || (schoolId === "lilies" && d.schoolId === "abijah");
+            return statusMatch && schoolMatch;
+        })
+        .sort((a, b) => (a.profile?.firstName || "").localeCompare(b.profile?.firstName || ""));
       
-      const newLastVisible = snap.docs[snap.docs.length - 1] || null;
-      const newHasMore = snap.docs.length === 30;
-
-      setStudents(prev => isFirstLoad ? data : [...prev, ...data]);
-      lastVisibleRef.current = newLastVisible;
-      hasMoreRef.current = newHasMore;
+      setStudents(data);
     } catch (e) {
         console.error("Fetch students error:", e);
-    } finally { setLoading(false); setLoadingMore(false); loadingMoreRef.current = false; }
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
   }, [classId]);
 
   useEffect(() => { fetchStudents(true); }, [classId, fetchStudents]);
@@ -257,6 +295,20 @@ export default function DailyAttendanceScreen() {
 
   const saveToFirestore = async () => {
     if (!classId || !appUser || !academicYear || !term) return;
+
+    // Ghana Time Check (UTC/GMT)
+    const currentHour = new Date().getUTCHours();
+    const userRole = (appUser.role || "").toLowerCase();
+    const isAdminUser = ["admin", "superadmin", "super admin"].includes(userRole) || !!(appUser as any).adminRole;
+
+    if (!isAdminUser && (currentHour < 6 || currentHour >= 10)) {
+      showToast({
+        message: "Attendance marking is only allowed between 6:00 AM and 10:00 AM Ghana Time.",
+        type: "error",
+      });
+      return;
+    }
+
     if (!isOfficialClassTeacher) {
       showToast({
         message: "Only assigned Class Teacher/Admin can save attendance.",
@@ -376,7 +428,9 @@ export default function DailyAttendanceScreen() {
         <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}><SVGIcon name="arrow-back" size={24} color="#1E293B" /></TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>Daily Attendance</Text>
-          <Text style={styles.subtitle}>{academicYear} • {term}</Text>
+          <Text style={styles.subtitle}>
+            {academicYear} • {term} {students.length > 0 ? `• ${students.length} Students` : ""}
+          </Text>
         </View>
       </View>
 
@@ -466,9 +520,6 @@ export default function DailyAttendanceScreen() {
             numColumns={isLargeScreen ? 2 : 1}
             columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
             contentContainerStyle={styles.list}
-            onEndReached={() => fetchStudents()}
-            onEndReachedThreshold={0.5}
-            ListFooterComponent={loadingMore ? <ActivityIndicator style={{ padding: 20 }} color={COLORS.primary} /> : null}
             ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>No students found in this class.</Text></View>}
           />
 

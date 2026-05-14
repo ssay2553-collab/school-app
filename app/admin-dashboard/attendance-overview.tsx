@@ -96,10 +96,13 @@ export default function AttendanceOverview() {
       
       const studentCounts: Record<string, number> = {};
       let globalStudentTotal = 0;
+      const schoolId = SCHOOL_CONFIG.schoolId;
 
       studentsSnap.forEach(doc => {
         const data = doc.data() as any;
-        if (data.classId) {
+        const schoolMatch = !data.schoolId || data.schoolId === schoolId || (schoolId === "lilies" && data.schoolId === "abijah");
+
+        if (schoolMatch && data.classId) {
           studentCounts[data.classId] = (studentCounts[data.classId] || 0) + 1;
           globalStudentTotal++;
         }

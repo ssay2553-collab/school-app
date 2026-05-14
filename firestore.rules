@@ -403,7 +403,12 @@ service cloud.firestore {
         || hasPermission('manage-sales', 'view')
         || (isStudent() && resource.data.classId == userData().classId)
         || (isParent() && exists(/databases/$(database)/documents/users/$(uid())) && (resource.data.students.keys().hasAny(userData().childrenIds)));
-      allow write: if isAdmin() || (isTeacher() && isClassTeacher(getStudentClassId(request.resource.data)));
+      allow write: if isAdmin() || (
+        isTeacher() &&
+        isClassTeacher(getStudentClassId(request.resource.data)) &&
+        // Ghana Time (GMT/UTC): Allow marking only between 6:00 AM and 10:00 AM
+        request.time.hour() >= 6 && request.time.hour() < 10
+      );
       allow delete: if isAdmin();
     }
 

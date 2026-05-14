@@ -207,6 +207,8 @@ export default function ManageUsers() {
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
   const [busLocations, setBusLocations] = useState<string[]>([]);
+  const [isAddingNewBusLoc, setIsAddingNewBusLoc] = useState(false);
+  const [newBusLocInput, setNewBusLocInput] = useState("");
 
   const [tempPermissions, setTempPermissions] = useState<
     Record<string, PermissionLevel>
@@ -780,6 +782,35 @@ export default function ManageUsers() {
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to update bus location.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleSaveNewBusLocation = async (targetUser?: User | null) => {
+    if (!newBusLocInput.trim()) return;
+    setUpdating(true);
+    try {
+      const docRef = doc(db, "school_settings", "bus_rates");
+      await updateDoc(docRef, { [newBusLocInput.trim()]: 0 });
+
+      const newLoc = newBusLocInput.trim();
+      setBusLocations(prev => [...prev, newLoc].sort());
+
+      // If we are in edit profile modal, set it as selected
+      if (assignmentModal.type === 'edit_profile') {
+          setEditBusLocation(newLoc);
+      } else if (targetUser) {
+          // If we are just viewing, update the user directly
+          await handleUpdateBusLocation(targetUser, newLoc);
+      }
+
+      setNewBusLocInput("");
+      setIsAddingNewBusLoc(false);
+      showToast?.({ message: "New bus location added", type: "success" });
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Failed to add new location. Ensure the settings document exists.");
     } finally {
       setUpdating(false);
     }
@@ -1430,19 +1461,29 @@ export default function ManageUsers() {
         <Text style={styles.mainTitle}>
           {roles.find((r) => r.role === selectedRole)?.name}
         </Text>
-        <TouchableOpacity
-          onPress={() => setShowArchived(!showArchived)}
-          style={[
-            styles.archiveToggle,
-            showArchived && { backgroundColor: COLORS.secondary || "#c53b59" },
-          ]}
-        >
-          <SVGIcon
-            name="archive"
-            size={20}
-            color={showArchived ? "#fff" : COLORS.gray || "#9ca3af"}
-          />
-        </TouchableOpacity>
+        {selectedRole === "student" && (
+          <TouchableOpacity
+            onPress={() => setShowArchived(!showArchived)}
+            style={[
+              styles.archiveToggle,
+              showArchived && { backgroundColor: COLORS.secondary || "#c53b59" },
+            ]}
+          >
+            <SVGIcon
+              name="archive"
+              size={18}
+              color={showArchived ? "#fff" : COLORS.gray || "#9ca3af"}
+            />
+            <Text
+              style={[
+                styles.archiveToggleText,
+                { color: showArchived ? "#fff" : COLORS.gray || "#9ca3af" },
+              ]}
+            >
+              {showArchived ? "ACTIVE" : "ARCHIVE"}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.searchBar}>
@@ -2163,19 +2204,48 @@ export default function ManageUsers() {
 
                         {viewingUser.takesBus && (
                           <View style={{ marginBottom: 12 }}>
-                            <Text style={[styles.infoLabel, { marginBottom: 8 }]}>Assign Bus Location</Text>
-                            <View style={[styles.permPickerBox, { backgroundColor: '#f8fafc' }]}>
-                              <Picker
-                                selectedValue={viewingUser.busLocation || ""}
-                                onValueChange={(itemValue) => handleUpdateBusLocation(viewingUser, itemValue)}
-                                enabled={!updating}
-                              >
-                                <Picker.Item label="Select Location..." value="" />
-                                {busLocations.map((loc) => (
-                                  <Picker.Item key={loc} label={loc} value={loc} />
-                                ))}
-                              </Picker>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <Text style={styles.infoLabel}>Assign Bus Location</Text>
+                                <TouchableOpacity onPress={() => {
+                                    setIsAddingNewBusLoc(!isAddingNewBusLoc);
+                                    setNewBusLocInput("");
+                                }}>
+                                    <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '700' }}>
+                                        {isAddingNewBusLoc ? "Cancel" : "+ Add New"}
+                                    </Text>
+                                </TouchableOpacity>
                             </View>
+
+                            {isAddingNewBusLoc ? (
+                                <View style={{ flexDirection: 'row', gap: 8 }}>
+                                    <TextInput
+                                        style={[styles.textInput, { flex: 1, marginBottom: 0, height: 45 }]}
+                                        placeholder="New Location Name"
+                                        value={newBusLocInput}
+                                        onChangeText={setNewBusLocInput}
+                                        autoFocus
+                                    />
+                                    <TouchableOpacity
+                                        style={{ backgroundColor: COLORS.primary, paddingHorizontal: 15, justifyContent: 'center', borderRadius: 8, height: 45 }}
+                                        onPress={() => handleSaveNewBusLocation(viewingUser)}
+                                    >
+                                        <Text style={{ color: '#fff', fontWeight: '700' }}>Save</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <View style={[styles.permPickerBox, { backgroundColor: '#f8fafc' }]}>
+                                  <Picker
+                                    selectedValue={viewingUser.busLocation || ""}
+                                    onValueChange={(itemValue) => handleUpdateBusLocation(viewingUser, itemValue)}
+                                    enabled={!updating}
+                                  >
+                                    <Picker.Item label="Select Location..." value="" />
+                                    {busLocations.map((loc) => (
+                                      <Picker.Item key={loc} label={loc} value={loc} />
+                                    ))}
+                                  </Picker>
+                                </View>
+                            )}
                           </View>
                         )}
 
@@ -2749,18 +2819,47 @@ export default function ManageUsers() {
 
                       {editTakesBus && (
                         <>
-                          <Text style={styles.pickerLabel}>Bus Location / Stop</Text>
-                          <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
-                            <Picker
-                              selectedValue={editBusLocation}
-                              onValueChange={setEditBusLocation}
-                            >
-                              <Picker.Item label="Select Location" value="" />
-                              {busLocations.map((loc) => (
-                                <Picker.Item key={loc} label={loc} value={loc} />
-                              ))}
-                            </Picker>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <Text style={styles.pickerLabel}>Bus Location / Stop</Text>
+                            <TouchableOpacity onPress={() => {
+                                setIsAddingNewBusLoc(!isAddingNewBusLoc);
+                                setNewBusLocInput("");
+                            }}>
+                                <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '700' }}>
+                                    {isAddingNewBusLoc ? "Cancel" : "+ Add New"}
+                                </Text>
+                            </TouchableOpacity>
                           </View>
+
+                          {isAddingNewBusLoc ? (
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 15 }}>
+                                <TextInput
+                                    style={[styles.textInput, { flex: 1, marginBottom: 0, height: 45 }]}
+                                    placeholder="New Location Name"
+                                    value={newBusLocInput}
+                                    onChangeText={setNewBusLocInput}
+                                    autoFocus
+                                />
+                                <TouchableOpacity
+                                    style={{ backgroundColor: COLORS.primary, paddingHorizontal: 15, justifyContent: 'center', borderRadius: 8, height: 45 }}
+                                    onPress={() => handleSaveNewBusLocation()}
+                                >
+                                    <Text style={{ color: '#fff', fontWeight: '700' }}>Save</Text>
+                                </TouchableOpacity>
+                            </View>
+                          ) : (
+                            <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
+                                <Picker
+                                    selectedValue={editBusLocation}
+                                    onValueChange={setEditBusLocation}
+                                >
+                                    <Picker.Item label="Select Location" value="" />
+                                    {busLocations.map((loc) => (
+                                    <Picker.Item key={loc} label={loc} value={loc} />
+                                    ))}
+                                </Picker>
+                            </View>
+                          )}
                         </>
                       )}
 
@@ -2944,12 +3043,18 @@ const styles = StyleSheet.create({
   backButton: { flexDirection: "row", alignItems: "center", marginRight: 12 },
   mainTitle: { fontSize: 20, fontWeight: "800", color: "#1E293B" },
   archiveToggle: {
-    width: 44,
-    height: 44,
+    paddingHorizontal: 12,
+    height: 40,
     borderRadius: 12,
     backgroundColor: "#f1f5f9",
-    justifyContent: "center",
+    flexDirection: "row",
     alignItems: "center",
+    gap: 6,
+  },
+  archiveToggleText: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
   },
   searchBar: {
     flexDirection: "row",

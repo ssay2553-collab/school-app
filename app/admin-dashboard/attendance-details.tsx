@@ -53,12 +53,12 @@ export default function AttendanceDetails() {
         where("role", "==", "student"),
         where("classId", "==", classId)
       );
-      const studentsSnap = await getDocsCacheFirst(q as any);
+      const studentsSnap = await getDocs(q);
 
       const studentList = studentsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as any))
         .filter(d => {
-          // Client-side filtering for status and schoolId to avoid index issues
+          // Unified client-side filtering with daily-attendance.tsx
           const statusMatch = ["active", "pending_activation"].includes(d.status);
           const schoolMatch = !d.schoolId || d.schoolId === schoolId || (schoolId === "lilies" && d.schoolId === "abijah");
           return statusMatch && schoolMatch;
@@ -123,6 +123,23 @@ export default function AttendanceDetails() {
           <Text style={styles.title}>{className}</Text>
           <Text style={styles.subtitle}>{moment(date).format("dddd, MMM Do")}</Text>
         </View>
+        <TouchableOpacity
+          onPress={() => router.push({
+            pathname: "/teacher-dashboard/daily-attendance",
+            params: {
+              classId,
+              date,
+              fromAdmin: "true",
+              className,
+              academicYear,
+              term
+            }
+          })}
+          style={[styles.editBtn, { backgroundColor: primary + "10" }]}
+        >
+          <SVGIcon name="create-outline" size={20} color={primary} />
+          <Text style={[styles.editBtnText, { color: primary }]}>Edit</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.filterBar}>
@@ -185,6 +202,18 @@ const styles = StyleSheet.create({
   backBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   title: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
   subtitle: { fontSize: 13, color: '#64748B', fontWeight: '700' },
+  editBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 6,
+  },
+  editBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
   filterBar: { flexDirection: 'row', padding: 15, gap: 10, backgroundColor: '#fff' },
   chip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
   chipText: { fontSize: 12, fontWeight: '800', color: '#64748B' },

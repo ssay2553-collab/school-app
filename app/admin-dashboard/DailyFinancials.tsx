@@ -110,7 +110,6 @@ export default function DailyFinancials() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [feedingRate, setFeedingRate] = useState<number>(0);
   const [extraClassesRate, setExtraClassesRate] = useState<number>(0);
-  const [otherChargeName, setOtherChargeName] = useState("");
   const [otherPaymentRef, setOtherPaymentRef] = useState("");
   const [selectedOtherCategory, setSelectedOtherCategory] = useState<string>("Admission");
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
@@ -306,7 +305,7 @@ export default function DailyFinancials() {
         const revSnap = await getDocs(revQ);
 
         let rD = 0, rW = 0, rM = 0;
-        let breakdown: Record<string, number> = { tuition: 0, feeding: 0, bus: 0, extra: 0, other: 0 };
+        let breakdown: Record<string, number> = {};
 
         revSnap.forEach(d => {
           const data = d.data();
@@ -343,9 +342,10 @@ export default function DailyFinancials() {
         return;
       }
 
+      const queryType = activeTab === "other" ? selectedOtherCategory : type;
       const q = query(
         collection(db, "feePayments"),
-        where("type", "==", type),
+        where("type", "==", queryType),
         where("date", ">=", startOfMonth)
       );
 
@@ -354,17 +354,18 @@ export default function DailyFinancials() {
       let weekTotal = 0;
       let monthTotal = 0;
 
-      const standardCategories = ["Admission", "Books fee", "Uniform", "PTA Dues", "Boarding Fee"];
+      const standardCategories = OTHER_CATEGORIES.filter(c => c !== "Other");
 
       snap.forEach((doc) => {
         const data = doc.data();
         if (data.method === "Credit Deduction") return;
 
-        if (type === "other") {
+        if (activeTab === "other") {
           if (selectedOtherCategory === "Other") {
             if (standardCategories.includes(data.description)) return;
           } else {
-            if (data.description !== selectedOtherCategory) return;
+            // Already filtered by type in query, but double check for safety
+            if (data.description !== selectedOtherCategory && data.type !== selectedOtherCategory) return;
           }
         }
 
@@ -404,8 +405,7 @@ export default function DailyFinancials() {
       const targetDate = selectedDate;
       const pq = query(
         collection(db, "feePayments"),
-        where("date", "==", targetDate),
-        where("type", "in", ["feeding", "extra", "bus", "other"])
+        where("date", "==", targetDate)
       );
       const pSnap = await getDocs(pq);
       const paidFeedingMap = new Map<string, string>();
@@ -415,12 +415,13 @@ export default function DailyFinancials() {
 
       pSnap.docs.forEach(d => {
         const data = d.data();
-        if (data.type === "feeding") paidFeedingMap.set(data.studentUid, d.id);
-        if (data.type === "extra") paidExtraMap.set(data.studentUid, d.id);
-        if (data.type === "bus") paidBusMap.set(data.studentUid, d.id);
-        if (data.type === "other") {
+        const t = data.type;
+        if (t === "feeding") paidFeedingMap.set(data.studentUid, d.id);
+        else if (t === "extra") paidExtraMap.set(data.studentUid, d.id);
+        else if (t === "bus") paidBusMap.set(data.studentUid, d.id);
+        else {
           const existing = paidOtherMap.get(data.studentUid) || [];
-          paidOtherMap.set(data.studentUid, [...existing, { id: d.id, description: data.description || "" }]);
+          paidOtherMap.set(data.studentUid, [...existing, { id: d.id, description: data.description || t || "Other" }]);
         }
       });
 
@@ -458,7 +459,7 @@ export default function DailyFinancials() {
           paymentDocId = paidBusMap.get(uid);
         } else if (activeTab === "other") {
           const others = paidOtherMap.get(uid) || [];
-          const standardCategories = ["Admission", "Books fee", "Uniform", "PTA Dues", "Boarding Fee"];
+          const standardCategories = OTHER_CATEGORIES.filter(c => c !== "Other");
 
           const matchingOthers = others.filter(o => {
             if (selectedOtherCategory === "Other") {
@@ -698,7 +699,7 @@ export default function DailyFinancials() {
           studentName: student.fullName,
           classId: student.classId,
           className: classes.find(c => c.id === student.classId)?.name || "N/A",
-          type: activeTab,
+          type: activeTab === "other" ? (selectedOtherCategory === "Other" ? "Other" : selectedOtherCategory) : activeTab,
         };
 
         batch.update(doc(db, "users", student.uid), {
@@ -753,26 +754,26 @@ export default function DailyFinancials() {
     const isProcessing = loadingUids.has(item.uid);
     const isSelection = activeTab === "other" && selectedStudentForOther?.uid === item.uid;
 
+    const handlePress = () => {
+      if (isAbsent) return;
+      if (activeTab === "other") {
+          setEditOtherModal({ visible: true, student: item });
+      } else if (canFeeding) {
+        setPrepaymentModal({ visible: true, student: item });
+      }
+    };
+
     return (
-      <TouchableOpacity
-        activeOpacity={0.7}
-        onPress={() => {
-          if (isAbsent) return;
-          if (activeTab === "other") {
-              setEditOtherModal({ visible: true, student: item });
-          } else if (canFeeding) {
-            setPrepaymentModal({ visible: true, student: item });
-          }
-        }}
+      <Pressable
+        onPress={handlePress}
+        style={({ pressed }) => [
+          { opacity: pressed ? 0.7 : 1 },
+          styles.studentCard,
+          isAbsent && styles.absentStudentCard,
+          isSelection && { borderColor: activeColor, backgroundColor: activeColor + '10' }
+        ]}
       >
-        <View
-          style={[
-            styles.studentCard,
-            isAbsent && styles.absentStudentCard,
-            isSelection && { borderColor: activeColor, backgroundColor: activeColor + '10' }
-          ]}
-        >
-          <View style={styles.studentInfo}>
+        <View style={styles.studentInfo}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <View style={{ flex: 1, marginRight: 10 }}>
                 <Text style={[styles.studentName, isAbsent && styles.absentText]}>{item.fullName}</Text>
@@ -819,7 +820,7 @@ export default function DailyFinancials() {
                       </View>
                     ) : (
                       <>
-                        <TouchableOpacity
+                        <Pressable
                           style={[
                             styles.statusToggleBtn,
                             !isPaid ? styles.statusToggleActive_Unpaid : styles.statusToggleInactive
@@ -831,9 +832,9 @@ export default function DailyFinancials() {
                             styles.statusToggleText,
                             !isPaid ? styles.statusToggleTextActive : styles.statusToggleTextInactive
                           ]}>NOT PAID</Text>
-                        </TouchableOpacity>
+                        </Pressable>
 
-                        <TouchableOpacity
+                        <Pressable
                           style={[
                             styles.statusToggleBtn,
                             isPaid ? { backgroundColor: activeColor } : styles.statusToggleInactive
@@ -845,7 +846,7 @@ export default function DailyFinancials() {
                             styles.statusToggleText,
                             isPaid ? styles.statusToggleTextActive : styles.statusToggleTextInactive
                           ]}>PAID</Text>
-                        </TouchableOpacity>
+                        </Pressable>
                       </>
                     )}
                   </View>
@@ -861,8 +862,7 @@ export default function DailyFinancials() {
               ) : null}
             </View>
           </View>
-        </View>
-      </TouchableOpacity>
+      </Pressable>
     );
   };
 
@@ -887,9 +887,9 @@ export default function DailyFinancials() {
           </View>
 
           <View style={styles.dateSelector}>
-            <TouchableOpacity onPress={() => setSelectedDate(prev => moment(prev).subtract(1, 'day').format("YYYY-MM-DD"))} style={styles.dateNav}>
+            <Pressable onPress={() => setSelectedDate(prev => moment(prev).subtract(1, 'day').format("YYYY-MM-DD"))} style={styles.dateNav}>
               <SVGIcon name="chevron-back" size={20} color="#fff" />
-            </TouchableOpacity>
+            </Pressable>
 
             <View style={styles.dateInfo}>
               <SVGIcon name="calendar" size={16} color="#fff" />
@@ -897,13 +897,13 @@ export default function DailyFinancials() {
               {isToday && <View style={styles.todayBadge}><Text style={styles.todayText}>TODAY</Text></View>}
             </View>
 
-            <TouchableOpacity
+            <Pressable
               onPress={() => setSelectedDate(prev => moment(prev).add(1, 'day').format("YYYY-MM-DD"))}
               style={[styles.dateNav, moment(selectedDate).isSame(moment(), 'day') && { opacity: 0.3 }]}
               disabled={moment(selectedDate).isSame(moment(), 'day')}
             >
               <SVGIcon name="chevron-forward" size={20} color="#fff" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           <View style={styles.tabs}>
@@ -917,18 +917,14 @@ export default function DailyFinancials() {
               const isSelected = activeTab === tab.id;
               const tabColor = tabColors[tab.id].primary;
               return (
-                <TouchableOpacity
+                <Pressable
                   key={tab.id}
                   style={[
                     styles.tab,
                     isSelected && { backgroundColor: tabColor, borderColor: tabColor }
                   ]}
                   onPress={() => {
-                    if (tab.id === "other" && activeTab === "other") {
-                      setShowCategoryMenu(true);
-                    } else {
-                      setActiveTab(tab.id as any);
-                    }
+                    setActiveTab(tab.id as any);
                   }}
                 >
                   <SVGIcon
@@ -940,12 +936,9 @@ export default function DailyFinancials() {
                     styles.tabText,
                     isSelected && { color: "#fff" }
                   ]}>
-                    {tab.id === "other" && activeTab === "other" ? selectedOtherCategory : tab.label}
+                    {tab.label}
                   </Text>
-                  {tab.id === "other" && activeTab === "other" && (
-                    <SVGIcon name="chevron-down" size={12} color="#fff" />
-                  )}
-                </TouchableOpacity>
+                </Pressable>
               );
             })}
           </View>
@@ -966,70 +959,113 @@ export default function DailyFinancials() {
             }}
           />
           {activeTab === "other" && selectedStudentForOther && (
-              <TouchableOpacity onPress={() => {
+              <Pressable onPress={() => {
                   setSelectedStudentForOther(null);
                   setSearchQuery("");
               }}>
                   <SVGIcon name="close-circle" size={20} color={VIBE.danger} />
-              </TouchableOpacity>
+              </Pressable>
           )}
         </View>
 
-        {activeTab !== "other" && (
-            <View style={[styles.searchBar, { marginTop: 15 }]}>
-                <SVGIcon name={activeTab === "bus" ? "bus" : activeTab === "extra" ? "school" : "cash"} size={20} color={activeColor} />
-                <TextInput
-                    placeholder={
-                        activeTab === "bus"
-                            ? "Destination Rate (₵)"
-                            : activeTab === "feeding"
-                                ? "Daily Feeding Rate (₵)"
-                                : activeTab === "extra"
-                                    ? "Extra Classes Rate (₵)"
-                                    : "Set Payable Amount (₵)"
-                    }
-                    style={styles.searchInput}
-                    keyboardType="numeric"
-                    value={
-                        activeTab === "bus"
-                            ? (busRates[selectedLocation] || 0).toString()
-                            : activeTab === "extra"
-                                ? extraClassesRate.toString()
-                                : paymentAmount
-                    }
-                    onChangeText={(val) => {
-                        if (activeTab === "bus") {
-                            updateBusRate(selectedLocation, val);
-                        } else if (activeTab === "feeding") {
-                            updateFeedingRate(val);
-                        } else if (activeTab === "extra") {
-                            updateExtraClassesRate(val);
-                        } else {
-                            setPaymentAmount(val);
+        <View style={[styles.searchBar, { marginTop: 15 }]}>
+            {activeTab === "other" ? (
+                <>
+                    <Pressable
+                        style={({ pressed }) => ({
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            flex: 1,
+                            height: '100%',
+                            opacity: pressed ? 0.7 : 1
+                        })}
+                        onPress={() => setShowCategoryMenu(true)}
+                    >
+                        <SVGIcon name="options" size={20} color={activeColor} />
+                        <Text style={{ marginLeft: 10, fontSize: 13, fontWeight: '700', color: activeColor }} numberOfLines={1}>
+                            {selectedOtherCategory}
+                        </Text>
+                        <View style={{ width: 4 }} />
+                        <SVGIcon name="chevron-down" size={12} color={activeColor} />
+                    </Pressable>
+                    <View style={{ width: 1, height: 25, backgroundColor: VIBE.border, marginHorizontal: 10 }} />
+                    <SVGIcon name="cash" size={20} color={activeColor} />
+                    <TextInput
+                        placeholder="Amount"
+                        style={[styles.searchInput, { flex: 0.6 }]}
+                        keyboardType="numeric"
+                        value={paymentAmount}
+                        onChangeText={setPaymentAmount}
+                    />
+                </>
+            ) : (
+                <>
+                    <SVGIcon name={activeTab === "bus" ? "bus" : activeTab === "extra" ? "school" : "cash"} size={20} color={activeColor} />
+                    <TextInput
+                        placeholder={
+                            activeTab === "bus"
+                                ? "Destination Rate (₵)"
+                                : activeTab === "feeding"
+                                    ? "Daily Feeding Rate (₵)"
+                                    : activeTab === "extra"
+                                        ? "Extra Classes Rate (₵)"
+                                        : "Set Payable Amount (₵)"
                         }
-                    }}
-                    editable={
-                        (activeTab === "feeding" ? canEditFeedingRate : activeTab === "extra" ? canEditExtraClassesRate : canEditBusRate) &&
-                        (activeTab !== "bus" || selectedLocation !== "all")
-                    }
+                        style={styles.searchInput}
+                        keyboardType="numeric"
+                        value={
+                            activeTab === "bus"
+                                ? (busRates[selectedLocation] || 0).toString()
+                                : activeTab === "extra"
+                                    ? extraClassesRate.toString()
+                                    : paymentAmount
+                        }
+                        onChangeText={(val) => {
+                            if (activeTab === "bus") {
+                                updateBusRate(selectedLocation, val);
+                            } else if (activeTab === "feeding") {
+                                updateFeedingRate(val);
+                            } else if (activeTab === "extra") {
+                                updateExtraClassesRate(val);
+                            } else {
+                                setPaymentAmount(val);
+                            }
+                        }}
+                        editable={
+                            (activeTab === "feeding" ? canEditFeedingRate : activeTab === "extra" ? canEditExtraClassesRate : canEditBusRate) &&
+                            (activeTab !== "bus" || selectedLocation !== "all")
+                        }
+                    />
+                    {!(activeTab === "feeding" ? canEditFeedingRate : activeTab === "extra" ? canEditExtraClassesRate : canEditBusRate) && <SVGIcon name="lock-closed" size={18} color={VIBE.muted} />}
+                </>
+            )}
+        </View>
+
+        {activeTab === "other" && selectedOtherCategory === "Other" && (
+            <View style={[styles.searchBar, { marginTop: 10 }]}>
+                <SVGIcon name="create" size={20} color={activeColor} />
+                <TextInput
+                    placeholder="Enter Reference (e.g. Uniform, Books)"
+                    style={styles.searchInput}
+                    value={otherPaymentRef}
+                    onChangeText={setOtherPaymentRef}
                 />
-                {!(activeTab === "feeding" ? canEditFeedingRate : activeTab === "extra" ? canEditExtraClassesRate : canEditBusRate) && <SVGIcon name="lock-closed" size={18} color={VIBE.muted} />}
             </View>
         )}
 
         {activeTab === "bus" ? (
           <View style={styles.filterRow}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.classFilters}>
-              <TouchableOpacity
+              <Pressable
                 style={[styles.classChip, selectedLocation === "all" && { backgroundColor: activeColor, borderColor: activeColor }]}
                 onPress={() => setSelectedLocation("all")}
               >
                 <Text style={[styles.classChipText, selectedLocation === "all" && styles.activeClassChipText]}>
                   All Destinations
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
               {busLocations.map((loc) => (
-                <TouchableOpacity
+                <Pressable
                   key={loc}
                   style={[styles.classChip, selectedLocation === loc && { backgroundColor: activeColor, borderColor: activeColor }]}
                   onPress={() => setSelectedLocation(loc)}
@@ -1037,23 +1073,23 @@ export default function DailyFinancials() {
                   <Text style={[styles.classChipText, selectedLocation === loc && styles.activeClassChipText]}>
                     {loc}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </ScrollView>
           </View>
         ) : (
           <View style={styles.filterRow}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.classFilters}>
-              <TouchableOpacity
+              <Pressable
                 style={[styles.classChip, selectedClassId === "all" && { backgroundColor: activeColor, borderColor: activeColor }]}
                 onPress={() => setSelectedClassId("all")}
               >
                 <Text style={[styles.classChipText, selectedClassId === "all" && styles.activeClassChipText]}>
                   All Classes
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
               {classes.map((c) => (
-                <TouchableOpacity
+                <Pressable
                   key={c.id}
                   style={[styles.classChip, selectedClassId === c.id && { backgroundColor: activeColor, borderColor: activeColor }]}
                   onPress={() => setSelectedClassId(c.id)}
@@ -1061,7 +1097,7 @@ export default function DailyFinancials() {
                   <Text style={[styles.classChipText, selectedClassId === c.id && styles.activeClassChipText]}>
                     {c.name}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </ScrollView>
           </View>
@@ -1153,11 +1189,11 @@ export default function DailyFinancials() {
 
           <View style={styles.breakdownCard}>
             <Text style={styles.summaryTitle}>Revenue Breakdown (Today)</Text>
-            {Object.entries(revenueBreakdown).map(([type, amount]) => (
+            {Object.entries(revenueBreakdown).filter(([_, amount]) => amount > 0).map(([type, amount]) => (
               <View key={type} style={styles.breakdownItem}>
                 <View style={styles.breakdownInfo}>
                   <SVGIcon
-                    name={type === 'feeding' ? 'restaurant' : type === 'bus' ? 'bus' : type === 'extra' ? 'school' : type === 'tuition' ? 'cash' : 'options'}
+                    name={type === 'feeding' ? 'restaurant' : type === 'bus' ? 'bus' : type === 'extra' ? 'school' : (type === 'tuition' || type === 'Admission' || type === 'Books fee' || type === 'Uniform') ? 'cash' : 'options'}
                     size={16}
                     color={VIBE.muted}
                   />
@@ -1166,7 +1202,7 @@ export default function DailyFinancials() {
                 <Text style={styles.breakdownValue}>₵{amount.toFixed(2)}</Text>
               </View>
             ))}
-            {Object.keys(revenueBreakdown).length === 0 && (
+            {Object.entries(revenueBreakdown).filter(([_, amount]) => amount > 0).length === 0 && (
               <Text style={{ textAlign: 'center', color: VIBE.muted, fontStyle: 'italic' }}>No collections today</Text>
             )}
           </View>
@@ -1195,12 +1231,12 @@ export default function DailyFinancials() {
                           : "No students match the current filters"}
               </Text>
               {students.length > 0 && (activeTab === 'feeding' || activeTab === 'extra') && (
-                <TouchableOpacity
+                <Pressable
                   style={[styles.emptyActionBtn, { backgroundColor: activeColor }]}
                   onPress={() => router.push("/admin-dashboard/manage-users")}
                 >
                   <Text style={styles.emptyActionText}>Go to Manage Users</Text>
-                </TouchableOpacity>
+                </Pressable>
               )}
             </View>
           }
@@ -1220,8 +1256,7 @@ export default function DailyFinancials() {
         onRequestClose={() => setEditOtherModal({ visible: false, student: null })}
       >
         <View style={styles.modalOverlay}>
-            <TouchableOpacity
-                activeOpacity={1}
+            <Pressable
                 style={StyleSheet.absoluteFill}
                 onPress={() => setEditOtherModal({ visible: false, student: null })}
             />
@@ -1229,6 +1264,7 @@ export default function DailyFinancials() {
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 style={{ width: '100%', alignItems: 'center', justifyContent: 'center' }}
+                pointerEvents="box-none"
             >
                 <View style={[styles.prepaymentCard, { width: '90%' }]}>
                     <View style={styles.prepaymentHeader}>
@@ -1236,18 +1272,23 @@ export default function DailyFinancials() {
                         <Text style={styles.prepaymentSub}>{editOtherModal.student?.fullName}</Text>
                     </View>
 
-                    {selectedOtherCategory === "Other" ? (
+                    <Pressable
+                        style={[styles.prepaymentInputContainer, { height: 50, marginBottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }]}
+                        onPress={() => setShowCategoryMenu(true)}
+                    >
+                        <Text style={{ color: activeColor, fontWeight: '800', fontSize: 18 }}>{selectedOtherCategory}</Text>
+                        <SVGIcon name="chevron-down" size={18} color={activeColor} />
+                    </Pressable>
+
+                    {selectedOtherCategory === "Other" && (
                       <TextInput
                         placeholder="Reference (e.g. Uniform, Books)"
                         style={[styles.prepaymentInput, { fontSize: 18, height: 50, marginBottom: 10, color: activeColor }]}
                         value={otherPaymentRef}
                         onChangeText={setOtherPaymentRef}
                         placeholderTextColor={VIBE.muted}
+                        autoFocus={Platform.OS === 'web'}
                       />
-                    ) : (
-                      <View style={[styles.prepaymentInputContainer, { height: 50, marginBottom: 10, justifyContent: 'center' }]}>
-                        <Text style={{ color: activeColor, fontWeight: '800', fontSize: 18 }}>{selectedOtherCategory}</Text>
-                      </View>
                     )}
 
                     <TextInput
@@ -1259,7 +1300,7 @@ export default function DailyFinancials() {
                         placeholderTextColor={VIBE.muted}
                     />
 
-                        <TouchableOpacity
+                        <Pressable
                             style={[styles.prepayBtn, { backgroundColor: activeColor }, (saving || !editOtherModal.student) && { opacity: 0.7 }]}
                             onPress={async () => {
                                 if (!editOtherModal.student) return;
@@ -1280,7 +1321,7 @@ export default function DailyFinancials() {
                             ) : (
                                 <Text style={styles.prepayBtnText}>Record Payment</Text>
                             )}
-                        </TouchableOpacity>
+                        </Pressable>
                 </View>
             </KeyboardAvoidingView>
         </View>
@@ -1318,7 +1359,7 @@ export default function DailyFinancials() {
                         placeholderTextColor={VIBE.muted}
                     />
 
-                    <TouchableOpacity
+                    <Pressable
                         style={[styles.prepayBtn, (saving || !prepaymentModal.student) && { opacity: 0.7 }]}
                         onPress={handleAddPrepayment}
                         disabled={saving}
@@ -1328,7 +1369,7 @@ export default function DailyFinancials() {
                         ) : (
                             <Text style={styles.prepayBtnText}>Confirm Prepayment</Text>
                         )}
-                    </TouchableOpacity>
+                    </Pressable>
                 </View>
             </KeyboardAvoidingView>
         </View>
@@ -1342,8 +1383,7 @@ export default function DailyFinancials() {
         onRequestClose={() => setShowCategoryMenu(false)}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity
-            activeOpacity={1}
+          <Pressable
             style={StyleSheet.absoluteFill}
             onPress={() => setShowCategoryMenu(false)}
           />
@@ -1351,11 +1391,12 @@ export default function DailyFinancials() {
             <Text style={styles.prepaymentTitle}>Select Category</Text>
             <View style={{ marginTop: 15 }}>
               {OTHER_CATEGORIES.map((cat) => (
-                <TouchableOpacity
+                <Pressable
                   key={cat}
-                  style={[
+                  style={({ pressed }) => [
                     styles.categoryItem,
-                    selectedOtherCategory === cat && { backgroundColor: activeColor + '10', borderColor: activeColor }
+                    selectedOtherCategory === cat && { backgroundColor: activeColor + '10', borderColor: activeColor },
+                    { opacity: pressed ? 0.7 : 1 }
                   ]}
                   onPress={() => {
                     setSelectedOtherCategory(cat);
@@ -1364,7 +1405,7 @@ export default function DailyFinancials() {
                 >
                   <Text style={[styles.categoryItemText, selectedOtherCategory === cat && { color: activeColor }]}>{cat}</Text>
                   {selectedOtherCategory === cat && <SVGIcon name="checkmark" size={20} color={activeColor} />}
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           </View>

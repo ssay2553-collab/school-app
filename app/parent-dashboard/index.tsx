@@ -151,6 +151,13 @@ export default function ParentDashboard() {
           path: "/parent-dashboard/student-fee-history",
         },
         {
+          title: "Payment Receipts",
+          subtitle: "Billed items & receipts",
+          icon: "document-attach-outline",
+          color: "#10b981",
+          path: "/parent-dashboard/student-fee-history", // Assuming they use the same history view but can filter or see the items there
+        },
+        {
           title: "School News",
           subtitle: "Announcements",
           icon: "megaphone",

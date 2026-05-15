@@ -43,16 +43,27 @@ import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
-
+import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 
 const { width } = Dimensions.get("window");
 
 export default function StudentFeeHistoryScreen() {
+  const { appUser } = useAuth();
   const params = useLocalSearchParams();
   const router = useRouter();
   const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
+
+  const isSuperAdmin = [
+    "proprietor",
+    "proprietress",
+    "manager",
+    "headmaster",
+    "headmistress",
+    "administrator",
+    "director",
+  ].includes(appUser?.adminRole?.toLowerCase() || "");
 
   const schoolId = (
     Constants.expoConfig?.extra?.schoolId || "school"
@@ -189,6 +200,14 @@ export default function StudentFeeHistoryScreen() {
   }, [record, searchQuery]);
 
   const handleDeletePayment = (payment: any) => {
+    if (!isSuperAdmin) {
+      showToast({
+        message: "Only Super Admins can revert transactions.",
+        type: "error",
+      });
+      return;
+    }
+
     Alert.alert(
       "Revert Payment",
       "Are you sure you want to delete this transaction? The student's balance will be adjusted automatically.",
@@ -213,6 +232,11 @@ export default function StudentFeeHistoryScreen() {
               batch.update(doc(db, "users", selectedStudentUid), {
                 walletBalance: increment(payment.amount),
               });
+
+              // Also delete from feePayments collection if serial exists
+              if (payment.receiptNo) {
+                batch.delete(doc(db, "feePayments", payment.receiptNo));
+              }
 
               await batch.commit();
               showToast({

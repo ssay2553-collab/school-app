@@ -9,7 +9,7 @@ import {
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
-    Dimensions,
+    Alert,
     Image,
     Platform,
     RefreshControl,
@@ -18,18 +18,19 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
+    useWindowDimensions,
     View,
 } from "react-native";
+import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import UnreadBadge from "../../components/UnreadBadge";
-import { SCHOOL_CONFIG } from "../../constants/Config";
+import { useSchoolConfig } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
-const { width } = Dimensions.get("window");
 const STATS_CACHE_KEY = "@admin_dashboard_stats_cache_v2";
 let dashboardStatsMemoryCache: any = null;
 let lastDashboardScrollY = 0;
@@ -44,10 +45,12 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { appUser, loading: authLoading } = useAuth();
   const scrollRef = useRef<ScrollView>(null);
+  const config = useSchoolConfig();
+  const { width: windowWidth } = useWindowDimensions();
 
-  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
-  const secondary = SCHOOL_CONFIG.secondaryColor || primary;
-  const surface = SCHOOL_CONFIG.surfaceColor || "#FFFFFF";
+  const brandPrimary = config.brandPrimary || COLORS.primary || "#6366F1";
+  const brandSecondary = config.brandSecondary || config.secondaryColor || "#4338ca";
+  const surface = config.surfaceColor || "#F8FAFC";
 
   const [stats, setStats] = useState<Stats>(
     (dashboardStatsMemoryCache as Stats) || {
@@ -83,7 +86,7 @@ export default function AdminDashboard() {
       else if (!dashboardStatsMemoryCache)
         setStats((prev: Stats) => ({ ...prev, loading: true }));
 
-      const schoolId = SCHOOL_CONFIG.schoolId;
+      const schoolId = config.schoolId;
       const studentsQuery = query(
         collection(db, "users"),
         where("role", "==", "student"),
@@ -116,7 +119,7 @@ export default function AdminDashboard() {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [config.schoolId]);
 
   useEffect(() => {
     fetchStats(false);
@@ -124,34 +127,40 @@ export default function AdminDashboard() {
 
   const sections = [
     {
-      title: "Organization",
+      title: "SCHOOL OPS 🏫",
+      color: brandPrimary,
       items: [
         {
           title: "User Directory",
+          subtitle: "Manage people",
           route: "/admin-dashboard/manage-users",
           icon: "people",
           color: "#6366f1",
         },
         {
           title: "Class Registry",
+          subtitle: "Setup classes",
           route: "/admin-dashboard/create-class",
           icon: "school",
           color: "#8b5cf6",
         },
         {
           title: "Access Tokens",
+          subtitle: "Signup codes",
           route: "/admin-dashboard/generate-code",
           icon: "key",
           color: "#ec4899",
         },
         {
           title: "Attendance",
+          subtitle: "Daily logs",
           route: "/admin-dashboard/attendance-overview",
           icon: "checkmark-circle",
           color: "#10b981",
         },
         {
           title: "Teacher Stats",
+          subtitle: "Performance",
           route: "/admin-dashboard/teacher-statistics",
           icon: "analytics",
           color: "#f59e0b",
@@ -159,10 +168,12 @@ export default function AdminDashboard() {
       ],
     },
     {
-      title: "Finance",
+      title: "FINANCE HUB 💰",
+      color: "#10b981",
       items: [
         {
           title: "Daily Financials",
+          subtitle: "Money tracking",
           route: "/admin-dashboard/DailyFinancials",
           icon: "calculator",
           color: "#10b981",
@@ -170,6 +181,7 @@ export default function AdminDashboard() {
         ...(appUser?.role?.toLowerCase() !== "teacher" ? [
         {
           title: "Student Fees",
+          subtitle: "Billing center",
           route: "/admin-dashboard/ManageFees",
           icon: "cash",
           color: "#f59e0b",
@@ -177,12 +189,14 @@ export default function AdminDashboard() {
         ] : []),
         {
           title: "Expenses",
+          subtitle: "Outflow logs",
           route: "/admin-dashboard/expenditure",
           icon: "trending-down",
           color: "#ef4444",
         },
         {
           title: "Payroll",
+          subtitle: "Staff salaries",
           route: "/admin-dashboard/staff-payroll",
           icon: "wallet",
           color: "#0ea5e9",
@@ -190,34 +204,40 @@ export default function AdminDashboard() {
       ],
     },
     {
-      title: "Academics",
+      title: "ACADEMIC MGMT 🎓",
+      color: "#A55EEA",
       items: [
         {
-          title: "Student Groups",
+          title: "Groups",
+          subtitle: "Collaborations",
           route: "/teacher-dashboard/create-student-group",
           icon: "chatbubbles",
           color: "#06b6d4",
         },
         {
-          title: "Student Results",
+          title: "Results",
+          subtitle: "View records",
           route: "/admin-dashboard/view-academic-records",
           icon: "library",
           color: "#6366f1",
         },
         {
           title: "Edit Scores",
+          subtitle: "Score correction",
           route: "/admin-dashboard/EditStudentScores",
           icon: "create",
           color: "#06b6d4",
         },
         {
           title: "Timetables",
+          subtitle: "Schedules",
           route: "/admin-dashboard/CreateLessonTimetable",
           icon: "calendar",
           color: "#84cc16",
         },
         {
-          title: "Academic Calendar",
+          title: "Calendar",
+          subtitle: "Events & Terms",
           route: "/academic-calendar",
           icon: "calendar-outline",
           color: "#f97316",
@@ -225,40 +245,47 @@ export default function AdminDashboard() {
       ],
     },
     {
-      title: "Media & Communication",
+      title: "COMMUNICATION 📣",
+      color: "#FFD93D",
       items: [
         {
           title: "Announcements",
+          subtitle: "Post news",
           route: "/admin-dashboard/news",
           icon: "megaphone",
           color: "#f43f5e",
         },
         {
           title: "Staff Chat",
+          subtitle: "Internal",
           route: "/admin-dashboard/staff-chat",
           icon: "chatbubbles",
           color: "#6366f1",
         },
         {
           title: "Parent Chat",
+          subtitle: "Parent comms",
           route: "/admin-dashboard/chat-with-parent",
           icon: "chatbubble-ellipses",
           color: "#3b82f6",
         },
         {
-          title: "Guest Inquiries",
+          title: "Guest Inquiry",
+          subtitle: "Public chats",
           route: "/admin-dashboard/guest-chat",
           icon: "chatbubbles",
           color: "#14b8a6",
         },
         {
           title: "Media Library",
+          subtitle: "Photo gallery",
           route: "/admin-dashboard/gallery-upload",
           icon: "images",
           color: "#a855f7",
         },
         {
           title: "FAQ & Help",
+          subtitle: "Manage help",
           route: "/admin-dashboard/FAQEditor",
           icon: "help-circle",
           color: "#eab308",
@@ -270,36 +297,130 @@ export default function AdminDashboard() {
   if (authLoading || !appUser) {
     return (
       <View style={[styles.center, { backgroundColor: surface }]}>
-        <ActivityIndicator size="large" color={primary} />
+        <ActivityIndicator size="large" color={brandPrimary} />
       </View>
     );
   }
 
+  const isSmallScreen = windowWidth < 380;
+
+  const getColumns = () => {
+    if (windowWidth >= 1200) return 5;
+    if (windowWidth >= 900) return 4;
+    if (windowWidth >= 600) return 3;
+    return 2;
+  };
+
+  const numColumns = getColumns();
+  const gap = 12;
+  const sidePadding = 20;
+  const totalGapSpace = (numColumns - 1) * gap;
+  const availableWidth = Math.min(1200, windowWidth) - sidePadding * 2;
+  const cardWidth = (availableWidth - totalGapSpace) / numColumns;
+
+  const renderItem = (item: any, index: number) => {
+    return (
+      <Animatable.View
+        animation="bounceIn"
+        duration={800}
+        delay={index * 50}
+        key={item.title}
+        style={[styles.cardWrapper, { width: cardWidth }]}
+      >
+        <TouchableOpacity
+          style={[styles.menuCard, { borderBottomColor: item.color + "40" }]}
+          onPress={() => router.push(item.route as any)}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={["#FFFFFF", item.color + "05"]}
+            style={styles.cardGradient}
+          >
+            <View
+              style={[
+                styles.iconBox,
+                {
+                  backgroundColor: item.color + "20",
+                  width: isSmallScreen ? 50 : 60,
+                  height: isSmallScreen ? 50 : 60,
+                  borderRadius: isSmallScreen ? 18 : 22,
+                },
+              ]}
+            >
+              <SVGIcon
+                name={item.icon}
+                size={numColumns > 3 ? 36 : isSmallScreen ? 26 : 30}
+                color={item.color}
+              />
+            </View>
+            <View style={styles.cardInfo}>
+              <Text
+                style={[
+                  styles.menuText,
+                  { fontSize: isSmallScreen ? 13 : 15 },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {item.title}
+              </Text>
+              <Text
+                style={[
+                  styles.menuSubtitle,
+                  { color: item.color, fontSize: isSmallScreen ? 9 : 10 },
+                ]}
+                numberOfLines={1}
+              >
+                {item.subtitle}
+              </Text>
+            </View>
+            {item.route &&
+            (String(item.route).includes("chat") || String(item.route).includes("group")) &&
+            totalUnread > 0 ? (
+              <View style={styles.badgePos}>
+                <UnreadBadge count={totalUnread} />
+              </View>
+            ) : null}
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animatable.View>
+    );
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: surface }]}>
+    <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
       <StatusBar barStyle="light-content" />
       <ScrollView
         ref={scrollRef}
-        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
+        style={{ flex: 1 }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => fetchStats(true)}
-            tintColor={primary}
-          />
-        }
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => fetchStats(true)} />
+        }
       >
-        <LinearGradient colors={[primary, secondary]} style={styles.header}>
+        <LinearGradient
+          colors={[brandPrimary, brandSecondary]}
+          style={styles.header}
+        >
+          <View style={styles.blob1} />
+          <View style={styles.blob2} />
+
           <SafeAreaView edges={["top"]}>
-            <View style={styles.headerTop}>
-              <View style={styles.headerProfileInfo}>
+            <View style={styles.headerRow}>
+              <View style={styles.adminInfo}>
                 <TouchableOpacity
                   onPress={() => router.push("/admin-dashboard/settings")}
-                  style={styles.profileAvatarBox}
+                  style={[
+                    styles.profileBtn,
+                    {
+                      width: isSmallScreen ? 60 : 80,
+                      height: isSmallScreen ? 60 : 80,
+                      borderRadius: isSmallScreen ? 30 : 40,
+                    },
+                  ]}
                 >
                   {appUser?.profile?.profileImage ? (
                     <Image
@@ -308,29 +429,44 @@ export default function AdminDashboard() {
                     />
                   ) : (
                     <View style={styles.profilePlaceholder}>
-                      <Text style={styles.profilePlaceholderText}>
+                      <Text
+                        style={[
+                          styles.profilePlaceholderText,
+                          { fontSize: isSmallScreen ? 24 : 32 },
+                        ]}
+                      >
                         {appUser?.profile?.firstName?.[0] || "A"}
                       </Text>
                     </View>
                   )}
                 </TouchableOpacity>
-                <View>
-                  <Text style={styles.welcomeText}>DASHBOARD</Text>
-                  <Text style={styles.adminName}>
+                <View style={{ marginLeft: isSmallScreen ? 10 : 15, flex: 1 }}>
+                  <Text style={styles.welcomeText}>WELCOME BACK, CHIEF! 🛡️</Text>
+                  <Text
+                    style={[
+                      styles.adminName,
+                      { fontSize: isSmallScreen ? 24 : 32 },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
                     {appUser?.profile?.firstName || "Admin"}
                   </Text>
+
                   <View style={styles.roleBadge}>
+                    <SVGIcon name="shield-checkmark" size={12} color="#fff" />
                     <Text style={styles.roleBadgeText}>
                       {appUser?.adminRole || "Super Admin"}
                     </Text>
                   </View>
                 </View>
               </View>
-              <View style={{ flexDirection: "row", gap: 10 }}>
+
+              <View style={styles.headerActions}>
                 {appUser?.role === "admin" && (appUser?.assignedRoles?.includes("Teacher") || appUser?.classTeacherOf) && (
                   <TouchableOpacity
                     onPress={() => router.push("/teacher-dashboard")}
-                    style={[styles.switchRoleBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 6 }]}
+                    style={[styles.actionBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 6 }]}
                   >
                     <SVGIcon name="school" size={20} color="#fff" />
                     <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>TEACHER</Text>
@@ -338,9 +474,9 @@ export default function AdminDashboard() {
                 )}
                 <TouchableOpacity
                   onPress={() => router.push("/admin-dashboard/settings")}
-                  style={styles.settingsBtn}
+                  style={styles.actionBtn}
                 >
-                  <SVGIcon name="settings-outline" size={24} color="#fff" />
+                  <SVGIcon name="settings-outline" size={22} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -355,10 +491,10 @@ export default function AdminDashboard() {
                 <View
                   style={[
                     styles.statIconBox,
-                    { backgroundColor: COLORS.yellow || "#f1c40f" },
+                    { backgroundColor: "#FFD93D" },
                   ]}
                 >
-                  <SVGIcon name="people" size={20} color="#fff" />
+                  <SVGIcon name="people" size={18} color="#4338ca" />
                 </View>
                 <View>
                   <Text style={styles.statLabel}>STUDENTS</Text>
@@ -376,13 +512,13 @@ export default function AdminDashboard() {
                 <View
                   style={[
                     styles.statIconBox,
-                    { backgroundColor: COLORS.success || "#05ac5b" },
+                    { backgroundColor: "#6BCB77" },
                   ]}
                 >
-                  <SVGIcon name="briefcase" size={20} color="#fff" />
+                  <SVGIcon name="briefcase" size={18} color="#fff" />
                 </View>
                 <View>
-                  <Text style={styles.statLabel}>STAFF</Text>
+                  <Text style={styles.statLabel}>TOTAL STAFF</Text>
                   <Text style={styles.statValue}>
                     {stats.loading ? "--" : stats.totalStaff}
                   </Text>
@@ -392,64 +528,24 @@ export default function AdminDashboard() {
           </SafeAreaView>
         </LinearGradient>
 
-        <View style={styles.mainContent}>
-          {sections.map((section, sIndex) => (
-            <View key={section.title} style={styles.section}>
-              <Text
-                style={
-                  section.title === "Organization"
-                    ? styles.sectionTitleFirst
-                    : styles.sectionTitle
-                }
-              >
-                {section.title}
-              </Text>
-              <View style={styles.grid}>
-                {section.items.map((item, index) => {
-                  const columnCount = (section.items.length % 3 === 0) ? 3 : 2;
-                  const itemWidth = (100 / columnCount) + "%";
-
-                  return (
-                    <View key={item.title} style={[styles.gridItemWrapper, { width: itemWidth as any }]}>
-                      <TouchableOpacity
-                        style={[styles.gridItem, columnCount === 3 && styles.gridItemSmall]}
-                        onPress={() => router.push(item.route as any)}
-                      >
-                        <View
-                          style={[
-                            styles.itemIconBox,
-                            columnCount === 3 && styles.itemIconBoxSmall,
-                            { backgroundColor: (item.color || "#000") + "10" },
-                          ]}
-                        >
-                          <SVGIcon
-                            name={item.icon}
-                            size={columnCount === 3 ? 22 : 26}
-                            color={item.color}
-                          />
-                        </View>
-                        <Text
-                          style={[styles.itemTitle, columnCount === 3 && styles.itemTitleSmall]}
-                          numberOfLines={1}
-                        >
-                          {item.title}
-                        </Text>
-                        {item.route &&
-                        (String(item.route).includes("chat") || String(item.route).includes("group")) &&
-                        totalUnread > 0 ? (
-                          <View
-                            style={{ position: "absolute", top: 8, right: columnCount === 3 ? 8 : 12 }}
-                          >
-                            <UnreadBadge count={totalUnread} />
-                          </View>
-                        ) : null}
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
+        <View style={styles.contentContainer}>
+          <View style={styles.content}>
+            {sections.map((section, sIndex) => (
+              <View key={section.title} style={{ marginBottom: 40 }}>
+                <View style={styles.sectionHeader}>
+                    <View style={[styles.dot, { backgroundColor: section.color }]} />
+                  <Text style={[styles.sectionTitle, { color: section.color }]}>
+                    {section.title}
+                  </Text>
+                </View>
+                <View style={styles.grid}>
+                  {section.items.map((item, iIndex) =>
+                    renderItem(item, sIndex * 4 + iIndex),
+                  )}
+                </View>
               </View>
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -462,70 +558,93 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   scrollContent: { flexGrow: 1 },
   header: {
-    paddingHorizontal: 25,
-    paddingBottom: 45,
-    borderBottomLeftRadius: 45,
-    borderBottomRightRadius: 45,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    overflow: "hidden",
     ...SHADOWS.medium,
   },
-  headerTop: {
+  blob1: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  blob2: {
+    position: 'absolute',
+    bottom: -40,
+    left: -30,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 35,
+    alignItems: "center",
     paddingTop: Platform.OS === "web" ? 20 : 0,
   },
-  headerProfileInfo: { flexDirection: "row", gap: 15, alignItems: "center" },
-  profileAvatarBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 22,
+  adminInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
+  welcomeText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  adminName: { fontSize: 32, fontWeight: "900", color: "#fff", marginTop: 2 },
+  roleBadge: {
+    flexDirection: "row",
     backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 8,
+    alignSelf: "flex-start",
+    alignItems: "center",
+    gap: 6,
+  },
+  roleBadgeText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
+  profileBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#fff",
     overflow: "hidden",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderWidth: 4,
+    borderColor: "rgba(255,255,255,0.5)",
+    ...SHADOWS.medium,
   },
   profileImg: { width: "100%", height: "100%" },
   profilePlaceholder: {
     width: "100%",
     height: "100%",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
   },
-  profilePlaceholderText: { color: "#fff", fontSize: 24, fontWeight: "bold" },
-  welcomeText: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 12,
-    fontWeight: "bold",
-    letterSpacing: 1,
-  },
-  adminName: { color: "#fff", fontSize: 22, fontWeight: "900", marginTop: 2 },
-  roleBadge: {
+  profilePlaceholderText: { color: "#4338ca", fontWeight: "900", fontSize: 32 },
+  headerActions: { flexDirection: "row", gap: 10, alignItems: "center" },
+  actionBtn: {
+    height: 44,
+    minWidth: 44,
+    alignItems: "center",
+    justifyContent: 'center',
     backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginTop: 5,
-    alignSelf: "flex-start",
-  },
-  roleBadgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
-  settingsBtn: {
-    width: 44,
-    height: 44,
     borderRadius: 15,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
   },
-  switchRoleBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    backgroundColor: "rgba(255,255,255,0.25)",
-    justifyContent: "center",
-    alignItems: "center",
+  statsGrid: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 25,
+    paddingHorizontal: 5
   },
-  statsGrid: { flexDirection: "row", gap: 15, marginTop: 20 },
   statCard: {
     flex: 1,
     flexDirection: "row",
@@ -540,69 +659,80 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    ...SHADOWS.small,
   },
   statLabel: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 10,
-    fontWeight: "bold",
-  },
-  statValue: { color: "#fff", fontSize: 18, fontWeight: "900" },
-  mainContent: { paddingHorizontal: 20, paddingTop: 30 },
-  section: { marginBottom: 30 },
-  sectionTitleFirst: {
-    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 9,
     fontWeight: "900",
-    color: "#1f2937",
-    marginBottom: 15,
-    letterSpacing: 1,
-    opacity: 0.6,
+    letterSpacing: 0.5,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#1f2937",
-    marginBottom: 15,
-    letterSpacing: 1,
-    opacity: 0.6,
-    marginTop: 10,
+  statValue: { color: "#fff", fontSize: 20, fontWeight: "900" },
+  contentContainer: { alignItems: "center", width: "100%" },
+  content: {
+    paddingHorizontal: 20,
+    marginTop: 25,
+    width: "100%",
+    maxWidth: 1100,
   },
-  grid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 },
-  gridItemWrapper: { padding: 6 },
-  gridItem: {
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+    gap: 12,
+    paddingHorizontal: 10,
+  },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  sectionTitle: { fontSize: 18, fontWeight: "900", letterSpacing: 0.5 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 12,
+  },
+  cardWrapper: { marginBottom: 10 },
+  menuCard: {
     backgroundColor: "#fff",
     borderRadius: 24,
+    overflow: "hidden",
+    ...SHADOWS.medium,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderBottomWidth: 4,
+    minHeight: 130,
+    width: "100%",
+  },
+  cardGradient: {
+    flex: 1,
     padding: 20,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 120,
-    ...SHADOWS.small,
   },
-  gridItemSmall: {
-    padding: 12,
-    borderRadius: 20,
-    minHeight: 100,
-  },
-  itemIconBox: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+  iconBox: {
+    width: 65,
+    height: 65,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 15,
+    ...SHADOWS.small,
   },
-  itemIconBoxSmall: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    marginBottom: 8,
+  cardInfo: { alignItems: "center" },
+  menuText: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#1E293B",
+    textAlign: "center",
   },
-  itemTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#1f2937",
-    textAlign: "center"
-  },
-  itemTitleSmall: {
+  menuSubtitle: {
     fontSize: 11,
+    marginTop: 4,
+    fontWeight: "800",
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden'
   },
+  badgePos: { position: "absolute", top: 15, right: 15 },
 });

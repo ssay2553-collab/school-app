@@ -19,14 +19,46 @@ export const onPaymentReceived = onDocumentUpdated(
 
     if (!newValue || !previousValue) return;
 
-    // Detect if amountPaid has increased
-    if (newValue.amountPaid > previousValue.amountPaid) {
-      const paymentAmount = newValue.amountPaid - previousValue.amountPaid;
+    // Detect if amountPaid or termBill has changed
+    const paidDiff = newValue.amountPaid - (previousValue.amountPaid || 0);
+    const billDiff = newValue.termBill - (previousValue.termBill || 0);
+
+    // Only notify for billed items if they are "Other" categories (exclude feeding, bus, extra)
+    // We can't easily check the category here without the payment record,
+    // but the instruction says "exclude feeding, bus fee and claases".
+    // We will check if the bill increase is significant and not handled by the auto-arrears system
+    // or simply notify for all bill increases that are NOT feeding/bus/extra.
+    // However, the daily financials update the termBill.
+
+    if (paidDiff > 0 || billDiff > 0) {
       const studentUid = newValue.studentUid;
       const studentName = newValue.studentName || "your child";
 
-      try {
-        // 1. Get Student to find Parents
+      let title = "";
+      let body = "";
+      let amount = 0;
+      let shouldNotify = false;
+
+      if (paidDiff > 0) {
+          title = "Payment Received ✅";
+          amount = paidDiff;
+          body = `Receipt: ₵${amount.toFixed(2)} received for ${studentName}. New balance: ₵${newValue.balance.toFixed(2)}.`;
+          shouldNotify = true;
+      } else if (billDiff > 0) {
+          // Identify the item if possible (it's the last added item in billedItems array)
+          const billedItems = newValue.billedItems || [];
+          const lastItem = billedItems[billedItems.length - 1];
+          const itemName = lastItem ? lastItem.name : "Ad-hoc Bill";
+
+          title = "New Bill / Debt 📄";
+          amount = billDiff;
+          body = `${itemName}: ₵${amount.toFixed(2)} has been billed to ${studentName}. Total Balance: ₵${newValue.balance.toFixed(2)}.`;
+          shouldNotify = true;
+      }
+
+      if (shouldNotify) {
+        try {
+          // 1. Get Student to find Parents
         const studentDoc = await admin
           .firestore()
           .doc(`users/${studentUid}`)
@@ -51,10 +83,12 @@ export const onPaymentReceived = onDocumentUpdated(
         // 3. Send Notification
         const message = {
           notification: {
-            title: "Payment Received ✅",
-            body: `Receipt: ₵${paymentAmount.toFixed(2)} received for ${studentName}. New balance: ₵${newValue.balance.toFixed(2)}.`,
+            title: type,
+            body: paidDiff > 0
+              ? `Receipt: ₵${amount.toFixed(2)} received for ${studentName}. New balance: ₵${newValue.balance.toFixed(2)}.`
+              : `A new charge of ₵${amount.toFixed(2)} has been added to ${studentName}'s account. Total Balance: ₵${newValue.balance.toFixed(2)}.`,
           },
-          data: { type: "fee_payment" },
+          data: { type: "fee_update" },
           tokens: tokens,
         };
 

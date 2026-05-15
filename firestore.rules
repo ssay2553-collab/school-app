@@ -64,8 +64,7 @@ service cloud.firestore {
       let lowerARole = aRole != null ? aRole.lower() : "";
 
       let superRoles = [
-        "proprietor", "proprietress", "manager", "headmaster",
-        "headmistress", "administrator", "director", "superadmin", "super admin"
+        "proprietor", "manager", "headmaster", "director", "superadmin", "super admin"
       ];
 
       return lowerRole == "superadmin" || lowerRole == "super admin" || (
@@ -232,8 +231,9 @@ service cloud.firestore {
       allow read: if hasPermission('manage-fees', 'view')
         || hasPermission('manage-sales', 'view')
         || (isParent() && resource.data.studentUid in userData().childrenIds);
-      allow write: if hasPermission('manage-fees', 'edit')
+      allow create, update: if isSuperAdmin() || hasPermission('manage-fees', 'edit')
         || hasPermission('manage-sales', 'edit');
+      allow delete: if isSuperAdmin();
     }
 
     match /feePayments/{id} {
@@ -254,13 +254,7 @@ service cloud.firestore {
         || (hasPermission('record-extra-classes', 'edit') && request.resource.data.type == 'extra')
         || (hasPermission('manage-sales', 'edit') && request.resource.data.type == 'other');
 
-      allow update, delete: if hasPermission('manage-fees', 'edit')
-        || hasPermission('manage-sales', 'edit')
-        || (hasPermission('feeding', 'edit') && resource.data.type == 'feeding')
-        || (hasPermission('record-bus-fee', 'edit') && resource.data.type == 'bus')
-        || (hasPermission('record-class-fee', 'edit') && resource.data.type == 'extra')
-        || (hasPermission('record-extra-classes', 'edit') && resource.data.type == 'extra')
-        || (hasPermission('manage-sales', 'edit') && resource.data.type == 'other');
+      allow update, delete: if isSuperAdmin();
     }
 
     match /expenditures/{id} {
@@ -270,15 +264,19 @@ service cloud.firestore {
         request.resource.data.amount > 0;
       allow update: if hasPermission('expenditure', 'edit') &&
         (resource.data.status == 'open' || request.resource.data.status == 'closed');
-      allow delete: if hasPermission('expenditure', 'edit');
+      allow delete: if isSuperAdmin();
     }
 
    match /nonTeachingStaff/{staffId} {
-      allow read, create, update, delete: if hasPermission('staff-payroll', 'edit') || (hasPermission('staff-payroll', 'view') && request.method == 'get');
+      allow read: if hasPermission('staff-payroll', 'view') || hasPermission('staff-payroll', 'edit');
+      allow create, update: if hasPermission('staff-payroll', 'edit');
+      allow delete: if isSuperAdmin();
     }
 
    match /payroll/{id} {
-      allow read, create, update, delete: if hasPermission('staff-payroll', 'edit') || (hasPermission('staff-payroll', 'view') && request.method == 'get');
+      allow read: if hasPermission('staff-payroll', 'view') || hasPermission('staff-payroll', 'edit');
+      allow create, update: if hasPermission('staff-payroll', 'edit');
+      allow delete: if isSuperAdmin();
     }
 
     /* ===============================
@@ -393,9 +391,8 @@ service cloud.firestore {
        STUDENT RECORDS & ACADEMICS
     =============================== */
     match /attendance/{id} {
-      function getClassIdFromAttendanceId(attendanceId) { return attendanceId.split('_')[0]; }
       allow read: if isAdmin()
-        || (isTeacher() && (isClassTeacher(getStudentClassId(resource.data)) || isClassTeacher(getClassIdFromAttendanceId(id))))
+        || (isTeacher() && (isClassTeacher(resource.data.classId) || isClassTeacher(id.split('_')[0])))
         || hasPermission('feeding', 'view')
         || hasPermission('record-bus-fee', 'view')
         || hasPermission('record-class-fee', 'view')
@@ -403,13 +400,13 @@ service cloud.firestore {
         || hasPermission('manage-sales', 'view')
         || (isStudent() && resource.data.classId == userData().classId)
         || (isParent() && exists(/databases/$(database)/documents/users/$(uid())) && (resource.data.students.keys().hasAny(userData().childrenIds)));
-      allow write: if isAdmin() || (
+      allow create, update: if isAdmin() || (
         isTeacher() &&
-        isClassTeacher(getStudentClassId(request.resource.data)) &&
+        isClassTeacher(request.resource.data.classId) &&
         // Ghana Time (GMT/UTC): Allow marking only between 6:00 AM and 10:00 AM
         request.time.hour() >= 6 && request.time.hour() < 10
       );
-      allow delete: if isAdmin();
+      allow delete: if isSuperAdmin();
     }
 
     match /behavioralRecords/{id} {

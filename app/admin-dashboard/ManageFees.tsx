@@ -463,11 +463,15 @@ export default function ManageFees() {
     [selectedClassId, academicYear, term, classes],
   );
 
+  const configKey = `${selectedClassId}_${academicYear}_${term}`;
+
   useEffect(() => {
     if (selectedClassId && academicYear && term) {
+      setStudents([]);
+      setLoading(true);
       fetchStudents(true);
     }
-  }, [selectedClassId, academicYear, term]); // Dependencies reduced for stability
+  }, [configKey]);
 
   const handleRefresh = () => {
     setRefreshing(true);

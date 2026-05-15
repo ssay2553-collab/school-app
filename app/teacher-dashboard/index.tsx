@@ -1,3 +1,4 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
     collection,
@@ -8,63 +9,74 @@ import {
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Dimensions,
+    Image,
+    Platform,
+    RefreshControl,
     ScrollView,
     StatusBar,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    useWindowDimensions,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import UnreadBadge from "../../components/UnreadBadge";
-import { SCHOOL_CONFIG } from "../../constants/Config";
-import { SHADOWS } from "../../constants/theme";
+import { useSchoolConfig } from "../../constants/Config";
+import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
-const { width } = Dimensions.get("window");
-const isLargeScreen = width > 768;
-const CARD_WIDTH = isLargeScreen ? (width - 80) / 3 : (width - 55) / 2;
-
 export default function TeacherDashboard() {
   const router = useRouter();
-  const { appUser, loading } = useAuth();
+  const { appUser, loading: authLoading } = useAuth();
+  const config = useSchoolConfig();
+  const { width: windowWidth } = useWindowDimensions();
+
   const [assignmentCount, setAssignmentCount] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const { totalUnread, submissionUnread } = useUnreadCounts();
+
+  const brandPrimary = config.brandPrimary || COLORS.primary || "#6366F1";
+  const brandSecondary = config.brandSecondary || config.secondaryColor || "#4338ca";
+  const surface = config.surfaceColor || "#F8FAFC";
 
   const isAdmin = appUser?.role === "admin";
   const canFeeding = appUser?.permissions?.["feeding"] === "full" || appUser?.permissions?.["feeding"] === "edit";
   const canBus = appUser?.permissions?.["record-bus-fee"] === "full" || appUser?.permissions?.["record-bus-fee"] === "edit";
   const hasFinancialAccess = isAdmin || canFeeding || canBus;
 
-  const primary = SCHOOL_CONFIG.primaryColor;
-  const surface = SCHOOL_CONFIG.surfaceColor;
+  const fetchStats = async () => {
+    if (!appUser?.uid) return;
+    try {
+      const q = query(
+        collection(db, "assignments"),
+        where("teacherId", "==", appUser.uid),
+      );
+      const snap = await getCountFromServer(q);
+      setAssignmentCount(snap.data().count);
+    } catch (e) {
+      console.error("Error fetching teacher stats:", e);
+    }
+  };
 
   useEffect(() => {
-    if (appUser?.uid) {
-      const fetchStats = async () => {
-        try {
-          const q = query(
-            collection(db, "assignments"),
-            where("teacherId", "==", appUser.uid),
-          );
-          const snap = await getCountFromServer(q);
-          setAssignmentCount(snap.data().count);
-        } catch (e) {
-          console.error("Error fetching teacher stats:", e);
-        }
-      };
-      fetchStats();
-    }
+    fetchStats();
+  }, [appUser?.uid]);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchStats();
+    setRefreshing(false);
   }, [appUser?.uid]);
 
   const sections = [
     {
-      title: "CLASSROOM MANAGEMENT",
+      title: "CLASSROOM HUB 🏫",
+      color: brandPrimary,
       items: [
         {
           title: "Student List",
@@ -94,17 +106,17 @@ export default function TeacherDashboard() {
           icon: "key",
           color: "#ec4899",
         },
-          {
+        {
             title: "Daily Financials",
             subtitle: "Fee recording",
             route: "/admin-dashboard/DailyFinancials",
             icon: "calculator",
             color: "#10b981",
             hidden: !hasFinancialAccess,
-          },
+        },
         {
           title: "My Notes",
-          subtitle: "Personal scratchpad",
+          subtitle: "Scratchpad",
           route: "/teacher-dashboard/note",
           icon: "document-text",
           color: "#6366f1",
@@ -112,7 +124,8 @@ export default function TeacherDashboard() {
       ],
     },
     {
-      title: "ACADEMICS",
+      title: "TEACHING TOOLS 🍎",
+      color: "#A55EEA",
       items: [
         {
           title: "Term Records",
@@ -123,7 +136,7 @@ export default function TeacherDashboard() {
         },
         {
           title: "Class Remarks",
-          subtitle: "Conduct & Promo",
+          subtitle: "Conduct logs",
           route: "/teacher-dashboard/behavioral-records",
           icon: "chatbubble-ellipses",
           color: "#10b981",
@@ -137,35 +150,35 @@ export default function TeacherDashboard() {
         },
         {
           title: "Grading",
-          subtitle: "Mark submissions",
+          subtitle: "Mark work",
           route: "/teacher-dashboard/mark-assignment",
           icon: "create",
           color: "#ef4444",
         },
         {
-          title: "Groups",
-          subtitle: "Study teams",
+          title: "Study Groups",
+          subtitle: "Collaborations",
           route: "/teacher-dashboard/create-student-group",
           icon: "chatbubbles",
           color: "#06b6d4",
         },
         {
           title: "TLM Hub",
-          subtitle: "Teaching Materials",
+          subtitle: "Materials",
           route: "/teacher-dashboard/tlm-hub",
           icon: "library",
           color: "#f59e0b",
         },
         {
           title: "Pedagogy",
-          subtitle: "Curriculum & Tools",
+          subtitle: "Curriculum",
           route: "/teacher-dashboard/pedagogy-vault",
           icon: "briefcase",
           color: "#10b981",
         },
         {
           title: "AI Planner",
-          subtitle: "Lesson assistant",
+          subtitle: "Lesson aid",
           route: "/teacher-dashboard/ai-lesson-planner",
           icon: "sparkles",
           color: "#8b5cf6",
@@ -180,32 +193,33 @@ export default function TeacherDashboard() {
       ],
     },
     {
-      title: "SCHOOL LIFE",
+      title: "CAMPUS LIFE 🌳",
+      color: "#FFD93D",
       items: [
         {
-          title: "Academic Calendar",
-          subtitle: "Events & Holidays",
+          title: "Calendar",
+          subtitle: "Events & Terms",
           route: "/academic-calendar",
           icon: "calendar-outline",
           color: "#f97316",
         },
         {
           title: "Broadcasts",
-          subtitle: "Global news",
+          subtitle: "School news",
           route: "/teacher-dashboard/news-screen",
           icon: "megaphone",
           color: "#f43f5e",
         },
         {
           title: "Staff Chat",
-          subtitle: "Admin & Staff",
+          subtitle: "Internal",
           route: "/teacher-dashboard/staff-chat",
           icon: "chatbubbles",
           color: "#6366f1",
         },
         {
           title: "Parent Chat",
-          subtitle: "Direct messages",
+          subtitle: "Direct comms",
           route: "/teacher-dashboard/chat-with-parent",
           icon: "chatbubble-ellipses",
           color: "#3b82f6",
@@ -214,283 +228,449 @@ export default function TeacherDashboard() {
     },
   ];
 
-  if (loading) {
+  if (authLoading || !appUser) {
     return (
       <View style={[styles.center, { backgroundColor: surface }]}>
-        <ActivityIndicator size="large" color={primary} />
+        <ActivityIndicator size="large" color={brandPrimary} />
       </View>
     );
   }
 
-  // Fix: Ensure card background contrasts with the screen background
-  const isSurfaceLight =
-    surface.toLowerCase() === "#ffffff" ||
-    surface.toLowerCase() === "white" ||
-    surface.toLowerCase() === "#fafafa";
-  const cardBg = "#FFFFFF";
-  const cardBorder = isSurfaceLight ? "#F1F5F9" : "rgba(0,0,0,0.05)";
+  const isSmallScreen = windowWidth < 380;
 
-  const renderItem = (item: any, index: number) => (
-    <Animatable.View
-      animation="fadeInUp"
-      duration={600}
-      delay={index * 80}
-      key={item.title}
-      style={styles.cardWrapper}
-    >
-      <TouchableOpacity
-        style={[
-          styles.card,
-          { backgroundColor: cardBg, borderColor: cardBorder },
-        ]}
-        onPress={() => item.route && router.push(item.route as any)}
-        activeOpacity={0.7}
+  const getColumns = () => {
+    if (windowWidth >= 1200) return 5;
+    if (windowWidth >= 900) return 4;
+    if (windowWidth >= 600) return 3;
+    return 2;
+  };
+
+  const numColumns = getColumns();
+  const gap = 12;
+  const sidePadding = 20;
+  const totalGapSpace = (numColumns - 1) * gap;
+  const availableWidth = Math.min(1200, windowWidth) - sidePadding * 2;
+  const cardWidth = (availableWidth - totalGapSpace) / numColumns;
+
+  const renderItem = (item: any, index: number) => {
+    if (item.hidden) return null;
+
+    return (
+      <Animatable.View
+        animation="bounceIn"
+        duration={800}
+        delay={index * 50}
+        key={item.title}
+        style={[styles.cardWrapper, { width: cardWidth }]}
       >
-        <View style={[styles.iconBox, { backgroundColor: item.color + "15" }]}>
-          <SVGIcon name={item.icon} size={26} color={item.color} />
-        </View>
-        <View style={styles.cardTextContent}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardSubtitle} numberOfLines={1}>
-            {item.subtitle}
-          </Text>
-        </View>
-        <View style={styles.chevronBox}>
-          {item.route &&
-          String(item.route).includes("chat") &&
-          totalUnread > 0 ? (
-            <View style={{ marginRight: 8 }}>
-              <UnreadBadge count={totalUnread} />
+        <TouchableOpacity
+          style={[styles.menuCard, { borderBottomColor: item.color + "40" }]}
+          onPress={() => item.route && router.push(item.route as any)}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={["#FFFFFF", item.color + "05"]}
+            style={styles.cardGradient}
+          >
+            <View
+              style={[
+                styles.iconBox,
+                {
+                  backgroundColor: item.color + "20",
+                  width: isSmallScreen ? 50 : 60,
+                  height: isSmallScreen ? 50 : 60,
+                  borderRadius: isSmallScreen ? 18 : 22,
+                },
+              ]}
+            >
+              <SVGIcon
+                name={item.icon}
+                size={numColumns > 3 ? 36 : isSmallScreen ? 26 : 30}
+                color={item.color}
+              />
             </View>
-          ) : null}
-          {item.title === "Grading" && submissionUnread > 0 ? (
-            <View style={{ marginRight: 8 }}>
-              <UnreadBadge count={submissionUnread} />
+            <View style={styles.cardInfo}>
+              <Text
+                style={[
+                  styles.menuText,
+                  { fontSize: isSmallScreen ? 13 : 15 },
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {item.title}
+              </Text>
+              <Text
+                style={[
+                  styles.menuSubtitle,
+                  { color: item.color, fontSize: isSmallScreen ? 9 : 10 },
+                ]}
+                numberOfLines={1}
+              >
+                {item.subtitle}
+              </Text>
             </View>
-          ) : null}
-          <SVGIcon name="chevron-forward" size={14} color="#CBD5E1" />
-        </View>
-      </TouchableOpacity>
-    </Animatable.View>
-  );
+            {item.route &&
+            (String(item.route).includes("chat") || String(item.route).includes("group")) &&
+            totalUnread > 0 ? (
+              <View style={styles.badgePos}>
+                <UnreadBadge count={totalUnread} />
+              </View>
+            ) : null}
+            {item.title === "Grading" && submissionUnread > 0 ? (
+              <View style={styles.badgePos}>
+                <UnreadBadge count={submissionUnread} />
+              </View>
+            ) : null}
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animatable.View>
+    );
+  };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: surface }]}>
-      <StatusBar barStyle="dark-content" />
+    <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
+      <StatusBar barStyle="light-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
         style={{ flex: 1 }}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.welcome}>Good day,</Text>
-            <Text style={[styles.nameText, { color: "#0F172A" }]}>
-              {appUser?.profile?.firstName || "Instructor"} 👋
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 12 }}>
-            {appUser?.role === "admin" && (
-                <TouchableOpacity
-                    onPress={() => router.push("/admin-dashboard")}
-                    style={[styles.settingsBtn, { width: 'auto', paddingHorizontal: 12 }]}
-                >
-                    <View
-                        style={[
-                            styles.settingsIconBg,
-                            { backgroundColor: "#10b981" + "15", flexDirection: 'row', gap: 6, width: 'auto', paddingHorizontal: 8 },
-                        ]}
-                    >
-                        <SVGIcon name="shield-checkmark" size={20} color="#10b981" />
-                        <Text style={{ color: '#10b981', fontSize: 10, fontWeight: '900' }}>ADMIN</Text>
-                    </View>
-                </TouchableOpacity>
-            )}
-            <TouchableOpacity
-                onPress={() => router.push("/teacher-dashboard/note")}
-                style={styles.settingsBtn}
-            >
-                <View
-                    style={[
-                        styles.settingsIconBg,
-                        { backgroundColor: "#6366f1" + "15" },
-                    ]}
-                >
-                    <SVGIcon name="document-text" size={24} color="#6366f1" />
-                </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-                onPress={() => router.push("/teacher-dashboard/settings")}
-                style={styles.settingsBtn}
-            >
-                <View
-                    style={[
-                        styles.settingsIconBg,
-                        { backgroundColor: primary + "15" },
-                    ]}
-                >
-                    <SVGIcon name="settings-outline" size={24} color={primary} />
-                </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View
-          style={[
-            styles.statsOverview,
-            { backgroundColor: cardBg, borderColor: cardBorder },
-          ]}
+        <LinearGradient
+          colors={[brandPrimary, brandSecondary]}
+          style={styles.header}
         >
-          <View style={[styles.statItem, { borderLeftColor: primary }]}>
-            <Text style={styles.statLabel}>ASSIGNMENTS</Text>
-            <Text style={styles.statValue}>
-              {assignmentCount ?? "..."} Posted
-            </Text>
-          </View>
-          <View style={[styles.statItem, { borderLeftColor: "#10b981" }]}>
-            <Text style={styles.statLabel}>PORTAL STATUS</Text>
-            <Text style={styles.statValue}>Active</Text>
+          <View style={styles.blob1} />
+          <View style={styles.blob2} />
+
+          <SafeAreaView edges={["top"]}>
+            <View style={styles.headerRow}>
+              <View style={styles.teacherInfo}>
+                <TouchableOpacity
+                  onPress={() => router.push("/teacher-dashboard/settings")}
+                  style={[
+                    styles.profileBtn,
+                    {
+                      width: isSmallScreen ? 60 : 80,
+                      height: isSmallScreen ? 60 : 80,
+                      borderRadius: isSmallScreen ? 30 : 40,
+                    },
+                  ]}
+                >
+                  {appUser?.profile?.profileImage ? (
+                    <Image
+                      source={{ uri: appUser.profile.profileImage }}
+                      style={styles.profileImg}
+                    />
+                  ) : (
+                    <View style={styles.profilePlaceholder}>
+                      <Text
+                        style={[
+                          styles.profilePlaceholderText,
+                          { fontSize: isSmallScreen ? 24 : 32 },
+                        ]}
+                      >
+                        {appUser?.profile?.firstName?.[0] || "T"}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+                <View style={{ marginLeft: isSmallScreen ? 10 : 15, flex: 1 }}>
+                  <Text style={styles.welcomeText}>GOOD DAY, EDUCATOR! 🍎</Text>
+                  <Text
+                    style={[
+                      styles.teacherName,
+                      { fontSize: isSmallScreen ? 24 : 32 },
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {appUser?.profile?.firstName || "Instructor"}
+                  </Text>
+
+                  <View style={styles.statusBadge}>
+                    <SVGIcon name="checkmark-seal" size={12} color="#fff" />
+                    <Text style={styles.statusBadgeText}>
+                      ACTIVE PORTAL
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.headerActions}>
+                {appUser?.role === "admin" && (
+                  <TouchableOpacity
+                    onPress={() => router.push("/admin-dashboard")}
+                    style={[styles.actionBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 6 }]}
+                  >
+                    <SVGIcon name="shield-checkmark" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>ADMIN</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => router.push("/teacher-dashboard/settings")}
+                  style={styles.actionBtn}
+                >
+                  <SVGIcon name="settings-outline" size={22} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.statsGrid}>
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: "rgba(255,255,255,0.15)" },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statIconBox,
+                    { backgroundColor: "#FFD93D" },
+                  ]}
+                >
+                  <SVGIcon name="document-text" size={18} color="#4338ca" />
+                </View>
+                <View>
+                  <Text style={styles.statLabel}>POSTED TASKS</Text>
+                  <Text style={styles.statValue}>
+                    {assignmentCount ?? "0"}
+                  </Text>
+                </View>
+              </View>
+              <View
+                style={[
+                  styles.statCard,
+                  { backgroundColor: "rgba(255,255,255,0.15)" },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statIconBox,
+                    { backgroundColor: "#6BCB77" },
+                  ]}
+                >
+                  <SVGIcon name="people" size={18} color="#fff" />
+                </View>
+                <View>
+                  <Text style={styles.statLabel}>CLASSES</Text>
+                  <Text style={styles.statValue}>
+                    {appUser?.classes?.length || (appUser?.classTeacherOf ? 1 : 0)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </SafeAreaView>
+        </LinearGradient>
+
+        <View style={styles.contentContainer}>
+          <View style={styles.content}>
+            {sections.map((section, sIndex) => (
+              <View key={section.title} style={{ marginBottom: 40 }}>
+                <View style={styles.sectionHeader}>
+                    <View style={[styles.dot, { backgroundColor: section.color }]} />
+                  <Text style={[styles.sectionTitle, { color: section.color }]}>
+                    {section.title}
+                  </Text>
+                </View>
+                <View style={styles.grid}>
+                  {section.items.map((item, iIndex) =>
+                    renderItem(item, sIndex * 4 + iIndex),
+                  )}
+                </View>
+              </View>
+            ))}
           </View>
         </View>
-
-        {sections.map((section, sIdx) => (
-          <View key={section.title} style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
-              <View style={styles.sectionLine} />
-            </View>
-            <View style={styles.grid}>
-              {section.items
-                .filter((item: any) => !item.hidden)
-                .map((item, iIdx) => renderItem(item, sIdx * 4 + iIdx))}
-            </View>
-          </View>
-        ))}
-
-        <View style={styles.footerSpace} />
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  scrollContent: { padding: 20 },
+  scrollContent: { flexGrow: 1 },
   header: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    overflow: "hidden",
+    ...SHADOWS.medium,
+  },
+  blob1: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  blob2: {
+    position: 'absolute',
+    bottom: -40,
+    left: -30,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 25,
+    paddingTop: Platform.OS === "web" ? 20 : 0,
   },
-  welcome: { fontSize: 14, color: "#94A3B8", fontWeight: "600" },
-  nameText: { fontSize: 28, fontWeight: "900", marginTop: 2 },
-  settingsBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: "#fff",
-    justifyContent: "center",
+  teacherInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
+  welcomeText: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  teacherName: { fontSize: 32, fontWeight: "900", color: "#fff", marginTop: 2 },
+  statusBadge: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 8,
+    alignSelf: "flex-start",
     alignItems: "center",
-    ...SHADOWS.small,
+    gap: 6,
   },
-  settingsIconBg: {
-    width: 40,
-    height: 40,
+  statusBadgeText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
+  profileBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#fff",
+    overflow: "hidden",
+    borderWidth: 4,
+    borderColor: "rgba(255,255,255,0.5)",
+    ...SHADOWS.medium,
+  },
+  profileImg: { width: "100%", height: "100%" },
+  profilePlaceholder: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3F4F6",
+  },
+  profilePlaceholderText: { color: "#4338ca", fontWeight: "900", fontSize: 32 },
+  headerActions: { flexDirection: "row", gap: 10, alignItems: "center" },
+  actionBtn: {
+    height: 44,
+    minWidth: 44,
+    alignItems: "center",
+    justifyContent: 'center',
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 25,
+    paddingHorizontal: 5
+  },
+  statCard: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 15,
+    borderRadius: 20,
+  },
+  statIconBox: {
+    width: 36,
+    height: 36,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-  },
-  statsOverview: {
-    flexDirection: "row",
-    borderRadius: 20,
-    padding: 15,
-    marginBottom: 30,
     ...SHADOWS.small,
-    borderWidth: 1,
-  },
-  statItem: {
-    flex: 1,
-    paddingLeft: 15,
-    borderLeftWidth: 3,
   },
   statLabel: {
-    fontSize: 10,
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 9,
     fontWeight: "900",
-    color: "#94A3B8",
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
-  statValue: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1E293B",
-    marginTop: 2,
-  },
-  section: {
-    marginBottom: 25,
+  statValue: { color: "#fff", fontSize: 20, fontWeight: "900" },
+  contentContainer: { alignItems: "center", width: "100%" },
+  content: {
+    paddingHorizontal: 20,
+    marginTop: 25,
+    width: "100%",
+    maxWidth: 1100,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 20,
+    gap: 12,
+    paddingHorizontal: 10,
   },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#94A3B8",
-    letterSpacing: 1.2,
-    marginRight: 10,
-  },
-  sectionLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#E2E8F0",
-  },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  sectionTitle: { fontSize: 18, fontWeight: "900", letterSpacing: 0.5 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "flex-start",
-    gap: 15,
+    justifyContent: "center",
+    gap: 12,
   },
-  cardWrapper: {
-    width: CARD_WIDTH,
-    marginBottom: 0,
-  },
-  card: {
+  cardWrapper: { marginBottom: 10 },
+  menuCard: {
+    backgroundColor: "#fff",
     borderRadius: 24,
-    padding: 16,
-    minHeight: 135,
-    justifyContent: "space-between",
+    overflow: "hidden",
     ...SHADOWS.medium,
     borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderBottomWidth: 4,
+    minHeight: 130,
+    width: "100%",
+  },
+  cardGradient: {
+    flex: 1,
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    width: 65,
+    height: 65,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 15,
+    ...SHADOWS.small,
   },
-  cardTextContent: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: "800",
+  cardInfo: { alignItems: "center" },
+  menuText: {
+    fontSize: 16,
+    fontWeight: "900",
     color: "#1E293B",
-    lineHeight: 20,
+    textAlign: "center",
   },
-  cardSubtitle: {
+  menuSubtitle: {
     fontSize: 11,
-    color: "#64748B",
-    marginTop: 3,
-    fontWeight: "500",
+    marginTop: 4,
+    fontWeight: "800",
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden'
   },
-  chevronBox: {
-    alignSelf: "flex-end",
-    marginTop: 5,
-  },
-  footerSpace: { height: 40 },
+  badgePos: { position: "absolute", top: 15, right: 15 },
 });

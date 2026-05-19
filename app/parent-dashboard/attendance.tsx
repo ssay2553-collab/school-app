@@ -17,6 +17,7 @@ import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 const getTodayKey = () => new Date().toISOString().split("T")[0];
 
@@ -32,20 +33,18 @@ export default function AttendanceScreen() {
   const { appUser } = useAuth();
   const router = useRouter();
   const { showToast } = useToast();
+  const acadConfig = useAcademicConfig();
   const [studentAttendances, setStudentAttendances] = useState<StudentAttendance[]>([]);
   const [loading, setLoading] = useState(true);
 
   const todayKey = useMemo(() => getTodayKey(), []);
   
-  const currentYear = useMemo(() => {
-    const now = new Date();
-    return now.getMonth() >= 7 ? `${now.getFullYear()}/${now.getFullYear() + 1}` : `${now.getFullYear() - 1}/${now.getFullYear()}`;
-  }, []);
-  const currentTerm = "Term 1"; 
+  const currentYear = acadConfig.academicYear;
+  const currentTerm = acadConfig.currentTerm;
 
   useEffect(() => {
-    if (!appUser || appUser.role !== "parent") {
-      setLoading(false);
+    if (!appUser || appUser.role !== "parent" || acadConfig.loading) {
+      if (!acadConfig.loading) setLoading(false);
       return;
     }
 
@@ -96,7 +95,7 @@ export default function AttendanceScreen() {
             name: `${profile.firstName || ""} ${profile.lastName || ""}`.trim(),
             status,
             date: todayKey,
-            classId
+            classId,
           };
         });
 
@@ -149,7 +148,7 @@ export default function AttendanceScreen() {
                     classId: item.classId, 
                     studentName: item.name,
                     initialYear: currentYear,
-                    initialTerm: currentTerm
+                    initialTerm: currentTerm,
                 }
             })}
           >

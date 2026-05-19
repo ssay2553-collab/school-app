@@ -56,6 +56,7 @@ export default function StudentFeeHistoryScreen() {
   const acadConfig = useAcademicConfig();
 
   const isSuperAdmin = [
+    "admin",
     "proprietor",
     "proprietress",
     "manager",
@@ -63,7 +64,13 @@ export default function StudentFeeHistoryScreen() {
     "headmistress",
     "administrator",
     "director",
-  ].includes(appUser?.adminRole?.toLowerCase() || "");
+    "accountant",
+    "bursar",
+  ].includes(appUser?.adminRole?.toLowerCase().trim() || "");
+
+  const canManageFees = isSuperAdmin ||
+    appUser?.permissions?.["manage-fees"] === "full" ||
+    appUser?.permissions?.["manage-fees"] === "edit";
 
   const schoolId = (
     Constants.expoConfig?.extra?.schoolId || "school"
@@ -200,62 +207,73 @@ export default function StudentFeeHistoryScreen() {
   }, [record, searchQuery]);
 
   const handleDeletePayment = (payment: any) => {
-    if (!isSuperAdmin) {
+    if (!canManageFees) {
       showToast({
-        message: "Only Super Admins can revert transactions.",
+        message: "You do not have permission to revert transactions.",
         type: "error",
       });
       return;
     }
 
-    Alert.alert(
-      "Revert Payment",
-      "Are you sure you want to delete this transaction? The student's balance will be adjusted automatically.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              const cleanYear = selectedYear.replace(/\//g, "-");
-              const cleanTerm = selectedTerm.replace(/\s/g, "");
-              const recordId = `${selectedStudentUid}_${cleanYear}_${cleanTerm}`;
+    const performDelete = async () => {
+      setDeleting(true);
+      try {
+        const cleanYear = selectedYear.replace(/\//g, "-");
+        const cleanTerm = selectedTerm.replace(/\s/g, "");
+        const recordId = `${selectedStudentUid}_${cleanYear}_${cleanTerm}`;
 
-              const batch = writeBatch(db);
-              batch.update(doc(db, "studentFeeRecords", recordId), {
-                amountPaid: increment(-payment.amount),
-                balance: increment(payment.amount),
-                payments: arrayRemove(payment),
-              });
-              batch.update(doc(db, "users", selectedStudentUid), {
-                walletBalance: increment(payment.amount),
-              });
+        const batch = writeBatch(db);
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          amountPaid: increment(-payment.amount),
+          balance: increment(payment.amount),
+          payments: arrayRemove(payment),
+        });
+        batch.update(doc(db, "users", selectedStudentUid), {
+          walletBalance: increment(payment.amount),
+        });
 
-              // Also delete from feePayments collection if serial exists
-              if (payment.receiptNo) {
-                batch.delete(doc(db, "feePayments", payment.receiptNo));
-              }
+        // Also delete from feePayments collection if serial exists
+        if (payment.receiptNo) {
+          batch.delete(doc(db, "feePayments", payment.receiptNo));
+        }
 
-              await batch.commit();
-              showToast({
-                message: "Transaction deleted and balance reverted.",
-                type: "success",
-              });
-            } catch (error) {
-              console.error(error);
-              showToast({
-                message: "Failed to delete transaction.",
-                type: "error",
-              });
-            } finally {
-              setDeleting(false);
-            }
+        await batch.commit();
+        showToast({
+          message: "Transaction deleted and balance reverted.",
+          type: "success",
+        });
+      } catch (error) {
+        console.error(error);
+        showToast({
+          message: "Failed to delete transaction.",
+          type: "error",
+        });
+      } finally {
+        setDeleting(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "Are you sure you want to delete this transaction? The student's balance will be adjusted automatically.",
+      );
+      if (confirmed) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        "Revert Payment",
+        "Are you sure you want to delete this transaction? The student's balance will be adjusted automatically.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: performDelete,
           },
-        },
-      ],
-    );
+        ],
+      );
+    }
   };
 
   const generatePDF = async () => {
@@ -526,6 +544,15 @@ export default function StudentFeeHistoryScreen() {
               duration={600}
               style={styles.receiptPaper}
             >
+              {/* Background Watermark moved to top of stack */}
+              <View style={styles.watermark} pointerEvents="none">
+                <SVGIcon
+                  name="checkmark-done-circle"
+                  size={120}
+                  color="rgba(0,0,0,0.02)"
+                />
+              </View>
+
               {/* Receipt Header */}
               <View style={styles.paperHeader}>
                 <Image
@@ -618,6 +645,7 @@ export default function StudentFeeHistoryScreen() {
                     <TouchableOpacity
                       onPress={() => handleDeletePayment(p)}
                       style={styles.deleteBtn}
+                      activeOpacity={0.6}
                     >
                       <SVGIcon name="trash" size={16} color="#EF4444" />
                     </TouchableOpacity>
@@ -653,6 +681,7 @@ export default function StudentFeeHistoryScreen() {
                 </View>
               </View>
 
+              {/* Paper Footer content */}
               <View style={styles.paperFooter}>
                 <Text style={styles.footerText}>
                   Computer generated. Reverting transactions updates balances
@@ -661,14 +690,6 @@ export default function StudentFeeHistoryScreen() {
                 <Text style={styles.copyrightText}>
                   © {moment().year()} {SCHOOL_CONFIG.fullName}
                 </Text>
-              </View>
-
-              <View style={styles.watermark}>
-                <SVGIcon
-                  name="checkmark-done-circle"
-                  size={120}
-                  color="rgba(0,0,0,0.02)"
-                />
               </View>
             </Animatable.View>
           ) : (
@@ -809,7 +830,13 @@ const styles = StyleSheet.create({
   tdRef: { fontSize: 9, color: "#94A3B8", marginTop: 2 },
   tdPayee: { fontSize: 11, fontWeight: "700", color: "#1E293B" },
   tdAdmin: { fontSize: 9, color: "#64748B", marginTop: 2, fontStyle: "italic" },
-  deleteBtn: { width: 40, alignItems: "center", justifyContent: "center" },
+  deleteBtn: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 100,
+  },
   totalsSection: { borderTopWidth: 1, borderTopColor: "#000", paddingTop: 15 },
   totalsRow: {
     flexDirection: "row",
@@ -855,7 +882,13 @@ const styles = StyleSheet.create({
     color: "#CBD5E1",
     marginTop: 4,
   },
-  watermark: { position: "absolute", bottom: 40, right: 20, opacity: 0.5 },
+  watermark: {
+    position: "absolute",
+    bottom: 40,
+    right: 20,
+    opacity: 0.5,
+    zIndex: -1,
+  },
   emptyState: { alignItems: "center", marginTop: 60 },
   emptyTitle: {
     fontSize: 18,

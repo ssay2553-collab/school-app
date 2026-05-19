@@ -18,6 +18,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 
 interface AttendanceDoc {
   students: {
@@ -31,6 +33,7 @@ export default function StudentAttendanceScreen() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
+  const acadConfig = useAcademicConfig();
 
   const [presentCount, setPresentCount] = useState(0);
   const [absentCount, setAbsentCount] = useState(0);
@@ -57,13 +60,20 @@ export default function StudentAttendanceScreen() {
   const terms = ["Term 1", "Term 2", "Term 3"];
 
   useEffect(() => {
-    const now = new Date();
-    const yearStr =
-      now.getMonth() >= 7
-        ? `${now.getFullYear()}/${now.getFullYear() + 1}`
-        : `${now.getFullYear() - 1}/${now.getFullYear()}`;
-    setSelectedYear(yearStr);
-  }, []);
+    if (acadConfig.academicYear) {
+      setSelectedYear(acadConfig.academicYear);
+    } else {
+      const now = new Date();
+      const yearStr =
+        now.getMonth() >= 7
+          ? `${now.getFullYear()}/${now.getFullYear() + 1}`
+          : `${now.getFullYear() - 1}/${now.getFullYear()}`;
+      setSelectedYear(yearStr);
+    }
+    if (acadConfig.currentTerm) {
+      setSelectedTerm(acadConfig.currentTerm as any);
+    }
+  }, [acadConfig.academicYear, acadConfig.currentTerm]);
 
   const fetchAttendanceSummary = useCallback(
     async (isRefresh = false) => {

@@ -7,7 +7,6 @@ import {
     Dimensions,
     Image,
     Platform,
-    SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -15,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import UnreadBadge from "../../components/UnreadBadge";
@@ -89,26 +89,8 @@ export default function ParentDashboard() {
 
   const sections = [
     {
-      title: "EXPLORE CAMPUS",
-      items: [
-        {
-          title: "School Gallery",
-          subtitle: "Visual campus tour",
-          icon: "images",
-          color: "#6366f1",
-          path: "/parent-dashboard/gallery",
-        },
-        {
-          title: "Common FAQ",
-          subtitle: "Helpful info",
-          icon: "help-circle",
-          color: "#f59e0b",
-          path: "/parent-dashboard/FAQ",
-        },
-      ],
-    },
-    {
-      title: "STUDENT MONITORING",
+      title: "STUDENT MONITORING 📊",
+      color: "#4ECDC4",
       items: [
         {
           title: "Academic Reports",
@@ -134,7 +116,8 @@ export default function ParentDashboard() {
       ],
     },
     {
-      title: "FINANCE & NEWS",
+      title: "FINANCE & NEWS 💰",
+      color: "#FFD93D",
       items: [
         {
           title: "Academic Calendar",
@@ -152,10 +135,10 @@ export default function ParentDashboard() {
         },
         {
           title: "Payment Receipts",
-          subtitle: "Billed items & receipts",
+          subtitle: "Billed items",
           icon: "document-attach-outline",
           color: "#10b981",
-          path: "/parent-dashboard/student-fee-history", // Assuming they use the same history view but can filter or see the items there
+          path: "/parent-dashboard/student-fee-history",
         },
         {
           title: "School News",
@@ -167,21 +150,42 @@ export default function ParentDashboard() {
       ],
     },
     {
-      title: "COMMUNICATION",
+      title: "COMMUNICATION 🚀",
+      color: "#FF9F43",
       items: [
         {
           title: "Teachers",
-          subtitle: "Chat with instructors",
+          subtitle: "Chat with staff",
           icon: "chatbubbles",
           color: "#3b82f6",
           path: "/parent-dashboard/chat-with-teacher",
         },
         {
           title: "Admin Support",
-          subtitle: "Office inquiries",
+          subtitle: "Office enquiries",
           icon: "shield-checkmark",
           color: "#ec4899",
           path: "/parent-dashboard/chat-with-admin",
+        },
+      ],
+    },
+    {
+      title: "EXPLORE CAMPUS 🏫",
+      color: brandPrimary,
+      items: [
+        {
+          title: "School Gallery",
+          subtitle: "Campus tour",
+          icon: "images",
+          color: "#6366f1",
+          path: "/parent-dashboard/gallery",
+        },
+        {
+          title: "Common FAQ",
+          subtitle: "Helpful info",
+          icon: "help-circle",
+          color: "#f59e0b",
+          path: "/parent-dashboard/FAQ",
         },
       ],
     },
@@ -194,42 +198,88 @@ export default function ParentDashboard() {
       </View>
     );
 
+  const getColumns = () => {
+    if (width >= 1200) return 5;
+    if (width >= 900) return 4;
+    if (width >= 600) return 3;
+    return 2;
+  };
+
+  const numColumns = getColumns();
+  const gap = 12;
+  const sidePadding = 20;
+  const totalGapSpace = (numColumns - 1) * gap;
+  const availableWidth = Math.min(1200, width) - sidePadding * 2;
+  const cardWidth = (availableWidth - totalGapSpace) / numColumns;
+  const isSmallScreen = width < 380;
+
   const renderCard = (item: any, index: number) => (
     <Animatable.View
-      animation="fadeInUp"
-      duration={600}
-      delay={index * 100}
+      animation="bounceIn"
+      duration={800}
+      delay={index * 50}
       key={item.title}
-      style={styles.cardWrapper}
+      style={{ width: cardWidth, marginBottom: 10 }}
     >
       <TouchableOpacity
-        style={styles.card}
+        style={[styles.menuCard, { borderBottomColor: item.color + "40" }]}
         onPress={() => router.push(item.path as any)}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
-        <View style={[styles.iconBox, { backgroundColor: item.color + "15" }]}>
-          <SVGIcon name={item.icon} size={26} color={item.color} />
-        </View>
-        <View style={styles.cardTextContent}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardSubtitle} numberOfLines={1}>
-            {item.subtitle}
-          </Text>
-        </View>
-        <View style={styles.chevronBox}>
+        <LinearGradient
+          colors={["#FFFFFF", item.color + "05"]}
+          style={styles.cardGradient}
+        >
+          <View
+            style={[
+              styles.iconBox,
+              {
+                backgroundColor: item.color + "20",
+                width: isSmallScreen ? 50 : 60,
+                height: isSmallScreen ? 50 : 60,
+                borderRadius: isSmallScreen ? 18 : 22,
+              },
+            ]}
+          >
+            <SVGIcon
+              name={item.icon}
+              size={numColumns > 3 ? 36 : isSmallScreen ? 26 : 30}
+              color={item.color}
+            />
+          </View>
+          <View style={styles.cardInfo}>
+            <Text
+              style={[
+                styles.menuText,
+                { fontSize: isSmallScreen ? 13 : 15 },
+              ]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {item.title}
+            </Text>
+            <Text
+              style={[
+                styles.menuSubtitle,
+                { color: item.color, fontSize: isSmallScreen ? 9 : 10 },
+              ]}
+              numberOfLines={1}
+            >
+              {item.subtitle}
+            </Text>
+          </View>
           {item.path && item.path.includes("chat") && totalUnread > 0 ? (
-            <View style={{ marginRight: 8 }}>
+            <View style={styles.badgePos}>
               <UnreadBadge count={totalUnread} />
             </View>
           ) : null}
-          <SVGIcon name="chevron-forward" size={16} color="#CBD5E1" />
-        </View>
+        </LinearGradient>
       </TouchableOpacity>
     </Animatable.View>
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: surfaceColor }]}>
+    <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
       <StatusBar barStyle="light-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -237,156 +287,174 @@ export default function ParentDashboard() {
       >
         <LinearGradient
           colors={[brandPrimary, brandSecondary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
           style={styles.header}
         >
-          <View style={styles.topBar}>
-            <View style={styles.schoolBadge}>
-              <Image
-                source={schoolLogo}
-                style={styles.schoolLogoMini}
-                resizeMode="contain"
-              />
-              <Text style={styles.schoolNameMini}>{schoolName}</Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => router.push("/parent-dashboard/settings")}
-              style={styles.settingsBtn}
-            >
-              <SVGIcon name="settings" size={22} color="#fff" />
-            </TouchableOpacity>
-          </View>
+          <View style={styles.blob1} />
+          <View style={styles.blob2} />
 
-          <View style={styles.heroSection}>
-            <View>
-              <Text style={styles.welcomeText}>Welcome back,</Text>
-              <Text style={styles.nameText}>{fullName || "Parent"}</Text>
-            </View>
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: "rgba(255,255,255,0.2)" },
-              ]}
-            >
-              <View style={[styles.dot, { backgroundColor: "#fff" }]} />
-              <Text style={[styles.statusText, { color: "#fff" }]}>
-                Parent Portal
-              </Text>
-            </View>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.mainContent}>
-          <View style={styles.infoCard}>
-            <View style={styles.infoRow}>
-              <View
-                style={[
-                  styles.infoIcon,
-                  { backgroundColor: brandPrimary + "15" },
-                ]}
-              >
-                <SVGIcon
-                  name="location-outline"
-                  size={18}
-                  color={brandPrimary}
+          <SafeAreaView edges={["top"]}>
+            <View style={styles.topBar}>
+              <View style={styles.schoolBadge}>
+                <Image
+                  source={schoolLogo}
+                  style={styles.schoolLogoMini}
+                  resizeMode="contain"
                 />
+                <Text style={styles.schoolNameMini}>{schoolName}</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.infoLabel}>LOCATION</Text>
-                <Text style={styles.infoValue}>{config.address}</Text>
-              </View>
-            </View>
-            <View style={[styles.infoRow, { marginTop: 15 }]}>
-              <View
-                style={[
-                  styles.infoIcon,
-                  { backgroundColor: brandPrimary + "15" },
-                ]}
+              <TouchableOpacity
+                onPress={() => router.push("/parent-dashboard/settings")}
+                style={styles.settingsBtn}
               >
-                <SVGIcon name="mail-outline" size={18} color={brandPrimary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.infoLabel}>EMAIL US</Text>
-                <Text style={styles.infoValue}>
-                  {config.email || "info@school.edu"}
+                <SVGIcon name="settings-outline" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.heroSection}>
+              <View>
+                <Text style={styles.welcomeText}>WELCOME BACK,</Text>
+                <Text
+                  style={[styles.nameText, { fontSize: isSmallScreen ? 24 : 32 }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                >
+                  {fullName?.split(" ")[0] || "Parent"}
                 </Text>
               </View>
+              <View style={styles.statusBadge}>
+                <SVGIcon name="checkmark-seal" size={12} color="#fff" />
+                <Text style={styles.statusText}>PARENT PORTAL</Text>
+              </View>
             </View>
-          </View>
+          </SafeAreaView>
+        </LinearGradient>
 
-          <View style={styles.callCardContainer}>
-            {phoneNumbers.map((phone: string, index: number) => (
-              <Animatable.View
-                key={phone}
-                animation="fadeIn"
-                duration={800}
-                delay={200 + index * 100}
-                style={styles.callCard}
-              >
+        <View style={styles.contentContainer}>
+          <View style={styles.mainContent}>
+            <Animatable.View animation="fadeInUp" duration={1000} style={styles.infoCard}>
+              <View style={styles.infoRow}>
                 <View
-                  style={[styles.callIconBox, { backgroundColor: "#ef444415" }]}
+                  style={[
+                    styles.infoIcon,
+                    { backgroundColor: brandPrimary + "15" },
+                  ]}
                 >
-                  <SVGIcon name="megaphone" size={24} color="#ef4444" />
+                  <SVGIcon
+                    name="location-outline"
+                    size={18}
+                    color={brandPrimary}
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.callTitle}>School Hotline</Text>
-                  <Text style={styles.callPhone}>{phone}</Text>
+                  <Text style={styles.infoLabel}>LOCATION</Text>
+                  <Text style={styles.infoValue}>{config.address}</Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.callActionBtn}
-                  onPress={() => handleCall(phone)}
+              </View>
+              <View style={[styles.infoRow, { marginTop: 15 }]}>
+                <View
+                  style={[
+                    styles.infoIcon,
+                    { backgroundColor: brandPrimary + "15" },
+                  ]}
                 >
-                  <Text style={styles.callActionText}>Call</Text>
-                </TouchableOpacity>
-              </Animatable.View>
+                  <SVGIcon name="mail-outline" size={18} color={brandPrimary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>EMAIL US</Text>
+                  <Text style={styles.infoValue}>
+                    {config.email || "info@school.edu"}
+                  </Text>
+                </View>
+              </View>
+            </Animatable.View>
+
+            <View style={styles.callCardContainer}>
+              {phoneNumbers.map((phone: string, index: number) => (
+                <Animatable.View
+                  key={phone}
+                  animation="fadeInLeft"
+                  duration={800}
+                  delay={200 + index * 100}
+                  style={styles.callCard}
+                >
+                  <View
+                    style={[styles.callIconBox, { backgroundColor: "#ef444415" }]}
+                  >
+                    <SVGIcon name="megaphone" size={24} color="#ef4444" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.callTitle}>School Hotline</Text>
+                    <Text style={styles.callPhone}>{phone}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.callActionBtn}
+                    onPress={() => handleCall(phone)}
+                  >
+                    <Text style={styles.callActionText}>Call</Text>
+                  </TouchableOpacity>
+                </Animatable.View>
+              ))}
+            </View>
+
+            {sections.map((section, sIndex) => (
+              <View key={section.title} style={{ marginBottom: 40 }}>
+                <View style={styles.sectionHeader}>
+                  <View style={[styles.dot, { backgroundColor: section.color }]} />
+                  <Text style={[styles.sectionTitle, { color: section.color }]}>
+                    {section.title}
+                  </Text>
+                </View>
+                <View style={styles.grid}>
+                  {section.items.map((item, index) =>
+                    renderCard(item, index + sIndex * 3),
+                  )}
+                </View>
+              </View>
             ))}
           </View>
-
-          {sections.map((section, sIndex) => (
-            <View key={section.title} style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{section.title}</Text>
-                <View style={styles.sectionLine} />
-              </View>
-              <View style={styles.grid}>
-                {section.items.map((item, index) =>
-                  renderCard(item, index + sIndex * 3),
-                )}
-              </View>
-            </View>
-          ))}
-
-          <View style={styles.footerInfo}>
-            <SVGIcon name="information-circle" size={16} color="#94A3B8" />
-            <Text style={styles.footerText}>
-              Select a module to view student details
-            </Text>
-          </View>
         </View>
-        <View style={{ height: 40 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  scrollContent: { paddingBottom: 20 },
+  scrollContent: { flexGrow: 1 },
   header: {
-    paddingTop: Platform.OS === "ios" ? 10 : 20,
-    paddingHorizontal: 25,
+    paddingHorizontal: 20,
     paddingBottom: 40,
-    borderBottomLeftRadius: 35,
-    borderBottomRightRadius: 35,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    overflow: "hidden",
     ...SHADOWS.medium,
+  },
+  blob1: {
+    position: 'absolute',
+    top: -20,
+    right: -20,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  blob2: {
+    position: 'absolute',
+    bottom: -40,
+    left: -30,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   topBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 25,
+    paddingTop: Platform.OS === "web" ? 20 : 0,
   },
   schoolBadge: {
     flexDirection: "row",
@@ -406,47 +474,52 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   settingsBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    width: 44,
+    height: 44,
+    borderRadius: 15,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.3)",
   },
   heroSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
+    alignItems: "center",
   },
   welcomeText: {
-    fontSize: 14,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "600",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.9)",
+    fontWeight: "900",
+    letterSpacing: 1,
   },
-  nameText: { fontSize: 28, fontWeight: "900", color: "#fff", marginTop: 2 },
+  nameText: { fontSize: 32, fontWeight: "900", color: "#fff", marginTop: 2 },
   statusBadge: {
     flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    gap: 6,
   },
-  dot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
-  statusText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
+  statusText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
+  contentContainer: { alignItems: "center", width: "100%" },
   mainContent: {
     paddingHorizontal: 20,
-    marginTop: 30,
+    marginTop: 25,
+    width: "100%",
+    maxWidth: 1100,
   },
   infoCard: {
     backgroundColor: "#fff",
     padding: 20,
     borderRadius: 24,
     marginBottom: 25,
-    ...SHADOWS.small,
+    ...SHADOWS.medium,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: "#E2E8F0",
   },
   infoRow: { flexDirection: "row", alignItems: "center", gap: 15 },
   infoIcon: {
@@ -468,16 +541,16 @@ const styles = StyleSheet.create({
     color: "#1E293B",
     marginTop: 1,
   },
-  callCardContainer: { marginBottom: 25, gap: 10 },
+  callCardContainer: { marginBottom: 30, gap: 12 },
   callCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     padding: 16,
     borderRadius: 24,
-    ...SHADOWS.small,
+    ...SHADOWS.medium,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: "#E2E8F0",
   },
   callIconBox: {
     width: 48,
@@ -501,72 +574,62 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   callActionText: { color: "#fff", fontWeight: "700", fontSize: 12 },
-  section: { marginBottom: 30 },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 20,
+    gap: 12,
+    paddingHorizontal: 10,
   },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#94A3B8",
-    letterSpacing: 1.2,
-    marginRight: 10,
-  },
-  sectionLine: { flex: 1, height: 1, backgroundColor: "#E2E8F0" },
+  dot: { width: 12, height: 12, borderRadius: 6 },
+  sectionTitle: { fontSize: 18, fontWeight: "900", letterSpacing: 0.5 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between",
+    justifyContent: "center",
+    gap: 12,
   },
-  cardWrapper: {
-    width: (width - 55) / 2,
-    marginBottom: 15,
-  },
-  card: {
-    backgroundColor: "#FFFFFF",
+  menuCard: {
+    backgroundColor: "#fff",
     borderRadius: 24,
-    padding: 16,
+    overflow: "hidden",
     ...SHADOWS.medium,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
-    minHeight: 140,
-    justifyContent: "space-between",
+    borderColor: "#E2E8F0",
+    borderBottomWidth: 4,
+    minHeight: 130,
+    width: "100%",
+  },
+  cardGradient: {
+    flex: 1,
+    padding: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: 15,
+    ...SHADOWS.small,
   },
-  cardTextContent: { flex: 1 },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: "800",
+  cardInfo: { alignItems: "center" },
+  menuText: {
+    fontSize: 16,
+    fontWeight: "900",
     color: "#1E293B",
-    lineHeight: 20,
+    textAlign: "center",
   },
-  cardSubtitle: {
+  menuSubtitle: {
     fontSize: 11,
-    color: "#64748B",
     marginTop: 4,
-    fontWeight: "500",
+    fontWeight: "800",
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+    overflow: 'hidden'
   },
-  chevronBox: { alignSelf: "flex-end", marginTop: 5 },
-  footerInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 10,
-    opacity: 0.7,
-  },
-  footerText: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginLeft: 6,
-    fontWeight: "500",
-  },
+  badgePos: { position: "absolute", top: 15, right: 15 },
 });
+

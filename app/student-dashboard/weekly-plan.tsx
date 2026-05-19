@@ -42,14 +42,13 @@ export default function WeeklyPlanScreen() {
   const [topics, setTopics] = useState<WeeklyTopic[]>([]);
 
   const fetchWeeklyPlan = async () => {
-    if (!appUser?.classId || !appUser?.schoolId) return;
+    if (!appUser?.classId) return;
 
     try {
       setLoading(true);
       // Lesson plans are saved in 'pedagogy_vault'
       const q = query(
         collection(db, "pedagogy_vault"),
-        where("schoolId", "==", appUser.schoolId),
         where("classLevel", "==", appUser.classId), // Teacher uses 'classLevel' field
         orderBy("createdAt", "desc"),
         limit(30) // Fetch slightly more to account for multiple subjects

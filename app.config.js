@@ -374,9 +374,9 @@ module.exports = ({ config }) => {
       address: "Papase No1, Off Kwao-Bondzie",
       email: "abijahadeusua@gmail.com",
       primaryColor: "#0d09f5ff",
-      secondaryColor: "#f7bf06ff",
+      secondaryColor: "#D4AF37",
       surfaceColor: "#74c5faff",
-      brandPrimary: "#f7bf06ff",
+      brandPrimary: "#D4AF37",
       brandSecondary: "#0d09f5ff",
       easProjectId: "37b03789-81fe-4e95-9d7f-86d0387f8462",
       firebase: {

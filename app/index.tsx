@@ -27,10 +27,10 @@ export default function WelcomeScreen() {
   const { appUser, loading } = useAuth();
   const config = useSchoolConfig();
   const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const isSmallScreen = windowWidth < 380;
-  const isTablet = windowWidth >= 768;
+  const isWeb = Platform.OS === "web";
 
   const {
     schoolId,
@@ -41,12 +41,11 @@ export default function WelcomeScreen() {
     motto,
   } = config;
 
-  const finalPrimary = primaryColor || COLORS.primary || "#2e86de";
-  const finalSecondary = secondaryColor || finalPrimary;
+  const finalPrimary = primaryColor || COLORS.primary || "#6366F1";
+  const finalSecondary = secondaryColor || "#4338ca";
   const finalSurface = surfaceColor || "#FFFFFF";
 
   const logo = getSchoolLogo(schoolId);
-  const isWeb = Platform.OS === "web";
 
   const handleGetStarted = () => {
     if (appUser) {
@@ -83,183 +82,134 @@ export default function WelcomeScreen() {
     <View style={[styles.container, { backgroundColor: finalSurface }]}>
       <StatusBar style="light" />
 
-      {/* Dynamic Brand Background */}
-      <LinearGradient
-        colors={[finalPrimary, finalSecondary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+      {/* Elegant Mesh Background */}
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: finalPrimary }]}>
+        <LinearGradient
+            colors={[finalPrimary, finalSecondary]}
+            style={StyleSheet.absoluteFill}
+        />
 
-      {/* Decorative Elements */}
-      <View
-        style={[
-          styles.circleDecorator,
-          { top: -100, right: -100, backgroundColor: "rgba(255,255,255,0.1)" },
-        ]}
-      />
-      <View
-        style={[
-          styles.circleDecorator,
-          { bottom: -150, left: -150, backgroundColor: "rgba(0,0,0,0.05)" },
-        ]}
-      />
+        {/* Animated Background Blobs */}
+        <Animatable.View
+            animation="pulse"
+            iterationCount="infinite"
+            duration={8000}
+            style={[styles.blob, {
+                top: -windowHeight * 0.1,
+                right: -windowWidth * 0.2,
+                width: windowWidth * 0.8,
+                height: windowWidth * 0.8,
+                backgroundColor: 'rgba(255,255,255,0.1)'
+            }]}
+        />
+        <Animatable.View
+            animation="pulse"
+            iterationCount="infinite"
+            duration={10000}
+            delay={1000}
+            style={[styles.blob, {
+                bottom: -windowHeight * 0.15,
+                left: -windowWidth * 0.3,
+                width: windowWidth * 1.2,
+                height: windowWidth * 1.2,
+                backgroundColor: 'rgba(255,255,255,0.05)'
+            }]}
+        />
+        <View style={[styles.blob, {
+            top: windowHeight * 0.3,
+            left: -windowWidth * 0.1,
+            width: 100,
+            height: 100,
+            backgroundColor: 'rgba(255,255,255,0.08)'
+        }]} />
+      </View>
 
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: insets.top,
-            paddingBottom: insets.bottom + 20,
+            paddingTop: insets.top + 40,
+            paddingBottom: insets.bottom + 40,
           },
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.headerSpacer} />
-
         <View style={styles.mainContent}>
+          {/* Logo Section with Glow */}
           <Animatable.View
-            animation={isWeb ? undefined : "zoomIn"}
-            duration={1200}
-            style={[
-              styles.logoContainer,
-              { marginBottom: isSmallScreen ? 20 : 40 },
-            ]}
+            animation="zoomIn"
+            duration={1500}
+            style={styles.logoWrapper}
           >
-            <View
-              style={[
-                styles.glassLogo,
-                {
-                  width: isSmallScreen ? 140 : 170,
-                  height: isSmallScreen ? 140 : 170,
-                },
-              ]}
-            >
-              <View style={[styles.innerLogo, { backgroundColor: "#FFFFFF" }]}>
+            <View style={styles.logoGlow} />
+            <View style={styles.logoCircle}>
                 <Image
                   source={logo}
                   style={styles.logo as any}
                   resizeMode="contain"
                 />
-              </View>
             </View>
           </Animatable.View>
 
-          <View
-            style={[
-              styles.textSection,
-              { marginBottom: isSmallScreen ? 30 : 50 },
-            ]}
-          >
-            <Animatable.View
-              animation={isWeb ? undefined : "fadeInDown"}
-              delay={200}
-              style={styles.badge}
-            >
-              <Text style={styles.badgeText}>OFFICIAL PORTAL</Text>
+          {/* Text Section */}
+          <View style={styles.contentCard}>
+            <Animatable.View animation="fadeInDown" delay={500} style={styles.portalBadge}>
+                <Text style={styles.portalBadgeText}>PREMIUM CAMPUS ACCESS</Text>
             </Animatable.View>
 
             <Animatable.Text
-              animation={isWeb ? undefined : "fadeInUp"}
-              delay={400}
-              style={[
-                styles.schoolName,
-                { fontSize: isSmallScreen ? 22 : 28 },
-              ]}
-              numberOfLines={2}
-              adjustsFontSizeToFit
+              animation="fadeInUp"
+              delay={700}
+              style={[styles.title, { fontSize: isSmallScreen ? 24 : 32 }]}
             >
               {fullName}
             </Animatable.Text>
 
-            <Animatable.View
-              animation={isWeb ? undefined : "fadeInUp"}
-              delay={600}
-              style={styles.platformBadge}
-            >
-              <Text
-                style={[
-                  styles.platformText,
-                  { fontSize: isSmallScreen ? 11 : 13 },
-                ]}
-              >
-                Multi-function Academic Management Platform
-              </Text>
+            <Animatable.View animation="fadeInUp" delay={900} style={styles.mottoBox}>
+                <View style={styles.line} />
+                <Text style={styles.mottoText}>{motto || "Nurturing Excellence"}</Text>
+                <View style={styles.line} />
             </Animatable.View>
 
-            <Animatable.View
-              animation={isWeb ? undefined : "fadeInUp"}
-              delay={800}
-              style={styles.mottoContainer}
-            >
-              <View style={styles.mottoLine} />
-              <Text style={styles.mottoText}>{motto?.toUpperCase()}</Text>
-              <View style={styles.mottoLine} />
-            </Animatable.View>
+            <Animatable.Text animation="fadeInUp" delay={1100} style={styles.description}>
+                Multi-Functional Academic Management Platform
+            </Animatable.Text>
           </View>
 
+          {/* Action Section */}
           <Animatable.View
-            animation={isWeb ? undefined : "fadeInUp"}
-            delay={1000}
-            style={styles.buttonWrapper}
+            animation="fadeInUp"
+            delay={1300}
+            style={styles.actionContainer}
           >
             <TouchableOpacity
-              style={[
-                styles.primaryBtn,
-                {
-                  backgroundColor: finalSurface,
-                  height: isSmallScreen ? 56 : 64,
-                },
-              ]}
+              style={[styles.mainButton, { backgroundColor: '#FFFFFF' }]}
               onPress={handleGetStarted}
-              activeOpacity={0.8}
+              activeOpacity={0.9}
             >
-              <View style={styles.btnContent}>
-                <Text
-                  style={[
-                    styles.primaryBtnText,
-                    { color: finalPrimary, fontSize: isSmallScreen ? 14 : 16 },
-                  ]}
-                >
-                  ENTER CAMPUS
-                </Text>
-                <LinearGradient
-                  colors={[finalPrimary, finalSecondary]}
-                  style={[
-                    styles.iconCircle,
-                    {
-                      width: isSmallScreen ? 30 : 36,
-                      height: isSmallScreen ? 30 : 36,
-                    },
-                  ]}
-                >
-                  <SVGIcon
-                    name="arrow-forward"
-                    size={isSmallScreen ? 16 : 18}
-                    color="#fff"
-                  />
-                </LinearGradient>
+              <Text style={[styles.buttonText, { color: finalPrimary }]}>
+                ENTER PORTAL
+              </Text>
+              <View style={[styles.buttonIcon, { backgroundColor: finalPrimary }]}>
+                <SVGIcon name="chevron-forward" size={18} color="#fff" />
               </View>
             </TouchableOpacity>
 
-            <Text style={styles.secureText}>
-              <SVGIcon
-                name="lock-closed"
-                size={10}
-                color="rgba(255,255,255,0.6)"
-              />{" "}
-              SECURE CLOUD ACCESS
-            </Text>
+            <View style={styles.securityInfo}>
+                <SVGIcon name="shield-checkmark" size={14} color="rgba(255,255,255,0.6)" />
+                <Text style={styles.securityText}>AES-256 ENCRYPTED CLOUD STORAGE</Text>
+            </View>
           </Animatable.View>
         </View>
 
+        {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            POWERED BY <Text style={styles.footerBrand}>EduEaz</Text>
-          </Text>
-          <View style={styles.versionBadge}>
-            <Text style={styles.versionText}>v1.2.0 • PRO</Text>
-          </View>
+            <Text style={styles.poweredBy}>
+                Powered by <Text style={styles.brandName}>EduEaz</Text>
+            </Text>
+            <View style={styles.vBadge}>
+                <Text style={styles.vText}>ENTERPRISE EDITION v1.2</Text>
+            </View>
         </View>
       </ScrollView>
     </View>
@@ -267,176 +217,161 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  circleDecorator: {
-    position: "absolute",
-    width: 300,
-    height: 300,
-    borderRadius: 150,
+  container: { flex: 1 },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  blob: {
+    position: 'absolute',
+    borderRadius: 1000,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: "space-between",
-  },
-  headerSpacer: {
-    height: 40,
+    paddingHorizontal: 30,
+    justifyContent: 'space-between',
   },
   mainContent: {
-    alignItems: "center",
-    paddingHorizontal: 20,
+    alignItems: 'center',
+    width: '100%',
   },
-  logoContainer: {
-    marginBottom: 40,
-    // Avoid strict style typing issues by only adding web-specific props at runtime
-    // (StyleSheet typings can reject web-only keys like `cursor`).
-    ...(Platform.OS === "web" ? ({ cursor: "default" } as any) : {}),
+  logoWrapper: {
+    marginBottom: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  glassLogo: {
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-  },
-  innerLogo: {
-    width: "100%",
-    height: "100%",
-    borderRadius: 75,
-    justifyContent: "center",
-    alignItems: "center",
+  logoGlow: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     ...SHADOWS.large,
   },
-  logo: { width: "75%", height: "75%" },
-
-  textSection: { alignItems: "center", marginBottom: 50 },
-  badge: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    marginBottom: 15,
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "bold",
-    color: "#fff",
-    letterSpacing: 1.5,
-  },
-  schoolName: {
-    fontSize: 28,
-    fontWeight: "900",
-    color: "#fff",
-    textAlign: "center",
-    letterSpacing: 0.5,
-    textShadowColor: "rgba(0, 0, 0, 0.1)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  platformBadge: {
-    marginTop: 15,
-    paddingHorizontal: 15,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: "rgba(0,0,0,0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
-  },
-  platformText: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  mottoContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 20,
-  },
-  mottoLine: {
-    width: 20,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.3)",
-    marginHorizontal: 10,
-  },
-  mottoText: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.8)",
-    fontWeight: "700",
-    letterSpacing: 1,
-  },
-
-  buttonWrapper: {
-    width: "100%",
-    maxWidth: 320,
-    alignItems: "center",
-  },
-  primaryBtn: {
-    width: "100%",
-    height: 64,
-    borderRadius: 32,
-    justifyContent: "center",
+  logoCircle: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 5,
     ...SHADOWS.medium,
   },
-  btnContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 25,
-    alignItems: "center",
+  logo: { width: '100%', height: '100%' },
+  contentCard: {
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 60,
   },
-  primaryBtnText: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 1,
+  portalBadge: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 15,
+    paddingVertical: 6,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    marginBottom: 20,
   },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    ...SHADOWS.small,
-  },
-  secureText: {
-    marginTop: 15,
+  portalBadgeText: {
+    color: '#fff',
     fontSize: 10,
-    color: "rgba(255,255,255,0.6)",
-    fontWeight: "600",
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  title: {
+    fontWeight: '900',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 15,
+    letterSpacing: -0.5,
+  },
+  mottoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 25,
+  },
+  line: {
+    width: 30,
+    height: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginHorizontal: 12,
+  },
+  mottoText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontWeight: '700',
+    fontStyle: 'italic',
+  },
+  description: {
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    fontSize: 15,
+    lineHeight: 22,
+    maxWidth: 280,
+    fontWeight: '500',
+  },
+  actionContainer: {
+    width: '100%',
+    maxWidth: 340,
+    alignItems: 'center',
+  },
+  mainButton: {
+    width: '100%',
+    height: 64,
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 25,
+    paddingRight: 8,
+    ...SHADOWS.large,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: '900',
     letterSpacing: 1,
   },
-
-  footer: {
-    alignItems: "center",
-    paddingBottom: 20,
+  buttonIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  footerText: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.7)",
+  securityInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 20,
+    gap: 8,
   },
-  footerBrand: {
-    color: "#fff",
-    fontWeight: "800",
-  },
-  versionBadge: {
-    marginTop: 5,
-    backgroundColor: "rgba(0,0,0,0.2)",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  versionText: {
+  securityText: {
+    color: 'rgba(255,255,255,0.5)',
     fontSize: 9,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.5)",
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  footer: {
+    alignItems: 'center',
+    marginTop: 40,
+  },
+  poweredBy: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  brandName: {
+    color: '#fff',
+    fontWeight: '900',
+  },
+  vBadge: {
+    marginTop: 8,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  vText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });

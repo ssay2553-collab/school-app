@@ -1,4 +1,4 @@
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, getDocs, getDocsFromServer } from "firebase/firestore";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState, useCallback } from "react";
 import {
@@ -34,6 +34,8 @@ interface ClassStat {
   present: number;
   absent: number;
   marked: boolean;
+  academicYear?: string;
+  term?: string;
 }
 
 const CLASS_COLORS = [
@@ -65,99 +67,120 @@ export default function AttendanceOverview() {
   const brandPrimary = SCHOOL_CONFIG.brandPrimary;
   const brandSecondary = SCHOOL_CONFIG.brandSecondary;
 
-  /**
-   * COST OPTIMIZATION:
-   * 1. Uses getDocsCacheFirst for Classes and Students (Static/Semi-static data).
-   * 2. Only fetches Attendance records (Dynamic data) from server when needed.
-   */
   const fetchData = useCallback(async (forceRefresh = false) => {
     if (!appUser) return;
     if (!forceRefresh) setLoading(true);
 
     try {
-      // 1. Fetch Classes (Cache-First)
-      const classesSnap = await getDocsCacheFirst(collection(db, "classes") as any);
-      let classList = classesSnap.docs.map(d => ({
-        id: d.id,
-        name: (d.data() as any).name || d.id,
-        totalStudents: 0,
-        present: 0,
-        absent: 0,
-        marked: false
-      }));
+      // 1. Fetch Classes (Fresh fetch if forced, otherwise Cache-First)
+      const classesQuery = collection(db, "classes");
+      const classesSnap = forceRefresh
+        ? await getDocs(classesQuery)
+        : await getDocsCacheFirst(classesQuery as any);
 
-      // 2. Fetch Students (Cache-First) - This is the most expensive read, now optimized
+      let classList = classesSnap.docs
+        .map(d => ({ id: d.id, ...(d.data() as any) }))
+        .map(d => ({
+          id: d.id,
+          name: d.name || d.id,
+          totalStudents: 0,
+          present: 0,
+          absent: 0,
+          marked: false
+        }));
+
+      const validClassIds = new Set(classList.map(c => c.id));
+
+      // 2. Fetch Students (Fresh fetch if forced, otherwise Cache-First)
       const studentsQuery = query(
         collection(db, "users"),
         where("role", "==", "student"),
         where("status", "in", ["active", "pending_activation"])
       );
-      const studentsSnap = await getDocsCacheFirst(studentsQuery as any);
+      const studentsSnap = forceRefresh
+        ? await getDocs(studentsQuery)
+        : await getDocsCacheFirst(studentsQuery as any);
       
       const studentCounts: Record<string, number> = {};
+      const studentMap: Record<string, string[]> = {};
       let globalStudentTotal = 0;
-      const schoolId = SCHOOL_CONFIG.schoolId;
 
       studentsSnap.forEach(doc => {
         const data = doc.data() as any;
-        const schoolMatch = !data.schoolId || data.schoolId === schoolId || (schoolId === "lilies" && data.schoolId === "abijah");
 
-        if (schoolMatch && data.classId) {
+        if (data.classId && validClassIds.has(data.classId)) {
           studentCounts[data.classId] = (studentCounts[data.classId] || 0) + 1;
+          if (!studentMap[data.classId]) studentMap[data.classId] = [];
+          studentMap[data.classId].push(doc.id);
           globalStudentTotal++;
         }
       });
 
-      // 3. Fetch Attendance (Server-side for accurate daily tracking)
+      // 3. Fetch Attendance (Server-side for accurate tracking)
       const attendanceQuery = query(
         collection(db, "attendance"),
         where("date", "==", selectedDate)
       );
-      // For attendance, we don't use cache-first by default to ensure we see the latest marks
-      const attendanceSnap = await getDocsCacheFirst(attendanceQuery as any); 
+
+      const attendanceSnap = await getDocs(attendanceQuery);
       
-      const attendanceMap: Record<string, { present: number, absent: number }> = {};
+      const attendanceMap: Record<string, { present: number, absent: number, academicYear: string, term: string }> = {};
 
       attendanceSnap.forEach(doc => {
         const data = doc.data() as any;
         const cid = data.classId;
-        const students = data.students || {};
+
+        if (!validClassIds.has(cid)) return;
+
+        const attStudents = data.students || {};
+        const currentClassStudentIds = studentMap[cid] || [];
         let p = 0, a = 0;
         
-        Object.values(students).forEach((s: any) => {
-          if (s.status === "present") p++;
-          else if (s.status === "absent") a++;
+        currentClassStudentIds.forEach(sid => {
+          const s = attStudents[sid];
+          if (s?.status === "present") p++;
+          else if (s?.status === "absent") a++;
         });
         
-        attendanceMap[cid] = { present: p, absent: a };
+        attendanceMap[cid] = {
+          present: p,
+          absent: a,
+          academicYear: data.academicYear,
+          term: data.term
+        };
       });
 
       let globalPresent = 0;
       let globalAbsent = 0;
 
-      const finalStats = classList.map(cls => {
+      const sortedStats = sortClasses(classList).map(cls => {
         const att = attendanceMap[cls.id];
         const totalInClass = studentCounts[cls.id] || 0;
-        if (att) { globalPresent += att.present; globalAbsent += att.absent; }
+        if (att) {
+          globalPresent += att.present;
+          globalAbsent += att.absent;
+        }
 
         return {
           ...cls,
           totalStudents: totalInClass,
           present: att ? att.present : 0,
           absent: att ? att.absent : 0,
-          marked: !!att
+          marked: !!att,
+          academicYear: att?.academicYear,
+          term: att?.term
         };
       });
 
-      setClassStats(sortClasses(finalStats));
+      setClassStats(sortedStats);
       setTotals({ schoolTotal: globalStudentTotal, schoolPresent: globalPresent, schoolAbsent: globalAbsent });
-    } catch (error) { 
-      console.error("Attendance Fetch Error:", error); 
-    } finally { 
-      setLoading(false); 
-      setRefreshing(false); 
+    } catch (error) {
+      console.error("Attendance Fetch Error:", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [selectedDate, appUser]);
+  }, [selectedDate, appUser, acadConfig.academicYear, acadConfig.currentTerm, acadConfig.loading]);
 
   useEffect(() => { fetchData(false); }, [fetchData]);
 
@@ -260,8 +283,8 @@ export default function AttendanceOverview() {
                       classId: item.id,
                       className: item.name,
                       date: selectedDate,
-                      academicYear: acadConfig.academicYear,
-                      term: acadConfig.currentTerm
+                      academicYear: item.academicYear || acadConfig.academicYear,
+                      term: item.term || acadConfig.currentTerm
                     }
                   })}
                 >

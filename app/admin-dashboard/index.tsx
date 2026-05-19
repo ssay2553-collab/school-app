@@ -1,25 +1,24 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-    collection,
-    getCountFromServer,
-    query,
-    where,
+  collection,
+  getCountFromServer,
+  query,
+  where,
 } from "firebase/firestore";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  Image,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -29,11 +28,15 @@ import { useSchoolConfig } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import { useDataFreshness } from "../../hooks/useDataFreshness";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 const STATS_CACHE_KEY = "@admin_dashboard_stats_cache_v2";
 let dashboardStatsMemoryCache: any = null;
 let lastDashboardScrollY = 0;
+
+// Cache bust timestamp - cleared when tab regains focus
+let cacheBustTimestamp = Date.now();
 
 type Stats = {
   totalStudents: number;
@@ -49,7 +52,8 @@ export default function AdminDashboard() {
   const { width: windowWidth } = useWindowDimensions();
 
   const brandPrimary = config.brandPrimary || COLORS.primary || "#6366F1";
-  const brandSecondary = config.brandSecondary || config.secondaryColor || "#4338ca";
+  const brandSecondary =
+    config.brandSecondary || config.secondaryColor || "#4338ca";
   const surface = config.surfaceColor || "#F8FAFC";
 
   const [stats, setStats] = useState<Stats>(
@@ -78,48 +82,84 @@ export default function AdminDashboard() {
     lastDashboardScrollY = event.nativeEvent.contentOffset.y;
   };
 
-  const fetchStats = useCallback(async (force = false) => {
-    if (!force && dashboardStatsMemoryCache) return;
+  const fetchStats = useCallback(
+    async (force = false) => {
+      if (!force && dashboardStatsMemoryCache) return;
 
-    try {
-      if (force) setRefreshing(true);
-      else if (!dashboardStatsMemoryCache)
-        setStats((prev: Stats) => ({ ...prev, loading: true }));
+      try {
+        if (force) setRefreshing(true);
+        else if (!dashboardStatsMemoryCache)
+          setStats((prev: Stats) => ({ ...prev, loading: true }));
 
-      const schoolId = config.schoolId;
-      const studentsQuery = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("schoolId", "==", schoolId),
-        where("status", "in", ["active", "pending_activation"]),
-      );
-      const teacherQuery = query(
-        collection(db, "users"),
-        where("role", "==", "teacher"),
-        where("schoolId", "==", schoolId),
-      );
-      const ntQuery = query(collection(db, "nonTeachingStaff"));
+        const schoolId = config.schoolId;
+        const studentsQuery = query(
+          collection(db, "users"),
+          where("role", "==", "student"),
+          where("status", "in", ["active", "pending_activation"]),
+        );
+        const teacherQuery = query(
+          collection(db, "users"),
+          where("role", "==", "teacher"),
+        );
+        const ntQuery = query(collection(db, "nonTeachingStaff"));
 
-      const [studentsSnap, teacherSnap, ntSnap] = await Promise.all([
-        getCountFromServer(studentsQuery),
-        getCountFromServer(teacherQuery),
-        getCountFromServer(ntQuery),
-      ]);
+        const [studentsSnap, teacherSnap, ntSnap] = await Promise.all([
+          getCountFromServer(studentsQuery),
+          getCountFromServer(teacherQuery),
+          getCountFromServer(ntQuery),
+        ]);
 
-      const data = {
-        totalStudents: (studentsSnap.data() as any).count || 0,
-        totalStaff:
-          ((teacherSnap.data() as any).count || 0) + ((ntSnap.data() as any).count || 0),
-      };
+        const data = {
+          totalStudents: (studentsSnap.data() as any).count || 0,
+          totalStaff:
+            ((teacherSnap.data() as any).count || 0) +
+            ((ntSnap.data() as any).count || 0),
+        };
 
-      setStats({ ...data, loading: false });
-      dashboardStatsMemoryCache = { ...data, loading: false };
-    } catch (error) {
-      setStats((prev: Stats) => ({ ...prev, loading: false }));
-    } finally {
-      setRefreshing(false);
+        setStats({ ...data, loading: false });
+        dashboardStatsMemoryCache = { ...data, loading: false };
+      } catch (error) {
+        setStats((prev: Stats) => ({ ...prev, loading: false }));
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    [config.schoolId],
+  );
+
+  // Use data freshness hook to refresh on focus/visibility change
+  const { refresh } = useDataFreshness(
+    useCallback(async () => {
+      // Clear memory cache when refreshing
+      dashboardStatsMemoryCache = null;
+      await fetchStats(true);
+    }, [fetchStats]),
+    {
+      refreshOnFocus: true,
+      minRefreshInterval: 10000, // 10 seconds
+      clearMemoryCache: true,
+    },
+  );
+
+  // Listen for cache clear events
+  useEffect(() => {
+    const handleClearCache = () => {
+      dashboardStatsMemoryCache = null;
+      cacheBustTimestamp = Date.now();
+    };
+
+    if (Platform.OS === "web") {
+      window.addEventListener("edueaz:clearMemoryCache", handleClearCache);
+      window.addEventListener("edueaz:clearAllCaches", handleClearCache);
     }
-  }, [config.schoolId]);
+
+    return () => {
+      if (Platform.OS === "web") {
+        window.removeEventListener("edueaz:clearMemoryCache", handleClearCache);
+        window.removeEventListener("edueaz:clearAllCaches", handleClearCache);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     fetchStats(false);
@@ -178,15 +218,17 @@ export default function AdminDashboard() {
           icon: "calculator",
           color: "#10b981",
         },
-        ...(appUser?.role?.toLowerCase() !== "teacher" ? [
-        {
-          title: "Student Fees",
-          subtitle: "Billing center",
-          route: "/admin-dashboard/ManageFees",
-          icon: "cash",
-          color: "#f59e0b",
-        },
-        ] : []),
+        ...(appUser?.role?.toLowerCase() !== "teacher"
+          ? [
+              {
+                title: "Student Fees",
+                subtitle: "Billing center",
+                route: "/admin-dashboard/ManageFees",
+                icon: "cash",
+                color: "#f59e0b",
+              },
+            ]
+          : []),
         {
           title: "Expenses",
           subtitle: "Outflow logs",
@@ -355,10 +397,7 @@ export default function AdminDashboard() {
             </View>
             <View style={styles.cardInfo}>
               <Text
-                style={[
-                  styles.menuText,
-                  { fontSize: isSmallScreen ? 13 : 15 },
-                ]}
+                style={[styles.menuText, { fontSize: isSmallScreen ? 13 : 15 }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
@@ -375,7 +414,8 @@ export default function AdminDashboard() {
               </Text>
             </View>
             {item.route &&
-            (String(item.route).includes("chat") || String(item.route).includes("group")) &&
+            (String(item.route).includes("chat") ||
+              String(item.route).includes("group")) &&
             totalUnread > 0 ? (
               <View style={styles.badgePos}>
                 <UnreadBadge count={totalUnread} />
@@ -398,7 +438,10 @@ export default function AdminDashboard() {
         scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => fetchStats(true)} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchStats(true)}
+          />
         }
       >
         <LinearGradient
@@ -441,7 +484,9 @@ export default function AdminDashboard() {
                   )}
                 </TouchableOpacity>
                 <View style={{ marginLeft: isSmallScreen ? 10 : 15, flex: 1 }}>
-                  <Text style={styles.welcomeText}>WELCOME BACK, CHIEF! 🛡️</Text>
+                  <Text style={styles.welcomeText}>
+                    WELCOME BACK, CHIEF! 🛡️
+                  </Text>
                   <Text
                     style={[
                       styles.adminName,
@@ -463,15 +508,33 @@ export default function AdminDashboard() {
               </View>
 
               <View style={styles.headerActions}>
-                {appUser?.role === "admin" && (appUser?.assignedRoles?.includes("Teacher") || appUser?.classTeacherOf) && (
-                  <TouchableOpacity
-                    onPress={() => router.push("/teacher-dashboard")}
-                    style={[styles.actionBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 6 }]}
-                  >
-                    <SVGIcon name="school" size={20} color="#fff" />
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>TEACHER</Text>
-                  </TouchableOpacity>
-                )}
+                {appUser?.role === "admin" &&
+                  (appUser?.assignedRoles?.includes("Teacher") ||
+                    appUser?.classTeacherOf) && (
+                    <TouchableOpacity
+                      onPress={() => router.push("/teacher-dashboard")}
+                      style={[
+                        styles.actionBtn,
+                        {
+                          width: "auto",
+                          paddingHorizontal: 10,
+                          flexDirection: "row",
+                          gap: 6,
+                        },
+                      ]}
+                    >
+                      <SVGIcon name="school" size={20} color="#fff" />
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 10,
+                          fontWeight: "900",
+                        }}
+                      >
+                        TEACHER
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 <TouchableOpacity
                   onPress={() => router.push("/admin-dashboard/settings")}
                   style={styles.actionBtn}
@@ -489,10 +552,7 @@ export default function AdminDashboard() {
                 ]}
               >
                 <View
-                  style={[
-                    styles.statIconBox,
-                    { backgroundColor: "#FFD93D" },
-                  ]}
+                  style={[styles.statIconBox, { backgroundColor: "#FFD93D" }]}
                 >
                   <SVGIcon name="people" size={18} color="#4338ca" />
                 </View>
@@ -510,10 +570,7 @@ export default function AdminDashboard() {
                 ]}
               >
                 <View
-                  style={[
-                    styles.statIconBox,
-                    { backgroundColor: "#6BCB77" },
-                  ]}
+                  style={[styles.statIconBox, { backgroundColor: "#6BCB77" }]}
                 >
                   <SVGIcon name="briefcase" size={18} color="#fff" />
                 </View>
@@ -533,7 +590,9 @@ export default function AdminDashboard() {
             {sections.map((section, sIndex) => (
               <View key={section.title} style={{ marginBottom: 40 }}>
                 <View style={styles.sectionHeader}>
-                    <View style={[styles.dot, { backgroundColor: section.color }]} />
+                  <View
+                    style={[styles.dot, { backgroundColor: section.color }]}
+                  />
                   <Text style={[styles.sectionTitle, { color: section.color }]}>
                     {section.title}
                   </Text>
@@ -566,22 +625,22 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium,
   },
   blob1: {
-    position: 'absolute',
+    position: "absolute",
     top: -20,
     right: -20,
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
   blob2: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -40,
     left: -30,
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
   headerRow: {
     flexDirection: "row",
@@ -608,7 +667,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  roleBadgeText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
+  roleBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
   profileBtn: {
     width: 80,
     height: 80,
@@ -633,7 +697,7 @@ const styles = StyleSheet.create({
     height: 44,
     minWidth: 44,
     alignItems: "center",
-    justifyContent: 'center',
+    justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 15,
     borderWidth: 1,
@@ -643,7 +707,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginTop: 25,
-    paddingHorizontal: 5
+    paddingHorizontal: 5,
   },
   statCard: {
     flex: 1,
@@ -728,11 +792,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
     fontWeight: "800",
-    backgroundColor: '#F1F5F9',
+    backgroundColor: "#F1F5F9",
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 10,
-    overflow: 'hidden'
+    overflow: "hidden",
   },
   badgePos: { position: "absolute", top: 15, right: 15 },
 });

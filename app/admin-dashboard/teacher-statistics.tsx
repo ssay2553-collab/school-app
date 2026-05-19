@@ -109,10 +109,10 @@ export default function TeacherStatistics() {
 
       // 1. Batch Fetch all required collections for the school
       const [teacherSnap, allAssignmentsSnap, allGroupsSnap, vaultSnap] = await Promise.all([
-        getDocs(query(collection(db, "users"), where("role", "==", "teacher"), where("schoolId", "==", SCHOOL_CONFIG.schoolId))),
-        getDocs(query(collection(db, "assignments"), where("schoolId", "==", SCHOOL_CONFIG.schoolId))),
-        getDocs(query(collection(db, "studentGroups"), where("schoolId", "==", SCHOOL_CONFIG.schoolId))),
-        getDocs(query(collection(db, "pedagogy_vault"), where("schoolId", "==", SCHOOL_CONFIG.schoolId)))
+        getDocs(query(collection(db, "users"), where("role", "==", "teacher"))),
+        getDocs(collection(db, "assignments")),
+        getDocs(collection(db, "studentGroups")),
+        getDocs(collection(db, "pedagogy_vault"))
       ]);
 
       // Filter vault items by date in-memory to avoid composite index requirements
@@ -127,14 +127,14 @@ export default function TeacherStatistics() {
 
       // 2. Map data to teachers in memory (O(1) lookup)
       const assignmentMap: Record<string, any[]> = {};
-      allAssignmentsSnap.docs.forEach(d => {
+      allAssignmentsSnap.docs.forEach((d: any) => {
         const data = d.data();
         if (!assignmentMap[data.teacherId]) assignmentMap[data.teacherId] = [];
         assignmentMap[data.teacherId].push(data);
       });
 
       const groupMap: Record<string, any[]> = {};
-      allGroupsSnap.docs.forEach(d => {
+      allGroupsSnap.docs.forEach((d: any) => {
         const data = d.data();
         if (!groupMap[data.teacherId]) groupMap[data.teacherId] = [];
         groupMap[data.teacherId].push(data);

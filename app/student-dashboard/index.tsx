@@ -119,6 +119,20 @@ export default function StudentDashboard() {
           color: "#6BCB77",
           path: "/student-dashboard/StudentTimetable",
         },
+        {
+          title: "Gallery",
+          subtitle: "Campus life",
+          icon: "images",
+          color: "#FF9F43",
+          path: "/student-dashboard/gallery",
+        },
+        {
+          title: "Coding Hub",
+          subtitle: "Robotics & AI",
+          icon: "code-slash",
+          color: "#6366F1",
+          path: "/coding-robotics",
+        },
       ],
     },
     {

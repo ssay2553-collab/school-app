@@ -13,6 +13,7 @@ import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import { db } from "../../../firebaseConfig";
 import { getDocsCacheFirst } from "../../../lib/firestoreHelpers";
+import { SCHOOL_CONFIG } from "../../../constants/Config";
 
 interface AttendanceDoc {
   date: string;

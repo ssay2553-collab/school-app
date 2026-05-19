@@ -58,6 +58,30 @@ const RESOURCES = [
     tag: 'WAEC'
   },
   {
+    title: 'BECE Past Questions',
+    description: 'Practice questions and solutions for the Basic Education Certificate Examination.',
+    url: 'https://ghlearner.com/bece',
+    icon: 'document-text',
+    color: '#FF9F43',
+    tag: 'BECE'
+  },
+  {
+    title: 'Passco GH',
+    description: 'Large collection of past questions for all academic levels in Ghana.',
+    url: 'https://passco.org',
+    icon: 'archive',
+    color: '#00D2D3',
+    tag: 'PAST QUESTIONS'
+  },
+  {
+    title: 'Khan Academy',
+    description: 'Free world-class education resources to supplement your teaching.',
+    url: 'https://www.khanacademy.org',
+    icon: 'videocam',
+    color: '#54A0FF',
+    tag: 'GLOBAL'
+  },
+  {
     title: 'Edutopia',
     description: 'Innovative teaching strategies and evidence-based practices for K-12.',
     url: 'https://www.edutopia.org',

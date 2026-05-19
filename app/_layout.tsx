@@ -122,6 +122,44 @@ function MainLayout() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    // Register Service Worker for PWA updates
+    if (Platform.OS === "web" && "serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/service-worker.js")
+          .then((registration) => {
+            console.log("SW registered: ", registration);
+
+            // Check for updates on page load/access
+            registration.update();
+
+            registration.onupdatefound = () => {
+              const installingWorker = registration.installing;
+              if (installingWorker) {
+                installingWorker.onstatechange = () => {
+                  if (
+                    installingWorker.state === "installed" &&
+                    navigator.serviceWorker.controller
+                  ) {
+                    // New content is available; skip waiting and refresh.
+                    console.log("New content is available; skipping waiting...");
+                    if (registration.waiting) {
+                      registration.waiting.postMessage({
+                        type: "SKIP_WAITING",
+                      });
+                    }
+                    window.location.reload();
+                  }
+                };
+              }
+            };
+          })
+          .catch((registrationError) => {
+            console.log("SW registration failed: ", registrationError);
+          });
+      });
+    }
+
     const init = async () => {
       // NUCLEAR RESET: Run this once to clear the IBS stickiness
       if (__DEV__) {

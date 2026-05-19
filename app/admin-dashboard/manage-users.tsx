@@ -158,6 +158,8 @@ export default function ManageUsers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
 
+  const [selectedUserUids, setSelectedUserUids] = useState<string[]>([]);
+
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -270,7 +272,7 @@ export default function ManageUsers() {
             gender,
           },
           createdAt: Timestamp.now(),
-          schoolId: appUser?.schoolId || SCHOOL_CONFIG.schoolId || "default",
+          // Redundant schoolId property injection removed as per "one database per school" architecture
         };
 
         if (selectedRole === "student") {
@@ -427,6 +429,62 @@ export default function ManageUsers() {
     );
   }, [users, searchQuery]);
 
+  const toggleUserSelection = (uid: string) => {
+    setSelectedUserUids((prev) =>
+      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid],
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (filteredUsers.length === 0) return;
+    const allUids = filteredUsers.map((u) => u.uid);
+    const isAllSelected = allUids.every((uid) => selectedUserUids.includes(uid));
+
+    if (isAllSelected) {
+      setSelectedUserUids((prev) =>
+        prev.filter((uid) => !allUids.includes(uid)),
+      );
+    } else {
+      setSelectedUserUids((prev) =>
+        Array.from(new Set([...prev, ...allUids])),
+      );
+    }
+  };
+
+  useEffect(() => {
+    setSelectedUserUids([]);
+  }, [selectedRole, selectedClassId, showArchived]);
+
+  const handleBulkUpdate = async (field: string, value: any) => {
+    if (selectedUserUids.length === 0) return;
+    setUpdating(true);
+    try {
+      const batch = writeBatch(db);
+      selectedUserUids.forEach((uid) => {
+        batch.update(doc(db, "users", uid), { [field]: value });
+      });
+      await batch.commit();
+
+      // Optimistic local update
+      setUsers((prev) =>
+        prev.map((u) =>
+          selectedUserUids.includes(u.uid) ? { ...u, [field]: value } : u,
+        ),
+      );
+
+      setSelectedUserUids([]);
+      showToast?.({
+        message: `Updated ${selectedUserUids.length} students`,
+        type: "success",
+      });
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Bulk update failed.");
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const fetchLinkedUsersAndStats = async (user: User) => {
     setLoadingLinks(true);
     setLinkedUsers([]);
@@ -510,10 +568,35 @@ export default function ManageUsers() {
       await updateDoc(doc(db, "users", assignmentModal.target.uid), {
         permissions: sanitized,
       });
+
+      // Verification: Try to read the document back to ensure rules allowed it
+      await getDoc(doc(db, "users", assignmentModal.target.uid));
+
+      // Optimistic local update
+      const updatedUser = {
+        ...assignmentModal.target,
+        permissions: sanitized,
+      };
+      setUsers((prev) =>
+        prev.map((u) => (u.uid === updatedUser.uid ? updatedUser : u)),
+      );
+      if (viewingUser?.uid === updatedUser.uid) {
+        setViewingUser(updatedUser);
+      }
+
       setAssignmentModal({ type: "none", target: null });
-      Alert.alert("Success", "Admin permissions updated.");
-    } catch {
-      Alert.alert("Error", "Failed to update permissions.");
+      showToast?.({ message: "Admin permissions updated", type: "success" });
+    } catch (e: any) {
+      console.error("Failed to update permissions:", e);
+      const errorMsg = e.code === 'permission-denied'
+        ? "Access Denied: You don't have permission to modify these settings. Your changes have been reverted."
+        : "Failed to update permissions. Please try again.";
+
+      if (Platform.OS === 'web') {
+        window.alert(errorMsg);
+      } else {
+        Alert.alert("Error", errorMsg);
+      }
     } finally {
       setUpdating(false);
     }
@@ -1545,6 +1628,28 @@ export default function ManageUsers() {
         )}
       </View>
 
+      {selectedRole === "student" && filteredUsers.length > 0 && (
+        <TouchableOpacity
+          style={styles.selectAllRow}
+          onPress={handleSelectAll}
+        >
+          <SVGIcon
+            name={
+              filteredUsers.every((u) => selectedUserUids.includes(u.uid))
+                ? "checkbox"
+                : "square-outline"
+            }
+            size={22}
+            color={COLORS.primary}
+          />
+          <Text style={styles.selectAllText}>
+            {filteredUsers.every((u) => selectedUserUids.includes(u.uid))
+              ? "Deselect All Students"
+              : `Select All ${filteredUsers.length} Students`}
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {loading ? (
         <ActivityIndicator
           size="large"
@@ -1563,110 +1668,165 @@ export default function ManageUsers() {
               tintColor={COLORS.primary || "#2e86de"}
             />
           }
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={styles.userCard}
-              onLongPress={() =>
-                (item.role === "teacher" || item.role === "admin") &&
-                setAssignmentModal({ type: "assign_as", target: item })
-              }
-              onPress={() => {
-                setViewingUser(item);
-                fetchLinkedUsersAndStats(item);
-              }}
-            >
-              <View style={styles.avatar}>
-                <Image
-                  source={
-                    item.profile?.profileImage
-                      ? { uri: item.profile.profileImage }
-                      : DEFAULT_AVATAR
+          renderItem={({ item }) => {
+            const isSelected = selectedUserUids.includes(item.uid);
+            return (
+              <TouchableOpacity
+                style={[styles.userCard, isSelected && styles.selectedCard]}
+                onLongPress={() => {
+                  if (item.role === "student") {
+                    toggleUserSelection(item.uid);
+                  } else if (item.role === "teacher" || item.role === "admin") {
+                    setAssignmentModal({ type: "assign_as", target: item });
                   }
-                  style={styles.avatarImg}
-                  resizeMode="cover"
-                />
-              </View>
-              <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={styles.userName}>
-                  {item.profile?.firstName} {item.profile?.lastName}
-                </Text>
-                <Text style={styles.userSubText}>
-                  {item.status === "archived"
-                    ? `Archived (${item.archivedInYear || "N/A"})`
-                    : item.status === "pending_activation"
-                      ? `Pending Activation (Code: ${item.signupCode})`
-                      : allClasses.find((c) => c.id === item.classId)?.name ||
-                        item.adminRole ||
-                        item.role.toUpperCase()}
-                </Text>
-                <View style={styles.badgeRow}>
-                  {item.role === "teacher" && item.classTeacherOf && (
-                    <View
-                      style={[styles.badge, { backgroundColor: "#10b98115" }]}
-                    >
-                      <Text style={[styles.badgeText, { color: "#10b981" }]}>
-                        Class:{" "}
-                        {allClasses.find((c) => c.id === item.classTeacherOf)
-                          ?.name || "N/A"}
-                      </Text>
-                    </View>
-                  )}
-                  {item.canCreateNews && (
-                    <View
-                      style={[styles.badge, { backgroundColor: "#f59e0b15" }]}
-                    >
-                      <Text style={[styles.badgeText, { color: "#f59e0b" }]}>
-                        News Authority
-                      </Text>
-                    </View>
-                  )}
-                  {item.onScholarship && (
-                    <View
-                      style={[styles.badge, { backgroundColor: "#6366f115" }]}
-                    >
-                      <Text style={[styles.badgeText, { color: "#6366f1" }]}>
-                        On Scholarship
-                      </Text>
-                    </View>
-                  )}
-                  {item.role === "student" &&
-                    item.walletBalance !== undefined && (
+                }}
+                onPress={() => {
+                  if (selectedUserUids.length > 0 && item.role === "student") {
+                    toggleUserSelection(item.uid);
+                  } else {
+                    setViewingUser(item);
+                    fetchLinkedUsersAndStats(item);
+                  }
+                }}
+              >
+                {selectedUserUids.length > 0 && item.role === "student" && (
+                  <View style={styles.selectionIndicator}>
+                    <SVGIcon
+                      name={isSelected ? "checkbox" : "square-outline"}
+                      size={24}
+                      color={isSelected ? COLORS.primary : COLORS.gray}
+                    />
+                  </View>
+                )}
+                <View style={styles.avatar}>
+                  <Image
+                    source={
+                      item.profile?.profileImage
+                        ? { uri: item.profile.profileImage }
+                        : DEFAULT_AVATAR
+                    }
+                    style={styles.avatarImg}
+                    resizeMode="cover"
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 15 }}>
+                  <Text style={styles.userName}>
+                    {item.profile?.firstName} {item.profile?.lastName}
+                  </Text>
+                  <Text style={styles.userSubText}>
+                    {item.status === "archived"
+                      ? `Archived (${item.archivedInYear || "N/A"})`
+                      : item.status === "pending_activation"
+                        ? `Pending Activation (Code: ${item.signupCode})`
+                        : allClasses.find((c) => c.id === item.classId)?.name ||
+                          item.adminRole ||
+                          item.role.toUpperCase()}
+                  </Text>
+                  <View style={styles.badgeRow}>
+                    {item.role === "teacher" && item.classTeacherOf && (
                       <View
-                        style={[
-                          styles.badge,
-                          {
-                            backgroundColor:
-                              item.walletBalance > 0
-                                ? "#ef444415"
-                                : "#10b98115",
-                          },
-                        ]}
+                        style={[styles.badge, { backgroundColor: "#10b98115" }]}
                       >
-                        <Text
-                          style={[
-                            styles.badgeText,
-                            {
-                              color:
-                                item.walletBalance > 0 ? "#ef4444" : "#10b981",
-                            },
-                          ]}
-                        >
-                          {item.walletBalance > 0
-                            ? `Debt: ₵${(item.walletBalance || 0).toLocaleString()}`
-                            : "Cleared"}
+                        <Text style={[styles.badgeText, { color: "#10b981" }]}>
+                          Class:{" "}
+                          {allClasses.find((c) => c.id === item.classTeacherOf)
+                            ?.name || "N/A"}
                         </Text>
                       </View>
                     )}
+                    {item.canCreateNews && (
+                      <View
+                        style={[styles.badge, { backgroundColor: "#f59e0b15" }]}
+                      >
+                        <Text style={[styles.badgeText, { color: "#f59e0b" }]}>
+                          News Authority
+                        </Text>
+                      </View>
+                    )}
+                    {item.onScholarship && (
+                      <View
+                        style={[styles.badge, { backgroundColor: "#6366f115" }]}
+                      >
+                        <Text style={[styles.badgeText, { color: "#6366f1" }]}>
+                          On Scholarship
+                        </Text>
+                      </View>
+                    )}
+                    {item.role === "student" &&
+                      item.walletBalance !== undefined && (
+                        <View
+                          style={[
+                            styles.badge,
+                            {
+                              backgroundColor:
+                                item.walletBalance > 0
+                                  ? "#ef444415"
+                                  : "#10b98115",
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.badgeText,
+                              {
+                                color:
+                                  item.walletBalance > 0 ? "#ef4444" : "#10b981",
+                              },
+                            ]}
+                          >
+                            {item.walletBalance > 0
+                              ? `Debt: ₵${(item.walletBalance || 0).toLocaleString()}`
+                              : "Cleared"}
+                          </Text>
+                        </View>
+                      )}
+                  </View>
                 </View>
-              </View>
-              <SVGIcon
-                name="chevron-forward"
-                size={20}
-                color={COLORS.gray || "#9ca3af"}
-              />
-            </TouchableOpacity>
-          )}
+                <SVGIcon
+                  name="chevron-forward"
+                  size={20}
+                  color={COLORS.gray || "#9ca3af"}
+                />
+              </TouchableOpacity>
+            );
+          }}
         />
+      )}
+
+      {selectedUserUids.length > 0 && (
+        <Animatable.View animation="slideInUp" style={styles.bulkActionBar}>
+          <View style={styles.bulkActionInfo}>
+            <Text style={styles.bulkActionCount}>
+              {selectedUserUids.length} Selected
+            </Text>
+            <TouchableOpacity onPress={() => setSelectedUserUids([])}>
+              <Text style={styles.bulkActionCancel}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.bulkActionButtons}>
+            <TouchableOpacity
+              style={styles.bulkActionBtn}
+              onPress={() => handleBulkUpdate("isFeeding", true)}
+            >
+              <SVGIcon name="restaurant" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Feeding</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bulkActionBtn}
+              onPress={() => handleBulkUpdate("takesBus", true)}
+            >
+              <SVGIcon name="bus" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Bus</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bulkActionBtn}
+              onPress={() => handleBulkUpdate("takesExtraClasses", true)}
+            >
+              <SVGIcon name="book" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Extra</Text>
+            </TouchableOpacity>
+          </View>
+        </Animatable.View>
       )}
 
       <Modal visible={!!viewingUser} animationType="slide" transparent>
@@ -2582,8 +2742,13 @@ export default function ManageUsers() {
                     { backgroundColor: COLORS.success || "#05ac5b" },
                   ]}
                   onPress={handleUpdatePermissions}
+                  disabled={updating}
                 >
-                  <Text style={styles.saveBtnText}>Commit Changes</Text>
+                  {updating ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Commit Changes</Text>
+                  )}
                 </TouchableOpacity>
               )}
               {assignmentModal.type === "manage_classes" && (
@@ -3336,5 +3501,73 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     color: "#475569",
+  },
+  selectedCard: {
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+    backgroundColor: (COLORS.primary || "#2e86de") + "05",
+  },
+  selectionIndicator: {
+    marginRight: 10,
+  },
+  bulkActionBar: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: "#1E293B",
+    borderRadius: 20,
+    padding: 16,
+    ...SHADOWS.large,
+  },
+  bulkActionInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  bulkActionCount: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  bulkActionCancel: {
+    color: "#94A3B8",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  bulkActionButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  bulkActionBtn: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 10,
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  bulkActionText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  selectAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+    gap: 10,
+  },
+  selectAllText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.primary,
   },
 });

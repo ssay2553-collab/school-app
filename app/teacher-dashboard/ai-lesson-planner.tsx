@@ -295,7 +295,6 @@ export default function AILessonPlanner() {
 
       await addDoc(collection(db, "pedagogy_vault"), {
         userId: appUser?.uid,
-        schoolId: SCHOOL_CONFIG.schoolId,
         subject: form.subject,
         topic: form.topic,
         strand: form.strand,

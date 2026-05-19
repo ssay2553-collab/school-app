@@ -147,8 +147,6 @@ export default function CreateLessonTimetable() {
         
       const list: ClassData[] = snap.docs
         .map((d) => ({ id: d.id, ...d.data() } as any))
-        // Safe filtering: allow legacy (no schoolId) and current schoolId
-        .filter((d: any) => !d.schoolId || d.schoolId === SCHOOL_CONFIG.schoolId)
         .map((d) => ({
           id: d.id,
           name: d.name || d.id,
@@ -225,7 +223,7 @@ export default function CreateLessonTimetable() {
       const snap = await getDocs(q);
       const subjects = new Set<string>();
       
-      snap.forEach(d => {
+      snap.forEach((d: any) => {
         const data = d.data() as any;
         if (Array.isArray(data.subjects)) {
           data.subjects.forEach((s: string) => {
@@ -283,7 +281,6 @@ export default function CreateLessonTimetable() {
         timetableDays, 
         numColumns, 
         curriculum,
-        schoolId: SCHOOL_CONFIG.schoolId,
         updatedAt: serverTimestamp()
       }, { merge: true });
       showToast({ message: "Weekly timetable updated successfully.", type: "success" });
@@ -325,7 +322,7 @@ export default function CreateLessonTimetable() {
                 const performDelete = () => {
                     setTimetableDays(prev => {
                         const newState = {...prev};
-                        DAYS.forEach(d => { if(newState[d]) newState[d].splice(index, 1); });
+                        DAYS.forEach((d: string) => { if(newState[d]) newState[d].splice(index, 1); });
                         return newState;
                     });
                     setNumColumns(prev => Math.max(0, prev - 1));

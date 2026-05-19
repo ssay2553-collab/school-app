@@ -32,7 +32,7 @@ const getStartOfWeek = () => {
  * 🪄 AI Lesson Generator
  */
 export const generateLessonPlan = onCall(
-  { secrets: [geminiApiKey] },
+  { secrets: [geminiApiKey], cors: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "User must be logged in.");
@@ -238,7 +238,7 @@ Return ONLY the JSON object, no additional text or explanations.
  * 📺 YouTube Search Proxy
  */
 export const searchYouTube = onCall(
-  { secrets: [geminiApiKey] },
+  { secrets: [geminiApiKey], cors: true },
   async (request) => {
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "User must be logged in.");
@@ -292,7 +292,7 @@ export const searchYouTube = onCall(
 /**
  * 🔍 AI Fact Finder (Search)
  */
-export const aiSearch = onCall({ secrets: [geminiApiKey] }, async (request) => {
+export const aiSearch = onCall({ secrets: [geminiApiKey], cors: true }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be logged in.");
   }

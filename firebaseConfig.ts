@@ -79,13 +79,12 @@ try {
 
   /**
    * TRANSPORT:
+   * - Web/PWA: Force long polling to avoid WebSocket issues on restricted networks/WiFi.
    * - Electron: Specifically needs experimentalForceLongPolling to avoid 400 Bad Request.
-   * - Safari/Chrome/Mobile Web: Standard WebSockets (auto-detect) are best.
    */
   dbInstance = initializeFirestore(app, {
     localCache: cache,
-    experimentalForceLongPolling: isElectron, // ONLY force for Electron
-    experimentalAutoDetectLongPolling: isWeb, // Let it decide for other web browsers
+    experimentalForceLongPolling: isWeb, // Force for all Web/PWA to ensure reliability
   });
 
   console.log(

@@ -1,24 +1,24 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-    collection,
-    getCountFromServer,
-    query,
-    where,
+  collection,
+  getCountFromServer,
+  query,
+  where,
 } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  Image,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -28,6 +28,7 @@ import { useSchoolConfig } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import { useDataFreshness } from "../../hooks/useDataFreshness";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 export default function TeacherDashboard() {
@@ -41,15 +42,20 @@ export default function TeacherDashboard() {
   const { totalUnread, submissionUnread } = useUnreadCounts();
 
   const brandPrimary = config.brandPrimary || COLORS.primary || "#6366F1";
-  const brandSecondary = config.brandSecondary || config.secondaryColor || "#4338ca";
+  const brandSecondary =
+    config.brandSecondary || config.secondaryColor || "#4338ca";
   const surface = config.surfaceColor || "#F8FAFC";
 
   const isAdmin = appUser?.role === "admin";
-  const canFeeding = appUser?.permissions?.["feeding"] === "full" || appUser?.permissions?.["feeding"] === "edit";
-  const canBus = appUser?.permissions?.["record-bus-fee"] === "full" || appUser?.permissions?.["record-bus-fee"] === "edit";
+  const canFeeding =
+    appUser?.permissions?.["feeding"] === "full" ||
+    appUser?.permissions?.["feeding"] === "edit";
+  const canBus =
+    appUser?.permissions?.["record-bus-fee"] === "full" ||
+    appUser?.permissions?.["record-bus-fee"] === "edit";
   const hasFinancialAccess = isAdmin || canFeeding || canBus;
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     if (!appUser?.uid) return;
     try {
       const q = query(
@@ -61,17 +67,29 @@ export default function TeacherDashboard() {
     } catch (e) {
       console.error("Error fetching teacher stats:", e);
     }
-  };
+  }, [appUser?.uid]);
+
+  // Use data freshness hook to refresh on focus/visibility change
+  const { refresh } = useDataFreshness(
+    useCallback(async () => {
+      await fetchStats();
+    }, [fetchStats]),
+    {
+      refreshOnFocus: true,
+      minRefreshInterval: 10000, // 10 seconds
+      clearMemoryCache: true,
+    },
+  );
 
   useEffect(() => {
     fetchStats();
-  }, [appUser?.uid]);
+  }, [fetchStats]);
 
-  const onRefresh = React.useCallback(async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await fetchStats();
     setRefreshing(false);
-  }, [appUser?.uid]);
+  }, [fetchStats]);
 
   const sections = [
     {
@@ -107,12 +125,12 @@ export default function TeacherDashboard() {
           color: "#ec4899",
         },
         {
-            title: "Daily Financials",
-            subtitle: "Fee recording",
-            route: "/admin-dashboard/DailyFinancials",
-            icon: "calculator",
-            color: "#10b981",
-            hidden: !hasFinancialAccess,
+          title: "Daily Financials",
+          subtitle: "Fee recording",
+          route: "/admin-dashboard/DailyFinancials",
+          icon: "calculator",
+          color: "#10b981",
+          hidden: !hasFinancialAccess,
         },
         {
           title: "My Notes",
@@ -190,6 +208,13 @@ export default function TeacherDashboard() {
           icon: "search",
           color: "#0ea5e9",
         },
+        {
+          title: "Coding Hub",
+          subtitle: "Robotics & AI",
+          route: "/coding-robotics",
+          icon: "code-slash",
+          color: "#6366f1",
+        },
       ],
     },
     {
@@ -209,6 +234,13 @@ export default function TeacherDashboard() {
           route: "/teacher-dashboard/news-screen",
           icon: "megaphone",
           color: "#f43f5e",
+        },
+        {
+          title: "School Gallery",
+          subtitle: "Memories",
+          route: "/teacher-dashboard/gallery",
+          icon: "images",
+          color: "#8b5cf6",
         },
         {
           title: "Staff Chat",
@@ -291,10 +323,7 @@ export default function TeacherDashboard() {
             </View>
             <View style={styles.cardInfo}>
               <Text
-                style={[
-                  styles.menuText,
-                  { fontSize: isSmallScreen ? 13 : 15 },
-                ]}
+                style={[styles.menuText, { fontSize: isSmallScreen ? 13 : 15 }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
@@ -311,7 +340,8 @@ export default function TeacherDashboard() {
               </Text>
             </View>
             {item.route &&
-            (String(item.route).includes("chat") || String(item.route).includes("group")) &&
+            (String(item.route).includes("chat") ||
+              String(item.route).includes("group")) &&
             totalUnread > 0 ? (
               <View style={styles.badgePos}>
                 <UnreadBadge count={totalUnread} />
@@ -393,9 +423,7 @@ export default function TeacherDashboard() {
 
                   <View style={styles.statusBadge}>
                     <SVGIcon name="checkmark-seal" size={12} color="#fff" />
-                    <Text style={styles.statusBadgeText}>
-                      ACTIVE PORTAL
-                    </Text>
+                    <Text style={styles.statusBadgeText}>ACTIVE PORTAL</Text>
                   </View>
                 </View>
               </View>
@@ -404,10 +432,22 @@ export default function TeacherDashboard() {
                 {appUser?.role === "admin" && (
                   <TouchableOpacity
                     onPress={() => router.push("/admin-dashboard")}
-                    style={[styles.actionBtn, { width: 'auto', paddingHorizontal: 10, flexDirection: 'row', gap: 6 }]}
+                    style={[
+                      styles.actionBtn,
+                      {
+                        width: "auto",
+                        paddingHorizontal: 10,
+                        flexDirection: "row",
+                        gap: 6,
+                      },
+                    ]}
                   >
                     <SVGIcon name="shield-checkmark" size={20} color="#fff" />
-                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>ADMIN</Text>
+                    <Text
+                      style={{ color: "#fff", fontSize: 10, fontWeight: "900" }}
+                    >
+                      ADMIN
+                    </Text>
                   </TouchableOpacity>
                 )}
                 <TouchableOpacity
@@ -427,18 +467,13 @@ export default function TeacherDashboard() {
                 ]}
               >
                 <View
-                  style={[
-                    styles.statIconBox,
-                    { backgroundColor: "#FFD93D" },
-                  ]}
+                  style={[styles.statIconBox, { backgroundColor: "#FFD93D" }]}
                 >
                   <SVGIcon name="document-text" size={18} color="#4338ca" />
                 </View>
                 <View>
                   <Text style={styles.statLabel}>POSTED TASKS</Text>
-                  <Text style={styles.statValue}>
-                    {assignmentCount ?? "0"}
-                  </Text>
+                  <Text style={styles.statValue}>{assignmentCount ?? "0"}</Text>
                 </View>
               </View>
               <View
@@ -448,17 +483,15 @@ export default function TeacherDashboard() {
                 ]}
               >
                 <View
-                  style={[
-                    styles.statIconBox,
-                    { backgroundColor: "#6BCB77" },
-                  ]}
+                  style={[styles.statIconBox, { backgroundColor: "#6BCB77" }]}
                 >
                   <SVGIcon name="people" size={18} color="#fff" />
                 </View>
                 <View>
                   <Text style={styles.statLabel}>CLASSES</Text>
                   <Text style={styles.statValue}>
-                    {appUser?.classes?.length || (appUser?.classTeacherOf ? 1 : 0)}
+                    {appUser?.classes?.length ||
+                      (appUser?.classTeacherOf ? 1 : 0)}
                   </Text>
                 </View>
               </View>
@@ -471,7 +504,9 @@ export default function TeacherDashboard() {
             {sections.map((section, sIndex) => (
               <View key={section.title} style={{ marginBottom: 40 }}>
                 <View style={styles.sectionHeader}>
-                    <View style={[styles.dot, { backgroundColor: section.color }]} />
+                  <View
+                    style={[styles.dot, { backgroundColor: section.color }]}
+                  />
                   <Text style={[styles.sectionTitle, { color: section.color }]}>
                     {section.title}
                   </Text>
@@ -504,22 +539,22 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium,
   },
   blob1: {
-    position: 'absolute',
+    position: "absolute",
     top: -20,
     right: -20,
     width: 150,
     height: 150,
     borderRadius: 75,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: "rgba(255,255,255,0.1)",
   },
   blob2: {
-    position: 'absolute',
+    position: "absolute",
     bottom: -40,
     left: -30,
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
   headerRow: {
     flexDirection: "row",
@@ -546,7 +581,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  statusBadgeText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
+  statusBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
   profileBtn: {
     width: 80,
     height: 80,
@@ -571,7 +611,7 @@ const styles = StyleSheet.create({
     height: 44,
     minWidth: 44,
     alignItems: "center",
-    justifyContent: 'center',
+    justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.2)",
     borderRadius: 15,
     borderWidth: 1,
@@ -581,7 +621,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     marginTop: 25,
-    paddingHorizontal: 5
+    paddingHorizontal: 5,
   },
   statCard: {
     flex: 1,
@@ -666,11 +706,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
     fontWeight: "800",
-    backgroundColor: '#F1F5F9',
+    backgroundColor: "#F1F5F9",
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 10,
-    overflow: 'hidden'
+    overflow: "hidden",
   },
   badgePos: { position: "absolute", top: 15, right: 15 },
 });

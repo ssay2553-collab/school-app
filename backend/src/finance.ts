@@ -83,10 +83,8 @@ export const onPaymentReceived = onDocumentUpdated(
         // 3. Send Notification
         const message = {
           notification: {
-            title: type,
-            body: paidDiff > 0
-              ? `Receipt: ₵${amount.toFixed(2)} received for ${studentName}. New balance: ₵${newValue.balance.toFixed(2)}.`
-              : `A new charge of ₵${amount.toFixed(2)} has been added to ${studentName}'s account. Total Balance: ₵${newValue.balance.toFixed(2)}.`,
+            title: title,
+            body: body,
           },
           data: { type: "fee_update" },
           tokens: tokens,
@@ -97,7 +95,8 @@ export const onPaymentReceived = onDocumentUpdated(
         console.error("Error sending payment notification:", error);
       }
     }
-  },
+  }
+}
 );
 
 /**
@@ -336,7 +335,6 @@ export const processDailyArrears = onSchedule("0 22 * * *", async (event) => {
 
         batch.set(db.collection("feePayments").doc(serial), {
           amount: feedingRate,
-          schoolId: student.schoolId || "lilies",
           method: "Arrears",
           description: "Feeding Fee (Auto-Arrears)",
           updatedBy: "System (Auto-Task)",
@@ -374,7 +372,6 @@ export const processDailyArrears = onSchedule("0 22 * * *", async (event) => {
 
         batch.set(db.collection("feePayments").doc(serial), {
           amount: busRate,
-          schoolId: student.schoolId || "lilies",
           method: "Arrears",
           description: `Bus Fee (${student.busLocation}) (Auto-Arrears)`,
           updatedBy: "System (Auto-Task)",
@@ -411,7 +408,6 @@ export const processDailyArrears = onSchedule("0 22 * * *", async (event) => {
 
         batch.set(db.collection("feePayments").doc(serial), {
           amount: extraClassesRate,
-          schoolId: student.schoolId || "lilies",
           method: "Arrears",
           description: "Extra Classes (Auto-Arrears)",
           updatedBy: "System (Auto-Task)",

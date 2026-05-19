@@ -1,37 +1,52 @@
+import NetInfo from "@react-native-community/netinfo";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useRouter } from "expo-router";
 import * as VideoThumbnails from "expo-video-thumbnails";
+import debounce from "lodash.debounce";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import {
-    collection,
-    deleteDoc,
-    doc,
-    query,
-    serverTimestamp,
-    setDoc,
-    where
-} from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
-import React, { useEffect, useState } from "react";
-import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    KeyboardAvoidingView,
-    Linking,
-    Modal,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  Linking,
+  Modal,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  ScrollView,
 } from "react-native";
+
 import * as Animatable from "react-native-animatable";
+
+import {
+  collection,
+  deleteDoc,
+  doc,
+  limit,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from "firebase/firestore";
+
+import { httpsCallable } from "firebase/functions";
+
+import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
@@ -40,6 +55,8 @@ import { db, functions, storage } from "../../firebaseConfig";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 const { width } = Dimensions.get("window");
+
+const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 interface TLM {
   id: string;
@@ -59,24 +76,44 @@ type TabType = "discovery" | "saved";
 export default function TLMHub() {
   const router = useRouter();
   const { appUser } = useAuth();
+
   const primary = SCHOOL_CONFIG.primaryColor;
 
+  const isMounted = useRef(true);
+  const latestSearchRef = useRef(0);
+
   const [activeTab, setActiveTab] = useState<TabType>("discovery");
+
   const [subject, setSubject] = useState("");
   const [topic, setTopic] = useState("");
+
   const [discoveryResults, setDiscoveryResults] = useState<TLM[]>([]);
-  const [aiTip, setAiTip] = useState<string | null>(null);
+
   const [savedTlms, setSavedTlms] = useState<TLM[]>([]);
-  const [searchCache, setSearchCache] = useState<
-    Record<string, { results: TLM[]; tip: string | null }>
-  >({});
+
   const [loading, setLoading] = useState(false);
   const [fetchingSaved, setFetchingSaved] = useState(false);
+
+  const [savingIds, setSavingIds] = useState<string[]>([]);
+
   const [showAddModal, setShowAddModal] = useState(false);
+
   const [uploading, setUploading] = useState(false);
+
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Form State for new TLM
+  const [aiTip, setAiTip] = useState<string | null>(null);
+
+  const [searchCache, setSearchCache] = useState<
+    Record<
+      string,
+      {
+        results: TLM[];
+        tip: string | null;
+      }
+    >
+  >({});
+
   const [newTlm, setNewTlm] = useState({
     title: "",
     subject: "",
@@ -86,69 +123,175 @@ export default function TLMHub() {
     thumbnail: "",
   });
 
-  // Fetch saved TLMs with Offline Optimization
-  const fetchSavedMaterials = async () => {
+  const handleAddCustomTlm = async () => {
+    if (!newTlm.title || !newTlm.subject || !newTlm.topic || !newTlm.url) {
+      Alert.alert("Error", "Please fill all required fields and upload/link a resource.");
+      return;
+    }
+
     if (!appUser?.uid) return;
-    setFetchingSaved(true);
+
     try {
+      setLoading(true);
+      const resourceId = `custom_${Date.now()}`;
+      const docId = `${appUser.uid}_${resourceId}`;
+      const docRef = doc(db, "tlms", docId);
+
+      const tlmData = {
+        ...newTlm,
+        id: resourceId,
+        userId: appUser.uid,
+        createdAt: serverTimestamp(),
+        isSaved: true,
+      };
+
+      await setDoc(docRef, tlmData);
+
+      const newSaved = {
+        ...tlmData,
+        id: docId,
+        isSaved: true,
+      } as TLM;
+
+      setSavedTlms((prev) => [newSaved, ...prev]);
+      setShowAddModal(false);
+      setNewTlm({
+        title: "",
+        subject: "",
+        topic: "",
+        type: "link",
+        url: "",
+        thumbnail: "",
+      });
+
+      Alert.alert("Success", "Resource added to your hub.");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Failed to save resource.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
+  const getTypeColor = (type: TLM["type"]) => {
+    switch (type) {
+      case "video":
+        return "#EF4444";
+      case "image":
+        return "#10B981";
+      case "pdf":
+        return "#3B82F6";
+      default:
+        return "#8B5CF6";
+    }
+  };
+
+  const checkInternet = async () => {
+    const net = await NetInfo.fetch();
+
+    if (!net.isConnected) {
+      Alert.alert("No Internet", "Please check your internet connection.");
+      return false;
+    }
+
+    return true;
+  };
+
+  const fetchSavedMaterials = useCallback(async () => {
+    if (!appUser?.uid) return;
+
+    try {
+      setFetchingSaved(true);
+
       const q = query(
         collection(db, "tlms"),
         where("userId", "==", appUser.uid),
+        limit(50),
       );
 
       const snapshot = await getDocsCacheFirst(q);
+
+      if (!isMounted.current) return;
+
       const items = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
         isSaved: true,
       })) as TLM[];
+
       setSavedTlms(items);
     } catch (error) {
-      console.error("Error fetching saved TLMs:", error);
+      console.error(error);
+
+      Alert.alert("Error", "Failed to load saved materials.");
     } finally {
-      setFetchingSaved(false);
+      if (isMounted.current) {
+        setFetchingSaved(false);
+      }
     }
-  };
+  }, [appUser?.uid]);
 
   useEffect(() => {
     fetchSavedMaterials();
-  }, [appUser?.uid]); // Removed activeTab to prevent unnecessary re-fetches on switch
+  }, [fetchSavedMaterials]);
 
   const searchMaterials = async () => {
-    if (!topic) {
-      Alert.alert("Error", "Please enter a topic to search");
+    if (!topic.trim()) {
+      Alert.alert("Required", "Please enter a topic.");
       return;
     }
 
+    const hasInternet = await checkInternet();
+
+    if (!hasInternet) return;
+
+    const requestId = Date.now();
+
+    latestSearchRef.current = requestId;
+
     const cacheKey = `${subject}-${topic}`.toLowerCase().trim();
+
     if (searchCache[cacheKey]) {
       const cached = searchCache[cacheKey];
+
       setDiscoveryResults(
         cached.results.map((r) => ({
           ...r,
           isSaved: savedTlms.some((s) => s.url === r.url),
         })),
       );
+
       setAiTip(cached.tip);
+
       return;
     }
 
-    setLoading(true);
-    setAiTip(null);
-
     try {
-      // 1. Fetch Videos via YouTube Proxy
-      const searchFn = httpsCallable(functions, "searchYouTube");
-      const { data: ytData } = (await searchFn({
+      setLoading(true);
+      setAiTip(null);
+
+      const ytFn = httpsCallable(functions, "searchYouTube");
+
+      const { data: ytData } = (await ytFn({
         query: `${subject} ${topic}`,
-        maxResults: 6,
+        maxResults: 8,
       })) as { data: any[] };
+
+      if (latestSearchRef.current !== requestId) {
+        return;
+      }
 
       const youtubeResults: TLM[] = ytData.map((item) => ({
         id: item.id,
         title: item.title,
         subject: subject || "General",
-        topic: topic,
+        topic,
         type: "video",
         url: item.url,
         thumbnail: item.thumbnail,
@@ -156,71 +299,133 @@ export default function TLMHub() {
         isSaved: savedTlms.some((s) => s.url === item.url),
       }));
 
+      if (!isMounted.current) return;
+
       setDiscoveryResults(youtubeResults);
 
-      // 2. Fetch AI Teaching Tip
       const aiFn = httpsCallable(functions, "aiSearch");
+
       const { data: aiData } = (await aiFn({
-        queryText: `Give me 3 creative and low-cost teaching aid (TLM) ideas for teaching ${topic} in ${subject || "class"}. Keep it brief.`,
+        queryText: `Give me 3 creative and low-cost teaching aid ideas for teaching ${topic} in ${subject || "class"}. Keep it brief.`,
         schoolName: SCHOOL_CONFIG.name,
-      })) as { data: { text: string } };
+      })) as {
+        data: {
+          text: string;
+        };
+      };
+
+      if (latestSearchRef.current !== requestId) {
+        return;
+      }
 
       if (aiData?.text) {
         setAiTip(aiData.text);
       }
 
-      // Cache results
       setSearchCache((prev) => ({
         ...prev,
-        [cacheKey]: { results: youtubeResults, tip: aiData?.text || null },
+        [cacheKey]: {
+          results: youtubeResults,
+          tip: aiData?.text || null,
+        },
       }));
     } catch (error) {
       console.error(error);
-      Alert.alert(
-        "Error",
-        "Failed to fetch materials. Check your internet connection.",
-      );
+
+      Alert.alert("Error", "Failed to fetch learning materials.");
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
+    }
+  };
+
+  const debouncedSearch = useMemo(
+    () =>
+      debounce(() => {
+        searchMaterials();
+      }, 700),
+    [subject, topic, savedTlms],
+  );
+
+  const openUrl = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+
+      if (!supported) {
+        Alert.alert("Invalid URL", "Cannot open this resource.");
+
+        return;
+      }
+
+      await Linking.openURL(url);
+    } catch (error) {
+      Alert.alert("Error", "Failed to open resource.");
     }
   };
 
   const handleSaveTlm = async (item: TLM) => {
-    if (loading) return; // Prevent rapid duplicate clicks
+    if (!appUser?.uid) return;
 
-    // Generate a deterministic ID to prevent duplicates (UserId + ResourceId/URL)
     const resourceId = item.id || encodeURIComponent(item.url).substring(0, 50);
-    const docId = `${appUser?.uid}_${resourceId}`;
+
+    const docId = `${appUser.uid}_${resourceId}`;
+
     const docRef = doc(db, "tlms", docId);
 
     try {
+      setSavingIds((prev) => [...prev, item.id]);
+
       if (item.isSaved) {
         await deleteDoc(docRef);
+
         setSavedTlms((prev) => prev.filter((s) => s.url !== item.url));
+
         setDiscoveryResults((prev) =>
-          prev.map((p) => (p.url === item.url ? { ...p, isSaved: false } : p)),
+          prev.map((p) =>
+            p.url === item.url
+              ? {
+                  ...p,
+                  isSaved: false,
+                }
+              : p,
+          ),
         );
-        Alert.alert("Success", "Removed from saved list");
       } else {
         const tlmData = {
           ...item,
-          userId: appUser?.uid,
+          userId: appUser.uid,
           createdAt: serverTimestamp(),
           isSaved: true,
         };
 
         await setDoc(docRef, tlmData);
 
-        const newSaved = { ...item, id: docId, isSaved: true };
+        const newSaved = {
+          ...item,
+          id: docId,
+          isSaved: true,
+        };
+
         setSavedTlms((prev) => [newSaved, ...prev]);
+
         setDiscoveryResults((prev) =>
-          prev.map((p) => (p.url === item.url ? { ...p, isSaved: true } : p)),
+          prev.map((p) =>
+            p.url === item.url
+              ? {
+                  ...p,
+                  isSaved: true,
+                }
+              : p,
+          ),
         );
-        Alert.alert("Success", "Material saved for offline use!");
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Failed to update saved materials");
+
+      Alert.alert("Error", "Failed to update saved materials.");
+    } finally {
+      setSavingIds((prev) => prev.filter((id) => id !== item.id));
     }
   };
 
@@ -231,27 +436,52 @@ export default function TLMHub() {
         copyToCacheDirectory: true,
       });
 
-      if (result.canceled || !result.assets || result.assets.length === 0)
+      if (result.canceled || !result.assets?.length) {
         return;
+      }
 
       const file = result.assets[0];
+
+      if (file.size && file.size > MAX_FILE_SIZE) {
+        Alert.alert("File Too Large", "Maximum allowed size is 20MB.");
+
+        return;
+      }
+
       const { uri, name, mimeType } = file;
 
-      // Determine type
       let type: TLM["type"] = "link";
-      if (mimeType?.startsWith("image/")) type = "image";
-      else if (mimeType?.startsWith("video/")) type = "video";
-      else if (mimeType === "application/pdf") type = "pdf";
+
+      if (mimeType?.startsWith("image/")) {
+        type = "image";
+      } else if (mimeType?.startsWith("video/")) {
+        type = "video";
+      } else if (mimeType === "application/pdf") {
+        type = "pdf";
+      }
 
       setUploading(true);
       setUploadProgress(0);
 
-      // Upload to Firebase Storage
+      let uploadUri = uri;
+
+      if (type === "image") {
+        const compressed = await ImageManipulator.manipulateAsync(uri, [], {
+          compress: 0.7,
+          format: ImageManipulator.SaveFormat.JPEG,
+        });
+
+        uploadUri = compressed.uri;
+      }
+
       const extension = name.split(".").pop();
+
       const fileName = `tlm_${appUser?.uid}_${Date.now()}.${extension}`;
+
       const storageRef = ref(storage, `tlms/${appUser?.uid}/${fileName}`);
 
-      const response = await fetch(uri);
+      const response = await fetch(uploadUri);
+
       const blob = await response.blob();
 
       const uploadTask = uploadBytesResumable(storageRef, blob);
@@ -261,15 +491,19 @@ export default function TLMHub() {
         (snapshot) => {
           const progress =
             (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+
           setUploadProgress(progress);
         },
         (error) => {
-          console.error("Upload error:", error);
+          console.error(error);
+
           setUploading(false);
-          Alert.alert("Error", "Failed to upload file");
+
+          Alert.alert("Upload Failed", "Failed to upload file.");
         },
         async () => {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+
           let thumbnail = "";
 
           if (type === "video") {
@@ -280,11 +514,10 @@ export default function TLMHub() {
                   time: 1000,
                 },
               );
-              // Upload thumbnail too or just use a generic one?
-              // For simplicity, we'll use a generic icon or try to upload the thumb
-              thumbnail = thumbUri; // Local URI might not persist well if we don't upload it, but for now...
+
+              thumbnail = thumbUri;
             } catch (e) {
-              console.warn("Could not generate thumbnail", e);
+              console.warn(e);
             }
           } else if (type === "image") {
             thumbnail = downloadURL;
@@ -294,402 +527,318 @@ export default function TLMHub() {
             ...prev,
             title: prev.title || name,
             url: downloadURL,
-            type: type,
-            thumbnail: thumbnail,
+            type,
+            thumbnail,
           }));
+
           setUploading(false);
-          Alert.alert("Success", "File uploaded and ready to add!");
+
+          Alert.alert("Success", "File uploaded successfully.");
         },
       );
     } catch (error) {
-      console.error("Pick error:", error);
-      Alert.alert("Error", "Failed to pick file");
-    }
-  };
-
-  const handleManualUpload = async () => {
-    if (!newTlm.title || !newTlm.url || !newTlm.subject || !newTlm.topic) {
-      Alert.alert("Error", "Please fill all fields");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      // Use URL as unique identifier to prevent duplicate uploads of same resource
-      const resourceId = encodeURIComponent(newTlm.url).substring(0, 50);
-      const docId = `${appUser?.uid}_${resourceId}`;
-
-      await setDoc(doc(db, "tlms", docId), {
-        ...newTlm,
-        id: resourceId,
-        userId: appUser?.uid,
-        createdAt: serverTimestamp(),
-      });
-      setShowAddModal(false);
-      setNewTlm({
-        title: "",
-        subject: "",
-        topic: "",
-        type: "link",
-        url: "",
-        thumbnail: "",
-      });
-      fetchSavedMaterials();
-      Alert.alert("Success", "TLM Uploaded successfully");
-    } catch (error) {
       console.error(error);
-      Alert.alert("Error", "Failed to upload TLM");
-    } finally {
-      setLoading(false);
+
+      Alert.alert("Error", "Failed to pick file.");
     }
   };
 
-  const renderTlmItem = (item: TLM) => (
-    <Animatable.View animation="fadeInUp" key={item.id} style={styles.tlmCard}>
-      <Image
-        source={{ uri: item.thumbnail || "https://via.placeholder.com/150" }}
-        style={styles.tlmThumbnail}
-      />
-      <View style={styles.tlmInfo}>
-        <View style={styles.tlmHeader}>
-          <Text style={styles.tlmTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View
-            style={[
-              styles.typeBadge,
-              { backgroundColor: getTypeColor(item.type) + "20" },
-            ]}
-          >
-            <Text style={[styles.typeText, { color: getTypeColor(item.type) }]}>
-              {item.type.toUpperCase()}
+  const renderTlmItem = ({ item }: { item: TLM }) => {
+    const saving = savingIds.includes(item.id);
+
+    return (
+      <Animatable.View animation="fadeInUp" style={styles.tlmCard}>
+        <Image
+          source={{
+            uri: item.thumbnail || "https://via.placeholder.com/150",
+          }}
+          style={styles.tlmThumbnail}
+        />
+
+        <View style={styles.tlmInfo}>
+          <View style={styles.tlmHeader}>
+            <Text style={styles.tlmTitle} numberOfLines={2}>
+              {item.title}
             </Text>
+
+            <View
+              style={[
+                styles.typeBadge,
+                {
+                  backgroundColor: getTypeColor(item.type) + "20",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.typeText,
+                  {
+                    color: getTypeColor(item.type),
+                  },
+                ]}
+              >
+                {item.type.toUpperCase()}
+              </Text>
+            </View>
+          </View>
+
+          <Text style={styles.tlmMeta}>
+            {item.subject} • {item.topic}
+          </Text>
+
+          <View style={styles.tlmActions}>
+            <TouchableOpacity
+              style={[
+                styles.actionBtn,
+                {
+                  borderColor: primary,
+                },
+              ]}
+              onPress={() => openUrl(item.url)}
+            >
+              <SVGIcon name="play-circle-outline" size={16} color={primary} />
+
+              <Text
+                style={[
+                  styles.actionText,
+                  {
+                    color: primary,
+                  },
+                ]}
+              >
+                View
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              disabled={saving}
+              style={[
+                styles.actionBtn,
+                {
+                  backgroundColor: item.isSaved ? "#EF4444" : primary,
+                  borderColor: item.isSaved ? "#EF4444" : primary,
+                },
+              ]}
+              onPress={() => handleSaveTlm(item)}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <SVGIcon
+                    name={item.isSaved ? "trash-outline" : "bookmark-outline"}
+                    size={16}
+                    color="#FFF"
+                  />
+
+                  <Text
+                    style={[
+                      styles.actionText,
+                      {
+                        color: "#FFF",
+                      },
+                    ]}
+                  >
+                    {item.isSaved ? "Remove" : "Save"}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
-        <Text style={styles.tlmMeta}>
-          {item.subject} • {item.topic}
-        </Text>
-
-        <View style={styles.tlmActions}>
-          <TouchableOpacity
-            style={[styles.actionBtn, { borderColor: primary }]}
-            onPress={() => Linking.openURL(item.url)}
-          >
-            <SVGIcon name="play-circle-outline" size={16} color={primary} />
-            <Text style={[styles.actionText, { color: primary }]}>View</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.actionBtn,
-              {
-                backgroundColor: item.isSaved ? "#EF4444" : primary,
-                borderColor: item.isSaved ? "#EF4444" : primary,
-              },
-            ]}
-            onPress={() => handleSaveTlm(item)}
-          >
-            <SVGIcon
-              name={item.isSaved ? "trash-outline" : "bookmark-outline"}
-              size={16}
-              color="#FFF"
-            />
-            <Text style={[styles.actionText, { color: "#FFF" }]}>
-              {item.isSaved ? "Remove" : "Save"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Animatable.View>
-  );
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "video":
-        return "#FF4444";
-      case "image":
-        return "#4D96FF";
-      case "pdf":
-        return "#6BCB77";
-      default:
-        return "#F59E0B";
-    }
+      </Animatable.View>
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <SVGIcon name="arrow-back" size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>TLM Hub 🎓</Text>
-          <Text style={styles.subtitle}>AI-Powered Learning Materials</Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.addBtn, { backgroundColor: primary }]}
-          onPress={() => setShowAddModal(true)}
-        >
-          <SVGIcon name="add" size={24} color="#FFF" />
+        <Text style={styles.headerTitle}>TLM Hub</Text>
+
+        <TouchableOpacity onPress={() => setShowAddModal(true)}>
+          <SVGIcon name="add-circle-outline" size={28} color={primary} />
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabContainer}>
         <TouchableOpacity
-          style={[
-            styles.tab,
-            activeTab === "discovery" && {
-              borderBottomColor: primary,
-              borderBottomWidth: 3,
-            },
-          ]}
+          style={[styles.tab, activeTab === "discovery" && { borderBottomColor: primary }]}
           onPress={() => setActiveTab("discovery")}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "discovery" && {
-                color: primary,
-                fontWeight: "800",
-              },
-            ]}
-          >
+          <Text style={[styles.tabText, activeTab === "discovery" && { color: primary, fontWeight: "700" }]}>
             Discovery
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[
-            styles.tab,
-            activeTab === "saved" && {
-              borderBottomColor: primary,
-              borderBottomWidth: 3,
-            },
-          ]}
+          style={[styles.tab, activeTab === "saved" && { borderBottomColor: primary }]}
           onPress={() => setActiveTab("saved")}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "saved" && { color: primary, fontWeight: "800" },
-            ]}
-          >
-            Saved Assets
+          <Text style={[styles.tabText, activeTab === "saved" && { color: primary, fontWeight: "700" }]}>
+            My Hub
           </Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {activeTab === "discovery" ? (
-          <>
-            {/* Search Section */}
-            <View style={styles.searchSection}>
-              <Text style={styles.label}>What are you teaching today?</Text>
-              <View style={styles.inputGroup}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Subject (e.g. Science)"
-                  value={subject}
-                  onChangeText={setSubject}
-                />
-                <TextInput
-                  style={[styles.input, { marginTop: 12 }]}
-                  placeholder="Topic (e.g. Solar System)"
-                  value={topic}
-                  onChangeText={setTopic}
-                />
-              </View>
-              <TouchableOpacity
-                style={[styles.searchBtn, { backgroundColor: primary }]}
-                onPress={searchMaterials}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <>
-                    <SVGIcon name="sparkles" size={20} color="#FFF" />
-                    <Text style={styles.searchBtnText}>Generate with AI</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+      {activeTab === "discovery" && (
+        <View style={styles.searchContainer}>
+          <TextInput
+            placeholder="Subject"
+            value={subject}
+            onChangeText={setSubject}
+            style={styles.input}
+          />
 
-            {/* Results */}
-            <View style={styles.listSection}>
-              {aiTip && (
-                <Animatable.View animation="fadeIn" style={styles.aiTipCard}>
-                  <View style={styles.aiTipHeader}>
-                    <SVGIcon name="bulb" size={20} color="#F59E0B" />
-                    <Text style={styles.aiTipTitle}>AI Teaching Tips</Text>
-                  </View>
-                  <Text style={styles.aiTipText}>{aiTip}</Text>
-                </Animatable.View>
-              )}
+          <TextInput
+            placeholder="Topic"
+            value={topic}
+            onChangeText={setTopic}
+            style={styles.input}
+          />
 
-              <Text style={styles.sectionTitle}>
-                {loading
-                  ? "Searching YouTube & AI..."
-                  : discoveryResults.length > 0
-                    ? "Recommended for your Class"
-                    : "Search to find teaching aids"}
-              </Text>
-
-              {discoveryResults.map((item) => renderTlmItem(item))}
-            </View>
-          </>
-        ) : (
-          <View style={styles.listSection}>
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 15,
-              }}
-            >
-              <Text style={styles.sectionTitle}>Offline-Ready Materials</Text>
-              {fetchingSaved && (
-                <ActivityIndicator size="small" color={primary} />
-              )}
-            </View>
-
-            {savedTlms.length === 0 && !fetchingSaved ? (
-              <View style={styles.emptyState}>
-                <SVGIcon name="bookmark-outline" size={60} color="#CBD5E1" />
-                <Text style={styles.emptyText}>No saved materials yet.</Text>
-                <Text style={styles.emptySubtext}>
-                  Save items from Discovery to access them quickly here.
-                </Text>
-              </View>
+          <TouchableOpacity
+            style={[
+              styles.searchBtn,
+              {
+                backgroundColor: primary,
+              },
+            ]}
+            onPress={() => debouncedSearch()}
+          >
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
             ) : (
-              savedTlms.map((item) => renderTlmItem(item))
+              <Text style={styles.searchText}>Search</Text>
             )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {activeTab === "discovery" && aiTip && (
+        <View style={styles.tipCard}>
+          <Text style={styles.tipTitle}>AI Teaching Tip</Text>
+
+          <Text style={styles.tipText}>{aiTip}</Text>
+        </View>
+      )}
+
+      <FlatList
+        data={activeTab === "saved" ? savedTlms : discoveryResults}
+        keyExtractor={(item) => item.id}
+        renderItem={renderTlmItem}
+        contentContainerStyle={{
+          paddingBottom: 120,
+        }}
+        removeClippedSubviews
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        initialNumToRender={5}
+        ListEmptyComponent={() => (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No Materials Found</Text>
+
+            <Text style={styles.emptySubtitle}>
+              Search for teaching materials to begin.
+            </Text>
           </View>
         )}
-      </ScrollView>
+      />
 
-      {/* Manual Upload Modal */}
-      <Modal visible={showAddModal} animationType="slide" transparent={true}>
+      <Modal
+        visible={showAddModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowAddModal(false)}
+      >
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={styles.modalContent}
-          >
+          <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Resource</Text>
+              <Text style={styles.modalTitle}>Add New Resource</Text>
               <TouchableOpacity onPress={() => setShowAddModal(false)}>
-                <SVGIcon name="close" size={24} color="#1E293B" />
+                <SVGIcon name="close" size={24} color="#000" />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalLabel}>Title</Text>
-              <TextInput
-                style={styles.modalInput}
-                placeholder="e.g. Parts of a Plant Diagram"
-                value={newTlm.title}
-                onChangeText={(t) => setNewTlm({ ...newTlm, title: t })}
-              />
-
-              <View style={{ flexDirection: "row", gap: 15 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalLabel}>Subject</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="Science"
-                    value={newTlm.subject}
-                    onChangeText={(t) => setNewTlm({ ...newTlm, subject: t })}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalLabel}>Topic</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    placeholder="Botany"
-                    value={newTlm.topic}
-                    onChangeText={(t) => setNewTlm({ ...newTlm, topic: t })}
-                  />
-                </View>
-              </View>
-
-              <Text style={styles.modalLabel}>Resource Type</Text>
-              <View style={styles.typeSelector}>
-                {(["link", "image", "video", "pdf"] as TLM["type"][]).map(
-                  (type) => (
-                    <TouchableOpacity
-                      key={type}
-                      style={[
-                        styles.typeChip,
-                        newTlm.type === type && {
-                          backgroundColor: primary,
-                          borderColor: primary,
-                        },
-                      ]}
-                      onPress={() => setNewTlm({ ...newTlm, type: type })}
-                    >
-                      <Text
-                        style={[
-                          styles.typeChipText,
-                          newTlm.type === type && { color: "#FFF" },
-                        ]}
-                      >
-                        {type.toUpperCase()}
-                      </Text>
-                    </TouchableOpacity>
-                  ),
-                )}
-              </View>
-
-              <Text style={styles.modalLabel}>URL / Web Link</Text>
-              <View style={styles.urlInputContainer}>
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Title</Text>
                 <TextInput
-                  style={[styles.modalInput, { flex: 1 }]}
-                  placeholder="https://..."
-                  value={newTlm.url}
-                  onChangeText={(t) => setNewTlm({ ...newTlm, url: t })}
+                  style={styles.input}
+                  placeholder="Enter resource title"
+                  value={newTlm.title}
+                  onChangeText={(text) => setNewTlm({ ...newTlm, title: text })}
                 />
-                <TouchableOpacity
-                  style={[styles.fileBtn, { backgroundColor: primary + "15" }]}
-                  onPress={handlePickFile}
-                  disabled={uploading}
-                >
-                  {uploading ? (
-                    <ActivityIndicator size="small" color={primary} />
-                  ) : (
-                    <SVGIcon name="cloud-upload" size={20} color={primary} />
-                  )}
-                </TouchableOpacity>
               </View>
 
-              {uploading && (
-                <View style={styles.progressContainer}>
-                  <View
-                    style={[
-                      styles.progressBar,
-                      { width: `${uploadProgress}%`, backgroundColor: primary },
-                    ]}
-                  />
-                  <Text style={styles.progressText}>
-                    {Math.round(uploadProgress)}% uploaded
-                  </Text>
-                </View>
-              )}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Subject</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Mathematics"
+                  value={newTlm.subject}
+                  onChangeText={(text) => setNewTlm({ ...newTlm, subject: text })}
+                />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Topic</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Addition"
+                  value={newTlm.topic}
+                  onChangeText={(text) => setNewTlm({ ...newTlm, topic: text })}
+                />
+              </View>
 
               <TouchableOpacity
-                style={[styles.uploadBtn, { backgroundColor: primary }]}
-                onPress={handleManualUpload}
+                style={[styles.uploadBox, uploading && styles.disabledBtn]}
+                onPress={handlePickFile}
+                disabled={uploading}
               >
-                <Text style={styles.uploadBtnText}>Add to Library</Text>
+                {uploading ? (
+                  <View style={styles.uploadInfo}>
+                    <ActivityIndicator color={primary} />
+                    <Text style={styles.uploadText}>Uploading... {Math.round(uploadProgress)}%</Text>
+                  </View>
+                ) : newTlm.url ? (
+                  <View style={styles.uploadInfo}>
+                    <SVGIcon name="checkmark-circle" size={32} color="#10B981" />
+                    <Text style={styles.uploadText}>File Ready</Text>
+                  </View>
+                ) : (
+                  <View style={styles.uploadInfo}>
+                    <SVGIcon name="cloud-upload-outline" size={32} color={primary} />
+                    <Text style={styles.uploadText}>Upload Document, Image or Video</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.orDivider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.orText}>OR LINK</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>External URL</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="https://..."
+                  value={newTlm.url}
+                  onChangeText={(text) => setNewTlm({ ...newTlm, url: text, type: 'link' })}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.saveBtn, { backgroundColor: primary }]}
+                onPress={handleAddCustomTlm}
+                disabled={loading}
+              >
+                {loading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Save to Hub</Text>}
               </TouchableOpacity>
             </ScrollView>
-          </KeyboardAvoidingView>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -697,276 +846,246 @@ export default function TLMHub() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 20,
+  container: {
+    flex: 1,
     backgroundColor: "#FFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: "#F8FAFC",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 15,
-  },
-  title: { fontSize: 22, fontWeight: "900", color: "#1E293B" },
-  subtitle: { fontSize: 13, color: "#64748B", fontWeight: "600" },
-  addBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
+
+  header: {
+    padding: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
   },
+
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+  },
+
+  searchContainer: {
+    paddingHorizontal: 20,
+    gap: 12,
+    marginTop: 10,
+  },
+
   tabContainer: {
     flexDirection: "row",
-    backgroundColor: "#FFF",
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: "#F3F4F6",
   },
+
   tab: {
-    flex: 1,
-    paddingVertical: 15,
-    alignItems: "center",
+    paddingVertical: 12,
+    marginRight: 24,
+    borderBottomWidth: 2,
+    borderBottomColor: "transparent",
   },
+
   tabText: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#94A3B8",
-  },
-  content: { padding: 20 },
-  searchSection: {
-    backgroundColor: "#FFF",
-    padding: 20,
-    borderRadius: 24,
-    ...SHADOWS.medium,
-    marginBottom: 25,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  label: {
     fontSize: 15,
-    fontWeight: "800",
-    color: "#1E293B",
-    marginBottom: 15,
+    color: "#6B7280",
   },
-  inputGroup: { marginBottom: 20 },
+
   input: {
-    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 14,
-    padding: 14,
+    borderColor: "#E5E7EB",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     fontSize: 15,
-    fontWeight: "500",
   },
+
   searchBtn: {
-    height: 56,
-    borderRadius: 16,
-    flexDirection: "row",
-    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: "center",
-    gap: 10,
-    ...SHADOWS.small,
   },
-  searchBtnText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
-  listSection: { marginTop: 10 },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#1E293B",
-    marginBottom: 15,
+
+  searchText: {
+    color: "#FFF",
+    fontWeight: "700",
   },
+
   tlmCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    padding: 12,
     flexDirection: "row",
-    marginBottom: 16,
-    ...SHADOWS.small,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
+    marginHorizontal: 20,
+    marginTop: 16,
+    backgroundColor: "#FFF",
+    borderRadius: 18,
+    overflow: "hidden",
+    ...SHADOWS.medium,
   },
+
   tlmThumbnail: {
-    width: 100,
-    height: 100,
-    borderRadius: 14,
-    backgroundColor: "#F1F5F9",
+    width: 120,
+    height: 120,
   },
-  tlmInfo: { flex: 1, marginLeft: 15, justifyContent: "space-between" },
+
+  tlmInfo: {
+    flex: 1,
+    padding: 14,
+  },
+
   tlmHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 5,
   },
-  tlmTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#1E293B",
-    flex: 1,
-    lineHeight: 20,
-  },
-  typeBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  typeText: { fontSize: 9, fontWeight: "900" },
-  tlmMeta: { fontSize: 12, color: "#64748B", fontWeight: "600", marginTop: 4 },
-  tlmActions: { flexDirection: "row", gap: 8, marginTop: 12 },
-  actionBtn: {
-    flex: 1,
-    height: 38,
-    borderRadius: 10,
-    borderWidth: 1,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 5,
-  },
-  actionText: { fontSize: 12, fontWeight: "800" },
 
-  aiTipCard: {
-    backgroundColor: "#FFFBEB",
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#FEF3C7",
+  tlmTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    marginRight: 10,
   },
-  aiTipHeader: {
+
+  typeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+
+  typeText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
+
+  tlmMeta: {
+    marginTop: 8,
+    color: "#6B7280",
+  },
+
+  tlmActions: {
+    flexDirection: "row",
+    marginTop: 14,
+    gap: 10,
+  },
+
+  actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+
+  actionText: {
+    fontWeight: "600",
+  },
+
+  tipCard: {
+    margin: 20,
+    backgroundColor: "#F9FAFB",
+    padding: 16,
+    borderRadius: 16,
+  },
+
+  tipTitle: {
+    fontWeight: "700",
     marginBottom: 8,
   },
-  aiTipTitle: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: "#B45309",
-    textTransform: "uppercase",
-  },
-  aiTipText: {
-    fontSize: 14,
-    color: "#92400E",
-    lineHeight: 20,
-    fontWeight: "500",
+
+  tipText: {
+    lineHeight: 22,
+    color: "#374151",
   },
 
   emptyState: {
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#1E293B",
-    marginTop: 15,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: "#64748B",
-    textAlign: "center",
-    marginTop: 8,
-    paddingHorizontal: 40,
+    marginTop: 80,
   },
 
-  // Modal Styles
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+
+  emptySubtitle: {
+    marginTop: 8,
+    color: "#6B7280",
+  },
+
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
-    justifyContent: "flex-end",
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: "#FFF",
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 24,
-    maxHeight: "90%",
+    maxHeight: '90%',
   },
   modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 25,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  modalTitle: { fontSize: 22, fontWeight: "900", color: "#1E293B" },
-  modalLabel: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#64748B",
-    marginBottom: 8,
-    marginTop: 15,
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
   },
-  modalInput: {
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 14,
-    padding: 14,
-    fontSize: 15,
-  },
-  typeSelector: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 5,
-  },
-  typeChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  typeChipText: { fontSize: 12, fontWeight: "800", color: "#64748B" },
-  uploadBtn: {
-    height: 56,
-    borderRadius: 16,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 35,
+  formGroup: {
     marginBottom: 20,
-    ...SHADOWS.small,
   },
-  uploadBtnText: { color: "#FFF", fontSize: 16, fontWeight: "800" },
-
-  urlInputContainer: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
   },
-  fileBtn: {
-    width: 50,
-    height: 50,
+  uploadBox: {
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  uploadInfo: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  uploadText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  orText: {
+    marginHorizontal: 12,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#9CA3AF',
+  },
+  saveBtn: {
+    paddingVertical: 16,
     borderRadius: 14,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  progressContainer: {
+    alignItems: 'center',
     marginTop: 10,
-    height: 20,
-    backgroundColor: "#F1F5F9",
-    borderRadius: 10,
-    overflow: "hidden",
-    position: "relative",
-    justifyContent: "center",
+    marginBottom: 30,
   },
-  progressBar: {
-    height: "100%",
-    position: "absolute",
-    left: 0,
-    top: 0,
+  saveBtnText: {
+    color: '#FFF',
+    fontWeight: '700',
+    fontSize: 16,
   },
-  progressText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#1E293B",
-    textAlign: "center",
-    zIndex: 1,
+  disabledBtn: {
+    opacity: 0.6,
   },
 });

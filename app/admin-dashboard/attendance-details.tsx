@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
   View,
   Platform,
+  RefreshControl,
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
 import { SHADOWS, COLORS } from "../../constants/theme";
@@ -19,6 +20,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import * as Animatable from "react-native-animatable";
 import moment from "moment";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 interface StudentDetail {
   id: string;
@@ -37,50 +39,71 @@ export default function AttendanceDetails() {
     term: string;
   }>();
 
+  const acadConfig = useAcademicConfig();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [students, setStudents] = useState<StudentDetail[]>([]);
   const [filter, setFilter] = useState<"all" | "present" | "absent">("all");
 
   const primary = SCHOOL_CONFIG.primaryColor;
 
-  const fetchDetails = useCallback(async () => {
-    setLoading(true);
-    const schoolId = SCHOOL_CONFIG.schoolId;
+  const fetchDetails = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) setLoading(true);
     try {
-      // 1. Fetch Students in Class (Resilient Query)
+      // 1. Fetch Students in Class (Current list)
       const q = query(
         collection(db, "users"),
         where("role", "==", "student"),
-        where("classId", "==", classId)
+        where("classId", "==", classId),
+        where("status", "in", ["active", "pending_activation"])
       );
-      const studentsSnap = await getDocs(q);
+
+      const studentsSnap = forceRefresh
+        ? await getDocs(q)
+        : await getDocsCacheFirst(q as any);
 
       const studentList = studentsSnap.docs
         .map(d => ({ id: d.id, ...d.data() } as any))
-        .filter(d => {
-          // Unified client-side filtering with daily-attendance.tsx
-          const statusMatch = ["active", "pending_activation"].includes(d.status);
-          const schoolMatch = !d.schoolId || d.schoolId === schoolId || (schoolId === "lilies" && d.schoolId === "abijah");
-          return statusMatch && schoolMatch;
-        })
         .map(d => ({
           id: d.id,
           name: `${d.profile?.firstName || ""} ${d.profile?.lastName || ""}`.trim() || d.id,
           status: "not_marked" as const
         }));
 
-      // 2. Fetch Attendance Record (Try server for latest, but fallback to cache)
-      // Note: We use the same ID format as in teacher-dashboard/daily-attendance.tsx
-      const cleanYear = (academicYear || "").replace(/\//g, "-");
-      const cleanTerm = (term || "").replace(/\s/g, "");
-      const attendanceId = `${classId}_${cleanYear}_${cleanTerm}_${date}`;
+      // 2. Resolve Attendance ID
+      const activeYear = academicYear || acadConfig.academicYear;
+      const activeTerm = term || acadConfig.currentTerm;
 
-      const attRef = doc(db, "attendance", attendanceId);
-      const attSnap = await getDoc(attRef); // Fresh fetch for accuracy
+      let attendanceData: any = {};
 
-      const attendanceData = attSnap.exists() ? (attSnap.data() as any).students || {} : {};
+      if (activeYear && activeTerm) {
+        const cleanYear = activeYear.replace(/\//g, "-");
+        const cleanTerm = activeTerm.replace(/\s/g, "");
+        const attendanceId = `${classId}_${cleanYear}_${cleanTerm}_${date}`;
+        const attRef = doc(db, "attendance", attendanceId);
 
-      // 3. Merge
+        // Always try server for attendance record itself for PWA accuracy
+        const attSnap = await getDoc(attRef);
+        if (attSnap.exists()) {
+          attendanceData = attSnap.data().students || {};
+        }
+      } else if (!forceRefresh && acadConfig.loading) {
+        // Wait for academic config if not yet available
+        return;
+      } else {
+        // Fallback: Query by date and classId if params and config are missing
+        const attQuery = query(
+          collection(db, "attendance"),
+          where("date", "==", date),
+          where("classId", "==", classId)
+        );
+        const attQuerySnap = await getDocs(attQuery);
+        if (!attQuerySnap.empty) {
+          attendanceData = attQuerySnap.docs[0].data().students || {};
+        }
+      }
+
+      // 3. Merge based on CURRENT students only (consistent with overview)
       const merged = studentList.map(s => ({
         ...s,
         status: attendanceData[s.id]?.status || "not_marked",
@@ -92,12 +115,18 @@ export default function AttendanceDetails() {
       console.error("Fetch Details Error:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [classId, date, academicYear, term]);
+  }, [classId, date, academicYear, term, acadConfig.academicYear, acadConfig.currentTerm, acadConfig.loading]);
 
   useEffect(() => {
     fetchDetails();
   }, [fetchDetails]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchDetails(true);
+  };
 
   const filteredStudents = students.filter(s => {
     if (filter === "all") return true;
@@ -148,13 +177,16 @@ export default function AttendanceDetails() {
         <FilterChip label="Absent" count={stats.absent} active={filter === "absent"} onPress={() => setFilter("absent")} color="#EF4444" />
       </View>
 
-      {loading ? (
+      {loading && !refreshing ? (
         <View style={styles.center}><ActivityIndicator size="large" color={primary} /></View>
       ) : (
         <FlatList
           data={filteredStudents}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[primary]} />
+          }
           renderItem={({ item, index }) => (
             <Animatable.View animation="fadeInUp" duration={300} delay={index * 30} style={styles.studentCard}>
               <View style={[styles.statusIndicator, { backgroundColor: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : "#CBD5E1" }]} />

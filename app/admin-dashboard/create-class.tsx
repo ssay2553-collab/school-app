@@ -85,8 +85,7 @@ export default function ClassManagementScreen() {
           id: d.id,
           ...d.data(),
           order: (d.data() as any).order ?? i,
-        }) as ClassItem)
-        .filter((c: any) => !c.schoolId || c.schoolId === SCHOOL_CONFIG.schoolId);
+        }) as ClassItem);
 
       const studentsQuery = query(
         collection(db, "users"),
@@ -156,7 +155,6 @@ export default function ClassManagementScreen() {
         name: newClassNameInput.trim(),
         level: newClassLevel,
         department,
-        schoolId: SCHOOL_CONFIG.schoolId,
         order: classes.length,
         createdAt: serverTimestamp(),
       });

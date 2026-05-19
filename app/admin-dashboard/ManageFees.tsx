@@ -256,7 +256,7 @@ export default function ManageFees() {
         let received = 0;
 
         // Sum up from term records
-        snap.docs.forEach(d => {
+        snap.docs.forEach((d: any) => {
           const data = d.data() as any;
           expected += (data.termBill || 0) + (data.arrears || 0);
           received += (data.amountPaid || 0);
@@ -270,7 +270,7 @@ export default function ManageFees() {
            // Filter the sums to the selected class
            let clsExpected = 0;
            let clsReceived = 0;
-           snap.docs.forEach(d => {
+           snap.docs.forEach((d: any) => {
              const data = d.data() as any;
              if (data.classId === selectedClassId) {
                clsExpected += (data.termBill || 0) + (data.arrears || 0);
@@ -613,7 +613,6 @@ export default function ManageFees() {
 
         const feeRecordData: any = {
           studentUid: uid,
-          schoolId: SCHOOL_CONFIG.schoolId || "unknown",
           studentName: s.fullName,
           classId: s.classId,
           className: s.className,
@@ -638,7 +637,6 @@ export default function ManageFees() {
 
         batch.update(doc(db, "users", uid), {
           walletBalance: newBalance,
-          schoolId: SCHOOL_CONFIG.schoolId || "unknown"
         });
       }
       await batch.commit();
@@ -672,7 +670,6 @@ export default function ManageFees() {
 
       const entry = {
         amount,
-        schoolId: SCHOOL_CONFIG.schoolId, // Multi-tenancy support
         method: paymentMethod,
         receivedFrom: receivedFrom.trim(),
         updatedBy: appUser?.adminRole || "Admin",
@@ -690,7 +687,6 @@ export default function ManageFees() {
       if (!selectedStudent.hasRecordInTerm) {
         batch.set(doc(db, "studentFeeRecords", recordId), {
           studentUid: selectedStudent.uid,
-          schoolId: SCHOOL_CONFIG.schoolId || "unknown",
           studentName: selectedStudent.fullName,
           classId: selectedStudent.classId,
           className: selectedStudent.className,
@@ -715,8 +711,7 @@ export default function ManageFees() {
         });
       }
       batch.update(doc(db, "users", selectedStudent.uid), {
-        walletBalance: increment(-amount),
-        schoolId: SCHOOL_CONFIG.schoolId // Fix potential missing schoolId
+          walletBalance: increment(-amount),
       });
       // Set to dedicated feePayments collection for efficient daily reporting
       batch.set(doc(db, "feePayments", serial), entry);

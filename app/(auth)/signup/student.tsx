@@ -149,7 +149,6 @@ export default function StudentSignupScreen() {
         const snap = await getDocsCacheFirst(q as any);
         const list = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as any))
-          .filter((d) => !d.schoolId || d.schoolId === SCHOOL_CONFIG.schoolId)
           .map((d) => ({ id: d.id, name: d.name || d.id }));
 
         const sorted = list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
@@ -345,9 +344,9 @@ export default function StudentSignupScreen() {
       const userData = {
         uid: userId,
         role: "student",
-        schoolId: (preRegisteredData?.schoolId && preRegisteredData.schoolId !== "default")
-          ? preRegisteredData.schoolId
-          : SCHOOL_CONFIG.schoolId,
+        // Redundant schoolId property injection removed as per "one database per school" architecture
+        // UID and role-based access are enforced via firestore.rules
+        // schoolId is managed via environment variables for branding/config only
         status: "active",
         classId: preRegisteredData?.classId || form.selectedClassId,
         gender: form.gender || preRegisteredData?.profile?.gender || "",

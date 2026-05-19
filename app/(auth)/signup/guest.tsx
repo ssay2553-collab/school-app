@@ -49,7 +49,6 @@ export default function GuestSignup() {
         collection(db, "users"),
         where("username", "==", username.trim().toLowerCase()),
         where("role", "==", "staff"),
-        where("schoolId", "==", schoolId),
       );
 
       const snapshot = await getDocs(q);

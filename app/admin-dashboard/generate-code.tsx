@@ -64,7 +64,7 @@ const GenerateCodeScreen = () => {
       try {
         const snap = await getDocs(collection(db, "classes"));
         const list: ClassItem[] = [];
-        snap.forEach(d => list.push({ id: d.id, name: d.data().name || d.id }));
+        snap.forEach((d: any) => list.push({ id: d.id, name: d.data().name || d.id }));
         const sorted = sortClasses(list);
         setClasses(sorted);
       } catch (err) {

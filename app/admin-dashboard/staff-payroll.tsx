@@ -280,7 +280,6 @@ export default function StaffPayrollScreen() {
 
       await addDoc(collection(db, "users"), {
         role: "staff",
-        schoolId: appUser?.schoolId || "default",
         status: "active",
         salary: parseFloat(newStaffSalary),
         profile: {
@@ -316,7 +315,6 @@ export default function StaffPayrollScreen() {
       const itemLabel = `Staff Payroll - ${selectedMonth} ${selectedYear}`;
       const q = query(
         collection(db, "expenditures"),
-        where("schoolId", "==", appUser?.schoolId || "default"),
       );
       // Use cache-first Firestore helper
       const { getDocsCacheFirst } = await import("../../lib/firestoreHelpers");

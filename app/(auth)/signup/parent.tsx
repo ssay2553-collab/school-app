@@ -226,7 +226,6 @@ export default function ParentSignup() {
         },
         childrenIds: childrenUids,
         childrenClassIds: childrenClassIds,
-        schoolId: schoolId,
         status: "active",
         createdAt: serverTimestamp(),
       });

@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useEffect, useState, useCallback, useMemo } from "react";
+import * as Animatable from "react-native-animatable";
 import {
     ActivityIndicator,
     Alert,
@@ -53,9 +54,17 @@ interface StudentData {
     lastName: string;
     email?: string;
     studentID?: string;
+    phone?: string;
   };
   classId: string;
   dateOfBirth?: any;
+  parentUids?: string[];
+  parents?: Array<{
+    uid: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+  }>;
 }
 
 const { width } = Dimensions.get("window");
@@ -91,7 +100,32 @@ export default function PromoteStudentsScreen() {
   const [editPassword, setEditPassword] = useState("");
   const [editDob, setEditDob] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [editPhone, setEditPhone] = useState("");
   const [updating, setUpdating] = useState(false);
+
+  const [selectedStudentUids, setSelectedStudentUids] = useState<string[]>([]);
+
+  const toggleStudentSelection = (uid: string) => {
+    setSelectedStudentUids((prev) =>
+      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid],
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (students.length === 0) return;
+    const allUids = students.map((s) => s.uid);
+    const isAllSelected = allUids.every((uid) => selectedStudentUids.includes(uid));
+
+    if (isAllSelected) {
+      setSelectedStudentUids((prev) =>
+        prev.filter((uid) => !allUids.includes(uid)),
+      );
+    } else {
+      setSelectedStudentUids((prev) =>
+        Array.from(new Set([...prev, ...allUids])),
+      );
+    }
+  };
 
   const isClassTeacher = useMemo(() => {
     if (!selectedClass || !appUser) return false;
@@ -207,13 +241,56 @@ export default function PromoteStudentsScreen() {
         where("status", "in", ["active", "pending_activation"]),
       );
       const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({
+      let list = snap.docs.map((d) => ({
         uid: d.id,
         ...(d.data() as any),
-      }));
+      })) as StudentData[];
+
+      // Fetch linked parent data
+      const allParentUids = new Set<string>();
+      list.forEach((s) => {
+        if (s.parentUids && Array.isArray(s.parentUids)) {
+          s.parentUids.forEach((uid) => allParentUids.add(uid));
+        }
+      });
+
+      if (allParentUids.size > 0) {
+        const parentUidsArr = Array.from(allParentUids);
+        const parentsMap: Record<string, any> = {};
+
+        // Fetch in batches of 30 (Firestore limit for 'in' query)
+        for (let i = 0; i < parentUidsArr.length; i += 30) {
+          const chunk = parentUidsArr.slice(i, i + 30);
+          const parentsQ = query(
+            collection(db, "users"),
+            where(documentId(), "in", chunk),
+          );
+          const parentsSnap = await getDocs(parentsQ);
+          parentsSnap.forEach((d) => {
+            parentsMap[d.id] = { uid: d.id, ...d.data() };
+          });
+        }
+
+        list = list.map((s) => {
+          if (s.parentUids && Array.isArray(s.parentUids)) {
+            const studentParents = s.parentUids
+              .map((uid) => parentsMap[uid])
+              .filter(Boolean)
+              .map((p) => ({
+                uid: p.uid,
+                firstName: p.profile?.firstName || "",
+                lastName: p.profile?.lastName || "",
+                phone: p.profile?.phone || "N/A",
+              }));
+            return { ...s, parents: studentParents };
+          }
+          return s;
+        });
+      }
+
       setStudents(list);
     } catch (err) {
-      console.error(err);
+      console.error("fetchStudents error:", err);
       showToast({
         message: "Could not fetch students for this class.",
         type: "error",
@@ -230,6 +307,19 @@ export default function PromoteStudentsScreen() {
     setSelectedClass(cls);
     fetchStudents(cls.id);
   };
+  useEffect(() => {
+    if (selectedStudent) {
+      setEditFirstName(selectedStudent.profile.firstName);
+      setEditLastName(selectedStudent.profile.lastName);
+      setEditEmail(selectedStudent.profile.email || "");
+      setEditPhone(selectedStudent.profile.phone || "");
+      if (selectedStudent.dateOfBirth) {
+        setEditDob(selectedStudent.dateOfBirth.toDate());
+      } else {
+        setEditDob(null);
+      }
+    }
+  }, [selectedStudent]);
 
   const closeModal = () => {
     setSelectedStudent(null);
@@ -248,6 +338,7 @@ export default function PromoteStudentsScreen() {
       const updates: any = {
         "profile.firstName": editFirstName.trim(),
         "profile.lastName": editLastName.trim(),
+        "profile.phone": editPhone.trim(),
       };
       if (editDob) {
         updates.dateOfBirth = Timestamp.fromDate(editDob);
@@ -257,7 +348,8 @@ export default function PromoteStudentsScreen() {
       showToast({ message: "Profile updated.", type: "success" });
       fetchStudents(selectedClass!.id);
       closeModal();
-    } catch {
+    } catch (err) {
+      console.error("Update failed:", err);
       showToast({ message: "Update failed.", type: "error" });
     } finally {
       setUpdating(false);
@@ -303,56 +395,36 @@ export default function PromoteStudentsScreen() {
   const handleUpdate = async (action: "Promote" | "Repeat") => {
     if (!targetClassId || !isClassTeacher) return;
 
-    if (isBulkMode) {
-      // Handle bulk update
-      if (students.length === 0) return;
-      setLoading(true);
-      try {
-        const batch = writeBatch(db);
-        students.forEach((student) => {
-          const studentRef = doc(db, "users", student.uid);
-          batch.update(studentRef, { classId: targetClassId });
-        });
-        await batch.commit();
+    const uidsToUpdate = isBulkMode
+      ? (selectedStudentUids.length > 0 ? selectedStudentUids : students.map(s => s.uid))
+      : (selectedStudent ? [selectedStudent.uid] : []);
 
-        showToast({
-          message: `All students have been ${action.toLowerCase()}d.`,
-          type: "success",
-        });
-        fetchStudents(selectedClass!.id); // Refresh list
-        closeModal();
-      } catch (err) {
-        console.error(err);
-        showToast({
-          message: `Failed to ${action.toLowerCase()} all students.`,
-          type: "error",
-        });
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      // Handle individual update
-      if (!selectedStudent) return;
-      setLoading(true);
-      try {
-        const studentRef = doc(db, "users", selectedStudent.uid);
-        await updateDoc(studentRef, { classId: targetClassId });
+    if (uidsToUpdate.length === 0) return;
 
-        showToast({
-          message: `${selectedStudent.profile.firstName} has been ${action.toLowerCase()}d.`,
-          type: "success",
-        });
-        fetchStudents(selectedClass!.id); // Refresh list
-        closeModal();
-      } catch (err) {
-        console.error(err);
-        showToast({
-          message: `Failed to ${action.toLowerCase()} student.`,
-          type: "error",
-        });
-      } finally {
-        setLoading(false);
-      }
+    setLoading(true);
+    try {
+      const batch = writeBatch(db);
+      uidsToUpdate.forEach((uid) => {
+        const studentRef = doc(db, "users", uid);
+        batch.update(studentRef, { classId: targetClassId });
+      });
+      await batch.commit();
+
+      showToast({
+        message: `${uidsToUpdate.length} student(s) have been ${action.toLowerCase()}d.`,
+        type: "success",
+      });
+      setSelectedStudentUids([]);
+      fetchStudents(selectedClass!.id); // Refresh list
+      closeModal();
+    } catch (err) {
+      console.error(err);
+      showToast({
+        message: `Failed to ${action.toLowerCase()} students.`,
+        type: "error",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -420,29 +492,50 @@ export default function PromoteStudentsScreen() {
 
       <Text style={styles.header}>Students in {selectedClass.name}</Text>
 
-      {/* --- Bulk Action Buttons --- */}
-      {isClassTeacher && (
-        <View style={styles.bulkActionRow}>
+      {isClassTeacher && students.length > 0 && (
+        <View>
           <TouchableOpacity
-            style={[styles.bulkButton, { backgroundColor: COLORS.success }]}
-            onPress={() => {
-              setIsBulkMode(true);
-              setTargetClassId(selectedClass.id);
-            }}
+            style={styles.selectAllRow}
+            onPress={handleSelectAll}
           >
-            <SVGIcon name="school" size={18} color="#fff" />
-            <Text style={styles.bulkButtonText}>Promote All</Text>
+            <SVGIcon
+              name={
+                students.every((s) => selectedStudentUids.includes(s.uid))
+                  ? "checkbox"
+                  : "square-outline"
+              }
+              size={22}
+              color={COLORS.primary}
+            />
+            <Text style={styles.selectAllText}>
+              {students.every((s) => selectedStudentUids.includes(s.uid))
+                ? "Deselect All Students"
+                : `Select All ${students.length} Students`}
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.bulkButton, { backgroundColor: COLORS.danger }]}
-            onPress={() => {
-              setIsBulkMode(true);
-              setTargetClassId(selectedClass.id);
-            }}
-          >
-            <SVGIcon name="refresh" size={18} color="#fff" />
-            <Text style={styles.bulkButtonText}>Repeat All</Text>
-          </TouchableOpacity>
+
+          <View style={styles.bulkActionRow}>
+            <TouchableOpacity
+              style={[styles.bulkButton, { backgroundColor: COLORS.success }]}
+              onPress={() => {
+                setIsBulkMode(true);
+                setAssignmentModal({ type: "promote_repeat" });
+              }}
+            >
+              <SVGIcon name="school" size={20} color="#fff" />
+              <Text style={styles.bulkButtonText}>Promote All</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.bulkButton, { backgroundColor: COLORS.danger }]}
+              onPress={() => {
+                setIsBulkMode(true);
+                setAssignmentModal({ type: "promote_repeat" });
+              }}
+            >
+              <SVGIcon name="refresh" size={20} color="#fff" />
+              <Text style={styles.bulkButtonText}>Repeat All</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -456,62 +549,130 @@ export default function PromoteStudentsScreen() {
           keyExtractor={(item) => item.uid}
           numColumns={isLargeScreen ? 2 : 1}
           columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
-          renderItem={({ item }) => (
+          renderItem={({ item }) => {
+            const isSelected = selectedStudentUids.includes(item.uid);
+            return (
+              <TouchableOpacity
+                style={[
+                  styles.itemCard,
+                  isLargeScreen && { flex: 1, marginBottom: 0 },
+                  isSelected && styles.itemCardSelected,
+                ]}
+                onPress={() => {
+                  if (selectedStudentUids.length > 0) {
+                    toggleStudentSelection(item.uid);
+                  } else {
+                    setSelectedStudent(item);
+                    setTargetClassId(item.classId);
+                  }
+                }}
+                onLongPress={() => toggleStudentSelection(item.uid)}
+              >
+                {selectedStudentUids.length > 0 && (
+                  <View style={styles.selectionIndicator}>
+                    <SVGIcon
+                      name={isSelected ? "checkbox" : "square-outline"}
+                      size={20}
+                      color={isSelected ? COLORS.primary : COLORS.gray}
+                    />
+                  </View>
+                )}
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={styles.itemTitle}
+                  >{`${item.profile.firstName} ${item.profile.lastName}`}</Text>
+                  <Text style={styles.itemSubtitle}>
+                    ID: {item.profile.studentID || "N/A"}
+                  </Text>
+                  {item.parents && item.parents.length > 0 ? (
+                    item.parents.map((p, idx) => (
+                      <Text key={idx} style={styles.parentInfo}>
+                        <SVGIcon name="call" size={10} color={COLORS.gray} /> {p.firstName} {p.lastName}: {p.phone}
+                      </Text>
+                    ))
+                  ) : (
+                    <Text style={[styles.parentInfo, { color: COLORS.danger }]}>
+                      No parent contact linked
+                    </Text>
+                  )}
+                </View>
+                {isClassTeacher && selectedStudentUids.length === 0 && (
+                  <View style={styles.actionIcons}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedStudent(item);
+                        setEditFirstName(item.profile.firstName);
+                        setEditLastName(item.profile.lastName);
+                        setEditPhone(item.profile.phone || "");
+                        setEditDob(item.dateOfBirth ? (item.dateOfBirth.toDate ? item.dateOfBirth.toDate() : new Date(item.dateOfBirth)) : null);
+                        setAssignmentModal({ type: "edit_profile" });
+                      }}
+                      style={styles.iconBtn}
+                    >
+                      <SVGIcon name="person" size={18} color={COLORS.primary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedStudent(item);
+                        setEditEmail(item.profile.email || "");
+                        setEditPassword("");
+                        setAssignmentModal({ type: "edit_email" });
+                      }}
+                      style={styles.iconBtn}
+                    >
+                      <SVGIcon name="mail" size={18} color={COLORS.secondary} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setSelectedStudent(item);
+                        setTargetClassId(item.classId);
+                        setAssignmentModal({ type: "promote_repeat" });
+                      }}
+                      style={styles.iconBtn}
+                    >
+                      <SVGIcon name="swap-horizontal" size={18} color={COLORS.gray} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          }}
+        />
+      )}
+
+      {selectedStudentUids.length > 0 && (
+        <Animatable.View animation="slideInUp" style={styles.bulkActionBar}>
+          <View style={styles.bulkActionInfo}>
+            <Text style={styles.bulkActionCount}>
+              {selectedStudentUids.length} Selected
+            </Text>
+            <TouchableOpacity onPress={() => setSelectedStudentUids([])}>
+              <Text style={styles.bulkActionCancel}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.bulkActionButtons}>
             <TouchableOpacity
-              style={[styles.itemCard, isLargeScreen && { flex: 1, marginBottom: 0 }]}
+              style={[styles.bulkActionBtn, { backgroundColor: COLORS.success }]}
               onPress={() => {
-                setSelectedStudent(item);
-                setTargetClassId(item.classId); // Default picker to current class
+                setIsBulkMode(true);
+                setAssignmentModal({ type: "promote_repeat" });
               }}
             >
-              <View style={{ flex: 1 }}>
-                <Text
-                  style={styles.itemTitle}
-                >{`${item.profile.firstName} ${item.profile.lastName}`}</Text>
-                <Text style={styles.itemSubtitle}>
-                  ID: {item.profile.studentID || "N/A"}
-                </Text>
-              </View>
-              {isClassTeacher && (
-                <View style={styles.actionIcons}>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedStudent(item);
-                      setEditFirstName(item.profile.firstName);
-                      setEditLastName(item.profile.lastName);
-                      setEditDob(item.dateOfBirth ? (item.dateOfBirth.toDate ? item.dateOfBirth.toDate() : new Date(item.dateOfBirth)) : null);
-                      setAssignmentModal({ type: "edit_profile" });
-                    }}
-                    style={styles.iconBtn}
-                  >
-                    <SVGIcon name="person" size={18} color={COLORS.primary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedStudent(item);
-                      setEditEmail(item.profile.email || "");
-                      setEditPassword("");
-                      setAssignmentModal({ type: "edit_email" });
-                    }}
-                    style={styles.iconBtn}
-                  >
-                    <SVGIcon name="mail" size={18} color={COLORS.secondary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => {
-                      setSelectedStudent(item);
-                      setTargetClassId(item.classId);
-                      setAssignmentModal({ type: "promote_repeat" });
-                    }}
-                    style={styles.iconBtn}
-                  >
-                    <SVGIcon name="swap-horizontal" size={18} color={COLORS.gray} />
-                  </TouchableOpacity>
-                </View>
-              )}
+              <SVGIcon name="school" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Promote</Text>
             </TouchableOpacity>
-          )}
-        />
+            <TouchableOpacity
+              style={[styles.bulkActionBtn, { backgroundColor: COLORS.danger }]}
+              onPress={() => {
+                setIsBulkMode(true);
+                setAssignmentModal({ type: "promote_repeat" });
+              }}
+            >
+              <SVGIcon name="refresh" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Repeat</Text>
+            </TouchableOpacity>
+          </View>
+        </Animatable.View>
       )}
 
       {/* --- PROMOTION/REPETITION MODAL --- */}
@@ -645,25 +806,52 @@ export default function PromoteStudentsScreen() {
                     onChangeText={setEditLastName}
                     placeholder="Last Name"
                   />
-                  <Text style={[styles.inputLabel, { marginTop: 15 }]}>DATE OF BIRTH</Text>
-                  <TouchableOpacity
+                  <Text style={[styles.inputLabel, { marginTop: 15 }]}>PHONE NUMBER</Text>
+                  <TextInput
                     style={styles.textInput}
-                    onPress={() => setShowDatePicker(true)}
-                  >
-                    <Text style={{ color: editDob ? "#1E293B" : "#94A3B8" }}>
-                      {editDob ? editDob.toLocaleDateString() : "Select Date"}
-                    </Text>
-                  </TouchableOpacity>
-                  {showDatePicker && (
-                    <DateTimePicker
-                      value={editDob || new Date()}
-                      mode="date"
-                      display="default"
-                      onChange={(event, date) => {
-                        setShowDatePicker(false);
-                        if (date) setEditDob(date);
+                    value={editPhone}
+                    onChangeText={setEditPhone}
+                    placeholder="Phone Number"
+                    keyboardType="phone-pad"
+                  />
+                  <Text style={[styles.inputLabel, { marginTop: 15 }]}>
+                    DATE OF BIRTH
+                  </Text>
+                  {Platform.OS === "web" ? (
+                    <TextInput
+                      style={styles.textInput}
+                      // @ts-ignore - web only
+                      type="date"
+                      value={editDob ? editDob.toISOString().split("T")[0] : ""}
+                      onChange={(e: any) => {
+                        const val = e.target.value;
+                        setEditDob(val ? new Date(val) : null);
                       }}
                     />
+                  ) : (
+                    <>
+                      <TouchableOpacity
+                        style={styles.textInput}
+                        onPress={() => setShowDatePicker(true)}
+                      >
+                        <Text style={{ color: editDob ? "#1E293B" : "#94A3B8" }}>
+                          {editDob
+                            ? editDob.toLocaleDateString()
+                            : "Select Date"}
+                        </Text>
+                      </TouchableOpacity>
+                      {showDatePicker && (
+                        <DateTimePicker
+                          value={editDob || new Date()}
+                          mode="date"
+                          display="default"
+                          onChange={(event, date) => {
+                            setShowDatePicker(false);
+                            if (date) setEditDob(date);
+                          }}
+                        />
+                      )}
+                    </>
                   )}
                   <TouchableOpacity
                     style={[styles.saveBtn, { backgroundColor: COLORS.primary }]}
@@ -761,6 +949,12 @@ const styles = StyleSheet.create({
   },
   itemTitle: { fontSize: SIZES.medium, fontWeight: "600", color: "#1E293B" },
   itemSubtitle: { fontSize: SIZES.small, color: COLORS.gray, marginTop: 4 },
+  parentInfo: {
+    fontSize: 10,
+    color: COLORS.gray,
+    marginTop: 2,
+    fontWeight: "500",
+  },
   modalContainer: {
     flex: 1,
     justifyContent: "center",
@@ -878,5 +1072,68 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "800",
     fontSize: 15,
+  },
+  selectAllRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    gap: 10,
+  },
+  selectAllText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
+  itemCardSelected: {
+    borderColor: COLORS.primary,
+    borderWidth: 1,
+    backgroundColor: COLORS.primary + "05",
+  },
+  selectionIndicator: {
+    marginRight: 12,
+  },
+  bulkActionBar: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: "#1e293b",
+    borderRadius: 20,
+    padding: 16,
+    ...SHADOWS.medium,
+  },
+  bulkActionInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  bulkActionCount: {
+    color: "#fff",
+    fontWeight: "800",
+    fontSize: 14,
+  },
+  bulkActionCancel: {
+    color: "#94a3b8",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  bulkActionButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  bulkActionBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  bulkActionText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "800",
   },
 });

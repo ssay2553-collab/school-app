@@ -159,7 +159,6 @@ export default function AdminSignup() {
           "manage-users": defaultPermission,
         },
         status: "active",
-        schoolId: SCHOOL_CONFIG.schoolId,
         createdAt: serverTimestamp(),
       });
 

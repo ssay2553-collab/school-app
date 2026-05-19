@@ -64,12 +64,6 @@ export default function TeacherSignupScreen() {
         const snap = await getDocsCacheFirst(q as any);
         const list = snap.docs
           .map((d) => ({ id: d.id, ...d.data() } as any))
-          .filter((d) => {
-            // Allow if no schoolId (legacy), matches current schoolId, or handles lilies/abijah alias
-            return !d.schoolId ||
-                   d.schoolId === schoolId ||
-                   (schoolId === "lilies" && d.schoolId === "abijah");
-          })
           .map((d) => ({ id: d.id, name: d.name || d.id }));
 
         setClasses(sortClasses(list));
@@ -167,7 +161,7 @@ export default function TeacherSignupScreen() {
       batch.set(doc(db, "users", cred.user.uid), {
         uid: cred.user.uid,
         role: "teacher",
-        schoolId: schoolId,
+        // Redundant schoolId property injection removed as per "one database per school" architecture
         secretCode: codeDoc.id,
         status: "active",
         classes: selectedClasses,

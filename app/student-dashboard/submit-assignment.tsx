@@ -106,7 +106,6 @@ export default function SubmitAssignment() {
       let submissionData: any = {
         assignmentId,
         studentId,
-        schoolId: SCHOOL_CONFIG.schoolId,
         studentName: auth.currentUser?.displayName || "Student",
         submittedAt: serverTimestamp(),
         status: "submitted",

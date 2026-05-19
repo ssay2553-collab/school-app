@@ -151,11 +151,15 @@ export default function DailyAttendanceScreen() {
     const selectedClass = availableClasses.find(c => c.id === classId);
     const userRole = (appUser.role || "").toLowerCase();
     const teacherClasses = appUser.classes || [];
+    const profileClasses = (appUser.profile as any)?.classes || [];
+
     return (
       selectedClass?.classTeacherId === appUser.uid ||
       appUser.classTeacherOf === classId ||
+      (appUser.profile as any)?.classTeacherOf === classId ||
       teacherClasses.includes(classId) ||
-      ["admin", "superadmin", "super admin"].includes(userRole) ||
+      profileClasses.includes(classId) ||
+      ["admin", "superadmin", "super admin", "staff"].includes(userRole) ||
       (appUser as any).adminRole
     );
   }, [classId, availableClasses, appUser]);
@@ -186,11 +190,6 @@ export default function DailyAttendanceScreen() {
         const snap = await getDocs(q);
         const list = snap.docs
           .map(d => ({ id: d.id, ...d.data() } as any))
-          // Safe filtering for multi-tenancy: include legacy docs (no schoolId) or current school docs
-          .filter((d: any) => {
-            const schoolId = SCHOOL_CONFIG.schoolId;
-            return !d.schoolId || d.schoolId === schoolId || (schoolId === "lilies" && d.schoolId === "abijah");
-          })
           .map(d => ({
             id: d.id,
             name: d.name || d.id,
@@ -222,7 +221,6 @@ export default function DailyAttendanceScreen() {
     else if (!isFirstLoad) return; // No pagination needed for class lists
 
     try {
-      const schoolId = SCHOOL_CONFIG.schoolId;
       const q = query(
         collection(db, "users"),
         where("role", "==", "student"),
@@ -232,11 +230,7 @@ export default function DailyAttendanceScreen() {
       const snap = await getDocs(q);
       const data = snap.docs
         .map(d => ({ uid: d.id, ...(d.data() as any) }))
-        .filter(d => {
-            const statusMatch = ["active", "pending_activation"].includes(d.status);
-            const schoolMatch = !d.schoolId || d.schoolId === schoolId || (schoolId === "lilies" && d.schoolId === "abijah");
-            return statusMatch && schoolMatch;
-        })
+        .filter(d => ["active", "pending_activation"].includes(d.status))
         .sort((a, b) => (a.profile?.firstName || "").localeCompare(b.profile?.firstName || ""));
       
       setStudents(data);
@@ -301,9 +295,9 @@ export default function DailyAttendanceScreen() {
     const userRole = (appUser.role || "").toLowerCase();
     const isAdminUser = ["admin", "superadmin", "super admin"].includes(userRole) || !!(appUser as any).adminRole;
 
-    if (!isAdminUser && (currentHour < 6 || currentHour >= 10)) {
+    if (!isAdminUser && (currentHour < 6 || currentHour >= 18)) {
       showToast({
-        message: "Attendance marking is only allowed between 6:00 AM and 10:00 AM Ghana Time.",
+        message: "Attendance marking is only allowed between 6:00 AM and 6:00 PM Ghana Time.",
         type: "error",
       });
       return;
@@ -331,7 +325,6 @@ export default function DailyAttendanceScreen() {
 
       batch.set(ref, {
         classId,
-        schoolId: SCHOOL_CONFIG.schoolId,
         date: selectedDate,
         academicYear,
         term,
@@ -347,9 +340,23 @@ export default function DailyAttendanceScreen() {
         message: "Attendance saved successfully for " + moment(selectedDate).format("MMM Do"),
         type: "success",
       });
-    } catch (e) {
+    } catch (e: any) {
+      console.error("Attendance save error details:", e);
+      let errorMsg = "Failed to save. Check your connection.";
+
+      const errMsg = (e.message || "").toLowerCase();
+      const errCode = (e.code || "").toLowerCase();
+
+      if (errMsg.includes("permission") || errCode.includes("permission")) {
+        errorMsg = "Permission denied. You might not be assigned as the official Class Teacher for this class.";
+      } else if (errMsg.includes("unavailable") || errCode.includes("unavailable")) {
+        errorMsg = "Service unavailable. Please check your internet or try again later.";
+      } else if (e.message) {
+        errorMsg = `Error: ${e.message.split('\n')[0].substring(0, 60)}`;
+      }
+
       showToast({
-        message: "Failed to save. Check your connection.",
+        message: errorMsg,
         type: "error",
       });
     } finally {

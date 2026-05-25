@@ -159,7 +159,7 @@ export default function ManageFees() {
     new Set(),
   );
 
-  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [academicYear, setAcademicYear] = useState("");
   const [term, setTerm] = useState<string>("");
   const [termBillAmount, setTermBillAmount] = useState("");
@@ -334,13 +334,13 @@ export default function ManageFees() {
       if (saved) {
         try {
           const { classId } = JSON.parse(saved);
-          if (classId) setSelectedClassId(classId);
-          else if (list.length > 0) setSelectedClassId(list[0].id);
+          setSelectedClassId(classId || "all");
         } catch {
-          if (list.length > 0) setSelectedClassId(list[0].id);
+          setSelectedClassId(list.length > 0 ? list[0].id : "all");
         }
-      } else if (list.length > 0) {
-        setSelectedClassId(list[0].id);
+      } else {
+        // Default to first class if available, otherwise "all"
+        setSelectedClassId(list.length > 0 ? list[0].id : "all");
       }
       setLoading(false);
     };
@@ -373,7 +373,6 @@ export default function ManageFees() {
 
         let q = query(
           baseQuery,
-          orderBy("profile.firstName"),
           limit(PAGE_SIZE),
         );
         if (!isFirstLoad && lastVisibleRef.current)
@@ -417,7 +416,7 @@ export default function ManageFees() {
           );
         }
 
-        const batch: StudentDraft[] = studentDocs.map((d) => {
+        let batch: StudentDraft[] = studentDocs.map((d) => {
           const feeData = feesMap.get(d.id) as any;
           const userData = d.data() as any;
           return {
@@ -425,7 +424,7 @@ export default function ManageFees() {
             fullName:
               `${userData.profile?.firstName || ""} ${userData.profile?.lastName || ""}`.trim() ||
               "Student",
-            classId: selectedClassId,
+            classId: userData.classId || "unknown",
             className:
               classes.find((c) => c.id === userData.classId)?.name || "Class",
             previousBalance: feeData
@@ -442,6 +441,9 @@ export default function ManageFees() {
             editCount: feeData?.editCount || 0,
           };
         });
+
+        // Sort by name in memory since we removed server-side orderBy
+        batch.sort((a, b) => a.fullName.localeCompare(b.fullName));
 
         lastVisibleRef.current = snap.docs[snap.docs.length - 1];
         hasMoreRef.current = snap.docs.length === PAGE_SIZE;
@@ -725,8 +727,12 @@ export default function ManageFees() {
         message: `Payment recorded. Receipt: ${serial}`,
         type: "success",
       });
-    } catch {
-      showToast({ message: "Payment failed", type: "error" });
+    } catch (e: any) {
+      console.error("Payment logging error:", e);
+      showToast({
+        message: `Payment failed: ${e.message || "Unknown error"}`,
+        type: "error"
+      });
     } finally {
       setSaving(false);
     }

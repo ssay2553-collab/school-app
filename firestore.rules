@@ -69,16 +69,23 @@ service cloud.firestore {
     =============================== */
 
     function isAdmin() {
-      return userData() != null
-        && userData().role == "admin";
+      return userData() != null && (
+        userData().role == "admin" ||
+        (userData().get(['profile', 'role'], '') == 'admin')
+      );
     }
 
     function isSuperAdmin() {
-      return isAdmin() && ("adminRole" in userData()) &&
-        userData().adminRole.lower() in [
+      return isAdmin() && (
+        ("adminRole" in userData() && userData().adminRole.lower() in [
           "proprietor", "proprietress", "manager", "headmaster",
           "headmistress", "administrator", "director", "accountant", "bursar", "admin"
-        ];
+        ]) ||
+        ("profile" in userData() && "adminRole" in userData().profile && userData().profile.adminRole.lower() in [
+          "proprietor", "proprietress", "manager", "headmaster",
+          "headmistress", "administrator", "director", "accountant", "bursar", "admin"
+        ])
+      );
     }
 
     function getPermission(screen) {
@@ -90,7 +97,7 @@ service cloud.firestore {
     }
 
     function hasPermission(screen, level) {
-      return isAdmin() &&
+      return (isAdmin() || isStaff()) &&
         (
           isSuperAdmin() ||
           hasScreenPermission(screen, level)
@@ -258,6 +265,10 @@ service cloud.firestore {
       return userData() != null && userData().role == 'teacher';
     }
 
+    function isStaff() {
+      return userData() != null && userData().role == 'staff';
+    }
+
     function isStudent() {
       return userData() != null && userData().role == 'student';
     }
@@ -290,22 +301,27 @@ service cloud.firestore {
     ========================================================================= */
 
     match /users/{userId} {
-      allow read: if (isSignedIn() && (
-        isAdmin()
-        || uid() == userId
+      // 1. REGISTRATION & LINKING (Public/Unauthenticated)
+      // Allows verifying signup codes and parent link codes
+      allow read: if (
+        (resource.data.status == 'pending_activation' && resource.data.role == 'student') ||
+        (resource.data.role == 'student' && 'parentLinkCode' in resource.data)
+      ) && (request.query.limit <= 1 || request.query.limit == null);
+
+      // 2. AUTHENTICATED ACCESS
+      allow read: if isSignedIn() && (
+        uid() == userId
+        || (resource.data.get('authUid', '') == uid())
+        || isAdmin()
+        || isStaff()
         || resource.data.role in ['admin', 'teacher']
-        || (isParent() && userId in userData().childrenIds)
-        || (isTeacher() && resource.data.role in ['student', 'parent'])
-      )) || (
-        // Allow unauthenticated users to verify codes (essential for PWA/linking)
-        resource.data.role == 'student'
-        && 'parentLinkCode' in resource.data
-        && request.query.limit <= 1
+        || (isParent() && userId in userData().get('childrenIds', []))
+        || ((isTeacher() || isStaff()) && resource.data.role in ['student', 'parent'])
       );
 
       // Robust creation rule for new users
       allow create: if isSignedIn() && uid() == userId && (
-          request.resource.data.role in ['admin', 'teacher', 'student', 'parent', 'guest']
+          request.resource.data.role in ['admin', 'teacher', 'staff', 'student', 'parent', 'guest']
       );
 
       allow update: if
@@ -322,7 +338,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['salary'])
         )
         || (
-          isSignedIn() && uid() == userId
+          isSignedIn() && (uid() == userId || (resource.data.get('authUid', '') == uid()))
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
             'role', 'adminRole', 'uid', 'isAnonymous', 'createdAt', 'permissions'
           ])
@@ -342,7 +358,7 @@ service cloud.firestore {
           && (!('parentUids' in resource.data) || resource.data.parentUids.size() < 2)
         );
 
-      allow delete: if isSuperAdmin();
+      allow delete: if isSuperAdmin() || (isSignedIn() && resource.data.status == 'pending_activation');
     }
 
     /* ===============================
@@ -370,8 +386,8 @@ service cloud.firestore {
 
     match /feePayments/{id} {
       allow read: if canViewFees()
-        || (isParent() && exists(/databases/$(database)/documents/studentFeeRecords/$(id)))
-        || (isStudent() && exists(/databases/$(database)/documents/studentFeeRecords/$(id)));
+        || (isParent() && resource.data.studentUid in userData().get('childrenIds', []))
+        || (isStudent() && resource.data.studentUid == uid());
       allow write: if canManageFees();
     }
 
@@ -428,7 +444,7 @@ service cloud.firestore {
     }
 
     match /school_settings/{settingId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if canManageSettings() || isAdmin();
     }
 

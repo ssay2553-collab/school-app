@@ -68,16 +68,35 @@ export default function ParentLoginScreen() {
       const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       
       const userDoc = await getDoc(doc(db, "users", cred.user.uid));
-      const userData = userDoc.data();
-      const rawRole = userData?.role || userData?.profile?.role;
-      const role = typeof rawRole === 'string' ? rawRole.toLowerCase() : "";
-
-      if (!userDoc.exists() || role !== "parent") {
-          await auth.signOut();
-          throw new Error("This account is not registered as a parent.");
+      if (!userDoc.exists()) {
+        await auth.signOut();
+        throw new Error("User record not found. Please ensure your registration was completed.");
       }
 
-      router.replace("/parent-dashboard");
+      const userData = userDoc.data();
+      const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
+      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
+
+      const isParent = role === "parent";
+      const isAdmin = role === "admin" || adminRole !== "";
+      const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
+      const isStudent = role === "student";
+
+      if (isParent) {
+        router.replace("/parent-dashboard");
+      } else if (isAdmin) {
+        showToast({ message: "Redirecting to Management Portal...", type: "info" });
+        router.replace("/admin-dashboard");
+      } else if (isTeacher) {
+        showToast({ message: "Redirecting to Teacher Portal...", type: "info" });
+        router.replace("/teacher-dashboard");
+      } else if (isStudent) {
+        showToast({ message: "Redirecting to Student Portal...", type: "info" });
+        router.replace("/student-dashboard");
+      } else {
+        await auth.signOut();
+        throw new Error("This account does not have parent access privileges.");
+      }
     } catch (error: any) {
       console.error("Login error:", error.code);
       let message = error.message || "An error occurred.";

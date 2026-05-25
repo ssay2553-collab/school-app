@@ -59,16 +59,37 @@ export default function TeacherLoginScreen() {
       );
 
       const userDoc = await getDoc(doc(db, "users", cred.user.uid));
-      const userData = userDoc.data();
-      const rawRole = userData?.role || userData?.profile?.role;
-      const role = typeof rawRole === 'string' ? rawRole.toLowerCase() : "";
 
-      if (!userDoc.exists() || role !== "teacher") {
+      if (!userDoc.exists()) {
         await auth.signOut();
-        throw new Error("This account is not registered as a teacher.");
+        throw new Error("User record not found. Please ensure your registration was completed successfully.");
       }
 
-      router.replace("/teacher-dashboard");
+      const userData = userDoc.data();
+      const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
+      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
+
+      // Hybrid logic: Allow if they are explicitly a teacher OR an admin with teaching duties
+      const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
+      const isAdmin = role === "admin" || adminRole !== "";
+      const isParent = role === "parent";
+      const isStudent = role === "student";
+
+      if (isTeacher) {
+        router.replace("/teacher-dashboard");
+      } else if (isAdmin) {
+        showToast({ message: "Accessing Management Portal...", type: "info" });
+        router.replace("/admin-dashboard");
+      } else if (isParent) {
+        showToast({ message: "Redirecting to Parent Portal...", type: "info" });
+        router.replace("/parent-dashboard");
+      } else if (isStudent) {
+        showToast({ message: "Redirecting to Student Portal...", type: "info" });
+        router.replace("/student-dashboard");
+      } else {
+        await auth.signOut();
+        throw new Error("This account does not have teacher access privileges.");
+      }
     } catch (error: any) {
       console.error("Login error:", error.code);
       let message = error.message || "Login failed.";

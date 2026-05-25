@@ -2,6 +2,8 @@ import { Picker } from "@react-native-picker/picker";
 import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect, useRouter } from "expo-router";
+import { initializeApp } from "firebase/app";
+import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import {
   arrayRemove,
   arrayUnion,
@@ -197,8 +199,8 @@ export default function ManageUsers() {
   const [editTakesBus, setEditTakesBus] = useState(false);
   const [editOnScholarship, setEditOnScholarship] = useState(false);
 
-  const [upgradeUsername, setUpgradeUsername] = useState("");
-  const [upgradePin, setUpgradePin] = useState("");
+  const [upgradeEmail, setUpgradeEmail] = useState("");
+  const [upgradePassword, setUpgradePassword] = useState("");
   const [staffRoleText, setStaffRoleText] = useState("");
   const [staffPhone, setStaffPhone] = useState("");
 
@@ -1287,20 +1289,37 @@ export default function ManageUsers() {
 
   const handleUpgradeStaff = async () => {
     if (!assignmentModal.target) return;
-    if (!upgradeUsername.trim() || upgradePin.length !== 4) {
+    if (!upgradeEmail.trim() || upgradePassword.length < 6) {
       return Alert.alert(
         "Error",
-        "Please provide a username and a 4-digit PIN.",
+        "Please provide a valid email and a password (min 6 characters).",
       );
     }
     setUpdating(true);
     try {
+      // 1. Initialize a secondary Firebase app to create the user without signing out the admin
+      const secondaryConfig = (SCHOOL_CONFIG as any).firebase || {};
+      const secondaryAppName = `upgrade-staff-${Date.now()}`;
+      const secondaryApp = initializeApp(secondaryConfig, secondaryAppName);
+      const secondaryAuth = getAuth(secondaryApp);
+
+      // 2. Create the Auth user
+      const userCredential = await createUserWithEmailAndPassword(
+        secondaryAuth,
+        upgradeEmail.trim(),
+        upgradePassword
+      );
+      const newUid = userCredential.user.uid;
+
+      // 3. Update the Firestore record
       const staffRef = doc(db, "users", assignmentModal.target.uid);
       const updates = {
-        username: upgradeUsername.trim().toLowerCase(),
-        pin: upgradePin,
+        authUid: newUid, // Link the new Auth UID
+        role: "staff" as UserRole,
+        email: upgradeEmail.trim().toLowerCase(),
         adminRole: staffRoleText.trim(),
         "profile.phone": staffPhone.trim(),
+        "profile.email": upgradeEmail.trim().toLowerCase(),
         hasLoginEnabled: true,
       };
 
@@ -1313,7 +1332,7 @@ export default function ManageUsers() {
             ? {
                 ...u,
                 ...updates,
-                profile: { ...u.profile, phone: staffPhone.trim() },
+                profile: { ...u.profile, phone: staffPhone.trim(), email: upgradeEmail.trim().toLowerCase() },
               }
             : u,
         ),
@@ -1325,7 +1344,7 @@ export default function ManageUsers() {
             ? {
                 ...prev,
                 ...updates,
-                profile: { ...prev.profile, phone: staffPhone.trim() },
+                profile: { ...prev.profile, phone: staffPhone.trim(), email: upgradeEmail.trim().toLowerCase() },
               }
             : null,
         );
@@ -1333,9 +1352,9 @@ export default function ManageUsers() {
 
       Alert.alert("Success", "Staff account upgraded for login.");
       setAssignmentModal({ type: "none", target: null });
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      Alert.alert("Error", "Failed to upgrade staff account.");
+      Alert.alert("Error", e.message || "Failed to upgrade staff account.");
     } finally {
       setUpdating(false);
     }
@@ -2273,8 +2292,8 @@ export default function ManageUsers() {
                           },
                         ]}
                         onPress={() => {
-                          setUpgradeUsername(viewingUser.username || "");
-                          setUpgradePin(viewingUser.pin || "");
+                          setUpgradeEmail(viewingUser.profile?.email || "");
+                          setUpgradePassword("");
                           setStaffRoleText(viewingUser.adminRole || "");
                           setStaffPhone(viewingUser.profile?.phone || "");
                           setAssignmentModal({
@@ -3087,23 +3106,21 @@ export default function ManageUsers() {
 
               {assignmentModal.type === "upgrade_staff" && (
                 <View>
-                  <Text style={styles.pickerLabel}>Staff Username</Text>
+                  <Text style={styles.pickerLabel}>Staff Email (Login)</Text>
                   <TextInput
                     style={[styles.textInput, { marginBottom: 15 }]}
-                    value={upgradeUsername}
-                    onChangeText={setUpgradeUsername}
-                    placeholder="e.g. j.doe"
+                    value={upgradeEmail}
+                    onChangeText={setUpgradeEmail}
+                    placeholder="staff@edueaz.com"
                     autoCapitalize="none"
+                    keyboardType="email-address"
                   />
-                  <Text style={styles.pickerLabel}>4-Digit Login PIN</Text>
+                  <Text style={styles.pickerLabel}>Login Password</Text>
                   <TextInput
                     style={[styles.textInput, { marginBottom: 15 }]}
-                    value={upgradePin}
-                    onChangeText={(v) =>
-                      setUpgradePin(v.replace(/[^0-9]/g, "").slice(0, 4))
-                    }
-                    placeholder="xxxx"
-                    keyboardType="number-pad"
+                    value={upgradePassword}
+                    onChangeText={setUpgradePassword}
+                    placeholder="••••••••"
                     secureTextEntry
                   />
                   <Text style={styles.pickerLabel}>Assigned Role (Title)</Text>
@@ -3159,7 +3176,7 @@ export default function ManageUsers() {
                       <ActivityIndicator color="#fff" />
                     ) : (
                       <Text style={styles.saveBtnText}>
-                        Update & Enable Login
+                        Create Auth & Enable Login
                       </Text>
                     )}
                   </TouchableOpacity>

@@ -299,7 +299,7 @@ export default function AdminDashboard() {
         },
         {
           title: "Staff Chat",
-          subtitle: "Internal",
+          subtitle: "Staff Messaging",
           route: "/admin-dashboard/staff-chat",
           icon: "chatbubbles",
           color: "#6366f1",

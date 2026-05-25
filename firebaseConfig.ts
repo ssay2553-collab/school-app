@@ -72,28 +72,40 @@ try {
 
   /**
    * PERSISTENCE:
-   * - Web/PWA/Electron/Safari: Use IndexedDB (persistentLocalCache) for speed and offline.
+   * - Web/PWA/Electron: Use IndexedDB (persistentLocalCache) for speed and offline.
    * - React Native: Must use Memory-Only (memoryLocalCache) to avoid errors.
    */
-  const cache = isWeb ? persistentLocalCache() : memoryLocalCache();
+  const cache = isWeb
+    ? persistentLocalCache({
+        tabManager: undefined // Use default multiple tab manager for PWA
+      })
+    : memoryLocalCache();
 
   /**
    * TRANSPORT:
    * - Web/PWA: Force long polling to avoid WebSocket issues on restricted networks/WiFi.
-   * - Electron: Specifically needs experimentalForceLongPolling to avoid 400 Bad Request.
    */
-  dbInstance = initializeFirestore(app, {
+  const firestoreSettings = {
     localCache: cache,
-    experimentalForceLongPolling: isWeb, // Force for all Web/PWA to ensure reliability
-  });
+    experimentalForceLongPolling: isWeb,
+    // Enable more robust persistence on mobile browsers
+    ignoreUndefinedProperties: true,
+  };
 
-  console.log(
-    `[Firebase] Firestore init (${Platform.OS}${
-      isElectron ? "-electron" : ""
-    }). Cache: ${isWeb ? "IndexedDB" : "Memory"}`
-  );
+  try {
+    dbInstance = initializeFirestore(app, firestoreSettings);
+    console.log(
+      `[Firebase] Firestore Initialized: ${firebaseConfig.projectId} (${Platform.OS}${
+        isElectron ? "-electron" : ""
+      }). Cache: ${isWeb ? "IndexedDB" : "Memory"}`
+    );
+  } catch (e) {
+    console.warn("[Firebase] Firestore already initialized. Fetching existing instance...");
+    dbInstance = getFirestore(app);
+    // Note: We don't need to re-apply settings here as they are persistent for the app instance
+  }
 } catch (e) {
-  console.warn("[Firebase] Re-using existing Firestore instance.");
+  console.error("[Firebase] Error initializing Firestore:", e);
   dbInstance = getFirestore(app);
 }
 

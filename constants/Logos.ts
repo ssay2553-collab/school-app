@@ -6,12 +6,12 @@ import { SCHOOL_CONFIG } from "./Config";
 export const SCHOOL_LOGOS: Record<string, any> = {
   afahjoy: require("../assets/gilead.png"),
   beano: require("../assets/beano.png"),
-  morgis: require("../assets/legacy.jpg"),
+  morgis: require("../assets/kings.png"),
   perfect: require("../assets/perfect.png"),
   bishops: require("../assets/bishop.png"),
   ibs: require("../assets/ibs.png"),
   IBS: require("../assets/ibs.png"), // Added uppercase key for consistency
-  kent: require("../assets/Kent.png"),
+  kent: require("../assets/sage.png"),
   creation: require("../assets/creation.png"),
   eagles: require("../assets/aps.png"),
   bms: require("../assets/bms.png"),
@@ -19,7 +19,7 @@ export const SCHOOL_LOGOS: Record<string, any> = {
   model: require("../assets/modelpower.png"),
   brain: require("../assets/brain.png"),
   clis: require("../assets/clis.png"),
-  stone: require("../assets/stone.png"),
+  stone: require("../assets/spring.png"),
   jewel: require("../assets/Jewel.png"),
   abijah: require("../assets/abijah.png"),
   lilies: require("../assets/abijah.png"),
@@ -29,7 +29,7 @@ export const getSchoolLogo = (schoolId?: string) => {
   const rawId = (schoolId || SCHOOL_CONFIG.schoolId || "eagles").toLowerCase();
 
   // Strip common Firebase suffixes like -93b3a if present to find the base ID
-  const baseId = rawId.split('-')[0];
+  const baseId = rawId.split("-")[0];
 
   // Return the specific logo, the base ID logo, or use the Eagles logo as the ultimate fallback
   return SCHOOL_LOGOS[rawId] || SCHOOL_LOGOS[baseId] || SCHOOL_LOGOS.eagles;

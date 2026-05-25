@@ -1,12 +1,21 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 
+// Ensure admin is initialized in this module context
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
+
 /**
  * Custom auth for non-teaching staff using Username and 4-digit PIN.
- * Returns a custom token for the user to sign in with.
  */
-export const loginWithPin = onCall(async (req) => {
-  const { username, pin } = req.data || {};
+export const loginWithPin = onCall({
+  maxInstances: 10,
+  // Note: invoker "public" is set via CLI or during deployment for V2
+}, async (request) => {
+  const data = request.data;
+  const username = data?.username;
+  const pin = data?.pin;
 
   if (!username || !pin) {
     throw new HttpsError("invalid-argument", "Username and PIN are required.");
@@ -16,29 +25,65 @@ export const loginWithPin = onCall(async (req) => {
   const auth = admin.auth();
 
   try {
-    // Find user with matching username and pin
+    const usernameStr = String(username).trim().toLowerCase();
+    const pinStr = String(pin).trim();
+
+    // Query for the user by username
     const userQuery = await db.collection("users")
-      .where("username", "==", username.toLowerCase())
-      .where("pin", "==", pin)
-      .where("role", "==", "staff")
-      .where("hasLoginEnabled", "==", true)
-      .limit(1)
+      .where("username", "==", usernameStr)
+      .limit(5)
       .get();
 
     if (userQuery.empty) {
-      throw new HttpsError("not-found", "Invalid username or PIN.");
+      throw new HttpsError("not-found", "No account found with that username.");
     }
 
-    const userDoc = userQuery.docs[0];
-    const uid = userDoc.id;
+    // Filter results for matching PIN and login status
+    let matchingUser = null;
+    let isDisabled = false;
 
-    // Create a custom token for this UID
-    const customToken = await auth.createCustomToken(uid);
+    for (const doc of userQuery.docs) {
+      const userData = doc.data();
+      if (String(userData.pin) === pinStr) {
+        if (userData.hasLoginEnabled === true) {
+          matchingUser = doc;
+          break;
+        } else {
+          isDisabled = true;
+        }
+      }
+    }
 
-    return { token: customToken };
+    if (!matchingUser) {
+      if (isDisabled) {
+        throw new HttpsError("permission-denied", "This account's login is currently disabled.");
+      }
+      throw new HttpsError("unauthenticated", "Incorrect PIN.");
+    }
+
+    const uid = matchingUser.id;
+
+    // Create a custom token.
+    // This requires the "Service Account Token Creator" role on the service account.
+    try {
+      const customToken = await auth.createCustomToken(uid);
+      return { token: customToken };
+    } catch (tokenErr: any) {
+      console.error("CRITICAL: Token Generation Failed.", {
+        error: tokenErr.message,
+        code: tokenErr.code,
+        uid: uid
+      });
+      // Return a more descriptive internal error to help the dev
+      throw new HttpsError(
+        "internal",
+        `Auth Server Error: ${tokenErr.message}. Ensure 'Service Account Token Creator' role is assigned in IAM.`
+      );
+    }
+
   } catch (error: any) {
     if (error instanceof HttpsError) throw error;
-    console.error("LoginWithPin Error:", error);
-    throw new HttpsError("internal", "An error occurred during authentication.");
+    console.error("LoginWithPin System Error:", error);
+    throw new HttpsError("internal", error.message || "An unexpected internal error occurred.");
   }
 });

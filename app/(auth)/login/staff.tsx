@@ -1,7 +1,5 @@
 import { useRouter } from "expo-router";
-import { signInWithCustomToken } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -21,40 +19,37 @@ import SVGIcon from "../../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { SHADOWS } from "../../../constants/theme";
 import { useToast } from "../../../contexts/ToastContext";
-import { auth, db, functions } from "../../../firebaseConfig";
+import { auth } from "../../../firebaseConfig";
 
-export default function GuestLogin() {
+export default function StaffLogin() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const { showToast } = useToast();
   const schoolName = SCHOOL_CONFIG.name;
   const primary = SCHOOL_CONFIG.primaryColor;
   const surface = SCHOOL_CONFIG.surfaceColor;
 
-  const handleGuestLogin = async () => {
+  const handleStaffLogin = async () => {
+    if (!email.trim() || !password) {
+      showToast({ message: "Enter your email and password", type: "error" });
+      return;
+    }
+
     setLoading(true);
     try {
-      const user = auth.currentUser;
-
-      if (!user) {
-        showToast({ message: "Please register your details first to explore as a guest.", type: "error" });
-        router.push("/(auth)/signup/guest");
-        return;
+      await signInWithEmailAndPassword(auth, email.trim(), password);
+      showToast({ message: "Welcome back!", type: "success" });
+      router.replace("/staff-dashboard");
+    } catch (err: any) {
+      console.error("Staff Login Error:", err);
+      let errorMessage = "Login failed. Check credentials.";
+      if (err.code === 'auth/invalid-credential') {
+        errorMessage = "Invalid email or password.";
       }
-
-      // Check if a guest document exists in Firestore for this UID
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      
-      if (userDoc.exists() && (userDoc.data().role === "guest" || userDoc.data().role === "applicant")) {
-        router.replace("/guest-dashboard");
-      } else {
-        showToast({ message: "You are signed in but haven't registered your guest info yet.", type: "error" });
-        router.push("/(auth)/signup/guest");
-      }
-    } catch (err) {
-      console.error("Guest Login Error:", err);
-      showToast({ message: "An unexpected error occurred. Please try again.", type: "error" });
+      showToast({ message: errorMessage, type: "error" });
     } finally {
       setLoading(false);
     }
@@ -68,51 +63,72 @@ export default function GuestLogin() {
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          
+
           <Animatable.View animation="fadeInDown" duration={800} style={styles.header}>
             <View style={[styles.logoBadge, { backgroundColor: primary + '15' }]}>
-              <SVGIcon name="flash" size={32} color={primary} />
+              <SVGIcon name="briefcase" size={32} color={primary} />
             </View>
-            <Text style={styles.title}>Guest Access</Text>
-            <Text style={styles.subtitle}>Welcome to {schoolName}</Text>
+            <Text style={styles.title}>Staff Portal</Text>
+            <Text style={styles.subtitle}>Enter your credentials to access {schoolName}</Text>
           </Animatable.View>
 
           <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
-            <Text style={styles.infoText}>
-              Explore our campus features, admission details, and school information as a guest.
-            </Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="staff@edueaz.com"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                editable={!loading}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>PASSWORD</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                editable={!loading}
+              />
+            </View>
 
             <TouchableOpacity
-              style={[styles.button, { backgroundColor: primary }]}
-              onPress={handleGuestLogin}
+              style={[styles.button, { backgroundColor: primary, marginTop: 10 }]}
+              onPress={handleStaffLogin}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <>
-                  <Text style={styles.buttonText}>Enter Guest Portal</Text>
-                  <View style={{ marginLeft: 8 }}>
-                    <SVGIcon name="arrow-forward" size={20} color="#fff" />
-                  </View>
-                </>
+                <Text style={styles.buttonText}>Secure Sign In</Text>
               )}
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => router.push("/(auth)/signup/guest")}
-              style={styles.signupBtn}
+              onPress={() => router.push("/(auth)/token-reset")}
+              style={styles.forgotBtn}
             >
-              <Text style={styles.signupText}>
-                New visitor? <Text style={[styles.signupLink, { color: primary }]}>Register here</Text>
-              </Text>
+              <Text style={styles.forgotText}>Forgot Password? (Use Reset Token)</Text>
             </TouchableOpacity>
+
+            <View style={styles.infoBanner}>
+                <SVGIcon name="information-circle" size={16} color="#64748B" />
+                <Text style={styles.infoText}>
+                    Non-teaching staff accounts are managed by the administration.
+                </Text>
+            </View>
           </Animatable.View>
 
           <TouchableOpacity
             onPress={() => {
-              if (router.canGoBack()) router.back();
-              else router.replace("/(auth)/login");
+                if (router.canGoBack()) router.back();
+                else router.replace("/(auth)/login");
             }}
             style={styles.backBtn}
           >
@@ -132,20 +148,17 @@ const styles = StyleSheet.create({
   header: { marginBottom: 30, alignItems: 'center' },
   logoBadge: { width: 64, height: 64, borderRadius: 20, justifyContent: "center", alignItems: "center", marginBottom: 16 },
   title: { fontSize: 28, fontWeight: "bold", color: "#0F172A" },
-  subtitle: { fontSize: 16, color: "#64748B", marginTop: 4 },
-  tabContainer: { flexDirection: 'row', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  tab: { flex: 1, paddingVertical: 12, alignItems: 'center' },
-  tabText: { fontSize: 14, color: '#94A3B8', fontWeight: '500' },
+  subtitle: { fontSize: 16, color: "#64748B", marginTop: 4, textAlign: 'center' },
   card: { backgroundColor: "#FFFFFF", borderRadius: 24, padding: 24, ...SHADOWS.medium, borderWidth: 1, borderColor: '#F1F5F9' },
-  infoText: { fontSize: 15, color: "#475569", textAlign: 'center', lineHeight: 22, marginBottom: 30 },
   inputGroup: { marginBottom: 20 },
   label: { fontSize: 11, fontWeight: "800", color: "#475569", marginBottom: 8, letterSpacing: 1 },
   input: { backgroundColor: "#F1F5F9", borderRadius: 14, padding: 14, fontSize: 16, color: "#1E293B" },
   button: { padding: 18, borderRadius: 16, flexDirection: 'row', alignItems: "center", justifyContent: "center", ...SHADOWS.medium },
   buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold" },
-  signupBtn: { marginTop: 25, alignItems: 'center' },
-  signupText: { color: "#64748B", fontSize: 14 },
-  signupLink: { fontWeight: "bold" },
+  infoBanner: { flexDirection: 'row', alignItems: 'center', marginTop: 20, gap: 8, paddingHorizontal: 10 },
+  infoText: { fontSize: 12, color: "#64748B", flex: 1 },
+  forgotBtn: { marginTop: 16, alignItems: 'center' },
+  forgotText: { color: "#64748B", fontSize: 14, fontWeight: '500' },
   backBtn: { marginTop: 30, alignItems: 'center' },
   backText: { color: "#94A3B8", fontSize: 14, fontWeight: '600' }
 });

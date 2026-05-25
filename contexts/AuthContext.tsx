@@ -1,12 +1,22 @@
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+  collection,
+  doc,
+  getDocs,
+  limit,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  setDoc,
+  where,
+} from "firebase/firestore";
 import React, {
-    createContext,
-    ReactNode,
-    useContext,
-    useEffect,
-    useRef,
-    useState,
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 import { auth, db } from "../firebaseConfig";
 import { AppUser } from "../types/users";
@@ -72,54 +82,97 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         return;
       }
 
+      // Reset loading state when a user is detected but profile isn't loaded yet
+      setLoading(true);
+
+      const processSnap = (snap: any) => {
+        if (!snap.exists()) return false;
+
+        const data = snap.data() || {};
+        // Normalize role and infer 'staff' for upgraded accounts with adminRole
+        const rawRole = data.role || data.profile?.role || (data.adminRole ? "staff" : undefined);
+        const role = typeof rawRole === "string" ? rawRole.toLowerCase() : rawRole;
+
+        const mapped: AppUser = {
+          uid: snap.id, // Use document ID
+          role: role as any,
+          status: data.status || data.profile?.status,
+          adminRole: data.adminRole || data.profile?.adminRole,
+          permissions: data.permissions || data.profile?.permissions,
+          dateOfBirth: data.dateOfBirth || data.profile?.dateOfBirth,
+          profile: {
+            firstName: data.profile?.firstName ?? "",
+            lastName: data.profile?.lastName ?? "",
+            email: data.profile?.email,
+            phone: data.profile?.phone,
+            profileImage: data.profile?.profileImage,
+            signatureUrl: data.profile?.signatureUrl,
+            bio: data.profile?.bio,
+            experience: data.profile?.experience,
+            education: data.profile?.education,
+            gender: data.profile?.gender,
+            dob: data.profile?.dob || data.dateOfBirth,
+          },
+          displayName:
+            data.displayName ||
+            (data.profile?.firstName
+              ? `${data.profile.firstName} ${data.profile.lastName || ""}`.trim()
+              : data.username) ||
+            undefined,
+          classes: data.classes ?? data.profile?.classes ?? [],
+          subjects: data.subjects ?? data.profile?.subjects ?? [],
+          classId: data.classId || data.profile?.classId,
+          childrenIds: data.childrenIds || data.profile?.childrenIds,
+          childrenClassIds:
+            data.childrenClassIds || data.profile?.childrenClassIds,
+          createdAt: data.createdAt,
+          parentUids: data.parentUids || data.profile?.parentUids,
+          parentLinkCode: data.parentLinkCode || data.profile?.parentLinkCode,
+          schoolId: data.schoolId || data.profile?.schoolId,
+          curriculum: data.curriculum || data.profile?.curriculum,
+          departments: data.departments || data.profile?.departments,
+          classTeacherOf: data.classTeacherOf || data.profile?.classTeacherOf,
+          assignedRoles: data.assignedRoles || data.profile?.assignedRoles,
+        };
+
+        setAppUser(mapped);
+        setLoading(false);
+        return true;
+      };
+
       const userRef = doc(db, "users", user.uid);
 
+      // Listener for direct UID match
       unsubscribeProfile = onSnapshot(
         userRef,
-        (snap) => {
-          if (!snap.exists()) {
-            setLoading(false);
-            return;
+        async (snap) => {
+          if (snap.exists()) {
+            processSnap(snap);
+          } else {
+            // Fallback: Check for staff with legacy IDs mapped via authUid
+            try {
+              const q = query(
+                collection(db, "users"),
+                where("authUid", "==", user.uid),
+                limit(1),
+              );
+              const querySnap = await getDocs(q);
+              if (!querySnap.empty) {
+                // Document found by authUid field
+                const staffDoc = querySnap.docs[0];
+                if (unsubscribeProfile) unsubscribeProfile();
+                // Setup persistent listener on the actual document
+                unsubscribeProfile = onSnapshot(staffDoc.ref, (innerSnap) => {
+                  processSnap(innerSnap);
+                });
+              } else {
+                setLoading(false);
+              }
+            } catch (err) {
+              console.error("Auth fallback error:", err);
+              setLoading(false);
+            }
           }
-
-          const data = snap.data() || {};
-          const mapped: AppUser = {
-            uid: user.uid,
-            role: data.role || data.profile?.role,
-            status: data.status || data.profile?.status,
-            adminRole: data.adminRole || data.profile?.adminRole,
-            permissions: data.permissions || data.profile?.permissions,
-            dateOfBirth: data.dateOfBirth || data.profile?.dateOfBirth,
-            profile: {
-              firstName: data.profile?.firstName ?? "",
-              lastName: data.profile?.lastName ?? "",
-              email: data.profile?.email,
-              phone: data.profile?.phone,
-              profileImage: data.profile?.profileImage,
-              signatureUrl: data.profile?.signatureUrl,
-              bio: data.profile?.bio,
-              experience: data.profile?.experience,
-              education: data.profile?.education,
-              gender: data.profile?.gender,
-              dob: data.profile?.dob || data.dateOfBirth,
-            },
-            classes: data.classes ?? data.profile?.classes ?? [],
-            subjects: data.subjects ?? data.profile?.subjects ?? [],
-            classId: data.classId || data.profile?.classId,
-            childrenIds: data.childrenIds || data.profile?.childrenIds,
-            childrenClassIds: data.childrenClassIds || data.profile?.childrenClassIds,
-            createdAt: data.createdAt,
-            parentUids: data.parentUids || data.profile?.parentUids,
-            parentLinkCode: data.parentLinkCode || data.profile?.parentLinkCode,
-            schoolId: data.schoolId || data.profile?.schoolId,
-            curriculum: data.curriculum || data.profile?.curriculum,
-            departments: data.departments || data.profile?.departments,
-            classTeacherOf: data.classTeacherOf || data.profile?.classTeacherOf,
-            assignedRoles: data.assignedRoles || data.profile?.assignedRoles,
-          };
-
-          setAppUser(mapped);
-          setLoading(false);
         },
         (error) => {
           console.error("Profile Listener Error:", error);

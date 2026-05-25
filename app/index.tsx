@@ -49,21 +49,34 @@ export default function WelcomeScreen() {
 
   const handleGetStarted = () => {
     if (appUser) {
-      switch (appUser.role) {
-        case "admin":
-          return router.replace("/admin-dashboard");
-        case "teacher":
-          return router.replace("/teacher-dashboard");
-        case "student":
-          return router.replace("/student-dashboard");
-        case "parent":
-          return router.replace("/parent-dashboard");
-        case "guest":
-          return router.replace("/guest-dashboard");
-        case "staff":
-          return router.replace("/staff-dashboard");
-        default:
-          return router.replace("/(auth)/login");
+      const role = (appUser.role || "").toLowerCase();
+      const adminRole = (appUser.adminRole || "").toLowerCase();
+
+      const isAdmin = role.includes("admin") || adminRole !== "";
+      const isTeacher =
+        role === "teacher" ||
+        role === "staff" ||
+        !!(
+          appUser.classes?.length ||
+          appUser.subjects?.length ||
+          appUser.classTeacherOf
+        );
+      const isParent = role === "parent";
+      const isStudent = role === "student";
+      const isGuest = role === "guest";
+
+      if (isAdmin) {
+        return router.replace("/admin-dashboard");
+      } else if (isTeacher) {
+        return router.replace("/teacher-dashboard");
+      } else if (isStudent) {
+        return router.replace("/student-dashboard");
+      } else if (isParent) {
+        return router.replace("/parent-dashboard");
+      } else if (isGuest) {
+        return router.replace("/guest-dashboard");
+      } else {
+        return router.replace("/(auth)/login");
       }
     } else {
       router.push("/(auth)/login");

@@ -65,16 +65,35 @@ export default function StudentLoginScreen() {
       );
 
       const userDoc = await getDoc(doc(db, "users", cred.user.uid));
-      const userData = userDoc.data();
-      const rawRole = userData?.role || userData?.profile?.role;
-      const role = typeof rawRole === 'string' ? rawRole.toLowerCase() : "";
-
-      if (!userDoc.exists() || role !== "student") {
+      if (!userDoc.exists()) {
         await auth.signOut();
-        throw new Error("This account is not registered as a student.");
+        throw new Error("User record not found. Please ensure your registration was completed.");
       }
 
-      router.replace("/student-dashboard");
+      const userData = userDoc.data();
+      const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
+      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
+
+      const isStudent = role === "student";
+      const isAdmin = role === "admin" || adminRole !== "";
+      const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
+      const isParent = role === "parent";
+
+      if (isStudent) {
+        router.replace("/student-dashboard");
+      } else if (isAdmin) {
+        showToast({ message: "Redirecting to Management Portal...", type: "info" });
+        router.replace("/admin-dashboard");
+      } else if (isTeacher) {
+        showToast({ message: "Redirecting to Teacher Portal...", type: "info" });
+        router.replace("/teacher-dashboard");
+      } else if (isParent) {
+        showToast({ message: "Redirecting to Parent Portal...", type: "info" });
+        router.replace("/parent-dashboard");
+      } else {
+        await auth.signOut();
+        throw new Error("This account does not have student access privileges.");
+      }
     } catch (error: any) {
       console.error("Login error:", error.code);
       let message = error.message || "An error occurred during login.";

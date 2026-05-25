@@ -1,8 +1,6 @@
-import Constants from "expo-constants";
 import { useRouter } from "expo-router";
-import { signInWithCustomToken } from "firebase/auth";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
+import { signInAnonymously } from "firebase/auth";
+import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -19,24 +17,25 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../../components/SVGIcon";
-import { COLORS, SHADOWS } from "../../../constants/theme";
+import { SCHOOL_CONFIG } from "../../../constants/Config";
+import { SHADOWS } from "../../../constants/theme";
 import { useToast } from "../../../contexts/ToastContext";
-import { auth, db, functions } from "../../../firebaseConfig";
+import { auth, db } from "../../../firebaseConfig";
 
 export default function GuestSignup() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [pin, setPin] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
 
-  const schoolId = Constants.expoConfig?.extra?.schoolId || "afahjoy";
-  const isBeano = schoolId === "beano";
+  const primary = SCHOOL_CONFIG.primaryColor;
+  const surface = SCHOOL_CONFIG.surfaceColor;
 
-  const handleStaffSignup = async () => {
-    if (!username.trim() || pin.length !== 4) {
+  const handleGuestSignup = async () => {
+    if (!fullName.trim() || !phone.trim()) {
       showToast({
-        message: "Please enter a valid username and 4-digit PIN.",
+        message: "Please enter your name and phone number.",
         type: "error",
       });
       return;
@@ -44,76 +43,32 @@ export default function GuestSignup() {
 
     setLoading(true);
     try {
-      // First, verify the staff document exists with matching credentials
-      const q = query(
-        collection(db, "users"),
-        where("username", "==", username.trim().toLowerCase()),
-        where("role", "==", "staff"),
-      );
+      // 1. Sign in anonymously
+      const userCredential = await signInAnonymously(auth);
+      const uid = userCredential.user.uid;
 
-      const snapshot = await getDocs(q);
+      // 2. Create guest profile in Firestore
+      await setDoc(doc(db, "users", uid), {
+        uid,
+        fullName: fullName.trim(),
+        displayName: fullName.trim(),
+        phone: phone.trim(),
+        role: "guest",
+        isGuest: true,
+        createdAt: serverTimestamp(),
+        schoolId: SCHOOL_CONFIG.schoolId || "default",
+      });
 
-      if (snapshot.empty) {
-        setLoading(false);
-        showToast({
-          message:
-            "No staff account found with this username. Please contact your administrator.",
-          type: "error",
-        });
-        return;
-      }
-
-      let staffDoc = null;
-      let staffData = null;
-
-      for (const doc of snapshot.docs) {
-        const data = doc.data();
-        if (data.pin === pin) {
-          staffDoc = doc;
-          staffData = data;
-          break;
-        }
-      }
-
-      if (!staffDoc || !staffData) {
-        setLoading(false);
-        showToast({
-          message:
-            "Incorrect PIN. Please try again or contact your administrator.",
-          type: "error",
-        });
-        return;
-      }
-
-      // Check if staff account has login enabled
-      if (!staffData.hasLoginEnabled) {
-        setLoading(false);
-        showToast({
-          message:
-            "Your account is not yet enabled for login. Please contact your administrator.",
-          type: "error",
-        });
-        return;
-      }
-
-      // Use the loginWithPin cloud function to authenticate
-      const loginWithPin = httpsCallable(functions, "loginWithPin");
-      const result = await loginWithPin({ username: username.trim(), pin });
-      const { token } = result.data as { token: string };
-
-      if (token) {
-        await signInWithCustomToken(auth, token);
-        showToast({
-          message: `Welcome, ${staffData.profile?.firstName || "Staff Member"}!`,
-          type: "success",
-        });
-        router.replace("/guest-dashboard");
-      }
-    } catch (err: any) {
-      console.error("Staff Signup Error:", err);
       showToast({
-        message:
-          err.message || "Could not verify credentials. Please try again.",
+        message: "Welcome! You are now signed in as a guest.",
+        type: "success",
+      });
+
+      router.replace("/guest-dashboard");
+    } catch (err: any) {
+      console.error("Guest Signup Error:", err);
+      showToast({
+        message: err.message || "Could not complete registration.",
         type: "error",
       });
     } finally {
@@ -122,9 +77,7 @@ export default function GuestSignup() {
   };
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, isBeano && { backgroundColor: "#FDF7FF" }]}
-    >
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: surface }]}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -140,36 +93,25 @@ export default function GuestSignup() {
             style={styles.header}
           >
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace("/(auth)/login/guest");
+                }
+              }}
               style={styles.backBtn}
             >
-              <SVGIcon
-                name="arrow-back"
-                size={24}
-                color={isBeano ? COLORS.primary : "#0F172A"}
-              />
+              <SVGIcon name="arrow-back" size={24} color="#0F172A" />
             </TouchableOpacity>
-            <View
-              style={[
-                styles.iconBadge,
-                {
-                  backgroundColor: isBeano
-                    ? COLORS.primary + "15"
-                    : COLORS.primary + "15",
-                },
-              ]}
-            >
-              <SVGIcon
-                name="briefcase"
-                size={32}
-                color={isBeano ? COLORS.primary : COLORS.primary}
-              />
+
+            <View style={[styles.iconBadge, { backgroundColor: primary + "15" }]}>
+              <SVGIcon name="person-add" size={32} color={primary} />
             </View>
-            <Text style={[styles.title, isBeano && { color: COLORS.primary }]}>
-              Staff Access
-            </Text>
+
+            <Text style={styles.title}>Guest Registration</Text>
             <Text style={styles.subtitle}>
-              Non-teaching staff sign in with credentials
+              Register to explore {SCHOOL_CONFIG.name}
             </Text>
           </Animatable.View>
 
@@ -179,42 +121,33 @@ export default function GuestSignup() {
             style={styles.card}
           >
             <View style={styles.infoBanner}>
-              <SVGIcon
-                name="information-circle"
-                size={20}
-                color={COLORS.primary}
-              />
+              <SVGIcon name="information-circle" size={20} color={primary} />
               <Text style={styles.infoBannerText}>
-                Your administrator should have provided you with a username and
-                PIN. Enter them below to access the staff portal.
+                Provide your details to get temporary access to our campus information and admission resources.
               </Text>
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>USERNAME</Text>
+              <Text style={styles.label}>FULL NAME</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g. j.doe"
+                placeholder="e.g. John Doe"
                 placeholderTextColor="#94A3B8"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
+                value={fullName}
+                onChangeText={setFullName}
                 editable={!loading}
               />
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>4-DIGIT PIN</Text>
+              <Text style={styles.label}>PHONE NUMBER</Text>
               <TextInput
                 style={styles.input}
-                placeholder="••••"
+                placeholder="e.g. 08012345678"
                 placeholderTextColor="#94A3B8"
-                value={pin}
-                onChangeText={(v) =>
-                  setPin(v.replace(/[^0-9]/g, "").slice(0, 4))
-                }
-                keyboardType="number-pad"
-                secureTextEntry
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
                 editable={!loading}
               />
             </View>
@@ -222,19 +155,19 @@ export default function GuestSignup() {
             <TouchableOpacity
               style={[
                 styles.button,
-                { backgroundColor: COLORS.primary },
+                { backgroundColor: primary },
                 loading && { opacity: 0.7 },
               ]}
-              onPress={handleStaffSignup}
+              onPress={handleGuestSignup}
               disabled={loading}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Text style={styles.buttonText}>Sign In</Text>
+                  <Text style={styles.buttonText}>Start Exploring</Text>
                   <View style={{ marginLeft: 8 }}>
-                    <SVGIcon name="log-in" size={18} color="#fff" />
+                    <SVGIcon name="rocket" size={18} color="#fff" />
                   </View>
                 </>
               )}
@@ -247,9 +180,9 @@ export default function GuestSignup() {
               style={styles.loginLinkBtn}
             >
               <Text style={styles.signupText}>
-                Not a staff member?{" "}
-                <Text style={[styles.signupLink, { color: COLORS.primary }]}>
-                  Guest Access
+                Already registered?{" "}
+                <Text style={[styles.signupLink, { color: primary }]}>
+                  Guest Login
                 </Text>
               </Text>
             </TouchableOpacity>
@@ -263,7 +196,7 @@ export default function GuestSignup() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#F8FAFC" },
+  safeArea: { flex: 1 },
   container: { flex: 1 },
   scrollContent: { padding: 24 },
   header: { marginBottom: 30, marginTop: 10, alignItems: "center" },
@@ -294,7 +227,7 @@ const styles = StyleSheet.create({
   infoBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: COLORS.primary + "10",
+    backgroundColor: "#F1F5F9",
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,

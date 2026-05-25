@@ -27,6 +27,7 @@ export interface AppUser {
 
   // Profile
   profile?: UserProfile;
+  displayName?: string;
   dateOfBirth?: any; // Firestore Timestamp
 
   // Account state

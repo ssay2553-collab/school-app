@@ -79,6 +79,9 @@ function RouteGuard() {
         case "parent":
           router.replace("/parent-dashboard");
           break;
+        case "staff":
+          router.replace("/staff-dashboard");
+          break;
         case "guest":
           router.replace("/guest-dashboard");
           break;
@@ -111,6 +114,10 @@ function RouteGuard() {
       <Stack.Screen
         name="guest-dashboard"
         options={{ title: "Guest Portal" }}
+      />
+      <Stack.Screen
+        name="staff-dashboard"
+        options={{ title: "Staff Portal" }}
       />
       <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       <Stack.Screen name="+not-found" options={{ title: "Not Found" }} />

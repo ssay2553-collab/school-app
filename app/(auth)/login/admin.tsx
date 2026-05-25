@@ -48,20 +48,44 @@ export default function AdminLogin() {
     }
     setLoading(true);
     try {
-      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const cleanEmail = email.trim().toLowerCase();
+      const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
 
-      const userDoc = await getDoc(doc(db, "users", cred.user.uid));
-      const userData = userDoc.data();
-      const rawRole = userData?.role || userData?.profile?.role || userData?.adminRole;
-      const role = typeof rawRole === 'string' ? rawRole.toLowerCase() : "";
+      // Verify the user record exists in Firestore
+      const userDocRef = doc(db, "users", cred.user.uid);
+      const userDoc = await getDoc(userDocRef);
 
-      // Allow "admin" or "super-admin" or similar roles
-      if (!userDoc.exists() || !role.includes("admin")) {
+      if (!userDoc.exists()) {
+          console.error(`Login success but Firestore record missing for UID: ${cred.user.uid}`);
           await auth.signOut();
-          throw new Error("This account does not have admin privileges.");
+          throw new Error("Your administrative record was not found. Please contact the system owner.");
       }
 
-      router.replace("/admin-dashboard");
+      const userData = userDoc.data();
+      const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
+      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
+
+      // Allow if role is "admin" or they have an explicit adminRole defined
+      const isAdmin = role.includes("admin") || adminRole !== "";
+      const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
+      const isParent = role === "parent";
+      const isStudent = role === "student";
+
+      if (isAdmin) {
+        router.replace("/admin-dashboard");
+      } else if (isTeacher) {
+        showToast({ message: "Redirecting to Teacher Portal...", type: "info" });
+        router.replace("/teacher-dashboard");
+      } else if (isParent) {
+        showToast({ message: "Redirecting to Parent Portal...", type: "info" });
+        router.replace("/parent-dashboard");
+      } else if (isStudent) {
+        showToast({ message: "Redirecting to Student Portal...", type: "info" });
+        router.replace("/student-dashboard");
+      } else {
+        await auth.signOut();
+        throw new Error("This account does not have administrative privileges.");
+      }
     } catch (error: any) {
       console.error("Admin login error:", error);
       let message = error.message || "Login Failed";

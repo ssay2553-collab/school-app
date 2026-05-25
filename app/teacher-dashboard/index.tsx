@@ -244,7 +244,7 @@ export default function TeacherDashboard() {
         },
         {
           title: "Staff Chat",
-          subtitle: "Internal",
+          subtitle: "Staff Messaging",
           route: "/teacher-dashboard/staff-chat",
           icon: "chatbubbles",
           color: "#6366f1",

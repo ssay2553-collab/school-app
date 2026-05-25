@@ -96,6 +96,7 @@ export default function StudentSignupScreen() {
         collection(db, "users"),
         where("signupCode", "==", cleanCode),
         where("role", "==", "student"),
+        where("status", "==", "pending_activation"),
         limit(1)
       );
       const pendingSnapshot = await getDocs(pendingQuery);
@@ -272,6 +273,7 @@ export default function StudentSignupScreen() {
         collection(db, "users"),
         where("signupCode", "==", cleanCode),
         where("role", "==", "student"),
+        where("status", "==", "pending_activation"),
         limit(1)
       );
       const pendingSnapshot = await getDocs(pendingQuery);

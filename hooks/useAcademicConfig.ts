@@ -22,9 +22,14 @@ export const useAcademicConfig = () => {
   });
 
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "school_settings", "academic_config"), (docSnap) => {
+    const configRef = doc(db, "school_settings", "academic_config");
+
+    console.log(`[AcademicConfig] Subscribing to: school_settings/academic_config in project: ${db.app.options.projectId}`);
+
+    const unsub = onSnapshot(configRef, { includeMetadataChanges: true }, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
+        console.log(`[AcademicConfig] Data received from ${docSnap.metadata.fromCache ? 'cache' : 'server'}`);
         setConfig({
           academicYear: data.academicYear || "",
           currentTerm: data.currentTerm || "Term 1",
@@ -34,10 +39,12 @@ export const useAcademicConfig = () => {
           loading: false,
         });
       } else {
+        const source = docSnap.metadata.fromCache ? 'cache' : 'server';
+        console.warn(`[AcademicConfig] Document missing in project: ${db.app.options.projectId} (Source: ${source})`);
         setConfig(prev => ({ ...prev, loading: false }));
       }
     }, (error) => {
-      console.error("Error fetching academic config:", error);
+      console.error("[AcademicConfig] Error fetching:", error);
       setConfig(prev => ({ ...prev, loading: false }));
     });
 

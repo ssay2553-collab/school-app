@@ -6,7 +6,7 @@ import {
     collection,
     doc,
     getDoc,
-    getDocs,
+    getDocsFromServer,
     limit,
     onSnapshot,
     orderBy,
@@ -150,10 +150,10 @@ export default function TeacherChatWithParent() {
             collection(db, "classes"),
             where("__name__", "in", classIds),
           );
-          const snap = await getDocs(q);
+          const snap = await getDocsFromServer(q);
           const list = snap.docs.map((d) => ({
             id: d.id,
-            name: d.data().name || d.id,
+            name: (d.data() as any).name || d.id,
           }));
           setTeacherClasses(sortClasses(list));
         }
@@ -174,12 +174,12 @@ export default function TeacherChatWithParent() {
         where("classId", "==", cls.id),
         where("status", "in", ["active", "pending_activation"]),
       );
-      const snap = await getDocs(q);
+      const snap = await getDocsFromServer(q);
       setStudents(
         snap.docs.map((d) => ({
           uid: d.id,
           fullName:
-            `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
+            `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
         })),
       );
       setStage("select_student");
@@ -197,14 +197,14 @@ export default function TeacherChatWithParent() {
         where("role", "==", "parent"),
         where("childrenIds", "array-contains", student.uid),
       );
-      const snap = await getDocs(q);
+      const snap = await getDocsFromServer(q);
       setParents(
         snap.docs.map((d) => ({
           uid: d.id,
           fullName:
-            `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
-          email: d.data().profile?.email || "",
-          phone: d.data().profile?.phone || "",
+            `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
+          email: (d.data() as any).profile?.email || "",
+          phone: (d.data() as any).profile?.phone || "",
         })),
       );
       setStage("select_parent");
@@ -229,7 +229,7 @@ export default function TeacherChatWithParent() {
     );
     const unsubscribe = onSnapshot(q, (snap) => {
       const msgs = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as Message)
+        .map((d) => ({ id: d.id, ...(d.data() as any) }) as Message)
         .reverse();
       if (!isFirstLoad.current && msgs.length > messagesLenRef.current) {
         if (msgs[msgs.length - 1].senderId !== appUser?.uid)

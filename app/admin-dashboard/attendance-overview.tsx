@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, getDocsFromServer } from "firebase/firestore";
+import { collection, query, where, onSnapshot, getDocsFromServer } from "firebase/firestore";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState, useCallback } from "react";
 import {
@@ -23,7 +23,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import moment from "moment";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
@@ -67,18 +66,15 @@ export default function AttendanceOverview() {
   const brandPrimary = SCHOOL_CONFIG.brandPrimary;
   const brandSecondary = SCHOOL_CONFIG.brandSecondary;
 
-  const fetchData = useCallback(async (forceRefresh = false) => {
+  useEffect(() => {
     if (!appUser) return;
-    if (!forceRefresh) setLoading(true);
 
-    try {
-      // 1. Fetch Classes (Fresh fetch if forced, otherwise Cache-First)
-      const classesQuery = collection(db, "classes");
-      const classesSnap = forceRefresh
-        ? await getDocs(classesQuery)
-        : await getDocsCacheFirst(classesQuery as any);
+    setLoading(true);
 
-      let classList = classesSnap.docs
+    // 1. Listen to Classes
+    const classesQuery = collection(db, "classes");
+    const unsubscribeClasses = onSnapshot(classesQuery, (classesSnap) => {
+      const classList = classesSnap.docs
         .map(d => ({ id: d.id, ...(d.data() as any) }))
         .map(d => ({
           id: d.id,
@@ -89,109 +85,116 @@ export default function AttendanceOverview() {
           marked: false
         }));
 
-      const validClassIds = new Set(classList.map(c => c.id));
-
-      // 2. Fetch Students (Fresh fetch if forced, otherwise Cache-First)
+      // 2. Listen to Students
       const studentsQuery = query(
         collection(db, "users"),
         where("role", "==", "student"),
         where("status", "in", ["active", "pending_activation"])
       );
-      const studentsSnap = forceRefresh
-        ? await getDocs(studentsQuery)
-        : await getDocsCacheFirst(studentsQuery as any);
-      
-      const studentCounts: Record<string, number> = {};
-      const studentMap: Record<string, string[]> = {};
-      let globalStudentTotal = 0;
 
-      studentsSnap.forEach(doc => {
-        const data = doc.data() as any;
+      const unsubscribeStudents = onSnapshot(studentsQuery, (studentsSnap) => {
+        const validClassIds = new Set(classList.map(c => c.id));
+        const studentCounts: Record<string, number> = {};
+        const studentMap: Record<string, string[]> = {};
+        let globalStudentTotal = 0;
 
-        if (data.classId && validClassIds.has(data.classId)) {
-          studentCounts[data.classId] = (studentCounts[data.classId] || 0) + 1;
-          if (!studentMap[data.classId]) studentMap[data.classId] = [];
-          studentMap[data.classId].push(doc.id);
-          globalStudentTotal++;
-        }
-      });
-
-      // 3. Fetch Attendance (Server-side for accurate tracking)
-      const attendanceQuery = query(
-        collection(db, "attendance"),
-        where("date", "==", selectedDate)
-      );
-
-      const attendanceSnap = await getDocs(attendanceQuery);
-      
-      const attendanceMap: Record<string, { present: number, absent: number, academicYear: string, term: string }> = {};
-
-      attendanceSnap.forEach(doc => {
-        const data = doc.data() as any;
-        const cid = data.classId;
-
-        if (!validClassIds.has(cid)) return;
-
-        const attStudents = data.students || {};
-        const currentClassStudentIds = studentMap[cid] || [];
-        let p = 0, a = 0;
-        
-        currentClassStudentIds.forEach(sid => {
-          const s = attStudents[sid];
-          if (s?.status === "present") p++;
-          else if (s?.status === "absent") a++;
+        studentsSnap.forEach(doc => {
+          const data = doc.data() as any;
+          if (data.classId && validClassIds.has(data.classId)) {
+            studentCounts[data.classId] = (studentCounts[data.classId] || 0) + 1;
+            if (!studentMap[data.classId]) studentMap[data.classId] = [];
+            studentMap[data.classId].push(doc.id);
+            globalStudentTotal++;
+          }
         });
-        
-        attendanceMap[cid] = {
-          present: p,
-          absent: a,
-          academicYear: data.academicYear,
-          term: data.term
-        };
+
+        // 3. Listen to Attendance for the selected date
+        const attendanceQuery = query(
+          collection(db, "attendance"),
+          where("date", "==", selectedDate)
+        );
+
+        const unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnap) => {
+          const attendanceMap: Record<string, { present: number, absent: number, academicYear: string, term: string }> = {};
+
+          attendanceSnap.forEach(doc => {
+            const data = doc.data() as any;
+            const cid = data.classId;
+            if (!validClassIds.has(cid)) return;
+
+            const attStudents = data.students || {};
+            const currentClassStudentIds = studentMap[cid] || [];
+            let p = 0, a = 0;
+
+            currentClassStudentIds.forEach(sid => {
+              const s = attStudents[sid];
+              if (s?.status === "present") p++;
+              else if (s?.status === "absent") a++;
+            });
+
+            attendanceMap[cid] = {
+              present: p,
+              absent: a,
+              academicYear: data.academicYear,
+              term: data.term
+            };
+          });
+
+          let globalPresent = 0;
+          let globalAbsent = 0;
+
+          const sortedStats = sortClasses(classList).map(cls => {
+            const att = attendanceMap[cls.id];
+            const totalInClass = studentCounts[cls.id] || 0;
+            if (att) {
+              globalPresent += att.present;
+              globalAbsent += att.absent;
+            }
+
+            return {
+              ...cls,
+              totalStudents: totalInClass,
+              present: att ? att.present : 0,
+              absent: att ? att.absent : 0,
+              marked: !!att,
+              academicYear: att?.academicYear,
+              term: att?.term
+            };
+          });
+
+          setClassStats(sortedStats);
+          setTotals({ schoolTotal: globalStudentTotal, schoolPresent: globalPresent, schoolAbsent: globalAbsent });
+          setLoading(false);
+          setRefreshing(false);
+        });
+
+        return () => unsubscribeAttendance();
       });
 
-      let globalPresent = 0;
-      let globalAbsent = 0;
+      return () => unsubscribeStudents();
+    });
 
-      const sortedStats = sortClasses(classList).map(cls => {
-        const att = attendanceMap[cls.id];
-        const totalInClass = studentCounts[cls.id] || 0;
-        if (att) {
-          globalPresent += att.present;
-          globalAbsent += att.absent;
-        }
+    return () => unsubscribeClasses();
+  }, [selectedDate, appUser]);
 
-        return {
-          ...cls,
-          totalStudents: totalInClass,
-          present: att ? att.present : 0,
-          absent: att ? att.absent : 0,
-          marked: !!att,
-          academicYear: att?.academicYear,
-          term: att?.term
-        };
-      });
-
-      setClassStats(sortedStats);
-      setTotals({ schoolTotal: globalStudentTotal, schoolPresent: globalPresent, schoolAbsent: globalAbsent });
-    } catch (error) {
-      console.error("Attendance Fetch Error:", error);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      // Force fresh data from server for critical checks if needed,
+      // but onSnapshot will eventually sync.
+      // To force immediate refresh from server:
+      await getDocsFromServer(query(collection(db, "attendance"), where("date", "==", selectedDate)));
+    } catch (e) {
+      console.error(e);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedDate, appUser, acadConfig.academicYear, acadConfig.currentTerm, acadConfig.loading]);
-
-  useEffect(() => { fetchData(false); }, [fetchData]);
+  };
 
   const changeDate = (days: number) => {
     setSelectedDate(moment(selectedDate).add(days, 'days').format("YYYY-MM-DD"));
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchData(true);
-  };
 
   if (!appUser) return null;
 

@@ -2,7 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   collection,
-  getDocs,
+  getDocsFromServer,
   query,
   where,
   orderBy,
@@ -10,7 +10,8 @@ import {
   Timestamp,
   doc,
   getDoc,
-  getCountFromServer
+  getCountFromServer,
+  getDocs
 } from "firebase/firestore";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
@@ -100,25 +101,25 @@ export default function TeacherStatistics() {
       const startOfWeek = getStartOfWeek();
 
       // 0. Fetch metadata once
-      const classesSnap = await getDocs(collection(db, "classes"));
+      const classesSnap = await getDocsFromServer(collection(db, "classes"));
       const classMap: Record<string, string> = {};
-      classesSnap.forEach(doc => {
+      classesSnap.forEach((doc: any) => {
         const data = doc.data() as any;
         classMap[doc.id] = data.name || data.className || doc.id;
       });
 
       // 1. Batch Fetch all required collections for the school
       const [teacherSnap, allAssignmentsSnap, allGroupsSnap, vaultSnap] = await Promise.all([
-        getDocs(query(collection(db, "users"), where("role", "==", "teacher"))),
-        getDocs(collection(db, "assignments")),
-        getDocs(collection(db, "studentGroups")),
-        getDocs(collection(db, "pedagogy_vault"))
+        getDocsFromServer(query(collection(db, "users"), where("role", "==", "teacher"))),
+        getDocsFromServer(collection(db, "assignments")),
+        getDocsFromServer(collection(db, "studentGroups")),
+        getDocsFromServer(collection(db, "pedagogy_vault"))
       ]);
 
       // Filter vault items by date in-memory to avoid composite index requirements
       const startTimestamp = startOfWeek.getTime();
       const weeklyLessons = vaultSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as any))
+        .map(d => ({ id: d.id, ...(d.data() as any) } as any))
         .filter(d => {
           const createdAt = d.createdAt?.toMillis ? d.createdAt.toMillis() : (d.createdAt ? new Date(d.createdAt).getTime() : 0);
           return createdAt >= startTimestamp;

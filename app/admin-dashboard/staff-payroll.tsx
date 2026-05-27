@@ -6,6 +6,7 @@ import {
     addDoc,
     collection,
     doc,
+    getDocsFromServer,
     limit,
     onSnapshot,
     query,
@@ -315,21 +316,14 @@ export default function StaffPayrollScreen() {
       const itemLabel = `Staff Payroll - ${selectedMonth} ${selectedYear}`;
       const q = query(
         collection(db, "expenditures"),
+        where("item", "==", itemLabel),
+        where("academicYear", "==", selectedYear),
+        where("term", "==", selectedTerm)
       );
-      // Use cache-first Firestore helper
-      const { getDocsCacheFirst } = await import("../../lib/firestoreHelpers");
-      const snap = await getDocsCacheFirst(q as any);
 
-      const exists = snap.docs.some((d: any) => {
-        const data = d.data();
-        return (
-          data.item === itemLabel &&
-          data.academicYear === selectedYear &&
-          data.term === selectedTerm
-        );
-      });
+      const snap = await getDocsFromServer(q);
 
-      if (exists) {
+      if (!snap.empty) {
         setIsFinalizing(false);
         return showToast({
           message:

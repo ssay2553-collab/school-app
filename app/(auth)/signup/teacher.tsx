@@ -4,6 +4,7 @@ import {
     collection,
     doc,
     getDocs,
+    getDocsFromServer,
     query,
     serverTimestamp,
     where,
@@ -32,7 +33,6 @@ import { useToast } from "../../../contexts/ToastContext";
 import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, MONTESSORI_SUBJECTS, CurriculumType } from "../../../constants/Curriculum";
-import { getDocsCacheFirst } from "../../../lib/firestoreHelpers";
 import { sortClasses } from "../../../utils/classSorting";
 
 const COLORS = { ...THEME_COLORS, gold: "#FFD700", orange: "#FFA500" };
@@ -61,9 +61,9 @@ export default function TeacherSignupScreen() {
       try {
         // Fetch classes and use "safe filter" to include legacy docs or school-specific ones
         const q = query(collection(db, "classes"));
-        const snap = await getDocsCacheFirst(q as any);
+        const snap = await getDocsFromServer(q as any);
         const list = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() } as any))
+          .map((d) => ({ id: d.id, ...(d.data() as any) } as any))
           .map((d) => ({ id: d.id, name: d.name || d.id }));
 
         setClasses(sortClasses(list));

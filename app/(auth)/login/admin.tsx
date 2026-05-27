@@ -19,7 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { SHADOWS } from "../../../constants/theme";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
 import { auth, db } from "../../../firebaseConfig";
 import { StatusBar } from "expo-status-bar";
 import { useToast } from "../../../contexts/ToastContext";
@@ -52,22 +52,43 @@ export default function AdminLogin() {
       const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
 
       // Verify the user record exists in Firestore
-      const userDocRef = doc(db, "users", cred.user.uid);
-      const userDoc = await getDoc(userDocRef);
+      let userDocRef = doc(db, "users", cred.user.uid);
+      let userDoc = await getDoc(userDocRef);
+      let userData = userDoc.data();
 
       if (!userDoc.exists()) {
-          console.error(`Login success but Firestore record missing for UID: ${cred.user.uid}`);
-          await auth.signOut();
-          throw new Error("Your administrative record was not found. Please contact the system owner.");
+          // Fallback: Check for staff with legacy IDs mapped via authUid
+          const q = query(
+            collection(db, "users"),
+            where("authUid", "==", cred.user.uid),
+            limit(1)
+          );
+          const querySnap = await getDocs(q);
+          if (!querySnap.empty) {
+            userDoc = querySnap.docs[0];
+            userData = userDoc.data();
+          } else {
+            console.error(`Login success but Firestore record missing for UID: ${cred.user.uid}`);
+            await auth.signOut();
+            throw new Error("Your administrative record was not found. Please contact the system owner.");
+          }
       }
 
-      const userData = userDoc.data();
       const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
       const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
 
       // Allow if role is "admin" or they have an explicit adminRole defined
       const isAdmin = role.includes("admin") || adminRole !== "";
-      const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
+      const isTeacher =
+        role === "teacher" ||
+        !!(
+          userData?.classes?.length ||
+          userData?.subjects?.length ||
+          userData?.classTeacherOf ||
+          userData?.profile?.classes?.length ||
+          userData?.profile?.subjects?.length ||
+          userData?.profile?.classTeacherOf
+        );
       const isParent = role === "parent";
       const isStudent = role === "student";
 

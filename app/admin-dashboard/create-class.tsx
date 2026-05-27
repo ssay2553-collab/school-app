@@ -3,6 +3,7 @@ import {
     collection,
     deleteDoc,
     doc,
+    getDocsFromServer,
     query,
     serverTimestamp,
     updateDoc,
@@ -28,7 +29,6 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 type ClassItem = {
   id: string;
@@ -79,11 +79,11 @@ export default function ClassManagementScreen() {
     if (!isAuthorized) return;
     setLoading(true);
     try {
-      const classesSnap = await getDocsCacheFirst(collection(db, "classes") as any);
+      const classesSnap = await getDocsFromServer(collection(db, "classes") as any);
       const baseClasses = classesSnap.docs
         .map((d, i) => ({
           id: d.id,
-          ...d.data(),
+          ...(d.data() as any),
           order: (d.data() as any).order ?? i,
         }) as ClassItem);
 
@@ -92,7 +92,7 @@ export default function ClassManagementScreen() {
         where("role", "==", "student"),
         where("status", "in", ["active", "pending_activation"]),
       );
-      const studentsSnap = await getDocsCacheFirst(studentsQuery as any);
+      const studentsSnap = await getDocsFromServer(studentsQuery as any);
 
       const counts: Record<string, { total: number; male: number; female: number }> = {};
       studentsSnap.docs.forEach((d) => {

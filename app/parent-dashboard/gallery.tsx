@@ -6,6 +6,7 @@ import * as Sharing from "expo-sharing";
 import { useToast } from "../../contexts/ToastContext";
 import {
     collection,
+    getDocsFromServer,
     limit,
     orderBy,
     query,
@@ -40,7 +41,6 @@ import Animated, {
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 const PAGE_SIZE = 12;
 
@@ -87,7 +87,7 @@ const GuestDashboardGallery = () => {
         q = query(q, startAfter(lastVisibleRef.current));
       }
 
-      const snapshot = await getDocsCacheFirst(q as any);
+      const snapshot = await getDocsFromServer(q as any);
 
       if (snapshot.empty) {
         setHasMore(false);
@@ -97,7 +97,7 @@ const GuestDashboardGallery = () => {
         return;
       }
 
-      const items = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const items = snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as any) }));
 
       if (isInitial) setGallery(items);
       else setGallery((prev) => [...prev, ...items]);

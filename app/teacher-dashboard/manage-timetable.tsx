@@ -40,7 +40,6 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import { useRouter } from "expo-router";
 import { sortClasses } from "../../lib/classHelpers";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, COMMON_ACTIVITIES, CurriculumType } from "../../constants/Curriculum";
@@ -141,12 +140,10 @@ export default function CreateLessonTimetable() {
   const loadClasses = useCallback(async (forceRefresh = false) => {
     try {
       setLoadingClasses(true);
-      const snap = forceRefresh 
-        ? await getDocsFromServer(collection(db, "classes"))
-        : await getDocsCacheFirst(collection(db, "classes") as any);
+      const snap = await getDocsFromServer(collection(db, "classes") as any);
         
       const list: ClassData[] = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() } as any))
+        .map((d) => ({ id: d.id, ...(d.data() as any) } as any))
         .map((d) => ({
           id: d.id,
           name: d.name || d.id,

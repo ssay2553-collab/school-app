@@ -37,7 +37,6 @@ import {
     getGradeDetails,
     calculateCompetitionRanking,
 } from "../../lib/classHelpers";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
 
@@ -93,7 +92,7 @@ export default function ViewAcademicRecordDetails() {
           where("status", "==", "approved"),
         );
 
-        const scoresSnap = await getDocsCacheFirst(qScores);
+        const scoresSnap = await getDocsFromServer(qScores);
         let studentResults: any[] = [];
         let nameFound = "";
 

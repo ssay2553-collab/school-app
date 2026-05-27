@@ -28,7 +28,7 @@ import {
   collection,
   query,
   where,
-  getDocs,
+  getDocsFromServer,
   orderBy,
   deleteDoc,
   doc,
@@ -152,10 +152,10 @@ export default function PedagogyVault() {
         where('userId', '==', appUser?.uid),
         orderBy('createdAt', 'desc')
       );
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await getDocsFromServer(q);
       const plans = querySnapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...(doc.data() as any)
       }));
       setSavedPlans(plans);
     } catch (error) {

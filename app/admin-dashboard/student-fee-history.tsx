@@ -10,6 +10,7 @@ import {
     arrayRemove,
     collection,
     doc,
+    getDocsFromServer,
     increment,
     onSnapshot,
     orderBy,
@@ -42,7 +43,6 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 
@@ -123,7 +123,7 @@ export default function StudentFeeHistoryScreen() {
   useEffect(() => {
     const initClasses = async () => {
       try {
-        const snap = await getDocsCacheFirst(collection(db, "classes") as any);
+        const snap = await getDocsFromServer(collection(db, "classes"));
         let list = snap.docs.map((d) => ({
           id: d.id,
           name: (d.data() as any).name || d.id,
@@ -152,7 +152,7 @@ export default function StudentFeeHistoryScreen() {
           where("status", "in", ["active", "pending_activation"]),
           orderBy("__name__"),
         );
-        const snap = await getDocsCacheFirst(q as any);
+        const snap = await getDocsFromServer(q);
         const list = snap.docs
           .map((d) => {
             const data = d.data() as any;

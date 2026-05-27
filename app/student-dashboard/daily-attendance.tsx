@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, getDocsFromServer } from "firebase/firestore";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -17,7 +17,6 @@ import { SHADOWS, COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 
@@ -93,7 +92,7 @@ export default function StudentAttendanceScreen() {
           where("term", "==", selectedTerm),
         );
 
-        const snapshot = await getDocsCacheFirst(q);
+        const snapshot = await getDocsFromServer(q as any);
 
         let present = 0;
         let absent = 0;

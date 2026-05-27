@@ -37,9 +37,12 @@ export default function DashboardLayout() {
       return;
     }
 
-    const isAuthorized = appUser.role === "admin" && !!appUser.adminRole;
+    const role = (appUser.role || "").toLowerCase();
+    const adminRole = (appUser.adminRole || "").toLowerCase();
+    const isAuthorized = role.includes("admin") || role === "superadmin" || !!adminRole;
 
     if (!isAuthorized) {
+      console.log(`[AdminLayout] Unauthorized: role=${role}, adminRole=${adminRole}`);
       router.replace("/");
     }
   }, [appUser, isSyncing]);
@@ -96,7 +99,13 @@ export default function DashboardLayout() {
     );
   }
 
-  if (!appUser || appUser.role !== "admin" || !appUser.adminRole) {
+  if (!appUser) return null;
+
+  const role = (appUser.role || "").toLowerCase();
+  const adminRole = (appUser.adminRole || "").toLowerCase();
+  const isAuthorized = role.includes("admin") || role === "superadmin" || !!adminRole;
+
+  if (!isAuthorized) {
     return null;
   }
 

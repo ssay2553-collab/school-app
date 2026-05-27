@@ -7,7 +7,9 @@ import {
   doc,
   getDoc,
   getDocs,
+  getDocsFromServer,
   increment,
+  onSnapshot,
   query,
   serverTimestamp,
   setDoc,
@@ -43,7 +45,6 @@ import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 const { width } = Dimensions.get("window");
 
@@ -88,6 +89,10 @@ type AggregateData = {
   week: number;
   month: number;
   term?: number;
+  tuitionDay?: number;
+  tuitionWeek?: number;
+  tuitionMonth?: number;
+  tuitionTerm?: number;
 };
 
 export default function DailyFinancials() {
@@ -147,6 +152,10 @@ export default function DailyFinancials() {
     week: 0,
     month: 0,
     term: 0,
+    tuitionDay: 0,
+    tuitionWeek: 0,
+    tuitionMonth: 0,
+    tuitionTerm: 0,
   });
   const [expenditureAggregates, setExpenditureAggregates] =
     useState<AggregateData>({ day: 0, week: 0, month: 0, term: 0 });
@@ -357,7 +366,7 @@ export default function DailyFinancials() {
 
   const fetchClasses = async () => {
     try {
-      const snap = await getDocsCacheFirst(collection(db, "classes") as any);
+      const snap = await getDocsFromServer(collection(db, "classes") as any);
       const list = snap.docs.map((d) => ({
         id: d.id,
         name: (d.data() as any).name || d.id,
@@ -414,12 +423,16 @@ export default function DailyFinancials() {
           where("date", ">=", termStart),
           where("date", "<=", termEnd),
         );
-        const revSnap = await getDocs(revQ);
+        const revSnap = await getDocsFromServer(revQ);
 
         let rD = 0,
           rW = 0,
           rM = 0,
           rT = 0;
+        let tD = 0,
+          tW = 0,
+          tM = 0,
+          tT = 0;
         let breakdown: Record<string, number> = {};
 
         revSnap.forEach((d: any) => {
@@ -427,22 +440,49 @@ export default function DailyFinancials() {
           if (data.method === "Credit Deduction") return;
           const amt = data.amount || 0;
           const date = data.date;
-          const t = data.type || "other";
+          const t = (data.type || "other").trim().toLowerCase();
+          const isTuition = t === "tuition";
 
           if (date === today) {
             rD += amt;
-            breakdown[t] = (breakdown[t] || 0) + amt;
+            if (isTuition) tD += amt;
+            // Canonical grouping for breakdown
+            const displayKey = isTuition
+              ? "Tuition"
+              : t === "feeding"
+                ? "Feeding"
+                : t === "bus"
+                  ? "Bus Fee"
+                  : t === "extra"
+                    ? "Extra Classes"
+                    : (data.type || "Other");
+            breakdown[displayKey] = (breakdown[displayKey] || 0) + amt;
           }
           if (
             date >= startOfWeek &&
             date <= moment(selectedDate).endOf("isoWeek").format("YYYY-MM-DD")
-          )
+          ) {
             rW += amt;
-          if (date >= startOfMonth && date <= endOfMonth) rM += amt;
+            if (isTuition) tW += amt;
+          }
+          if (date >= startOfMonth && date <= endOfMonth) {
+            rM += amt;
+            if (isTuition) tM += amt;
+          }
           rT += amt;
+          if (isTuition) tT += amt;
         });
 
-        setGlobalAggregates({ day: rD, week: rW, month: rM, term: rT });
+        setGlobalAggregates({
+          day: rD,
+          week: rW,
+          month: rM,
+          term: rT,
+          tuitionDay: tD,
+          tuitionWeek: tW,
+          tuitionMonth: tM,
+          tuitionTerm: tT,
+        });
         setAggregates({ day: rD, week: rW, month: rM, term: rT });
         setRevenueBreakdown(breakdown);
 
@@ -452,7 +492,7 @@ export default function DailyFinancials() {
           where("date", ">=", termStart),
           where("date", "<=", termEnd),
         );
-        const expSnap = await getDocs(expQ);
+        const expSnap = await getDocsFromServer(expQ);
         let eD = 0,
           eW = 0,
           eM = 0,
@@ -482,7 +522,7 @@ export default function DailyFinancials() {
         where("date", "<=", termEnd),
       );
 
-      const snap = await getDocs(q);
+      const snap = await getDocsFromServer(q);
       let dayTotal = 0;
       let weekTotal = 0;
       let monthTotal = 0;
@@ -548,7 +588,7 @@ export default function DailyFinancials() {
         where("status", "in", ["active", "pending_activation"]),
       );
 
-      const snap = await getDocs(q);
+      const snap = await getDocsFromServer(q);
 
       // Fetch target date's feeding and class fee payments
       const targetDate = selectedDate;
@@ -565,7 +605,7 @@ export default function DailyFinancials() {
         collection(db, "feePayments"),
         where("date", "==", targetDate)
       );
-      const pSnap = shouldRestrict ? ({ docs: [] } as any) : await getDocs(pq);
+      const pSnap = shouldRestrict ? ({ docs: [] } as any) : await getDocsFromServer(pq);
       const paidFeedingMap = new Map<string, string>();
       const paidExtraMap = new Map<string, string>();
       const paidBusMap = new Map<string, string>();
@@ -594,7 +634,7 @@ export default function DailyFinancials() {
         collection(db, "attendance"),
         where("date", "==", targetDate)
       );
-      const aSnap = await getDocs(attendanceQuery);
+      const aSnap = await getDocsFromServer(attendanceQuery);
       const absentUids = new Set();
       aSnap.forEach((doc: any) => {
         const data = doc.data();
@@ -1265,8 +1305,8 @@ export default function DailyFinancials() {
         where("studentUid", "==", studentUid),
         where("date", "==", selectedDate),
       );
-      const snap = await getDocs(q);
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const snap = await getDocsFromServer(q);
+      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
       setStudentPayments(list);
     } catch (e) {
       console.error(e);
@@ -2061,41 +2101,41 @@ export default function DailyFinancials() {
             colors={[VIBE.primary, secondaryColor]}
             style={styles.cashPositionCard}
           >
-            <Text style={styles.cashPositionTitle}>Net Cash Position</Text>
+            <Text style={styles.cashPositionTitle}>Net Cash Position (Tuition Based)</Text>
             <View style={styles.cashPositionRow}>
-              <Text style={styles.cashPositionLabel}>Net Position (Today)</Text>
+              <Text style={styles.cashPositionLabel}>Tuition Balance (Today)</Text>
               <Text style={styles.cashPositionValue}>
-                ₵{(globalAggregates.day - expenditureAggregates.day).toFixed(2)}
+                ₵{((globalAggregates.tuitionDay || 0) - expenditureAggregates.day).toFixed(2)}
               </Text>
             </View>
             {isSuperAdmin && (
               <>
                 <View style={styles.cashPositionRow}>
                   <Text style={styles.cashPositionLabel}>
-                    Net Position (Weekly)
+                    Tuition Balance (Weekly)
                   </Text>
                   <Text style={styles.cashPositionValue}>
                     ₵
                     {(
-                      globalAggregates.week - expenditureAggregates.week
+                      (globalAggregates.tuitionWeek || 0) - expenditureAggregates.week
                     ).toFixed(2)}
                   </Text>
                 </View>
                 <View style={styles.cashPositionRow}>
                   <Text style={styles.cashPositionLabel}>
-                    Net Position (Monthly)
+                    Tuition Balance (Monthly)
                   </Text>
                   <Text style={styles.cashPositionValue}>
                     ₵
                     {(
-                      globalAggregates.month - expenditureAggregates.month
+                      (globalAggregates.tuitionMonth || 0) - expenditureAggregates.month
                     ).toFixed(2)}
                   </Text>
                 </View>
               </>
             )}
             <View style={styles.cashPositionRow}>
-              <Text style={styles.cashPositionLabel}>Net Position (Term)</Text>
+              <Text style={styles.cashPositionLabel}>Tuition Balance (Term)</Text>
               <Text
                 style={[
                   styles.cashPositionValue,
@@ -2104,7 +2144,7 @@ export default function DailyFinancials() {
               >
                 ₵
                 {(
-                  (globalAggregates.term || 0) -
+                  (globalAggregates.tuitionTerm || 0) -
                   (expenditureAggregates.term || 0)
                 ).toFixed(2)}
               </Text>
@@ -2120,17 +2160,18 @@ export default function DailyFinancials() {
                   <View style={styles.breakdownInfo}>
                     <SVGIcon
                       name={
-                        type === "feeding"
-                          ? "restaurant"
-                          : type === "bus"
-                            ? "bus"
-                            : type === "extra"
-                              ? "school"
-                              : type === "tuition" ||
-                                  type === "Admission" ||
-                                  type === "Books fee" ||
-                                  type === "Uniform"
-                                ? "cash"
+                        ["tuition", "admission", "books fee", "uniform"].includes(
+                          type.toLowerCase(),
+                        )
+                          ? "cash"
+                          : type.toLowerCase() === "feeding"
+                            ? "restaurant"
+                            : type.toLowerCase() === "bus" ||
+                                type.toLowerCase() === "bus fee"
+                              ? "bus"
+                              : type.toLowerCase() === "extra" ||
+                                  type.toLowerCase() === "extra classes"
+                                ? "school"
                                 : "options"
                       }
                       size={16}

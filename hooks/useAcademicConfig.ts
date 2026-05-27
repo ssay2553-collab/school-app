@@ -27,9 +27,11 @@ export const useAcademicConfig = () => {
     console.log(`[AcademicConfig] Subscribing to: school_settings/academic_config in project: ${db.app.options.projectId}`);
 
     const unsub = onSnapshot(configRef, { includeMetadataChanges: true }, (docSnap) => {
+      const isFromCache = docSnap.metadata.fromCache;
+
       if (docSnap.exists()) {
         const data = docSnap.data();
-        console.log(`[AcademicConfig] Data received from ${docSnap.metadata.fromCache ? 'cache' : 'server'}`);
+        console.log(`[AcademicConfig] Data received from ${isFromCache ? 'cache' : 'server'}`);
         setConfig({
           academicYear: data.academicYear || "",
           currentTerm: data.currentTerm || "Term 1",
@@ -39,9 +41,14 @@ export const useAcademicConfig = () => {
           loading: false,
         });
       } else {
-        const source = docSnap.metadata.fromCache ? 'cache' : 'server';
-        console.warn(`[AcademicConfig] Document missing in project: ${db.app.options.projectId} (Source: ${source})`);
-        setConfig(prev => ({ ...prev, loading: false }));
+        // Only stop loading if we are sure it doesn't exist on the server.
+        // If it's just a cache miss, stay in loading state until the server responds.
+        if (!isFromCache) {
+          console.warn(`[AcademicConfig] Document DEFINITIVELY missing on server in project: ${db.app.options.projectId}`);
+          setConfig(prev => ({ ...prev, loading: false }));
+        } else {
+          console.log("[AcademicConfig] Cache miss, waiting for server...");
+        }
       }
     }, (error) => {
       console.error("[AcademicConfig] Error fetching:", error);

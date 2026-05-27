@@ -7,6 +7,7 @@ import {
     collection,
     doc,
     getDocs,
+    getDocsFromServer,
     onSnapshot,
     query,
     setDoc,
@@ -40,7 +41,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 interface ChatMessage {
   id: string;
@@ -122,10 +122,10 @@ export default function ChatWithParent() {
     const fetchData = async () => {
       try {
         // 1. Fetch Classes for filtering
-        const classesSnap = await getDocsCacheFirst(
+        const classesSnap = await getDocsFromServer(
           collection(db, "classes") as any,
         );
-        const classList = classesSnap.docs.map((d) => ({
+        const classList = classesSnap.docs.map((d: any) => ({
           id: d.id,
           name: d.data().name || d.id,
         }));

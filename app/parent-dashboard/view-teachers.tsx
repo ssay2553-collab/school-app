@@ -1,6 +1,7 @@
 import {
   collection,
   getDocs,
+  getDocsFromServer,
   query,
   where,
   orderBy,
@@ -30,7 +31,6 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 const { width } = Dimensions.get("window");
 
@@ -97,8 +97,8 @@ export default function ViewTeachers() {
           orderBy("profile.firstName"),
           limit(200)
         );
-        const snap = await getDocsCacheFirst(q as any);
-        const allTeachers = snap.docs.map(d => ({ uid: d.id, ...d.data() } as Teacher));
+        const snap = await getDocsFromServer(q as any);
+        const allTeachers = snap.docs.map(d => ({ uid: d.id, ...(d.data() as any) } as Teacher));
         
         // 3. Filter teachers who teach at least one of the parent's children's classes
         const filteredList = allTeachers.filter(t => 

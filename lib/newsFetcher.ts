@@ -1,6 +1,11 @@
-import { collection, query, Timestamp, where } from "firebase/firestore";
+import {
+  collection,
+  getDocsFromServer,
+  query,
+  Timestamp,
+  where,
+} from "firebase/firestore";
 import { db } from "../firebaseConfig";
-import { getDocsCacheFirst } from "../lib/firestoreHelpers";
 import { NewsItem } from "../types/news";
 
 export async function fetchNewsForAudience(
@@ -12,13 +17,13 @@ export async function fetchNewsForAudience(
       where("audience", "in", ["all", audience]),
     );
 
-    const snapshot = await getDocsCacheFirst(q);
+    const snapshot = await getDocsFromServer(q);
 
     const now = new Date();
     const news = (
       snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data(),
+        ...(doc.data() as any),
       })) as NewsItem[]
     ).filter((item) => {
       if (!item.expiryDate) return true;
@@ -44,8 +49,8 @@ export async function fetchCategories() {
   try {
     const q = collection(db, "newscategories");
 
-    const snapshot = await getDocsCacheFirst(q);
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const snapshot = await getDocsFromServer(q);
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as any) }));
   } catch (error) {
     console.error("Failed to fetch categories:", error);
     return [];

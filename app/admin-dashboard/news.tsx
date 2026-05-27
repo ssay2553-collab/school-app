@@ -5,6 +5,7 @@ import {
     collection,
     deleteDoc,
     doc,
+    getDocsFromServer,
     query,
     serverTimestamp,
 } from "firebase/firestore";
@@ -86,11 +87,9 @@ export default function NewsCenter() {
     setScreenLoading(true);
     try {
       const q = query(collection(db, "news"));
-      const snapshot = await (
-        await import("../../lib/firestoreHelpers")
-      ).getDocsCacheFirst(q as any);
+      const snapshot = await getDocsFromServer(q as any);
       const list = snapshot.docs.map(
-        (docSnap) => ({ id: docSnap.id, ...docSnap.data() }) as NewsItem,
+        (docSnap) => ({ id: docSnap.id, ...(docSnap.data() as any) }) as NewsItem,
       );
       const filtered = list.filter(
         (n) => n.audience === "all" || n.audience === appUser.role,

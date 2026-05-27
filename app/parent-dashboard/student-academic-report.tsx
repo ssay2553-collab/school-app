@@ -40,7 +40,6 @@ import {
     calculatePerformanceFromList,
     calculateCompetitionRanking,
 } from "../../lib/classHelpers";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import { shareFile } from "../../utils/shareUtils";
 
 const TERMS = ["Term 1", "Term 2", "Term 3"];
@@ -98,7 +97,7 @@ export default function StudentAcademicReport() {
             collection(db, "users"),
             where(documentId(), "in", ids),
           );
-          const snap = await getDocsCacheFirst(q);
+          const snap = await getDocsFromServer(q as any);
           const list = snap.docs.map((d) => ({
             id: d.id,
             name: `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),

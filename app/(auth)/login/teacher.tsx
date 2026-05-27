@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -58,19 +58,40 @@ export default function TeacherLoginScreen() {
         password,
       );
 
-      const userDoc = await getDoc(doc(db, "users", cred.user.uid));
+      let userDoc = await getDoc(doc(db, "users", cred.user.uid));
+      let userData = userDoc.data();
 
       if (!userDoc.exists()) {
-        await auth.signOut();
-        throw new Error("User record not found. Please ensure your registration was completed successfully.");
+        // Fallback: Check for staff with legacy IDs mapped via authUid
+        const q = query(
+          collection(db, "users"),
+          where("authUid", "==", cred.user.uid),
+          limit(1)
+        );
+        const querySnap = await getDocs(q);
+        if (!querySnap.empty) {
+          userDoc = querySnap.docs[0];
+          userData = userDoc.data();
+        } else {
+          await auth.signOut();
+          throw new Error("User record not found. Please ensure your registration was completed successfully.");
+        }
       }
 
-      const userData = userDoc.data();
       const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
       const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
 
       // Hybrid logic: Allow if they are explicitly a teacher OR an admin with teaching duties
-      const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
+      const isTeacher =
+        role === "teacher" ||
+        !!(
+          userData?.classes?.length ||
+          userData?.subjects?.length ||
+          userData?.classTeacherOf ||
+          userData?.profile?.classes?.length ||
+          userData?.profile?.subjects?.length ||
+          userData?.profile?.classTeacherOf
+        );
       const isAdmin = role === "admin" || adminRole !== "";
       const isParent = role === "parent";
       const isStudent = role === "student";

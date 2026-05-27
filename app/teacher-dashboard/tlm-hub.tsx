@@ -36,6 +36,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocsFromServer,
   limit,
   query,
   serverTimestamp,
@@ -52,7 +53,6 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions, storage } from "../../firebaseConfig";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 const { width } = Dimensions.get("window");
 
@@ -215,13 +215,13 @@ export default function TLMHub() {
         limit(50),
       );
 
-      const snapshot = await getDocsCacheFirst(q);
+      const snapshot = await getDocsFromServer(q as any);
 
       if (!isMounted.current) return;
 
       const items = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data(),
+        ...(doc.data() as any),
         isSaved: true,
       })) as TLM[];
 

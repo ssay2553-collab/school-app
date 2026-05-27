@@ -12,6 +12,7 @@ import {
   doc,
   documentId,
   getDoc,
+  getDocsFromServer,
   limit,
   onSnapshot,
   query,
@@ -53,7 +54,6 @@ import { db, functions } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
 import { sortClasses } from "../../lib/classHelpers";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 const { width } = Dimensions.get("window");
 const DEFAULT_AVATAR = require("../../assets/default-avatar.png");
@@ -320,7 +320,7 @@ export default function ManageUsers() {
   useEffect(() => {
     const fetchClasses = async () => {
       try {
-        const snap = await getDocsCacheFirst(collection(db, "classes") as any);
+        const snap = await getDocsFromServer(collection(db, "classes") as any);
         const list = snap.docs.map((d: any) => ({
           id: d.id,
           name: d.data().name || d.id,
@@ -385,7 +385,7 @@ export default function ManageUsers() {
         q,
         (snap) => {
           const fetchedList = snap.docs.map(
-            (d: any) => ({ uid: d.id, ...d.data() }) as User,
+            (d: any) => ({ uid: d.id, ...(d.data() as any) }) as User,
           );
 
           // deduplicate by uid
@@ -503,9 +503,9 @@ export default function ManageUsers() {
           collection(db, "users"),
           where(documentId(), "in", idsToFetch),
         );
-        const snap = await getDocsCacheFirst(q as any);
+        const snap = await getDocsFromServer(q as any);
         setLinkedUsers(
-          snap.docs.map((d) => ({ uid: d.id, ...d.data() }) as User),
+          snap.docs.map((d) => ({ uid: d.id, ...(d.data() as any) }) as User),
         );
       }
       // Avoid performing a server-side count on load to reduce Firestore costs.

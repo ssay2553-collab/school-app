@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, getDocsFromServer, query, where, limit } from "firebase/firestore";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState, useCallback } from "react";
 import {
@@ -17,7 +17,6 @@ import SVGIcon from "../../components/SVGIcon";
 import { SHADOWS, COLORS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 import * as Animatable from "react-native-animatable";
 import moment from "moment";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
@@ -47,85 +46,85 @@ export default function AttendanceDetails() {
 
   const primary = SCHOOL_CONFIG.primaryColor;
 
-  const fetchDetails = useCallback(async (forceRefresh = false) => {
-    if (!forceRefresh) setLoading(true);
-    try {
-      // 1. Fetch Students in Class (Current list)
-      const q = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("classId", "==", classId),
-        where("status", "in", ["active", "pending_activation"])
-      );
+  useEffect(() => {
+    setLoading(true);
 
-      const studentsSnap = forceRefresh
-        ? await getDocs(q)
-        : await getDocsCacheFirst(q as any);
+    // 1. Listen to Students in Class
+    const studentsQuery = query(
+      collection(db, "users"),
+      where("role", "==", "student"),
+      where("classId", "==", classId),
+      where("status", "in", ["active", "pending_activation"])
+    );
 
+    const unsubscribeStudents = onSnapshot(studentsQuery, (studentsSnap) => {
       const studentList = studentsSnap.docs
-        .map(d => ({ id: d.id, ...d.data() } as any))
+        .map(d => ({ id: d.id, ...(d.data() as any) } as any))
         .map(d => ({
           id: d.id,
           name: `${d.profile?.firstName || ""} ${d.profile?.lastName || ""}`.trim() || d.id,
           status: "not_marked" as const
         }));
 
-      // 2. Resolve Attendance ID
+      // 2. Resolve Attendance and Listen
       const activeYear = academicYear || acadConfig.academicYear;
       const activeTerm = term || acadConfig.currentTerm;
 
-      let attendanceData: any = {};
-
-      if (activeYear && activeTerm) {
-        const cleanYear = activeYear.replace(/\//g, "-");
-        const cleanTerm = activeTerm.replace(/\s/g, "");
-        const attendanceId = `${classId}_${cleanYear}_${cleanTerm}_${date}`;
-        const attRef = doc(db, "attendance", attendanceId);
-
-        // Always try server for attendance record itself for PWA accuracy
-        const attSnap = await getDoc(attRef);
-        if (attSnap.exists()) {
-          attendanceData = attSnap.data().students || {};
-        }
-      } else if (!forceRefresh && acadConfig.loading) {
-        // Wait for academic config if not yet available
-        return;
-      } else {
-        // Fallback: Query by date and classId if params and config are missing
+      if (!activeYear || !activeTerm) {
+        if (acadConfig.loading) return;
+        // Fallback search if no config
         const attQuery = query(
           collection(db, "attendance"),
           where("date", "==", date),
           where("classId", "==", classId)
         );
-        const attQuerySnap = await getDocs(attQuery);
-        if (!attQuerySnap.empty) {
-          attendanceData = attQuerySnap.docs[0].data().students || {};
-        }
+        onSnapshot(attQuery, (attSnap) => {
+          const attendanceData = attSnap.empty ? {} : (attSnap.docs[0].data().students || {});
+          const merged = studentList.map(s => ({
+            ...s,
+            status: attendanceData[s.id]?.status || "not_marked",
+            markedAt: attendanceData[s.id]?.markedAt
+          })).sort((a, b) => a.name.localeCompare(b.name));
+          setStudents(merged);
+          setLoading(false);
+          setRefreshing(false);
+        });
+        return;
       }
 
-      // 3. Merge based on CURRENT students only (consistent with overview)
-      const merged = studentList.map(s => ({
-        ...s,
-        status: attendanceData[s.id]?.status || "not_marked",
-        markedAt: attendanceData[s.id]?.markedAt
-      })).sort((a, b) => a.name.localeCompare(b.name));
+      const cleanYear = activeYear.replace(/\//g, "-");
+      const cleanTerm = activeTerm.replace(/\s/g, "");
+      const attendanceId = `${classId}_${cleanYear}_${cleanTerm}_${date}`;
+      const attRef = doc(db, "attendance", attendanceId);
 
-      setStudents(merged);
-    } catch (error) {
-      console.error("Fetch Details Error:", error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      const unsubscribeAttendance = onSnapshot(attRef, (attSnap) => {
+        const attendanceData = attSnap.exists() ? (attSnap.data().students || {}) : {};
+        const merged = studentList.map(s => ({
+          ...s,
+          status: attendanceData[s.id]?.status || "not_marked",
+          markedAt: attendanceData[s.id]?.markedAt
+        })).sort((a, b) => a.name.localeCompare(b.name));
+
+        setStudents(merged);
+        setLoading(false);
+        setRefreshing(false);
+      });
+
+      return () => unsubscribeAttendance();
+    });
+
+    return () => unsubscribeStudents();
   }, [classId, date, academicYear, term, acadConfig.academicYear, acadConfig.currentTerm, acadConfig.loading]);
 
-  useEffect(() => {
-    fetchDetails();
-  }, [fetchDetails]);
-
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    fetchDetails(true);
+    try {
+      await getDocsFromServer(query(collection(db, "users"), where("classId", "==", classId), limit(1)));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const filteredStudents = students.filter(s => {

@@ -1,5 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
-import { collection, query, where } from "firebase/firestore";
+import { collection, getDocsFromServer, query, where } from "firebase/firestore";
 import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -12,7 +12,6 @@ import {
 import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import { db } from "../../../firebaseConfig";
-import { getDocsCacheFirst } from "../../../lib/firestoreHelpers";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 
 interface AttendanceDoc {
@@ -74,7 +73,7 @@ export default function StudentAttendanceSummaryScreen({
           where("term", "==", selectedTerm),
         );
 
-        const snapshot = await getDocsCacheFirst(q);
+        const snapshot = await getDocsFromServer(q);
 
         let present = 0;
         let absent = 0;

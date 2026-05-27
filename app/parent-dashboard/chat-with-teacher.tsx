@@ -3,7 +3,7 @@ import {
     addDoc,
     collection,
     documentId,
-    getDocs,
+    getDocsFromServer,
     limit,
     onSnapshot,
     orderBy,
@@ -127,9 +127,9 @@ export default function ParentChatWithTeacher() {
             collection(db, "users"),
             where(documentId(), "in", childUids),
           );
-          const snap = await getDocs(q);
+          const snap = await getDocsFromServer(q);
           const list = snap.docs
-            .map((d) => ({ uid: d.id, ...d.data() }))
+            .map((d) => ({ uid: d.id, ...(d.data() as any) }))
             .filter((s: any) => s.role === "student") as Child[];
           setChildren(list);
           if (list.length === 1) handleSelectChild(list[0]);
@@ -150,9 +150,9 @@ export default function ParentChatWithTeacher() {
         where("role", "==", "teacher"),
         where("classes", "array-contains", child.classId),
       );
-      const snap = await getDocs(q);
+      const snap = await getDocsFromServer(q);
       setTeachers(
-        snap.docs.map((d) => ({ uid: d.id, ...d.data() })) as Teacher[],
+        snap.docs.map((d) => ({ uid: d.id, ...(d.data() as any) })) as Teacher[],
       );
       setStage("select_teacher");
     } finally {
@@ -177,7 +177,7 @@ export default function ParentChatWithTeacher() {
     const unsubscribe = onSnapshot(q, (snap) => {
       const msgs = snap.docs.map((d) => ({
         id: d.id,
-        ...d.data(),
+        ...(d.data() as any),
       })) as Message[];
       const sorted = msgs.reverse();
 

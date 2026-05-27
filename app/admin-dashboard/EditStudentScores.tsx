@@ -41,7 +41,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { getGradeDetails, sortClasses } from "../../lib/classHelpers";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 import { useToast } from "../../contexts/ToastContext";
 
@@ -327,7 +326,7 @@ export default function EditStudentScores() {
 
   const loadClasses = async () => {
     try {
-      const snap = await getDocsCacheFirst(collection(db, "classes") as any);
+      const snap = await getDocsFromServer(collection(db, "classes") as any);
       const list = snap.docs.map((d) => ({
         id: d.id,
         name: (d.data() as any).name || d.id,

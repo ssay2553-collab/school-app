@@ -182,10 +182,8 @@ export default function PromoteStudentsScreen() {
             collection(db, "classes"),
             where(documentId(), "in", classIds),
           );
-          // Use cache-first helper to reduce server reads
-          const classesSnap = await (
-            await import("../../lib/firestoreHelpers")
-          ).getDocsCacheFirst(q as any);
+          // Use fresh server fetch to ensure assigned classes are accurate
+          const classesSnap = await getDocsFromServer(q as any);
           const list = classesSnap.docs.map((d) => ({
             id: d.id,
             ...(d.data() as any),
@@ -265,9 +263,9 @@ export default function PromoteStudentsScreen() {
             collection(db, "users"),
             where(documentId(), "in", chunk),
           );
-          const parentsSnap = await getDocs(parentsQ);
+          const parentsSnap = await getDocsFromServer(parentsQ);
           parentsSnap.forEach((d) => {
-            parentsMap[d.id] = { uid: d.id, ...d.data() };
+            parentsMap[d.id] = { uid: d.id, ...(d.data() as any) };
           });
         }
 

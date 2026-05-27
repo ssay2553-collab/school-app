@@ -6,6 +6,7 @@ import {
     collection,
     doc,
     getDocs,
+    getDocsFromServer,
     limit,
     query,
     serverTimestamp,
@@ -40,8 +41,6 @@ import { useToast } from "../../../contexts/ToastContext";
 import { auth, db, storage } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import DateTimePicker from "@react-native-community/datetimepicker";
-
-import { getDocsCacheFirst } from "../../../lib/firestoreHelpers";
 
 const { width } = Dimensions.get("window");
 
@@ -147,9 +146,9 @@ export default function StudentSignupScreen() {
       try {
         // Fetch classes and use "safe filter" to include legacy docs or school-specific ones
         const q = query(collection(db, "classes"));
-        const snap = await getDocsCacheFirst(q as any);
+        const snap = await getDocsFromServer(q as any);
         const list = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() } as any))
+          .map((d) => ({ id: d.id, ...(d.data() as any) } as any))
           .map((d) => ({ id: d.id, name: d.name || d.id }));
 
         const sorted = list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));

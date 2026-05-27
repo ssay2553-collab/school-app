@@ -11,8 +11,10 @@ import {
     doc,
     DocumentSnapshot,
     getDocs,
+    getDocsFromServer,
     increment,
     limit,
+    onSnapshot,
     orderBy,
     query,
     serverTimestamp,
@@ -55,7 +57,6 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
-import { getDocsCacheFirst } from "../../lib/firestoreHelpers";
 
 import { useToast } from "../../contexts/ToastContext";
 
@@ -179,6 +180,8 @@ export default function ManageFees() {
     "Cash" | "Cheque" | "E-cash" | "Momo"
   >("Cash");
 
+  const [stats, setStats] = useState({ expected: 0, received: 0, balance: 0 });
+
   // Daily Payments States
   const [dailyModalVisible, setDailyModalVisible] = useState(false);
   const [selectedDailyDate, setSelectedDailyDate] = useState(new Date());
@@ -227,7 +230,7 @@ export default function ManageFees() {
     dailyModalVisible,
   ]);
 
-  const lastVisibleRef = useRef<DocumentSnapshot | null>(null);
+  const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
   const isFetchingRef = useRef(false);
 
@@ -240,54 +243,47 @@ export default function ManageFees() {
 
   const isConfigMissing = !academicYear || !term;
 
-  const [stats, setStats] = useState({ expected: 0, received: 0, balance: 0 });
-
+  // 1. Real-time Classes Listener
   useEffect(() => {
-    const fetchGlobalStats = async () => {
-      if (!academicYear || !term) return;
-      try {
-        const q = query(
-          collection(db, "studentFeeRecords"),
-          where("academicYear", "==", academicYear),
-          where("term", "==", term)
-        );
-        const snap = await getDocsCacheFirst(q as any);
-        let expected = 0;
-        let received = 0;
+    const q = collection(db, "classes");
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map((d) => ({
+        id: d.id,
+        name: (d.data() as any).name || d.id,
+      }));
+      setClasses(sortClasses(list));
+    }, (err) => console.error("Classes listener error:", err));
 
-        // Sum up from term records
-        snap.docs.forEach((d: any) => {
-          const data = d.data() as any;
+    return () => unsub();
+  }, []);
+
+  // 2. Real-time Global Stats Listener
+  useEffect(() => {
+    if (!academicYear || !term) return;
+
+    const q = query(
+      collection(db, "studentFeeRecords"),
+      where("academicYear", "==", academicYear),
+      where("term", "==", term)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      let expected = 0;
+      let received = 0;
+
+      snap.docs.forEach((d) => {
+        const data = d.data() as any;
+        // Filter by class in memory to keep the listener broad and efficient
+        if (selectedClassId === "all" || data.classId === selectedClassId) {
           expected += (data.termBill || 0) + (data.arrears || 0);
           received += (data.amountPaid || 0);
-        });
-
-        // For students without a term record yet, we need their arrears from the user doc
-        // However, usually "Expected" at a school level is best tracked via the fee records.
-        // If we want it strictly for the *selected class* or *all*, and include those without bills:
-
-        if (selectedClassId !== "all") {
-           // Filter the sums to the selected class
-           let clsExpected = 0;
-           let clsReceived = 0;
-           snap.docs.forEach((d: any) => {
-             const data = d.data() as any;
-             if (data.classId === selectedClassId) {
-               clsExpected += (data.termBill || 0) + (data.arrears || 0);
-               clsReceived += (data.amountPaid || 0);
-             }
-           });
-           setStats({ expected: clsExpected, received: clsReceived, balance: clsExpected - clsReceived });
-        } else {
-           setStats({ expected, received, balance: expected - received });
         }
-      } catch (e) {
-        console.error("Stats fetch error:", e);
-      }
-    };
+      });
+      setStats({ expected, received, balance: expected - received });
+    }, (err) => console.error("Stats listener error:", err));
 
-    fetchGlobalStats();
-  }, [academicYear, term, selectedClassId, students]); // students dependency to refresh when edits happen
+    return () => unsub();
+  }, [academicYear, term, selectedClassId]);
 
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
@@ -313,7 +309,7 @@ export default function ManageFees() {
 
   const loadClasses = async () => {
     try {
-      const snap = await getDocsCacheFirst(collection(db, "classes") as any);
+      const snap = await getDocsFromServer(collection(db, "classes") as any);
       const list = snap.docs.map((d) => ({
         id: d.id,
         name: (d.data() as any).name || d.id,
@@ -329,18 +325,16 @@ export default function ManageFees() {
 
   useEffect(() => {
     const init = async () => {
-      const list = await loadClasses();
       const saved = await AsyncStorage.getItem(FILTERS_PERSISTENCE_KEY);
       if (saved) {
         try {
           const { classId } = JSON.parse(saved);
           setSelectedClassId(classId || "all");
         } catch {
-          setSelectedClassId(list.length > 0 ? list[0].id : "all");
+          setSelectedClassId("all");
         }
       } else {
-        // Default to first class if available, otherwise "all"
-        setSelectedClassId(list.length > 0 ? list[0].id : "all");
+        setSelectedClassId("all");
       }
       setLoading(false);
     };
@@ -378,7 +372,8 @@ export default function ManageFees() {
         if (!isFirstLoad && lastVisibleRef.current)
           q = query(q, startAfter(lastVisibleRef.current));
 
-        const snap = await getDocsCacheFirst(q as any);
+        // Force server fetch to ensure real-time accuracy and avoid PWA cache issues
+        const snap = await getDocsFromServer(q as any);
         if (snap.empty) {
           hasMoreRef.current = false;
           if (isFirstLoad) setStudents([]);
@@ -399,7 +394,7 @@ export default function ManageFees() {
           const validChunks = chunks.filter((c) => c.length > 0);
           const feesSnaps = await Promise.all(
             validChunks.map((chunk) =>
-              getDocsCacheFirst(
+              getDocsFromServer(
                 query(
                   collection(db, "studentFeeRecords"),
                   where("studentUid", "in", chunk),
@@ -488,7 +483,7 @@ export default function ManageFees() {
         collection(db, "feePayments"),
         where("date", "==", dateStr),
       );
-      const snap = await getDocs(q);
+      const snap = await getDocsFromServer(q);
       const list = snap.docs.map((d) => d.data() as any);
       setDailyPayments(list);
     } catch (e) {

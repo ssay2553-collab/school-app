@@ -2,7 +2,7 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
+  getDocsFromServer,
   limit,
   query,
   serverTimestamp,
@@ -187,9 +187,9 @@ export default function DailyAttendanceScreen() {
             const chunkedClasses = teacherClasses.slice(0, 30);
             q = query(collection(db, "classes"), where("__name__", "in", chunkedClasses));
         }
-        const snap = await getDocs(q);
+        const snap = await getDocsFromServer(q);
         const list = snap.docs
-          .map(d => ({ id: d.id, ...d.data() } as any))
+          .map(d => ({ id: d.id, ...(d.data() as any) } as any))
           .map(d => ({
             id: d.id,
             name: d.name || d.id,
@@ -227,11 +227,11 @@ export default function DailyAttendanceScreen() {
         where("classId", "==", classId)
       );
       
-      const snap = await getDocs(q);
+      const snap = await getDocsFromServer(q);
       const data = snap.docs
-        .map(d => ({ uid: d.id, ...(d.data() as any) }))
-        .filter(d => ["active", "pending_activation"].includes(d.status))
-        .sort((a, b) => (a.profile?.firstName || "").localeCompare(b.profile?.firstName || ""));
+        .map((d: any) => ({ uid: d.id, ...(d.data() as any) }))
+        .filter((d: any) => ["active", "pending_activation"].includes(d.status))
+        .sort((a: any, b: any) => (a.profile?.firstName || "").localeCompare(b.profile?.firstName || ""));
       
       setStudents(data);
     } catch (e) {

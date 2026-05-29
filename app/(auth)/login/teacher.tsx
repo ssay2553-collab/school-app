@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -23,7 +24,7 @@ import SVGIcon from "../../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { getSchoolLogo } from "../../../constants/Logos";
 import { COLORS, SHADOWS } from "../../../constants/theme";
-import { auth, db } from "../../../firebaseConfig";
+import { auth, db, functions } from "../../../firebaseConfig";
 import { useToast } from "../../../contexts/ToastContext";
 
 export default function TeacherLoginScreen() {
@@ -51,78 +52,112 @@ export default function TeacherLoginScreen() {
     }
 
     setLoading(true);
+    const finalEmail = email.trim().toLowerCase();
+
     try {
-      const cred = await signInWithEmailAndPassword(
-        auth,
-        email.trim().toLowerCase(),
-        password,
-      );
-
-      let userDoc = await getDoc(doc(db, "users", cred.user.uid));
-      let userData = userDoc.data();
-
-      if (!userDoc.exists()) {
-        // Fallback: Check for staff with legacy IDs mapped via authUid
-        const q = query(
-          collection(db, "users"),
-          where("authUid", "==", cred.user.uid),
-          limit(1)
-        );
-        const querySnap = await getDocs(q);
-        if (!querySnap.empty) {
-          userDoc = querySnap.docs[0];
-          userData = userDoc.data();
-        } else {
-          await auth.signOut();
-          throw new Error("User record not found. Please ensure your registration was completed successfully.");
-        }
-      }
-
-      const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
-      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
-
-      // Hybrid logic: Allow if they are explicitly a teacher OR an admin with teaching duties
-      const isTeacher =
-        role === "teacher" ||
-        !!(
-          userData?.classes?.length ||
-          userData?.subjects?.length ||
-          userData?.classTeacherOf ||
-          userData?.profile?.classes?.length ||
-          userData?.profile?.subjects?.length ||
-          userData?.profile?.classTeacherOf
-        );
-      const isAdmin = role === "admin" || adminRole !== "";
-      const isParent = role === "parent";
-      const isStudent = role === "student";
-
-      if (isTeacher) {
-        router.replace("/teacher-dashboard");
-      } else if (isAdmin) {
-        showToast({ message: "Accessing Management Portal...", type: "info" });
-        router.replace("/admin-dashboard");
-      } else if (isParent) {
-        showToast({ message: "Redirecting to Parent Portal...", type: "info" });
-        router.replace("/parent-dashboard");
-      } else if (isStudent) {
-        showToast({ message: "Redirecting to Student Portal...", type: "info" });
-        router.replace("/student-dashboard");
-      } else {
-        await auth.signOut();
-        throw new Error("This account does not have teacher access privileges.");
-      }
+      // 1. Try standard login
+      const cred = await signInWithEmailAndPassword(auth, finalEmail, password);
+      await finishLogin(cred.user.uid);
     } catch (error: any) {
-      console.error("Login error:", error.code);
+      console.log("Standard login failed, checking for Token Login...");
+
+      try {
+        // 2. Secondary check: Token Login
+        const cleanToken = password.trim().toUpperCase();
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("profile.email", "==", finalEmail));
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+          const userDoc = snap.docs[0];
+          const userData = userDoc.data();
+          const storedToken = userData.signupCode || userData.secretCode;
+
+          if (storedToken && (storedToken === cleanToken || storedToken === password.trim())) {
+            showToast({ message: "Token matched! Syncing access...", type: "info" });
+
+            // Call Cloud Function to update password to match the token for future logins
+            const updatePasswordFn = httpsCallable(functions, "resetUserPasswordWithToken");
+            await updatePasswordFn({
+              uid: userDoc.id,
+              token: storedToken, // Use the stored token (could be case sensitive in some contexts)
+              newPassword: password.trim(), // Reset password to what they typed
+            });
+
+            // Now sign in with the new password
+            const cred = await signInWithEmailAndPassword(auth, finalEmail, password.trim());
+            await finishLogin(cred.user.uid);
+            return;
+          }
+        }
+      } catch (tokenErr) {
+        console.error("Token login attempt failed:", tokenErr);
+      }
+
+      // If both fail, show original error
       let message = error.message || "Login failed.";
-      if (
-        error.code === "auth/invalid-credential" ||
-        error.code === "auth/wrong-password"
-      ) {
+      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
         message = "Invalid email or password.";
       }
       showToast({ message, type: "error" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const finishLogin = async (uid: string) => {
+    let userDoc = await getDoc(doc(db, "users", uid));
+    let userData = userDoc.data();
+
+    if (!userDoc.exists()) {
+      // Fallback: Check for staff with legacy IDs mapped via authUid
+      const q = query(
+        collection(db, "users"),
+        where("authUid", "==", uid),
+        limit(1)
+      );
+      const querySnap = await getDocs(q);
+      if (!querySnap.empty) {
+        userDoc = querySnap.docs[0];
+        userData = userDoc.data();
+      } else {
+        await auth.signOut();
+        throw new Error("User record not found. Please ensure your registration was completed successfully.");
+      }
+    }
+
+    const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
+    const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
+
+    // Hybrid logic: Allow if they are explicitly a teacher OR an admin with teaching duties
+    const isTeacher =
+      role === "teacher" ||
+      !!(
+        userData?.classes?.length ||
+        userData?.subjects?.length ||
+        userData?.classTeacherOf ||
+        userData?.profile?.classes?.length ||
+        userData?.profile?.subjects?.length ||
+        userData?.profile?.classTeacherOf
+      );
+    const isAdmin = role === "admin" || adminRole !== "";
+    const isParent = role === "parent";
+    const isStudent = role === "student";
+
+    if (isTeacher) {
+      router.replace("/teacher-dashboard");
+    } else if (isAdmin) {
+      showToast({ message: "Accessing Management Portal...", type: "info" });
+      router.replace("/admin-dashboard");
+    } else if (isParent) {
+      showToast({ message: "Redirecting to Parent Portal...", type: "info" });
+      router.replace("/parent-dashboard");
+    } else if (isStudent) {
+      showToast({ message: "Redirecting to Student Portal...", type: "info" });
+      router.replace("/student-dashboard");
+    } else {
+      await auth.signOut();
+      throw new Error("This account does not have teacher access privileges.");
     }
   };
 

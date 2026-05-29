@@ -16,6 +16,7 @@ import {
   limit,
   onSnapshot,
   query,
+  setDoc,
   Timestamp,
   updateDoc,
   where,
@@ -877,10 +878,14 @@ export default function ManageUsers() {
     setUpdating(true);
     try {
       const docRef = doc(db, "school_settings", "bus_rates");
-      await updateDoc(docRef, { [newBusLocInput.trim()]: 0 });
+      // Use setDoc with merge: true to ensure the document exists
+      await setDoc(docRef, { [newBusLocInput.trim()]: 0 }, { merge: true });
 
       const newLoc = newBusLocInput.trim();
-      setBusLocations(prev => [...prev, newLoc].sort());
+      setBusLocations(prev => {
+        if (prev.includes(newLoc)) return prev;
+        return [...prev, newLoc].sort();
+      });
 
       // If we are in edit profile modal, set it as selected
       if (assignmentModal.type === 'edit_profile') {
@@ -895,7 +900,7 @@ export default function ManageUsers() {
       showToast?.({ message: "New bus location added", type: "success" });
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Failed to add new location. Ensure the settings document exists.");
+      Alert.alert("Error", "Failed to add new location.");
     } finally {
       setUpdating(false);
     }

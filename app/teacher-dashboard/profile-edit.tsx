@@ -162,12 +162,16 @@ export default function TeacherProfileEdit() {
 
   useEffect(() => {
     const fetchClassNames = async () => {
-      const classIds = [...(appUser?.classes || [])];
+      const classIds = [...(selectedClasses || [])];
       if (appUser?.classTeacherOf && !classIds.includes(appUser.classTeacherOf)) {
         classIds.push(appUser.classTeacherOf);
       }
 
-      if (classIds.length === 0) return;
+      if (classIds.length === 0) {
+        setClassNames([]);
+        setMainClassName("");
+        return;
+      }
 
       try {
         const q = query(
@@ -181,7 +185,7 @@ export default function TeacherProfileEdit() {
         });
 
         // Update states
-        const assignedNames = (appUser?.classes || []).map(id => namesMap[id]).filter(Boolean);
+        const assignedNames = (selectedClasses || []).map(id => namesMap[id]).filter(Boolean);
         setClassNames(assignedNames);
 
         if (appUser?.classTeacherOf) {
@@ -192,7 +196,7 @@ export default function TeacherProfileEdit() {
       }
     };
     fetchClassNames();
-  }, [appUser?.classes, appUser?.classTeacherOf]);
+  }, [selectedClasses, appUser?.classTeacherOf]);
 
   const handleLogout = () => {
     const performLogout = async () => {

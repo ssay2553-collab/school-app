@@ -115,6 +115,7 @@ export default function DailyFinancials() {
     moment().format("YYYY-MM-DD"),
   );
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [editingRate, setEditingRate] = useState("");
   const [feedingRate, setFeedingRate] = useState<number>(0);
   const [extraClassesRate, setExtraClassesRate] = useState<number>(0);
   const [otherPaymentRef, setOtherPaymentRef] = useState("");
@@ -277,6 +278,26 @@ export default function DailyFinancials() {
     activeTab,
   ]);
 
+  useEffect(() => {
+    if (activeTab === "bus") {
+      if (selectedLocation === "all") {
+        setEditingRate("");
+      } else {
+        const rate = (busRates[selectedLocation] || 0).toString();
+        setEditingRate(rate);
+        setPaymentAmount(rate);
+      }
+    } else if (activeTab === "feeding") {
+      const rate = feedingRate.toString();
+      setEditingRate(rate);
+      setPaymentAmount(rate);
+    } else if (activeTab === "extra") {
+      const rate = extraClassesRate.toString();
+      setEditingRate(rate);
+      setPaymentAmount(rate);
+    }
+  }, [activeTab, selectedLocation, feedingRate, extraClassesRate]);
+
   const fetchBusRates = async () => {
     try {
       const docRef = doc(db, "school_settings", "bus_rates");
@@ -310,7 +331,7 @@ export default function DailyFinancials() {
 
   const updateFeedingRate = async (amount: string) => {
     if (!canEditFeedingRate) return;
-    setPaymentAmount(amount); // Optimistic update
+    setEditingRate(amount);
     const val = parseFloat(amount);
     if (isNaN(val)) return;
 
@@ -318,6 +339,7 @@ export default function DailyFinancials() {
       const docRef = doc(db, "school_settings", "academic_config");
       await setDoc(docRef, { feedingRate: val }, { merge: true });
       setFeedingRate(val);
+      setPaymentAmount(amount);
       showToast({ message: "Feeding rate updated", type: "success" });
     } catch (e) {
       console.error(e);
@@ -327,7 +349,7 @@ export default function DailyFinancials() {
 
   const updateExtraClassesRate = async (amount: string) => {
     if (!canEditExtraClassesRate) return;
-    setPaymentAmount(amount); // Optimistic update
+    setEditingRate(amount);
     const val = parseFloat(amount);
     if (isNaN(val)) return;
 
@@ -335,6 +357,7 @@ export default function DailyFinancials() {
       const docRef = doc(db, "school_settings", "academic_config");
       await setDoc(docRef, { extraClassesRate: val }, { merge: true });
       setExtraClassesRate(val);
+      setPaymentAmount(amount);
       showToast({ message: "Extra classes rate updated", type: "success" });
     } catch (e) {
       console.error(e);
@@ -348,9 +371,13 @@ export default function DailyFinancials() {
   const updateBusRate = async (location: string, amount: string) => {
     if (!canEditBusRate || location === "all") return;
 
+    setEditingRate(amount);
     const val = parseFloat(amount);
-    // Optimistic update
-    setBusRates((prev) => ({ ...prev, [location]: isNaN(val) ? 0 : val }));
+
+    if (!isNaN(val)) {
+      setBusRates((prev) => ({ ...prev, [location]: val }));
+      setPaymentAmount(amount); // Also update the recording amount
+    }
 
     if (isNaN(val)) return;
 
@@ -1811,13 +1838,7 @@ export default function DailyFinancials() {
                   }
                   style={styles.searchInput}
                   keyboardType="numeric"
-                  value={
-                    activeTab === "bus"
-                      ? (busRates[selectedLocation] || 0).toString()
-                      : activeTab === "extra"
-                        ? extraClassesRate.toString()
-                        : paymentAmount
-                  }
+                  value={editingRate}
                   onChangeText={(val) => {
                     if (activeTab === "bus") {
                       updateBusRate(selectedLocation, val);
@@ -1826,6 +1847,7 @@ export default function DailyFinancials() {
                     } else if (activeTab === "extra") {
                       updateExtraClassesRate(val);
                     } else {
+                      setEditingRate(val);
                       setPaymentAmount(val);
                     }
                   }}

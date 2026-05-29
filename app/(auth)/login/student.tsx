@@ -1,7 +1,8 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -23,7 +24,7 @@ import SVGIcon from "../../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { getSchoolLogo } from "../../../constants/Logos";
 import { COLORS, SHADOWS } from "../../../constants/theme";
-import { auth, db } from "../../../firebaseConfig";
+import { auth, db, functions } from "../../../firebaseConfig";
 import { useToast } from "../../../contexts/ToastContext";
 
 export default function StudentLoginScreen() {
@@ -51,61 +52,92 @@ export default function StudentLoginScreen() {
     }
 
     setLoading(true);
+    let finalEmail = email.trim().toLowerCase();
+    if (!finalEmail.includes("@")) {
+      finalEmail = `${finalEmail}@${SCHOOL_CONFIG.schoolId || 'student'}.edueaz.com`;
+    }
+
     try {
-      let finalEmail = email.trim().toLowerCase();
-      if (!finalEmail.includes("@")) {
-        // Apply the same auto-formatting used in signup
-        finalEmail = `${finalEmail}@${SCHOOL_CONFIG.schoolId || 'student'}.edueaz.com`;
-      }
-
-      const cred = await signInWithEmailAndPassword(
-        auth,
-        finalEmail,
-        password,
-      );
-
-      const userDoc = await getDoc(doc(db, "users", cred.user.uid));
-      if (!userDoc.exists()) {
-        await auth.signOut();
-        throw new Error("User record not found. Please ensure your registration was completed.");
-      }
-
-      const userData = userDoc.data();
-      const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
-      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
-
-      const isStudent = role === "student";
-      const isAdmin = role === "admin" || adminRole !== "";
-      const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
-      const isParent = role === "parent";
-
-      if (isStudent) {
-        router.replace("/student-dashboard");
-      } else if (isAdmin) {
-        showToast({ message: "Redirecting to Management Portal...", type: "info" });
-        router.replace("/admin-dashboard");
-      } else if (isTeacher) {
-        showToast({ message: "Redirecting to Teacher Portal...", type: "info" });
-        router.replace("/teacher-dashboard");
-      } else if (isParent) {
-        showToast({ message: "Redirecting to Parent Portal...", type: "info" });
-        router.replace("/parent-dashboard");
-      } else {
-        await auth.signOut();
-        throw new Error("This account does not have student access privileges.");
-      }
+      // 1. Try standard login
+      const cred = await signInWithEmailAndPassword(auth, finalEmail, password);
+      await finishLogin(cred.user.uid);
     } catch (error: any) {
-      console.error("Login error:", error.code);
+      console.log("Standard login failed, checking for Token Login...");
+
+      try {
+        // 2. Secondary check: Token Login
+        const cleanToken = password.trim().toUpperCase();
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("profile.email", "==", finalEmail));
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+          const userDoc = snap.docs[0];
+          const userData = userDoc.data();
+          const storedToken = userData.signupCode || userData.secretCode;
+
+          if (storedToken && storedToken === cleanToken) {
+            showToast({ message: "Token matched! Syncing access...", type: "info" });
+
+            // Call Cloud Function to update password to match the token for future logins
+            const updatePasswordFn = httpsCallable(functions, "resetUserPasswordWithToken");
+            await updatePasswordFn({
+              uid: userDoc.id,
+              token: cleanToken,
+              newPassword: password, // Reset password to the token itself
+            });
+
+            // Now sign in with the new password
+            const cred = await signInWithEmailAndPassword(auth, finalEmail, password);
+            await finishLogin(cred.user.uid);
+            return;
+          }
+        }
+      } catch (tokenErr) {
+        console.error("Token login attempt failed:", tokenErr);
+      }
+
+      // If both fail, show original error
       let message = error.message || "An error occurred during login.";
-      if (
-        error.code === "auth/invalid-credential" ||
-        error.code === "auth/wrong-password"
-      ) {
+      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
         message = "Oops! Wrong email or password. Try again! ✨";
       }
       showToast({ message, type: "error" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const finishLogin = async (uid: string) => {
+    const userDoc = await getDoc(doc(db, "users", uid));
+    if (!userDoc.exists()) {
+      await auth.signOut();
+      throw new Error("User record not found. Please ensure your registration was completed.");
+    }
+
+    const userData = userDoc.data();
+    const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
+    const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
+
+    const isStudent = role === "student";
+    const isAdmin = role === "admin" || adminRole !== "";
+    const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
+    const isParent = role === "parent";
+
+    if (isStudent) {
+      router.replace("/student-dashboard");
+    } else if (isAdmin) {
+      showToast({ message: "Redirecting to Management Portal...", type: "info" });
+      router.replace("/admin-dashboard");
+    } else if (isTeacher) {
+      showToast({ message: "Redirecting to Teacher Portal...", type: "info" });
+      router.replace("/teacher-dashboard");
+    } else if (isParent) {
+      showToast({ message: "Redirecting to Parent Portal...", type: "info" });
+      router.replace("/parent-dashboard");
+    } else {
+      await auth.signOut();
+      throw new Error("This account does not have student access privileges.");
     }
   };
 

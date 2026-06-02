@@ -93,6 +93,10 @@ type AggregateData = {
   tuitionWeek?: number;
   tuitionMonth?: number;
   tuitionTerm?: number;
+  feedingTerm?: number;
+  busTerm?: number;
+  extraTerm?: number;
+  otherTerm?: number;
 };
 
 export default function DailyFinancials() {
@@ -157,10 +161,20 @@ export default function DailyFinancials() {
     tuitionWeek: 0,
     tuitionMonth: 0,
     tuitionTerm: 0,
+    feedingTerm: 0,
+    busTerm: 0,
+    extraTerm: 0,
+    otherTerm: 0,
   });
   const [expenditureAggregates, setExpenditureAggregates] =
     useState<AggregateData>({ day: 0, week: 0, month: 0, term: 0 });
   const [revenueBreakdown, setRevenueBreakdown] = useState<
+    Record<string, number>
+  >({});
+  const [revenueBreakdownWeek, setRevenueBreakdownWeek] = useState<
+    Record<string, number>
+  >({});
+  const [revenueBreakdownMonth, setRevenueBreakdownMonth] = useState<
     Record<string, number>
   >({});
   const [showGlobalSummary, setShowGlobalSummary] = useState(false);
@@ -248,6 +262,84 @@ export default function DailyFinancials() {
     isSuperAdmin ||
     appUser?.permissions?.["financial-summary"] === "view" ||
     appUser?.permissions?.["financial-summary"] === "full";
+
+  useEffect(() => {
+    if (activeTab !== "summary" || acadConfig.loading || !acadConfig.academicYear)
+      return;
+
+    const officialTermStart = acadConfig.termStart
+      ? acadConfig.termStart.toDate
+        ? moment(acadConfig.termStart.toDate()).format("YYYY-MM-DD")
+        : moment(acadConfig.termStart).format("YYYY-MM-DD")
+      : moment().startOf("month").format("YYYY-MM-DD");
+
+    const isHistorical = moment(selectedDate).isBefore(officialTermStart);
+    if (isHistorical) return;
+
+    // Listen for tuition changes in studentFeeRecords (Source of Truth)
+    const tuitionQ = query(
+      collection(db, "studentFeeRecords"),
+      where("academicYear", "==", acadConfig.academicYear),
+      where("term", "==", acadConfig.currentTerm),
+    );
+
+    const unsubTuition = onSnapshot(tuitionQ, (snap) => {
+      let officialTuition = 0;
+      snap.forEach((d) => {
+        officialTuition += (d.data() as any).amountPaid || 0;
+      });
+
+      setGlobalAggregates((prev) => {
+        const newTuitionTerm = officialTuition;
+        const otherStreams =
+          (prev.feedingTerm || 0) +
+          (prev.busTerm || 0) +
+          (prev.extraTerm || 0) +
+          (prev.otherTerm || 0);
+        return {
+          ...prev,
+          tuitionTerm: newTuitionTerm,
+          term: newTuitionTerm + otherStreams,
+        };
+      });
+    });
+
+    // Listen for expenditure changes
+    const expQ = query(
+      collection(db, "expenditures"),
+      where("date", ">=", officialTermStart),
+    );
+
+    const unsubExp = onSnapshot(expQ, (snap) => {
+      let eT = 0;
+      let eD = 0;
+      const today = moment().format("YYYY-MM-DD");
+
+      snap.forEach((d) => {
+        const data = d.data();
+        const amt = data.amount || 0;
+        eT += amt;
+        if (data.date === today) eD += amt;
+      });
+
+      setExpenditureAggregates((prev) => ({
+        ...prev,
+        term: eT,
+        day: selectedDate === today ? eD : prev.day,
+      }));
+    });
+
+    return () => {
+      unsubTuition();
+      unsubExp();
+    };
+  }, [
+    activeTab,
+    acadConfig.academicYear,
+    acadConfig.currentTerm,
+    acadConfig.loading,
+    selectedDate,
+  ]);
 
   useEffect(() => {
     // Only super admins or admins with manage-users permission can access DailyFinancials
@@ -460,7 +552,13 @@ export default function DailyFinancials() {
           tW = 0,
           tM = 0,
           tT = 0;
+        let fT = 0,
+          bT = 0,
+          xT = 0,
+          oT = 0;
         let breakdown: Record<string, number> = {};
+        let breakdownW: Record<string, number> = {};
+        let breakdownM: Record<string, number> = {};
 
         revSnap.forEach((d: any) => {
           const data = d.data();
@@ -469,20 +567,23 @@ export default function DailyFinancials() {
           const date = data.date;
           const t = (data.type || "other").trim().toLowerCase();
           const isTuition = t === "tuition";
+          const isFeeding = t === "feeding";
+          const isBus = t === "bus" || t === "bus fee";
+          const isExtra = t === "extra" || t === "extra classes";
+
+          const displayKey = isTuition
+            ? "Tuition"
+            : isFeeding
+              ? "Feeding"
+              : isBus
+                ? "Bus Fee"
+                : isExtra
+                  ? "Extra Classes"
+                  : (data.type || "Other");
 
           if (date === today) {
             rD += amt;
             if (isTuition) tD += amt;
-            // Canonical grouping for breakdown
-            const displayKey = isTuition
-              ? "Tuition"
-              : t === "feeding"
-                ? "Feeding"
-                : t === "bus"
-                  ? "Bus Fee"
-                  : t === "extra"
-                    ? "Extra Classes"
-                    : (data.type || "Other");
             breakdown[displayKey] = (breakdown[displayKey] || 0) + amt;
           }
           if (
@@ -491,14 +592,38 @@ export default function DailyFinancials() {
           ) {
             rW += amt;
             if (isTuition) tW += amt;
+            breakdownW[displayKey] = (breakdownW[displayKey] || 0) + amt;
           }
           if (date >= startOfMonth && date <= endOfMonth) {
             rM += amt;
             if (isTuition) tM += amt;
+            breakdownM[displayKey] = (breakdownM[displayKey] || 0) + amt;
           }
           rT += amt;
           if (isTuition) tT += amt;
+          else if (isFeeding) fT += amt;
+          else if (isBus) bT += amt;
+          else if (isExtra) xT += amt;
+          else oT += amt;
         });
+
+        // NEW: Pull official tuition term total from studentFeeRecords to align with ManageFees
+        // We only do this for the current term (non-historical) to maintain official consistency
+        if (!isHistorical) {
+          const tuitionQ = query(
+            collection(db, "studentFeeRecords"),
+            where("academicYear", "==", acadConfig.academicYear),
+            where("term", "==", acadConfig.currentTerm),
+          );
+          const tSnap = await getDocsFromServer(tuitionQ);
+          let officialTuition = 0;
+          tSnap.forEach((d) => {
+            officialTuition += (d.data() as any).amountPaid || 0;
+          });
+
+          tT = officialTuition;
+          rT = tT + fT + bT + xT + oT; // Total term revenue is official tuition + other streams
+        }
 
         setGlobalAggregates({
           day: rD,
@@ -509,9 +634,15 @@ export default function DailyFinancials() {
           tuitionWeek: tW,
           tuitionMonth: tM,
           tuitionTerm: tT,
+          feedingTerm: fT,
+          busTerm: bT,
+          extraTerm: xT,
+          otherTerm: oT,
         });
         setAggregates({ day: rD, week: rW, month: rM, term: rT });
         setRevenueBreakdown(breakdown);
+        setRevenueBreakdownWeek(breakdownW);
+        setRevenueBreakdownMonth(breakdownM);
 
         // Fetch expenditures
         const expQ = query(
@@ -2041,8 +2172,9 @@ export default function DailyFinancials() {
             <RefreshControl refreshing={refreshing} onRefresh={fetchStudents} />
           }
         >
+          {/* Revenue Summary (Total) */}
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Revenue Summary</Text>
+            <Text style={styles.summaryTitle}>Revenue Summary (Total)</Text>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Total Revenue (Today)</Text>
               <Text style={styles.summaryValue}>
@@ -2082,6 +2214,81 @@ export default function DailyFinancials() {
             </View>
           </View>
 
+          {/* Categorized Term Streams */}
+          <View style={{ marginBottom: 20 }}>
+            <Text style={[styles.summaryTitle, { marginLeft: 5 }]}>
+              Term Revenue Streams
+            </Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+              {[
+                {
+                  label: "Tuition",
+                  value: globalAggregates.tuitionTerm,
+                  icon: "cash",
+                  color: VIBE.primary,
+                },
+                {
+                  label: "Feeding",
+                  value: globalAggregates.feedingTerm,
+                  icon: "restaurant",
+                  color: tabColors.feeding.primary,
+                },
+                {
+                  label: "Bus Fee",
+                  value: globalAggregates.busTerm,
+                  icon: "bus",
+                  color: tabColors.bus.primary,
+                },
+                {
+                  label: "Extra Classes",
+                  value: globalAggregates.extraTerm,
+                  icon: "school",
+                  color: tabColors.extra.primary,
+                },
+                {
+                  label: "Other",
+                  value: globalAggregates.otherTerm,
+                  icon: "options",
+                  color: tabColors.other.primary,
+                },
+              ].map((item, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.summaryCard,
+                    {
+                      flex: 1,
+                      minWidth: "45%",
+                      marginBottom: 0,
+                      padding: 15,
+                      alignItems: "center",
+                    },
+                  ]}
+                >
+                  <SVGIcon
+                    name={item.icon as any}
+                    size={20}
+                    color={item.color}
+                  />
+                  <Text
+                    style={[styles.summaryLabel, { marginTop: 8, fontSize: 10 }]}
+                  >
+                    {item.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.summaryValue,
+                      { fontSize: 14, color: item.color, marginTop: 2 },
+                    ]}
+                  >
+                    ₵{(item.value || 0).toFixed(2)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Expenditure Summary */}
           <View style={styles.summaryCard}>
             <Text style={styles.summaryTitle}>Expenditure Summary</Text>
             <View style={styles.summaryRow}>
@@ -2119,59 +2326,122 @@ export default function DailyFinancials() {
             </View>
           </View>
 
+          {/* Financial Position (Tuition Based) */}
           <LinearGradient
-            colors={[VIBE.primary, secondaryColor]}
+            colors={["#1E293B", "#334155"]}
             style={styles.cashPositionCard}
           >
-            <Text style={styles.cashPositionTitle}>Net Cash Position (Tuition Based)</Text>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 15,
+              }}
+            >
+              <View>
+                <Text style={styles.cashPositionTitle}>Core Educational Position</Text>
+                <Text
+                  style={{
+                    color: "rgba(255,255,255,0.6)",
+                    fontSize: 10,
+                    fontWeight: "700",
+                  }}
+                >
+                  (Tuition Revenue - Term Expenditures)
+                </Text>
+              </View>
+              <SVGIcon name="calculator" size={24} color="#fff" />
+            </View>
+
             <View style={styles.cashPositionRow}>
-              <Text style={styles.cashPositionLabel}>Tuition Balance (Today)</Text>
+              <Text style={styles.cashPositionLabel}>Net Position (Today)</Text>
               <Text style={styles.cashPositionValue}>
-                ₵{((globalAggregates.tuitionDay || 0) - expenditureAggregates.day).toFixed(2)}
+                ₵
+                {(
+                  (globalAggregates.tuitionDay || 0) - expenditureAggregates.day
+                ).toFixed(2)}
               </Text>
             </View>
             {isSuperAdmin && (
               <>
                 <View style={styles.cashPositionRow}>
                   <Text style={styles.cashPositionLabel}>
-                    Tuition Balance (Weekly)
+                    Net Position (Weekly)
                   </Text>
                   <Text style={styles.cashPositionValue}>
                     ₵
                     {(
-                      (globalAggregates.tuitionWeek || 0) - expenditureAggregates.week
+                      (globalAggregates.tuitionWeek || 0) -
+                      expenditureAggregates.week
                     ).toFixed(2)}
                   </Text>
                 </View>
                 <View style={styles.cashPositionRow}>
                   <Text style={styles.cashPositionLabel}>
-                    Tuition Balance (Monthly)
+                    Net Position (Monthly)
                   </Text>
                   <Text style={styles.cashPositionValue}>
                     ₵
                     {(
-                      (globalAggregates.tuitionMonth || 0) - expenditureAggregates.month
+                      (globalAggregates.tuitionMonth || 0) -
+                      expenditureAggregates.month
                     ).toFixed(2)}
                   </Text>
                 </View>
               </>
             )}
             <View style={styles.cashPositionRow}>
-              <Text style={styles.cashPositionLabel}>Tuition Balance (Term)</Text>
-              <Text
-                style={[
-                  styles.cashPositionValue,
-                  { fontSize: 20, fontWeight: "900" },
-                ]}
-              >
+              <Text style={styles.cashPositionLabel}>Net Position (Term Profit)</Text>
+              {(() => {
+                const termNet =
+                  (globalAggregates.tuitionTerm || 0) -
+                  (expenditureAggregates.term || 0);
+                return (
+                  <Text
+                    style={[
+                      styles.cashPositionValue,
+                      {
+                        fontSize: 24,
+                        fontWeight: "900",
+                        color: termNet >= 0 ? VIBE.success : VIBE.danger,
+                      },
+                    ]}
+                  >
+                    ₵{termNet.toFixed(2)}
+                  </Text>
+                );
+              })()}
+            </View>
+          </LinearGradient>
+
+          {/* Gross Cash Balance Summary */}
+          <View
+            style={[
+              styles.summaryCard,
+              {
+                backgroundColor: VIBE.bg,
+                borderStyle: "dashed",
+                borderWidth: 1,
+              },
+            ]}
+          >
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>
+                Gross Term Surplus/Deficit (All Streams)
+              </Text>
+              <Text style={[styles.summaryValue, { color: VIBE.text, fontSize: 16 }]}>
                 ₵
                 {(
-                  (globalAggregates.tuitionTerm || 0) -
+                  (globalAggregates.term || 0) -
                   (expenditureAggregates.term || 0)
                 ).toFixed(2)}
               </Text>
             </View>
-          </LinearGradient>
+            <Text style={{ fontSize: 9, color: VIBE.muted, marginTop: 5, fontStyle: 'italic' }}>
+              *Includes Tuition, Feeding, Bus, and all other revenue streams.
+            </Text>
+          </View>
 
           <View style={styles.breakdownCard}>
             <Text style={styles.summaryTitle}>Revenue Breakdown (Today)</Text>
@@ -2220,6 +2490,106 @@ export default function DailyFinancials() {
               </Text>
             )}
           </View>
+
+          {isSuperAdmin && (
+            <>
+              <View style={styles.breakdownCard}>
+                <Text style={styles.summaryTitle}>Revenue Breakdown (This Week)</Text>
+                {Object.entries(revenueBreakdownWeek)
+                  .filter(([_, amount]) => amount > 0)
+                  .map(([type, amount]) => (
+                    <View key={type} style={styles.breakdownItem}>
+                      <View style={styles.breakdownInfo}>
+                        <SVGIcon
+                          name={
+                            ["tuition", "admission", "books fee", "uniform"].includes(
+                              type.toLowerCase(),
+                            )
+                              ? "cash"
+                              : type.toLowerCase() === "feeding"
+                                ? "restaurant"
+                                : type.toLowerCase() === "bus" ||
+                                    type.toLowerCase() === "bus fee"
+                                  ? "bus"
+                                  : type.toLowerCase() === "extra" ||
+                                      type.toLowerCase() === "extra classes"
+                                    ? "school"
+                                    : "options"
+                          }
+                          size={16}
+                          color={VIBE.muted}
+                        />
+                        <Text style={styles.breakdownLabel}>{type}</Text>
+                      </View>
+                      <Text style={styles.breakdownValue}>
+                        ₵{amount.toFixed(2)}
+                      </Text>
+                    </View>
+                  ))}
+                {Object.entries(revenueBreakdownWeek).filter(
+                  ([_, amount]) => amount > 0,
+                ).length === 0 && (
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      color: VIBE.muted,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    No collections this week
+                  </Text>
+                )}
+              </View>
+
+              <View style={styles.breakdownCard}>
+                <Text style={styles.summaryTitle}>Revenue Breakdown (This Month)</Text>
+                {Object.entries(revenueBreakdownMonth)
+                  .filter(([_, amount]) => amount > 0)
+                  .map(([type, amount]) => (
+                    <View key={type} style={styles.breakdownItem}>
+                      <View style={styles.breakdownInfo}>
+                        <SVGIcon
+                          name={
+                            ["tuition", "admission", "books fee", "uniform"].includes(
+                              type.toLowerCase(),
+                            )
+                              ? "cash"
+                              : type.toLowerCase() === "feeding"
+                                ? "restaurant"
+                                : type.toLowerCase() === "bus" ||
+                                    type.toLowerCase() === "bus fee"
+                                  ? "bus"
+                                  : type.toLowerCase() === "extra" ||
+                                      type.toLowerCase() === "extra classes"
+                                    ? "school"
+                                    : "options"
+                          }
+                          size={16}
+                          color={VIBE.muted}
+                        />
+                        <Text style={styles.breakdownLabel}>{type}</Text>
+                      </View>
+                      <Text style={styles.breakdownValue}>
+                        ₵{amount.toFixed(2)}
+                      </Text>
+                    </View>
+                  ))}
+                {Object.entries(revenueBreakdownMonth).filter(
+                  ([_, amount]) => amount > 0,
+                ).length === 0 && (
+                  <Text
+                    style={{
+                      textAlign: "center",
+                      color: VIBE.muted,
+                      fontStyle: "italic",
+                    }}
+                  >
+                    No collections this month
+                  </Text>
+                )}
+              </View>
+            </>
+          )}
           <View style={{ height: 100 }} />
         </ScrollView>
       ) : (

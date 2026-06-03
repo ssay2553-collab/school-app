@@ -206,8 +206,41 @@ export default function DailyFinancials() {
   const hasManageUsersPermission =
     appUser?.permissions?.["manage-users"] === "full";
 
-  // Only super admins or admins with manage-users permission can access DailyFinancials
-  const hasFinancialAccess = isSuperAdmin || hasManageUsersPermission;
+  const canFeeding =
+    isSuperAdmin ||
+    appUser?.permissions?.["feeding"] === "full" ||
+    appUser?.permissions?.["feeding"] === "edit" ||
+    appUser?.permissions?.["feeding"] === "view";
+  const canBus =
+    isSuperAdmin ||
+    appUser?.permissions?.["record-bus-fee"] === "full" ||
+    appUser?.permissions?.["record-bus-fee"] === "edit" ||
+    appUser?.permissions?.["record-bus-fee"] === "view";
+  // Support both old and new permission keys during transition
+  const canExtraClasses =
+    isSuperAdmin ||
+    appUser?.permissions?.["record-extra-classes"] === "full" ||
+    appUser?.permissions?.["record-extra-classes"] === "edit" ||
+    appUser?.permissions?.["record-extra-classes"] === "view" ||
+    appUser?.permissions?.["record-class-fee"] === "full" ||
+    appUser?.permissions?.["record-class-fee"] === "edit" ||
+    appUser?.permissions?.["record-class-fee"] === "view";
+
+  const canManageSales =
+    isSuperAdmin ||
+    appUser?.permissions?.["manage-sales"] === "full" ||
+    appUser?.permissions?.["manage-sales"] === "edit";
+
+  const [disbursedExtra, setDisbursedExtra] = useState<Set<string>>(new Set());
+
+  // Only super admins or users with specific financial permissions can access DailyFinancials
+  const hasFinancialAccess =
+    isSuperAdmin ||
+    hasManageUsersPermission ||
+    canFeeding ||
+    canBus ||
+    canExtraClasses ||
+    canManageSales;
 
   const adminName =
     `${appUser?.profile?.firstName || ""} ${appUser?.profile?.lastName || ""}`.trim() ||
@@ -228,27 +261,6 @@ export default function DailyFinancials() {
   const secondaryColor = (tabColors[activeTab] || { secondary: "#4F46E5" })
     .secondary;
 
-  const canFeeding =
-    isSuperAdmin ||
-    appUser?.permissions?.["feeding"] === "full" ||
-    appUser?.permissions?.["feeding"] === "edit";
-  const canBus =
-    isSuperAdmin ||
-    appUser?.permissions?.["record-bus-fee"] === "full" ||
-    appUser?.permissions?.["record-bus-fee"] === "edit";
-  // Support both old and new permission keys during transition
-  const canExtraClasses =
-    isSuperAdmin ||
-    appUser?.permissions?.["record-extra-classes"] === "full" ||
-    appUser?.permissions?.["record-extra-classes"] === "edit" ||
-    appUser?.permissions?.["record-class-fee"] === "full" ||
-    appUser?.permissions?.["record-class-fee"] === "edit";
-
-  const canManageSales =
-    isSuperAdmin ||
-    appUser?.permissions?.["manage-sales"] === "full" ||
-    appUser?.permissions?.["manage-sales"] === "edit";
-
   const canEditFeedingRate =
     isSuperAdmin || appUser?.permissions?.["edit-feeding-rate"] === "edit";
   const canEditBusRate =
@@ -262,6 +274,32 @@ export default function DailyFinancials() {
     isSuperAdmin ||
     appUser?.permissions?.["financial-summary"] === "view" ||
     appUser?.permissions?.["financial-summary"] === "full";
+
+  useEffect(() => {
+    // Reset financial states when academic context transitions to prevent stale data display
+    if (!acadConfig.loading && acadConfig.academicYear) {
+      setAggregates({ day: 0, week: 0, month: 0, term: 0 });
+      setGlobalAggregates({
+        day: 0,
+        week: 0,
+        month: 0,
+        term: 0,
+        tuitionDay: 0,
+        tuitionWeek: 0,
+        tuitionMonth: 0,
+        tuitionTerm: 0,
+        feedingTerm: 0,
+        busTerm: 0,
+        extraTerm: 0,
+        otherTerm: 0,
+      });
+      setExpenditureAggregates({ day: 0, week: 0, month: 0, term: 0 });
+      setRevenueBreakdown({});
+      setRevenueBreakdownWeek({});
+      setRevenueBreakdownMonth({});
+      setStudents([]);
+    }
+  }, [acadConfig.academicYear, acadConfig.currentTerm]);
 
   useEffect(() => {
     if (activeTab !== "summary" || acadConfig.loading || !acadConfig.academicYear)
@@ -483,6 +521,91 @@ export default function DailyFinancials() {
     }
   };
 
+  useEffect(() => {
+    const fetchDisbursed = async () => {
+      if (!acadConfig.academicYear) return;
+      try {
+        const docRef = doc(db, "school_settings", "disbursed_extra");
+        const snap = await getDoc(docRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          const termKey = `${acadConfig.academicYear}_${acadConfig.currentTerm}`;
+          setDisbursedExtra(new Set(data[termKey] || []));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchDisbursed();
+  }, [acadConfig.academicYear, acadConfig.currentTerm]);
+
+  const handleDisburseExtra = async () => {
+    if (!isSuperAdmin && appUser?.permissions?.["manage-sales"] !== "full") {
+      showToast({ message: "Only super admins can disburse funds", type: "error" });
+      return;
+    }
+
+    const today = moment().format("YYYY-MM-DD");
+    if (disbursedExtra.has(today)) {
+      showToast({ message: "Funds already marked as disbursed for today", type: "info" });
+      return;
+    }
+
+    Alert.alert(
+      "Disburse Extra Classes Fee",
+      "This will mark ALL accumulated extra classes fees collected up to today as disbursed to teachers. This clears the Day, Week, Month, and Term totals for Extra Classes.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm Disbursement",
+          onPress: async () => {
+            setSaving(true);
+            try {
+              // We need to find all dates that have extra classes payments and mark them as disbursed
+              const termStart = acadConfig.termStart
+                ? acadConfig.termStart.toDate
+                  ? moment(acadConfig.termStart.toDate()).format("YYYY-MM-DD")
+                  : moment(acadConfig.termStart).format("YYYY-MM-DD")
+                : moment(selectedDate).startOf("month").format("YYYY-MM-DD");
+
+              const q = query(
+                collection(db, "feePayments"),
+                where("type", "==", "Extra Classes"),
+                where("date", ">=", termStart),
+                where("date", "<=", today)
+              );
+              const snap = await getDocsFromServer(q);
+              const datesToDisburse = new Set(disbursedExtra);
+              snap.forEach(d => {
+                const date = d.data().date;
+                if (date) datesToDisburse.add(date);
+              });
+
+              // Also ensure today is added even if no payments yet
+              datesToDisburse.add(today);
+
+              const termKey = `${acadConfig.academicYear}_${acadConfig.currentTerm}`;
+              const docRef = doc(db, "school_settings", "disbursed_extra");
+
+              await setDoc(docRef, {
+                [termKey]: Array.from(datesToDisburse)
+              }, { merge: true });
+
+              setDisbursedExtra(datesToDisburse);
+              showToast({ message: "All Extra Classes fees cleared/disbursed", type: "success" });
+              fetchAggregates(activeTab);
+            } catch (e) {
+              console.error(e);
+              showToast({ message: "Failed to mark disbursement", type: "error" });
+            } finally {
+              setSaving(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const fetchClasses = async () => {
     try {
       const snap = await getDocsFromServer(collection(db, "classes") as any);
@@ -582,30 +705,50 @@ export default function DailyFinancials() {
                   : (data.type || "Other");
 
           if (date === today) {
-            rD += amt;
-            if (isTuition) tD += amt;
-            breakdown[displayKey] = (breakdown[displayKey] || 0) + amt;
+            if (isExtra && disbursedExtra.has(date)) {
+              // Skip adding to daily breakdown if disbursed
+            } else {
+              rD += amt;
+              if (isTuition) tD += amt;
+              breakdown[displayKey] = (breakdown[displayKey] || 0) + amt;
+            }
           }
           if (
             date >= startOfWeek &&
             date <= moment(selectedDate).endOf("isoWeek").format("YYYY-MM-DD")
           ) {
-            rW += amt;
-            if (isTuition) tW += amt;
-            breakdownW[displayKey] = (breakdownW[displayKey] || 0) + amt;
+            if (isExtra && disbursedExtra.has(date)) {
+               // Skip adding to weekly breakdown if disbursed
+            } else {
+              rW += amt;
+              if (isTuition) tW += amt;
+              breakdownW[displayKey] = (breakdownW[displayKey] || 0) + amt;
+            }
           }
           if (date >= startOfMonth && date <= endOfMonth) {
-            rM += amt;
-            if (isTuition) tM += amt;
-            breakdownM[displayKey] = (breakdownM[displayKey] || 0) + amt;
+            if (isExtra && disbursedExtra.has(date)) {
+              // Skip adding to monthly breakdown if disbursed
+            } else {
+              rM += amt;
+              if (isTuition) tM += amt;
+              breakdownM[displayKey] = (breakdownM[displayKey] || 0) + amt;
+            }
           }
-          rT += amt;
-          if (isTuition) tT += amt;
-          else if (isFeeding) fT += amt;
-          else if (isBus) bT += amt;
-          else if (isExtra) xT += amt;
-          else oT += amt;
+
+          if (isExtra && disbursedExtra.has(date)) {
+            // Completely exclude disbursed funds from term totals
+          } else {
+            rT += amt;
+            if (isTuition) tT += amt;
+            else if (isFeeding) fT += amt;
+            else if (isBus) bT += amt;
+            else if (isExtra) xT += amt;
+            else oT += amt;
+          }
         });
+
+        // Ensure rT is correct if it was added before checking disbursement
+        rT = tT + fT + bT + xT + oT;
 
         // NEW: Pull official tuition term total from studentFeeRecords to align with ManageFees
         // We only do this for the current term (non-historical) to maintain official consistency
@@ -708,6 +851,11 @@ export default function DailyFinancials() {
         const amount = data.amount || 0;
         const date = data.date;
 
+        if (activeTab === "extra" && disbursedExtra.has(date)) {
+          // Skip disbursed extra classes fees from all calculations
+          return;
+        }
+
         if (date === today) dayTotal += amount;
         if (
           date >= startOfWeek &&
@@ -727,6 +875,10 @@ export default function DailyFinancials() {
     } catch (e) {
       console.error("Error fetching aggregates:", e);
     }
+  };
+
+  const getExtraClassesAggregate = () => {
+    return aggregates;
   };
 
   const fetchStudents = useCallback(async () => {
@@ -764,6 +916,8 @@ export default function DailyFinancials() {
         where("date", "==", targetDate)
       );
       const pSnap = shouldRestrict ? ({ docs: [] } as any) : await getDocsFromServer(pq);
+      const isDisbursed = disbursedExtra.has(targetDate);
+
       const paidFeedingMap = new Map<string, string>();
       const paidExtraMap = new Map<string, string>();
       const paidBusMap = new Map<string, string>();
@@ -1458,13 +1612,21 @@ export default function DailyFinancials() {
   const fetchStudentPayments = async (studentUid: string) => {
     setLoadingPayments(true);
     try {
+      const officialTermStart = acadConfig.termStart
+        ? acadConfig.termStart.toDate
+          ? moment(acadConfig.termStart.toDate()).format("YYYY-MM-DD")
+          : moment(acadConfig.termStart).format("YYYY-MM-DD")
+        : moment().startOf("month").format("YYYY-MM-DD");
+
       const q = query(
         collection(db, "feePayments"),
         where("studentUid", "==", studentUid),
-        where("date", "==", selectedDate),
+        where("date", ">=", officialTermStart),
       );
       const snap = await getDocsFromServer(q);
-      const list = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }))
+        .sort((a, b) => moment(b.date).diff(moment(a.date))); // Sort by date descending
       setStudentPayments(list);
     } catch (e) {
       console.error(e);
@@ -1957,6 +2119,25 @@ export default function DailyFinancials() {
                   size={20}
                   color={activeColor}
                 />
+                {activeTab === "extra" && (
+                  <TouchableOpacity
+                    style={[
+                      styles.disburseBtn,
+                      disbursedExtra.has(selectedDate) && styles.disbursedBtnActive
+                    ]}
+                    onPress={handleDisburseExtra}
+                    disabled={disbursedExtra.has(selectedDate)}
+                  >
+                    <SVGIcon
+                      name={disbursedExtra.has(selectedDate) ? "checkmark-circle" : "share-social"}
+                      size={14}
+                      color="#fff"
+                    />
+                    <Text style={styles.disburseBtnText}>
+                      {disbursedExtra.has(selectedDate) ? "Funds Disbursed" : "Disburse to Teachers"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <TextInput
                   placeholder={
                     activeTab === "bus"
@@ -2137,7 +2318,7 @@ export default function DailyFinancials() {
             <View style={styles.aggBox}>
               <Text style={styles.aggLabel}>TODAY</Text>
               <Text style={[styles.aggValue, { color: activeColor }]}>
-                ₵{aggregates.day.toFixed(2)}
+                ₵{((activeTab === "extra" && disbursedExtra.has(selectedDate)) ? 0 : aggregates.day).toFixed(2)}
               </Text>
             </View>
             <View
@@ -2677,9 +2858,9 @@ export default function DailyFinancials() {
                 </Text>
               </View>
 
-              {/* List of current payments for this date */}
+              {/* List of current payments for this term */}
               <View style={{ marginBottom: 15, maxHeight: 200 }}>
-                <Text style={styles.historyTitle}>Payment History (Today)</Text>
+                <Text style={styles.historyTitle}>Payment History (Term)</Text>
                 {loadingPayments ? (
                   <ActivityIndicator size="small" color={activeColor} />
                 ) : studentPayments.length > 0 ? (
@@ -2687,22 +2868,48 @@ export default function DailyFinancials() {
                     {studentPayments.map((p) => (
                       <View key={p.id} style={styles.historyItem}>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.historyDesc}>{p.description}</Text>
-                          <Text style={styles.historyAmount}>₵{p.amount.toFixed(2)}</Text>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Text style={styles.historyDesc}>
+                              {p.description}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.historyDesc,
+                                { fontSize: 10, color: VIBE.muted },
+                              ]}
+                            >
+                              {moment(p.date).format("MMM DD")}
+                            </Text>
+                          </View>
+                          <Text style={styles.historyAmount}>
+                            ₵{p.amount.toFixed(2)}
+                          </Text>
                         </View>
-                        {isToday && (
+                        {isToday && p.date === selectedDate && (
                           <TouchableOpacity
                             onPress={() => handleRevertPayment(p.id)}
                             style={styles.revertBtn}
                           >
-                            <SVGIcon name="trash-outline" size={18} color={VIBE.danger} />
+                            <SVGIcon
+                              name="trash-outline"
+                              size={18}
+                              color={VIBE.danger}
+                            />
                           </TouchableOpacity>
                         )}
                       </View>
                     ))}
                   </ScrollView>
                 ) : (
-                  <Text style={styles.emptyHistory}>No payments recorded yet</Text>
+                  <Text style={styles.emptyHistory}>
+                    No payments recorded yet
+                  </Text>
                 )}
               </View>
 
@@ -3271,6 +3478,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: VIBE.text,
+  },
+  disburseBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: VIBE.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 6,
+    marginRight: 10,
+    ...SHADOWS.small,
+  },
+  disbursedBtnActive: {
+    backgroundColor: VIBE.success,
+  },
+  disburseBtnText: {
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "800",
   },
   historyAmount: {
     fontSize: 12,

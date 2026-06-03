@@ -49,11 +49,18 @@ export default function TeacherDashboard() {
   const isAdmin = appUser?.role === "admin";
   const canFeeding =
     appUser?.permissions?.["feeding"] === "full" ||
-    appUser?.permissions?.["feeding"] === "edit";
+    appUser?.permissions?.["feeding"] === "edit" ||
+    appUser?.permissions?.["feeding"] === "view";
   const canBus =
     appUser?.permissions?.["record-bus-fee"] === "full" ||
-    appUser?.permissions?.["record-bus-fee"] === "edit";
-  const hasFinancialAccess = isAdmin || canFeeding || canBus;
+    appUser?.permissions?.["record-bus-fee"] === "edit" ||
+    appUser?.permissions?.["record-bus-fee"] === "view";
+  const canExtraClasses =
+    appUser?.permissions?.["record-extra-classes"] === "full" ||
+    appUser?.permissions?.["record-extra-classes"] === "edit" ||
+    appUser?.permissions?.["record-extra-classes"] === "view";
+  const hasFinancialAccess =
+    isAdmin || canFeeding || canBus || canExtraClasses;
 
   const fetchStats = useCallback(async () => {
     if (!appUser?.uid) return;

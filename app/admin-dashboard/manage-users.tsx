@@ -2216,6 +2216,27 @@ export default function ManageUsers() {
                     </View>
                   </View>
 
+                  {viewingUser.permissions && Object.keys(viewingUser.permissions).length > 0 && (
+                    <View style={styles.infoSection}>
+                      <Text style={styles.infoLabel}>Delegated Permissions</Text>
+                      <View style={styles.infoGrid}>
+                        {Object.entries(viewingUser.permissions).map(([key, level]) => {
+                          if (level === "deny") return null;
+                          const label = PERMISSION_KEYS.find(pk => pk.key === key)?.label || key;
+                          const levelLabel = PERMISSION_LEVELS.find(pl => pl.value === level)?.label || level;
+                          return (
+                            <View key={key} style={styles.infoRow}>
+                              <Text style={styles.infoKey}>{label}:</Text>
+                              <Text style={[styles.infoValue, { color: level === 'full' ? '#10b981' : '#6366f1' }]}>
+                                {levelLabel}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
                   {linkedUsers.length > 0 && (
                     <View style={styles.infoSection}>
                       <Text style={styles.infoLabel}>
@@ -2274,11 +2295,11 @@ export default function ManageUsers() {
                   )}
 
                   <View style={styles.btnStack}>
-                    {viewingUser.role === "admin" && isSuperAdmin && (
+                    {viewingUser.role !== "student" && viewingUser.role !== "parent" && isSuperAdmin && (
                       <TouchableOpacity
                         style={[
                           styles.actionButton,
-                          { backgroundColor: COLORS.primary || "#2e86de" },
+                          { backgroundColor: COLORS.primary || "#2e86de", marginBottom: 12 },
                         ]}
                         onPress={() => openPermissionModal(viewingUser)}
                       >

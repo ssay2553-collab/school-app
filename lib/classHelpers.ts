@@ -69,6 +69,42 @@ export const getGradeDetails = (score: number) => {
 };
 
 /**
+ * Generates automated remarks based on aggregate score or average performance.
+ * Suitable for Admin and Class Teacher remarks.
+ */
+export const getAutoRemarks = (aggregate: number, isTeacher: boolean = false) => {
+  const agg = aggregate || 54;
+  let remark = "";
+
+  if (agg <= 10) {
+    remark = isTeacher
+      ? "An exceptionally brilliant student. Maintains high standards in all learning areas."
+      : "An outstanding academic record. Your consistent excellence across all subjects is highly commendable. Keep it up!";
+  } else if (agg <= 20) {
+    remark = isTeacher
+      ? "A very diligent and hardworking student. Shows great interest in all subjects."
+      : "A very strong overall performance. You have demonstrated high competence in most areas. Maintain this focus.";
+  } else if (agg <= 30) {
+    remark = isTeacher
+      ? "Good performance. Can do better if more attention is paid to details."
+      : "A good performance overall. However, there is still room to convert your potentials into higher grades with extra effort.";
+  } else if (agg <= 40) {
+    remark = isTeacher
+      ? "Average performance. Needs to be more serious with academic work."
+      : "Average performance. You need to put in more study hours, especially in your core subjects, to improve your standing.";
+  } else if (agg <= 50) {
+    remark = isTeacher
+      ? "Performance is below average. Requires intensive study and supervision."
+      : "Performance is below expectations. You are capable of better results if you minimize distractions and focus on your studies.";
+  } else {
+    remark = isTeacher
+      ? "Poor performance. Needs to repeat or seek remedial help."
+      : "A very weak performance this term. Intensive remedial support and a change in study habits are urgently required.";
+  }
+  return remark;
+};
+
+/**
  * Calculates the TRS (Total Raw Score), TAS (Total Aggregate Score - Core 3 + Best 3),
  * and Aggregate (Sum of grades - Core 3 + Best 3) based on standard education metrics.
  *

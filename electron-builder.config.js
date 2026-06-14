@@ -14,13 +14,13 @@ const schools = {
   },
   morgis: {
     appId: "com.saysmanage.morgisapp",
-    productName: "Great Legacy",
-    icon: "assets/icon-legacy.png",
+    productName: "Kings Kids",
+    icon: "assets/icon-kings.png",
   },
   IBS: {
     appId: "com.saysmanage.jeiriver",
     productName: "IBS App",
-    icon: "assets/icon-ibs.png",
+    icon: "assets/icon-sincere.png",
   },
   perfect: {
     appId: "com.saysmanage.peiapp",
@@ -37,10 +37,15 @@ const schools = {
     productName: "Adehyeemba",
     icon: "assets/icon-aps.png",
   },
+  abijah: {
+    appId: "com.saysmanage.abijah",
+    productName: "Abijah Adesua",
+    icon: "assets/icon-abijah.png",
+  },
   kent: {
     appId: "com.saysmanage.martbeck",
-    productName: "KIS App",
-    icon: "assets/icon-kent.png",
+    productName: "World Sage",
+    icon: "assets/icon-sage.png",
   },
   bishops: {
     appId: "com.saysmanage.firstapp",
@@ -74,8 +79,8 @@ const schools = {
   },
   stone: {
     appId: "com.saysmanage.stone",
-    productName: "Stepping Stone",
-    icon: "assets/icon-stone.png",
+    productName: "Spring Gate",
+    icon: "assets/icon-spring.png",
   },
   jewel: {
     appId: "com.saysmanage.jewel",
@@ -86,7 +91,9 @@ const schools = {
 
 const selected = schools[schoolId] || schools.eagles;
 
-console.log(`[Electron Config] Building for: ${selected.productName} (${schoolId})`);
+console.log(
+  `[Electron Config] Building for: ${selected.productName} (${schoolId})`,
+);
 
 module.exports = {
   appId: selected.appId,

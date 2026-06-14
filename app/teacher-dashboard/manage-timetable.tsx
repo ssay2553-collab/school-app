@@ -124,9 +124,15 @@ export default function CreateLessonTimetable() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace("/teacher-dashboard");
+      const role = appUser?.role?.toLowerCase() || "";
+      const adminRole = appUser?.adminRole?.toLowerCase() || "";
+      if (role.includes("admin") || !!adminRole) {
+        router.replace("/admin-dashboard");
+      } else {
+        router.replace("/teacher-dashboard");
+      }
     }
-  }, [router]);
+  }, [router, appUser]);
 
   useEffect(() => {
     const onBackPress = () => {

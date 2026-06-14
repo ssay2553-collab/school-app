@@ -2,7 +2,7 @@ rules_version = '2';
 
 /* =========================================================
    FIRESTORE RULES - EduEaz
-   
+
    This file defines security rules for Firestore database.
    It includes permission checks for all screens in the app.
 
@@ -77,11 +77,11 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isAdmin() && (
-        ("adminRole" in userData() && userData().adminRole.lower() in [
+        ("adminRole" in userData() && userData().adminRole.toLower() in [
           "proprietor", "proprietress", "manager", "headmaster",
           "headmistress", "administrator", "director", "accountant", "bursar", "admin"
         ]) ||
-        ("profile" in userData() && "adminRole" in userData().profile && userData().profile.adminRole.lower() in [
+        ("profile" in userData() && "adminRole" in userData().profile && userData().profile.adminRole.toLower() in [
           "proprietor", "proprietress", "manager", "headmaster",
           "headmistress", "administrator", "director", "accountant", "bursar", "admin"
         ])
@@ -250,8 +250,32 @@ service cloud.firestore {
       return isAdmin() || getPermission('feeding') == 'full' || getPermission('feeding') == 'edit';
     }
 
+    function canViewFeeding() {
+      return isAdmin() || getPermission('feeding') == 'full' || getPermission('feeding') == 'edit' || getPermission('feeding') == 'view';
+    }
+
     function canRecordBusFee() {
       return isAdmin() || getPermission('record-bus-fee') == 'full' || getPermission('record-bus-fee') == 'edit';
+    }
+
+    function canViewBusFee() {
+      return isAdmin() || getPermission('record-bus-fee') == 'full' || getPermission('record-bus-fee') == 'edit' || getPermission('record-bus-fee') == 'view';
+    }
+
+    function canManageExtraClasses() {
+      return isAdmin() || getPermission('record-extra-classes') == 'full' || getPermission('record-extra-classes') == 'edit';
+    }
+
+    function canViewExtraClasses() {
+      return isAdmin() || getPermission('record-extra-classes') == 'full' || getPermission('record-extra-classes') == 'edit' || getPermission('record-extra-classes') == 'view';
+    }
+
+    function canManageSales() {
+      return isAdmin() || getPermission('manage-sales') == 'full' || getPermission('manage-sales') == 'edit';
+    }
+
+    function canViewSales() {
+      return isAdmin() || getPermission('manage-sales') == 'full' || getPermission('manage-sales') == 'edit' || getPermission('manage-sales') == 'view';
     }
 
     // Financial access is restricted to super admins or admins with manage-users permission
@@ -333,6 +357,23 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['walletBalance'])
         )
         || (
+          // Feeding/Bus/Extra Classes/Sales: Allow dailyArrears updates for teachers with permissions
+          // Also allow users delegated full 'manage-users' permission to perform dailyArrears updates
+          (canManageFeeding() || canRecordBusFee() || canManageExtraClasses() || canManageSales() || getPermission('manage-users') == 'full')
+          && (isAdmin() || (isTeacher() && isClassTeacher(resource.data.classId)))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dailyArrears'])
+        )
+        || (
+          // Explicit teacher-permission check: allow teachers with edit/full permissions on the relevant screens
+          isTeacher() && (
+            getPermission('feeding') in ['full', 'edit'] ||
+            getPermission('record-bus-fee') in ['full', 'edit'] ||
+            getPermission('record-extra-classes') in ['full', 'edit'] ||
+            getPermission('manage-sales') in ['full', 'edit']
+          )
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dailyArrears'])
+        )
+        || (
           // Staff Payroll: Allow salary updates if the user has payroll permissions
           canManagePayroll()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['salary'])
@@ -379,26 +420,59 @@ service cloud.firestore {
 
     match /studentFeeRecords/{id} {
       allow read: if canViewFees()
-        || (isParent() && resource.data.studentUid in userData().childrenIds)
-        || (isStudent() && resource.data.studentUid == uid());
-      allow write: if canManageFees();
+        || canViewSales()
+        || (isParent() && resource.data.studentUid in userData().get('childrenIds', []))
+        || (isStudent() && resource.data.studentUid == uid())
+        || (isTeacher() && isClassTeacher(resource.data.classId));
+      allow write: if canManageFees() || canManageSales()
+        || getPermission('manage-users') == 'full'
+        || (isTeacher() && (
+          (request.resource != null && isClassTeacher(request.resource.data.classId)) ||
+          (resource != null && isClassTeacher(resource.data.classId))
+        ) && (
+          (request.resource != null && request.resource.data.adminUid == uid()) ||
+          (resource != null && resource.data.adminUid == uid()) ||
+          getPermission('feeding') in ['full', 'edit'] ||
+          getPermission('record-bus-fee') in ['full', 'edit'] ||
+          getPermission('record-extra-classes') in ['full', 'edit'] ||
+          getPermission('manage-sales') in ['full', 'edit']
+        ));
     }
 
     match /feePayments/{id} {
       allow read: if canViewFees()
+        || (
+          (canViewFeeding() || canViewBusFee() || canViewExtraClasses() || canViewSales())
+          && (isAdmin() || (isTeacher() && isClassTeacher(resource.data.classId)))
+        )
         || (isParent() && resource.data.studentUid in userData().get('childrenIds', []))
         || (isStudent() && resource.data.studentUid == uid());
-      allow write: if canManageFees();
+      allow write: if canManageFees() || canManageSales() || getPermission('manage-users') == 'full'
+        || (
+          (canManageFeeding() || canRecordBusFee() || canManageExtraClasses() || canManageSales())
+          && (isAdmin() || (isTeacher() && (
+            (request.resource != null && isClassTeacher(request.resource.data.classId)) ||
+            (resource != null && isClassTeacher(resource.data.classId))
+          )))
+          && (request.resource == null || request.resource.data.amount is number)
+        )
+        || (isTeacher() && (
+          (request.resource != null && isClassTeacher(request.resource.data.classId)) ||
+          (resource != null && isClassTeacher(resource.data.classId))
+        ) && (
+          (request.resource != null && request.resource.data.adminUid == uid()) ||
+          (resource != null && resource.data.adminUid == uid())
+        ) && (request.resource == null || request.resource.data.amount is number));
     }
 
     match /expenditures/{id} {
       allow read: if canViewExpenditure();
-      allow create: if canManageExpenditure() &&
+      allow create: if isSuperAdmin() || (canManageExpenditure() &&
         request.resource.data.status == 'open' &&
-        request.resource.data.amount > 0;
-      allow update: if canManageExpenditure() &&
-        (resource.data.status == 'open' || request.resource.data.status == 'closed');
-      allow delete: if false;
+        request.resource.data.amount > 0);
+      allow update: if isSuperAdmin() || (canManageExpenditure() &&
+        (resource.data.status == 'open' || request.resource.data.status == 'closed'));
+      allow delete: if isSuperAdmin();
     }
 
     /* ===============================
@@ -426,11 +500,11 @@ service cloud.firestore {
     match /signupCodes/{codeId} {
       // allow unauthenticated read for verification during signup
       allow read: if true;
-      allow create, delete: if canGenerateCodes() || canGenerateCode();
-      allow update: if isSignedIn()
+      allow create, delete: if canGenerateCodes() || canGenerateCode() || isSuperAdmin();
+      allow update: if isSuperAdmin() || (isSignedIn()
         && (!('used' in resource.data) || resource.data.used == false)
         && request.resource.data.used == true
-        && request.resource.data.usedBy == uid();
+        && request.resource.data.usedBy == uid());
     }
 
     match /news/{id} {
@@ -709,6 +783,52 @@ service cloud.firestore {
     }
 
     /* ===============================
+       DAILY FINANCIALS
+    =============================== */
+    match /dailyFinancials/{id} {
+      allow read: if canViewFeeding() || canViewBusFee() || canViewExtraClasses() || isAdmin()
+        || (isParent() && (id.split('_')[0] in userData().get('childrenIds', []) || (resource != null && resource.data.studentUid in userData().get('childrenIds', []))))
+        || (isStudent() && (id.split('_')[0] == uid() || (resource != null && resource.data.studentUid == uid())));
+
+      allow create: if isAdmin() || (
+        (isTeacher() || isStaff()) && (
+          (request.resource.data.get('feedingPaid', false) == false && request.resource.data.get('feedingFee', 0) == 0 || canManageFeeding()) &&
+          (request.resource.data.get('busPaid', false) == false && request.resource.data.get('busFee', 0) == 0 || canRecordBusFee()) &&
+          (request.resource.data.get('extraPaid', false) == false && request.resource.data.get('extraClassesFee', 0) == 0 || canManageExtraClasses())
+        )
+      );
+
+      allow update: if isAdmin() || (
+        (isTeacher() || isStaff()) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'feedingPaid', 'feedingCollector', 'feedingFee',
+          'busPaid', 'busCollector', 'busFee',
+          'extraPaid', 'extraCollector', 'extraClassesFee',
+          'total', 'disbursedAt', 'disbursedBy',
+          'updatedAt', 'date', 'studentUid', 'studentName', 'classId', 'className',
+          'recordedBy', 'recordedByUid', 'createdAt', 'otherFees', 'otherFeesDescription',
+          'feedingPaidAt', 'busPaidAt', 'extraPaidAt',
+          'extraPaidAt', 'extraCollector'
+        ]) && (
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['feedingPaid', 'feedingCollector', 'feedingFee']) || canManageFeeding()) &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['busPaid', 'busCollector', 'busFee']) || canRecordBusFee()) &&
+          (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['extraPaid', 'extraCollector', 'extraClassesFee', 'disbursedAt', 'disbursedBy', 'extraPaidAt']) || canManageExtraClasses() || (
+            isTeacher() && (
+              (request.resource != null && isClassTeacher(request.resource.data.classId)) ||
+              (resource != null && isClassTeacher(resource.data.classId))
+            ) && (
+              getPermission('record-extra-classes') in ['full', 'edit'] ||
+              getPermission('feeding') in ['full', 'edit'] ||
+              getPermission('record-bus-fee') in ['full', 'edit']
+            )
+          ))
+        )
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    /* ===============================
        FALLBACK & CATCH-ALL
        =============================== */
     match /{path=**} {
@@ -717,3 +837,4 @@ service cloud.firestore {
     }
   }
 }
+

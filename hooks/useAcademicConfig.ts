@@ -8,6 +8,7 @@ export interface AcademicConfig {
   termStart: any;
   termEnd: any;
   schoolName: string;
+  extraClassesRate: number;
   loading: boolean;
 }
 
@@ -18,6 +19,7 @@ export const useAcademicConfig = () => {
     termStart: null,
     termEnd: null,
     schoolName: "",
+    extraClassesRate: 0,
     loading: true,
   });
 
@@ -38,6 +40,7 @@ export const useAcademicConfig = () => {
           termStart: data.termStart,
           termEnd: data.termEnd,
           schoolName: data.schoolName || "",
+          extraClassesRate: data.extraClassesRate || 0,
           loading: false,
         });
       } else {

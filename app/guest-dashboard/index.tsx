@@ -1,31 +1,30 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState, useCallback } from "react";
+import { signOut } from "firebase/auth";
+import React, { useCallback, useState } from "react";
 import {
+  Alert,
+  Dimensions,
+  Image,
+  Linking,
+  Platform,
+  RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  StatusBar,
-  Dimensions,
-  Platform,
-  RefreshControl,
-  Image,
-  Linking,
-  Alert
 } from "react-native";
-import { useToast } from "../../contexts/ToastContext";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
-import Constants from "expo-constants";
-import { signOut } from "firebase/auth";
+import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
-import { COLORS, SHADOWS } from "../../constants/theme";
-import { auth } from "../../firebaseConfig";
+import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { auth } from "../../firebaseConfig";
 
 const { width } = Dimensions.get("window");
 
@@ -36,7 +35,7 @@ export default function GuestDashboard() {
   const schoolId = SCHOOL_CONFIG.schoolId;
   const schoolLogo = getSchoolLogo(schoolId);
   const schoolName = SCHOOL_CONFIG.name;
-  
+
   const brandPrimary = SCHOOL_CONFIG.brandPrimary;
   const brandSecondary = SCHOOL_CONFIG.brandSecondary;
   const surface = SCHOOL_CONFIG.surfaceColor;
@@ -49,7 +48,7 @@ export default function GuestDashboard() {
   }, []);
 
   const handleLogout = () => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       if (window.confirm("Are you sure you want to exit the guest portal?")) {
         signOut(auth).then(() => router.replace("/"));
       }
@@ -99,8 +98,12 @@ export default function GuestDashboard() {
     .filter((n: string) => !!n);
 
   const isAdmin = appUser?.role === "admin";
-  const canFeeding = appUser?.permissions?.["feeding"] === "full" || appUser?.permissions?.["feeding"] === "edit";
-  const canBus = appUser?.permissions?.["record-bus-fee"] === "full" || appUser?.permissions?.["record-bus-fee"] === "edit";
+  const canFeeding =
+    appUser?.permissions?.["feeding"] === "full" ||
+    appUser?.permissions?.["feeding"] === "edit";
+  const canBus =
+    appUser?.permissions?.["record-bus-fee"] === "full" ||
+    appUser?.permissions?.["record-bus-fee"] === "edit";
   const hasFinancialAccess = isAdmin || canFeeding || canBus;
 
   const sections = [
@@ -122,14 +125,7 @@ export default function GuestDashboard() {
           icon: "flash",
           color: "#ec4899",
         },
-        {
-          title: "Daily Financials",
-          subtitle: "Fee recording",
-          route: "/admin-dashboard/DailyFinancials",
-          icon: "calculator",
-          color: "#10b981",
-          hidden: !hasFinancialAccess,
-        },
+
       ],
     },
     {
@@ -205,10 +201,7 @@ export default function GuestDashboard() {
           </View>
           <View style={styles.cardInfo}>
             <Text
-              style={[
-                styles.menuText,
-                { fontSize: isSmallScreen ? 13 : 15 },
-              ]}
+              style={[styles.menuText, { fontSize: isSmallScreen ? 13 : 15 }]}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -261,7 +254,10 @@ export default function GuestDashboard() {
                 />
                 <Text style={styles.schoolNameMini}>{schoolName}</Text>
               </View>
-              <TouchableOpacity onPress={handleLogout} style={styles.settingsBtn}>
+              <TouchableOpacity
+                onPress={handleLogout}
+                style={styles.settingsBtn}
+              >
                 <SVGIcon name="log-out-outline" size={22} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -270,7 +266,10 @@ export default function GuestDashboard() {
               <View>
                 <Text style={styles.welcomeText}>WELCOME TO OUR PORTAL,</Text>
                 <Text
-                  style={[styles.nameText, { fontSize: isSmallScreen ? 24 : 32 }]}
+                  style={[
+                    styles.nameText,
+                    { fontSize: isSmallScreen ? 24 : 32 },
+                  ]}
                 >
                   Guest Explorer
                 </Text>
@@ -336,7 +335,10 @@ export default function GuestDashboard() {
                   style={styles.callCard}
                 >
                   <View
-                    style={[styles.callIconBox, { backgroundColor: "#ef444415" }]}
+                    style={[
+                      styles.callIconBox,
+                      { backgroundColor: "#ef444415" },
+                    ]}
                   >
                     <SVGIcon name="megaphone" size={24} color="#ef4444" />
                   </View>
@@ -588,7 +590,12 @@ const styles = StyleSheet.create({
     color: "#64748B",
     textTransform: "uppercase",
   },
-  callPhone: { fontSize: 16, fontWeight: "800", color: "#1E293B", marginTop: 2 },
+  callPhone: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginTop: 2,
+  },
   callActionBtn: {
     backgroundColor: "#ef4444",
     paddingHorizontal: 15,

@@ -1,6 +1,6 @@
-import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useState, useEffect } from "react";
+import Constants from "expo-constants";
+import { useEffect, useState } from "react";
 
 /**
  * Centralized branding configuration.
@@ -22,7 +22,18 @@ const mapConfig = (id: string, data: any) => ({
   secondaryColor: data.secondaryColor || data.primaryColor || "#dd4364",
   surfaceColor: data.surfaceColor || "#dcabf3",
   brandPrimary: data.brandPrimary || data.primaryColor || "#cc315f",
-  brandSecondary: data.brandSecondary || data.secondaryColor || data.primaryColor || "#140e53",
+  brandSecondary:
+    data.brandSecondary ||
+    data.secondaryColor ||
+    data.primaryColor ||
+    "#140e53",
+  currency: data.currency || data.currencyCode || data.currencySymbol || "₵",
+  currencySymbol: data.currencySymbol || data.currency || "₵",
+
+  // Default rates for fee categories
+  defaultFeedingRate: data.defaultFeedingRate || 0,
+  defaultBusRate: data.defaultBusRate || 0,
+  defaultExtraClassesRate: data.defaultExtraClassesRate || 0,
 
   firebase: data.firebase || {},
 });
@@ -38,15 +49,17 @@ export const SCHOOL_CONFIG = mapConfig(BUILD_ID, extra);
 export const getActiveSchoolId = async () => {
   if (__DEV__) {
     const override = await AsyncStorage.getItem("DEV_SCHOOL_ID");
-    
+
     // If we have an override (like IBS) but it doesn't match the current build (like Beano),
     // we MUST clear it to fix the UI sync issue.
     if (override && override !== BUILD_ID) {
-       console.log(`[Config] Syncing: Removing stale override '${override}' to use build '${BUILD_ID}'`);
-       await AsyncStorage.removeItem("DEV_SCHOOL_ID");
-       return BUILD_ID;
+      console.log(
+        `[Config] Syncing: Removing stale override '${override}' to use build '${BUILD_ID}'`,
+      );
+      await AsyncStorage.removeItem("DEV_SCHOOL_ID");
+      return BUILD_ID;
     }
-    
+
     if (override) return override;
   }
   return BUILD_ID;
@@ -63,13 +76,13 @@ export const useSchoolConfig = () => {
     const syncConfig = async () => {
       if (__DEV__) {
         const overrideId = await AsyncStorage.getItem("DEV_SCHOOL_ID");
-        
+
         // AGGRESSIVE RESET: If the override exists but doesn't match the current build,
         // it means the user switched schools via script, so we clear the cache.
         if (overrideId && overrideId !== BUILD_ID) {
-            await AsyncStorage.removeItem("DEV_SCHOOL_ID");
-            setConfig(SCHOOL_CONFIG);
-            return;
+          await AsyncStorage.removeItem("DEV_SCHOOL_ID");
+          setConfig(SCHOOL_CONFIG);
+          return;
         }
 
         if (overrideId && schoolData[overrideId]) {

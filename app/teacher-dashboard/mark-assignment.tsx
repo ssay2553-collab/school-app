@@ -37,6 +37,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
+import { sendNotification } from "../../src/services/notificationService";
 
 /* ---------------- TYPES ---------------- */
 
@@ -517,17 +518,28 @@ export default function MarkAssignment() {
 
           if (parentUids.length > 0) {
             for (const pUid of parentUids) {
-              await addDoc(collection(db, "notifications"), {
+              await sendNotification({
                 recipientId: pUid,
+                senderId: appUser!.uid,
+                senderName: appUser!.displayName || "Teacher",
+                type: "score",
                 title: "New Assignment Grade",
                 body: `${sub.studentName} scored ${totalScore} in their ${selectedAssignment?.title || "assignment"}.`,
-                type: "grade",
-                timestamp: serverTimestamp(),
-                studentId: sub.studentId,
-                read: false,
+                data: { studentId: sub.studentId, assignmentId: selectedAssignment?.id },
               });
             }
           }
+
+          // Also notify the student directly
+          await sendNotification({
+            recipientId: sub.studentId,
+            senderId: appUser!.uid,
+            senderName: appUser!.displayName || "Teacher",
+            type: "score",
+            title: "Assignment Marked",
+            body: `You scored ${totalScore} in ${selectedAssignment?.title || "your assignment"}.`,
+            data: { assignmentId: selectedAssignment?.id },
+          });
         }
 
         setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));

@@ -1,30 +1,17 @@
 import { Picker } from "@react-native-picker/picker";
-import { collection, getDocsFromServer, query, where } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import React, { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import { db } from "../../../firebaseConfig";
-import { SCHOOL_CONFIG } from "../../../constants/Config";
-
-interface AttendanceDoc {
-  date: string;
-  classId: string;
-  academicYear: string;
-  term: string;
-  students: {
-    [studentId: string]: {
-      status: "present" | "absent";
-    };
-  };
-}
 
 export default function StudentAttendanceSummaryScreen({
   route,
@@ -63,38 +50,28 @@ export default function StudentAttendanceSummaryScreen({
   useEffect(() => {
     if (!studentId || !classId || !selectedYear || !selectedTerm) return;
 
-    const fetchAttendanceSummary = async () => {
-      setLoading(true);
-      try {
-        const q = query(
-          collection(db, "attendance"),
-          where("classId", "==", classId),
-          where("academicYear", "==", selectedYear),
-          where("term", "==", selectedTerm),
-        );
+    setLoading(true);
+    const cleanYear = selectedYear.replace("/", "_");
+    const cleanTerm = selectedTerm.replace(/\s+/g, "");
+    const summaryId = `${studentId}_${cleanYear}_${cleanTerm}`;
+    const summaryRef = doc(db, "attendanceSummary", summaryId);
 
-        const snapshot = await getDocsFromServer(q);
-
-        let present = 0;
-        let absent = 0;
-
-        snapshot.forEach((doc) => {
-          const data = doc.data() as AttendanceDoc;
-          const status = data.students?.[studentId]?.status;
-          if (status === "present") present++;
-          else if (status === "absent") absent++;
-        });
-
-        setPresentCount(present);
-        setAbsentCount(absent);
-      } catch (error) {
-        console.error("Error fetching attendance summary:", error);
-      } finally {
-        setLoading(false);
+    const unsubscribe = onSnapshot(summaryRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setPresentCount(data.present || 0);
+        setAbsentCount(data.absent || 0);
+      } else {
+        setPresentCount(0);
+        setAbsentCount(0);
       }
-    };
+      setLoading(false);
+    }, (error) => {
+      console.error("Error listening to attendance summary:", error);
+      setLoading(false);
+    });
 
-    fetchAttendanceSummary();
+    return () => unsubscribe();
   }, [studentId, classId, selectedYear, selectedTerm]);
 
   const totalDays = presentCount + absentCount;

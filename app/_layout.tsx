@@ -19,6 +19,7 @@ import { ToastProvider } from "../contexts/ToastContext";
 
 import DevSchoolSwitcher from "./DevSchoolSwitcher";
 import { PWAInstallPrompt } from "../components/PWAInstallPrompt";
+import { GlobalNotificationListener } from "../components/GlobalNotificationListener";
 
 if (Platform.OS !== "web") {
   Notifications.setNotificationHandler({
@@ -190,6 +191,7 @@ function MainLayout() {
       <RouteGuard />
       <DevSchoolSwitcher />
       <PWAInstallPrompt />
+      <GlobalNotificationListener />
     </>
   );
 }

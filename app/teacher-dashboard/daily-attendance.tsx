@@ -44,6 +44,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { AppUser } from "../../types/users";
 
+import { sendNotification } from "../../src/services/notificationService";
+
 const FILTERS_KEY = "@attendance_filters_v1";
 
 const { width } = Dimensions.get("window");
@@ -272,7 +274,7 @@ export default function DailyAttendanceScreen() {
     setSelectedDate(newDate);
   };
 
-  const markLocal = (studentId: string, status: "present" | "absent") => {
+  const markLocal = (studentId: string, status: "present" | "absent" | "late") => {
     if (!isOfficialClassTeacher) {
       showToast({
         message: "Only assigned Class Teacher/Admin can mark attendance.",
@@ -334,7 +336,77 @@ export default function DailyAttendanceScreen() {
         students: localAttendance
       }, { merge: true });
 
+      // Update Attendance Summaries (Student & Class level)
+      Object.keys(localAttendance).forEach(studentId => {
+        const oldStatus = serverAttendance[studentId]?.status;
+        const newStatus = localAttendance[studentId]?.status;
+
+        if (oldStatus !== newStatus) {
+          const studentSummaryRef = doc(db, "attendanceSummary", `${studentId}_${cleanYear}_${cleanTerm}`);
+          const classSummaryRef = doc(db, "attendanceSummary", `${classId}_${cleanYear}_${cleanTerm}`);
+
+          const updates: Record<string, any> = {};
+
+          if (oldStatus) {
+            updates[oldStatus] = increment(-1);
+          }
+          if (newStatus) {
+            updates[newStatus] = increment(1);
+          }
+
+          if (Object.keys(updates).length > 0) {
+            batch.set(studentSummaryRef, {
+              studentId,
+              classId,
+              academicYear,
+              term,
+              ...updates,
+              lastUpdated: serverTimestamp()
+            }, { merge: true });
+
+            batch.set(classSummaryRef, {
+              classId,
+              academicYear,
+              term,
+              ...updates,
+              lastUpdated: serverTimestamp()
+            }, { merge: true });
+          }
+        }
+      });
+
       await batch.commit();
+
+      // Send notifications to parents of absent or late students
+      const changedStudents = students.filter(s =>
+        localAttendance[s.uid]?.status !== serverAttendance[s.uid]?.status &&
+        (localAttendance[s.uid]?.status === "absent" || localAttendance[s.uid]?.status === "late")
+      );
+
+      for (const student of changedStudents) {
+        if (student.parentUids && Array.isArray(student.parentUids)) {
+          const status = localAttendance[student.uid]?.status;
+          const studentName = `${student.profile?.firstName || ''} ${student.profile?.lastName || ''}`.trim() || "your child";
+          const statusLabel = status === "late" ? "LATE" : "ABSENT";
+
+          for (const parentId of student.parentUids) {
+            sendNotification({
+              recipientId: parentId,
+              senderId: appUser.uid,
+              senderName: staffName,
+              type: "attendance",
+              title: `Attendance Alert: ${statusLabel}`,
+              body: `${studentName} was marked ${statusLabel} today, ${moment(selectedDate).format("MMM Do")}.`,
+              data: {
+                studentId: student.uid,
+                date: selectedDate,
+                status: status
+              }
+            });
+          }
+        }
+      }
+
       setServerAttendance(localAttendance);
       showToast({
         message: "Attendance saved successfully for " + moment(selectedDate).format("MMM Do"),
@@ -367,7 +439,7 @@ export default function DailyAttendanceScreen() {
   const renderStudentItem = ({ item, index }: { item: AppUser, index: number }) => {
     const status = localAttendance[item.uid]?.status ?? "not_marked";
     const isUnsaved = localAttendance[item.uid]?.status !== serverAttendance[item.uid]?.status;
-    const cardStatusStyle = status === "present" ? styles.presentCard : status === "absent" ? styles.absentCard : {};
+    const cardStatusStyle = status === "present" ? styles.presentCard : status === "absent" ? styles.absentCard : status === "late" ? styles.lateCard : {};
 
     return (
       <Animatable.View
@@ -385,7 +457,7 @@ export default function DailyAttendanceScreen() {
           <View style={{ flex: 1, marginLeft: 15 }}>
             <Text style={styles.name}>{item.profile?.firstName || "Student"} {item.profile?.lastName || ""}</Text>
             <View style={styles.statusBadge}>
-               <View style={[styles.statusDot, { backgroundColor: status === "present" ? "#10B981" : status === "absent" ? "#EF4444" : "#94A3B8" }]} />
+               <View style={[styles.statusDot, { backgroundColor: status === "present" ? "#10B981" : status === "absent" ? "#EF4444" : status === "late" ? "#F59E0B" : "#94A3B8" }]} />
                <Text style={styles.statusLabel}>{(status || "NOT_MARKED").toUpperCase()}</Text>
                {isUnsaved && <Text style={styles.unsavedTag}> • Unsaved</Text>}
             </View>
@@ -399,8 +471,17 @@ export default function DailyAttendanceScreen() {
               onPress={() => markLocal(item.uid, "present")}
               activeOpacity={0.7}
             >
-              <SVGIcon name="checkmark-circle" size={20} color={status === 'present' ? '#fff' : '#10B981'} />
+              <SVGIcon name="checkmark-circle" size={18} color={status === 'present' ? '#fff' : '#10B981'} />
               <Text style={[styles.actionBtnText, status === "present" && {color: "#fff"}]}>Present</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionBtn, status === "late" && styles.lateActive]}
+              onPress={() => markLocal(item.uid, "late")}
+              activeOpacity={0.7}
+            >
+              <SVGIcon name="time" size={18} color={status === 'late' ? '#fff' : '#F59E0B'} />
+              <Text style={[styles.actionBtnText, status === "late" && {color: "#fff"}]}>Late</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
@@ -408,7 +489,7 @@ export default function DailyAttendanceScreen() {
               onPress={() => markLocal(item.uid, "absent")}
               activeOpacity={0.7}
             >
-              <SVGIcon name="close-circle" size={20} color={status === 'absent' ? '#fff' : '#EF4444'} />
+              <SVGIcon name="close-circle" size={18} color={status === 'absent' ? '#fff' : '#EF4444'} />
               <Text style={[styles.actionBtnText, status === "absent" && {color: "#fff"}]}>Absent</Text>
             </TouchableOpacity>
           </View>
@@ -565,6 +646,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#fff', borderRadius: 22, padding: 16, marginBottom: 15, ...SHADOWS.small, borderWidth: 1, borderColor: '#F1F5F9' },
   presentCard: { borderColor: '#10B981', backgroundColor: '#F0FDF4' },
   absentCard: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
+  lateCard: { borderColor: '#F59E0B', backgroundColor: '#FFFBEB' },
   unsavedCard: { borderStyle: 'dashed', borderWidth: 2 },
   cardInfo: { flexDirection: 'row', alignItems: 'center' },
   avatarPlaceholder: { width: 50, height: 50, borderRadius: 18, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' },
@@ -575,10 +657,11 @@ const styles = StyleSheet.create({
   statusLabel: { fontSize: 10, fontWeight: '900', color: '#64748B', letterSpacing: 0.5 },
   unsavedTag: { fontSize: 10, fontWeight: '900', color: COLORS.primary },
   actions: { flexDirection: 'row', marginTop: 15, gap: 10 },
-  actionBtn: { flex: 1, height: 48, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#F8FAFC' },
-  actionBtnText: { fontSize: 14, fontWeight: '800' },
+  actionBtn: { flex: 1, height: 48, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#F8FAFC' },
+  actionBtnText: { fontSize: 12, fontWeight: '800' },
   presentActive: { backgroundColor: '#10B981', borderColor: '#10B981' },
   absentActive: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
+  lateActive: { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
   footerAction: { position: 'absolute', bottom: 25, left: 20, right: 20, ...SHADOWS.large },
   saveBtn: { backgroundColor: COLORS.primary, height: 65, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },

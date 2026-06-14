@@ -6,7 +6,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -59,8 +59,14 @@ export default function TeacherDashboard() {
     appUser?.permissions?.["record-extra-classes"] === "full" ||
     appUser?.permissions?.["record-extra-classes"] === "edit" ||
     appUser?.permissions?.["record-extra-classes"] === "view";
-  const hasFinancialAccess =
-    isAdmin || canFeeding || canBus || canExtraClasses;
+  const hasFinancialAccess = isAdmin || canFeeding || canBus || canExtraClasses;
+  const canEditFinancials =
+    appUser?.permissions?.["feeding"] === "full" ||
+    appUser?.permissions?.["feeding"] === "edit" ||
+    appUser?.permissions?.["record-bus-fee"] === "full" ||
+    appUser?.permissions?.["record-bus-fee"] === "edit" ||
+    appUser?.permissions?.["record-extra-classes"] === "full" ||
+    appUser?.permissions?.["record-extra-classes"] === "edit";
 
   const fetchStats = useCallback(async () => {
     if (!appUser?.uid) return;
@@ -98,6 +104,10 @@ export default function TeacherDashboard() {
     setRefreshing(false);
   }, [fetchStats]);
 
+  const isAssignedTeacher =
+    (appUser?.classes && appUser.classes.length > 0) ||
+    !!appUser?.classTeacherOf;
+
   const sections = [
     {
       title: "CLASSROOM HUB 🏫",
@@ -117,6 +127,17 @@ export default function TeacherDashboard() {
           icon: "checkmark-done-circle",
           color: "#10b981",
         },
+        ...(isAssignedTeacher && (hasFinancialAccess || canEditFinancials)
+          ? [
+              {
+                title: "Daily Financials",
+                subtitle: "Feeding, Bus & Extra fees",
+                route: "/shared/daily-financials",
+                icon: "receipt",
+                color: "#10b981",
+              },
+            ]
+          : []),
         {
           title: "Timetable",
           subtitle: "My schedule",
@@ -131,14 +152,7 @@ export default function TeacherDashboard() {
           icon: "key",
           color: "#ec4899",
         },
-        {
-          title: "Daily Financials",
-          subtitle: "Fee recording",
-          route: "/admin-dashboard/DailyFinancials",
-          icon: "calculator",
-          color: "#10b981",
-          hidden: !hasFinancialAccess,
-        },
+
         {
           title: "My Notes",
           subtitle: "Scratchpad",

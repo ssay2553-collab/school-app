@@ -43,6 +43,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { sortClasses } from "../../lib/classHelpers";
+import { sendNotification } from "../../src/services/notificationService";
 
 type TeacherClass = { id: string; name: string };
 type Student = { uid: string; fullName: string };
@@ -379,6 +380,19 @@ export default function TeacherChatWithParent() {
         senderId: appUser!.uid,
         createdAt: serverTimestamp(),
       });
+
+      if (selectedParent) {
+        await sendNotification({
+          recipientId: selectedParent.uid,
+          senderId: appUser!.uid,
+          senderName: appUser!.displayName || "Teacher",
+          type: "chat",
+          title: "New Message",
+          body: text.length > 50 ? text.substring(0, 47) + "..." : text,
+          data: { chatId, type: "text" },
+        });
+      }
+
       playSound("sent");
     } catch {
       showToast({ message: "Message failed to send.", type: "error" });

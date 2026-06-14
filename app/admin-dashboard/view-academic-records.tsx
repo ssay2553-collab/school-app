@@ -41,7 +41,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { getGradeDetails, sortClasses } from "../../lib/classHelpers";
+import { getAutoRemarks, getGradeDetails, sortClasses } from "../../lib/classHelpers";
 
 import { useToast } from "../../contexts/ToastContext";
 
@@ -283,7 +283,7 @@ export default function ViewAcademicRecords() {
                 ).toFixed(2),
             );
           } else {
-            scoreValue = parseFloat(s.examsMark || 0);
+            scoreValue = parseFloat(s.finalScore || s.examsMark || 0);
           }
 
           const grade = parseInt(getGradeDetails(scoreValue).grade) || 9;
@@ -437,30 +437,12 @@ export default function ViewAcademicRecords() {
     }
 
     // Auto-generate admin remarks based on OVERALL Aggregate performance
-    let autoRemarks = "";
     const agg = student.aggregate || 54;
+    const autoAdminRemarks = getAutoRemarks(agg, false);
+    const autoTeacherRemarks = getAutoRemarks(agg, true);
 
-    if (agg <= 10) {
-      autoRemarks =
-        "An outstanding academic record. Your consistent excellence across all subjects is highly commendable. Keep it up!";
-    } else if (agg <= 20) {
-      autoRemarks =
-        "A very strong overall performance. You have demonstrated high competence in most areas. Maintain this focus.";
-    } else if (agg <= 30) {
-      autoRemarks =
-        "A good performance overall. However, there is still room to convert your potentials into higher grades with extra effort.";
-    } else if (agg <= 40) {
-      autoRemarks =
-        "Average performance. You need to put in more study hours, especially in your core subjects, to improve your standing.";
-    } else if (agg <= 50) {
-      autoRemarks =
-        "Performance is below expectations. You are capable of better results if you minimize distractions and focus on your studies.";
-    } else {
-      autoRemarks =
-        "A very weak performance this term. Intensive remedial support and a change in study habits are urgently required.";
-    }
-
-    setAdminRemarks(autoRemarks);
+    setAdminRemarks(autoAdminRemarks);
+    setTeacherRemarks(autoTeacherRemarks);
 
     setMetadataModalVisible(true);
 
@@ -883,33 +865,17 @@ export default function ViewAcademicRecords() {
                             );
 
                           // Auto-generate remarks for each student in the loop based on their AGGREGATE
-                          let autoRemarks = "";
                           const agg = student.aggregate || 54;
-                          if (agg <= 10)
-                            autoRemarks =
-                              "An outstanding academic record. Your consistent excellence across all subjects is highly commendable. Keep it up!";
-                          else if (agg <= 20)
-                            autoRemarks =
-                              "A very strong overall performance. You have demonstrated high competence in most areas. Maintain this focus.";
-                          else if (agg <= 30)
-                            autoRemarks =
-                              "A good performance overall. However, there is still room to convert your potentials into higher grades with extra effort.";
-                          else if (agg <= 40)
-                            autoRemarks =
-                              "Average performance. You need to put in more study hours, especially in your core subjects, to improve your standing.";
-                          else if (agg <= 50)
-                            autoRemarks =
-                              "Performance is below expectations. You are capable of better results if you minimize distractions and focus on your studies.";
-                          else
-                            autoRemarks =
-                              "A very weak performance this term. Intensive remedial support and a change in study habits are urgently required.";
+                          const autoAdminRemarks = getAutoRemarks(agg, false);
+                          const autoTeacherRemarks = getAutoRemarks(agg, true);
 
                           batch.set(
                             doc(db, "student-reports", reportId),
                             {
                               nextTermBegins: mNextTermBegins,
                               promotedTo: mPromotedTo,
-                              adminRemarks: autoRemarks,
+                              adminRemarks: autoAdminRemarks,
+                              teacherRemarks: autoTeacherRemarks,
                               updatedAt: serverTimestamp(),
                             },
                             { merge: true },

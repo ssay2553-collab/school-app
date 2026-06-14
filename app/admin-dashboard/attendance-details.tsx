@@ -24,7 +24,7 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 interface StudentDetail {
   id: string;
   name: string;
-  status: "present" | "absent" | "not_marked";
+  status: "present" | "absent" | "late" | "not_marked";
   markedAt?: string;
 }
 
@@ -42,7 +42,7 @@ export default function AttendanceDetails() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [students, setStudents] = useState<StudentDetail[]>([]);
-  const [filter, setFilter] = useState<"all" | "present" | "absent">("all");
+  const [filter, setFilter] = useState<"all" | "present" | "absent" | "late">("all");
 
   const primary = SCHOOL_CONFIG.primaryColor;
 
@@ -136,6 +136,7 @@ export default function AttendanceDetails() {
     total: students.length,
     present: students.filter(s => s.status === "present").length,
     absent: students.filter(s => s.status === "absent").length,
+    late: students.filter(s => s.status === "late").length,
     notMarked: students.filter(s => s.status === "not_marked").length
   };
 
@@ -173,6 +174,7 @@ export default function AttendanceDetails() {
       <View style={styles.filterBar}>
         <FilterChip label="All" count={stats.total} active={filter === "all"} onPress={() => setFilter("all")} color="#64748B" />
         <FilterChip label="Present" count={stats.present} active={filter === "present"} onPress={() => setFilter("present")} color="#10B981" />
+        <FilterChip label="Late" count={stats.late} active={filter === "late"} onPress={() => setFilter("late")} color="#F59E0B" />
         <FilterChip label="Absent" count={stats.absent} active={filter === "absent"} onPress={() => setFilter("absent")} color="#EF4444" />
       </View>
 
@@ -188,15 +190,15 @@ export default function AttendanceDetails() {
           }
           renderItem={({ item, index }) => (
             <Animatable.View animation="fadeInUp" duration={300} delay={index * 30} style={styles.studentCard}>
-              <View style={[styles.statusIndicator, { backgroundColor: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : "#CBD5E1" }]} />
+              <View style={[styles.statusIndicator, { backgroundColor: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : item.status === "late" ? "#F59E0B" : "#CBD5E1" }]} />
               <View style={styles.studentInfo}>
                 <Text style={styles.studentName}>{item.name}</Text>
                 {item.markedAt && (
                   <Text style={styles.markedTime}>Marked {moment(item.markedAt).format("h:mm A")}</Text>
                 )}
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: item.status === "present" ? "#F0FDF4" : item.status === "absent" ? "#FEF2F2" : "#F8FAFC" }]}>
-                <Text style={[styles.statusText, { color: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : "#94A3B8" }]}>
+              <View style={[styles.statusBadge, { backgroundColor: item.status === "present" ? "#F0FDF4" : item.status === "absent" ? "#FEF2F2" : item.status === "late" ? "#FFFBEB" : "#F8FAFC" }]}>
+                <Text style={[styles.statusText, { color: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : item.status === "late" ? "#F59E0B" : "#94A3B8" }]}>
                   {item.status.replace("_", " ").toUpperCase()}
                 </Text>
               </View>

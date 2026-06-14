@@ -64,6 +64,7 @@ export default function StudentFeeHistory() {
   );
 
   const [record, setRecord] = useState<any>(null);
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [studentData, setStudentData] = useState<any>(null);
 
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
@@ -136,12 +137,78 @@ export default function StudentFeeHistory() {
     const cleanYear = selectedYear.replace(/\//g, "-");
     const cleanTerm = selectedTerm.replace(/\s/g, "");
     const recordId = `${selectedChildId}_${cleanYear}_${cleanTerm}`;
-    const unsub = onSnapshot(doc(db, "studentFeeRecords", recordId), (snap) => {
+
+    const unsubRecord = onSnapshot(doc(db, "studentFeeRecords", recordId), (snap) => {
       setRecord(snap.exists() ? (snap.data() as any) : null);
+    });
+
+    const q = query(
+      collection(db, "feePayments"),
+      where("studentUid", "==", selectedChildId),
+      where("academicYear", "==", selectedYear),
+      where("term", "==", selectedTerm)
+    );
+
+    const unsubTransactions = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setAllTransactions(list.sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ));
       setFetchingRecord(false);
     });
-    return () => unsub();
+
+    return () => {
+      unsubRecord();
+      unsubTransactions();
+    };
   }, [selectedChildId, selectedYear, selectedTerm]);
+
+  const categorySummary = useMemo(() => {
+    const summary: Record<string, { billed: number; paid: number }> = {
+      tuition: { billed: (record?.termBill || 0) + (record?.arrears || 0) - (record?.discount || 0), paid: 0 },
+      pta: { billed: 0, paid: 0 },
+      maintenance: { billed: 0, paid: 0 },
+      admission: { billed: 0, paid: 0 },
+      books: { billed: 0, paid: 0 },
+      uniform: { billed: 0, paid: 0 },
+      other: { billed: 0, paid: 0 },
+    };
+
+    // Fill initial values from record for isolated fields
+    if (record) {
+      summary.pta.billed = (record.ptaBill || 0);
+      summary.pta.paid = (record.ptaPaid || 0);
+      summary.maintenance.billed = (record.maintenanceBill || record.maintenanceBalance + (record.maintenancePaid || 0) || 0);
+      summary.maintenance.paid = (record.maintenancePaid || 0);
+      summary.admission.billed = (record.admissionBill || record.admissionBalance + (record.admissionPaid || 0) || 0);
+      summary.admission.paid = (record.admissionPaid || 0);
+      summary.books.billed = (record.booksBill || record.booksBalance + (record.booksPaid || 0) || 0);
+      summary.books.paid = (record.booksPaid || 0);
+      summary.uniform.billed = (record.uniformBill || record.uniformBalance + (record.uniformPaid || 0) || 0);
+      summary.uniform.paid = (record.uniformPaid || 0);
+      summary.other.billed = (record.otherBill || record.otherBalance + (record.otherPaid || 0) || 0);
+      summary.other.paid = (record.otherPaid || 0);
+    }
+
+    allTransactions.forEach((t: any) => {
+      const type = t.type?.toLowerCase() || "tuition";
+      const isPayment = type.endsWith("_payment") || type === "tuition";
+      const category = type.replace("_payment", "");
+
+      if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
+
+      if (isPayment) {
+        summary[category].paid += t.amount || 0;
+      } else {
+        summary[category].billed += t.amount || 0;
+      }
+    });
+
+    // Filter out categories with 0 billed AND 0 paid
+    return Object.fromEntries(
+      Object.entries(summary).filter(([_, vals]) => vals.billed > 0 || vals.paid > 0)
+    );
+  }, [allTransactions, record]);
 
   const generatePDF = async () => {
     if (!record || !studentData) return;
@@ -171,6 +238,9 @@ export default function StudentFeeHistory() {
 
     const sName =
       `${studentData.profile?.firstName || ""} ${studentData.profile?.lastName || ""}`.trim();
+
+    const totalBalanceAcrossCategories = Object.values(categorySummary).reduce((acc, curr: any) => acc + (curr.billed - curr.paid), 0);
+
     const html = `
        <html>
         <head>
@@ -186,6 +256,12 @@ export default function StudentFeeHistory() {
             .info-column { flex: 1; }
             .info-label { font-weight: 800; color: #64748B; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 5px; }
             .info-value { font-size: 15px; font-weight: 700; color: #1E293B; }
+
+            .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 20px 0; }
+            .summary-card { background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+            .cat-name { font-size: 10px; font-weight: 900; color: ${primary}; text-transform: uppercase; margin-bottom: 5px; border-bottom: 1px solid #eee; }
+            .cat-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 2px; }
+
             table { width: 100%; border-collapse: collapse; margin-top: 30px; }
             th { border-bottom: 2px solid #eee; padding: 15px; text-align: left; font-size: 12px; text-transform: uppercase; color: #64748B; }
             td { border-bottom: 1px solid #f5f5f5; padding: 15px; font-size: 13px; font-weight: 600; }
@@ -205,7 +281,7 @@ export default function StudentFeeHistory() {
               <div class="school-contact">${SCHOOL_CONFIG.address}<br/>TEL: ${SCHOOL_CONFIG.hotline} | EMAIL: ${SCHOOL_CONFIG.email}</div>
             </div>
             
-            <div class="receipt-title">OFFICIAL RECEIPT</div>
+            <div class="receipt-title">OFFICIAL FEE STATEMENT</div>
             
             <div class="info-section">
               <div class="info-column">
@@ -220,21 +296,44 @@ export default function StudentFeeHistory() {
               </div>
             </div>
 
+            <div class="summary-grid">
+              ${Object.entries(categorySummary)
+                .map(
+                  ([cat, vals]: any) => `
+                <div class="summary-card">
+                  <div class="cat-name">${cat}</div>
+                  <div class="cat-row"><span>Billed:</span><span>₵${vals.billed.toFixed(2)}</span></div>
+                  <div class="cat-row"><span>Paid:</span><span style="color: green">₵${vals.paid.toFixed(2)}</span></div>
+                  <div class="cat-row" style="border-top: 1px solid #eee; margin-top: 4px; padding-top: 4px; font-weight: bold;">
+                    <span>Bal:</span>
+                    <span style="color: ${vals.billed - vals.paid > 0 ? "#ef4444" : "#10b981"}">
+                      ₵${(vals.billed - vals.paid).toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              `
+                )
+                .join("")}
+            </div>
+
             <table>
               <thead>
                 <tr>
-                  <th>Transaction Date</th>
+                  <th>Date / Type</th>
                   <th>Reference #</th>
                   <th>Received From</th>
-                  <th style="text-align:right">Amount Paid</th>
+                  <th style="text-align:right">Amount (₵)</th>
                 </tr>
               </thead>
               <tbody>
-                ${(record.payments || [])
+                ${allTransactions
                   .map(
                     (p: any) => `
                   <tr>
-                    <td>${moment(p.createdAt).format("DD/MM/YYYY")}</td>
+                    <td>
+                      <div>${moment(p.createdAt).format("DD/MM/YYYY")}</div>
+                      <div style="font-size: 10px; color: #64748B; text-transform: uppercase;">${p.type || "tuition"}</div>
+                    </td>
                     <td>${p.receiptNo || "RC-" + String(p.createdAt).slice(-6)}</td>
                     <td>${p.receivedFrom || "Self"}</td>
                     <td style="text-align:right">₵ ${Number(p.amount).toFixed(2)}</td>
@@ -248,10 +347,14 @@ export default function StudentFeeHistory() {
             <div class="stamp-box">OFFICIAL SCHOOL STAMP</div>
 
             <div class="summary-box">
-              <div class="summary-item"><span>Arrears B/F:</span><span>₵ ${record.arrears?.toFixed(2)}</span></div>
-              <div class="summary-item"><span>Current Term Bill:</span><span>₵ ${record.termBill?.toFixed(2)}</span></div>
-              <div class="summary-item"><span>Total Paid:</span><span style="color: #10B981;">- ₵ ${record.amountPaid?.toFixed(2)}</span></div>
-              <div class="summary-item grand-total"><span>BALANCE DUE:</span><span>₵ ${record.balance?.toFixed(2)}</span></div>
+              <div class="summary-item"><span>Tuition Arrears:</span><span>₵ ${record.arrears?.toFixed(2)}</span></div>
+              <div class="summary-item"><span>Tuition Bill:</span><span>₵ ${record.termBill?.toFixed(2)}</span></div>
+              <div class="summary-item"><span>Tuition Discount:</span><span style="color: blue">- ₵ ${(record.discount || 0).toFixed(2)}</span></div>
+              <div class="summary-item"><span>Tuition Paid:</span><span style="color: #10B981;">- ₵ ${categorySummary.tuition.paid.toFixed(2)}</span></div>
+              <div class="summary-item grand-total" style="font-size: 14px;">
+                <span>NET SETTLEMENT:</span>
+                <span style="color: ${totalBalanceAcrossCategories > 0 ? "#ef4444" : "#10B981"};">₵ ${totalBalanceAcrossCategories.toFixed(2)}</span>
+              </div>
             </div>
 
             <div class="footer">
@@ -479,27 +582,57 @@ export default function StudentFeeHistory() {
             </View>
 
             {/* Table */}
+            <View style={styles.summaryContainer}>
+              <Text style={styles.summaryTitle}>CATEGORY BREAKDOWN</Text>
+              <View style={styles.summaryGrid}>
+                {Object.entries(categorySummary).map(([cat, vals]: any) => (
+                  <View key={cat} style={styles.summaryCard}>
+                    <Text style={styles.catLabel}>{cat.toUpperCase()}</Text>
+                    <View style={styles.catRow}>
+                      <Text style={styles.catSub}>Billed:</Text>
+                      <Text style={styles.catVal}>₵{vals.billed.toFixed(2)}</Text>
+                    </View>
+                    <View style={styles.catRow}>
+                      <Text style={styles.catSub}>Paid:</Text>
+                      <Text style={[styles.catVal, { color: "#10B981" }]}>₵{vals.paid.toFixed(2)}</Text>
+                    </View>
+                    <View style={[styles.catRow, { borderTopWidth: 1, borderTopColor: "#eee", marginTop: 4, paddingTop: 4 }]}>
+                      <Text style={styles.catSub}>Bal:</Text>
+                      <Text style={[styles.catVal, { color: (vals.billed - vals.paid) > 0 ? "#EF4444" : "#10B981" }]}>
+                        ₵{(vals.billed - vals.paid).toFixed(2)}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
             <View style={styles.tableContainer}>
               <View style={styles.tableHeader}>
-                <Text style={[styles.th, { flex: 1 }]}>DATE</Text>
+                <Text style={[styles.th, { flex: 1 }]}>DATE / TYPE</Text>
                 <Text style={[styles.th, { flex: 1.5 }]}>REF #</Text>
                 <Text style={[styles.th, { flex: 1, textAlign: "right" }]}>
                   AMOUNT
                 </Text>
               </View>
 
-              {(record.payments || []).length === 0 ? (
+              {(allTransactions || []).length === 0 ? (
                 <Text style={styles.noPayments}>No transactions recorded</Text>
               ) : (
-                record.payments.map((p: any, i: number) => (
+                allTransactions.map((p: any, i: number) => (
                   <View key={i} style={styles.tableRow}>
-                    <Text style={[styles.td, { flex: 1 }]}>
-                      {moment(p.createdAt).format("DD/MM/YY")}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.td}>
+                        {moment(p.createdAt).format("DD/MM/YY")}
+                      </Text>
+                      <Text style={{ fontSize: 9, color: primary, fontWeight: '800' }}>
+                        {(p.type || "tuition").toUpperCase()}
+                      </Text>
+                    </View>
                     <Text style={[styles.td, { flex: 1.5 }]} numberOfLines={1}>
                       {p.receiptNo || "RC-" + String(p.createdAt).slice(-6)}
                     </Text>
-                    <Text style={[styles.td, { flex: 1, textAlign: "right" }]}>
+                    <Text style={[styles.td, { flex: 1, textAlign: "right", fontWeight: '900' }]}>
                       ₵{Number(p.amount).toFixed(2)}
                     </Text>
                   </View>
@@ -519,6 +652,12 @@ export default function StudentFeeHistory() {
                 <Text style={styles.totalsLabel}>TERM BILL:</Text>
                 <Text style={styles.totalsValue}>
                   ₵ {record.termBill?.toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.totalsRow}>
+                <Text style={styles.totalsLabel}>DISCOUNT:</Text>
+                <Text style={[styles.totalsValue, { color: "#3B82F6" }]}>
+                  - ₵ {(record.discount || 0).toFixed(2)}
                 </Text>
               </View>
               <View style={styles.totalsRow}>
@@ -772,6 +911,14 @@ const styles = StyleSheet.create({
   printBtnText: { color: "#fff", fontSize: 15, fontWeight: "900" },
 
   watermark: { position: "absolute", bottom: 100, right: 20, opacity: 0.5 },
+  summaryContainer: { marginBottom: 25, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
+  summaryTitle: { fontSize: 10, fontWeight: '900', color: '#64748B', marginBottom: 10, letterSpacing: 1 },
+  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  summaryCard: { flex: 1, minWidth: '30%', backgroundColor: '#fff', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
+  catLabel: { fontSize: 8, fontWeight: '900', color: COLORS.primary, marginBottom: 4 },
+  catRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  catSub: { fontSize: 8, color: '#94A3B8', fontWeight: '600' },
+  catVal: { fontSize: 9, fontWeight: '700', color: '#1E293B' },
   emptyContainer: {
     alignItems: "center",
     marginTop: 60,

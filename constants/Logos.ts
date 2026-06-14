@@ -9,7 +9,7 @@ export const SCHOOL_LOGOS: Record<string, any> = {
   morgis: require("../assets/kings.png"),
   perfect: require("../assets/perfect.png"),
   bishops: require("../assets/bishop.png"),
-  ibs: require("../assets/ibs.png"),
+  ibs: require("../assets/sincere.png"),
   IBS: require("../assets/ibs.png"), // Added uppercase key for consistency
   kent: require("../assets/sage.png"),
   creation: require("../assets/creation.png"),

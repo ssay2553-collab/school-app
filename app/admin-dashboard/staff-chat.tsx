@@ -40,6 +40,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
+import { sendNotification } from "../../src/services/notificationService";
 
 const QUICK_EMOJIS = [
   "😀",
@@ -331,6 +332,19 @@ export default function StaffChat() {
         senderId: appUser!.uid,
         createdAt: serverTimestamp(),
       });
+
+      if (selectedStaff) {
+        await sendNotification({
+          recipientId: selectedStaff.uid,
+          senderId: appUser!.uid,
+          senderName: appUser!.displayName || "Admin",
+          type: "chat",
+          title: "New Message",
+          body: text.length > 50 ? text.substring(0, 47) + "..." : text,
+          data: { chatId, type: "text" },
+        });
+      }
+
       playSound("sent");
     } catch (e) {
       console.error(e);

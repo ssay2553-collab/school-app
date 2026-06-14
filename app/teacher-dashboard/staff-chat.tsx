@@ -42,6 +42,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
+import { sendNotification } from "../../src/services/notificationService";
 
 const { width } = Dimensions.get("window");
 const isLargeScreen = width > 768;
@@ -315,6 +316,19 @@ export default function StaffChat() {
           senderId: appUser!.uid,
           createdAt: serverTimestamp(),
         });
+
+        if (selectedStaff) {
+          await sendNotification({
+            recipientId: selectedStaff.uid,
+            senderId: appUser!.uid,
+            senderName: appUser!.displayName || "Teacher",
+            type: "chat",
+            title: "New Voice Message",
+            body: `${appUser!.displayName || "Teacher"} sent you a voice message`,
+            data: { chatId, type: "audio" },
+          });
+        }
+
         playSound("sent");
         setRecording(null);
         if (webStream) {
@@ -342,6 +356,19 @@ export default function StaffChat() {
         senderId: appUser!.uid,
         createdAt: serverTimestamp(),
       });
+
+      if (selectedStaff) {
+        await sendNotification({
+          recipientId: selectedStaff.uid,
+          senderId: appUser!.uid,
+          senderName: appUser!.displayName || "Teacher",
+          type: "chat",
+          title: "New Voice Message",
+          body: `${appUser!.displayName || "Teacher"} sent you a voice message`,
+          data: { chatId, type: "audio" },
+        });
+      }
+
       playSound("sent");
     } catch (e) {
       console.error(e);
@@ -363,6 +390,19 @@ export default function StaffChat() {
         senderId: appUser!.uid,
         createdAt: serverTimestamp(),
       });
+
+      if (selectedStaff) {
+        await sendNotification({
+          recipientId: selectedStaff.uid,
+          senderId: appUser!.uid,
+          senderName: appUser!.displayName || "Teacher",
+          type: "chat",
+          title: "New Message",
+          body: text.length > 50 ? text.substring(0, 47) + "..." : text,
+          data: { chatId, type: "text" },
+        });
+      }
+
       playSound("sent");
     } catch (e) {
       console.error(e);

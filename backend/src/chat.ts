@@ -1,11 +1,12 @@
 import * as admin from "firebase-admin";
-import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 
 /**
  * DIRECT MESSAGES TRIGGER
  * Path: directMessages/{chatId}/messages/{messageId}
+ * ... Disabled to reduce costs. Notifications handled by the app.
  */
+/*
 export const onNewChatMessage = onDocumentCreated(
   "directMessages/{chatId}/messages/{messageId}",
   async (event) => {
@@ -76,11 +77,14 @@ export const onNewChatMessage = onDocumentCreated(
     }
   },
 );
+*/
 
 /**
  * GROUP MESSAGES TRIGGER
  * Path: studentGroups/{groupId}/messages/{messageId}
+ * ... Disabled to reduce costs. Notifications handled by the app.
  */
+/*
 export const onNewGroupMessage = onDocumentCreated(
   "studentGroups/{groupId}/messages/{messageId}",
   async (event) => {
@@ -188,11 +192,14 @@ export const onNewGroupMessage = onDocumentCreated(
     }
   },
 );
+*/
 
 /**
  * GUEST TICKETS TRIGGER
  * Path: guestTickets/{ticketId}/messages/{messageId}
+ * ... Disabled to reduce costs. Notifications handled by the app.
  */
+/*
 export const onNewGuestMessage = onDocumentCreated(
   "guestTickets/{ticketId}/messages/{messageId}",
   async (event) => {
@@ -267,6 +274,8 @@ export const onNewGuestMessage = onDocumentCreated(
     }
   },
 );
+*/
+
 
 /**
  * Scheduled function to delete chat messages older than 7 days.

@@ -62,11 +62,14 @@ export default function StaffPayrollScreen() {
   const isSuperAdmin = [
     "proprietor",
     "proprietress",
+    "manager",
     "headmaster",
     "headmistress",
-    "director",
-    "manager",
     "administrator",
+    "director",
+    "accountant",
+    "bursar",
+    "admin",
   ].includes(currentUserRole);
   const payrollPermission = appUser?.permissions?.["staff-payroll"] || "deny";
   const canView =
@@ -333,6 +336,8 @@ export default function StaffPayrollScreen() {
       }
       await addDoc(collection(db, "expenditures"), {
         item: itemLabel,
+        category: "Staff & Payroll",
+        subCategory: "Salaries",
         amount: schoolTotalPayroll,
         date: new Date().toISOString().split("T")[0],
         adminName: `${appUser?.profile?.firstName || "Admin"}`,
@@ -351,7 +356,30 @@ export default function StaffPayrollScreen() {
     }
   };
 
-  if (!canView) return null;
+  if (!canView) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.errorContainer}>
+          <SVGIcon
+            name="lock-closed"
+            size={60}
+            color={COLORS.secondary || "#c53b59"}
+          />
+          <Text style={styles.errorTitle}>Access Denied</Text>
+          <Text style={styles.errorSub}>
+            You do not have the required permissions to view staff payroll.
+          </Text>
+          <TouchableOpacity
+            style={styles.errorButton}
+            onPress={() => router.replace("/admin-dashboard")}
+          >
+            <Text style={styles.errorButtonText}>Return to Dashboard</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -781,4 +809,35 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   modalBtnText: { color: "#fff", fontSize: 15, fontWeight: "900" },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 30,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginTop: 20,
+  },
+  errorSub: {
+    fontSize: 16,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 10,
+    marginBottom: 30,
+  },
+  errorButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 25,
+    paddingVertical: 15,
+    borderRadius: 15,
+    ...SHADOWS.medium,
+  },
+  errorButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
+  },
 });

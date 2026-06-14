@@ -2,6 +2,7 @@ import { ResizeMode, Video } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import {
     addDoc,
+    updateDoc,
     collection,
     deleteDoc,
     doc,
@@ -80,7 +81,8 @@ export default function NewsCenter() {
   const brandSecondary = SCHOOL_CONFIG.brandSecondary;
 
   const canPostNews = appUser?.role === "admin";
-  const [mode, setMode] = useState<"view" | "create">("view");
+  const [mode, setMode] = useState<"view" | "create" | "edit">("view");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const fetchNews = useCallback(async () => {
     if (!appUser) return;
@@ -91,9 +93,11 @@ export default function NewsCenter() {
       const list = snapshot.docs.map(
         (docSnap) => ({ id: docSnap.id, ...(docSnap.data() as any) }) as NewsItem,
       );
-      const filtered = list.filter(
-        (n) => n.audience === "all" || n.audience === appUser.role,
-      );
+      // For Admin, show all news. For others, filter.
+      const filtered = appUser.role === "admin"
+        ? list
+        : list.filter((n) => n.audience === "all" || n.audience === appUser.role);
+
       filtered.sort(
         (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0),
       );
@@ -112,8 +116,14 @@ export default function NewsCenter() {
 
   useEffect(() => {
     const onBackPress = () => {
-      if (mode === "create") {
+      if (mode === "create" || mode === "edit") {
         setMode("view");
+        setEditingId(null);
+        setTitle("");
+        setContent("");
+        setAudience("all");
+        setMedia(null);
+        setExpiryDate(null);
         return true;
       }
       return false;
@@ -173,9 +183,11 @@ export default function NewsCenter() {
     }
     setScreenLoading(true);
     try {
-      let mediaUrl = null;
+      let mediaUrl = media?.uri || null;
+      let mediaType = media?.type || null;
 
-      if (media) {
+      // Only upload if it's a local URI (starts with 'file' or 'content' or 'ph')
+      if (media && (media.uri.startsWith('file') || media.uri.startsWith('content') || media.uri.startsWith('ph'))) {
         const blob = await uriToBlob(media.uri);
         const fileName = `${Date.now()}_${media.type}`;
         const storageRef = ref(storage, `newsMedia/${fileName}`);
@@ -188,54 +200,91 @@ export default function NewsCenter() {
         mediaUrl = await getDownloadURL(storageRef);
       }
 
-      await addDoc(collection(db, "news"), {
+      const newsData: any = {
         title: title.trim(),
         content: content.trim(),
         audience,
         mediaUrl,
-        mediaType: media?.type || null,
+        mediaType,
         author: appUser?.adminRole || "Admin",
         category: "Announcement",
-        createdAt: serverTimestamp(),
         expiryDate: expiryDate ? expiryDate : null,
-      });
+      };
+
+      if (mode === "edit" && editingId) {
+        await updateDoc(doc(db, "news", editingId), {
+          ...newsData,
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(collection(db, "news"), {
+          ...newsData,
+          createdAt: serverTimestamp(),
+        });
+      }
 
       setTitle("");
       setContent("");
       setMedia(null);
       setExpiryDate(null);
       setMode("view");
-      showToast({ message: "News broadcast published.", type: "success" });
+      setEditingId(null);
+      showToast({
+        message: mode === "edit" ? "Announcement updated." : "News broadcast published.",
+        type: "success"
+      });
       fetchNews();
     } catch (error: any) {
       console.error("Post news error:", error);
-      showToast({ message: `Failed to publish: ${error.message}`, type: "error" });
+      showToast({ message: `Failed to save: ${error.message}`, type: "error" });
     } finally {
       setScreenLoading(false);
     }
   };
 
+  const handleEdit = (item: NewsItem) => {
+    setTitle(item.title);
+    setContent(item.content);
+    setAudience(item.audience);
+    setExpiryDate(item.expiryDate ? (item.expiryDate as any).toDate() : null);
+    if (item.mediaUrl) {
+      setMedia({ uri: item.mediaUrl, type: item.mediaType || "image" });
+    } else {
+      setMedia(null);
+    }
+    setEditingId(item.id);
+    setMode("edit");
+  };
+
   const handleDelete = (id: string) => {
-    Alert.alert(
-      "Delete News",
-      "Are you sure you want to remove this announcement?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, "news", id));
-              setNews((prev) => prev.filter((n) => n.id !== id));
-              showToast({ message: "Announcement deleted.", type: "success" });
-            } catch (err) {
-              showToast({ message: "Could not delete news.", type: "error" });
-            }
+    const performDelete = async () => {
+      try {
+        await deleteDoc(doc(db, "news", id));
+        setNews((prev) => prev.filter((n) => n.id !== id));
+        showToast({ message: "Announcement deleted.", type: "success" });
+      } catch (err) {
+        showToast({ message: "Could not delete news.", type: "error" });
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to remove this announcement?")) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        "Delete News",
+        "Are you sure you want to remove this announcement?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: performDelete,
           },
-        },
-      ],
-    );
+        ],
+      );
+    }
   };
 
   const renderHeader = () => (
@@ -269,7 +318,7 @@ export default function NewsCenter() {
     </LinearGradient>
   );
 
-  if (mode === "create" && canPostNews) {
+  if ((mode === "create" || mode === "edit") && canPostNews) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="light-content" />
@@ -425,8 +474,10 @@ export default function NewsCenter() {
             <TouchableOpacity style={[styles.publishBtn, { backgroundColor: brandPrimary }]} onPress={handlePostNews} disabled={screenLoading}>
               {screenLoading ? <ActivityIndicator color="#fff" /> : (
                 <>
-                  <Text style={styles.publishBtnText}>Broadcast Now</Text>
-                  <SVGIcon name="megaphone" size={20} color="#fff" />
+                  <Text style={styles.publishBtnText}>
+                    {mode === "edit" ? "Update Announcement" : "Broadcast Now"}
+                  </Text>
+                  <SVGIcon name={mode === "edit" ? "checkmark-circle" : "megaphone"} size={20} color="#fff" />
                 </>
               )}
             </TouchableOpacity>
@@ -465,12 +516,20 @@ export default function NewsCenter() {
               <Animatable.View animation="fadeInUp" duration={500} delay={index * 50} style={styles.newsItemWrapper}>
                 <NewsCard item={item} />
                 {canPostNews && (
-                  <TouchableOpacity
-                    style={styles.deleteAction}
-                    onPress={() => handleDelete(item.id)}
-                  >
-                    <SVGIcon name="trash" size={18} color="#fff" />
-                  </TouchableOpacity>
+                  <View style={styles.adminActions}>
+                    <TouchableOpacity
+                      style={[styles.actionIconBtn, { backgroundColor: COLORS.info || '#3b82f6' }]}
+                      onPress={() => handleEdit(item)}
+                    >
+                      <SVGIcon name="create" size={18} color="#fff" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.actionIconBtn, { backgroundColor: COLORS.danger }]}
+                      onPress={() => handleDelete(item.id)}
+                    >
+                      <SVGIcon name="trash" size={18} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
                 )}
               </Animatable.View>
             )}
@@ -658,6 +717,19 @@ const styles = StyleSheet.create({
   newsItemWrapper: {
     marginBottom: 15,
     position: "relative",
+  },
+  adminActions: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    flexDirection: 'row',
+    gap: 8,
+    zIndex: 10,
+  },
+  actionIconBtn: {
+    padding: 8,
+    borderRadius: 10,
+    ...SHADOWS.small,
   },
   deleteAction: {
     position: "absolute",

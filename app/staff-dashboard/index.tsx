@@ -1,29 +1,29 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useState, useCallback } from "react";
+import { signOut } from "firebase/auth";
+import { useCallback, useState } from "react";
 import {
+  Alert,
+  Dimensions,
+  Image,
+  Platform,
+  RefreshControl,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  StatusBar,
-  Dimensions,
-  Platform,
-  RefreshControl,
-  Image,
-  Alert
 } from "react-native";
-import { useToast } from "../../contexts/ToastContext";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
-import { signOut } from "firebase/auth";
+import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { SHADOWS } from "../../constants/theme";
-import { auth } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { auth } from "../../firebaseConfig";
 
 const { width } = Dimensions.get("window");
 
@@ -45,7 +45,7 @@ export default function StaffDashboard() {
   }, []);
 
   const handleLogout = () => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === "web") {
       if (window.confirm("Are you sure you want to log out?")) {
         signOut(auth).then(() => router.replace("/"));
       }
@@ -83,8 +83,14 @@ export default function StaffDashboard() {
     appUser?.permissions?.["record-extra-classes"] === "full" ||
     appUser?.permissions?.["record-extra-classes"] === "edit" ||
     appUser?.permissions?.["record-extra-classes"] === "view";
-  const hasFinancialAccess =
-    isAdmin || canFeeding || canBus || canExtraClasses;
+  const hasFinancialAccess = isAdmin || canFeeding || canBus || canExtraClasses;
+  const canEditFinancials =
+    appUser?.permissions?.["feeding"] === "full" ||
+    appUser?.permissions?.["feeding"] === "edit" ||
+    appUser?.permissions?.["record-bus-fee"] === "full" ||
+    appUser?.permissions?.["record-bus-fee"] === "edit" ||
+    appUser?.permissions?.["record-extra-classes"] === "full" ||
+    appUser?.permissions?.["record-extra-classes"] === "edit";
 
   const sections = [
     {
@@ -92,20 +98,23 @@ export default function StaffDashboard() {
       color: "#4ECDC4",
       items: [
         {
-          title: "Daily Financials",
-          subtitle: "Fee recording",
-          route: "/admin-dashboard/DailyFinancials",
-          icon: "calculator",
-          color: "#10b981",
-          hidden: !hasFinancialAccess,
+          title: "Chat with Admin",
+          subtitle: appUser?.adminRole || "Staff Support",
+          route: "/guest-dashboard/chat-with-admin",
+          icon: "chatbubbles",
+          color: "#6366f1",
         },
-        {
-            title: "Chat with Admin",
-            subtitle: appUser?.adminRole || "Staff Support",
-            route: "/guest-dashboard/chat-with-admin",
-            icon: "chatbubbles",
-            color: "#6366f1",
-        }
+        ...(hasFinancialAccess || canEditFinancials
+          ? [
+              {
+                title: "Daily Financials",
+                subtitle: "Feeding, Bus & Extra fees",
+                route: "/shared/daily-financials",
+                icon: "receipt",
+                color: "#10b981",
+              },
+            ]
+          : []),
       ],
     },
     {
@@ -181,10 +190,7 @@ export default function StaffDashboard() {
           </View>
           <View style={styles.cardInfo}>
             <Text
-              style={[
-                styles.menuText,
-                { fontSize: isSmallScreen ? 13 : 15 },
-              ]}
+              style={[styles.menuText, { fontSize: isSmallScreen ? 13 : 15 }]}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -237,7 +243,10 @@ export default function StaffDashboard() {
                 />
                 <Text style={styles.schoolNameMini}>{schoolName}</Text>
               </View>
-              <TouchableOpacity onPress={handleLogout} style={styles.settingsBtn}>
+              <TouchableOpacity
+                onPress={handleLogout}
+                style={styles.settingsBtn}
+              >
                 <SVGIcon name="log-out-outline" size={22} color="#fff" />
               </TouchableOpacity>
             </View>
@@ -246,14 +255,19 @@ export default function StaffDashboard() {
               <View>
                 <Text style={styles.welcomeText}>WELCOME BACK,</Text>
                 <Text
-                  style={[styles.nameText, { fontSize: isSmallScreen ? 24 : 32 }]}
+                  style={[
+                    styles.nameText,
+                    { fontSize: isSmallScreen ? 24 : 32 },
+                  ]}
                 >
                   {appUser?.displayName || "Staff Member"}
                 </Text>
               </View>
               <View style={styles.statusBadge}>
                 <SVGIcon name="briefcase" size={12} color="#fff" />
-                <Text style={styles.statusText}>{appUser?.adminRole?.toUpperCase() || "STAFF"}</Text>
+                <Text style={styles.statusText}>
+                  {appUser?.adminRole?.toUpperCase() || "STAFF"}
+                </Text>
               </View>
             </View>
           </SafeAreaView>

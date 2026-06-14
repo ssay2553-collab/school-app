@@ -2,11 +2,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
   collection,
-  getCountFromServer,
-  query,
-  where,
+  doc,
+  onSnapshot,
 } from "firebase/firestore";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -18,7 +17,7 @@ import {
   Text,
   TouchableOpacity,
   useWindowDimensions,
-  View
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -82,58 +81,33 @@ export default function AdminDashboard() {
     lastDashboardScrollY = event.nativeEvent.contentOffset.y;
   };
 
-  const fetchStats = useCallback(
-    async (force = false) => {
-      if (!force && dashboardStatsMemoryCache) return;
-
-      try {
-        if (force) setRefreshing(true);
-        else if (!dashboardStatsMemoryCache)
-          setStats((prev: Stats) => ({ ...prev, loading: true }));
-
-        const schoolId = config.schoolId;
-        const studentsQuery = query(
-          collection(db, "users"),
-          where("role", "==", "student"),
-          where("status", "in", ["active", "pending_activation"]),
-        );
-        const teacherQuery = query(
-          collection(db, "users"),
-          where("role", "==", "teacher"),
-        );
-        const ntQuery = query(collection(db, "nonTeachingStaff"));
-
-        const [studentsSnap, teacherSnap, ntSnap] = await Promise.all([
-          getCountFromServer(studentsQuery),
-          getCountFromServer(teacherQuery),
-          getCountFromServer(ntQuery),
-        ]);
-
-        const data = {
-          totalStudents: (studentsSnap.data() as any).count || 0,
-          totalStaff:
-            ((teacherSnap.data() as any).count || 0) +
-            ((ntSnap.data() as any).count || 0),
+  useEffect(() => {
+    setStats((prev) => ({ ...prev, loading: true }));
+    const unsub = onSnapshot(doc(db, "stats", "global"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        const newStats = {
+          totalStudents: data.totalStudents || 0,
+          totalStaff: data.totalStaff || 0,
+          loading: false,
         };
-
-        setStats({ ...data, loading: false });
-        dashboardStatsMemoryCache = { ...data, loading: false };
-      } catch (error) {
-        setStats((prev: Stats) => ({ ...prev, loading: false }));
-      } finally {
-        setRefreshing(false);
+        setStats(newStats);
+        dashboardStatsMemoryCache = newStats;
+      } else {
+        setStats({ totalStudents: 0, totalStaff: 0, loading: false });
       }
-    },
-    [config.schoolId],
-  );
+    }, (err) => {
+      console.error("Error fetching global stats:", err);
+      setStats((prev) => ({ ...prev, loading: false }));
+    });
+    return () => unsub();
+  }, []);
 
   // Use data freshness hook to refresh on focus/visibility change
   const { refresh } = useDataFreshness(
     useCallback(async () => {
-      // Clear memory cache when refreshing
-      dashboardStatsMemoryCache = null;
-      await fetchStats(true);
-    }, [fetchStats]),
+      // stats are now real-time via onSnapshot
+    }, []),
     {
       refreshOnFocus: true,
       minRefreshInterval: 10000, // 10 seconds
@@ -160,10 +134,6 @@ export default function AdminDashboard() {
       }
     };
   }, []);
-
-  useEffect(() => {
-    fetchStats(false);
-  }, [fetchStats]);
 
   const sections = [
     {
@@ -211,13 +181,6 @@ export default function AdminDashboard() {
       title: "FINANCE HUB 💰",
       color: "#10b981",
       items: [
-        {
-          title: "Daily Financials",
-          subtitle: "Money tracking",
-          route: "/admin-dashboard/DailyFinancials",
-          icon: "calculator",
-          color: "#10b981",
-        },
         ...(appUser?.role?.toLowerCase() !== "teacher"
           ? [
               {
@@ -226,6 +189,20 @@ export default function AdminDashboard() {
                 route: "/admin-dashboard/ManageFees",
                 icon: "cash",
                 color: "#f59e0b",
+              },
+              {
+                title: "Student Charges",
+                subtitle: "PTA, Uniform, Books",
+                route: "/admin-dashboard/StudentCharges",
+                icon: "card",
+                color: "#6366f1",
+              },
+              {
+                title: "Daily Financials",
+                subtitle: "Feeding, Bus & Extra fees",
+                route: "/shared/daily-financials",
+                icon: "receipt",
+                color: "#10b981",
               },
             ]
           : []),
@@ -273,7 +250,7 @@ export default function AdminDashboard() {
         {
           title: "Timetables",
           subtitle: "Schedules",
-          route: "/admin-dashboard/CreateLessonTimetable",
+          route: "/teacher-dashboard/manage-timetable",
           icon: "calendar",
           color: "#84cc16",
         },
@@ -440,7 +417,7 @@ export default function AdminDashboard() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => fetchStats(true)}
+            onRefresh={() => {}}
           />
         }
       >

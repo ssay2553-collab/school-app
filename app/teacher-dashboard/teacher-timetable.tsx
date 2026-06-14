@@ -21,6 +21,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
+import { scheduleTimetableReminders } from "../../src/services/timetableScheduler";
 
 interface Lesson {
   id: string;
@@ -216,6 +217,20 @@ export default function TeacherTimetable() {
 
       setTimetables(ttResult);
       setClassNames(nameResult);
+
+      // Schedule reminders for all lessons in all assigned classes
+      const allLessons: any[] = [];
+      Object.keys(ttResult).forEach((classId) => {
+        const tt = ttResult[classId];
+        if (tt.timetableDays) {
+          Object.keys(tt.timetableDays).forEach((day) => {
+            tt.timetableDays![day].forEach((lesson) => {
+              allLessons.push({ ...lesson, day });
+            });
+          });
+        }
+      });
+      scheduleTimetableReminders(allLessons);
     } catch (error) {
       console.error("Teacher timetable fetch error:", error);
     } finally {

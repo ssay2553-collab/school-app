@@ -55,6 +55,8 @@ interface StudentData {
     email?: string;
     studentID?: string;
     phone?: string;
+    emergencyPhone?: string;
+    parentPhone?: string;
   };
   classId: string;
   dateOfBirth?: any;
@@ -101,6 +103,8 @@ export default function PromoteStudentsScreen() {
   const [editDob, setEditDob] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [editPhone, setEditPhone] = useState("");
+  const [editEmergencyPhone, setEditEmergencyPhone] = useState("");
+  const [editParentPhone, setEditParentPhone] = useState("");
   const [updating, setUpdating] = useState(false);
 
   const [selectedStudentUids, setSelectedStudentUids] = useState<string[]>([]);
@@ -311,6 +315,8 @@ export default function PromoteStudentsScreen() {
       setEditLastName(selectedStudent.profile.lastName);
       setEditEmail(selectedStudent.profile.email || "");
       setEditPhone(selectedStudent.profile.phone || "");
+      setEditEmergencyPhone(selectedStudent.profile.emergencyPhone || "");
+      setEditParentPhone(selectedStudent.profile.parentPhone || "");
       if (selectedStudent.dateOfBirth) {
         setEditDob(selectedStudent.dateOfBirth.toDate());
       } else {
@@ -337,6 +343,8 @@ export default function PromoteStudentsScreen() {
         "profile.firstName": editFirstName.trim(),
         "profile.lastName": editLastName.trim(),
         "profile.phone": editPhone.trim(),
+        "profile.emergencyPhone": editEmergencyPhone.trim(),
+        "profile.parentPhone": editParentPhone.trim(),
       };
       if (editDob) {
         updates.dateOfBirth = Timestamp.fromDate(editDob);
@@ -582,6 +590,16 @@ export default function PromoteStudentsScreen() {
                   <Text style={styles.itemSubtitle}>
                     ID: {item.profile.studentID || "N/A"}
                   </Text>
+                  {item.profile.emergencyPhone ? (
+                    <Text style={styles.parentInfo}>
+                      <SVGIcon name="alert-circle" size={10} color={COLORS.danger} /> Emergency: {item.profile.emergencyPhone}
+                    </Text>
+                  ) : null}
+                  {item.profile.parentPhone ? (
+                    <Text style={styles.parentInfo}>
+                      <SVGIcon name="call" size={10} color={COLORS.primary} /> Parent: {item.profile.parentPhone}
+                    </Text>
+                  ) : null}
                   {item.parents && item.parents.length > 0 ? (
                     item.parents.map((p, idx) => (
                       <Text key={idx} style={styles.parentInfo}>
@@ -602,6 +620,8 @@ export default function PromoteStudentsScreen() {
                         setEditFirstName(item.profile.firstName);
                         setEditLastName(item.profile.lastName);
                         setEditPhone(item.profile.phone || "");
+                        setEditEmergencyPhone(item.profile.emergencyPhone || "");
+                        setEditParentPhone(item.profile.parentPhone || "");
                         setEditDob(item.dateOfBirth ? (item.dateOfBirth.toDate ? item.dateOfBirth.toDate() : new Date(item.dateOfBirth)) : null);
                         setAssignmentModal({ type: "edit_profile" });
                       }}
@@ -810,6 +830,22 @@ export default function PromoteStudentsScreen() {
                     value={editPhone}
                     onChangeText={setEditPhone}
                     placeholder="Phone Number"
+                    keyboardType="phone-pad"
+                  />
+                  <Text style={[styles.inputLabel, { marginTop: 15 }]}>EMERGENCY PHONE</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editEmergencyPhone}
+                    onChangeText={setEditEmergencyPhone}
+                    placeholder="Emergency Contact Phone"
+                    keyboardType="phone-pad"
+                  />
+                  <Text style={[styles.inputLabel, { marginTop: 15 }]}>PARENT PHONE</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={editParentPhone}
+                    onChangeText={setEditParentPhone}
+                    placeholder="Parent/Guardian Phone"
                     keyboardType="phone-pad"
                   />
                   <Text style={[styles.inputLabel, { marginTop: 15 }]}>

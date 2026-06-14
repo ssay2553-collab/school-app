@@ -23,7 +23,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import moment from "moment";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
-
+import { sendNotification } from "../../src/services/notificationService";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 interface ClassStat {
@@ -58,6 +58,8 @@ export default function AttendanceOverview() {
     schoolPresent: 0,
     schoolAbsent: 0
   });
+  const [teachers, setTeachers] = useState<Record<string, { uid: string, name: string }>>({});
+  const [sendingReminders, setSendingReminders] = useState(false);
 
   const isDesktop = windowWidth > 1000;
   const numColumns = isDesktop ? 4 : (windowWidth > 600 ? 2 : 1);
@@ -177,6 +179,51 @@ export default function AttendanceOverview() {
     return () => unsubscribeClasses();
   }, [selectedDate, appUser]);
 
+  useEffect(() => {
+    // Fetch teachers to know who to notify for missing attendance
+    const q = query(collection(db, "users"), where("role", "in", ["teacher", "admin"]));
+    const unsub = onSnapshot(q, (snap) => {
+      const tMap: Record<string, { uid: string, name: string }> = {};
+      snap.forEach(doc => {
+        const data = doc.data();
+        // Use classTeacherOf or classes to identify responsibility
+        if (data.classTeacherOf) {
+          tMap[data.classTeacherOf] = { uid: doc.id, name: data.profile?.firstName || doc.id };
+        }
+      });
+      setTeachers(tMap);
+    });
+    return () => unsub();
+  }, []);
+
+  const sendReminders = async () => {
+    setSendingReminders(true);
+    let count = 0;
+    try {
+      for (const cls of classStats) {
+        if (!cls.marked && teachers[cls.id]) {
+          const teacher = teachers[cls.id];
+          await sendNotification({
+            recipientId: teacher.uid,
+            senderId: appUser?.uid || "admin",
+            senderName: "School Administration",
+            type: "attendance",
+            title: "Attendance Reminder 📝",
+            body: `Please remember to mark attendance for ${cls.name} today.`,
+            data: { classId: cls.id, date: selectedDate }
+          });
+          count++;
+        }
+      }
+      alert(`Reminders sent to ${count} teachers.`);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to send some reminders.");
+    } finally {
+      setSendingReminders(false);
+    }
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     try {
@@ -219,6 +266,20 @@ export default function AttendanceOverview() {
               </View>
               <TouchableOpacity onPress={onRefresh} style={styles.miniBtn}>
                 <SVGIcon name="refresh" size={18} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={sendReminders}
+                style={[styles.miniBtn, { marginLeft: 10, width: 'auto', paddingHorizontal: 12, flexDirection: 'row', gap: 6, backgroundColor: '#FFD93D' }]}
+                disabled={sendingReminders}
+              >
+                {sendingReminders ? (
+                  <ActivityIndicator size="small" color={primary} />
+                ) : (
+                  <>
+                    <SVGIcon name="notifications" size={18} color={primary} />
+                    <Text style={{ color: primary, fontWeight: '900', fontSize: 10 }}>REMIND TEACHERS</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
 

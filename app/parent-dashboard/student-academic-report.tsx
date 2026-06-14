@@ -183,32 +183,26 @@ export default function StudentAcademicReport() {
         const data = d.data() as any;
         const studentsList = data.students || [];
 
-        const sortedBySubject = [...studentsList].sort((a, b) => {
-          const valA = parseFloat(
-            a.finalScore ??
-              (
-                parseFloat(a.classScore || 0) + parseFloat(a.exam50 || 0)
-              ).toFixed(2),
-          );
-          const valB = parseFloat(
-            b.finalScore ??
-              (
-                parseFloat(b.classScore || 0) + parseFloat(b.exam50 || 0)
-              ).toFixed(2),
-          );
-          return valB - valA;
-        });
-
         // Standard Competition Ranking for Subject Position
         const subjectRankData = calculateCompetitionRanking(
-          studentsList.map((s: any) => ({
-            id: s.studentId,
-            total: parseFloat(
-              s.finalScore ??
-                (parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)).toFixed(2)
-            ),
-          })),
-          selectedChildId
+          studentsList.map((s: any) => {
+            let totalScore = 0;
+            if (selectedReportType === "End of Term") {
+              totalScore = parseFloat(
+                s.finalScore ??
+                  (
+                    parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)
+                  ).toFixed(2),
+              );
+            } else {
+              totalScore = parseFloat(s.finalScore || s.examsMark || 0);
+            }
+            return {
+              id: s.studentId,
+              total: totalScore,
+            };
+          }),
+          selectedChildId,
         );
         const posInSub = subjectRankData.rank;
 
@@ -217,19 +211,29 @@ export default function StudentAcademicReport() {
         );
 
         if (studentEntry) {
-          const scoreValue = parseFloat(
-            studentEntry.finalScore ??
-              (
-                parseFloat(studentEntry.classScore || 0) +
-                parseFloat(studentEntry.exam50 || 0)
-              ).toFixed(2),
-          );
+          let scoreValue = 0;
+          if (selectedReportType === "End of Term") {
+            scoreValue = parseFloat(
+              studentEntry.finalScore ??
+                (
+                  parseFloat(studentEntry.classScore || 0) +
+                  parseFloat(studentEntry.exam50 || 0)
+                ).toFixed(2),
+            );
+          } else {
+            scoreValue = parseFloat(
+              studentEntry.finalScore ?? studentEntry.examsMark ?? 0,
+            );
+          }
 
           const gradeObj = getGradeDetails(scoreValue);
           results.push({
             subject: data.subject,
             classScore: studentEntry.classScore || "-",
-            examsScore: studentEntry.exam50 || studentEntry.examsMark || 0,
+            examsScore:
+              selectedReportType === "End of Term"
+                ? studentEntry.exam50 || 0
+                : studentEntry.examsMark || 0,
             total: scoreValue,
             grade: gradeObj.grade,
             aggregate: gradeObj.aggregate,
@@ -270,10 +274,15 @@ export default function StudentAcademicReport() {
         allSnap.docs.forEach((d) => {
           const dData = d.data() as any;
           (dData.students || []).forEach((s: any) => {
-            const val = parseFloat(
-              s.finalScore ??
-                (parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)),
-            );
+            let val = 0;
+            if (selectedReportType === "End of Term") {
+              val = parseFloat(
+                s.finalScore ??
+                  (parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)),
+              );
+            } else {
+              val = parseFloat(s.finalScore || s.examsMark || 0);
+            }
             studentTotals[s.studentId] = (studentTotals[s.studentId] || 0) + val;
           });
         });

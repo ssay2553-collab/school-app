@@ -31,6 +31,7 @@ import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { auth, db, storage } from "../../firebaseConfig";
+import { sendNotification } from "../../src/services/notificationService";
 
 export default function SubmitAssignment() {
   const router = useRouter();
@@ -132,7 +133,23 @@ export default function SubmitAssignment() {
       }
 
       // 3. Save Submission
-      await addDoc(collection(db, "submissions"), submissionData);
+      await addDoc(collection(db, "submissions"), {
+        ...submissionData,
+        marked: false, // Ensure marked is false for teacher query
+      });
+
+      // 4. Notify Teacher
+      if (assignmentData.teacherId) {
+        await sendNotification({
+          recipientId: assignmentData.teacherId,
+          senderId: studentId,
+          senderName: submissionData.studentName,
+          type: "submission",
+          title: "New Assignment Submission",
+          body: `${submissionData.studentName} submitted ${assignmentData.title}`,
+          data: { assignmentId, studentId }
+        });
+      }
 
       showToast({ message: "Assignment submitted successfully!", type: "success" });
 

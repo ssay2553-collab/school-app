@@ -34,6 +34,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
 import moment from "moment";
+import { sendNotification } from "../../src/services/notificationService";
 
 // Guarded import for native-only library
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
@@ -279,7 +280,29 @@ export default function UploadAssignment() {
         code: Math.random().toString(36).substring(2, 8).toUpperCase(),
       };
 
-      await addDoc(collection(db, "assignments"), assignmentData);
+      const docRef = await addDoc(collection(db, "assignments"), assignmentData);
+
+      // Notify students in the class
+      const studentsQuery = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("classId", "==", selectedClassId)
+      );
+      const studentsSnap = await getDocsFromServer(studentsQuery);
+
+      const notificationPromises = studentsSnap.docs.map(studentDoc =>
+        sendNotification({
+          recipientId: studentDoc.id,
+          senderId: appUser!.uid,
+          senderName: appUser!.displayName || "Teacher",
+          type: "assignment",
+          title: "New Assignment",
+          body: `${selectedSubject}: ${title}`,
+          data: { assignmentId: docRef.id, classId: selectedClassId }
+        })
+      );
+      await Promise.all(notificationPromises);
+
       showToast({ message: "Assignment posted successfully!", type: "success" });
       router.back();
     } catch (err) {

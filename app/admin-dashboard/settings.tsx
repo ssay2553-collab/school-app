@@ -1,17 +1,21 @@
 import { useRouter } from "expo-router";
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View, StatusBar, Alert, Platform } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, StatusBar, Alert, Platform, ActivityIndicator } from "react-native";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { signOut } from "firebase/auth";
-import { auth } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
 import SVGIcon from "../../components/SVGIcon";
+import { collection, query, where, getDocs, deleteDoc, doc, writeBatch } from "firebase/firestore";
+import moment from "moment";
 
 export default function AdminSettingsScreen() {
   const { theme, isDarkMode, toggleTheme } = useTheme();
   const { showToast } = useToast();
   const router = useRouter();
+
+  const [isCleaning, setIsCleaning] = React.useState(false);
 
   const performLogout = async () => {
     try {
@@ -35,12 +39,50 @@ export default function AdminSettingsScreen() {
     )
   }
 
+  const runCleanup = async () => {
+    setIsCleaning(true);
+    try {
+      // Purge assignments older than 60 days
+      const sixtyDaysAgo = moment().subtract(60, 'days').toDate();
+      const q = query(collection(db, "assignments"), where("createdAt", "<", sixtyDaysAgo));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        Alert.alert("Cleanup", "No expired assignments found.");
+        return;
+      }
+
+      const batch = writeBatch(db);
+      snap.forEach((d) => {
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+
+      Alert.alert("Success", `Cleaned up ${snap.size} expired assignments.`);
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Cleanup failed.");
+    } finally {
+      setIsCleaning(false);
+    }
+  };
+
   const settingsOptions = [
     {
       title: `${isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}`,
       icon: isDarkMode ? "flash" : "time", 
       action: toggleTheme,
       color: isDarkMode ? "#F1C40F" : COLORS.primary,
+    },
+    {
+      title: "Data Maintenance",
+      icon: "trash-outline",
+      action: () => Alert.alert("Confirm Cleanup", "Purge assignments older than 60 days?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Run Purge", style: "destructive", onPress: runCleanup }
+      ]),
+      color: "#F59E0B",
+      loading: isCleaning,
     },
     {
       title: "Logout",
@@ -70,7 +112,7 @@ export default function AdminSettingsScreen() {
             activeOpacity={0.7}
           >
             <View style={[styles.iconBox, { backgroundColor: option.color + "15" }]}>
-              <SVGIcon name={option.icon} size={22} color={option.color} />
+              {option.loading ? <ActivityIndicator size="small" color={option.color} /> : <SVGIcon name={option.icon} size={22} color={option.color} />}
             </View>
             <Text style={[styles.itemText, { color: theme.text }]}>{option.title}</Text>
             <SVGIcon name="chevron-forward" size={20} color={theme.gray} />

@@ -5,48 +5,45 @@ import * as Print from "expo-print";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import {
-    arrayRemove,
-    arrayUnion,
-    collection,
-    doc,
-    DocumentSnapshot,
-    getDocs,
-    getDocsFromServer,
-    increment,
-    limit,
-    onSnapshot,
-    orderBy,
-    query,
-    serverTimestamp,
-    startAfter,
-    where,
-    writeBatch
+  arrayRemove,
+  arrayUnion,
+  collection,
+  doc,
+  getDocsFromServer,
+  increment,
+  limit,
+  onSnapshot,
+  query,
+  serverTimestamp,
+  startAfter,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 import moment from "moment";
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    BackHandler,
-    Dimensions,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  BackHandler,
+  Dimensions,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -59,6 +56,8 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
 
 import { useToast } from "../../contexts/ToastContext";
+
+import { sendNotification } from "../../src/services/notificationService";
 
 const { width, height } = Dimensions.get("window");
 
@@ -81,6 +80,7 @@ const PAGE_SIZE = 50;
 
 type StudentDraft = {
   uid: string;
+  studentID: string;
   fullName: string;
   classId: string;
   className: string;
@@ -92,6 +92,15 @@ type StudentDraft = {
   termBill: number;
   discount?: number;
   editCount: number;
+  onDiscount?: boolean;
+  discountAmount?: number;
+  onScholarship?: boolean;
+  ptaBalance: number;
+  admissionBalance: number;
+  maintenanceBalance: number;
+  booksBalance: number;
+  uniformBalance: number;
+  otherBalance: number;
 };
 
 export default function ManageFees() {
@@ -102,26 +111,26 @@ export default function ManageFees() {
 
   // ACCESS CONTROL LOGIC
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isTeacherRole = appUser?.role?.toLowerCase() === "teacher";
   const isSuperAdmin = [
     "proprietor",
     "proprietress",
+    "manager",
     "headmaster",
     "headmistress",
-    "director",
-    "manager",
     "administrator",
+    "director",
+    "accountant",
+    "bursar",
+    "admin",
   ].includes(currentUserRole);
   const feePermission = appUser?.permissions?.["manage-fees"] || "deny";
   const canView =
-    !isTeacherRole &&
-    (isSuperAdmin ||
-      feePermission === "full" ||
-      feePermission === "view" ||
-      feePermission === "edit");
+    isSuperAdmin ||
+    feePermission === "full" ||
+    feePermission === "view" ||
+    feePermission === "edit";
   const canEdit =
-    !isTeacherRole &&
-    (isSuperAdmin || feePermission === "full" || feePermission === "edit");
+    isSuperAdmin || feePermission === "full" || feePermission === "edit";
 
   // Stabilize inputs using refs for batch updates to prevent render-loops during typing
   const individualBillOverridesRef = useRef<Record<string, string>>({});
@@ -147,14 +156,17 @@ export default function ManageFees() {
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [activeMode, setActiveMode] = useState<
-    "billing" | "payment" | "ledger"
+    "billing" | "payment" | "discounts"
   >("payment");
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [statusFilter, setStatusFilter] = useState<"all" | "debt" | "cleared">(
     "all",
   );
-  const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+  const [classes, setClasses] = useState<
+    { id: string; name: string; department?: string | null }[]
+  >([]);
   const [students, setStudents] = useState<StudentDraft[]>([]);
   const [selectedStudentUids, setSelectedStudentUids] = useState<Set<string>>(
     new Set(),
@@ -164,6 +176,13 @@ export default function ManageFees() {
   const [academicYear, setAcademicYear] = useState("");
   const [term, setTerm] = useState<string>("");
   const [termBillAmount, setTermBillAmount] = useState("");
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [individualDiscountOverrides, setIndividualDiscountOverrides] =
+    useState<Record<string, string>>({});
+  const [totalDiscountCommitted, setTotalDiscountCommitted] = useState(0);
+  const [discountModalVisible, setDiscountModalVisible] = useState(false);
+  const [selectedDiscountStudent, setSelectedDiscountStudent] =
+    useState<StudentDraft | null>(null);
 
   const [selectorModal, setSelectorModal] = useState<{
     visible: boolean;
@@ -180,7 +199,12 @@ export default function ManageFees() {
     "Cash" | "Cheque" | "E-cash" | "Momo"
   >("Cash");
 
-  const [stats, setStats] = useState({ expected: 0, received: 0, balance: 0 });
+  const [stats, setStats] = useState({
+    expected: 0,
+    received: 0,
+    balance: 0,
+    totalDiscount: 0,
+  });
 
   // Daily Payments States
   const [dailyModalVisible, setDailyModalVisible] = useState(false);
@@ -192,7 +216,8 @@ export default function ManageFees() {
   useEffect(() => {
     if (appUser && !canView) {
       showToast({
-        message: "Access Denied: You do not have permission to view fees management.",
+        message:
+          "Access Denied: You do not have permission to view fees management.",
         type: "error",
       });
       router.replace("/admin-dashboard");
@@ -221,7 +246,10 @@ export default function ManageFees() {
       return false;
     };
 
-    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      onBackPress,
+    );
     return () => subscription.remove();
   }, [
     selectorModal.visible,
@@ -246,13 +274,18 @@ export default function ManageFees() {
   // 1. Real-time Classes Listener
   useEffect(() => {
     const q = collection(db, "classes");
-    const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        name: (d.data() as any).name || d.id,
-      }));
-      setClasses(sortClasses(list));
-    }, (err) => console.error("Classes listener error:", err));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({
+          id: d.id,
+          name: (d.data() as any).name || d.id,
+          department: (d.data() as any).department || null,
+        }));
+        setClasses(sortClasses(list));
+      },
+      (err) => console.error("Classes listener error:", err),
+    );
 
     return () => unsub();
   }, []);
@@ -264,48 +297,67 @@ export default function ManageFees() {
     const q = query(
       collection(db, "studentFeeRecords"),
       where("academicYear", "==", academicYear),
-      where("term", "==", term)
+      where("term", "==", term),
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      let expected = 0;
-      let received = 0;
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        let expected = 0;
+        let received = 0;
+        let totalDiscount = 0;
 
-      snap.docs.forEach((d) => {
-        const data = d.data() as any;
-        // Filter by class in memory to keep the listener broad and efficient
-        if (selectedClassId === "all" || data.classId === selectedClassId) {
-          expected += (data.termBill || 0) + (data.arrears || 0);
-          received += (data.amountPaid || 0);
-        }
-      });
-      setStats({ expected, received, balance: expected - received });
-    }, (err) => console.error("Stats listener error:", err));
+        snap.docs.forEach((d) => {
+          const data = d.data() as any;
+          // Filter by class in memory to keep the listener broad and efficient
+          if (selectedClassId === "all" || data.classId === selectedClassId) {
+            expected += (data.termBill || 0) + (data.arrears || 0);
+            received += data.amountPaid || 0;
+            totalDiscount += data.discount || 0;
+          }
+        });
+        setStats({
+          expected,
+          received,
+          balance: expected - received,
+          totalDiscount,
+        });
+        setTotalDiscountCommitted(totalDiscount);
+      },
+      (err) => console.error("Stats listener error:", err),
+    );
 
     return () => unsub();
   }, [academicYear, term, selectedClassId]);
 
   const filteredStudents = useMemo(() => {
+    const searchLower = searchQuery.toLowerCase();
     return students.filter((s) => {
-      const searchLower = searchQuery.toLowerCase();
-      const matchesName = (s.fullName || "")
-        .toLowerCase()
-        .includes(searchLower);
+      const matchesName = (s.fullName || "").toLowerCase().includes(searchLower);
+      const matchesID = (s.studentID || "").toLowerCase().includes(searchLower);
       const matchesSerial = s.payments?.some(
         (p) =>
           p.receiptNo?.toLowerCase().includes(searchLower) ||
           p.createdAt?.toLowerCase().includes(searchLower),
       );
-      const matchesSearch = matchesName || matchesSerial;
+      const matchesSearch = matchesName || matchesID || matchesSerial;
       const matchesStatus =
         statusFilter === "all"
           ? true
           : statusFilter === "cleared"
             ? (s.currentBalance || 0) <= 0
             : (s.currentBalance || 0) > 0;
-      return matchesSearch && matchesStatus;
+
+      const matchesMode = activeMode === "discounts" ? !!s.onDiscount : true;
+
+      return matchesSearch && matchesStatus && matchesMode;
     });
-  }, [students, searchQuery, statusFilter]);
+  }, [students, searchQuery, statusFilter, activeMode]);
+
+  const totalProfileDiscountsSum = useMemo(() => {
+    if (activeMode !== "discounts") return 0;
+    return filteredStudents.reduce((acc, s) => acc + (s.discountAmount || 0), 0);
+  }, [filteredStudents, activeMode]);
 
   const loadClasses = async () => {
     try {
@@ -343,7 +395,7 @@ export default function ManageFees() {
 
   const fetchStudents = useCallback(
     async (isFirstLoad = false) => {
-      if (!selectedClassId || isFetchingRef.current || !academicYear || !term)
+      if (!selectedClassId || isFetchingRef.current)
         return;
       if (!isFirstLoad && !hasMoreRef.current) return;
 
@@ -355,20 +407,20 @@ export default function ManageFees() {
       } else setFetchingMore(true);
 
       try {
+        const statusList = ["active", "pending_activation"];
+        if (showArchived) statusList.push("archived");
+
         let baseQuery = query(
           collection(db, "users"),
           where("role", "==", "student"),
-          where("status", "in", ["active", "pending_activation"]),
+          where("status", "in", statusList),
         );
 
         if (selectedClassId !== "all") {
           baseQuery = query(baseQuery, where("classId", "==", selectedClassId));
         }
 
-        let q = query(
-          baseQuery,
-          limit(PAGE_SIZE),
-        );
+        let q = query(baseQuery, limit(PAGE_SIZE));
         if (!isFirstLoad && lastVisibleRef.current)
           q = query(q, startAfter(lastVisibleRef.current));
 
@@ -380,12 +432,12 @@ export default function ManageFees() {
           return;
         }
 
-        // Filter out students on scholarship
-        const studentDocs = snap.docs.filter((d) => !(d.data() as any).onScholarship);
+        // No longer filtering out students on scholarship
+        const studentDocs = snap.docs;
         const studentIds = studentDocs.map((d) => d.id);
 
         let feesMap = new Map();
-        if (studentIds.length > 0) {
+        if (studentIds.length > 0 && academicYear && term) {
           const chunks = [];
           for (let i = 0; i < studentIds.length; i += 10)
             chunks.push(studentIds.slice(i, i + 10));
@@ -414,8 +466,13 @@ export default function ManageFees() {
         let batch: StudentDraft[] = studentDocs.map((d) => {
           const feeData = feesMap.get(d.id) as any;
           const userData = d.data() as any;
+
+          // tuition-specific outstanding balance
+          const currentBalance = userData.walletBalance || 0;
+
           return {
             uid: d.id,
+            studentID: userData.profile?.studentID || "",
             fullName:
               `${userData.profile?.firstName || ""} ${userData.profile?.lastName || ""}`.trim() ||
               "Student",
@@ -426,14 +483,21 @@ export default function ManageFees() {
               ? feeData.arrears || 0
               : userData.walletBalance || 0,
             amountPaid: feeData ? feeData.amountPaid || 0 : 0,
-            currentBalance: feeData
-              ? feeData.balance || 0
-              : userData.walletBalance || 0,
+            currentBalance: currentBalance,
             hasRecordInTerm: !!feeData,
             payments: feeData?.payments || [],
             termBill: feeData?.termBill || 0,
             discount: feeData?.discount || 0,
             editCount: feeData?.editCount || 0,
+            onDiscount: userData.onDiscount,
+            discountAmount: userData.discountAmount,
+            onScholarship: userData.onScholarship,
+            ptaBalance: userData.ptaBalance || 0,
+            admissionBalance: userData.admissionBalance || 0,
+            maintenanceBalance: userData.maintenanceBalance || 0,
+            booksBalance: userData.booksBalance || 0,
+            uniformBalance: userData.uniformBalance || 0,
+            otherBalance: userData.otherBalance || 0,
           };
         });
 
@@ -457,13 +521,13 @@ export default function ManageFees() {
         setRefreshing(false);
       }
     },
-    [selectedClassId, academicYear, term, classes],
+    [selectedClassId, academicYear, term, classes, showArchived],
   );
 
-  const configKey = `${selectedClassId}_${academicYear}_${term}`;
+  const configKey = `${selectedClassId}_${academicYear}_${term}_${showArchived}`;
 
   useEffect(() => {
-    if (selectedClassId && academicYear && term) {
+    if (selectedClassId) {
       setStudents([]);
       setLoading(true);
       fetchStudents(true);
@@ -522,7 +586,7 @@ export default function ManageFees() {
             <div>Fee Status Report: ${className} - ${term} ${academicYear}</div>
           </div>
           <table>
-            <thead><tr><th>Student</th><th>Prev. Arrears</th><th>Term Bill</th><th>Total Paid</th><th>Balance</th></tr></thead>
+            <thead><tr><th>Student</th><th>Prev. Arrears</th><th>Term Bill</th><th>Discount</th><th>Total Paid</th><th>Balance</th></tr></thead>
             <tbody>
               ${filteredStudents
                 .map(
@@ -531,6 +595,7 @@ export default function ManageFees() {
                   <td>${s.fullName}</td>
                   <td>${(s.previousBalance || 0).toFixed(2)}</td>
                   <td>${(s.termBill || 0).toFixed(2)}</td>
+                  <td>${(s.discount || 0).toFixed(2)}</td>
                   <td>${(s.amountPaid || 0).toFixed(2)}</td>
                   <td style="color: ${(s.currentBalance || 0) > 0 ? "red" : "green"}">${(s.currentBalance || 0).toFixed(2)}</td>
                 </tr>
@@ -541,6 +606,7 @@ export default function ManageFees() {
           </table>
           <div class="summary">
             <div>Total Expected: ₵${stats.expected.toFixed(2)}</div>
+            <div>Total Discounts: ₵${(stats.totalDiscount || 0).toFixed(2)}</div>
             <div>Total Collected: ₵${stats.received.toFixed(2)}</div>
             <div>Total Outstanding: ₵${stats.balance.toFixed(2)}</div>
           </div>
@@ -563,6 +629,13 @@ export default function ManageFees() {
       });
       return;
     }
+    if (isConfigMissing) {
+      showToast({
+        message: "Action blocked: Academic year and term must be configured before billing.",
+        type: "error",
+      });
+      return;
+    }
     setSaving(true);
     try {
       const batch = writeBatch(db);
@@ -575,17 +648,23 @@ export default function ManageFees() {
 
       for (const uid of selectedUids) {
         const s = students.find((stud) => stud.uid === uid);
-        if (!s) continue;
+        if (!s || s.onScholarship) continue;
 
         const adjustmentStr = latestOverrides[uid] || termBillAmount;
         const adjustment = parseFloat(adjustmentStr);
         if (isNaN(adjustment) || adjustment === 0) continue;
 
         const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
-        const totalPaid = s.hasRecordInTerm ? (s.amountPaid || 0) : 0;
+        const totalPaid = s.hasRecordInTerm ? s.amountPaid || 0 : 0;
         const arrears = s.previousBalance || 0;
-        const discount = s.discount || 0;
-        const currentBill = s.hasRecordInTerm ? (s.termBill || 0) : 0;
+
+        // Automated profile-based discount
+        let discount = s.discount || 0;
+        if (s.onDiscount && s.discountAmount && !s.hasRecordInTerm) {
+          discount = s.discountAmount;
+        }
+
+        const currentBill = s.hasRecordInTerm ? s.termBill || 0 : 0;
         const currentEditCount = s.editCount || 0;
 
         if (currentEditCount >= 5) {
@@ -596,10 +675,8 @@ export default function ManageFees() {
           continue;
         }
 
-        // Calculate the new total bill for the term by adding the adjustment
-        const newBill = currentBill + adjustment;
-
         // Correct balance calculation: Arrears (debt before this term) + New Total Bill - Discount - Amount Paid this term
+        const newBill = currentBill + adjustment;
         const newBalance = arrears + newBill - discount - totalPaid;
         const totalPayable = arrears + newBill;
 
@@ -617,6 +694,7 @@ export default function ManageFees() {
           term,
           termBill: newBill,
           arrears: arrears,
+          discount: discount,
           amountPaid: totalPaid,
           balance: newBalance,
           totalPayable: totalPayable,
@@ -630,10 +708,14 @@ export default function ManageFees() {
           feeRecordData.createdAt = serverTimestamp();
         }
 
-        batch.set(doc(db, "studentFeeRecords", recordId), feeRecordData, { merge: true });
+        batch.set(doc(db, "studentFeeRecords", recordId), feeRecordData, {
+          merge: true,
+        });
 
+        // Use atomic increment for walletBalance to support high concurrency and OtherCharges parity
+        const walletAdjustment = adjustment - (s.hasRecordInTerm ? 0 : discount);
         batch.update(doc(db, "users", uid), {
-          walletBalance: newBalance,
+          walletBalance: increment(walletAdjustment),
         });
       }
       await batch.commit();
@@ -656,6 +738,12 @@ export default function ManageFees() {
         message: "You don't have permission to record payments.",
         type: "error",
       });
+    if (isConfigMissing) {
+      return showToast({
+        message: "Action blocked: Academic year and term must be configured.",
+        type: "error",
+      });
+    }
     const amount = parseFloat(paymentAmount);
     if (isNaN(amount) || !selectedStudent || !receivedFrom.trim())
       return showToast({ message: "Incomplete data", type: "error" });
@@ -663,70 +751,289 @@ export default function ManageFees() {
     try {
       const recordId = `${selectedStudent.uid}_${academicYear.replace(/\//g, "-")}_${term.replace(/\s+/g, "")}`;
       const batch = writeBatch(db);
-      const serial = `RC-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-      const entry = {
-        amount,
-        method: paymentMethod,
-        receivedFrom: receivedFrom.trim(),
-        updatedBy: appUser?.adminRole || "Admin",
-        adminUid: appUser?.uid || "unknown",
-        createdAt: new Date().toISOString(),
-        receiptNo: serial,
-        date: moment().format("YYYY-MM-DD"),
-        studentUid: selectedStudent.uid,
-        studentName: selectedStudent.fullName,
-        classId: selectedStudent.classId,
-        className: selectedStudent.className,
-        type: "tuition",
-      };
+      // Calculate Tuition balance
+      const tuitionArrears = selectedStudent.previousBalance || 0;
+      const tuitionBill = selectedStudent.termBill || 0;
+      const tuitionDiscount = selectedStudent.discount || 0;
+      const tuitionPaid = selectedStudent.amountPaid || 0;
+      const tuitionDue = tuitionArrears + tuitionBill - tuitionDiscount - tuitionPaid;
 
-      if (!selectedStudent.hasRecordInTerm) {
-        batch.set(doc(db, "studentFeeRecords", recordId), {
+      let remainingAmount = amount;
+      let tuitionContribution = 0;
+
+      if (remainingAmount > 0) {
+        tuitionContribution = Math.min(remainingAmount, Math.max(0, tuitionDue));
+        remainingAmount -= tuitionContribution;
+      }
+
+      // 1. Record Tuition Payment (if any)
+      if (tuitionContribution > 0) {
+        const serial = `RC-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const entry = {
+          amount: tuitionContribution,
+          method: paymentMethod,
+          receivedFrom: receivedFrom.trim(),
+          updatedBy: appUser?.adminRole || "Admin",
+          adminUid: appUser?.uid || "unknown",
+          createdAt: new Date().toISOString(),
+          receiptNo: serial,
+          date: moment().format("YYYY-MM-DD"),
           studentUid: selectedStudent.uid,
           studentName: selectedStudent.fullName,
           classId: selectedStudent.classId,
           className: selectedStudent.className,
           academicYear,
           term,
-          termBill: 0,
-          arrears: selectedStudent.previousBalance || 0,
-          amountPaid: amount,
-          balance: (selectedStudent.previousBalance || 0) - amount,
-          totalPayable: selectedStudent.previousBalance || 0,
-          payments: [entry],
-          editCount: 0,
-          createdAt: serverTimestamp(),
-          lastUpdated: serverTimestamp(),
-        });
-      } else {
-        batch.update(doc(db, "studentFeeRecords", recordId), {
-          amountPaid: increment(amount),
-          balance: increment(-amount),
-          payments: arrayUnion(entry),
-          lastUpdated: serverTimestamp(),
-        });
+          type: "tuition",
+        };
+
+        if (!selectedStudent.hasRecordInTerm) {
+          batch.set(doc(db, "studentFeeRecords", recordId), {
+            studentUid: selectedStudent.uid,
+            studentName: selectedStudent.fullName,
+            classId: selectedStudent.classId,
+            className: selectedStudent.className,
+            academicYear,
+            term,
+            termBill: 0,
+            arrears: tuitionArrears,
+            amountPaid: tuitionContribution,
+            balance: (tuitionArrears - tuitionContribution) + selectedStudent.ptaBalance + selectedStudent.maintenanceBalance + selectedStudent.admissionBalance + selectedStudent.booksBalance + selectedStudent.uniformBalance + selectedStudent.otherBalance,
+            totalPayable: tuitionArrears + selectedStudent.ptaBalance + selectedStudent.maintenanceBalance + selectedStudent.admissionBalance + selectedStudent.booksBalance + selectedStudent.uniformBalance + selectedStudent.otherBalance,
+            payments: [entry],
+            editCount: 0,
+            createdAt: serverTimestamp(),
+            lastUpdated: serverTimestamp(),
+          });
+        } else {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            amountPaid: increment(tuitionContribution),
+            balance: increment(-tuitionContribution),
+            payments: arrayUnion(entry),
+            lastUpdated: serverTimestamp(),
+          });
+        }
+        batch.set(doc(db, "feePayments", serial), entry);
       }
+
+      // 2. Waterfall Allocation for Overpayment
+      if (remainingAmount > 0) {
+        // Targeted allocations for isolated balances first (Alignment with student-fee-history.tsx)
+        const isolatedTargets = [
+          { key: "pta", balance: selectedStudent.ptaBalance, field: "ptaBalance", paidField: "ptaPaid" },
+          { key: "maintenance", balance: selectedStudent.maintenanceBalance, field: "maintenanceBalance", paidField: "maintenancePaid" },
+          { key: "admission", balance: selectedStudent.admissionBalance, field: "admissionBalance", paidField: "admissionPaid" },
+          { key: "books", balance: selectedStudent.booksBalance, field: "booksBalance", paidField: "booksPaid" },
+          { key: "uniform", balance: selectedStudent.uniformBalance, field: "uniformBalance", paidField: "uniformPaid" },
+          { key: "other", balance: selectedStudent.otherBalance, field: "otherBalance", paidField: "otherPaid" },
+        ];
+
+        for (const target of isolatedTargets) {
+          if (remainingAmount <= 0) break;
+          if (target.balance > 0) {
+            const allocation = Math.min(remainingAmount, target.balance);
+            const subSerial = `RC-${target.key.toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+            const subEntry = {
+              amount: allocation,
+              method: paymentMethod,
+              receivedFrom: receivedFrom.trim(),
+              updatedBy: appUser?.adminRole || "Admin",
+              adminUid: appUser?.uid || "unknown",
+              createdAt: new Date().toISOString(),
+              receiptNo: subSerial,
+              date: moment().format("YYYY-MM-DD"),
+              studentUid: selectedStudent.uid,
+              studentName: selectedStudent.fullName,
+              classId: selectedStudent.classId,
+              className: selectedStudent.className,
+              academicYear,
+              term,
+              type: `${target.key}_payment`,
+            };
+
+            batch.set(doc(db, "feePayments", subSerial), subEntry);
+            batch.update(doc(db, "studentFeeRecords", recordId), {
+              [target.field]: increment(-allocation),
+              [target.paidField]: increment(allocation),
+              balance: increment(-allocation),
+              payments: arrayUnion(subEntry),
+              lastUpdated: serverTimestamp(),
+            });
+
+            // Update user document for specific balance
+            batch.update(doc(db, "users", selectedStudent.uid), {
+              [target.field]: increment(-allocation),
+            });
+
+            remainingAmount -= allocation;
+          }
+        }
+
+        // Legacy/Generic waterfall for non-isolated categories
+        if (remainingAmount > 0) {
+          const q = query(
+            collection(db, "feePayments"),
+            where("studentUid", "==", selectedStudent.uid),
+            where("academicYear", "==", academicYear),
+            where("term", "==", term)
+          );
+          const snap = await getDocsFromServer(q);
+          const payments = snap.docs.map(d => ({ id: d.id, ...d.data() as any }));
+
+          const categoryMap: Record<string, { billed: number; paid: number }> = {};
+          payments.forEach(p => {
+            const type = p.type || "other";
+            const category = type.replace("_payment", "");
+            const isPayment = type.endsWith("_payment");
+
+            if (!categoryMap[category]) categoryMap[category] = { billed: 0, paid: 0 };
+            if (isPayment) categoryMap[category].paid += p.amount;
+            else if (!["tuition", "pta", "maintenance", "admission", "books", "uniform", "other"].includes(type))
+              categoryMap[category].billed += p.amount;
+          });
+
+          const categories = Object.keys(categoryMap).filter(
+            cat => !["tuition", "pta", "maintenance", "admission", "books", "uniform", "other"].includes(cat)
+          );
+
+          for (const cat of categories) {
+            if (remainingAmount <= 0) break;
+            const due = categoryMap[cat].billed - categoryMap[cat].paid;
+            if (due > 0) {
+              const allocation = Math.min(remainingAmount, due);
+              const subSerial = `RC-${cat.toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+              const subEntry = {
+                amount: allocation,
+                method: paymentMethod,
+                receivedFrom: receivedFrom.trim(),
+                updatedBy: appUser?.adminRole || "Admin",
+                adminUid: appUser?.uid || "unknown",
+                createdAt: new Date().toISOString(),
+                receiptNo: subSerial,
+                date: moment().format("YYYY-MM-DD"),
+                studentUid: selectedStudent.uid,
+                studentName: selectedStudent.fullName,
+                classId: selectedStudent.classId,
+                className: selectedStudent.className,
+                academicYear,
+                term,
+                type: `${cat}_payment`,
+              };
+
+              batch.set(doc(db, "feePayments", subSerial), subEntry);
+              batch.update(doc(db, "studentFeeRecords", recordId), {
+                amountPaid: increment(allocation),
+                balance: increment(-allocation),
+                payments: arrayUnion(subEntry),
+                lastUpdated: serverTimestamp(),
+              });
+              remainingAmount -= allocation;
+            }
+          }
+        }
+
+        // 3. If still remaining, add to tuition as credit
+        if (remainingAmount > 0) {
+          const creditSerial = `RC-CR-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+          const creditEntry = {
+            amount: remainingAmount,
+            method: paymentMethod,
+            receivedFrom: receivedFrom.trim(),
+            updatedBy: appUser?.adminRole || "Admin",
+            adminUid: appUser?.uid || "unknown",
+            createdAt: new Date().toISOString(),
+            receiptNo: creditSerial,
+            date: moment().format("YYYY-MM-DD"),
+            studentUid: selectedStudent.uid,
+            studentName: selectedStudent.fullName,
+            classId: selectedStudent.classId,
+            className: selectedStudent.className,
+            academicYear,
+            term,
+            type: "tuition_credit",
+          };
+
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            amountPaid: increment(remainingAmount),
+            balance: increment(-remainingAmount),
+            payments: arrayUnion(creditEntry),
+            lastUpdated: serverTimestamp(),
+          });
+          batch.set(doc(db, "feePayments", creditSerial), creditEntry);
+          remainingAmount = 0;
+        }
+      }
+
       batch.update(doc(db, "users", selectedStudent.uid), {
-          walletBalance: increment(-amount),
+        walletBalance: increment(-amount),
       });
-      // Set to dedicated feePayments collection for efficient daily reporting
-      batch.set(doc(db, "feePayments", serial), entry);
 
       await batch.commit();
+
+      // Send client-side notification to parent
+      try {
+        // Collect allocation summary for notification
+        const allocations = [];
+        if (tuitionContribution > 0) allocations.push(`Tuition: ${SCHOOL_CONFIG.currencySymbol}${tuitionContribution.toLocaleString()}`);
+
+        // Re-calculate or track isolated allocations for the message
+        const isolatedTargetsNotify = [
+          { key: "PTA", balance: selectedStudent.ptaBalance },
+          { key: "Maintenance", balance: selectedStudent.maintenanceBalance },
+          { key: "Admission", balance: selectedStudent.admissionBalance },
+          { key: "Books", balance: selectedStudent.booksBalance },
+          { key: "Uniform", balance: selectedStudent.uniformBalance },
+          { key: "Other", balance: selectedStudent.otherBalance },
+        ];
+
+        let tempRemaining = amount - tuitionContribution;
+        for (const target of isolatedTargetsNotify) {
+          if (tempRemaining <= 0) break;
+          if (target.balance > 0) {
+            const alloc = Math.min(tempRemaining, target.balance);
+            allocations.push(`${target.key}: ${SCHOOL_CONFIG.currencySymbol}${alloc.toLocaleString()}`);
+            tempRemaining -= alloc;
+          }
+        }
+
+        if (tempRemaining > 0) {
+          allocations.push(`Credit/Other: ${SCHOOL_CONFIG.currencySymbol}${tempRemaining.toLocaleString()}`);
+        }
+
+        const allocationText = allocations.length > 0 ? `\n\nAllocated to:\n- ${allocations.join("\n- ")}` : "";
+
+        await sendNotification({
+          recipientId: selectedStudent.uid,
+          senderId: appUser?.uid || "admin",
+          senderName: "School Finance",
+          title: "Fee Payment Received",
+          body: `A payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been recorded for ${selectedStudent.fullName}.${allocationText}`,
+          type: "payment",
+          data: {
+            studentUid: selectedStudent.uid,
+            amount,
+            academicYear,
+            term
+          }
+        });
+      } catch (notifErr) {
+        console.error("Failed to send payment notification:", notifErr);
+      }
+
       setPaymentAmount("");
       setReceivedFrom("");
       setPaymentModalVisible(false);
       fetchStudents(true);
       showToast({
-        message: `Payment recorded. Receipt: ${serial}`,
+        message: `Payment processed and allocated.`,
         type: "success",
       });
     } catch (e: any) {
       console.error("Payment logging error:", e);
       showToast({
         message: `Payment failed: ${e.message || "Unknown error"}`,
-        type: "error"
+        type: "error",
       });
     } finally {
       setSaving(false);
@@ -744,18 +1051,95 @@ export default function ManageFees() {
           text: "Delete Permanently",
           style: "destructive",
           onPress: async () => {
+            if (isConfigMissing) {
+              return showToast({
+                message: "Action blocked: Academic year and term must be configured.",
+                type: "error",
+              });
+            }
             setSaving(true);
             try {
               const recordId = `${selectedStudent.uid}_${academicYear.replace(/\//g, "-")}_${term.replace(/\s+/g, "")}`;
               const batch = writeBatch(db);
+              const amount = Number(payment.amount) || 0;
+              const isPayment = (payment.type || "tuition").toLowerCase().endsWith("_payment") || (payment.type || "tuition").toLowerCase() === "tuition";
+
+              if (isPayment) {
+                // Reverting a payment INCREASES the debt
+                batch.update(doc(db, "studentFeeRecords", recordId), {
+                  amountPaid: increment(-amount),
+                  balance: increment(amount),
+                });
+
+                // Handle isolated category reversions
+                const type = (payment.type || "").toLowerCase();
+                if (type === "pta_payment") {
+                  batch.update(doc(db, "studentFeeRecords", recordId), {
+                    ptaBalance: increment(amount),
+                    ptaPaid: increment(-amount),
+                  });
+                  batch.update(doc(db, "users", selectedStudent.uid), {
+                    ptaBalance: increment(amount),
+                  });
+                } else if (type === "maintenance_payment") {
+                  batch.update(doc(db, "studentFeeRecords", recordId), {
+                    maintenanceBalance: increment(amount),
+                    maintenancePaid: increment(-amount),
+                  });
+                  batch.update(doc(db, "users", selectedStudent.uid), {
+                    maintenanceBalance: increment(amount),
+                  });
+                } else if (type === "admission_payment") {
+                  batch.update(doc(db, "studentFeeRecords", recordId), {
+                    admissionBalance: increment(amount),
+                    admissionPaid: increment(-amount),
+                  });
+                  batch.update(doc(db, "users", selectedStudent.uid), {
+                    admissionBalance: increment(amount),
+                  });
+                } else if (type === "books_payment") {
+                  batch.update(doc(db, "studentFeeRecords", recordId), {
+                    booksBalance: increment(amount),
+                    booksPaid: increment(-amount),
+                  });
+                  batch.update(doc(db, "users", selectedStudent.uid), {
+                    booksBalance: increment(amount),
+                  });
+                } else if (type === "uniform_payment") {
+                  batch.update(doc(db, "studentFeeRecords", recordId), {
+                    uniformBalance: increment(amount),
+                    uniformPaid: increment(-amount),
+                  });
+                  batch.update(doc(db, "users", selectedStudent.uid), {
+                    uniformBalance: increment(amount),
+                  });
+                } else if (type === "other_payment") {
+                  batch.update(doc(db, "studentFeeRecords", recordId), {
+                    otherBalance: increment(amount),
+                    otherPaid: increment(-amount),
+                  });
+                  batch.update(doc(db, "users", selectedStudent.uid), {
+                    otherBalance: increment(amount),
+                  });
+                }
+
+                batch.update(doc(db, "users", selectedStudent.uid), {
+                  walletBalance: increment(amount),
+                });
+              } else {
+                // Reverting a bill (charge) DECREASES the debt
+                batch.update(doc(db, "studentFeeRecords", recordId), {
+                  balance: increment(-amount),
+                });
+                batch.update(doc(db, "users", selectedStudent.uid), {
+                  walletBalance: increment(-amount),
+                });
+              }
+
               batch.update(doc(db, "studentFeeRecords", recordId), {
-                amountPaid: increment(-(payment.amount || 0)),
-                balance: increment(payment.amount || 0),
                 payments: arrayRemove(payment),
               });
-              batch.update(doc(db, "users", selectedStudent.uid), {
-                walletBalance: increment(payment.amount || 0),
-              });
+
               // Also delete from dedicated feePayments collection
               if (payment.receiptNo) {
                 batch.delete(doc(db, "feePayments", payment.receiptNo));
@@ -777,6 +1161,112 @@ export default function ManageFees() {
         },
       ],
     );
+  };
+
+  const saveDiscounts = async () => {
+    if (!canEdit) {
+      showToast({
+        message:
+          "Access Denied: You don't have permission to modify discounts.",
+        type: "error",
+      });
+      return;
+    }
+    if (isConfigMissing) {
+      showToast({
+        message: "Action blocked: Academic year and term must be configured.",
+        type: "error",
+      });
+      return;
+    }
+    setSaving(true);
+    try {
+      const batch = writeBatch(db);
+      const cleanYear = academicYear.replace(/\//g, "-");
+      const cleanTerm = term.replace(/\s/g, "");
+      const selectedUids = Array.from(selectedStudentUids);
+
+      for (const uid of selectedUids) {
+        const s = students.find((stud) => stud.uid === uid);
+        if (!s || s.onScholarship) continue;
+
+        const discountStr = individualDiscountOverrides[uid] || discountAmount;
+        const discountValue = parseFloat(discountStr);
+        if (isNaN(discountValue) || discountValue <= 0) continue;
+
+        const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
+        const totalPaid = s.hasRecordInTerm ? s.amountPaid || 0 : 0;
+        const arrears = s.previousBalance || 0;
+        const currentBill = s.hasRecordInTerm ? s.termBill || 0 : 0;
+        const currentEditCount = s.editCount || 0;
+
+        if (currentEditCount >= 5) {
+          showToast({
+            message: `Student ${s.fullName} has reached the limit of 5 edits this term.`,
+            type: "error",
+          });
+          continue;
+        }
+
+        // Balance calculation: Arrears + Term Bill - Discount - Amount Paid
+        const newBalance = arrears + currentBill - discountValue - totalPaid;
+        const totalPayable = arrears + currentBill;
+
+        if (isNaN(newBalance)) {
+          console.error(`Invalid balance calculation for student ${uid}`);
+          continue;
+        }
+
+        const feeRecordData: any = {
+          studentUid: uid,
+          studentName: s.fullName,
+          classId: s.classId,
+          className: s.className,
+          academicYear,
+          term,
+          termBill: currentBill,
+          arrears: arrears,
+          amountPaid: totalPaid,
+          balance: newBalance,
+          totalPayable: totalPayable,
+          discount: discountValue,
+          editCount: currentEditCount + 1,
+          lastUpdated: serverTimestamp(),
+        };
+
+        // Initialize metadata for new term records
+        if (!s.hasRecordInTerm) {
+          feeRecordData.payments = [];
+          feeRecordData.createdAt = serverTimestamp();
+        }
+
+        batch.set(doc(db, "studentFeeRecords", recordId), feeRecordData, {
+          merge: true,
+        });
+
+        // Use atomic increment for discount changes to ensure walletBalance parity
+        const currentDiscount = s.discount || 0;
+        const discountChange = discountValue - currentDiscount;
+        batch.update(doc(db, "users", uid), {
+          walletBalance: increment(-discountChange),
+        });
+      }
+      await batch.commit();
+      setDiscountModalVisible(false);
+      setSelectedStudentUids(new Set());
+      setIndividualDiscountOverrides({});
+      setDiscountAmount("");
+      fetchStudents(true);
+      showToast({
+        message: "Discounts applied successfully.",
+        type: "success",
+      });
+    } catch (e) {
+      console.error(e);
+      showToast({ message: "Failed to apply discounts", type: "error" });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderStudentItem = ({ item }: { item: StudentDraft }) => {
@@ -802,7 +1292,7 @@ export default function ManageFees() {
           style={[styles.financeCard, isSelected && styles.selectedCard]}
           activeOpacity={0.8}
           onPress={() => {
-            if (activeMode === "billing") {
+            if (activeMode === "billing" || activeMode === "discounts") {
               setSelectedStudentUids((prev) => {
                 const next = new Set(prev);
                 if (next.has(item.uid)) next.delete(item.uid);
@@ -846,6 +1336,11 @@ export default function ManageFees() {
                 <Text style={styles.studentName} numberOfLines={1}>
                   {item.fullName}
                 </Text>
+                {item.studentID ? (
+                  <Text style={{ fontSize: 10, color: VIBE.primary, fontWeight: "800" }}>
+                    ID: {item.studentID}
+                  </Text>
+                ) : null}
                 <View style={styles.debtBox}>
                   <Text
                     style={[
@@ -869,7 +1364,14 @@ export default function ManageFees() {
                   </Text>
                 </View>
                 {item.termBill > 0 && (
-                  <Text style={{ fontSize: 10, color: VIBE.muted, fontWeight: '700', marginTop: 2 }}>
+                  <Text
+                    style={{
+                      fontSize: 10,
+                      color: VIBE.muted,
+                      fontWeight: "700",
+                      marginTop: 2,
+                    }}
+                  >
                     Term Bill: ₵{item.termBill.toFixed(2)}
                   </Text>
                 )}
@@ -878,7 +1380,7 @@ export default function ManageFees() {
 
             <View style={styles.rightSection}>
               {activeMode === "billing" ? (
-                <View style={{ alignItems: 'flex-end' }}>
+                <View style={{ alignItems: "flex-end" }}>
                   <View
                     style={[
                       styles.billingBubble,
@@ -905,15 +1407,87 @@ export default function ManageFees() {
                       }
                       value={currentBillValue ? String(currentBillValue) : ""}
                       onChangeText={(v) =>
-                        setIndividualBillOverrides((p: Record<string, string>) => ({
-                          ...p,
-                          [item.uid]: v,
-                        }))
+                        setIndividualBillOverrides(
+                          (p: Record<string, string>) => ({
+                            ...p,
+                            [item.uid]: v,
+                          }),
+                        )
                       }
                       keyboardType="numbers-and-punctuation"
                       editable={canEdit && !isEditLocked}
                     />
                   </View>
+                  {isEditLocked && (
+                    <Text
+                      style={{
+                        fontSize: 8,
+                        color: VIBE.danger,
+                        fontWeight: "700",
+                        marginTop: 2,
+                      }}
+                    >
+                      EDIT LIMIT REACHED
+                    </Text>
+                  )}
+                </View>
+              ) : activeMode === "discounts" ? (
+                <View style={{ alignItems: "flex-end" }}>
+                  <View
+                    style={[
+                      styles.billingBubble,
+                      (!!individualDiscountOverrides[item.uid] || !!discountAmount) && {
+                        backgroundColor: VIBE.success,
+                        borderColor: VIBE.success,
+                      },
+                      !!individualDiscountOverrides[item.uid] && styles.billingBubbleOverride,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.bubbleSym,
+                        (!!individualDiscountOverrides[item.uid] || !!discountAmount) && styles.textWhite,
+                        { color: (!!individualDiscountOverrides[item.uid] || !!discountAmount) ? "#fff" : VIBE.success }
+                      ]}
+                    >
+                      -
+                    </Text>
+                    <TextInput
+                      style={[
+                        styles.bubbleInput,
+                        (!!individualDiscountOverrides[item.uid] || !!discountAmount) && styles.textWhite,
+                      ]}
+                      placeholder="₵"
+                      placeholderTextColor={
+                        (!!individualDiscountOverrides[item.uid] || !!discountAmount)
+                          ? "rgba(255,255,255,0.6)"
+                          : VIBE.muted
+                      }
+                      value={
+                        individualDiscountOverrides[item.uid] !== undefined
+                          ? String(individualDiscountOverrides[item.uid])
+                          : ""
+                      }
+                      onChangeText={(v) =>
+                        setIndividualDiscountOverrides((p) => ({
+                          ...p,
+                          [item.uid]: v,
+                        }))
+                      }
+                      keyboardType="numeric"
+                      editable={canEdit && !isEditLocked}
+                    />
+                  </View>
+                  <Text
+                    style={{
+                      fontSize: 9,
+                      color: VIBE.muted,
+                      fontWeight: "700",
+                      marginTop: 4,
+                    }}
+                  >
+                    PROFILE: ₵{(item.discountAmount || 0).toFixed(2)}
+                  </Text>
                   {isEditLocked && (
                     <Text
                       style={{
@@ -951,7 +1525,30 @@ export default function ManageFees() {
     );
   };
 
-  if (!appUser || !canView) return null;
+  if (!appUser || !canView) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.errorContainer}>
+          <SVGIcon
+            name="lock-closed"
+            size={60}
+            color={COLORS.secondary || "#c53b59"}
+          />
+          <Text style={styles.errorTitle}>Access Denied</Text>
+          <Text style={styles.errorSub}>
+            You do not have the required permissions to manage fees.
+          </Text>
+          <TouchableOpacity
+            style={styles.errorButton}
+            onPress={() => router.replace("/admin-dashboard")}
+          >
+            <Text style={styles.errorButtonText}>Return to Dashboard</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -1005,90 +1602,133 @@ export default function ManageFees() {
           </View>
         </LinearGradient>
 
+        <View style={styles.searchStrip}>
+          <View style={styles.searchBar}>
+            <SVGIcon name="search" size={18} color={VIBE.muted} />
+            <TextInput
+              placeholder="Search name or receipt..."
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={VIBE.muted}
+            />
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setShowArchived(!showArchived)}
+            style={[
+              styles.archiveToggle,
+              showArchived && { backgroundColor: COLORS.secondary },
+            ]}
+          >
+            <SVGIcon
+              name="archive"
+              size={18}
+              color={showArchived ? "#fff" : VIBE.muted}
+            />
+            <Text
+              style={[
+                styles.archiveToggleText,
+                { color: showArchived ? "#fff" : VIBE.muted },
+              ]}
+            >
+              {showArchived ? "ACTIVE" : "ARCHIVE"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleRefresh}
+            style={styles.refreshRound}
+          >
+            <SVGIcon name="refresh" size={18} color={VIBE.primary} />
+          </TouchableOpacity>
+        </View>
+
         {!isConfigMissing && (
-          <>
-            <View style={styles.searchStrip}>
-              <View style={styles.searchBar}>
-                <SVGIcon name="search" size={18} color={VIBE.muted} />
-                <TextInput
-                  placeholder="Search name or receipt..."
-                  style={styles.searchInput}
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholderTextColor={VIBE.muted}
-                />
-              </View>
+          <View style={styles.modeToggleArea}>
+            <View style={styles.modeTabs}>
               <TouchableOpacity
-                onPress={handleRefresh}
-                style={styles.refreshRound}
+                style={[
+                  styles.modeTab,
+                  activeMode === "payment" && styles.activeModeTab,
+                ]}
+                onPress={() => setActiveMode("payment")}
               >
-                <SVGIcon name="refresh" size={18} color={VIBE.primary} />
+                <SVGIcon
+                  name="cash"
+                  size={18}
+                  color={activeMode === "payment" ? "#fff" : VIBE.muted}
+                />
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    activeMode === "payment" && { color: "#fff" },
+                  ]}
+                >
+                  PAYMENTS
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modeTab,
+                  activeMode === "billing" && styles.activeModeTab,
+                ]}
+                onPress={() => setActiveMode("billing")}
+              >
+                <SVGIcon
+                  name="document-text"
+                  size={18}
+                  color={activeMode === "billing" ? "#fff" : VIBE.muted}
+                />
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    activeMode === "billing" && { color: "#fff" },
+                  ]}
+                >
+                  BILLING
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modeTab,
+                  activeMode === "discounts" && styles.activeModeTab,
+                ]}
+                onPress={() => setActiveMode("discounts")}
+              >
+                <SVGIcon
+                  name="pricetag"
+                  size={18}
+                  color={activeMode === "discounts" ? "#fff" : VIBE.muted}
+                />
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    activeMode === "discounts" && { color: "#fff" },
+                  ]}
+                >
+                  DISCOUNTS
+                </Text>
               </TouchableOpacity>
             </View>
-            <View style={styles.modeToggleArea}>
-              <View style={styles.modeTabs}>
-                <TouchableOpacity
-                  style={[
-                    styles.modeTab,
-                    activeMode === "payment" && styles.activeModeTab,
-                  ]}
-                  onPress={() => setActiveMode("payment")}
-                >
-                  <SVGIcon
-                    name="cash"
-                    size={18}
-                    color={activeMode === "payment" ? "#fff" : VIBE.muted}
-                  />
-                  <Text
-                    style={[
-                      styles.modeTabText,
-                      activeMode === "payment" && { color: "#fff" },
-                    ]}
-                  >
-                    PAYMENTS
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.modeTab,
-                    activeMode === "billing" && styles.activeModeTab,
-                  ]}
-                  onPress={() => setActiveMode("billing")}
-                >
-                  <SVGIcon
-                    name="document-text"
-                    size={18}
-                    color={activeMode === "billing" ? "#fff" : VIBE.muted}
-                  />
-                  <Text
-                    style={[
-                      styles.modeTabText,
-                      activeMode === "billing" && { color: "#fff" },
-                    ]}
-                  >
-                    BILLING
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </>
+          </View>
         )}
       </View>
 
-      {isConfigMissing ? (
-        <View style={styles.emptyContainer}>
-          <SVGIcon name="settings-outline" size={80} color="#CBD5E1" />
-          <Text style={styles.emptyTitle}>Configuration Required</Text>
-          <TouchableOpacity
-            style={[styles.linkBtn, { backgroundColor: VIBE.primary }]}
-            onPress={() => router.push("/academic-calendar")}
-          >
-            <Text style={styles.linkBtnText}>Go to Calendar</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.mainBody}>
-          {activeMode === "billing" ? (
+      <View style={styles.mainBody}>
+        {isConfigMissing && (
+          <View style={styles.warningStrip}>
+            <SVGIcon name="alert-circle" size={18} color="#92400E" />
+            <Text style={styles.warningText}>
+              Academic configuration is missing. Term-based billing is disabled.
+            </Text>
+            <TouchableOpacity onPress={() => router.push("/academic-calendar")}>
+              <Text style={styles.warningLink}>Configure Now</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!isConfigMissing && activeMode === "billing" ? (
             <View style={styles.bulkActionStrip}>
               <View style={styles.bulkInputContainer}>
                 <Text style={styles.bulkSym}>₵</Text>
@@ -1117,24 +1757,66 @@ export default function ManageFees() {
                   );
                 }}
               >
-                  <SVGIcon
-                    name={
-                      filteredStudents.length > 0 &&
-                      filteredStudents.every((s) =>
-                        selectedStudentUids.has(s.uid),
-                      )
-                        ? "checkbox"
-                        : "square"
-                    }
-                    size={28}
-                    color={VIBE.primary}
-                  />
+                <SVGIcon
+                  name={
+                    filteredStudents.length > 0 &&
+                    filteredStudents.every((s) =>
+                      selectedStudentUids.has(s.uid),
+                    )
+                      ? "checkbox"
+                      : "square"
+                  }
+                  size={28}
+                  color={VIBE.primary}
+                />
                 <Text style={styles.checkAllText}>SELECT ALL</Text>
               </TouchableOpacity>
             </View>
-          ) : // Stats will be rendered inside the FlatList header to avoid overlapping
-          // with the list on platforms where separate scrolls can cause z-index issues.
-          null}
+          ) : activeMode === "discounts" ? (
+            <View style={styles.bulkActionStrip}>
+              <View style={styles.bulkInputContainer}>
+                <Text style={[styles.bulkSym, { color: VIBE.success }]}>-</Text>
+                <TextInput
+                  placeholder="Bulk Discount (₵)"
+                  placeholderTextColor={VIBE.muted}
+                  style={styles.bulkInput}
+                  keyboardType="numbers-and-punctuation"
+                  value={discountAmount}
+                  onChangeText={setDiscountAmount}
+                  editable={canEdit}
+                />
+              </View>
+              <TouchableOpacity
+                style={styles.checkAllBtn}
+                onPress={() => {
+                  const allSelected =
+                    filteredStudents.length > 0 &&
+                    filteredStudents.every((s) =>
+                      selectedStudentUids.has(s.uid),
+                    );
+                  setSelectedStudentUids(
+                    new Set(
+                      allSelected ? [] : filteredStudents.map((s) => s.uid),
+                    ),
+                  );
+                }}
+              >
+                <SVGIcon
+                  name={
+                    filteredStudents.length > 0 &&
+                    filteredStudents.every((s) =>
+                      selectedStudentUids.has(s.uid),
+                    )
+                      ? "checkbox"
+                      : "square"
+                  }
+                  size={28}
+                  color={VIBE.success}
+                />
+                <Text style={styles.checkAllText}>SELECT ALL</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
 
           <View style={styles.listHeaderRow}>
             <Text style={styles.listTitle}>Student Directory</Text>
@@ -1164,105 +1846,177 @@ export default function ManageFees() {
             </View>
           </View>
 
-          <FlatList
-            ListHeaderComponent={() =>
-              activeMode === "payment" &&
-              students.length > 0 &&
-              !searchQuery ? (
-                <View style={{ zIndex: 10 }}>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.statsDashboard}
-                  >
-                    <Animatable.View
-                      animation="zoomIn"
-                      style={[styles.statBox, { backgroundColor: VIBE.info }]}
-                    >
-                      <Text style={styles.statLabel}>EXPECTED</Text>
-                      <Text style={styles.statValue}>
-                        ₵{stats.expected.toLocaleString()}
-                      </Text>
-                      <View style={styles.statIcon}>
-                        <SVGIcon
-                          name="analytics"
-                          size={24}
-                          color="rgba(255,255,255,0.3)"
-                        />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={true}
+            contentContainerStyle={{ paddingHorizontal: 0 }}
+            style={{ width: "100%" }}
+          >
+            <View style={{ minWidth: Math.max(width, 1100) }}>
+              <FlatList
+                ListHeaderComponent={() => {
+                  if (
+                    activeMode === "payment" &&
+                    students.length > 0 &&
+                    !searchQuery
+                  ) {
+                    return (
+                      <View style={{ zIndex: 10 }}>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.statsDashboard}
+                        >
+                          <Animatable.View
+                            animation="zoomIn"
+                            style={[styles.statBox, { backgroundColor: VIBE.info }]}
+                          >
+                            <Text style={styles.statLabel}>EXPECTED</Text>
+                            <Text style={styles.statValue}>
+                              ₵{stats.expected.toLocaleString()}
+                            </Text>
+                            <View style={styles.statIcon}>
+                              <SVGIcon
+                                name="analytics"
+                                size={24}
+                                color="rgba(255,255,255,0.3)"
+                              />
+                            </View>
+                          </Animatable.View>
+                          <Animatable.View
+                            animation="zoomIn"
+                            delay={100}
+                            style={[
+                              styles.statBox,
+                              { backgroundColor: VIBE.success },
+                            ]}
+                          >
+                            <Text style={styles.statLabel}>RECEIVED</Text>
+                            <Text style={styles.statValue}>
+                              ₵{stats.received.toLocaleString()}
+                            </Text>
+                            <View style={styles.statIcon}>
+                              <SVGIcon
+                                name="wallet"
+                                size={24}
+                                color="rgba(255,255,255,0.3)"
+                              />
+                            </View>
+                          </Animatable.View>
+                          <Animatable.View
+                            animation="zoomIn"
+                            delay={150}
+                            style={[styles.statBox, { backgroundColor: VIBE.purple }]}
+                          >
+                            <Text style={styles.statLabel}>DISCOUNTS</Text>
+                            <Text style={styles.statValue}>
+                              ₵{stats.totalDiscount.toLocaleString()}
+                            </Text>
+                            <View style={styles.statIcon}>
+                              <SVGIcon
+                                name="pricetag"
+                                size={24}
+                                color="rgba(255,255,255,0.3)"
+                              />
+                            </View>
+                          </Animatable.View>
+                          <Animatable.View
+                            animation="zoomIn"
+                            delay={200}
+                            style={[
+                              styles.statBox,
+                              { backgroundColor: VIBE.danger },
+                            ]}
+                          >
+                            <Text style={styles.statLabel}>OUTSTANDING</Text>
+                            <Text style={styles.statValue}>
+                              ₵{stats.balance.toLocaleString()}
+                            </Text>
+                            <View style={styles.statIcon}>
+                              <SVGIcon
+                                name="alert-circle"
+                                size={24}
+                                color="rgba(255,255,255,0.3)"
+                              />
+                            </View>
+                          </Animatable.View>
+                        </ScrollView>
                       </View>
-                    </Animatable.View>
-                    <Animatable.View
-                      animation="zoomIn"
-                      delay={100}
-                      style={[styles.statBox, { backgroundColor: VIBE.success }]}
-                    >
-                      <Text style={styles.statLabel}>RECEIVED</Text>
-                      <Text style={styles.statValue}>
-                        ₵{stats.received.toLocaleString()}
-                      </Text>
-                      <View style={styles.statIcon}>
-                        <SVGIcon
-                          name="wallet"
-                          size={24}
-                          color="rgba(255,255,255,0.3)"
-                        />
+                    );
+                  }
+                  if (activeMode === "discounts" && filteredStudents.length > 0) {
+                    return (
+                      <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+                        <Animatable.View
+                          animation="fadeInDown"
+                          style={[
+                            styles.statBox,
+                            {
+                              backgroundColor: VIBE.success,
+                              width: "100%",
+                              height: 90,
+                              borderRadius: 20,
+                            },
+                          ]}
+                        >
+                          <Text style={styles.statLabel}>
+                            TOTAL ESTIMATED DISCOUNTS (LISTED)
+                          </Text>
+                          <Text style={[styles.statValue, { fontSize: 24 }]}>
+                            ₵
+                            {totalProfileDiscountsSum.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                            })}
+                          </Text>
+                          <View style={styles.statIcon}>
+                            <SVGIcon
+                              name="pricetag"
+                              size={28}
+                              color="rgba(255,255,255,0.3)"
+                            />
+                          </View>
+                        </Animatable.View>
                       </View>
-                    </Animatable.View>
-                    <Animatable.View
-                      animation="zoomIn"
-                      delay={200}
-                      style={[styles.statBox, { backgroundColor: VIBE.danger }]}
-                    >
-                      <Text style={styles.statLabel}>OUTSTANDING</Text>
-                      <Text style={styles.statValue}>
-                        ₵{stats.balance.toLocaleString()}
-                      </Text>
-                      <View style={styles.statIcon}>
-                        <SVGIcon
-                          name="alert-circle"
-                          size={24}
-                          color="rgba(255,255,255,0.3)"
-                        />
-                      </View>
-                    </Animatable.View>
-                  </ScrollView>
-                </View>
-              ) : null
-            }
-            data={filteredStudents}
-            extraData={{
-              activeMode,
-              termBillAmount,
-              individualBillOverrides,
-              selectedStudentUids,
-            }}
-            keyExtractor={(item) => item.uid}
-            onEndReached={() => fetchStudents(false)}
-            renderItem={renderStudentItem}
-            contentContainerStyle={styles.flatListContent}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                colors={[VIBE.primary]}
+                    );
+                  }
+                  return null;
+                }}
+                data={filteredStudents}
+                extraData={{
+                  activeMode,
+                  termBillAmount,
+                  individualBillOverrides,
+                  selectedStudentUids,
+                }}
+                keyExtractor={(item) => item.uid}
+                onEndReached={() => fetchStudents(false)}
+                renderItem={renderStudentItem}
+                contentContainerStyle={styles.flatListContent}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={refreshing}
+                    onRefresh={handleRefresh}
+                    colors={[VIBE.primary]}
+                  />
+                }
+                removeClippedSubviews={Platform.OS === "android"}
+                ListEmptyComponent={
+                  !loading ? (
+                    <View style={styles.emptyWrap}>
+                      <SVGIcon name="people" size={64} color="#CBD5E1" />
+                      <Text style={styles.emptyText}>No records found</Text>
+                    </View>
+                  ) : (
+                    <ActivityIndicator
+                      size="large"
+                      color={VIBE.primary}
+                      style={{ marginTop: 50 }}
+                    />
+                  )
+                }
               />
-            }
-            removeClippedSubviews={Platform.OS === "android"}
-            ListEmptyComponent={
-              !loading ? (
-                <View style={styles.emptyWrap}>
-                  <SVGIcon name="people" size={64} color="#CBD5E1" />
-                  <Text style={styles.emptyText}>No records found</Text>
-                </View>
-              ) : (
-                <ActivityIndicator
-                  size="large"
-                  color={VIBE.primary}
-                  style={{ marginTop: 50 }}
-                />
-              )
-            }
-          />
+            </View>
+          </ScrollView>
         </View>
       )}
 
@@ -1286,6 +2040,29 @@ export default function ManageFees() {
           </TouchableOpacity>
         </Animatable.View>
       )}
+
+      {activeMode === "discounts" &&
+        selectedStudentUids.size > 0 &&
+        canEdit && (
+          <Animatable.View animation="bounceIn" style={styles.fabWrap}>
+            <TouchableOpacity
+              style={styles.mainFab}
+              onPress={() => setDiscountModalVisible(true)}
+            >
+              <LinearGradient
+                colors={[VIBE.success, VIBE.info]}
+                style={styles.fabGrad}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.fabText}>
+                  APPLY DISCOUNTS ({selectedStudentUids.size})
+                </Text>
+                <SVGIcon name="pricetag" size={22} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animatable.View>
+        )}
 
       {/* Selector Modal */}
       <Modal visible={selectorModal.visible} transparent animationType="slide">
@@ -1422,34 +2199,16 @@ export default function ManageFees() {
               <View style={styles.historyBlock}>
                 <View style={styles.historyHeader}>
                   <Text style={styles.blockTitle}>Term Transactions</Text>
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (selectedStudent) {
-                        setPaymentModalVisible(false);
-                        router.push({
-                          pathname: "/admin-dashboard/student-fee-history",
-                          params: {
-                            studentId: selectedStudent.uid,
-                            academicYear,
-                            term,
-                          },
-                        });
-                      }
-                    }}
-                  >
-                    <Text
-                      style={[styles.viewFullText, { color: VIBE.primary }]}
-                    >
-                      Full Ledger
-                    </Text>
-                  </TouchableOpacity>
                 </View>
                 {selectedStudent?.payments?.length ? (
                   selectedStudent.payments
                     .slice()
                     .reverse()
                     .map((p, i) => (
-                      <View key={i} style={styles.transactionTile}>
+                      <View
+                        key={p.receiptNo || i}
+                        style={styles.transactionTile}
+                      >
                         <View style={{ flex: 1 }}>
                           <View style={styles.tileHeader}>
                             <View>
@@ -1505,7 +2264,7 @@ export default function ManageFees() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Modal for Billing */}
       <Modal visible={billModalVisible} transparent animationType="fade">
         <View style={styles.overlayCenter}>
           <View style={styles.alertCard}>
@@ -1523,6 +2282,33 @@ export default function ManageFees() {
               <TouchableOpacity
                 onPress={saveFees}
                 style={[styles.alertBtnPri, { backgroundColor: VIBE.primary }]}
+              >
+                <Text style={styles.alertBtnTextPri}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Discount Modal */}
+      <Modal visible={discountModalVisible} transparent animationType="fade">
+        <View style={styles.overlayCenter}>
+          <View style={styles.alertCard}>
+            <Text style={styles.alertTitle}>Apply Discounts?</Text>
+            <Text style={styles.alertText}>
+              Apply discounts to {selectedStudentUids.size} selected students?
+              {"\n"}This will reduce their outstanding balance.
+            </Text>
+            <View style={styles.alertBtnRow}>
+              <TouchableOpacity
+                onPress={() => setDiscountModalVisible(false)}
+                style={styles.alertBtnSec}
+              >
+                <Text style={styles.alertBtnTextSec}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={saveDiscounts}
+                style={[styles.alertBtnPri, { backgroundColor: VIBE.success }]}
               >
                 <Text style={styles.alertBtnTextPri}>Confirm</Text>
               </TouchableOpacity>
@@ -1619,9 +2405,28 @@ export default function ManageFees() {
                 renderItem={({ item }) => (
                   <View style={styles.dailyPaymentItem}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.dailyStudentName}>
-                        {item.studentName}
-                      </Text>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <Text style={styles.dailyStudentName}>
+                          {item.studentName}
+                        </Text>
+                        {item.type && item.type !== "tuition" && (
+                          <View style={{
+                            backgroundColor: VIBE.primary + "15",
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            borderRadius: 6,
+                          }}>
+                            <Text style={{
+                              fontSize: 9,
+                              fontWeight: "900",
+                              color: VIBE.primary,
+                              textTransform: "uppercase"
+                            }}>
+                              {item.type}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={styles.dailyStudentClass}>
                         {item.className || "N/A"}
                       </Text>
@@ -1662,8 +2467,8 @@ const styles = StyleSheet.create({
   },
   headerTop: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === "ios" ? 10 : 40,
-    paddingBottom: 30,
+    paddingTop: Platform.OS === "ios" ? 10 : 30,
+    paddingBottom: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
@@ -1671,7 +2476,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 25,
+    marginBottom: 15,
   },
   headerIconBtn: {
     width: 44,
@@ -1706,10 +2511,25 @@ const styles = StyleSheet.create({
   searchStrip: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    marginTop: -25,
+    marginTop: -20,
     alignItems: "center",
     gap: 10,
-    marginBottom: 20,
+    marginBottom: 15,
+  },
+  archiveToggle: {
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#fff",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    ...SHADOWS.small,
+  },
+  archiveToggleText: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
   },
   searchBar: {
     flex: 1,
@@ -1830,8 +2650,8 @@ const styles = StyleSheet.create({
   cardWrapper: { marginBottom: 15 },
   financeCard: {
     backgroundColor: "#fff",
-    borderRadius: 25,
-    padding: 18,
+    borderRadius: 20,
+    padding: 14,
     ...SHADOWS.small,
     borderWidth: 1,
     borderColor: VIBE.border,
@@ -1913,7 +2733,7 @@ const styles = StyleSheet.create({
     minWidth: 40,
     flexShrink: 1,
     padding: 0,
-    ...(Platform.OS === 'android' ? {} : { letterSpacing: 0.5 }),
+    ...(Platform.OS === "android" ? {} : { letterSpacing: 0.5 }),
   },
   actionIcons: { flexDirection: "row", alignItems: "center", gap: 12 },
   historyCircle: {
@@ -2231,5 +3051,61 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
     color: VIBE.success,
+  },
+  warningStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF3C7",
+    padding: 12,
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 20,
+    borderRadius: 12,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 11,
+    color: "#92400E",
+    fontWeight: "700",
+  },
+  warningLink: {
+    fontSize: 11,
+    color: VIBE.primary,
+    fontWeight: "900",
+    textDecorationLine: "underline",
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 30,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginTop: 20,
+  },
+  errorSub: {
+    fontSize: 16,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 10,
+    marginBottom: 30,
+  },
+  errorButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 25,
+    paddingVertical: 15,
+    borderRadius: 15,
+    ...SHADOWS.medium,
+  },
+  errorButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
   },
 });

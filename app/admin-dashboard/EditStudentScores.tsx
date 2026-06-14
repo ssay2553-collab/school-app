@@ -2,22 +2,23 @@ import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    getDocsFromServer,
-    query,
-    serverTimestamp,
-    updateDoc,
-    where,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocsFromServer,
+  query,
+  serverTimestamp,
+  updateDoc,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 import React, {
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from "react";
 import {
     ActivityIndicator,
@@ -88,7 +89,11 @@ const StudentScoreCard = React.memo(
           updated.grade = getGradeDetails(parseFloat(updated.finalScore)).grade;
         } else {
           const examsMark = parseFloat(updated.examsMark) || 0;
+          updated.finalScore = examsMark.toFixed(2);
           updated.grade = getGradeDetails(examsMark).grade;
+          updated.classScore = "";
+          updated.classScore50 = "0";
+          updated.exam50 = "0";
         }
         onUpdateRef(item.studentId, updated);
         return updated;
@@ -478,12 +483,47 @@ export default function EditStudentScores() {
     }
     setSaving(true);
     try {
-      await updateDoc(doc(db, "academicRecords", recordId), {
+      const batch = writeBatch(db);
+      const recordRef = doc(db, "academicRecords", recordId);
+
+      batch.update(recordRef, {
         students: studentsToSave,
         status: "approved",
         approvedAt: serverTimestamp(),
         approvedBy: appUser?.uid,
       });
+
+      // Aggregate into academicRecordsSummary for each student
+      studentsToSave.forEach((student) => {
+        const yearSlug = selectedYear.replace(/\//g, "_");
+        const termSlug = term.replace(/\s+/g, "");
+        const summaryId = `${student.studentId}_${yearSlug}_${termSlug}`;
+        const summaryRef = doc(db, "academicRecordsSummary", summaryId);
+
+        // Subject name as key (safe for Firestore keys)
+        const subjectKey = selectedSubject.replace(/\s+/g, "_");
+
+        batch.set(
+          summaryRef,
+          {
+            studentId: student.studentId,
+            classId: selectedClassId,
+            academicYear: selectedYear,
+            term: term,
+            scores: {
+              [subjectKey]: {
+                finalScore: parseFloat(student.finalScore) || 0,
+                grade: student.grade,
+                reportType: selectedReportType,
+                lastUpdated: serverTimestamp(),
+              },
+            },
+          },
+          { merge: true },
+        );
+      });
+
+      await batch.commit();
       initialDataRef.current = JSON.stringify(studentsToSave);
       setAllStudents(studentsToSave);
       showToast({

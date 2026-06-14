@@ -10,7 +10,8 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  where
+  where,
+  writeBatch
 } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -76,6 +77,8 @@ const StudentCard = React.memo(
     isClassTeacher: boolean;
     primaryColor: string;
   }) => {
+    const isEOT = reportType === "End of Term";
+
     return (
       <View style={styles.studentCard}>
         <View style={styles.cardHeader}>
@@ -85,19 +88,22 @@ const StudentCard = React.memo(
           </View>
         </View>
         <View style={styles.scoresGrid}>
-          {/* Add your conditional rendering or other content here. The stray fragment was removed. */}
+          {isEOT && (
+            <View style={[styles.scoreInput, { flex: 1 }]}>
+              <Text style={styles.scoreLabel}>CLASS SCORE (MAX 50)</Text>
+              <TextInput
+                value={student.classScore}
+                onChangeText={(v) => onUpdate(student.studentId, "classScore", v)}
+                keyboardType="numeric"
+                placeholder="0.0"
+                style={styles.input}
+              />
+            </View>
+          )}
           <View style={[styles.scoreInput, { flex: 1 }]}>
-            <Text style={styles.scoreLabel}>CLASS SCORE (MAX 50)</Text>
-            <TextInput
-              value={student.classScore}
-              onChangeText={(v) => onUpdate(student.studentId, "classScore", v)}
-              keyboardType="numeric"
-              placeholder="0.0"
-              style={styles.input}
-            />
-          </View>
-          <View style={[styles.scoreInput, { flex: 1 }]}>
-            <Text style={styles.scoreLabel}>EXAMS SCORE (MAX 100)</Text>
+            <Text style={styles.scoreLabel}>
+              {isEOT ? "EXAMS SCORE (MAX 100)" : "EXAMINATION SCORE"}
+            </Text>
             <TextInput
               value={student.examsMark}
               onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)}
@@ -107,7 +113,7 @@ const StudentCard = React.memo(
             />
           </View>
           <View style={styles.totalBox}>
-            <Text style={styles.totalLabel}>TOTAL (100%)</Text>
+            <Text style={styles.totalLabel}>FINAL SCORE</Text>
             <Text style={styles.totalVal}>{student.finalScore}</Text>
           </View>
         </View>
@@ -159,7 +165,11 @@ export default function StudentAcademicRecords() {
         updated.grade = getGradeDetails(finalScoreNum).grade;
       } else {
         const examsMark = parseFloat(updated.examsMark) || 0;
+        updated.finalScore = examsMark.toFixed(2);
         updated.grade = getGradeDetails(examsMark).grade;
+        updated.classScore = "";
+        updated.classScore50 = "0";
+        updated.exam50 = "0";
       }
       return updated;
     },
@@ -358,10 +368,13 @@ export default function StudentAcademicRecords() {
       return;
     }
     try {
+      const batch = writeBatch(db);
       const yearSlug = selectedYear.replace(/\//g, "-");
       const reportSlug = reportType.replace(/\s+/g, "");
       const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
-      await setDoc(doc(db, "academicRecords", docId), {
+      const recordRef = doc(db, "academicRecords", docId);
+
+      batch.set(recordRef, {
         docId,
         teacherId: appUser?.uid,
         classId: selectedClassId,
@@ -375,7 +388,39 @@ export default function StudentAcademicRecords() {
         students: allStudents,
         timestamp: serverTimestamp(),
         status: "pending",
+        containsBehavioralData: false,
       });
+
+      // Update academicRecordsSummary for real-time tracking (even if pending)
+      allStudents.forEach((student) => {
+        const cleanYear = selectedYear.replace(/\//g, "_");
+        const cleanTerm = term.replace(/\s+/g, "");
+        const summaryId = `${student.studentId}_${cleanYear}_${cleanTerm}`;
+        const summaryRef = doc(db, "academicRecordsSummary", summaryId);
+        const subjectKey = selectedSubject.replace(/\s+/g, "_");
+
+        batch.set(
+          summaryRef,
+          {
+            studentId: student.studentId,
+            classId: selectedClassId,
+            academicYear: selectedYear,
+            term,
+            scores: {
+              [subjectKey]: {
+                finalScore: parseFloat(student.finalScore) || 0,
+                grade: student.grade,
+                reportType: reportType,
+                status: "pending",
+                lastUpdated: serverTimestamp(),
+              },
+            },
+          },
+          { merge: true },
+        );
+      });
+
+      await batch.commit();
       setServerStudents(JSON.parse(JSON.stringify(allStudents)));
       showToast({
         message: "Academic ledger saved successfully.",
@@ -383,6 +428,7 @@ export default function StudentAcademicRecords() {
       });
       router.back();
     } catch (err) {
+      console.error(err);
       showToast({ message: "Failed to save records.", type: "error" });
     }
   };

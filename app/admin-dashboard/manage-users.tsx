@@ -13,6 +13,7 @@ import {
   documentId,
   getDoc,
   getDocsFromServer,
+  increment,
   limit,
   onSnapshot,
   query,
@@ -73,6 +74,8 @@ interface User {
     phone?: string;
     gender?: string;
     profileImage?: string;
+    emergencyPhone?: string;
+    parentPhone?: string;
   };
   role: UserRole;
   adminRole?: string;
@@ -90,7 +93,10 @@ interface User {
   secretCode?: string;
   dateOfBirth?: any;
   walletBalance?: number;
+  dailyArrears?: number;
   onScholarship?: boolean;
+  onDiscount?: boolean;
+  discountAmount?: number;
   takesBus?: boolean;
   busLocation?: string;
   isFeeding?: boolean;
@@ -114,13 +120,24 @@ const PERMISSION_KEYS = [
   { key: "feeding", label: "Feeding Recording" },
   { key: "record-bus-fee", label: "Bus Fee Recording" },
   { key: "record-extra-classes", label: "Extra Classes Recording" },
-  { key: "edit-feeding-rate", label: "Edit Feeding Rate" },
-  { key: "edit-bus-rate", label: "Edit Bus Rate" },
-  { key: "edit-extra-classes-rate", label: "Edit Extra Classes Rate" },
+  { key: "attendance", label: "Attendance Management" },
+  { key: "academic-records", label: "Academic Records" },
+  { key: "scores", label: "Scores & Grading" },
+  { key: "behavioral-records", label: "Behavioral Records" },
+  { key: "assignments", label: "Assignments & Homework" },
   { key: "staff-payroll", label: "Staff Payroll" },
   { key: "expenditure", label: "Expenditure" },
   { key: "manage-users", label: "Manage Users" },
+  { key: "news", label: "News & Announcements" },
   { key: "gallery", label: "Gallery Management" },
+  { key: "timetables", label: "Timetable Management" },
+  { key: "academic-calendar", label: "Academic Calendar" },
+  { key: "settings", label: "School Settings & Rates" },
+  { key: "faq", label: "FAQ Management" },
+  { key: "student-groups", label: "Student Study Groups" },
+  { key: "parent-chat", label: "Parent Communication" },
+  { key: "staff-chat", label: "Internal Staff Chat" },
+  { key: "guest-chat", label: "Guest Inquiry Chat" },
 ];
 
 const PERMISSION_LEVELS: { label: string; value: PermissionLevel }[] = [
@@ -145,6 +162,9 @@ export default function ManageUsers() {
     "headmistress",
     "administrator",
     "director",
+    "accountant",
+    "bursar",
+    "admin",
   ].includes(currentUserRole);
   const hasManageUsersAccess =
     appUser?.permissions?.["manage-users"] === "full" || isSuperAdmin;
@@ -195,10 +215,15 @@ export default function ManageUsers() {
   const [editEmail, setEditEmail] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editGender, setEditGender] = useState("");
+  const [editEmergencyPhone, setEditEmergencyPhone] = useState("");
+  const [editParentPhone, setEditParentPhone] = useState("");
   const [editDob, setEditDob] = useState<Date | null>(null);
   const [editBusLocation, setEditBusLocation] = useState("");
   const [editTakesBus, setEditTakesBus] = useState(false);
   const [editOnScholarship, setEditOnScholarship] = useState(false);
+  const [editOnDiscount, setEditOnDiscount] = useState(false);
+  const [editIsFeeding, setEditIsFeeding] = useState(false);
+  const [editTakesExtraClasses, setEditTakesExtraClasses] = useState(false);
 
   const [upgradeEmail, setUpgradeEmail] = useState("");
   const [upgradePassword, setUpgradePassword] = useState("");
@@ -245,16 +270,20 @@ export default function ManageUsers() {
 
       const batch = writeBatch(db);
       let count = 0;
+      let studentIncrement = 0;
+      let staffIncrement = 0;
 
       for (const row of userData) {
         const values = row.split(",").map((v) => v.trim());
         if (values.length < 2) continue;
 
-        // Map columns based on headers or assume: firstName, lastName, gender, classOrRole
+        // Map columns based on headers or assume: firstName, lastName, gender, extraInput, emergencyPhone, parentPhone
         const firstName = values[0];
         const lastName = values[1];
         const gender = values[2] || "";
         const extraInput = values[3];
+        const emergencyPhone = values[4] || "";
+        const parentPhone = values[5] || "";
 
         if (!firstName || !lastName) continue;
 
@@ -273,6 +302,8 @@ export default function ManageUsers() {
             firstName,
             lastName,
             gender,
+            emergencyPhone,
+            parentPhone,
           },
           createdAt: Timestamp.now(),
           // Redundant schoolId property injection removed as per "one database per school" architecture
@@ -292,11 +323,13 @@ export default function ManageUsers() {
             targetClassId = selectedClassId === "all" ? "" : selectedClassId;
           }
           newUserDoc.classId = targetClassId;
+          studentIncrement++;
         } else if (selectedRole === "admin" || selectedRole === "staff" || selectedRole === "teacher") {
           // For staff roles, extraInput can be the specific adminRole title
           if (extraInput) {
             newUserDoc.adminRole = extraInput;
           }
+          staffIncrement++;
         }
 
         batch.set(doc(db, "users", tempId), newUserDoc);
@@ -304,6 +337,15 @@ export default function ManageUsers() {
       }
 
       if (count > 0) {
+        const statsRef = doc(db, "stats", "global");
+        const statsUpdate: any = {};
+        if (studentIncrement > 0) statsUpdate.totalStudents = increment(studentIncrement);
+        if (staffIncrement > 0) statsUpdate.totalStaff = increment(staffIncrement);
+
+        if (Object.keys(statsUpdate).length > 0) {
+          batch.set(statsRef, statsUpdate, { merge: true });
+        }
+
         await batch.commit();
         Alert.alert(
           "Import Successful",
@@ -953,6 +995,7 @@ export default function ManageUsers() {
     const performToggle = async () => {
       setUpdating(true);
       try {
+        const batch = writeBatch(db);
         const updates: any = {
           status: isArchived ? "active" : "archived",
           archivedAt: isArchived ? null : Timestamp.now(),
@@ -964,7 +1007,16 @@ export default function ManageUsers() {
           updates.classId = "archived";
         }
 
-        await updateDoc(doc(db, "users", user.uid), updates);
+        batch.update(doc(db, "users", user.uid), updates);
+
+        if (user.role === "student") {
+          const statsRef = doc(db, "stats", "global");
+          batch.set(statsRef, {
+            totalStudents: increment(isArchived ? 1 : -1)
+          }, { merge: true });
+        }
+
+        await batch.commit();
 
         setViewingUser((prev) => (prev ? { ...prev, ...updates } : null));
 
@@ -999,29 +1051,29 @@ export default function ManageUsers() {
     }
   };
 
-  const handleArchiveBasic9 = async () => {
+  const handleGraduateClass = async () => {
     const currentClassName =
       allClasses.find((c) => c.id === selectedClassId)?.name || "";
-    const isBasic9 =
-      currentClassName.toLowerCase().includes("basic 9") ||
-      currentClassName.toLowerCase().includes("grade 9");
 
-    if (!isBasic9)
+    const highestClass = allClasses.length > 0 ? allClasses[allClasses.length - 1] : null;
+    const isHighest = highestClass && highestClass.id === selectedClassId;
+
+    if (!isHighest)
       return Alert.alert(
         "Invalid Action",
-        "Graduation can only be triggered from the Basic 9 student list.",
+        `Graduation can only be triggered from the highest class (${highestClass?.name || "N/A"}) list.`,
       );
 
-    const basic9Students = users.filter((u) => u.status !== "archived");
-    if (basic9Students.length === 0)
+    const targetStudents = users.filter((u) => u.status !== "archived");
+    if (targetStudents.length === 0)
       return Alert.alert(
         "Empty List",
-        "No active Basic 9 students found to graduate.",
+        `No active ${currentClassName} students found to graduate.`,
       );
 
     Alert.alert(
       "Confirm Graduation",
-      `Move ${basic9Students.length} students to Archive for ${acadConfig.academicYear}? This will empty the current class list.`,
+      `Move ${targetStudents.length} students from ${currentClassName} to Archive for ${acadConfig.academicYear}? This will empty the current class list.`,
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -1032,8 +1084,8 @@ export default function ManageUsers() {
             try {
               const currentYear = acadConfig.academicYear || "Unknown Year";
               const chunks = [];
-              for (let i = 0; i < basic9Students.length; i += 100) {
-                chunks.push(basic9Students.slice(i, i + 100));
+              for (let i = 0; i < targetStudents.length; i += 100) {
+                chunks.push(targetStudents.slice(i, i + 100));
               }
 
               for (const chunk of chunks) {
@@ -1046,6 +1098,12 @@ export default function ManageUsers() {
                     classId: "archived",
                   });
                 });
+
+                const statsRef = doc(db, "stats", "global");
+                batch.set(statsRef, {
+                  totalStudents: increment(-chunk.length)
+                }, { merge: true });
+
                 await batch.commit();
               }
 
@@ -1126,6 +1184,14 @@ export default function ManageUsers() {
             });
           });
         }
+
+        const statsRef = doc(db, "stats", "global");
+        if (user.role === "student" && user.status !== "archived") {
+          batch.set(statsRef, { totalStudents: increment(-1) }, { merge: true });
+        } else if (["admin", "teacher", "staff"].includes(user.role)) {
+          batch.set(statsRef, { totalStaff: increment(-1) }, { merge: true });
+        }
+
         await batch.commit();
 
         const deleteFn = httpsCallable(functions, "deleteUserAccount");
@@ -1223,9 +1289,14 @@ export default function ManageUsers() {
         "profile.lastName": editLastName.trim(),
         "profile.phone": editPhone.trim(),
         "profile.gender": editGender,
+        "profile.emergencyPhone": editEmergencyPhone.trim(),
+        "profile.parentPhone": editParentPhone.trim(),
         busLocation: editBusLocation.trim(),
         takesBus: editTakesBus,
         onScholarship: editOnScholarship,
+        onDiscount: editOnDiscount,
+        isFeeding: editIsFeeding,
+        takesExtraClasses: editTakesExtraClasses,
       };
 
       if (editDob) {
@@ -1250,6 +1321,9 @@ export default function ManageUsers() {
                 busLocation: editBusLocation.trim(),
                 takesBus: editTakesBus,
                 onScholarship: editOnScholarship,
+                onDiscount: editOnDiscount,
+                isFeeding: editIsFeeding,
+                takesExtraClasses: editTakesExtraClasses,
                 dateOfBirth: editDob
                   ? Timestamp.fromDate(editDob)
                   : u.dateOfBirth,
@@ -1270,10 +1344,15 @@ export default function ManageUsers() {
                   lastName: editLastName.trim(),
                   phone: editPhone.trim(),
                   gender: editGender,
+                  emergencyPhone: editEmergencyPhone.trim(),
+                  parentPhone: editParentPhone.trim(),
                 },
                 busLocation: editBusLocation.trim(),
                 takesBus: editTakesBus,
                 onScholarship: editOnScholarship,
+                onDiscount: editOnDiscount,
+                isFeeding: editIsFeeding,
+                takesExtraClasses: editTakesExtraClasses,
                 dateOfBirth: editDob
                   ? Timestamp.fromDate(editDob)
                   : prev.dateOfBirth,
@@ -1435,9 +1514,14 @@ export default function ManageUsers() {
     setEditEmail(user.profile.email || "");
     setEditPhone(user.profile.phone || "");
     setEditGender(user.profile.gender || "");
+    setEditEmergencyPhone(user.profile.emergencyPhone || "");
+    setEditParentPhone(user.profile.parentPhone || "");
     setEditBusLocation(user.busLocation || "");
     setEditTakesBus(!!user.takesBus);
     setEditOnScholarship(!!user.onScholarship);
+    setEditOnDiscount(!!user.onDiscount);
+    setEditIsFeeding(!!user.isFeeding);
+    setEditTakesExtraClasses(!!user.takesExtraClasses);
     setEditDob(
       user.dateOfBirth?.toDate
         ? user.dateOfBirth.toDate()
@@ -1491,7 +1575,26 @@ export default function ManageUsers() {
     );
   };
 
-  if (!hasManageUsersAccess) return null;
+  if (!hasManageUsersAccess) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.errorContainer}>
+          <SVGIcon name="lock-closed" size={60} color={COLORS.secondary || "#c53b59"} />
+          <Text style={styles.errorTitle}>Access Denied</Text>
+          <Text style={styles.errorSub}>
+            You do not have the required permissions to manage users.
+          </Text>
+          <TouchableOpacity
+            style={styles.errorButton}
+            onPress={() => router.replace("/admin-dashboard")}
+          >
+            <Text style={styles.errorButtonText}>Return to Dashboard</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (!selectedRole) {
     return (
@@ -1545,11 +1648,10 @@ export default function ManageUsers() {
     );
   }
 
-  const selectedClassName =
-    allClasses.find((c) => c.id === selectedClassId)?.name || "";
-  const isBasic9View =
-    selectedRole === "student" &&
-    selectedClassName.toLowerCase().includes("basic 9");
+  const isHighestClassView = useMemo(() => {
+    if (selectedRole !== "student" || selectedClassId === "all" || allClasses.length === 0) return false;
+    return allClasses[allClasses.length - 1].id === selectedClassId;
+  }, [selectedRole, selectedClassId, allClasses]);
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -1641,10 +1743,10 @@ export default function ManageUsers() {
           </TouchableOpacity>
         )}
 
-        {isBasic9View && !showArchived && isSuperAdmin && (
+        {isHighestClassView && !showArchived && isSuperAdmin && (
           <TouchableOpacity
             style={styles.bulkArchiveBtn}
-            onPress={handleArchiveBasic9}
+            onPress={handleGraduateClass}
           >
             <SVGIcon name="school" size={18} color="#fff" />
             <Text style={styles.bulkArchiveText}>GRADUATE</Text>
@@ -1777,31 +1879,52 @@ export default function ManageUsers() {
                       </View>
                     )}
                     {item.role === "student" &&
-                      item.walletBalance !== undefined && (
-                        <View
-                          style={[
-                            styles.badge,
-                            {
-                              backgroundColor:
-                                item.walletBalance > 0
-                                  ? "#ef444415"
-                                  : "#10b98115",
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.badgeText,
-                              {
-                                color:
-                                  item.walletBalance > 0 ? "#ef4444" : "#10b981",
-                              },
-                            ]}
-                          >
-                            {item.walletBalance > 0
-                              ? `Debt: ₵${(item.walletBalance || 0).toLocaleString()}`
-                              : "Cleared"}
-                          </Text>
+                      (item.walletBalance !== undefined || item.dailyArrears !== undefined) && (
+                        <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
+                          {item.walletBalance !== undefined && (
+                            <View
+                              style={[
+                                styles.badge,
+                                {
+                                  backgroundColor:
+                                    item.walletBalance > 0
+                                      ? "#ef444415"
+                                      : "#10b98115",
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.badgeText,
+                                  {
+                                    color:
+                                      item.walletBalance > 0 ? "#ef4444" : "#10b981",
+                                  },
+                                ]}
+                              >
+                                {item.walletBalance > 0
+                                  ? `Tuition: ₵${(item.walletBalance || 0).toLocaleString()}`
+                                  : "Tuition Cleared"}
+                              </Text>
+                            </View>
+                          )}
+                          {(item.dailyArrears || 0) > 0 && (
+                            <View
+                              style={[
+                                styles.badge,
+                                { backgroundColor: "#f59e0b15" },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.badgeText,
+                                  { color: "#f59e0b" },
+                                ]}
+                              >
+                                Arrears: ₵{(item.dailyArrears || 0).toLocaleString()}
+                              </Text>
+                            </View>
+                          )}
                         </View>
                       )}
                   </View>
@@ -1848,6 +1971,29 @@ export default function ManageUsers() {
             >
               <SVGIcon name="book" size={20} color="#fff" />
               <Text style={styles.bulkActionText}>Extra</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bulkActionBtn}
+              onPress={() => {
+                Alert.alert(
+                  "Clear Arrears",
+                  `Reset service arrears to 0 for ${selectedUserUids.length} students?`,
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Clear All", style: "destructive", onPress: () => handleBulkUpdate("dailyArrears", 0) }
+                  ]
+                );
+              }}
+            >
+              <SVGIcon name="refresh-circle" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Clear Arrears</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bulkActionBtn}
+              onPress={() => handleBulkUpdate("onDiscount", true)}
+            >
+              <SVGIcon name="pricetag" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Discount</Text>
             </TouchableOpacity>
           </View>
         </Animatable.View>
@@ -1971,7 +2117,7 @@ export default function ManageUsers() {
                         ]}
                       >
                         <Text style={styles.financeLabel}>
-                          FEES OUTSTANDING
+                          TUITION BALANCE
                         </Text>
                         <Text
                           style={[
@@ -1987,21 +2133,52 @@ export default function ManageUsers() {
                           ₵{(viewingUser.walletBalance || 0).toLocaleString()}
                         </Text>
                       </View>
-                      {viewingUser.onScholarship && (
-                        <View
-                          style={[
-                            styles.financeBox,
-                            { borderLeftColor: "#6366f1" },
-                          ]}
-                        >
-                          <Text style={styles.financeLabel}>SCHOLARSHIP</Text>
+
+                      <View
+                        style={[
+                          styles.financeBox,
+                          {
+                            borderLeftColor:
+                              (viewingUser.dailyArrears || 0) > 0
+                                ? "#f59e0b"
+                                : "#10b981",
+                          },
+                        ]}
+                      >
+                        <Text style={styles.financeLabel}>
+                          SERVICE ARREARS
+                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                           <Text
-                            style={[styles.financeValue, { color: "#6366f1" }]}
+                            style={[
+                              styles.financeValue,
+                              {
+                                color:
+                                  (viewingUser.dailyArrears || 0) > 0
+                                    ? "#f59e0b"
+                                    : "#10b981",
+                              },
+                            ]}
                           >
-                            Active
+                            ₵{(viewingUser.dailyArrears || 0).toLocaleString()}
                           </Text>
+                          {(viewingUser.dailyArrears || 0) > 0 && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                Alert.alert("Clear Arrears", "Are you sure you want to reset service arrears to 0?", [
+                                  { text: "Cancel", style: "cancel" },
+                                  { text: "Clear", style: "destructive", onPress: async () => {
+                                    await updateDoc(doc(db, "users", viewingUser.uid), { dailyArrears: 0 });
+                                    setViewingUser({ ...viewingUser, dailyArrears: 0 });
+                                  }}
+                                ]);
+                              }}
+                            >
+                              <SVGIcon name="refresh-circle" size={20} color="#f59e0b" />
+                            </TouchableOpacity>
+                          )}
                         </View>
-                      )}
+                      </View>
                     </View>
                   )}
 
@@ -2183,6 +2360,22 @@ export default function ManageUsers() {
                           </Text>
                         </View>
                       )}
+                      {viewingUser.role === "student" && (
+                        <>
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoKey}>Emergency #:</Text>
+                            <Text style={styles.infoValue}>
+                              {viewingUser.profile?.emergencyPhone || "N/A"}
+                            </Text>
+                          </View>
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoKey}>Parent #:</Text>
+                            <Text style={styles.infoValue}>
+                              {viewingUser.profile?.parentPhone || "N/A"}
+                            </Text>
+                          </View>
+                        </>
+                      )}
                       <View style={styles.infoRow}>
                         <Text style={styles.infoKey}>Gender:</Text>
                         <Text style={styles.infoValue}>
@@ -2295,6 +2488,21 @@ export default function ManageUsers() {
                   )}
 
                   <View style={styles.btnStack}>
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        {
+                          backgroundColor: COLORS.success || "#05ac5b",
+                          marginBottom: 12,
+                        },
+                      ]}
+                      onPress={() => openEditProfile(viewingUser)}
+                    >
+                      <Text style={styles.actionButtonText}>
+                        Edit Profile / Setup Services
+                      </Text>
+                    </TouchableOpacity>
+
                     {viewingUser.role !== "student" && viewingUser.role !== "parent" && isSuperAdmin && (
                       <TouchableOpacity
                         style={[
@@ -2333,12 +2541,11 @@ export default function ManageUsers() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {(viewingUser.role === "teacher" ||
-                      viewingUser.role === "admin") && (
+                    {viewingUser.role === "teacher" && (
                       <TouchableOpacity
                         style={[
                           styles.actionButton,
-                          { backgroundColor: COLORS.secondary || "#c53b59" },
+                          { backgroundColor: COLORS.secondary || "#c53b59", marginBottom: 12 },
                         ]}
                         onPress={() => {
                           setNewsPermission(viewingUser.canCreateNews || false);
@@ -2353,204 +2560,7 @@ export default function ManageUsers() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {viewingUser.role === "student" && isSuperAdmin && (
-                      <>
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            {
-                              backgroundColor: viewingUser.onScholarship
-                                ? "#f1f5f9"
-                                : "#6366f1",
-                              marginBottom: 12,
-                            },
-                          ]}
-                          onPress={() => handleToggleScholarship(viewingUser)}
-                        >
-                          <Text
-                            style={[
-                              styles.actionButtonText,
-                              {
-                                color: viewingUser.onScholarship
-                                  ? "#6366f1"
-                                  : "#fff",
-                              },
-                            ]}
-                          >
-                            {viewingUser.onScholarship
-                              ? "Revoke Scholarship"
-                              : "Set on Scholarship"}
-                          </Text>
-                        </TouchableOpacity>
 
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            {
-                              backgroundColor: viewingUser.takesBus
-                                ? "#f1f5f9"
-                                : "#0ea5e9",
-                              marginBottom: 12,
-                            },
-                          ]}
-                          onPress={() => handleToggleBusStatus(viewingUser)}
-                        >
-                          <Text
-                            style={[
-                              styles.actionButtonText,
-                              {
-                                color: viewingUser.takesBus ? "#0ea5e9" : "#fff",
-                              },
-                            ]}
-                          >
-                            {viewingUser.takesBus ? "Remove from Bus" : "Add to Bus"}
-                          </Text>
-                        </TouchableOpacity>
-
-                        {viewingUser.takesBus && (
-                          <View style={{ marginBottom: 12 }}>
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <Text style={styles.infoLabel}>Assign Bus Location</Text>
-                                <TouchableOpacity onPress={() => {
-                                    setIsAddingNewBusLoc(!isAddingNewBusLoc);
-                                    setNewBusLocInput("");
-                                }}>
-                                    <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '700' }}>
-                                        {isAddingNewBusLoc ? "Cancel" : "+ Add New"}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-
-                            {isAddingNewBusLoc ? (
-                                <View style={{ flexDirection: 'row', gap: 8 }}>
-                                    <TextInput
-                                        style={[styles.textInput, { flex: 1, marginBottom: 0, height: 45 }]}
-                                        placeholder="New Location Name"
-                                        value={newBusLocInput}
-                                        onChangeText={setNewBusLocInput}
-                                        autoFocus
-                                    />
-                                    <TouchableOpacity
-                                        style={{ backgroundColor: COLORS.primary, paddingHorizontal: 15, justifyContent: 'center', borderRadius: 8, height: 45 }}
-                                        onPress={() => handleSaveNewBusLocation(viewingUser)}
-                                    >
-                                        <Text style={{ color: '#fff', fontWeight: '700' }}>Save</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            ) : (
-                                <View style={[styles.permPickerBox, { backgroundColor: '#f8fafc' }]}>
-                                  <Picker
-                                    selectedValue={viewingUser.busLocation || ""}
-                                    onValueChange={(itemValue) => handleUpdateBusLocation(viewingUser, itemValue)}
-                                    enabled={!updating}
-                                  >
-                                    <Picker.Item label="Select Location..." value="" />
-                                    {busLocations.map((loc) => (
-                                      <Picker.Item key={loc} label={loc} value={loc} />
-                                    ))}
-                                  </Picker>
-                                </View>
-                            )}
-                          </View>
-                        )}
-
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            {
-                              backgroundColor: viewingUser.isFeeding
-                                ? "#f1f5f9"
-                                : "#10b981",
-                              marginBottom: 12,
-                            },
-                          ]}
-                          onPress={() => handleToggleFeedingStatus(viewingUser)}
-                        >
-                          <Text
-                            style={[
-                              styles.actionButtonText,
-                              {
-                                color: viewingUser.isFeeding ? "#10b981" : "#fff",
-                              },
-                            ]}
-                          >
-                            {viewingUser.isFeeding
-                              ? "Remove from Feeding"
-                              : "Add to Feeding"}
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            {
-                              backgroundColor: viewingUser.takesExtraClasses
-                                ? "#f1f5f9"
-                                : "#6366f1",
-                              marginBottom: 12,
-                            },
-                          ]}
-                          onPress={() => handleToggleExtraClassesStatus(viewingUser)}
-                        >
-                          <Text
-                            style={[
-                              styles.actionButtonText,
-                              {
-                                color: viewingUser.takesExtraClasses ? "#6366f1" : "#fff",
-                              },
-                            ]}
-                          >
-                            {viewingUser.takesExtraClasses
-                              ? "Remove from Extra Classes"
-                              : "Add to Extra Classes"}
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            {
-                              backgroundColor:
-                                viewingUser.status === "archived"
-                                  ? "#ecfdf5"
-                                  : "#fef2f2",
-                              marginBottom: 12,
-                            },
-                          ]}
-                          onPress={() => handleToggleArchiveStatus(viewingUser)}
-                        >
-                          <Text
-                            style={[
-                              styles.actionButtonText,
-                              {
-                                color:
-                                  viewingUser.status === "archived"
-                                    ? "#10b981"
-                                    : "#ef4444",
-                              },
-                            ]}
-                          >
-                            {viewingUser.status === "archived"
-                              ? "Restore to Active"
-                              : "Set as Stopped (Archive)"}
-                          </Text>
-                        </TouchableOpacity>
-                      </>
-                    )}
-                    <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        {
-                          backgroundColor: COLORS.success || "#05ac5b",
-                          marginBottom: 12,
-                        },
-                      ]}
-                      onPress={() => openEditProfile(viewingUser)}
-                    >
-                      <Text style={styles.actionButtonText}>
-                        Edit Profile Info
-                      </Text>
-                    </TouchableOpacity>
                     <TouchableOpacity
                       style={[
                         styles.actionButton,
@@ -3004,6 +3014,27 @@ export default function ManageUsers() {
                     keyboardType="phone-pad"
                   />
 
+                  {assignmentModal.target?.role === "student" && (
+                    <>
+                      <Text style={styles.pickerLabel}>Emergency Number</Text>
+                      <TextInput
+                        style={[styles.textInput, { marginBottom: 15 }]}
+                        value={editEmergencyPhone}
+                        onChangeText={setEditEmergencyPhone}
+                        keyboardType="phone-pad"
+                        placeholder="Emergency contact number"
+                      />
+                      <Text style={styles.pickerLabel}>Parent Number</Text>
+                      <TextInput
+                        style={[styles.textInput, { marginBottom: 15 }]}
+                        value={editParentPhone}
+                        onChangeText={setEditParentPhone}
+                        keyboardType="phone-pad"
+                        placeholder="Parent contact number"
+                      />
+                    </>
+                  )}
+
                   <Text style={styles.pickerLabel}>Gender</Text>
                   <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
                     <Picker
@@ -3078,6 +3109,33 @@ export default function ManageUsers() {
                         <Switch
                           value={editOnScholarship}
                           onValueChange={setEditOnScholarship}
+                          trackColor={{ false: "#767577", true: COLORS.primary }}
+                        />
+                      </View>
+
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                        <Text style={styles.pickerLabel}>On Discount</Text>
+                        <Switch
+                          value={editOnDiscount}
+                          onValueChange={setEditOnDiscount}
+                          trackColor={{ false: "#767577", true: COLORS.primary }}
+                        />
+                      </View>
+
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                        <Text style={styles.pickerLabel}>Enrolled in Feeding</Text>
+                        <Switch
+                          value={editIsFeeding}
+                          onValueChange={setEditIsFeeding}
+                          trackColor={{ false: "#767577", true: COLORS.primary }}
+                        />
+                      </View>
+
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+                        <Text style={styles.pickerLabel}>Extra Classes</Text>
+                        <Switch
+                          value={editTakesExtraClasses}
+                          onValueChange={setEditTakesExtraClasses}
                           trackColor={{ false: "#767577", true: COLORS.primary }}
                         />
                       </View>
@@ -3612,5 +3670,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
     color: COLORS.primary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 30,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginTop: 20,
+  },
+  errorSub: {
+    fontSize: 16,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 10,
+    marginBottom: 30,
+  },
+  errorButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 25,
+    paddingVertical: 15,
+    borderRadius: 15,
+    ...SHADOWS.medium,
+  },
+  errorButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

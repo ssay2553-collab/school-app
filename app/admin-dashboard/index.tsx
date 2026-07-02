@@ -29,6 +29,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useDataFreshness } from "../../hooks/useDataFreshness";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
+import { getTeacherClasses } from "../../lib/classHelpers";
 
 const STATS_CACHE_KEY = "@admin_dashboard_stats_cache_v2";
 let dashboardStatsMemoryCache: any = null;
@@ -487,7 +488,7 @@ export default function AdminDashboard() {
               <View style={styles.headerActions}>
                 {appUser?.role === "admin" &&
                   (appUser?.assignedRoles?.includes("Teacher") ||
-                    appUser?.classTeacherOf) && (
+                    getTeacherClasses(appUser).length > 0) && (
                     <TouchableOpacity
                       onPress={() => router.push("/teacher-dashboard")}
                       style={[

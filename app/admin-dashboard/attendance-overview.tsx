@@ -17,9 +17,10 @@ import {
 import SVGIcon from "../../components/SVGIcon";
 import { SHADOWS, COLORS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import { sortClasses, getTeacherClasses } from "../../lib/classHelpers";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
+import { AppUser } from "../../types/users";
 import moment from "moment";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
@@ -185,11 +186,13 @@ export default function AttendanceOverview() {
     const unsub = onSnapshot(q, (snap) => {
       const tMap: Record<string, { uid: string, name: string }> = {};
       snap.forEach(doc => {
-        const data = doc.data();
-        // Use classTeacherOf or classes to identify responsibility
-        if (data.classTeacherOf) {
-          tMap[data.classTeacherOf] = { uid: doc.id, name: data.profile?.firstName || doc.id };
-        }
+        const data = doc.data() as AppUser;
+        // Standardize responsibility check using helper
+        const teacherClasses = getTeacherClasses(data);
+        teacherClasses.forEach(classId => {
+          // If multiple teachers, last one wins (current behavior preserved but expanded to all assigned classes)
+          tMap[classId] = { uid: doc.id, name: data.profile?.firstName || doc.id };
+        });
       });
       setTeachers(tMap);
     });

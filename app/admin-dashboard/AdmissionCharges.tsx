@@ -10,6 +10,7 @@ import {
   query,
   serverTimestamp,
   arrayUnion,
+  arrayRemove,
   startAfter,
   where,
   writeBatch,
@@ -19,6 +20,7 @@ import moment from "moment";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -26,11 +28,11 @@ import {
   RefreshControl,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  Dimensions,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -41,23 +43,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-
 import { sendNotification } from "../../src/services/notificationService";
+import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
+import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 
-const VIBE = {
-  primary: "#6366F1",
-  secondary: "#F59E0B",
-  success: "#10B981",
-  danger: "#EF4444",
-  info: "#3B82F6",
-  purple: "#8B5CF6",
-  bg: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#1E293B",
-  muted: "#64748B",
-  border: "#E2E8F0",
-};
-
+const { width } = Dimensions.get("window");
 const PAGE_SIZE = 50;
 
 type Student = {
@@ -65,10 +55,21 @@ type Student = {
   fullName: string;
   classId: string;
   className: string;
-  admissionFeePaid: number;
-  admissionFeeBill: number;
+  admissionPaid: number;
+  admissionBill: number;
   admissionBalance: number;
   walletBalance: number;
+  // Isolated Balances
+  ptaBalance?: number;
+  maintenanceBalance?: number;
+  booksBalance?: number;
+  uniformBalance?: number;
+  otherBalance?: number;
+};
+
+const THEME = {
+  primary: "#6366F1", // Admission Indigo
+  secondary: "#4F46E5",
 };
 
 export default function AdmissionCharges() {
@@ -77,12 +78,12 @@ export default function AdmissionCharges() {
   const router = useRouter();
   const acadConfig = useAcademicConfig();
 
-  const primaryBrand = SCHOOL_CONFIG.primaryColor || COLORS.primary || VIBE.primary;
-  const secondaryBrand = SCHOOL_CONFIG.secondaryColor || primaryBrand;
-
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState("all");
+  const [classModalVisible, setClassModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
 
@@ -93,9 +94,9 @@ export default function AdmissionCharges() {
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-
   const [stats, setStats] = useState<any>({
-    totalRevenue: 0,
+    totalCollected: 0,
+    totalBilled: 0,
     term1Count: 0,
     term1Revenue: 0,
     term2Count: 0,
@@ -103,6 +104,7 @@ export default function AdmissionCharges() {
     term3Count: 0,
     term3Revenue: 0,
   });
+
   const [activeTab, setActiveTab] = useState<"payment" | "billing">("payment");
   const [billAmount, setBillAmount] = useState("");
   const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
@@ -116,11 +118,16 @@ export default function AdmissionCharges() {
       const year = acadConfig.academicYear;
       if (!year) return;
 
-      const q = query(
+      let q = query(
         collection(db, "feePayments"),
         where("type", "in", ["admission", "admission_payment"]),
         where("academicYear", "==", year)
       );
+
+      if (selectedClassId !== "all") {
+        q = query(q, where("classId", "==", selectedClassId));
+      }
+
       const snap = await getDocsFromServer(q);
 
       let totalCollected = 0;
@@ -155,8 +162,8 @@ export default function AdmissionCharges() {
       });
 
       setStats({
-        totalRevenue: totalCollected,
-        totalDebt: totalBilled - totalCollected,
+        totalCollected: totalCollected,
+        totalBilled: totalBilled,
         term1Count: t1Uids.size,
         term1Revenue: t1Rev,
         term2Count: t2Uids.size,
@@ -169,19 +176,39 @@ export default function AdmissionCharges() {
     }
   };
 
-  const fetchAdmittedStudents = useCallback(async (termName: string) => {
+  const fetchAdmittedStudents = useCallback(async (termName?: string) => {
     setLoading(true);
     setStudents([]);
     try {
       const year = acadConfig.academicYear;
-      const q = query(
+      if (!year) return;
+
+      let q = query(
         collection(db, "feePayments"),
-        where("type", "==", "admission"),
-        where("academicYear", "==", year),
-        where("term", "==", termName)
+        where("type", "in", ["admission", "admission_payment"]),
+        where("academicYear", "==", year)
       );
+
+      if (selectedClassId !== "all") {
+        q = query(q, where("classId", "==", selectedClassId));
+      }
+
       const snap = await getDocsFromServer(q);
-      const uids = Array.from(new Set(snap.docs.map(d => d.data().studentUid)));
+
+      let uids: string[] = [];
+      if (termName) {
+        const targetNum = termName.match(/\d/)?.[0];
+        uids = Array.from(new Set(
+          snap.docs
+            .filter(d => {
+              const docTerm = (d.data().term || "").toLowerCase();
+              return targetNum ? docTerm.includes(targetNum) : docTerm === termName.toLowerCase();
+            })
+            .map(d => d.data().studentUid)
+        ));
+      } else {
+        uids = Array.from(new Set(snap.docs.map(d => d.data().studentUid)));
+      }
 
       if (uids.length === 0) {
         setStudents([]);
@@ -200,10 +227,15 @@ export default function AdmissionCharges() {
             fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Student",
             classId: data.classId || "unknown",
             className: data.className || "Class",
-            admissionFeePaid: data.admissionFeePaid || 0,
-            admissionFeeBill: data.admissionFeeBill || 0,
+            admissionPaid: data.admissionPaid || 0,
+            admissionBill: data.admissionBill || 0,
             admissionBalance: data.admissionBalance || 0,
             walletBalance: data.walletBalance || 0,
+            ptaBalance: data.ptaBalance || 0,
+            maintenanceBalance: data.maintenanceBalance || 0,
+            booksBalance: data.booksBalance || 0,
+            uniformBalance: data.uniformBalance || 0,
+            otherBalance: data.otherBalance || 0,
           });
         });
       }
@@ -214,19 +246,23 @@ export default function AdmissionCharges() {
     } finally {
       setLoading(false);
     }
-  }, [acadConfig.academicYear]);
+  }, [acadConfig.academicYear, selectedClassId, showToast]);
 
   useEffect(() => {
     fetchStats();
-  }, [acadConfig.academicYear]);
+  }, [acadConfig.academicYear, selectedClassId]);
 
   const fetchStudents = useCallback(async (isFirstLoad = false) => {
-    if (!searchQuery.trim() && !isFirstLoad) {
-      setStudents([]);
-      return;
-    }
     if (isFetchingRef.current) return;
     if (!isFirstLoad && !hasMoreRef.current) return;
+
+    if (searchQuery.trim().length < 2) {
+      if (isFirstLoad) {
+        setStudents([]);
+        setLoading(false);
+      }
+      return;
+    }
 
     isFetchingRef.current = true;
     if (isFirstLoad) {
@@ -242,6 +278,10 @@ export default function AdmissionCharges() {
         where("status", "in", ["active", "pending_activation"]),
         limit(PAGE_SIZE)
       );
+
+      if (selectedClassId !== "all") {
+        q = query(q, where("classId", "==", selectedClassId));
+      }
 
       if (!isFirstLoad && lastVisibleRef.current) {
         q = query(q, startAfter(lastVisibleRef.current));
@@ -261,10 +301,15 @@ export default function AdmissionCharges() {
           fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Student",
           classId: data.classId || "unknown",
           className: data.className || "Class",
-          admissionFeePaid: data.admissionFeePaid || 0,
-          admissionFeeBill: data.admissionFeeBill || 0,
+          admissionPaid: data.admissionPaid || 0,
+          admissionBill: data.admissionBill || 0,
           admissionBalance: data.admissionBalance || 0,
           walletBalance: data.walletBalance || 0,
+          ptaBalance: data.ptaBalance || 0,
+          maintenanceBalance: data.maintenanceBalance || 0,
+          booksBalance: data.booksBalance || 0,
+          uniformBalance: data.uniformBalance || 0,
+          otherBalance: data.otherBalance || 0,
         };
       });
 
@@ -279,25 +324,34 @@ export default function AdmissionCharges() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedClassId, searchQuery, showToast]);
 
   useEffect(() => {
     if (searchQuery.trim().length >= 2) {
-      setSelectedTerm(null);
-      const delayDebounceFn = setTimeout(() => {
-        fetchStudents(true);
-      }, 500);
-      return () => clearTimeout(delayDebounceFn);
-    } else if (!selectedTerm) {
+      if (selectedTerm) setSelectedTerm(null);
+      fetchStudents(true);
+    } else if (selectedTerm) {
+      fetchAdmittedStudents(selectedTerm);
+    } else if (selectedClassId !== "all") {
+      fetchAdmittedStudents();
+    } else {
       setStudents([]);
     }
-  }, [searchQuery]);
+  }, [selectedClassId, selectedTerm, searchQuery, fetchStudents, fetchAdmittedStudents]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "classes"), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name, ...d.data() }));
+      setClasses(list.sort((a, b) => a.name.localeCompare(b.name)));
+    });
+    return () => unsub();
+  }, []);
 
   const handleRefresh = () => {
     setRefreshing(true);
     if (selectedTerm) {
       fetchAdmittedStudents(selectedTerm);
-    } else if (searchQuery.trim().length >= 2) {
+    } else {
       fetchStudents(true);
     }
     fetchStats();
@@ -305,12 +359,8 @@ export default function AdmissionCharges() {
 
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase();
-    if (selectedTerm) {
-      return students.filter(s => s.fullName.toLowerCase().includes(lower));
-    }
-    if (!searchQuery.trim()) return [];
     return students.filter(s => s.fullName.toLowerCase().includes(lower));
-  }, [students, searchQuery, selectedTerm]);
+  }, [students, searchQuery]);
 
   const fetchPaymentHistory = async (studentUid: string) => {
     setLoadingHistory(true);
@@ -318,7 +368,7 @@ export default function AdmissionCharges() {
       const q = query(
         collection(db, "feePayments"),
         where("studentUid", "==", studentUid),
-        where("type", "==", "admission")
+        where("type", "in", ["admission", "admission_payment"])
       );
       const snap = await getDocsFromServer(q);
       const list = snap.docs.map(d => d.data());
@@ -359,16 +409,14 @@ export default function AdmissionCharges() {
         term: acadConfig.currentTerm,
       };
 
-      // 1. Record the Payment
       batch.set(doc(db, "feePayments", serial), paymentEntry);
 
-      // 2. Update student record
       batch.update(doc(db, "users", selectedStudent.uid), {
-        admissionFeePaid: increment(amount),
+        admissionPaid: increment(amount),
         admissionBalance: increment(-amount),
+        walletBalance: increment(-amount),
       });
 
-      // 3. Update ledger (studentFeeRecords)
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
       const recordId = `${selectedStudent.uid}_${year}_${term}`;
@@ -376,18 +424,18 @@ export default function AdmissionCharges() {
       batch.set(doc(db, "studentFeeRecords", recordId), {
         admissionPaid: increment(amount),
         admissionBalance: increment(-amount),
+        balance: increment(-amount),
         payments: arrayUnion(paymentEntry),
         lastUpdated: serverTimestamp(),
       }, { merge: true });
 
       await batch.commit();
 
-      // Send notification to parent
       try {
         await sendNotification({
           recipientId: selectedStudent.uid,
           senderId: appUser?.uid || "admin",
-          senderName: "School Finance",
+          senderName: appUser?.displayName || "Administrator",
           title: "Admission Payment Received",
           body: `An admission payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been recorded for ${selectedStudent.fullName}.`,
           type: "payment",
@@ -444,22 +492,22 @@ export default function AdmissionCharges() {
         term: acadConfig.currentTerm,
       };
 
-      // 1. Record the Bill
       batch.set(doc(db, "feePayments", serial), billEntry);
 
-      // 2. Update student record
       batch.update(doc(db, "users", selectedStudent.uid), {
-        admissionFeeBill: increment(amount),
+        admissionBill: increment(amount),
         admissionBalance: increment(amount),
+        walletBalance: increment(amount),
       });
 
-      // 3. Update ledger (studentFeeRecords)
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
       const recordId = `${selectedStudent.uid}_${year}_${term}`;
 
       batch.set(doc(db, "studentFeeRecords", recordId), {
+        admissionBill: increment(amount),
         admissionBalance: increment(amount),
+        balance: increment(amount),
         payments: arrayUnion(billEntry),
         lastUpdated: serverTimestamp(),
       }, { merge: true });
@@ -479,53 +527,140 @@ export default function AdmissionCharges() {
     }
   };
 
-  const renderStudentItem = ({ item }: { item: Student }) => (
-    <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper}>
-      <TouchableOpacity
-        style={styles.studentCard}
-        onPress={() => {
-          setSelectedStudent(item);
-          setPaymentAmount("");
-          setReceivedFrom("");
-          setPaymentModalVisible(true);
-          fetchPaymentHistory(item.uid);
-        }}
-      >
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.fullName.charAt(0)}</Text>
-        </View>
-        <View style={styles.studentInfo}>
-          <Text style={styles.studentName}>{item.fullName}</Text>
-          <Text style={styles.studentClass}>{item.className}</Text>
-          <View style={styles.badgeRow}>
-            <View style={[styles.badge, { backgroundColor: VIBE.info + "15", marginRight: 8 }]}>
-              <Text style={[styles.badgeText, { color: VIBE.info }]}>
-                Bill: ₵{(item.admissionFeeBill || 0).toFixed(2)}
-              </Text>
+  const handleDeletePayment = (payment: any) => {
+    if (!selectedStudent) return;
+
+    const performDeletion = async () => {
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+
+      if (!year || !term) {
+        return showToast({
+          message: "Action blocked: Academic year and term must be configured.",
+          type: "error",
+        });
+      }
+
+      setSaving(true);
+      try {
+        const recordId = `${selectedStudent.uid}_${year}_${term}`;
+        const batch = writeBatch(db);
+        const amount = Number(payment.amount) || 0;
+        const isPayment = (payment.type || "").toLowerCase() === "admission_payment";
+
+        if (isPayment) {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            admissionPaid: increment(-amount),
+            admissionBalance: increment(amount),
+            balance: increment(amount),
+          });
+          batch.update(doc(db, "users", selectedStudent.uid), {
+            admissionPaid: increment(-amount),
+            admissionBalance: increment(amount),
+            walletBalance: increment(amount),
+          });
+        } else {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            admissionBill: increment(-amount),
+            admissionBalance: increment(-amount),
+            balance: increment(-amount),
+          });
+          batch.update(doc(db, "users", selectedStudent.uid), {
+            admissionBill: increment(-amount),
+            admissionBalance: increment(-amount),
+            walletBalance: increment(-amount),
+          });
+        }
+
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          payments: arrayRemove(payment),
+          lastUpdated: serverTimestamp(),
+        });
+
+        if (payment.receiptNo) {
+          batch.delete(doc(db, "feePayments", payment.receiptNo));
+        }
+
+        await batch.commit();
+        showToast({ message: "Transaction reverted successfully", type: "success" });
+        setPaymentModalVisible(false);
+        fetchStats();
+        if (selectedTerm) fetchAdmittedStudents(selectedTerm);
+        else fetchStudents(true);
+      } catch (err) {
+        console.error("Delete transaction error:", err);
+        showToast({ message: "Failed to revert transaction", type: "error" });
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    Alert.alert("Confirm Deletion", "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: performDeletion },
+    ]);
+  };
+
+  const renderStudentItem = ({ item }: { item: Student }) => {
+    const isolatedTotal = (item.admissionBalance || 0) + (item.ptaBalance || 0) +
+                          (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
+                          (item.uniformBalance || 0) + (item.otherBalance || 0);
+    const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
+
+    return (
+      <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper}>
+        <TouchableOpacity
+          style={styles.financeCard}
+          onPress={() => {
+            setSelectedStudent(item);
+            setPaymentAmount("");
+            setReceivedFrom("");
+            setPaymentModalVisible(true);
+            fetchPaymentHistory(item.uid);
+          }}
+        >
+          <View style={styles.cardContent}>
+            <View style={styles.leftSection}>
+              <View style={[styles.avatar, { backgroundColor: THEME.primary + "15" }]}>
+                <Text style={[styles.avatarText, { color: THEME.primary }]}>{item.fullName.charAt(0)}</Text>
+              </View>
+              <View style={styles.mainInfo}>
+                <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+
+                <View style={styles.tuitionBreakdown}>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>TUITION</Text>
+                    <Text style={styles.breakdownValue}>₵{tuitionBalance.toFixed(0)}</Text>
+                  </View>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>ADMISSION BILL</Text>
+                    <Text style={styles.breakdownValue}>₵{item.admissionBill.toFixed(0)}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.debtBox}>
+                  <Text style={[styles.debtLabel, { color: item.admissionBalance > 0 ? VIBE.danger : VIBE.success }]}>
+                    {item.admissionBalance > 0 ? "Admission Owed: " : "Paid: "}
+                  </Text>
+                  <Text style={[styles.debtValue, { color: item.admissionBalance > 0 ? VIBE.danger : VIBE.success }]}>
+                    ₵{Math.max(0, item.admissionBalance || 0).toFixed(0)}
+                  </Text>
+                </View>
+              </View>
             </View>
-            <View style={[styles.badge, { backgroundColor: VIBE.success + "15", marginRight: 8 }]}>
-              <Text style={[styles.badgeText, { color: VIBE.success }]}>
-                Paid: ₵{(item.admissionFeePaid || 0).toFixed(2)}
-              </Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: (item.admissionBalance > 0) ? VIBE.danger + "15" : VIBE.purple + "15" }]}>
-              <Text style={[styles.badgeText, { color: (item.admissionBalance > 0) ? VIBE.danger : VIBE.purple }]}>
-                Owed: ₵{Math.max(0, item.admissionBalance || 0).toFixed(2)}
-              </Text>
-            </View>
+            <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
           </View>
-        </View>
-        <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
-      </TouchableOpacity>
-    </Animatable.View>
-  );
+        </TouchableOpacity>
+      </Animatable.View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <LinearGradient
-          colors={[primaryBrand, secondaryBrand]}
+          colors={[THEME.primary, THEME.secondary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerTop}
@@ -538,7 +673,22 @@ export default function AdmissionCharges() {
               <Text style={styles.headerTitle}>Admission Fees</Text>
               <Text style={styles.headerSub}>ENROLLMENT BILLING</Text>
             </View>
-            <View style={{ width: 44 }} />
+            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn}>
+              <SVGIcon name="funnel-outline" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.selectorGrid}>
+            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)}>
+              <Text style={styles.glassLabel}>FILTER BY CLASS</Text>
+              <Text style={styles.glassValue} numberOfLines={1}>
+                {selectedClassId === "all" ? "All Classes" : classes.find(c => c.id === selectedClassId)?.name || "Select Class"}
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.glassPill}>
+              <Text style={styles.glassLabel}>ACADEMIC YEAR</Text>
+              <Text style={styles.glassValue}>{acadConfig.academicYear || "---"}</Text>
+            </View>
           </View>
         </LinearGradient>
 
@@ -554,198 +704,275 @@ export default function AdmissionCharges() {
             />
           </View>
           <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound}>
-            <SVGIcon name="refresh" size={18} color={VIBE.primary} />
+            <SVGIcon name="refresh" size={18} color={THEME.primary} />
           </TouchableOpacity>
         </View>
       </View>
-
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: VIBE.primary }]}>
-          <Text style={styles.statLabel}>Revenue</Text>
-          <Text style={styles.statValue}>₵{stats.totalRevenue.toLocaleString()}</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: VIBE.danger }]}>
-          <Text style={styles.statLabel}>Outstanding</Text>
-          <Text style={styles.statValue}>₵{(stats.totalDebt || 0).toLocaleString()}</Text>
-        </View>
-      </View>
-
-      <View style={[styles.statsRow, { marginTop: 10 }]}>
-        <View style={styles.statGrid}>
-          {[1, 2, 3].map(t => {
-            const termName = `Term ${t}`;
-            const isActive = selectedTerm === termName;
-            return (
-              <TouchableOpacity
-                key={t}
-                style={[styles.miniStat, isActive && styles.activeMiniStat]}
-                onPress={() => {
-                  if (isActive) {
-                    setSelectedTerm(null);
-                    setStudents([]);
-                  } else {
-                    setSelectedTerm(termName);
-                    setSearchQuery("");
-                    fetchAdmittedStudents(termName);
-                  }
-                }}
-              >
-                <Text style={[styles.miniLabel, isActive && styles.activeMiniLabel]}>Term {t}</Text>
-                <Text style={[styles.miniValue, isActive && styles.activeMiniValue]}>{stats[`term${t}Count`]}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {selectedTerm && (
-        <View style={styles.termInfoBar}>
-          <View style={styles.termInfoLeft}>
-            <Text style={styles.termInfoLabel}>ADMITTED IN {selectedTerm.toUpperCase()}</Text>
-            <Text style={styles.termInfoRevenue}>Term Collection: ₵{stats[`term${selectedTerm.slice(-1)}Revenue`].toLocaleString()}</Text>
-          </View>
-          <TouchableOpacity onPress={() => { setSelectedTerm(null); setStudents([]); }} style={styles.clearTermBtn}>
-            <SVGIcon name="close-circle" size={24} color={VIBE.danger} />
-          </TouchableOpacity>
-        </View>
-      )}
 
       <FlatList
         data={filteredStudents}
         renderItem={renderStudentItem}
         keyExtractor={item => item.uid}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={styles.flatListContent}
         onEndReached={() => !selectedTerm && fetchStudents()}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[VIBE.primary]} />
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />
+        }
+        ListHeaderComponent={
+          <>
+            <View style={[styles.statsDashboard, { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10, paddingBottom: 15 }]}>
+              <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: (width - 52)/2 }]}>
+                <Text style={styles.statLabel}>TERM BILLED</Text>
+                <Text style={styles.statValue}>₵{(stats.totalBilled || 0).toLocaleString()}</Text>
+                <SVGIcon name="receipt" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+              </LinearGradient>
+              <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: (width - 52)/2 }]}>
+                <Text style={styles.statLabel}>TERM COLLECTED</Text>
+                <Text style={styles.statValue}>₵{(stats.totalCollected || 0).toLocaleString()}</Text>
+                <SVGIcon name="cash" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+              </LinearGradient>
+            </View>
+
+            <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+              <Text style={styles.listTitle}>TERM-SPECIFIC ADMISSIONS</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                {[1, 2, 3].map(t => {
+                  const termName = `Term ${t}`;
+                  const isActive = selectedTerm === termName;
+                  return (
+                    <TouchableOpacity
+                      key={t}
+                      style={{
+                        flex: 1,
+                        backgroundColor: isActive ? THEME.primary : '#fff',
+                        padding: 12,
+                        borderRadius: 15,
+                        borderWidth: 1,
+                        borderColor: isActive ? THEME.primary : VIBE.border,
+                        alignItems: 'center',
+                        ...SHADOWS.small
+                      }}
+                      onPress={() => {
+                        if (isActive) {
+                          setSelectedTerm(null);
+                          setStudents([]);
+                        } else {
+                          setSelectedTerm(termName);
+                          setSearchQuery("");
+                          fetchAdmittedStudents(termName);
+                        }
+                      }}
+                    >
+                      <Text style={{ fontSize: 10, fontWeight: '800', color: isActive ? '#fff' : VIBE.muted }}>TERM {t}</Text>
+                      <Text style={{ fontSize: 16, fontWeight: '900', color: isActive ? '#fff' : VIBE.text, marginTop: 2 }}>
+                        {stats[`term${t}Count`]}
+                      </Text>
+                      <Text style={{ fontSize: 9, fontWeight: '700', color: isActive ? 'rgba(255,255,255,0.8)' : VIBE.success, marginTop: 1 }}>
+                        ₵{stats[`term${t}Revenue`].toLocaleString()}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {selectedTerm && (
+              <View style={[styles.filterInfoBar, { marginBottom: 20 }]}>
+                <Text style={styles.filterInfoText}>Showing: {selectedTerm.toUpperCase()} ADMISSIONS</Text>
+                <TouchableOpacity onPress={() => { setSelectedTerm(null); setStudents([]); }}>
+                  <SVGIcon name="close-circle" size={20} color={VIBE.danger} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <Text style={[styles.listTitle, { marginHorizontal: 20, marginBottom: 15 }]}>STUDENT DIRECTORY</Text>
+          </>
         }
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator size="large" color={VIBE.primary} style={{ marginTop: 50 }} />
-          ) : searchQuery.length < 2 && !selectedTerm ? (
-            <View style={styles.emptyWrap}>
-              <SVGIcon name="search" size={64} color="#CBD5E1" />
-              <Text style={styles.emptyText}>Search or select a term to view students</Text>
-            </View>
+            <ActivityIndicator size="large" color={THEME.primary} style={{ marginTop: 50 }} />
           ) : (
             <View style={styles.emptyWrap}>
-              <SVGIcon name="person" size={64} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No students found</Text>
+              <SVGIcon name={selectedTerm || selectedClassId !== "all" ? "person" : "search"} size={64} color="#CBD5E1" />
+              <Text style={styles.emptyText}>
+                {selectedTerm
+                  ? "No students found for this term"
+                  : selectedClassId !== "all"
+                    ? "No admitted students found for this class"
+                    : searchQuery.length < 2
+                      ? "Search for a student to bill"
+                      : "No students found matching your search"}
+              </Text>
             </View>
           )
         }
       />
 
-      {/* Payment Modal */}
+      <ClassSelectorModal
+        visible={classModalVisible}
+        onClose={() => setClassModalVisible(false)}
+        classes={classes}
+        selectedClassId={selectedClassId}
+        onSelect={setSelectedClassId}
+      />
+
+      {/* Payment/Billing Modal */}
       <Modal visible={paymentModalVisible} transparent animationType="slide">
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.overlay}>
-          <View style={styles.modalBody}>
-            <View style={styles.modalHeader}>
+          <View style={styles.sheetBody}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
               <View>
-                <Text style={styles.modalTitle}>{selectedStudent?.fullName}</Text>
-                <Text style={styles.modalSubtitle}>ADMISSION FEE PAYMENT</Text>
+                <Text style={styles.sheetTitle}>{selectedStudent?.fullName}</Text>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>ADMISSION FEE MGMT</Text>
               </View>
-              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeBtn}>
+              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeRound}>
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.tabContainer}>
+            <View style={styles.modeTabs}>
               <TouchableOpacity
-                style={[styles.tab, activeTab === "payment" && styles.activeTab]}
+                style={[styles.modeTab, activeTab === "payment" && styles.activeModeTab]}
                 onPress={() => setActiveTab("payment")}
               >
-                <Text style={[styles.tabText, activeTab === "payment" && styles.activeTabText]}>PAYMENT</Text>
+                <SVGIcon name="cash-outline" size={18} color={activeTab === "payment" ? "#fff" : VIBE.muted} />
+                <Text style={[styles.modeTabText, activeTab === "payment" && { color: "#fff" }]}>PAYMENT</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.tab, activeTab === "billing" && styles.activeTab]}
+                style={[styles.modeTab, activeTab === "billing" && styles.activeModeTab]}
                 onPress={() => setActiveTab("billing")}
               >
-                <Text style={[styles.tabText, activeTab === "billing" && styles.activeTabText]}>BILLING</Text>
+                <SVGIcon name="receipt-outline" size={18} color={activeTab === "billing" ? "#fff" : VIBE.muted} />
+                <Text style={[styles.modeTabText, activeTab === "billing" && { color: "#fff" }]}>BILLING</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
               {activeTab === "payment" ? (
                 <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Amount to Pay (₵)</Text>
+                  <View style={{ gap: 15, marginBottom: 25 }}>
+                    <Text style={styles.breakdownLabel}>AMOUNT TO PAY (₵)</Text>
                     <TextInput
-                      style={styles.mainInput}
+                      style={styles.pillInput}
                       placeholder="0.00"
                       keyboardType="numeric"
                       value={paymentAmount}
                       onChangeText={setPaymentAmount}
-                      placeholderTextColor={VIBE.muted}
                     />
-                  </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Received From</Text>
+                    <Text style={styles.breakdownLabel}>RECEIVED FROM</Text>
                     <TextInput
-                      style={styles.subInput}
+                      style={[styles.pillInput, { fontSize: 16 }]}
                       placeholder="Payer Name"
                       value={receivedFrom}
                       onChangeText={setReceivedFrom}
-                      placeholderTextColor={VIBE.muted}
                     />
                   </View>
 
-                  <Text style={styles.inputLabel}>Payment Method</Text>
+                  <Text style={styles.breakdownLabel}>PAYMENT METHOD</Text>
                   <View style={styles.methodGrid}>
                     {["Cash", "Cheque", "Momo", "E-cash"].map(m => (
                       <TouchableOpacity
                         key={m}
-                        style={[styles.methodBtn, paymentMethod === m && styles.activeMethod]}
+                        style={[styles.methodBtn, paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary }]}
                         onPress={() => setPaymentMethod(m as any)}
                       >
-                        <Text style={[styles.methodText, paymentMethod === m && styles.activeMethodText]}>{m}</Text>
+                        <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
 
-                  <TouchableOpacity style={styles.submitBtn} onPress={handleLogPayment} disabled={saving}>
-                    {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>CONFIRM PAYMENT</Text>}
+                  <TouchableOpacity onPress={handleLogPayment} disabled={saving}>
+                    <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
+                      {saving ? <ActivityIndicator color="#fff" /> : (
+                        <>
+                          <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
+                          <SVGIcon name="checkmark-circle" size={20} color="#fff" />
+                        </>
+                      )}
+                    </LinearGradient>
                   </TouchableOpacity>
                 </>
               ) : (
                 <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Admission Fee Amount (₵)</Text>
+                  <View style={{ gap: 15, marginBottom: 25 }}>
+                    <Text style={styles.breakdownLabel}>ADMISSION FEE AMOUNT (₵)</Text>
                     <TextInput
-                      style={styles.mainInput}
+                      style={styles.pillInput}
                       placeholder="0.00"
                       keyboardType="numeric"
                       value={billAmount}
                       onChangeText={setBillAmount}
-                      placeholderTextColor={VIBE.muted}
                     />
                   </View>
-                  <TouchableOpacity style={[styles.submitBtn, { backgroundColor: VIBE.secondary }]} onPress={handleLogBill} disabled={saving}>
-                    {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>INITIATE BILLING</Text>}
+                  <TouchableOpacity onPress={handleLogBill} disabled={saving}>
+                    <LinearGradient colors={[VIBE.purple, "#7C3AED"]} style={styles.saveBtn}>
+                      {saving ? <ActivityIndicator color="#fff" /> : (
+                        <>
+                          <Text style={styles.saveBtnText}>INITIATE BILLING</Text>
+                          <SVGIcon name="receipt" size={20} color="#fff" />
+                        </>
+                      )}
+                    </LinearGradient>
                   </TouchableOpacity>
                 </>
               )}
 
-              <View style={styles.historySection}>
-                <Text style={styles.sectionTitle}>Payment History</Text>
+              <View style={styles.historyBlock}>
+                <Text style={styles.blockTitle}>Transaction History</Text>
                 {loadingHistory ? (
-                  <ActivityIndicator color={VIBE.primary} />
+                  <ActivityIndicator color={THEME.primary} style={{ marginTop: 20 }} />
                 ) : history.length > 0 ? (
                   history.map((h, i) => (
-                    <View key={i} style={styles.historyItem}>
-                      <View>
-                        <Text style={styles.historyAmt}>₵{h.amount.toFixed(2)}</Text>
-                        <Text style={styles.historyDate}>{moment(h.createdAt).format("MMM DD, YYYY")}</Text>
+                    <TouchableOpacity
+                      key={i}
+                      style={styles.transactionTile}
+                      onPress={() => {
+                        setPaymentModalVisible(false);
+                        router.push({
+                          pathname: "/shared/receipt-view",
+                          params: {
+                            type: h.type === 'admission' ? 'bill' : 'payment',
+                            studentId: selectedStudent?.uid,
+                            paymentId: h.receiptNo,
+                            year: h.academicYear,
+                            term: h.term
+                          }
+                        });
+                      }}
+                      onLongPress={() => handleDeletePayment(h)}
+                    >
+                      <View style={styles.tileHeader}>
+                        <Text style={[styles.tileAmt, { color: h.type === 'admission' ? VIBE.purple : VIBE.success }]}>
+                          ₵{h.amount.toLocaleString()}
+                        </Text>
+                        <View style={{ backgroundColor: h.type === 'admission' ? VIBE.purple + '15' : VIBE.success + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '900', color: h.type === 'admission' ? VIBE.purple : VIBE.success }}>
+                            {h.type === 'admission' ? 'BILL' : 'PAYMENT'}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={{ alignItems: "flex-end" }}>
-                        <Text style={styles.historyMethod}>{h.method}</Text>
-                        <Text style={styles.historyReceipt}>{h.receiptNo}</Text>
+                      <Text style={styles.tileDetail}>{h.method}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                        <Text style={styles.tileDate}>{moment(h.createdAt).format("MMM DD, YYYY • HH:mm")}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleDeletePayment(h);
+                            }}
+                            style={{ padding: 4 }}
+                          >
+                            <SVGIcon name="trash" size={16} color={VIBE.danger} />
+                          </TouchableOpacity>
+                          <SVGIcon name="eye-outline" size={14} color={VIBE.muted} />
+                        </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))
                 ) : (
-                  <Text style={styles.noHistory}>No previous admission payments</Text>
+                  <Text style={styles.noHistory}>No previous admission transactions</Text>
                 )}
               </View>
             </ScrollView>
@@ -755,292 +982,3 @@ export default function AdmissionCharges() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: VIBE.bg },
-  header: {
-    backgroundColor: "#fff",
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    ...SHADOWS.medium,
-    paddingBottom: 20,
-    zIndex: 10,
-  },
-  headerTop: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 30,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-  },
-  navBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  headerIconBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  titleCenter: { alignItems: "center" },
-  headerTitle: { fontSize: 20, fontWeight: "900", color: "#fff" },
-  headerSub: { fontSize: 10, fontWeight: "800", color: "rgba(255,255,255,0.7)", letterSpacing: 2 },
-  searchStrip: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    marginTop: -25,
-    gap: 10,
-  },
-  searchBar: {
-    flex: 1,
-    height: 50,
-    backgroundColor: "#fff",
-    borderRadius: 25,
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    ...SHADOWS.medium,
-    borderWidth: 1,
-    borderColor: VIBE.border,
-  },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 14, fontWeight: "600", color: VIBE.text },
-  refreshRound: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
-    ...SHADOWS.medium,
-    borderWidth: 1,
-    borderColor: VIBE.border,
-  },
-  statsRow: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    marginTop: 20,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1.2,
-    padding: 15,
-    borderRadius: 20,
-    justifyContent: "center",
-    ...SHADOWS.small,
-  },
-  statLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 10,
-    fontWeight: "800",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  statValue: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "900",
-    marginTop: 4,
-  },
-  statGrid: {
-    flex: 2,
-    flexDirection: "row",
-    gap: 8,
-  },
-  miniStat: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 10,
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: VIBE.border,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  miniLabel: {
-    fontSize: 8,
-    fontWeight: "800",
-    color: VIBE.muted,
-    textTransform: "uppercase",
-  },
-  miniValue: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: VIBE.text,
-    marginTop: 2,
-  },
-  activeMiniStat: {
-    backgroundColor: VIBE.primary,
-    borderColor: VIBE.primary,
-  },
-  activeMiniLabel: {
-    color: "rgba(255,255,255,0.8)",
-  },
-  activeMiniValue: {
-    color: "#fff",
-  },
-  termInfoBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    marginTop: 15,
-    padding: 15,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: VIBE.border,
-    ...SHADOWS.small,
-  },
-  termInfoLeft: {
-    flex: 1,
-  },
-  termInfoLabel: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: VIBE.muted,
-    letterSpacing: 1,
-  },
-  termInfoRevenue: {
-    fontSize: 14,
-    fontWeight: "900",
-    color: VIBE.success,
-    marginTop: 2,
-  },
-  clearTermBtn: {
-    padding: 5,
-  },
-  tabContainer: {
-    flexDirection: "row",
-    backgroundColor: VIBE.bg,
-    borderRadius: 15,
-    padding: 5,
-    marginBottom: 20,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: "center",
-    borderRadius: 12,
-  },
-  activeTab: {
-    backgroundColor: "#fff",
-    ...SHADOWS.small,
-  },
-  tabText: {
-    fontSize: 12,
-    fontWeight: "800",
-    color: VIBE.muted,
-  },
-  activeTabText: {
-    color: VIBE.primary,
-  },
-  listContent: { padding: 20, paddingTop: 20 },
-  cardWrapper: { marginBottom: 12 },
-  studentCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 20,
-    ...SHADOWS.small,
-    borderWidth: 1,
-    borderColor: VIBE.border,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 18,
-    backgroundColor: VIBE.primary + "10",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  avatarText: { fontSize: 22, fontWeight: "900", color: VIBE.primary },
-  studentInfo: { flex: 1, marginLeft: 15 },
-  studentName: { fontSize: 16, fontWeight: "800", color: VIBE.text },
-  studentClass: { fontSize: 12, color: VIBE.muted, fontWeight: "600", marginTop: 2 },
-  badgeRow: { flexDirection: "row", marginTop: 8 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  badgeText: { fontSize: 10, fontWeight: "800" },
-  emptyWrap: { alignItems: "center", marginTop: 100, opacity: 0.5 },
-  emptyText: { fontSize: 18, fontWeight: "900", color: "#94A3B8", marginTop: 20 },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalBody: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 40,
-    borderTopRightRadius: 40,
-    padding: 25,
-    maxHeight: "90%",
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 25,
-  },
-  modalTitle: { fontSize: 20, fontWeight: "900", color: VIBE.text },
-  modalSubtitle: { fontSize: 10, fontWeight: "800", color: VIBE.muted, letterSpacing: 1 },
-  closeBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: VIBE.bg, justifyContent: "center", alignItems: "center" },
-  inputGroup: { marginBottom: 20 },
-  inputLabel: { fontSize: 12, fontWeight: "800", color: VIBE.muted, marginBottom: 8, marginLeft: 5 },
-  mainInput: {
-    backgroundColor: VIBE.bg,
-    borderRadius: 20,
-    padding: 20,
-    fontSize: 28,
-    fontWeight: "900",
-    color: VIBE.primary,
-    borderWidth: 1,
-    borderColor: VIBE.border,
-    textAlign: "center",
-  },
-  subInput: {
-    backgroundColor: VIBE.bg,
-    borderRadius: 15,
-    padding: 15,
-    fontSize: 16,
-    fontWeight: "700",
-    color: VIBE.text,
-    borderWidth: 1,
-    borderColor: VIBE.border,
-  },
-  methodGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 25 },
-  methodBtn: {
-    flex: 1,
-    minWidth: "45%",
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: VIBE.bg,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: VIBE.border,
-  },
-  activeMethod: { backgroundColor: VIBE.primary, borderColor: VIBE.primary },
-  methodText: { fontSize: 14, fontWeight: "800", color: VIBE.muted },
-  activeMethodText: { color: "#fff" },
-  submitBtn: {
-    backgroundColor: VIBE.primary,
-    height: 65,
-    borderRadius: 25,
-    justifyContent: "center",
-    alignItems: "center",
-    ...SHADOWS.medium,
-  },
-  submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "900", letterSpacing: 1 },
-  historySection: { marginTop: 30, borderTopWidth: 1, borderTopColor: VIBE.border, paddingTop: 25 },
-  sectionTitle: { fontSize: 16, fontWeight: "900", color: VIBE.text, marginBottom: 15 },
-  historyItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: VIBE.bg,
-    padding: 15,
-    borderRadius: 15,
-    marginBottom: 10,
-  },
-  historyAmt: { fontSize: 16, fontWeight: "900", color: VIBE.text },
-  historyDate: { fontSize: 11, color: VIBE.muted, fontWeight: "600" },
-  historyMethod: { fontSize: 12, fontWeight: "800", color: VIBE.primary },
-  historyReceipt: { fontSize: 10, color: VIBE.muted, fontWeight: "700" },
-  noHistory: { textAlign: "center", color: VIBE.muted, fontStyle: "italic", marginTop: 10 },
-});

@@ -1,45 +1,14 @@
 import { Picker } from "@react-native-picker/picker";
-import * as Clipboard from "expo-clipboard";
-import * as DocumentPicker from "expo-document-picker";
 import { useFocusEffect, useRouter } from "expo-router";
-import { initializeApp } from "firebase/app";
-import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
-import {
-  arrayRemove,
-  arrayUnion,
-  collection,
-  deleteDoc,
-  doc,
-  documentId,
-  getDoc,
-  getDocsFromServer,
-  increment,
-  limit,
-  onSnapshot,
-  query,
-  setDoc,
-  Timestamp,
-  updateDoc,
-  where,
-  writeBatch,
-} from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Dimensions,
   FlatList,
-  Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   RefreshControl,
-  ScrollView,
-  Share,
   StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -48,104 +17,16 @@ import {
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
-import { SCHOOL_CONFIG } from "../../constants/Config";
-import { CAMBRIDGE_SUBJECTS, GES_SUBJECTS } from "../../constants/Curriculum";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
-import { db, functions } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
-import { sortClasses } from "../../lib/classHelpers";
-
-const { width } = Dimensions.get("window");
-const DEFAULT_AVATAR = require("../../assets/default-avatar.png");
-
-type UserRole = "admin" | "teacher" | "parent" | "student" | "staff";
-type PermissionLevel = "full" | "view" | "edit" | "deny";
-
-interface User {
-  uid: string;
-  username?: string;
-  pin?: string;
-  profile: {
-    firstName: string;
-    lastName: string;
-    email?: string;
-    phone?: string;
-    gender?: string;
-    profileImage?: string;
-    emergencyPhone?: string;
-    parentPhone?: string;
-  };
-  role: UserRole;
-  adminRole?: string;
-  classes?: string[];
-  subjects?: string[];
-  classTeacherOf?: string;
-  classId?: string;
-  assignedRoles?: string[];
-  departmentHeadOf?: string;
-  childrenIds?: string[];
-  parentUids?: string[];
-  canCreateNews?: boolean;
-  permissions?: Record<string, PermissionLevel>;
-  signupCode?: string;
-  secretCode?: string;
-  dateOfBirth?: any;
-  walletBalance?: number;
-  dailyArrears?: number;
-  onScholarship?: boolean;
-  onDiscount?: boolean;
-  discountAmount?: number;
-  takesBus?: boolean;
-  busLocation?: string;
-  isFeeding?: boolean;
-  takesExtraClasses?: boolean;
-  status: "active" | "archived" | "disabled" | string;
-  archivedAt?: any;
-  archivedInYear?: string;
-}
-
-const roles: { name: string; role: UserRole; icon: string }[] = [
-  { name: "Admins", role: "admin", icon: "shield-checkmark" },
-  { name: "Teachers", role: "teacher", icon: "people" },
-  { name: "Staff", role: "staff", icon: "briefcase" },
-  { name: "Parents", role: "parent", icon: "home" },
-  { name: "Students", role: "student", icon: "school" },
-];
-
-const PERMISSION_KEYS = [
-  { key: "manage-fees", label: "Manage Fees & Billing" },
-  { key: "manage-sales", label: "Financial Records (Sales)" },
-  { key: "feeding", label: "Feeding Recording" },
-  { key: "record-bus-fee", label: "Bus Fee Recording" },
-  { key: "record-extra-classes", label: "Extra Classes Recording" },
-  { key: "attendance", label: "Attendance Management" },
-  { key: "academic-records", label: "Academic Records" },
-  { key: "scores", label: "Scores & Grading" },
-  { key: "behavioral-records", label: "Behavioral Records" },
-  { key: "assignments", label: "Assignments & Homework" },
-  { key: "staff-payroll", label: "Staff Payroll" },
-  { key: "expenditure", label: "Expenditure" },
-  { key: "manage-users", label: "Manage Users" },
-  { key: "news", label: "News & Announcements" },
-  { key: "gallery", label: "Gallery Management" },
-  { key: "timetables", label: "Timetable Management" },
-  { key: "academic-calendar", label: "Academic Calendar" },
-  { key: "settings", label: "School Settings & Rates" },
-  { key: "faq", label: "FAQ Management" },
-  { key: "student-groups", label: "Student Study Groups" },
-  { key: "parent-chat", label: "Parent Communication" },
-  { key: "staff-chat", label: "Internal Staff Chat" },
-  { key: "guest-chat", label: "Guest Inquiry Chat" },
-];
-
-const PERMISSION_LEVELS: { label: string; value: PermissionLevel }[] = [
-  { label: "Full Control", value: "full" },
-  { label: "View Only", value: "view" },
-  { label: "Can Edit", value: "edit" },
-  { label: "Deny Access", value: "deny" },
-];
+import { useManageUsers } from "../../hooks/admin-dashboard/useManageUsers";
+import { RoleSelector } from "../../components/admin-dashboard/manage-users/RoleSelector";
+import { UserCard } from "../../components/admin-dashboard/manage-users/UserCard";
+import { BulkActionBar } from "../../components/admin-dashboard/manage-users/BulkActionBar";
+import { UserDetailModal } from "../../components/admin-dashboard/manage-users/UserDetailModal";
+import { AssignmentModal } from "../../components/admin-dashboard/manage-users/AssignmentModal";
 
 export default function ManageUsers() {
   const router = useRouter();
@@ -153,1437 +34,56 @@ export default function ManageUsers() {
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
 
-  const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = [
-    "proprietor",
-    "proprietress",
-    "manager",
-    "headmaster",
-    "headmistress",
-    "administrator",
-    "director",
-    "accountant",
-    "bursar",
-    "admin",
-  ].includes(currentUserRole);
-  const hasManageUsersAccess =
-    appUser?.permissions?.["manage-users"] === "full" || isSuperAdmin;
-
-  useEffect(() => {
-    if (appUser && !hasManageUsersAccess) {
-      Alert.alert("Access Denied", "Unauthorized management access.");
-      router.replace("/admin-dashboard");
-    }
-  }, [appUser, hasManageUsersAccess]);
-
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
-  const [selectedClassId, setSelectedClassId] = useState<string>("all");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
-
-  const [selectedUserUids, setSelectedUserUids] = useState<string[]>([]);
-
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>(
-    [],
-  );
-
-  const [viewingUser, setViewingUser] = useState<User | null>(null);
-  const [linkedUsers, setLinkedUsers] = useState<User[]>([]);
-  const [loadingLinks, setLoadingLinks] = useState(false);
-  const [assignmentCount, setAssignmentCount] = useState<number | null>(null);
-
-  const [assignmentModal, setAssignmentModal] = useState<{
-    type:
-      | "none"
-      | "assign_as"
-      | "class_teacher"
-      | "dept_head"
-      | "permissions"
-      | "other"
-      | "edit_profile"
-      | "upgrade_staff"
-      | "manage_classes"
-      | "manage_subjects";
-    target: User | null;
-  }>({ type: "none", target: null });
-
-  const [editFirstName, setEditFirstName] = useState("");
-  const [editLastName, setEditLastName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editGender, setEditGender] = useState("");
-  const [editEmergencyPhone, setEditEmergencyPhone] = useState("");
-  const [editParentPhone, setEditParentPhone] = useState("");
-  const [editDob, setEditDob] = useState<Date | null>(null);
-  const [editBusLocation, setEditBusLocation] = useState("");
-  const [editTakesBus, setEditTakesBus] = useState(false);
-  const [editOnScholarship, setEditOnScholarship] = useState(false);
-  const [editOnDiscount, setEditOnDiscount] = useState(false);
-  const [editIsFeeding, setEditIsFeeding] = useState(false);
-  const [editTakesExtraClasses, setEditTakesExtraClasses] = useState(false);
-
-  const [upgradeEmail, setUpgradeEmail] = useState("");
-  const [upgradePassword, setUpgradePassword] = useState("");
-  const [staffRoleText, setStaffRoleText] = useState("");
-  const [staffPhone, setStaffPhone] = useState("");
-
-  const [customRoleText, setCustomRoleText] = useState("");
-  const [deptText, setDeptText] = useState("");
-  const [newsPermission, setNewsPermission] = useState(false);
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
-
-  const [busLocations, setBusLocations] = useState<string[]>([]);
-  const [isAddingNewBusLoc, setIsAddingNewBusLoc] = useState(false);
-  const [newBusLocInput, setNewBusLocInput] = useState("");
-
-  const [tempPermissions, setTempPermissions] = useState<
-    Record<string, PermissionLevel>
-  >({});
-  const [updating, setUpdating] = useState(false);
-  const [deletingUid, setDeletingUid] = useState<string | null>(null);
-
-  const handleBulkImport = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "text/comma-separated-values",
-        copyToCacheDirectory: true,
-      });
-
-      if (result.canceled || !result.assets.length) return;
-
-      setLoading(true);
-      const fileUri = result.assets[0].uri;
-      const response = await fetch(fileUri);
-      const csvText = await response.text();
-
-      // Simple CSV Parsing
-      const rows = csvText.split(/\r?\n/).filter((line) => line.trim() !== "");
-      if (rows.length < 2)
-        throw new Error("CSV file is empty or missing data.");
-
-      const headers = rows[0].split(",").map((h) => h.trim().toLowerCase());
-      const userData = rows.slice(1);
-
-      const batch = writeBatch(db);
-      let count = 0;
-      let studentIncrement = 0;
-      let staffIncrement = 0;
-
-      for (const row of userData) {
-        const values = row.split(",").map((v) => v.trim());
-        if (values.length < 2) continue;
-
-        // Map columns based on headers or assume: firstName, lastName, gender, extraInput, emergencyPhone, parentPhone
-        const firstName = values[0];
-        const lastName = values[1];
-        const gender = values[2] || "";
-        const extraInput = values[3];
-        const emergencyPhone = values[4] || "";
-        const parentPhone = values[5] || "";
-
-        if (!firstName || !lastName) continue;
-
-        const signupCode = Math.random()
-          .toString(36)
-          .substring(2, 8)
-          .toUpperCase();
-        const tempId = doc(collection(db, "users")).id;
-
-        const newUserDoc: any = {
-          uid: tempId,
-          role: selectedRole,
-          status: "pending_activation",
-          signupCode: signupCode,
-          profile: {
-            firstName,
-            lastName,
-            gender,
-            emergencyPhone,
-            parentPhone,
-          },
-          createdAt: Timestamp.now(),
-          // Redundant schoolId property injection removed as per "one database per school" architecture
-        };
-
-        if (selectedRole === "student") {
-          // Resolve classId from name or ID
-          let targetClassId = "";
-          if (extraInput) {
-            const matchedClass = allClasses.find(
-              (c) =>
-                c.name.toLowerCase() === extraInput.toLowerCase() ||
-                c.id === extraInput,
-            );
-            targetClassId = matchedClass ? matchedClass.id : "";
-          } else {
-            targetClassId = selectedClassId === "all" ? "" : selectedClassId;
-          }
-          newUserDoc.classId = targetClassId;
-          studentIncrement++;
-        } else if (selectedRole === "admin" || selectedRole === "staff" || selectedRole === "teacher") {
-          // For staff roles, extraInput can be the specific adminRole title
-          if (extraInput) {
-            newUserDoc.adminRole = extraInput;
-          }
-          staffIncrement++;
-        }
-
-        batch.set(doc(db, "users", tempId), newUserDoc);
-        count++;
-      }
-
-      if (count > 0) {
-        const statsRef = doc(db, "stats", "global");
-        const statsUpdate: any = {};
-        if (studentIncrement > 0) statsUpdate.totalStudents = increment(studentIncrement);
-        if (staffIncrement > 0) statsUpdate.totalStaff = increment(staffIncrement);
-
-        if (Object.keys(statsUpdate).length > 0) {
-          batch.set(statsRef, statsUpdate, { merge: true });
-        }
-
-        await batch.commit();
-        Alert.alert(
-          "Import Successful",
-          `Created ${count} pending ${selectedRole} profiles. Provide them with their names to activate.`,
-        );
-      }
-    } catch (error: any) {
-      console.error(error);
-      Alert.alert("Import Failed", error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const fetchClasses = async () => {
-      try {
-        const snap = await getDocsFromServer(collection(db, "classes") as any);
-        const list = snap.docs.map((d: any) => ({
-          id: d.id,
-          name: d.data().name || d.id,
-        }));
-        setAllClasses(sortClasses(list));
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    fetchClasses();
-  }, []);
-
-  useEffect(() => {
-    const fetchBusRates = async () => {
-      try {
-        const docRef = doc(db, "school_settings", "bus_rates");
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const rates = snap.data() as Record<string, number>;
-          setBusLocations(Object.keys(rates).sort());
-        }
-      } catch (e) {
-        console.error("Error fetching bus rates:", e);
-      }
-    };
-    fetchBusRates();
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!selectedRole || !hasManageUsersAccess) {
-        setUsers([]);
-        return;
-      }
-      setLoading(true);
-      let q = query(
-        collection(db, "users"),
-        where("role", "==", selectedRole),
-        where(
-          "status",
-          "in",
-          showArchived ? ["archived"] : ["active", "pending_activation"],
-        ),
-        limit(100),
-      );
-
-      if (selectedRole === "student" && selectedClassId !== "all") {
-        q = query(
-          collection(db, "users"),
-          where("role", "==", "student"),
-          where("classId", "==", selectedClassId),
-          where(
-            "status",
-            "in",
-            showArchived ? ["archived"] : ["active", "pending_activation"],
-          ),
-          limit(100),
-        );
-      }
-
-      const unsub = onSnapshot(
-        q,
-        (snap) => {
-          const fetchedList = snap.docs.map(
-            (d: any) => ({ uid: d.id, ...(d.data() as any) }) as User,
-          );
-
-          // deduplicate by uid
-          const uniqueList = Array.from(
-            new Map(fetchedList.map((u) => [u.uid, u])).values(),
-          );
-
-          if (selectedRole === "student") {
-            uniqueList.sort((a, b) => {
-              const classA = a.classId || "";
-              const classB = b.classId || "";
-              if (classA !== classB) return classA.localeCompare(classB);
-              return (a.profile?.firstName || "").localeCompare(
-                b.profile?.firstName || "",
-              );
-            });
-          } else {
-            uniqueList.sort((a, b) =>
-              (a.profile?.firstName || "").localeCompare(
-                b.profile?.firstName || "",
-              ),
-            );
-          }
-          setUsers(uniqueList);
-          setLoading(false);
-        },
-        (err) => {
-          console.error("ManageUsers Snapshot Error:", err);
-          setLoading(false);
-        },
-      );
-      return () => unsub();
-    }, [selectedRole, selectedClassId, hasManageUsersAccess, showArchived]),
-  );
-
-  const filteredUsers = useMemo(() => {
-    const low = searchQuery.toLowerCase();
-    return users.filter(
-      (u) =>
-        u.profile?.firstName?.toLowerCase().includes(low) ||
-        u.profile?.lastName?.toLowerCase().includes(low) ||
-        u.profile?.email?.toLowerCase().includes(low),
-    );
-  }, [users, searchQuery]);
-
-  const toggleUserSelection = (uid: string) => {
-    setSelectedUserUids((prev) =>
-      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid],
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (filteredUsers.length === 0) return;
-    const allUids = filteredUsers.map((u) => u.uid);
-    const isAllSelected = allUids.every((uid) => selectedUserUids.includes(uid));
-
-    if (isAllSelected) {
-      setSelectedUserUids((prev) =>
-        prev.filter((uid) => !allUids.includes(uid)),
-      );
-    } else {
-      setSelectedUserUids((prev) =>
-        Array.from(new Set([...prev, ...allUids])),
-      );
-    }
-  };
-
-  useEffect(() => {
-    setSelectedUserUids([]);
-  }, [selectedRole, selectedClassId, showArchived]);
-
-  const handleBulkUpdate = async (field: string, value: any) => {
-    if (selectedUserUids.length === 0) return;
-    setUpdating(true);
-    try {
-      const batch = writeBatch(db);
-      selectedUserUids.forEach((uid) => {
-        batch.update(doc(db, "users", uid), { [field]: value });
-      });
-      await batch.commit();
-
-      // Optimistic local update
-      setUsers((prev) =>
-        prev.map((u) =>
-          selectedUserUids.includes(u.uid) ? { ...u, [field]: value } : u,
-        ),
-      );
-
-      setSelectedUserUids([]);
-      showToast?.({
-        message: `Updated ${selectedUserUids.length} students`,
-        type: "success",
-      });
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Bulk update failed.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const fetchLinkedUsersAndStats = async (user: User) => {
-    setLoadingLinks(true);
-    setLinkedUsers([]);
-    setAssignmentCount(null);
-    try {
-      let idsToFetch: string[] = [];
-      if (user.role === "parent" && user.childrenIds?.length)
-        idsToFetch = user.childrenIds;
-      else if (user.role === "student" && user.parentUids?.length)
-        idsToFetch = user.parentUids;
-
-      if (idsToFetch.length > 0) {
-        const q = query(
-          collection(db, "users"),
-          where(documentId(), "in", idsToFetch),
-        );
-        const snap = await getDocsFromServer(q as any);
-        setLinkedUsers(
-          snap.docs.map((d) => ({ uid: d.id, ...(d.data() as any) }) as User),
-        );
-      }
-      // Avoid performing a server-side count on load to reduce Firestore costs.
-      // If needed, assignment count can be fetched on demand.
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingLinks(false);
-    }
-  };
-
-  const handleUnlinkParent = async (parentUid: string) => {
-    if (!viewingUser) return;
-    setUpdating(true);
-    try {
-      const batch = writeBatch(db);
-      // Remove parent from student's array
-      batch.update(doc(db, "users", viewingUser.uid), {
-        parentUids: arrayRemove(parentUid),
-      });
-      // Remove student from parent's array
-      batch.update(doc(db, "users", parentUid), {
-        childrenIds: arrayRemove(viewingUser.uid),
-      });
-      await batch.commit();
-
-      // Refresh local UI state
-      setLinkedUsers((prev) => prev.filter((u) => u.uid !== parentUid));
-      setViewingUser((prev) =>
-        prev
-          ? {
-              ...prev,
-              parentUids: prev.parentUids?.filter((id) => id !== parentUid),
-            }
-          : null,
-      );
-      Alert.alert("Success", "Parent unlinked from student record.");
-    } catch (err) {
-      Alert.alert("Error", "Failed to unlink parent.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleUpdatePermissions = async () => {
-    if (!assignmentModal.target) return;
-    setUpdating(true);
-    try {
-      // sanitize permissions to remove invalid/undefined values before sending to Firestore
-      const sanitized: Record<string, PermissionLevel> = Object.entries(
-        tempPermissions || {},
-      ).reduce(
-        (acc, [k, v]) => {
-          if (v === "full" || v === "view" || v === "edit" || v === "deny") {
-            acc[k] = v as PermissionLevel;
-          }
-          return acc;
-        },
-        {} as Record<string, PermissionLevel>,
-      );
-
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
-        permissions: sanitized,
-      });
-
-      // Verification: Try to read the document back to ensure rules allowed it
-      await getDoc(doc(db, "users", assignmentModal.target.uid));
-
-      // Optimistic local update
-      const updatedUser = {
-        ...assignmentModal.target,
-        permissions: sanitized,
-      };
-      setUsers((prev) =>
-        prev.map((u) => (u.uid === updatedUser.uid ? updatedUser : u)),
-      );
-      if (viewingUser?.uid === updatedUser.uid) {
-        setViewingUser(updatedUser);
-      }
-
-      setAssignmentModal({ type: "none", target: null });
-      showToast?.({ message: "Admin permissions updated", type: "success" });
-    } catch (e: any) {
-      console.error("Failed to update permissions:", e);
-      const errorMsg = e.code === 'permission-denied'
-        ? "Access Denied: You don't have permission to modify these settings. Your changes have been reverted."
-        : "Failed to update permissions. Please try again.";
-
-      if (Platform.OS === 'web') {
-        window.alert(errorMsg);
-      } else {
-        Alert.alert("Error", errorMsg);
-      }
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleAssignRole = async (roleName: string) => {
-    const teacher = assignmentModal.target;
-    if (!teacher) return;
-    setUpdating(true);
-    try {
-      await updateDoc(doc(db, "users", teacher.uid), {
-        assignedRoles: arrayUnion(roleName),
-        canCreateNews: newsPermission,
-      });
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === teacher.uid
-            ? {
-                ...u,
-                assignedRoles: u.assignedRoles
-                  ? Array.from(new Set([...u.assignedRoles, roleName]))
-                  : [roleName],
-                canCreateNews: newsPermission,
-              }
-            : u,
-        ),
-      );
-      setAssignmentModal({ type: "none", target: null });
-      setCustomRoleText("");
-      setDeptText("");
-      Alert.alert("Success", `Role assigned: ${roleName}`);
-    } catch {
-      Alert.alert("Error", "Failed to assign role.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleUpdateClasses = async () => {
-    if (!assignmentModal.target) return;
-    setUpdating(true);
-    try {
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
-        classes: selectedClasses,
-      });
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === assignmentModal.target?.uid
-            ? { ...u, classes: selectedClasses }
-            : u,
-        ),
-      );
-      setAssignmentModal({ type: "none", target: null });
-      Alert.alert("Success", "Teacher classes updated.");
-    } catch (err) {
-      Alert.alert("Error", "Failed to update classes.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleUpdateSubjects = async () => {
-    if (!assignmentModal.target) return;
-    setUpdating(true);
-    try {
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
-        subjects: selectedSubjects,
-      });
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === assignmentModal.target?.uid
-            ? { ...u, subjects: selectedSubjects }
-            : u,
-        ),
-      );
-      setAssignmentModal({ type: "none", target: null });
-      Alert.alert("Success", "Teacher subjects updated.");
-    } catch (err) {
-      Alert.alert("Error", "Failed to update subjects.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleAssignDeptHead = async (department: string) => {
-    const teacher = assignmentModal.target;
-    if (!teacher) return;
-    if (!department || !department.trim())
-      return Alert.alert("Error", "Please enter a department name.");
-    setUpdating(true);
-    try {
-      await updateDoc(doc(db, "users", teacher.uid), {
-        assignedRoles: arrayUnion("Dept Head"),
-        departmentHeadOf: department.trim(),
-        canCreateNews: newsPermission,
-      });
-      setAssignmentModal({ type: "none", target: null });
-      setDeptText("");
-      Alert.alert("Success", `Assigned Dept Head (${department.trim()})`);
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Failed to assign dept head.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleRemoveAssignedRole = async (roleName: string, user: User) => {
-    if (!user) return;
-    Alert.alert(
-      "Confirm",
-      `Remove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Remove",
-          style: "destructive",
-          onPress: async () => {
-            setUpdating(true);
-            try {
-              const batch = writeBatch(db);
-              const userRef = doc(db, "users", user.uid);
-              batch.update(userRef, { assignedRoles: arrayRemove(roleName) });
-
-              // If removing dept head, clear departmentHeadOf
-              if (roleName === "Dept Head") {
-                batch.update(userRef, { departmentHeadOf: null });
-              }
-
-              // If removing class teacher role, clear classTeacherOf and unset class doc
-              if (roleName === "Class Teacher" || user.classTeacherOf) {
-                if (user.classTeacherOf) {
-                  batch.update(doc(db, "classes", user.classTeacherOf), {
-                    classTeacherId: null,
-                  });
-                }
-                batch.update(userRef, { classTeacherOf: null });
-              }
-
-              await batch.commit();
-
-              // update local state
-              setViewingUser((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      assignedRoles: prev.assignedRoles?.filter(
-                        (r) => r !== roleName,
-                      ),
-                      departmentHeadOf:
-                        roleName === "Dept Head"
-                          ? undefined
-                          : prev.departmentHeadOf,
-                      classTeacherOf:
-                        roleName === "Class Teacher"
-                          ? undefined
-                          : prev.classTeacherOf,
-                    }
-                  : prev,
-              );
-              Alert.alert("Success", "Role removed.");
-            } catch (e) {
-              console.error(e);
-              Alert.alert("Error", "Failed to remove role.");
-            } finally {
-              setUpdating(false);
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const handleAssignClassTeacher = async (targetClassId: string) => {
-    const teacher = assignmentModal.target;
-    if (!teacher) return;
-    setUpdating(true);
-    try {
-      const isAlreadyAssigned = teacher.classTeacherOf === targetClassId;
-      const finalClassId = isAlreadyAssigned ? null : targetClassId;
-      const batch = writeBatch(db);
-      if (teacher.classTeacherOf)
-        batch.update(doc(db, "classes", teacher.classTeacherOf), {
-          classTeacherId: null,
-        });
-      if (targetClassId && !isAlreadyAssigned) {
-        const classDoc = await getDoc(doc(db, "classes", targetClassId));
-        const oldId = classDoc.data()?.classTeacherId;
-        if (oldId && oldId !== teacher.uid)
-          batch.update(doc(db, "users", oldId), { classTeacherOf: null });
-      }
-      batch.update(doc(db, "users", teacher.uid), {
-        classTeacherOf: finalClassId,
-        assignedRoles: arrayUnion("Class Teacher"),
-        canCreateNews: newsPermission,
-      });
-      if (targetClassId)
-        batch.update(doc(db, "classes", targetClassId), {
-          classTeacherId: isAlreadyAssigned ? null : teacher.uid,
-        });
-      await batch.commit();
-      setAssignmentModal({ type: "none", target: null });
-      Alert.alert("Success", "Class Teacher assigned.");
-    } catch {
-      Alert.alert("Error", "Assignment failed.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleToggleScholarship = async (user: User) => {
-    if (!isSuperAdmin)
-      return Alert.alert(
-        "Denied",
-        "Only super admins can update scholarship status.",
-      );
-    setUpdating(true);
-    try {
-      const newVal = !user.onScholarship;
-      await updateDoc(doc(db, "users", user.uid), { onScholarship: newVal });
-      setViewingUser((prev) =>
-        prev ? { ...prev, onScholarship: newVal } : null,
-      );
-      Alert.alert(
-        "Success",
-        `Student is ${newVal ? "now" : "no longer"} on scholarship.`,
-      );
-    } catch {
-      Alert.alert("Error", "Update failed.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleToggleBusStatus = async (user: User) => {
-    setUpdating(true);
-    try {
-      const newVal = !user.takesBus;
-      await updateDoc(doc(db, "users", user.uid), { takesBus: newVal });
-
-      const updatedUser = { ...user, takesBus: newVal };
-      setViewingUser(updatedUser);
-      setUsers(prev => prev.map(u => u.uid === user.uid ? updatedUser : u));
-
-      Alert.alert(
-        "Success",
-        `Student ${newVal ? "now" : "no longer"} takes bus.`,
-      );
-    } catch {
-      Alert.alert("Error", "Update failed.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleUpdateBusLocation = async (user: User, location: string) => {
-    setUpdating(true);
-    try {
-      await updateDoc(doc(db, "users", user.uid), { busLocation: location });
-
-      const updatedUser = { ...user, busLocation: location };
-      setViewingUser(updatedUser);
-      setUsers(prev => prev.map(u => u.uid === user.uid ? updatedUser : u));
-
-      showToast?.({ message: "Bus location updated", type: "success" });
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Failed to update bus location.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleSaveNewBusLocation = async (targetUser?: User | null) => {
-    if (!newBusLocInput.trim()) return;
-    setUpdating(true);
-    try {
-      const docRef = doc(db, "school_settings", "bus_rates");
-      // Use setDoc with merge: true to ensure the document exists
-      await setDoc(docRef, { [newBusLocInput.trim()]: 0 }, { merge: true });
-
-      const newLoc = newBusLocInput.trim();
-      setBusLocations(prev => {
-        if (prev.includes(newLoc)) return prev;
-        return [...prev, newLoc].sort();
-      });
-
-      // If we are in edit profile modal, set it as selected
-      if (assignmentModal.type === 'edit_profile') {
-          setEditBusLocation(newLoc);
-      } else if (targetUser) {
-          // If we are just viewing, update the user directly
-          await handleUpdateBusLocation(targetUser, newLoc);
-      }
-
-      setNewBusLocInput("");
-      setIsAddingNewBusLoc(false);
-      showToast?.({ message: "New bus location added", type: "success" });
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Failed to add new location.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleToggleFeedingStatus = async (user: User) => {
-    setUpdating(true);
-    try {
-      const newVal = !user.isFeeding;
-      await updateDoc(doc(db, "users", user.uid), { isFeeding: newVal });
-      setViewingUser((prev) => (prev ? { ...prev, isFeeding: newVal } : null));
-      Alert.alert(
-        "Success",
-        `Student ${newVal ? "now" : "no longer"} on feeding program.`,
-      );
-    } catch {
-      Alert.alert("Error", "Update failed.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleToggleExtraClassesStatus = async (user: User) => {
-    setUpdating(true);
-    try {
-      const newVal = !user.takesExtraClasses;
-      await updateDoc(doc(db, "users", user.uid), { takesExtraClasses: newVal });
-      setViewingUser((prev) => (prev ? { ...prev, takesExtraClasses: newVal } : null));
-      Alert.alert(
-        "Success",
-        `Student ${newVal ? "now" : "no longer"} enrolled for extra classes.`,
-      );
-    } catch {
-      Alert.alert("Error", "Update failed.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleToggleArchiveStatus = async (user: User) => {
-    if (!isSuperAdmin)
-      return Alert.alert("Denied", "Only super admins can archive students.");
-
-    const isArchived = user.status === "archived";
-    const title = isArchived ? "Restore Student" : "Student Stopped School?";
-    const msg = isArchived
-      ? `Restore ${user.profile.firstName} to active status? You will need to reassign their class.`
-      : `Set ${user.profile.firstName} as 'Stopped'? This will move them to the archive and hide them from active student lists.`;
-
-    const performToggle = async () => {
-      setUpdating(true);
-      try {
-        const batch = writeBatch(db);
-        const updates: any = {
-          status: isArchived ? "active" : "archived",
-          archivedAt: isArchived ? null : Timestamp.now(),
-        };
-
-        // If archiving, we might want to store their last class for reference
-        if (!isArchived && user.classId) {
-          updates.previousClassId = user.classId;
-          updates.classId = "archived";
-        }
-
-        batch.update(doc(db, "users", user.uid), updates);
-
-        if (user.role === "student") {
-          const statsRef = doc(db, "stats", "global");
-          batch.set(statsRef, {
-            totalStudents: increment(isArchived ? 1 : -1)
-          }, { merge: true });
-        }
-
-        await batch.commit();
-
-        setViewingUser((prev) => (prev ? { ...prev, ...updates } : null));
-
-        if (Platform.OS === "web") {
-          window.alert(
-            isArchived ? "Student restored." : "Student moved to archive.",
-          );
-        } else {
-          Alert.alert(
-            "Success",
-            isArchived ? "Student restored." : "Student moved to archive.",
-          );
-        }
-      } catch (e) {
-        console.error(e);
-        Alert.alert("Error", "Action failed.");
-      } finally {
-        setUpdating(false);
-      }
-    };
-
-    if (Platform.OS === "web") {
-      if (window.confirm(msg)) performToggle();
-    } else {
-      Alert.alert(title, msg, [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: isArchived ? "Restore" : "Set to Stopped",
-          onPress: performToggle,
-        },
-      ]);
-    }
-  };
-
-  const handleGraduateClass = async () => {
-    const currentClassName =
-      allClasses.find((c) => c.id === selectedClassId)?.name || "";
-
-    const highestClass = allClasses.length > 0 ? allClasses[allClasses.length - 1] : null;
-    const isHighest = highestClass && highestClass.id === selectedClassId;
-
-    if (!isHighest)
-      return Alert.alert(
-        "Invalid Action",
-        `Graduation can only be triggered from the highest class (${highestClass?.name || "N/A"}) list.`,
-      );
-
-    const targetStudents = users.filter((u) => u.status !== "archived");
-    if (targetStudents.length === 0)
-      return Alert.alert(
-        "Empty List",
-        `No active ${currentClassName} students found to graduate.`,
-      );
-
-    Alert.alert(
-      "Confirm Graduation",
-      `Move ${targetStudents.length} students from ${currentClassName} to Archive for ${acadConfig.academicYear}? This will empty the current class list.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Graduate & Archive",
-          style: "destructive",
-          onPress: async () => {
-            setUpdating(true);
-            try {
-              const currentYear = acadConfig.academicYear || "Unknown Year";
-              const chunks = [];
-              for (let i = 0; i < targetStudents.length; i += 100) {
-                chunks.push(targetStudents.slice(i, i + 100));
-              }
-
-              for (const chunk of chunks) {
-                const batch = writeBatch(db);
-                chunk.forEach((s) => {
-                  batch.update(doc(db, "users", s.uid), {
-                    status: "archived",
-                    archivedAt: Timestamp.now(),
-                    archivedInYear: currentYear,
-                    classId: "archived",
-                  });
-                });
-
-                const statsRef = doc(db, "stats", "global");
-                batch.set(statsRef, {
-                  totalStudents: increment(-chunk.length)
-                }, { merge: true });
-
-                await batch.commit();
-              }
-
-              Alert.alert(
-                "Success",
-                `Graduation for ${currentYear} completed.`,
-              );
-            } catch (e) {
-              Alert.alert("Error", "Graduation process failed.");
-            } finally {
-              setUpdating(false);
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const handleRemoveRole = async (user: User, role: string) => {
-    try {
-      const userRef = doc(db, "users", user.uid);
-      await updateDoc(userRef, { assignedRoles: arrayRemove(role) });
-      if (role === "Class Teacher") {
-        const batch = writeBatch(db);
-        batch.update(userRef, { classTeacherOf: null });
-        if (user.classTeacherOf)
-          batch.update(doc(db, "classes", user.classTeacherOf), {
-            classTeacherId: null,
-          });
-        await batch.commit();
-      }
-      Alert.alert("Success", "Role removed.");
-    } catch {
-      Alert.alert("Error", "Remove failed.");
-    }
-  };
-
-  const handleDeleteUser = (user: User) => {
-    if (user.uid === appUser?.uid) {
-      if (Platform.OS === "web") {
-        window.alert("Error: You cannot delete your own account.");
-      } else {
-        Alert.alert("Error", "You cannot delete your own account.");
-      }
-      return;
-    }
-    if (!hasManageUsersAccess) {
-      if (Platform.OS === "web") {
-        window.alert("Denied: You do not have permission to delete users.");
-      } else {
-        Alert.alert("Denied", "You do not have permission to delete users.");
-      }
-      return;
-    }
-
-    const performDelete = async () => {
-      const uidToDelete = user.uid;
-      setDeletingUid(uidToDelete);
-      setUpdating(true);
-      try {
-        const batch = writeBatch(db);
-        if (user.role === "teacher" && user.classTeacherOf) {
-          batch.update(doc(db, "classes", user.classTeacherOf), {
-            classTeacherId: null,
-          });
-        }
-        if (user.role === "student" && user.parentUids?.length) {
-          user.parentUids.forEach((pUid) => {
-            batch.update(doc(db, "users", pUid), {
-              childrenIds: arrayRemove(uidToDelete),
-            });
-          });
-        }
-        if (user.role === "parent" && user.childrenIds?.length) {
-          user.childrenIds.forEach((sUid) => {
-            batch.update(doc(db, "users", sUid), {
-              parentUids: arrayRemove(uidToDelete),
-            });
-          });
-        }
-
-        const statsRef = doc(db, "stats", "global");
-        if (user.role === "student" && user.status !== "archived") {
-          batch.set(statsRef, { totalStudents: increment(-1) }, { merge: true });
-        } else if (["admin", "teacher", "staff"].includes(user.role)) {
-          batch.set(statsRef, { totalStaff: increment(-1) }, { merge: true });
-        }
-
-        await batch.commit();
-
-        const deleteFn = httpsCallable(functions, "deleteUserAccount");
-        await deleteFn({ uid: uidToDelete });
-
-        setUsers((prev) => prev.filter((u) => u.uid !== uidToDelete));
-        if (Platform.OS === "web") {
-          window.alert("Success: Account and references removed.");
-        } else {
-          Alert.alert("Success", "Account and references removed.");
-        }
-      } catch (error: any) {
-        console.error("Deletion failed:", error);
-        try {
-          await deleteDoc(doc(db, "users", uidToDelete));
-          setUsers((prev) => prev.filter((u) => u.uid !== uidToDelete));
-          if (Platform.OS === "web") {
-            window.alert(
-              "Partial Success: Database entry removed, but Auth account may persist.",
-            );
-          } else {
-            Alert.alert(
-              "Partial Success",
-              "Database entry removed, but Auth account may persist.",
-            );
-          }
-        } catch (dbError) {
-          if (Platform.OS === "web") {
-            window.alert("Error: Failed to delete user record.");
-          } else {
-            Alert.alert("Error", "Failed to delete user record.");
-          }
-        }
-      } finally {
-        setDeletingUid(null);
-        setUpdating(false);
-        setViewingUser(null);
-      }
-    };
-
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(
-        `Critical Action: Permanently delete ${user.profile.firstName} (${user.role})? This action cannot be undone.`,
-      );
-      if (confirmed) {
-        performDelete();
-      }
-    } else {
-      Alert.alert(
-        "Critical Action",
-        `Permanently delete ${user.profile.firstName} (${user.role})? This action cannot be undone.`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Delete", style: "destructive", onPress: performDelete },
-        ],
-      );
-    }
-  };
-
-  const openPermissionModal = (user: User) => {
-    // Initialize tempPermissions with explicit defaults and validate incoming values
-    const defaults: Record<string, PermissionLevel> = PERMISSION_KEYS.reduce(
-      (acc, p) => ({ ...acc, [p.key]: "deny" as PermissionLevel }),
-      {},
-    );
-
-    const incoming = user.permissions || {};
-    const merged: Record<string, PermissionLevel> = Object.keys(
-      defaults,
-    ).reduce(
-      (acc, k) => {
-        const val = (incoming as any)[k];
-        acc[k] =
-          val === "full" || val === "view" || val === "edit" || val === "deny"
-            ? (val as PermissionLevel)
-            : "deny";
-        return acc;
-      },
-      {} as Record<string, PermissionLevel>,
-    );
-
-    setTempPermissions(merged);
-    setAssignmentModal({ type: "permissions", target: user });
-  };
-
-  const handleUpdateProfile = async () => {
-    if (!assignmentModal.target || !hasManageUsersAccess) return;
-    if (!editFirstName.trim() || !editLastName.trim()) {
-      return Alert.alert("Error", "Names cannot be empty.");
-    }
-    setUpdating(true);
-    try {
-      const updates: any = {
-        "profile.firstName": editFirstName.trim(),
-        "profile.lastName": editLastName.trim(),
-        "profile.phone": editPhone.trim(),
-        "profile.gender": editGender,
-        "profile.emergencyPhone": editEmergencyPhone.trim(),
-        "profile.parentPhone": editParentPhone.trim(),
-        busLocation: editBusLocation.trim(),
-        takesBus: editTakesBus,
-        onScholarship: editOnScholarship,
-        onDiscount: editOnDiscount,
-        isFeeding: editIsFeeding,
-        takesExtraClasses: editTakesExtraClasses,
-      };
-
-      if (editDob) {
-        updates.dateOfBirth = Timestamp.fromDate(editDob);
-      }
-
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), updates);
-
-      // Update local state for the list
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === assignmentModal.target?.uid
-            ? {
-                ...u,
-                profile: {
-                  ...u.profile,
-                  firstName: editFirstName.trim(),
-                  lastName: editLastName.trim(),
-                  phone: editPhone.trim(),
-                  gender: editGender,
-                },
-                busLocation: editBusLocation.trim(),
-                takesBus: editTakesBus,
-                onScholarship: editOnScholarship,
-                onDiscount: editOnDiscount,
-                isFeeding: editIsFeeding,
-                takesExtraClasses: editTakesExtraClasses,
-                dateOfBirth: editDob
-                  ? Timestamp.fromDate(editDob)
-                  : u.dateOfBirth,
-              }
-            : u,
-        ),
-      );
-
-      // Update viewing user if open
-      if (viewingUser?.uid === assignmentModal.target.uid) {
-        setViewingUser((prev) =>
-          prev
-            ? {
-                ...prev,
-                profile: {
-                  ...prev.profile,
-                  firstName: editFirstName.trim(),
-                  lastName: editLastName.trim(),
-                  phone: editPhone.trim(),
-                  gender: editGender,
-                  emergencyPhone: editEmergencyPhone.trim(),
-                  parentPhone: editParentPhone.trim(),
-                },
-                busLocation: editBusLocation.trim(),
-                takesBus: editTakesBus,
-                onScholarship: editOnScholarship,
-                onDiscount: editOnDiscount,
-                isFeeding: editIsFeeding,
-                takesExtraClasses: editTakesExtraClasses,
-                dateOfBirth: editDob
-                  ? Timestamp.fromDate(editDob)
-                  : prev.dateOfBirth,
-              }
-            : null,
-        );
-      }
-
-      Alert.alert("Success", "Profile updated.");
-      setAssignmentModal({ type: "none", target: null });
-    } catch (e) {
-      console.error(e);
-      Alert.alert("Error", "Update failed.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleUpgradeStaff = async () => {
-    if (!assignmentModal.target) return;
-    if (!upgradeEmail.trim() || upgradePassword.length < 6) {
-      return Alert.alert(
-        "Error",
-        "Please provide a valid email and a password (min 6 characters).",
-      );
-    }
-    setUpdating(true);
-    try {
-      // 1. Initialize a secondary Firebase app to create the user without signing out the admin
-      const secondaryConfig = (SCHOOL_CONFIG as any).firebase || {};
-      const secondaryAppName = `upgrade-staff-${Date.now()}`;
-      const secondaryApp = initializeApp(secondaryConfig, secondaryAppName);
-      const secondaryAuth = getAuth(secondaryApp);
-
-      // 2. Create the Auth user
-      const userCredential = await createUserWithEmailAndPassword(
-        secondaryAuth,
-        upgradeEmail.trim(),
-        upgradePassword
-      );
-      const newUid = userCredential.user.uid;
-
-      // 3. Update the Firestore record
-      const staffRef = doc(db, "users", assignmentModal.target.uid);
-      const updates = {
-        authUid: newUid, // Link the new Auth UID
-        role: "staff" as UserRole,
-        email: upgradeEmail.trim().toLowerCase(),
-        adminRole: staffRoleText.trim(),
-        "profile.phone": staffPhone.trim(),
-        "profile.email": upgradeEmail.trim().toLowerCase(),
-        hasLoginEnabled: true,
-      };
-
-      await updateDoc(staffRef, updates);
-
-      // Update local state
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === assignmentModal.target?.uid
-            ? {
-                ...u,
-                ...updates,
-                profile: { ...u.profile, phone: staffPhone.trim(), email: upgradeEmail.trim().toLowerCase() },
-              }
-            : u,
-        ),
-      );
-
-      if (viewingUser?.uid === assignmentModal.target.uid) {
-        setViewingUser((prev) =>
-          prev
-            ? {
-                ...prev,
-                ...updates,
-                profile: { ...prev.profile, phone: staffPhone.trim(), email: upgradeEmail.trim().toLowerCase() },
-              }
-            : null,
-        );
-      }
-
-      Alert.alert("Success", "Staff account upgraded for login.");
-      setAssignmentModal({ type: "none", target: null });
-    } catch (e: any) {
-      console.error(e);
-      Alert.alert("Error", e.message || "Failed to upgrade staff account.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleRegenerateSignupCode = async (user: User) => {
-    if (user.status !== "pending_activation") return;
-
-    setUpdating(true);
-    try {
-      const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      await updateDoc(doc(db, "users", user.uid), {
-        signupCode: newCode,
-      });
-
-      const updatedUser = { ...user, signupCode: newCode };
-      setUsers((prev) =>
-        prev.map((u) => (u.uid === user.uid ? updatedUser : u)),
-      );
-      if (viewingUser?.uid === user.uid) setViewingUser(updatedUser);
-
-      Alert.alert(
-        "Code Regenerated",
-        `The new signup code for ${user.profile.firstName} is: ${newCode}`,
-      );
-    } catch (err) {
-      Alert.alert("Error", "Failed to regenerate signup code.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleShareCode = async (user: User) => {
-    const code = user.signupCode || user.secretCode;
-    if (!code) return;
-    try {
-      await Share.share({
-        message: `Hello ${user.profile.firstName}, your ${acadConfig.schoolName || "school"} portal access/reset token is: ${code}\n\nUse this code to claim your profile or reset your password securely.`,
-      });
-    } catch (error) {
-      console.error("Sharing failed", error);
-    }
-  };
-
-  const handleUpdateEmail = async () => {
-    if (!assignmentModal.target || !editEmail.trim() || !hasManageUsersAccess)
-      return;
-    setUpdating(true);
-    try {
-      const updateEmailFn = httpsCallable(functions, "updateUserEmail");
-      await updateEmailFn({
-        uid: assignmentModal.target.uid,
-        newEmail: editEmail.trim(),
-      });
-
-      // Update Firestore doc
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
-        "profile.email": editEmail.trim(),
-      });
-
-      Alert.alert("Success", "Email updated.");
-      setAssignmentModal({ type: "none", target: null });
-    } catch (err: any) {
-      Alert.alert("Error", err.message || "Failed to update email.");
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const openEditProfile = (user: User) => {
-    setEditFirstName(user.profile.firstName);
-    setEditLastName(user.profile.lastName);
-    setEditEmail(user.profile.email || "");
-    setEditPhone(user.profile.phone || "");
-    setEditGender(user.profile.gender || "");
-    setEditEmergencyPhone(user.profile.emergencyPhone || "");
-    setEditParentPhone(user.profile.parentPhone || "");
-    setEditBusLocation(user.busLocation || "");
-    setEditTakesBus(!!user.takesBus);
-    setEditOnScholarship(!!user.onScholarship);
-    setEditOnDiscount(!!user.onDiscount);
-    setEditIsFeeding(!!user.isFeeding);
-    setEditTakesExtraClasses(!!user.takesExtraClasses);
-    setEditDob(
-      user.dateOfBirth?.toDate
-        ? user.dateOfBirth.toDate()
-        : user.dateOfBirth
-          ? new Date(user.dateOfBirth)
-          : null,
-    );
-    setAssignmentModal({ type: "edit_profile", target: user });
-  };
-
-  const formatDate = (date: any) => {
-    if (!date) return "N/A";
-    try {
-      if (date.toDate)
-        return date.toDate().toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        });
-      return new Date(date).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-    } catch {
-      return "Invalid Date";
-    }
-  };
-
-  const handleCopyAllCodes = async () => {
-    const pendingStudents = filteredUsers.filter(
-      (u) => u.status === "pending_activation" && u.signupCode,
-    );
-    if (pendingStudents.length === 0) {
-      return Alert.alert(
-        "No codes",
-        "No pending students with signup codes in the current view.",
-      );
-    }
-
-    const report = pendingStudents
-      .map(
-        (s) => `${s.profile.firstName} ${s.profile.lastName}: ${s.signupCode}`,
-      )
-      .join("\n");
-
-    await Clipboard.setStringAsync(report);
-    Alert.alert(
-      "Copied",
-      `Signup codes for ${pendingStudents.length} students copied to clipboard.`,
-    );
-  };
-
-  if (!hasManageUsersAccess) {
+  const {
+    selectedRole, setSelectedRole,
+    selectedClassId, setSelectedClassId,
+    searchQuery, setSearchQuery,
+    showArchived, setShowArchived,
+    selectedUserUids, setSelectedUserUids,
+    users, loading, refreshing,
+    allClasses,
+    viewingUser, setViewingUser,
+    linkedUsers, loadingLinks,
+    assignmentModal, setAssignmentModal,
+    updating, deletingUid,
+    editForm, setEditForm,
+    upgradeForm, setUpgradeForm,
+    customRoleText, setCustomRoleText,
+    deptText, setDeptText,
+    newsPermission, setNewsPermission,
+    selectedSubjects, setSelectedSubjects,
+    selectedClasses, setSelectedClasses,
+    busLocations,
+    isAddingNewBusLoc, setIsAddingNewBusLoc,
+    newBusLocInput, setNewBusLocInput,
+    tempPermissions, setTempPermissions,
+    targetClassId, setTargetClassId,
+    filteredUsers, isHighestClassView,
+    toggleUserSelection, handleSelectAll,
+    handleBulkImport, handleBulkUpdate,
+    fetchLinkedUsers, handleUnlinkParent,
+    handleUpdatePermissions, handleAssignRole,
+    handleUpdateClasses, handleUpdateSubjects,
+    handleAssignDeptHead, handleRemoveAssignedRole,
+    handleAssignClassTeacher, handleToggleArchiveStatus,
+    handleGraduateClass, handleDeleteUser,
+    handleUpdateProfile, handleUpgradeStaff,
+    handleRegenerateSignupCode, handleShareCode,
+    handleUpdateEmail, handleSaveNewBusLocation,
+    openPermissionModal, openEditProfile,
+    handleCopyAllCodes, clearServiceArrears,
+    isSuperAdmin, hasManageUsersAccess,
+    handlePromoteRepeat, openPromoteRepeat,
+  } = useManageUsers({ appUser, acadConfig, showToast, router });
+
+  if (!hasManageUsersAccess && appUser) {
     return (
       <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" />
         <View style={styles.errorContainer}>
-          <SVGIcon name="lock-closed" size={60} color={COLORS.secondary || "#c53b59"} />
+          <SVGIcon name="lock-closed" size={80} color={COLORS.secondary} />
           <Text style={styles.errorTitle}>Access Denied</Text>
           <Text style={styles.errorSub}>
-            You do not have the required permissions to manage users.
+            You do not have the required permissions to access the User Management module.
           </Text>
           <TouchableOpacity
             style={styles.errorButton}
@@ -1600,2071 +100,346 @@ export default function ManageUsers() {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
-        <View style={styles.roleHeader}>
-          <Text style={styles.roleHeaderTitle}>User Directory</Text>
-          <Text style={styles.roleHeaderSub}>
-            School staff and community management
-          </Text>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+          >
+            <SVGIcon name="chevron-back" size={24} color="#1E293B" />
+          </TouchableOpacity>
         </View>
-        <ScrollView contentContainerStyle={styles.roleGrid}>
-          {roles.map((r, idx) => (
-            <Animatable.View
-              key={r.role}
-              animation="fadeInUp"
-              delay={idx * 100}
-            >
-              <TouchableOpacity
-                style={styles.roleCard}
-                onPress={() => setSelectedRole(r.role)}
-              >
-                <View
-                  style={[
-                    styles.roleIcon,
-                    { backgroundColor: (COLORS.primary || "#2e86de") + "10" },
-                  ]}
-                >
-                  <SVGIcon
-                    name={r.icon}
-                    color={COLORS.primary || "#2e86de"}
-                    size={28}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.roleCardTitle}>{r.name}</Text>
-                  <Text style={styles.roleCardSub}>
-                    Overview and security control
-                  </Text>
-                </View>
-                <SVGIcon
-                  name="chevron-forward"
-                  size={20}
-                  color={COLORS.gray || "#9ca3af"}
-                />
-              </TouchableOpacity>
-            </Animatable.View>
-          ))}
-        </ScrollView>
+        <RoleSelector onSelectRole={setSelectedRole} />
       </SafeAreaView>
     );
   }
 
-  const isHighestClassView = useMemo(() => {
-    if (selectedRole !== "student" || selectedClassId === "all" || allClasses.length === 0) return false;
-    return allClasses[allClasses.length - 1].id === selectedClassId;
-  }, [selectedRole, selectedClassId, allClasses]);
-
   return (
-    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.mainHeader}>
-        <TouchableOpacity
-          onPress={() => setSelectedRole(null)}
-          style={styles.backButton}
-        >
-          <SVGIcon
-            name="arrow-back"
-            size={24}
-            color={COLORS.primary || "#2e86de"}
-          />
-        </TouchableOpacity>
-        <Text style={styles.mainTitle}>
-          {roles.find((r) => r.role === selectedRole)?.name}
-        </Text>
-        {selectedRole === "student" && (
-          <TouchableOpacity
-            onPress={() => setShowArchived(!showArchived)}
-            style={[
-              styles.archiveToggle,
-              showArchived && { backgroundColor: COLORS.secondary || "#c53b59" },
-            ]}
-          >
-            <SVGIcon
-              name="archive"
-              size={18}
-              color={showArchived ? "#fff" : COLORS.gray || "#9ca3af"}
-            />
-            <Text
-              style={[
-                styles.archiveToggleText,
-                { color: showArchived ? "#fff" : COLORS.gray || "#9ca3af" },
-              ]}
-            >
-              {showArchived ? "ACTIVE" : "ARCHIVE"}
-            </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={styles.searchBar}>
-        <SVGIcon name="search" size={20} color={COLORS.gray || "#9ca3af"} />
-        <TextInput
-          style={styles.searchInput}
-          placeholder={`Search ${selectedRole}s...`}
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholderTextColor={COLORS.gray || "#9ca3af"}
-        />
-        {selectedRole === "student" && (
-          <TouchableOpacity
-            onPress={handleCopyAllCodes}
-            style={{ marginLeft: 10 }}
-          >
-            <SVGIcon name="copy" size={20} color={COLORS.primary} />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      <View style={styles.filterRow}>
-        {selectedRole === "student" && (
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={selectedClassId}
-              onValueChange={setSelectedClassId}
-              style={styles.picker}
-            >
-              <Picker.Item label="All Classes" value="all" />
-              {allClasses.map((c) => (
-                <Picker.Item key={c.id} label={c.name} value={c.id} />
-              ))}
-            </Picker>
-          </View>
-        )}
-
-        {selectedRole === "student" && (
-          <TouchableOpacity
-            style={[
-              styles.bulkArchiveBtn,
-              { backgroundColor: "#10b981", flex: 0 },
-            ]}
-            onPress={handleBulkImport}
-          >
-            <SVGIcon name="cloud-upload" size={18} color="#fff" />
-            <Text style={styles.bulkArchiveText}>IMPORT CSV</Text>
-          </TouchableOpacity>
-        )}
-
-        {isHighestClassView && !showArchived && isSuperAdmin && (
-          <TouchableOpacity
-            style={styles.bulkArchiveBtn}
-            onPress={handleGraduateClass}
-          >
-            <SVGIcon name="school" size={18} color="#fff" />
-            <Text style={styles.bulkArchiveText}>GRADUATE</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {selectedRole === "student" && filteredUsers.length > 0 && (
-        <TouchableOpacity
-          style={styles.selectAllRow}
-          onPress={handleSelectAll}
-        >
-          <SVGIcon
-            name={
-              filteredUsers.every((u) => selectedUserUids.includes(u.uid))
-                ? "checkbox"
-                : "square-outline"
-            }
-            size={22}
-            color={COLORS.primary}
-          />
-          <Text style={styles.selectAllText}>
-            {filteredUsers.every((u) => selectedUserUids.includes(u.uid))
-              ? "Deselect All Students"
-              : `Select All ${filteredUsers.length} Students`}
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {loading ? (
-        <ActivityIndicator
-          size="large"
-          color={COLORS.primary || "#2e86de"}
-          style={{ marginTop: 50 }}
-        />
-      ) : (
-        <FlatList
-          data={filteredUsers}
-          keyExtractor={(item) => item.uid}
-          contentContainerStyle={{ padding: 16 }}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => {}}
-              tintColor={COLORS.primary || "#2e86de"}
-            />
-          }
-          renderItem={({ item }) => {
-            const isSelected = selectedUserUids.includes(item.uid);
-            return (
-              <TouchableOpacity
-                style={[styles.userCard, isSelected && styles.selectedCard]}
-                onLongPress={() => {
-                  if (item.role === "student") {
-                    toggleUserSelection(item.uid);
-                  } else if (item.role === "teacher" || item.role === "admin") {
-                    setAssignmentModal({ type: "assign_as", target: item });
-                  }
-                }}
-                onPress={() => {
-                  if (selectedUserUids.length > 0 && item.role === "student") {
-                    toggleUserSelection(item.uid);
-                  } else {
-                    setViewingUser(item);
-                    fetchLinkedUsersAndStats(item);
-                  }
-                }}
-              >
-                {selectedUserUids.length > 0 && item.role === "student" && (
-                  <View style={styles.selectionIndicator}>
-                    <SVGIcon
-                      name={isSelected ? "checkbox" : "square-outline"}
-                      size={24}
-                      color={isSelected ? COLORS.primary : COLORS.gray}
-                    />
-                  </View>
-                )}
-                <View style={styles.avatar}>
-                  <Image
-                    source={
-                      item.profile?.profileImage
-                        ? { uri: item.profile.profileImage }
-                        : DEFAULT_AVATAR
-                    }
-                    style={styles.avatarImg}
-                    resizeMode="cover"
-                  />
-                </View>
-                <View style={{ flex: 1, marginLeft: 15 }}>
-                  <Text style={styles.userName}>
-                    {item.profile?.firstName} {item.profile?.lastName}
-                  </Text>
-                  <Text style={styles.userSubText}>
-                    {item.status === "archived"
-                      ? `Archived (${item.archivedInYear || "N/A"})`
-                      : item.status === "pending_activation"
-                        ? `Pending Activation (Code: ${item.signupCode})`
-                        : allClasses.find((c) => c.id === item.classId)?.name ||
-                          item.adminRole ||
-                          item.role.toUpperCase()}
-                  </Text>
-                  <View style={styles.badgeRow}>
-                    {item.role === "teacher" && item.classTeacherOf && (
-                      <View
-                        style={[styles.badge, { backgroundColor: "#10b98115" }]}
-                      >
-                        <Text style={[styles.badgeText, { color: "#10b981" }]}>
-                          Class:{" "}
-                          {allClasses.find((c) => c.id === item.classTeacherOf)
-                            ?.name || "N/A"}
-                        </Text>
-                      </View>
-                    )}
-                    {item.canCreateNews && (
-                      <View
-                        style={[styles.badge, { backgroundColor: "#f59e0b15" }]}
-                      >
-                        <Text style={[styles.badgeText, { color: "#f59e0b" }]}>
-                          News Authority
-                        </Text>
-                      </View>
-                    )}
-                    {item.onScholarship && (
-                      <View
-                        style={[styles.badge, { backgroundColor: "#6366f115" }]}
-                      >
-                        <Text style={[styles.badgeText, { color: "#6366f1" }]}>
-                          On Scholarship
-                        </Text>
-                      </View>
-                    )}
-                    {item.role === "student" &&
-                      (item.walletBalance !== undefined || item.dailyArrears !== undefined) && (
-                        <View style={{ flexDirection: 'row', gap: 4, flexWrap: 'wrap' }}>
-                          {item.walletBalance !== undefined && (
-                            <View
-                              style={[
-                                styles.badge,
-                                {
-                                  backgroundColor:
-                                    item.walletBalance > 0
-                                      ? "#ef444415"
-                                      : "#10b98115",
-                                },
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.badgeText,
-                                  {
-                                    color:
-                                      item.walletBalance > 0 ? "#ef4444" : "#10b981",
-                                  },
-                                ]}
-                              >
-                                {item.walletBalance > 0
-                                  ? `Tuition: ₵${(item.walletBalance || 0).toLocaleString()}`
-                                  : "Tuition Cleared"}
-                              </Text>
-                            </View>
-                          )}
-                          {(item.dailyArrears || 0) > 0 && (
-                            <View
-                              style={[
-                                styles.badge,
-                                { backgroundColor: "#f59e0b15" },
-                              ]}
-                            >
-                              <Text
-                                style={[
-                                  styles.badgeText,
-                                  { color: "#f59e0b" },
-                                ]}
-                              >
-                                Arrears: ₵{(item.dailyArrears || 0).toLocaleString()}
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                      )}
-                  </View>
-                </View>
-                <SVGIcon
-                  name="chevron-forward"
-                  size={20}
-                  color={COLORS.gray || "#9ca3af"}
-                />
-              </TouchableOpacity>
-            );
-          }}
-        />
-      )}
-
-      {selectedUserUids.length > 0 && (
-        <Animatable.View animation="slideInUp" style={styles.bulkActionBar}>
-          <View style={styles.bulkActionInfo}>
-            <Text style={styles.bulkActionCount}>
-              {selectedUserUids.length} Selected
-            </Text>
-            <TouchableOpacity onPress={() => setSelectedUserUids([])}>
-              <Text style={styles.bulkActionCancel}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.bulkActionButtons}>
-            <TouchableOpacity
-              style={styles.bulkActionBtn}
-              onPress={() => handleBulkUpdate("isFeeding", true)}
-            >
-              <SVGIcon name="restaurant" size={20} color="#fff" />
-              <Text style={styles.bulkActionText}>Feeding</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.bulkActionBtn}
-              onPress={() => handleBulkUpdate("takesBus", true)}
-            >
-              <SVGIcon name="bus" size={20} color="#fff" />
-              <Text style={styles.bulkActionText}>Bus</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.bulkActionBtn}
-              onPress={() => handleBulkUpdate("takesExtraClasses", true)}
-            >
-              <SVGIcon name="book" size={20} color="#fff" />
-              <Text style={styles.bulkActionText}>Extra</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.bulkActionBtn}
-              onPress={() => {
-                Alert.alert(
-                  "Clear Arrears",
-                  `Reset service arrears to 0 for ${selectedUserUids.length} students?`,
-                  [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Clear All", style: "destructive", onPress: () => handleBulkUpdate("dailyArrears", 0) }
-                  ]
-                );
-              }}
-            >
-              <SVGIcon name="refresh-circle" size={20} color="#fff" />
-              <Text style={styles.bulkActionText}>Clear Arrears</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.bulkActionBtn}
-              onPress={() => handleBulkUpdate("onDiscount", true)}
-            >
-              <SVGIcon name="pricetag" size={20} color="#fff" />
-              <Text style={styles.bulkActionText}>Discount</Text>
-            </TouchableOpacity>
-          </View>
-        </Animatable.View>
-      )}
-
-      <Modal visible={!!viewingUser} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <Animatable.View
-            animation="slideInUp"
-            duration={400}
-            style={styles.modalContent}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Member Profile</Text>
-              <TouchableOpacity onPress={() => setViewingUser(null)}>
-                <SVGIcon
-                  name="close"
-                  size={28}
-                  color={COLORS.gray || "#9ca3af"}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 40 }}
-            >
-              {viewingUser && (
-                <View style={{ padding: 20 }}>
-                  <View style={styles.detailHero}>
-                    <View style={styles.largeAvatar}>
-                      <Image
-                        source={
-                          viewingUser.profile?.profileImage
-                            ? { uri: viewingUser.profile.profileImage }
-                            : DEFAULT_AVATAR
-                        }
-                        style={styles.avatarImgLarge}
-                      />
-                    </View>
-                    <Text style={styles.detailName}>
-                      {viewingUser.profile?.firstName}{" "}
-                      {viewingUser.profile?.lastName}
-                    </Text>
-                    <Text style={styles.detailRole}>
-                      {viewingUser.adminRole || viewingUser.role.toUpperCase()}
-                    </Text>
-                    {viewingUser.assignedRoles &&
-                      viewingUser.assignedRoles.length > 0 && (
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            flexWrap: "wrap",
-                            marginTop: 8,
-                            gap: 8,
-                          }}
-                        >
-                          {viewingUser.assignedRoles.map((r, idx) => (
-                            <View
-                              key={idx}
-                              style={[
-                                styles.badge,
-                                {
-                                  backgroundColor: "#eef2ff",
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  paddingHorizontal: 10,
-                                },
-                              ]}
-                            >
-                              <Text
-                                style={[styles.badgeText, { color: "#4f46e5" }]}
-                              >
-                                {r}
-                              </Text>
-                              {hasManageUsersAccess && (
-                                <TouchableOpacity
-                                  onPress={() =>
-                                    handleRemoveAssignedRole(r, viewingUser)
-                                  }
-                                  style={{ marginLeft: 8 }}
-                                >
-                                  <SVGIcon
-                                    name="close"
-                                    size={12}
-                                    color="#374151"
-                                  />
-                                </TouchableOpacity>
-                              )}
-                            </View>
-                          ))}
-                          {viewingUser.departmentHeadOf ? (
-                            <View
-                              style={[
-                                styles.badge,
-                                { backgroundColor: "#fff7ed" },
-                              ]}
-                            >
-                              <Text
-                                style={[styles.badgeText, { color: "#b45309" }]}
-                              >
-                                Dept: {viewingUser.departmentHeadOf}
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
-                      )}
-                  </View>
-
-                  {viewingUser.role === "student" && (
-                    <View style={styles.financeCardRow}>
-                      <View
-                        style={[
-                          styles.financeBox,
-                          {
-                            borderLeftColor:
-                              (viewingUser.walletBalance || 0) > 0
-                                ? "#ef4444"
-                                : "#10b981",
-                          },
-                        ]}
-                      >
-                        <Text style={styles.financeLabel}>
-                          TUITION BALANCE
-                        </Text>
-                        <Text
-                          style={[
-                            styles.financeValue,
-                            {
-                              color:
-                                (viewingUser.walletBalance || 0) > 0
-                                  ? "#ef4444"
-                                  : "#10b981",
-                            },
-                          ]}
-                        >
-                          ₵{(viewingUser.walletBalance || 0).toLocaleString()}
-                        </Text>
-                      </View>
-
-                      <View
-                        style={[
-                          styles.financeBox,
-                          {
-                            borderLeftColor:
-                              (viewingUser.dailyArrears || 0) > 0
-                                ? "#f59e0b"
-                                : "#10b981",
-                          },
-                        ]}
-                      >
-                        <Text style={styles.financeLabel}>
-                          SERVICE ARREARS
-                        </Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Text
-                            style={[
-                              styles.financeValue,
-                              {
-                                color:
-                                  (viewingUser.dailyArrears || 0) > 0
-                                    ? "#f59e0b"
-                                    : "#10b981",
-                              },
-                            ]}
-                          >
-                            ₵{(viewingUser.dailyArrears || 0).toLocaleString()}
-                          </Text>
-                          {(viewingUser.dailyArrears || 0) > 0 && (
-                            <TouchableOpacity
-                              onPress={() => {
-                                Alert.alert("Clear Arrears", "Are you sure you want to reset service arrears to 0?", [
-                                  { text: "Cancel", style: "cancel" },
-                                  { text: "Clear", style: "destructive", onPress: async () => {
-                                    await updateDoc(doc(db, "users", viewingUser.uid), { dailyArrears: 0 });
-                                    setViewingUser({ ...viewingUser, dailyArrears: 0 });
-                                  }}
-                                ]);
-                              }}
-                            >
-                              <SVGIcon name="refresh-circle" size={20} color="#f59e0b" />
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </View>
-                    </View>
-                  )}
-
-                  {(viewingUser.signupCode || viewingUser.secretCode) && (
-                    <View style={styles.infoSection}>
-                      <Text style={styles.infoLabel}>Security Tokens</Text>
-                      <View
-                        style={[
-                          styles.financeBox,
-                          {
-                            borderLeftColor: "#f59e0b",
-                            backgroundColor: "#fffbeb",
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[styles.financeLabel, { color: "#b45309" }]}
-                        >
-                          {viewingUser.status === "pending_activation" ? "SIGNUP CODE" : "RESET/SECRET TOKEN"}
-                        </Text>
-                        <View
-                          style={{
-                            flexDirection: "row",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            marginTop: 4,
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.financeValue,
-                              {
-                                color: "#b45309",
-                                fontSize: 24,
-                                letterSpacing: 2,
-                              },
-                            ]}
-                          >
-                            {viewingUser.signupCode || viewingUser.secretCode || "N/A"}
-                          </Text>
-                          <View style={{ flexDirection: "row", gap: 8 }}>
-                            <TouchableOpacity
-                              onPress={() => handleShareCode(viewingUser)}
-                              style={{
-                                backgroundColor: COLORS.primary,
-                                paddingHorizontal: 12,
-                                paddingVertical: 6,
-                                borderRadius: 8,
-                                flexDirection: "row",
-                                alignItems: "center",
-                                gap: 4,
-                              }}
-                            >
-                              <SVGIcon
-                                name="share-outline"
-                                size={14}
-                                color="#fff"
-                              />
-                              <Text
-                                style={{
-                                  color: "#fff",
-                                  fontSize: 10,
-                                  fontWeight: "800",
-                                }}
-                              >
-                                SHARE
-                              </Text>
-                            </TouchableOpacity>
-                            {viewingUser.status === "pending_activation" && (
-                              <TouchableOpacity
-                                onPress={() =>
-                                  handleRegenerateSignupCode(viewingUser)
-                                }
-                                style={{
-                                  backgroundColor: "#b45309",
-                                  paddingHorizontal: 12,
-                                  paddingVertical: 6,
-                                  borderRadius: 8,
-                                }}
-                              >
-                                <Text
-                                  style={{
-                                    color: "#fff",
-                                    fontSize: 10,
-                                    fontWeight: "800",
-                                  }}
-                                >
-                                  REGENERATE
-                                </Text>
-                              </TouchableOpacity>
-                            )}
-                          </View>
-                        </View>
-                        <Text
-                          style={{
-                            fontSize: 10,
-                            color: "#d97706",
-                            marginTop: 8,
-                            fontWeight: "600",
-                          }}
-                        >
-                          {viewingUser.status === "pending_activation"
-                            ? "Provide this code to the student to claim their profile."
-                            : "This token can be used for secure password resets."}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-
-                  {(viewingUser.role === "teacher" ||
-                    viewingUser.role === "admin") && (
-                    <View style={styles.infoSection}>
-                      <Text style={styles.infoLabel}>Teaching Assignments</Text>
-                      <View style={styles.infoGrid}>
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoKey}>Class Teacher Of:</Text>
-                          <Text style={styles.infoValue}>
-                            {viewingUser.classTeacherOf
-                              ? allClasses.find(
-                                  (c) => c.id === viewingUser.classTeacherOf,
-                                )?.name || viewingUser.classTeacherOf
-                              : "N/A"}
-                          </Text>
-                        </View>
-                        {(viewingUser.classes?.length || 0) > 0 && (
-                          <View style={styles.infoRow}>
-                            <Text style={styles.infoKey}>
-                              Assigned Classes:
-                            </Text>
-                            <Text
-                              style={[
-                                styles.infoValue,
-                                { flex: 1, textAlign: "right" },
-                              ]}
-                            >
-                              {viewingUser.classes
-                                ?.map(
-                                  (cid) =>
-                                    allClasses.find((c) => c.id === cid)
-                                      ?.name || cid,
-                                )
-                                .join(", ")}
-                            </Text>
-                          </View>
-                        )}
-                        {(viewingUser.subjects?.length || 0) > 0 && (
-                          <View style={styles.infoRow}>
-                            <Text style={styles.infoKey}>
-                              Assigned Subjects:
-                            </Text>
-                            <Text
-                              style={[
-                                styles.infoValue,
-                                { flex: 1, textAlign: "right" },
-                              ]}
-                            >
-                              {viewingUser.subjects?.join(", ")}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                    </View>
-                  )}
-
-                  <View style={styles.infoSection}>
-                    <Text style={styles.infoLabel}>Bio Information</Text>
-                    <View style={styles.infoGrid}>
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoKey}>Email:</Text>
-                        <Text style={styles.infoValue}>
-                          {viewingUser.profile?.email || "N/A"}
-                        </Text>
-                      </View>
-                      {viewingUser.role !== "student" && (
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoKey}>Phone:</Text>
-                          <Text style={styles.infoValue}>
-                            {viewingUser.profile?.phone || "N/A"}
-                          </Text>
-                        </View>
-                      )}
-                      {viewingUser.role === "student" && (
-                        <>
-                          <View style={styles.infoRow}>
-                            <Text style={styles.infoKey}>Emergency #:</Text>
-                            <Text style={styles.infoValue}>
-                              {viewingUser.profile?.emergencyPhone || "N/A"}
-                            </Text>
-                          </View>
-                          <View style={styles.infoRow}>
-                            <Text style={styles.infoKey}>Parent #:</Text>
-                            <Text style={styles.infoValue}>
-                              {viewingUser.profile?.parentPhone || "N/A"}
-                            </Text>
-                          </View>
-                        </>
-                      )}
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoKey}>Gender:</Text>
-                        <Text style={styles.infoValue}>
-                          {viewingUser.profile?.gender || "N/A"}
-                        </Text>
-                      </View>
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoKey}>Date of Birth:</Text>
-                        <Text style={styles.infoValue}>
-                          {formatDate(viewingUser.dateOfBirth)}
-                        </Text>
-                      </View>
-                      {viewingUser.role === "student" && (
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoKey}>Bus Location:</Text>
-                          <Text style={styles.infoValue}>
-                            {viewingUser.busLocation || "N/A"}
-                          </Text>
-                        </View>
-                      )}
-                      {viewingUser.role === "student" && (
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoKey}>Current Class:</Text>
-                          <Text style={styles.infoValue}>
-                            {allClasses.find(
-                              (c) => c.id === viewingUser.classId,
-                            )?.name || "N/A"}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-
-                  {viewingUser.permissions && Object.keys(viewingUser.permissions).length > 0 && (
-                    <View style={styles.infoSection}>
-                      <Text style={styles.infoLabel}>Delegated Permissions</Text>
-                      <View style={styles.infoGrid}>
-                        {Object.entries(viewingUser.permissions).map(([key, level]) => {
-                          if (level === "deny") return null;
-                          const label = PERMISSION_KEYS.find(pk => pk.key === key)?.label || key;
-                          const levelLabel = PERMISSION_LEVELS.find(pl => pl.value === level)?.label || level;
-                          return (
-                            <View key={key} style={styles.infoRow}>
-                              <Text style={styles.infoKey}>{label}:</Text>
-                              <Text style={[styles.infoValue, { color: level === 'full' ? '#10b981' : '#6366f1' }]}>
-                                {levelLabel}
-                              </Text>
-                            </View>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  )}
-
-                  {linkedUsers.length > 0 && (
-                    <View style={styles.infoSection}>
-                      <Text style={styles.infoLabel}>
-                        {viewingUser.role === "student"
-                          ? "Linked Parents"
-                          : "Linked Students"}
-                      </Text>
-                      <View style={styles.linkedList}>
-                        {linkedUsers.map((u) => (
-                          <View key={u.uid} style={styles.linkedItem}>
-                            <Image
-                              source={
-                                u.profile?.profileImage
-                                  ? { uri: u.profile.profileImage }
-                                  : DEFAULT_AVATAR
-                              }
-                              style={styles.linkedAvatar}
-                            />
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.linkedName}>
-                                {u.profile.firstName} {u.profile.lastName}
-                              </Text>
-                              <Text style={styles.linkedSub}>
-                                {u.profile.phone ||
-                                  u.profile.email ||
-                                  "Contact linked"}
-                              </Text>
-                            </View>
-                            {/* UNLINK BUTTON FOR ADMINS */}
-                            {viewingUser.role === "student" && (
-                              <TouchableOpacity
-                                style={styles.unlinkBtn}
-                                onPress={() => {
-                                  Alert.alert(
-                                    "Unlink Parent",
-                                    `Remove ${u.profile.firstName} from this student's records?`,
-                                    [
-                                      { text: "Cancel", style: "cancel" },
-                                      {
-                                        text: "Unlink",
-                                        style: "destructive",
-                                        onPress: () =>
-                                          handleUnlinkParent(u.uid),
-                                      },
-                                    ],
-                                  );
-                                }}
-                              >
-                                <Text style={styles.unlinkBtnText}>UNLINK</Text>
-                              </TouchableOpacity>
-                            )}
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-
-                  <View style={styles.btnStack}>
-                    <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        {
-                          backgroundColor: COLORS.success || "#05ac5b",
-                          marginBottom: 12,
-                        },
-                      ]}
-                      onPress={() => openEditProfile(viewingUser)}
-                    >
-                      <Text style={styles.actionButtonText}>
-                        Edit Profile / Setup Services
-                      </Text>
-                    </TouchableOpacity>
-
-                    {viewingUser.role !== "student" && viewingUser.role !== "parent" && isSuperAdmin && (
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          { backgroundColor: COLORS.primary || "#2e86de", marginBottom: 12 },
-                        ]}
-                        onPress={() => openPermissionModal(viewingUser)}
-                      >
-                        <Text style={styles.actionButtonText}>
-                          Delegate Permissions
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    {viewingUser.role === "staff" && (
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          {
-                            backgroundColor: COLORS.primary || "#2e86de",
-                            marginBottom: 12,
-                          },
-                        ]}
-                        onPress={() => {
-                          setUpgradeEmail(viewingUser.profile?.email || "");
-                          setUpgradePassword("");
-                          setStaffRoleText(viewingUser.adminRole || "");
-                          setStaffPhone(viewingUser.profile?.phone || "");
-                          setAssignmentModal({
-                            type: "upgrade_staff",
-                            target: viewingUser,
-                          });
-                        }}
-                      >
-                        <Text style={styles.actionButtonText}>
-                          Upgrade Account (Login)
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-                    {viewingUser.role === "teacher" && (
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          { backgroundColor: COLORS.secondary || "#c53b59", marginBottom: 12 },
-                        ]}
-                        onPress={() => {
-                          setNewsPermission(viewingUser.canCreateNews || false);
-                          setAssignmentModal({
-                            type: "assign_as",
-                            target: viewingUser,
-                          });
-                        }}
-                      >
-                        <Text style={styles.actionButtonText}>
-                          Modify Authority
-                        </Text>
-                      </TouchableOpacity>
-                    )}
-
-                    <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        { backgroundColor: "#fee2e2", marginTop: 12 },
-                      ]}
-                      onPress={() => handleDeleteUser(viewingUser)}
-                      disabled={updating}
-                    >
-                      {updating && deletingUid === viewingUser.uid ? (
-                        <ActivityIndicator color="#ef4444" />
-                      ) : (
-                        <Text
-                          style={[
-                            styles.actionButtonText,
-                            { color: "#ef4444" },
-                          ]}
-                        >
-                          Delete Account
-                        </Text>
-                      )}
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-            </ScrollView>
-          </Animatable.View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={assignmentModal.type !== "none"}
-        transparent
-        animationType="slide"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
       >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.assignmentSheet}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {assignmentModal.type.replace("_", " ").toUpperCase()}
-              </Text>
-              <TouchableOpacity
-                onPress={() =>
-                  setAssignmentModal({ type: "none", target: null })
-                }
-              >
-                <SVGIcon name="close" size={24} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              contentContainerStyle={{ padding: 25, paddingBottom: 60 }}
-              showsVerticalScrollIndicator={false}
+        <View style={styles.header}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <TouchableOpacity
+              onPress={() => setSelectedRole(null)}
+              style={styles.backButton}
             >
-              {assignmentModal.type === "assign_as" && (
-                <>
-                  <View style={styles.switchRow}>
-                    <View>
-                      <Text style={styles.switchLabel}>Bulletin Authority</Text>
-                      <Text style={styles.switchSub}>
-                        Allow teacher to post news
-                      </Text>
-                    </View>
-                    <Switch
-                      value={newsPermission}
-                      onValueChange={setNewsPermission}
-                      thumbColor={
-                        newsPermission
-                          ? COLORS.secondary || "#c53b59"
-                          : "#f4f3f4"
-                      }
-                      trackColor={{
-                        false: "#767577",
-                        true: (COLORS.secondary || "#c53b59") + "80",
-                      }}
-                    />
-                  </View>
-                  <View style={styles.actionGrid}>
-                    <TouchableOpacity
-                      style={styles.actionCard}
-                      onPress={() =>
-                        setAssignmentModal((p) => ({
-                          ...p,
-                          type: "class_teacher",
-                        }))
-                      }
-                    >
-                      <SVGIcon
-                        name="school"
-                        size={24}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Class Master</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionCard}
-                      onPress={() =>
-                        setAssignmentModal((p) => ({ ...p, type: "dept_head" }))
-                      }
-                    >
-                      <SVGIcon
-                        name="business"
-                        size={24}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Dept Head</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionCard}
-                      onPress={() => handleAssignRole("Event Organiser")}
-                    >
-                      <SVGIcon
-                        name="calendar"
-                        size={24}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Events</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionCard}
-                      onPress={() => handleAssignRole("Feeding Manager")}
-                    >
-                      <SVGIcon
-                        name="restaurant"
-                        size={24}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Edit Feeding</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionCard}
-                      onPress={() => handleAssignRole("Bus Manager")}
-                    >
-                      <SVGIcon
-                        name="bus"
-                        size={24}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Edit Bus</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionCard}
-                      onPress={() => {
-                        setSelectedClasses(
-                          assignmentModal.target?.classes || [],
-                        );
-                        setAssignmentModal((p) => ({
-                          ...p,
-                          type: "manage_classes",
-                        }));
-                      }}
-                    >
-                      <SVGIcon
-                        name="layers"
-                        size={24}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Classes</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionCard}
-                      onPress={() => {
-                        setSelectedSubjects(
-                          assignmentModal.target?.subjects || [],
-                        );
-                        setAssignmentModal((p) => ({
-                          ...p,
-                          type: "manage_subjects",
-                        }));
-                      }}
-                    >
-                      <SVGIcon
-                        name="book"
-                        size={24}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Subjects</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.actionCard}
-                      onPress={() =>
-                        setAssignmentModal((p) => ({ ...p, type: "other" }))
-                      }
-                    >
-                      <SVGIcon
-                        name="add"
-                        size={24}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Custom</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-              {assignmentModal.type === "permissions" &&
-                PERMISSION_KEYS.map((pk) => (
-                  <View key={pk.key} style={styles.permItem}>
-                    <Text style={styles.permTitle}>{pk.label}</Text>
-                    <View style={styles.permPickerBox}>
-                      <Picker
-                        selectedValue={
-                          (tempPermissions[pk.key] || "deny") as any
-                        }
-                        onValueChange={(v) => {
-                          const safe =
-                            v === "full" ||
-                            v === "view" ||
-                            v === "edit" ||
-                            v === "deny"
-                              ? (v as PermissionLevel)
-                              : "deny";
-                          setTempPermissions((prev) => ({
-                            ...prev,
-                            [pk.key]: safe,
-                          }));
-                        }}
-                      >
-                        {PERMISSION_LEVELS.map((l) => (
-                          <Picker.Item
-                            key={l.value}
-                            label={l.label}
-                            value={l.value}
-                          />
-                        ))}
-                      </Picker>
-                    </View>
-                  </View>
-                ))}
-              {assignmentModal.type === "permissions" && (
-                <TouchableOpacity
-                  style={[
-                    styles.saveBtn,
-                    { backgroundColor: COLORS.success || "#05ac5b" },
-                  ]}
-                  onPress={handleUpdatePermissions}
-                  disabled={updating}
-                >
-                  {updating ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.saveBtnText}>Commit Changes</Text>
-                  )}
-                </TouchableOpacity>
-              )}
-              {assignmentModal.type === "manage_classes" && (
-                <View>
-                  <Text style={styles.pickerLabel}>Select Classes Taught</Text>
-                  <View style={styles.selectionGrid}>
-                    {allClasses.map((c) => {
-                      const isSelected = selectedClasses.includes(c.id);
-                      return (
-                        <TouchableOpacity
-                          key={c.id}
-                          style={[
-                            styles.selectionChip,
-                            isSelected && { backgroundColor: COLORS.primary },
-                          ]}
-                          onPress={() => {
-                            setSelectedClasses((prev) =>
-                              isSelected
-                                ? prev.filter((id) => id !== c.id)
-                                : [...prev, c.id],
-                            );
-                          }}
-                        >
-                          <Text
-                            style={[
-                              styles.chipText,
-                              isSelected && { color: "#fff" },
-                            ]}
-                          >
-                            {c.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.saveBtn,
-                      { backgroundColor: COLORS.primary, marginTop: 20 },
-                    ]}
-                    onPress={handleUpdateClasses}
-                    disabled={updating}
-                  >
-                    {updating ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>
-                        Save Class Selection
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {assignmentModal.type === "manage_subjects" && (
-                <View>
-                  <Text style={styles.pickerLabel}>Select Subjects Taught</Text>
-                  <View style={styles.selectionGrid}>
-                    {[...new Set([...GES_SUBJECTS, ...CAMBRIDGE_SUBJECTS])]
-                      .sort()
-                      .map((s) => {
-                        const isSelected = selectedSubjects.includes(s);
-                        return (
-                          <TouchableOpacity
-                            key={s}
-                            style={[
-                              styles.selectionChip,
-                              isSelected && { backgroundColor: COLORS.primary },
-                            ]}
-                            onPress={() => {
-                              setSelectedSubjects((prev) =>
-                                isSelected
-                                  ? prev.filter((sub) => sub !== s)
-                                  : [...prev, s],
-                              );
-                            }}
-                          >
-                            <Text
-                              style={[
-                                styles.chipText,
-                                isSelected && { color: "#fff" },
-                              ]}
-                            >
-                              {s}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                  </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.saveBtn,
-                      { backgroundColor: COLORS.primary, marginTop: 20 },
-                    ]}
-                    onPress={handleUpdateSubjects}
-                    disabled={updating}
-                  >
-                    {updating ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>
-                        Save Subject Selection
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {assignmentModal.type === "class_teacher" && (
-                <View>
-                  {allClasses.map((c) => (
-                    <TouchableOpacity
-                      key={c.id}
-                      style={styles.selectBtn}
-                      onPress={() => handleAssignClassTeacher(c.id)}
-                    >
-                      <Text style={styles.selectBtnText}>{c.name}</Text>
-                      <SVGIcon
-                        name="chevron-forward"
-                        size={18}
-                        color="#94A3B8"
-                      />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-              {assignmentModal.type === "dept_head" && (
-                <View>
-                  <Text style={[styles.pickerLabel, { marginBottom: 8 }]}>
-                    Department
-                  </Text>
-                  <TextInput
-                    placeholder="e.g. Mathematics, Science"
-                    style={styles.textInput}
-                    value={deptText}
-                    onChangeText={setDeptText}
-                  />
-                  <TouchableOpacity
-                    style={[
-                      styles.saveBtn,
-                      { backgroundColor: COLORS.primary },
-                    ]}
-                    onPress={() => handleAssignDeptHead(deptText)}
-                    disabled={updating}
-                  >
-                    {updating ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>Assign Dept Head</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-              {assignmentModal.type === "other" && (
-                <View>
-                  <Text style={[styles.pickerLabel, { marginBottom: 8 }]}>
-                    Custom Role
-                  </Text>
-                  <TextInput
-                    placeholder="Enter custom role"
-                    style={styles.textInput}
-                    value={customRoleText}
-                    onChangeText={setCustomRoleText}
-                  />
-                  <TouchableOpacity
-                    style={[
-                      styles.saveBtn,
-                      { backgroundColor: COLORS.primary },
-                    ]}
-                    onPress={() => {
-                      if (!customRoleText || !customRoleText.trim())
-                        return Alert.alert(
-                          "Error",
-                          "Please enter a role name.",
-                        );
-                      handleAssignRole(customRoleText.trim());
-                    }}
-                    disabled={updating}
-                  >
-                    {updating ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>Assign Role</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {assignmentModal.type === "edit_profile" && (
-                <View>
-                  <Text style={styles.pickerLabel}>First Name</Text>
-                  <TextInput
-                    style={[styles.textInput, { marginBottom: 15 }]}
-                    value={editFirstName}
-                    onChangeText={setEditFirstName}
-                  />
-                  <Text style={styles.pickerLabel}>Last Name</Text>
-                  <TextInput
-                    style={[styles.textInput, { marginBottom: 15 }]}
-                    value={editLastName}
-                    onChangeText={setEditLastName}
-                  />
-                  <Text style={styles.pickerLabel}>Phone Number</Text>
-                  <TextInput
-                    style={[styles.textInput, { marginBottom: 15 }]}
-                    value={editPhone}
-                    onChangeText={setEditPhone}
-                    keyboardType="phone-pad"
-                  />
-
-                  {assignmentModal.target?.role === "student" && (
-                    <>
-                      <Text style={styles.pickerLabel}>Emergency Number</Text>
-                      <TextInput
-                        style={[styles.textInput, { marginBottom: 15 }]}
-                        value={editEmergencyPhone}
-                        onChangeText={setEditEmergencyPhone}
-                        keyboardType="phone-pad"
-                        placeholder="Emergency contact number"
-                      />
-                      <Text style={styles.pickerLabel}>Parent Number</Text>
-                      <TextInput
-                        style={[styles.textInput, { marginBottom: 15 }]}
-                        value={editParentPhone}
-                        onChangeText={setEditParentPhone}
-                        keyboardType="phone-pad"
-                        placeholder="Parent contact number"
-                      />
-                    </>
-                  )}
-
-                  <Text style={styles.pickerLabel}>Gender</Text>
-                  <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
-                    <Picker
-                      selectedValue={editGender}
-                      onValueChange={setEditGender}
-                    >
-                      <Picker.Item label="Not Specified" value="" />
-                      <Picker.Item label="Male" value="Male" />
-                      <Picker.Item label="Female" value="Female" />
-                    </Picker>
-                  </View>
-
-                  {assignmentModal.target?.role === "student" && (
-                    <>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                        <Text style={styles.pickerLabel}>Uses School Bus</Text>
-                        <Switch
-                          value={editTakesBus}
-                          onValueChange={setEditTakesBus}
-                          trackColor={{ false: "#767577", true: COLORS.primary }}
-                        />
-                      </View>
-
-                      {editTakesBus && (
-                        <>
-                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <Text style={styles.pickerLabel}>Bus Location / Stop</Text>
-                            <TouchableOpacity onPress={() => {
-                                setIsAddingNewBusLoc(!isAddingNewBusLoc);
-                                setNewBusLocInput("");
-                            }}>
-                                <Text style={{ color: COLORS.primary, fontSize: 12, fontWeight: '700' }}>
-                                    {isAddingNewBusLoc ? "Cancel" : "+ Add New"}
-                                </Text>
-                            </TouchableOpacity>
-                          </View>
-
-                          {isAddingNewBusLoc ? (
-                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 15 }}>
-                                <TextInput
-                                    style={[styles.textInput, { flex: 1, marginBottom: 0, height: 45 }]}
-                                    placeholder="New Location Name"
-                                    value={newBusLocInput}
-                                    onChangeText={setNewBusLocInput}
-                                    autoFocus
-                                />
-                                <TouchableOpacity
-                                    style={{ backgroundColor: COLORS.primary, paddingHorizontal: 15, justifyContent: 'center', borderRadius: 8, height: 45 }}
-                                    onPress={() => handleSaveNewBusLocation()}
-                                >
-                                    <Text style={{ color: '#fff', fontWeight: '700' }}>Save</Text>
-                                </TouchableOpacity>
-                            </View>
-                          ) : (
-                            <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
-                                <Picker
-                                    selectedValue={editBusLocation}
-                                    onValueChange={setEditBusLocation}
-                                >
-                                    <Picker.Item label="Select Location" value="" />
-                                    {busLocations.map((loc) => (
-                                    <Picker.Item key={loc} label={loc} value={loc} />
-                                    ))}
-                                </Picker>
-                            </View>
-                          )}
-                        </>
-                      )}
-
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                        <Text style={styles.pickerLabel}>On Scholarship</Text>
-                        <Switch
-                          value={editOnScholarship}
-                          onValueChange={setEditOnScholarship}
-                          trackColor={{ false: "#767577", true: COLORS.primary }}
-                        />
-                      </View>
-
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                        <Text style={styles.pickerLabel}>On Discount</Text>
-                        <Switch
-                          value={editOnDiscount}
-                          onValueChange={setEditOnDiscount}
-                          trackColor={{ false: "#767577", true: COLORS.primary }}
-                        />
-                      </View>
-
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                        <Text style={styles.pickerLabel}>Enrolled in Feeding</Text>
-                        <Switch
-                          value={editIsFeeding}
-                          onValueChange={setEditIsFeeding}
-                          trackColor={{ false: "#767577", true: COLORS.primary }}
-                        />
-                      </View>
-
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
-                        <Text style={styles.pickerLabel}>Extra Classes</Text>
-                        <Switch
-                          value={editTakesExtraClasses}
-                          onValueChange={setEditTakesExtraClasses}
-                          trackColor={{ false: "#767577", true: COLORS.primary }}
-                        />
-                      </View>
-                    </>
-                  )}
-
-                  <TouchableOpacity
-                    style={[
-                      styles.saveBtn,
-                      { backgroundColor: COLORS.primary },
-                    ]}
-                    onPress={handleUpdateProfile}
-                    disabled={updating}
-                  >
-                    {updating ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>Save Profile</Text>
-                    )}
-                  </TouchableOpacity>
-
-                  <View style={{ height: 30 }} />
-                  <Text
-                    style={[styles.pickerLabel, { color: COLORS.secondary }]}
-                  >
-                    Security - Update Email
-                  </Text>
-                  <TextInput
-                    style={[styles.textInput, { marginBottom: 15 }]}
-                    value={editEmail}
-                    onChangeText={setEditEmail}
-                    placeholder="New Email Address"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                  <TouchableOpacity
-                    style={[
-                      styles.saveBtn,
-                      { backgroundColor: COLORS.secondary },
-                    ]}
-                    onPress={handleUpdateEmail}
-                    disabled={updating}
-                  >
-                    {updating ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>Update Auth Email</Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {assignmentModal.type === "upgrade_staff" && (
-                <View>
-                  <Text style={styles.pickerLabel}>Staff Email (Login)</Text>
-                  <TextInput
-                    style={[styles.textInput, { marginBottom: 15 }]}
-                    value={upgradeEmail}
-                    onChangeText={setUpgradeEmail}
-                    placeholder="staff@edueaz.com"
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                  />
-                  <Text style={styles.pickerLabel}>Login Password</Text>
-                  <TextInput
-                    style={[styles.textInput, { marginBottom: 15 }]}
-                    value={upgradePassword}
-                    onChangeText={setUpgradePassword}
-                    placeholder="••••••••"
-                    secureTextEntry
-                  />
-                  <Text style={styles.pickerLabel}>Assigned Role (Title)</Text>
-                  <TextInput
-                    style={[styles.textInput, { marginBottom: 15 }]}
-                    value={staffRoleText}
-                    onChangeText={setStaffRoleText}
-                    placeholder="e.g. Driver, Cook, Security"
-                  />
-                  <Text style={styles.pickerLabel}>Phone Number</Text>
-                  <TextInput
-                    style={[styles.textInput, { marginBottom: 15 }]}
-                    value={staffPhone}
-                    onChangeText={setStaffPhone}
-                    placeholder="024XXXXXXX"
-                    keyboardType="phone-pad"
-                  />
-
-                  <View style={styles.actionGrid}>
-                    <TouchableOpacity
-                      style={[styles.actionCard, { flex: 0, width: '48%', marginBottom: 10 }]}
-                      onPress={() => handleAssignRole("Feeding Manager")}
-                    >
-                      <SVGIcon
-                        name="restaurant"
-                        size={20}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Edit Feeding</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionCard, { flex: 0, width: '48%', marginBottom: 10 }]}
-                      onPress={() => handleAssignRole("Bus Manager")}
-                    >
-                      <SVGIcon
-                        name="bus"
-                        size={20}
-                        color={COLORS.primary || "#2e86de"}
-                      />
-                      <Text style={styles.actionLabel}>Edit Bus</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <TouchableOpacity
-                    style={[
-                      styles.saveBtn,
-                      { backgroundColor: COLORS.primary },
-                    ]}
-                    onPress={handleUpgradeStaff}
-                    disabled={updating}
-                  >
-                    {updating ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.saveBtnText}>
-                        Create Auth & Enable Login
-                      </Text>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              )}
-            </ScrollView>
+              <SVGIcon name="chevron-back" size={24} color="#1E293B" />
+            </TouchableOpacity>
+            <View>
+              <Text style={styles.headerTitle}>
+                {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}s
+              </Text>
+              <Text style={styles.headerSub}>
+                {showArchived ? "Archived Records" : "Active Directory"}
+              </Text>
+            </View>
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
+
+          <View style={{ flexDirection: "row", gap: 10 }}>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => setShowArchived(!showArchived)}
+            >
+              <SVGIcon
+                name={showArchived ? "people" : "archive"}
+                size={22}
+                color={COLORS.primary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleBulkImport}>
+              <SVGIcon name="cloud-upload" size={22} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.searchContainer}>
+          <View style={styles.searchBar}>
+            <SVGIcon name="search" size={20} color="#94A3B8" />
+            <TextInput
+              placeholder={`Search ${selectedRole}s...`}
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+        </View>
+
+        {selectedRole === "student" && (
+          <View style={styles.filterRow}>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={selectedClassId}
+                onValueChange={setSelectedClassId}
+                style={styles.picker}
+              >
+                <Picker.Item label="All Classes" value="all" />
+                {allClasses.map((c) => (
+                  <Picker.Item key={c.id} label={c.name} value={c.id} />
+                ))}
+              </Picker>
+            </View>
+            {isHighestClassView && !showArchived && (
+              <TouchableOpacity
+                style={styles.graduateBtn}
+                onPress={handleGraduateClass}
+              >
+                <Text style={styles.graduateBtnText}>Graduate Class</Text>
+              </TouchableOpacity>
+            )}
+            {!isHighestClassView && selectedClassId !== "all" && !showArchived && (
+              <TouchableOpacity
+                style={[styles.graduateBtn, { backgroundColor: COLORS.secondary || "#c53b59" }]}
+                onPress={() => setAssignmentModal({ type: "promote_repeat", target: null })}
+              >
+                <Text style={styles.graduateBtnText}>Promote/Repeat Class</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {selectedRole === "student" && !showArchived && (
+          <View style={styles.selectAllRow}>
+            <TouchableOpacity
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+              onPress={handleSelectAll}
+            >
+              <SVGIcon
+                name={
+                  filteredUsers.length > 0 &&
+                  filteredUsers.every((u) => selectedUserUids.includes(u.uid))
+                    ? "checkbox"
+                    : "square-outline"
+                }
+                size={24}
+                color={COLORS.primary}
+              />
+              <Text style={styles.selectAllText}>Select All Visible</Text>
+            </TouchableOpacity>
+            {selectedUserUids.length > 0 && (
+              <TouchableOpacity onPress={handleCopyAllCodes}>
+                <Text style={[styles.selectAllText, { color: COLORS.secondary }]}>
+                  Copy Codes
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {loading ? (
+          <View style={styles.loadingState}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Fetching directory...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={filteredUsers}
+            keyExtractor={(item) => item.uid}
+            renderItem={({ item }) => (
+              <UserCard
+                user={item}
+                isSelected={selectedUserUids.includes(item.uid)}
+                isSelectionActive={selectedUserUids.length > 0}
+                allClasses={allClasses}
+                onToggleSelection={toggleUserSelection}
+                onPress={(u) => {
+                  if (selectedUserUids.length > 0 && u.role === "student") {
+                    toggleUserSelection(u.uid);
+                  } else {
+                    setViewingUser(u);
+                    fetchLinkedUsers(u);
+                  }
+                }}
+                onLongPress={(u) => {
+                  if (u.role === "student" && !showArchived) {
+                    toggleUserSelection(u.uid);
+                  }
+                }}
+              />
+            )}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={() => {}} />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <SVGIcon name="people-outline" size={60} color="#E2E8F0" />
+                <Text style={styles.emptyTitle}>No {selectedRole}s Found</Text>
+                <Text style={styles.emptySub}>
+                  Try adjusting your search or filters
+                </Text>
+              </View>
+            }
+          />
+        )}
+
+        <BulkActionBar
+          selectedCount={selectedUserUids.length}
+          onCancel={() => setSelectedUserUids([])}
+          onBulkUpdate={handleBulkUpdate}
+          onClearArrears={() => {
+            handleBulkUpdate("dailyArrears", 0);
+          }}
+          onPromoteRepeat={() => openPromoteRepeat(null)}
+        />
+
+        <UserDetailModal
+          user={viewingUser}
+          isVisible={!!viewingUser}
+          onClose={() => setViewingUser(null)}
+          linkedUsers={linkedUsers}
+          isSuperAdmin={isSuperAdmin}
+          hasManageUsersAccess={hasManageUsersAccess}
+          allClasses={allClasses}
+          updating={updating}
+          deletingUid={deletingUid}
+          onEditProfile={openEditProfile}
+          onOpenPermissions={openPermissionModal}
+          onUpgradeStaff={(u) => setAssignmentModal({ type: "upgrade_staff", target: u })}
+          onModifyAuthority={(u) => setAssignmentModal({ type: "assign_as", target: u })}
+          onDeleteUser={handleDeleteUser}
+          onUnlinkParent={handleUnlinkParent}
+          onShareCode={handleShareCode}
+          onRegenerateCode={handleRegenerateSignupCode}
+          onClearArrears={clearServiceArrears}
+          onRemoveAssignedRole={handleRemoveAssignedRole}
+          onPromoteRepeat={openPromoteRepeat}
+        />
+
+        <AssignmentModal
+          state={assignmentModal}
+          onClose={() => setAssignmentModal({ type: "none", target: null })}
+          allClasses={allClasses}
+          updating={updating}
+          newsPermission={newsPermission}
+          setNewsPermission={setNewsPermission}
+          handleAssignRole={handleAssignRole}
+          tempPermissions={tempPermissions}
+          setTempPermissions={setTempPermissions}
+          handleUpdatePermissions={handleUpdatePermissions}
+          selectedClasses={selectedClasses}
+          setSelectedClasses={setSelectedClasses}
+          handleUpdateClasses={handleUpdateClasses}
+          selectedSubjects={selectedSubjects}
+          setSelectedSubjects={setSelectedSubjects}
+          handleUpdateSubjects={handleUpdateSubjects}
+          handleAssignClassTeacher={handleAssignClassTeacher}
+          deptText={deptText}
+          setDeptText={setDeptText}
+          handleAssignDeptHead={handleAssignDeptHead}
+          customRoleText={customRoleText}
+          setCustomRoleText={setCustomRoleText}
+          editForm={editForm}
+          setEditForm={setEditForm}
+          handleUpdateProfile={handleUpdateProfile}
+          handleUpdateEmail={handleUpdateEmail}
+          upgradeForm={upgradeForm}
+          setUpgradeForm={setUpgradeForm}
+          handleUpgradeStaff={handleUpgradeStaff}
+          busLocations={busLocations}
+          isAddingNewBusLoc={isAddingNewBusLoc}
+          setIsAddingNewBusLoc={setIsAddingNewBusLoc}
+          newBusLocInput={newBusLocInput}
+          setNewBusLocInput={setNewBusLocInput}
+          handleSaveNewBusLocation={handleSaveNewBusLocation}
+          targetClassId={targetClassId}
+          setTargetClassId={setTargetClassId}
+          handlePromoteRepeat={handlePromoteRepeat}
+        />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
-  roleHeader: { padding: 30, backgroundColor: "#fff" },
-  roleHeaderTitle: { fontSize: 28, fontWeight: "800", color: "#1E293B" },
-  roleHeaderSub: { fontSize: 15, color: "#64748B", marginTop: 4 },
-  roleGrid: { padding: 20 },
-  roleCard: {
-    backgroundColor: "#fff",
-    borderRadius: 20,
-    padding: 20,
+  header: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 16,
-    ...SHADOWS.medium,
-  },
-  roleIcon: {
-    width: 55,
-    height: 55,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
-  },
-  roleCardTitle: { fontSize: 18, fontWeight: "700", color: "#1E293B" },
-  roleCardSub: { fontSize: 13, color: "#94A3B8" },
-  mainHeader: {
-    flexDirection: "row",
-    alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     backgroundColor: "#fff",
   },
-  backButton: { flexDirection: "row", alignItems: "center", marginRight: 12 },
-  mainTitle: { fontSize: 20, fontWeight: "800", color: "#1E293B" },
-  archiveToggle: {
-    paddingHorizontal: 12,
+  backButton: {
+    width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: "#f1f5f9",
-    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    marginRight: 15,
   },
-  archiveToggleText: {
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.5,
+  headerTitle: { fontSize: 20, fontWeight: "800", color: "#1E293B" },
+  headerSub: { fontSize: 12, color: "#64748B", fontWeight: "600" },
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
   },
+  searchContainer: { padding: 20, backgroundColor: "#fff" },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#fff",
-    margin: 16,
-    paddingHorizontal: 16,
+    backgroundColor: "#F1F5F9",
     borderRadius: 15,
+    paddingHorizontal: 15,
     height: 50,
-    ...SHADOWS.small,
   },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: "#1E293B" },
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: "#1E293B",
+    fontWeight: "600",
+  },
   filterRow: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    backgroundColor: "#fff",
+    gap: 12,
   },
   pickerContainer: {
     flex: 1,
-    backgroundColor: "#fff",
-    borderRadius: 12,
     height: 45,
-    justifyContent: "center",
-    ...SHADOWS.small,
-  },
-  picker: { width: "100%" },
-  bulkArchiveBtn: {
-    backgroundColor: COLORS.primary || "#2e86de",
-    height: 45,
-    paddingHorizontal: 20,
+    backgroundColor: "#F1F5F9",
     borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    maxWidth: width > 600 ? 250 : "auto",
-    ...SHADOWS.small,
   },
-  bulkArchiveText: { color: "#fff", fontWeight: "800", fontSize: 11 },
-  userCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    padding: 16,
-    borderRadius: 20,
-    marginBottom: 12,
-    ...SHADOWS.small,
-  },
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 15,
-    backgroundColor: (COLORS.primary || "#2e86de") + "15",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-  avatarImg: { width: "100%", height: "100%", borderRadius: 15 },
-  userName: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
-  userSubText: {
-    fontSize: 11,
-    color: "#94A3B8",
-    fontWeight: "800",
-    marginTop: 2,
-  },
-  badgeRow: { flexDirection: "row", flexWrap: "wrap", marginTop: 8, gap: 6 },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  badgeText: { fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: "#fff",
-    borderRadius: 30,
-    width: "100%",
-    maxWidth: 500,
-    maxHeight: "90%",
-    overflow: "hidden",
-    ...SHADOWS.large,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 25,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    alignItems: "center",
-  },
-  modalTitle: { fontSize: 18, fontWeight: "900", color: "#1E293B" },
-  detailHero: { alignItems: "center", marginBottom: 20 },
-  largeAvatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 25,
-    backgroundColor: (COLORS.primary || "#2e86de") + "10",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-    ...SHADOWS.small,
-    overflow: "hidden",
-  },
-  avatarImgLarge: { width: "100%", height: "100%", borderRadius: 25 },
-  detailName: { fontSize: 24, fontWeight: "800", color: "#1E293B" },
-  detailRole: {
-    fontSize: 14,
-    color: COLORS.primary || "#2e86de",
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  financeCardRow: {
-    flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 20,
-    marginBottom: 25,
-  },
-  financeBox: {
-    flex: 1,
-    padding: 15,
-    backgroundColor: "#f8fafc",
-    borderRadius: 15,
-    borderLeftWidth: 4,
-  },
-  financeLabel: { fontSize: 9, fontWeight: "800", color: "#94A3B8" },
-  financeValue: { fontSize: 16, fontWeight: "900", marginTop: 4 },
-  infoSection: { marginBottom: 25, paddingHorizontal: 20 },
-  infoLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#94A3B8",
-    textTransform: "uppercase",
-    marginBottom: 12,
-    letterSpacing: 1,
-  },
-  infoGrid: { gap: 10 },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
-  },
-  infoKey: { fontSize: 14, color: "#64748B", fontWeight: "600" },
-  infoValue: { fontSize: 14, color: "#1E293B", fontWeight: "700" },
-  linkedList: { gap: 10 },
-  linkedItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: "#f8fafc",
+  picker: { height: 45 },
+  graduateBtn: {
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 15,
     borderRadius: 12,
-  },
-  linkedAvatar: { width: 35, height: 35, borderRadius: 10, marginRight: 12 },
-  linkedName: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
-  linkedSub: { fontSize: 11, color: "#94A3B8" },
-  unlinkBtn: {
-    backgroundColor: "#FEE2E2",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  unlinkBtnText: { color: "#EF4444", fontSize: 9, fontWeight: "900" },
-  btnStack: { paddingBottom: 40 },
-  actionButton: {
-    height: 55,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 20,
-  },
-  actionButtonText: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  assignmentSheet: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    maxHeight: "95%",
-  },
-  switchRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 30,
-    padding: 15,
-    backgroundColor: "#f8fafc",
-    borderRadius: 15,
-  },
-  switchLabel: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
-  switchSub: { fontSize: 11, color: "#64748B" },
-  actionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 15,
     justifyContent: "center",
   },
-  actionCard: {
-    width: (width - 80) / 2,
-    padding: 20,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 20,
-    alignItems: "center",
-    ...SHADOWS.small,
-  },
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#475569",
-    marginTop: 10,
-  },
-  selectBtn: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 20,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 15,
-    marginBottom: 10,
-    alignItems: "center",
-  },
-  selectBtnText: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
-  permItem: {
-    marginBottom: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
-  },
-  permTitle: {
-    fontSize: 14,
+  graduateBtnText: { color: "#fff", fontWeight: "800", fontSize: 12 },
+  listContent: { padding: 20, paddingBottom: 100 },
+  loadingState: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 10, color: "#64748B", fontWeight: "600" },
+  emptyState: { alignItems: "center", marginTop: 60 },
+  emptyTitle: {
+    fontSize: 18,
     fontWeight: "800",
     color: "#1E293B",
-    marginBottom: 5,
+    marginTop: 15,
   },
-  permPickerBox: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  pickerLabel: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#475569",
-    marginBottom: 6,
-  },
-  textInput: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    fontSize: 14,
-    color: "#1E293B",
-  },
-  saveBtn: {
-    height: 60,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 20,
-  },
-  saveBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
-  selectionGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 10,
-  },
-  selectionChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: "#f1f5f9",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  chipText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#475569",
-  },
-  selectedCard: {
-    borderColor: COLORS.primary,
-    borderWidth: 1,
-    backgroundColor: (COLORS.primary || "#2e86de") + "05",
-  },
-  selectionIndicator: {
-    marginRight: 10,
-  },
-  bulkActionBar: {
-    position: "absolute",
-    bottom: 20,
-    left: 20,
-    right: 20,
-    backgroundColor: "#1E293B",
-    borderRadius: 20,
-    padding: 16,
-    ...SHADOWS.large,
-  },
-  bulkActionInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  bulkActionCount: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  bulkActionCancel: {
-    color: "#94A3B8",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  bulkActionButtons: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  bulkActionBtn: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-  },
-  bulkActionText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "800",
-  },
+  emptySub: { fontSize: 14, color: "#64748B", marginTop: 5 },
   selectAllRow: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 10,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#f1f5f9",
-    gap: 10,
   },
   selectAllText: {
     fontSize: 14,

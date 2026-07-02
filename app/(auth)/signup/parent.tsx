@@ -37,6 +37,7 @@ import SVGIcon from "../../../components/SVGIcon";
 
 interface ChildDetail {
   linkCode: string;
+  uid: string | null;
   name: string | null;
   className: string | null;
   isVerifying: boolean;
@@ -62,7 +63,7 @@ export default function ParentSignup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [children, setChildren] = useState<ChildDetail[]>([
-    { linkCode: "", name: null, className: null, isVerifying: false, isValid: false },
+    { linkCode: "", uid: null, name: null, className: null, isVerifying: false, isValid: false },
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const firstInputRef = useRef<TextInput>(null);
@@ -95,7 +96,8 @@ export default function ParentSignup() {
 
       const updatedChildren = [...children];
       if (!snap.empty) {
-        const data = snap.docs[0].data();
+        const studentDoc = snap.docs[0];
+        const data = studentDoc.data();
         
         // LIMIT CHECK: Only allow link if student has < 2 parents
         const existingParents = data.parentUids || [];
@@ -103,7 +105,9 @@ export default function ParentSignup() {
             updatedChildren[index].name = "Code Locked";
             updatedChildren[index].error = "Maximum (2) parents already linked.";
             updatedChildren[index].isValid = false;
+            updatedChildren[index].uid = null;
         } else {
+            updatedChildren[index].uid = studentDoc.id;
             updatedChildren[index].name = `${data.profile?.firstName} ${data.profile?.lastName}`;
             updatedChildren[index].isValid = true;
             updatedChildren[index].className = data.classId || "Assigned Class";
@@ -111,6 +115,7 @@ export default function ParentSignup() {
       } else {
         updatedChildren[index].name = "Student not found";
         updatedChildren[index].isValid = false;
+        updatedChildren[index].uid = null;
       }
       updatedChildren[index].isVerifying = false;
       setChildren(updatedChildren);
@@ -124,7 +129,7 @@ export default function ParentSignup() {
   };
 
   const handleAddChild = () => {
-    setChildren([...children, { linkCode: "", name: null, className: null, isVerifying: false, isValid: false }]);
+    setChildren([...children, { linkCode: "", uid: null, name: null, className: null, isVerifying: false, isValid: false }]);
   };
 
   const handleChildLinkCodeChange = (text: string, index: number) => {
@@ -187,31 +192,15 @@ export default function ParentSignup() {
       }
 
       const batch = writeBatch(db);
-
       const childrenUids: string[] = [];
       const childrenClassIds: string[] = [];
-      
+
       for (const child of linkedChildren) {
-          const studentQuery = query(
-            collection(db, "users"), 
-            where("role", "==", "student"), 
-            where("parentLinkCode", "==", child.linkCode),
-            where("status", "in", ["active", "pending_activation"]),
-            limit(1)
-          );
-          const studentSnap = await getDocs(studentQuery);
-          
-          if (!studentSnap.empty) {
-            const studentDoc = studentSnap.docs[0];
-            const studentId = studentDoc.id;
-            const studentData = studentDoc.data();
-            
-            childrenUids.push(studentId);
-            if (studentData.classId) childrenClassIds.push(studentData.classId);
-            
-            batch.update(doc(db, "users", studentId), {
-              parentUids: arrayUnion(parentId)
-            });
+          if (child.uid) {
+            childrenUids.push(child.uid);
+            if (child.className && child.className !== "Assigned Class") {
+                childrenClassIds.push(child.className);
+            }
           }
       }
 
@@ -229,6 +218,14 @@ export default function ParentSignup() {
         status: "active",
         createdAt: serverTimestamp(),
       });
+
+      for (const child of linkedChildren) {
+          if (child.uid) {
+            batch.update(doc(db, "users", child.uid), {
+              parentUids: arrayUnion(parentId)
+            });
+          }
+      }
 
       await batch.commit();
       

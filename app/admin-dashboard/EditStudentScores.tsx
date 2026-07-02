@@ -66,6 +66,7 @@ const StudentScoreCard = React.memo(
     primary: string;
     reportType: ReportType;
   }) => {
+    const { showToast } = useToast();
     const [localItem, setLocalItem] = useState(item);
 
     useEffect(() => {
@@ -130,7 +131,7 @@ const StudentScoreCard = React.memo(
                     placeholder="Max 50"
                     onChangeText={(v) => {
                       if (parseFloat(v) > 50) {
-                        Alert.alert("Error", "Class Score must not be above 50%");
+                        showToast({ message: "Class Score must not be above 50%", type: "error" });
                         return;
                       }
                       handleUpdate("classScore", v);
@@ -313,14 +314,20 @@ export default function EditStudentScores() {
   useEffect(() => {
     const onBackPress = () => {
       if (allStudents.length > 0 && JSON.stringify(allStudents) !== initialDataRef.current) {
-        Alert.alert(
-          "Unsaved Changes",
-          "You have modified scores. Are you sure you want to exit without saving?",
-          [
-            { text: "Stay", style: "cancel" },
-            { text: "Exit", style: "destructive", onPress: () => router.back() }
-          ]
-        );
+        if (Platform.OS === "web") {
+          if (window.confirm("You have modified scores. Are you sure you want to exit without saving?")) {
+            router.back();
+          }
+        } else {
+          Alert.alert(
+            "Unsaved Changes",
+            "You have modified scores. Are you sure you want to exit without saving?",
+            [
+              { text: "Stay", style: "cancel" },
+              { text: "Exit", style: "destructive", onPress: () => router.back() }
+            ]
+          );
+        }
         return true;
       }
       return false;
@@ -541,35 +548,44 @@ export default function EditStudentScores() {
 
   const handleDeleteRecord = async () => {
     if (!recordId) return;
-    Alert.alert(
-      "Delete Records?",
-      "This will permanently delete this subject's scores for this class.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete Permanently",
-          style: "destructive",
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await deleteDoc(doc(db, "academicRecords", recordId));
-              setRecordId(null);
-              setAllStudents([]);
-              setVisibleStudents([]);
-              showToast({
-                message: "The records have been removed successfully.",
-                type: "success",
-              });
-              fetchSubjects();
-            } catch (err) {
-              showToast({ message: "Could not delete records.", type: "error" });
-            } finally {
-              setDeleting(false);
-            }
+
+    const performDelete = async () => {
+      setDeleting(true);
+      try {
+        await deleteDoc(doc(db, "academicRecords", recordId));
+        setRecordId(null);
+        setAllStudents([]);
+        setVisibleStudents([]);
+        showToast({
+          message: "The records have been removed successfully.",
+          type: "success",
+        });
+        fetchSubjects();
+      } catch (err) {
+        showToast({ message: "Could not delete records.", type: "error" });
+      } finally {
+        setDeleting(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("This will permanently delete this subject's scores for this class.")) {
+        performDelete();
+      }
+    } else {
+      Alert.alert(
+        "Delete Records?",
+        "This will permanently delete this subject's scores for this class.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete Permanently",
+            style: "destructive",
+            onPress: performDelete,
           },
-        },
-      ],
-    );
+        ],
+      );
+    }
   };
 
   const handleRefresh = async () => {

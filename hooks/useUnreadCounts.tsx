@@ -33,14 +33,26 @@ export default function useUnreadCounts() {
     if (!appUser?.uid) return;
 
     // Watch student groups that include this user
-    const q = query(
-      collection(db, "studentGroups"),
-      or(
-        where("studentIds", "array-contains", appUser.uid),
-        where("teacherId", "==", appUser.uid),
+    let q;
+    if (appUser.role === 'teacher') {
+      q = query(
+        collection(db, "studentGroups"),
+        where("teacherId", "==", appUser.uid)
+      );
+    } else if (appUser.role === 'staff' || appUser.role === 'admin') {
+      q = query(
+        collection(db, "studentGroups"),
         where("staffIds", "array-contains", appUser.uid)
-      )
-    );
+      );
+    } else if (appUser.role === 'student') {
+      q = query(
+        collection(db, "studentGroups"),
+        where("studentIds", "array-contains", appUser.uid)
+      );
+    }
+
+    if (!q) return;
+
     const unsub = onSnapshot(q, (snap) => {
       const ids: string[] = snap.docs.map((d) => d.id);
       // start watchers for new groups
@@ -59,6 +71,8 @@ export default function useUnreadCounts() {
           });
         }
       });
+    }, (err) => {
+      console.warn("studentGroups listener failed", err);
     });
 
     return () => {
@@ -70,7 +84,7 @@ export default function useUnreadCounts() {
 
   // Listen to server-side unread counters on the user document if present
   useEffect(() => {
-    if (!appUser?.uid) return;
+    if (!appUser?.uid || appUser.role === 'admin') return;
     const userRef = doc(db, "users", appUser.uid);
     const unsub = onSnapshot(
       userRef,

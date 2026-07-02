@@ -29,6 +29,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { auth, db, storage } from "../../firebaseConfig";
 import { useToast } from "../../contexts/ToastContext";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, CurriculumType } from "../../constants/Curriculum";
+import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 import moment from "moment";
 
 export default function TeacherProfileEdit() {
@@ -55,7 +56,7 @@ export default function TeacherProfileEdit() {
 
   // Work Assignments state
   const [workModalVisible, setWorkModalVisible] = useState(false);
-  const [selectedClasses, setSelectedClasses] = useState<string[]>(appUser?.classes || []);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>(getTeacherClasses(appUser));
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(appUser?.subjects || []);
   const [curriculum, setCurriculum] = useState<CurriculumType>((appUser?.curriculum as CurriculumType) || "GES");
   const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>([]);
@@ -116,7 +117,7 @@ export default function TeacherProfileEdit() {
         setGender(appUser.profile.gender || "");
         setDob(appUser.profile.dob ? new Date(appUser.profile.dob) : new Date());
       }
-      setSelectedClasses(appUser.classes || []);
+      setSelectedClasses(getTeacherClasses(appUser));
       const subjects = appUser.subjects || [];
       const curr = (appUser.curriculum as CurriculumType) || "GES";
       setCurriculum(curr);
@@ -147,7 +148,7 @@ export default function TeacherProfileEdit() {
       try {
         const snap = await getDocs(collection(db, "classes"));
         const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name || d.id }));
-        setAllClasses(list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })));
+        setAllClasses(sortClasses(list));
       } catch (err) {
         console.error("Error fetching all classes:", err);
       }
@@ -162,10 +163,7 @@ export default function TeacherProfileEdit() {
 
   useEffect(() => {
     const fetchClassNames = async () => {
-      const classIds = [...(selectedClasses || [])];
-      if (appUser?.classTeacherOf && !classIds.includes(appUser.classTeacherOf)) {
-        classIds.push(appUser.classTeacherOf);
-      }
+      const classIds = getTeacherClasses(appUser);
 
       if (classIds.length === 0) {
         setClassNames([]);
@@ -184,9 +182,13 @@ export default function TeacherProfileEdit() {
           namesMap[doc.id] = doc.data().name;
         });
 
-        // Update states
-        const assignedNames = (selectedClasses || []).map(id => namesMap[id]).filter(Boolean);
-        setClassNames(assignedNames);
+        // Update states - show currently selected names, sorted logically
+        const assignedClasses = selectedClasses
+          .map(id => ({ id, name: namesMap[id] }))
+          .filter((c): c is { id: string; name: string } => !!c.name);
+
+        const sorted = sortClasses(assignedClasses);
+        setClassNames(sorted.map(c => c.name));
 
         if (appUser?.classTeacherOf) {
           setMainClassName(namesMap[appUser.classTeacherOf] || "Unknown");

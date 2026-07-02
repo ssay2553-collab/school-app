@@ -9,24 +9,22 @@ import {
   getDocsFromServer,
   query,
   serverTimestamp,
-  setDoc,
   where,
-  writeBatch
+  writeBatch,
 } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  FlatList,
   SafeAreaView,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
@@ -36,14 +34,6 @@ import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { getGradeDetails, sortClasses } from "../../lib/classHelpers";
-
-const storage = getStorage();
-
-interface ClassData {
-  id: string;
-  name: string;
-  classTeacherId?: string;
-}
 
 type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
 
@@ -58,24 +48,66 @@ interface StudentScoreRecord {
   grade: string;
 }
 
-// Optimized Student Card Component
+interface ClassData {
+  id: string;
+  name: string;
+  classTeacherId?: string;
+}
+
+// --- Reusable Components ---
+
+const SelectionGroup = React.memo(
+  ({
+    label,
+    items,
+    selectedId,
+    onSelect,
+    getLabel = (item) => item,
+    getId = (item) => item,
+  }: {
+    label: string;
+    items: any[];
+    selectedId: string;
+    onSelect: (id: any) => void;
+    getLabel?: (item: any) => string;
+    getId?: (item: any) => string;
+  }) => (
+    <View style={styles.selectionWrapper}>
+      <Text style={styles.label}>{label}</Text>
+      <FlatList
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        data={items}
+        keyExtractor={(item) => getId(item)}
+        contentContainerStyle={styles.bubbleRow}
+        renderItem={({ item }) => {
+          const id = getId(item);
+          const active = selectedId === id;
+          return (
+            <TouchableOpacity
+              onPress={() => onSelect(id)}
+              style={[styles.bubble, active && styles.bubbleActive]}
+            >
+              <Text style={[styles.bubbleText, active && styles.bubbleTextActive]}>
+                {getLabel(item)}
+              </Text>
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </View>
+  ),
+);
+
 const StudentCard = React.memo(
   ({
     student,
     onUpdate,
     reportType,
-    isClassTeacher,
-    primaryColor,
   }: {
     student: StudentScoreRecord;
-    onUpdate: (
-      id: string,
-      field: keyof StudentScoreRecord,
-      val: string,
-    ) => void;
+    onUpdate: (id: string, field: keyof StudentScoreRecord, val: string) => void;
     reportType: ReportType;
-    isClassTeacher: boolean;
-    primaryColor: string;
   }) => {
     const isEOT = reportType === "End of Term";
 
@@ -131,58 +163,43 @@ export default function StudentAcademicRecords() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [teacherClasses, setTeacherClasses] = useState<ClassData[]>([]);
-
-  // State for selections
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [reportType, setReportType] = useState<ReportType>("End of Term");
 
-  // Local derived values for active period
   const selectedYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
 
   const [allStudents, setAllStudents] = useState<StudentScoreRecord[]>([]);
-  const [serverStudents, setServerStudents] = useState<StudentScoreRecord[]>(
-    [],
-  );
+  const [serverStudents, setServerStudents] = useState<StudentScoreRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const PAGE_SIZE = 15; // Increased page size slightly since rendering is now efficient
 
-  const calculateScores = useCallback(
-    (student: StudentScoreRecord, type: ReportType) => {
-      const updated = { ...student };
-      if (type === "End of Term") {
-        const classScoreRaw = parseFloat(updated.classScore) || 0;
-        updated.classScore50 = classScoreRaw.toFixed(2); // Directly use the score as it's already capped at 50
-
-        const examsMark = parseFloat(updated.examsMark) || 0;
-        updated.exam50 = (examsMark * 0.5).toFixed(2);
-
-        const finalScoreNum =
-          parseFloat(updated.classScore50) + parseFloat(updated.exam50);
-        updated.finalScore = finalScoreNum.toFixed(2);
-        updated.grade = getGradeDetails(finalScoreNum).grade;
-      } else {
-        const examsMark = parseFloat(updated.examsMark) || 0;
-        updated.finalScore = examsMark.toFixed(2);
-        updated.grade = getGradeDetails(examsMark).grade;
-        updated.classScore = "";
-        updated.classScore50 = "0";
-        updated.exam50 = "0";
-      }
-      return updated;
-    },
-    [],
-  );
+  const calculateScores = useCallback((student: StudentScoreRecord, type: ReportType) => {
+    const updated = { ...student };
+    if (type === "End of Term") {
+      const classScoreRaw = parseFloat(updated.classScore) || 0;
+      updated.classScore50 = classScoreRaw.toFixed(2);
+      const examsMark = parseFloat(updated.examsMark) || 0;
+      updated.exam50 = (examsMark * 0.5).toFixed(2);
+      const finalScoreNum = parseFloat(updated.classScore50) + parseFloat(updated.exam50);
+      updated.finalScore = finalScoreNum.toFixed(2);
+      updated.grade = getGradeDetails(finalScoreNum).grade;
+    } else {
+      const examsMark = parseFloat(updated.examsMark) || 0;
+      updated.finalScore = examsMark.toFixed(2);
+      updated.grade = getGradeDetails(examsMark).grade;
+      updated.classScore = "";
+      updated.classScore50 = "0";
+      updated.exam50 = "0";
+    }
+    return updated;
+  }, []);
 
   const syncRecords = useCallback(async () => {
-    // If we don't have these core values, we can't fetch or save a specific record
     if (!selectedClassId || !selectedSubject || !selectedYear || !term) {
       setAllStudents([]);
       return;
     }
-
     setSyncing(true);
     setError(null);
     try {
@@ -193,32 +210,25 @@ export default function StudentAcademicRecords() {
 
       if (docSnap.exists()) {
         const data = docSnap.data();
-        const loadedStudents = (data.students || []).map(
-          (s: StudentScoreRecord) => calculateScores(s, reportType),
+        const loadedStudents = (data.students || []).map((s: StudentScoreRecord) =>
+          calculateScores(s, reportType),
         );
         setAllStudents(loadedStudents);
         setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
       } else {
-        // Fetch all students in this class.
-        // Filtering by role and classId is usually indexed.
-        // We filter status in-memory to avoid "Missing Index" errors with complex where/in queries.
         const q = query(
           collection(db, "users"),
           where("role", "==", "student"),
-          where("classId", "==", selectedClassId)
+          where("classId", "==", selectedClassId),
         );
-
         const snap = await getDocs(q);
         const list: StudentScoreRecord[] = snap.docs
           .map((d: any) => {
-            const data = d.data() as any;
-            // Only include active or pending students
-            if (!["active", "pending_activation"].includes(data.status)) return null;
-
+            const data = d.data();
+            if (!["active", "pending_activation", "pending"].includes(data.status)) return null;
             return {
               studentId: d.id,
-              fullName:
-                `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Unknown Student",
+              fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Unknown Student",
               classScore: "",
               classScore50: "0",
               examsMark: "",
@@ -227,53 +237,69 @@ export default function StudentAcademicRecords() {
               grade: "N/A",
             };
           })
-          .filter((s: StudentScoreRecord | null): s is StudentScoreRecord => s !== null)
-          .sort((a: StudentScoreRecord, b: StudentScoreRecord) => a.fullName.localeCompare(b.fullName));
+          .filter((s): s is StudentScoreRecord => s !== null)
+          .sort((a, b) => a.fullName.localeCompare(b.fullName));
 
         setAllStudents(list);
         setServerStudents(JSON.parse(JSON.stringify(list)));
       }
-      setPage(1);
-    } catch (err: any) {
-      console.error("syncRecords Error:", err);
-      setError("Unable to load student list. This might be a connection issue or a missing database index.");
-      showToast({ message: "Error loading students.", type: "error" });
+    } catch (err) {
+      console.error("syncRecords error:", err);
+      setError("Unable to load student list. Please check your connection.");
     } finally {
       setSyncing(false);
     }
-  }, [
-    selectedClassId,
-    selectedSubject,
-    selectedYear,
-    term,
-    reportType,
-    calculateScores,
-    showToast
-  ]);
+  }, [selectedClassId, selectedSubject, selectedYear, term, reportType, calculateScores]);
 
-  const hasUnsavedChanges = useMemo(() => {
-    return JSON.stringify(allStudents) !== JSON.stringify(serverStudents);
-  }, [allStudents, serverStudents]);
+  useEffect(() => {
+    if (!appUser) return;
+    const fetchMetadata = async () => {
+      setLoading(true);
+      try {
+        const classIds = appUser.classes || [];
+        if (classIds.length > 0) {
+          const q = query(collection(db, "classes"), where(documentId(), "in", classIds));
+          const snap = await getDocsFromServer(q);
+          const list = snap.docs.map((d) => ({
+            id: d.id,
+            name: (d.data() as any).name || d.id,
+            classTeacherId: (d.data() as any).classTeacherId,
+          }));
+          const sorted = sortClasses(list);
+          setTeacherClasses(sorted);
+          if (sorted.length > 0 && !selectedClassId) setSelectedClassId(sorted[0].id);
+        }
+        if (appUser.subjects && appUser.subjects.length > 0 && !selectedSubject) setSelectedSubject(appUser.subjects[0]);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchMetadata();
+  }, [appUser]);
+
+  useEffect(() => {
+    syncRecords();
+  }, [syncRecords]);
+
+  const hasUnsavedChanges = useMemo(
+    () => JSON.stringify(allStudents) !== JSON.stringify(serverStudents),
+    [allStudents, serverStudents],
+  );
 
   const handleBack = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/teacher-dashboard");
-    }
+    if (router.canGoBack()) router.back();
+    else router.replace("/teacher-dashboard");
   }, [router]);
 
   useEffect(() => {
     const onBackPress = () => {
       if (hasUnsavedChanges) {
-        Alert.alert(
-          "Unsaved Changes",
-          "You have modified student scores. Are you sure you want to discard them?",
-          [
-            { text: "Stay", style: "cancel" },
-            { text: "Discard", style: "destructive", onPress: handleBack },
-          ],
-        );
+        Alert.alert("Unsaved Changes", "Discard modifications?", [
+          { text: "Stay", style: "cancel" },
+          { text: "Discard", style: "destructive", onPress: handleBack },
+        ]);
         return true;
       }
       handleBack();
@@ -283,84 +309,25 @@ export default function StudentAcademicRecords() {
     return () => sub.remove();
   }, [hasUnsavedChanges, handleBack]);
 
-  const visibleStudents = useMemo(() => {
-    return allStudents.slice(0, page * PAGE_SIZE);
-  }, [allStudents, page]);
-
-  const isClassTeacher = useMemo(() => {
-    const selectedClass = teacherClasses.find((c) => c.id === selectedClassId);
-    return selectedClass?.classTeacherId === appUser?.uid;
-  }, [selectedClassId, teacherClasses, appUser]);
-
-  useEffect(() => {
-    if (!appUser) return;
-    const fetchTeacherMetadata = async () => {
-      setLoading(true);
-      try {
-        const classIds = appUser.classes || [];
-        if (classIds.length > 0) {
-          const q = query(
-            collection(db, "classes"),
-            where(documentId(), "in", classIds),
-          );
-          const snap = await getDocsFromServer(q);
-          const list = snap.docs.map((d) => ({
-            id: d.id,
-            name: (d.data() as any).name || d.id,
-            classTeacherId: (d.data() as any).classTeacherId,
-          }));
-          const sorted = sortClasses(list);
-          setTeacherClasses(sorted);
-          if (sorted.length > 0 && !selectedClassId)
-            setSelectedClassId(sorted[0].id);
-        }
-
-        // Auto-select first subject if none selected
-        if (appUser.subjects && appUser.subjects.length > 0 && !selectedSubject) {
-          setSelectedSubject(appUser.subjects[0]);
-        }
-      } catch (err) {
-        console.error("fetchTeacherMetadata Error:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchTeacherMetadata();
-  }, [appUser]);
-
-  useEffect(() => {
-    syncRecords();
-  }, [syncRecords]);
-
   const updateStudentScore = useCallback(
     (studentId: string, field: keyof StudentScoreRecord, value: string) => {
       setAllStudents((prev) =>
         prev.map((s) => {
-          if (s.studentId === studentId) {
-            if (field === "classScore" && parseFloat(value) > 50) {
-              showToast({
-                message: "Class Score must not be above 50%",
-                type: "error",
-              });
-              return s;
-            }
-
-            let updated = { ...s, [field]: value } as StudentScoreRecord;
-            if (["classScore", "examsMark"].includes(field)) {
-              updated = calculateScores(updated, reportType);
-            }
-            return updated;
+          if (s.studentId !== studentId) return s;
+          if (field === "classScore" && parseFloat(value) > 50) {
+            showToast({ message: "Max 50% for Class Score", type: "error" });
+            return s;
           }
-          return s;
+          let updated = { ...s, [field]: value } as StudentScoreRecord;
+          if (["classScore", "examsMark"].includes(field)) {
+            updated = calculateScores(updated, reportType);
+          }
+          return updated;
         }),
       );
     },
-    [calculateScores, reportType],
+    [calculateScores, reportType, showToast],
   );
-
-  const loadMore = () => {
-    setPage((p) => p + 1);
-  };
 
   const saveRecord = async () => {
     if (!selectedClassId || !selectedSubject || !term || !selectedYear) {
@@ -372,15 +339,12 @@ export default function StudentAcademicRecords() {
       const yearSlug = selectedYear.replace(/\//g, "-");
       const reportSlug = reportType.replace(/\s+/g, "");
       const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
-      const recordRef = doc(db, "academicRecords", docId);
 
-      batch.set(recordRef, {
+      batch.set(doc(db, "academicRecords", docId), {
         docId,
         teacherId: appUser?.uid,
         classId: selectedClassId,
-        className:
-          teacherClasses.find((c) => c.id === selectedClassId)?.name ||
-          selectedClassId,
+        className: teacherClasses.find((c) => c.id === selectedClassId)?.name || selectedClassId,
         subject: selectedSubject,
         academicYear: selectedYear,
         term,
@@ -391,26 +355,20 @@ export default function StudentAcademicRecords() {
         containsBehavioralData: false,
       });
 
-      // Update academicRecordsSummary for real-time tracking (even if pending)
       allStudents.forEach((student) => {
-        const cleanYear = selectedYear.replace(/\//g, "_");
-        const cleanTerm = term.replace(/\s+/g, "");
-        const summaryId = `${student.studentId}_${cleanYear}_${cleanTerm}`;
-        const summaryRef = doc(db, "academicRecordsSummary", summaryId);
-        const subjectKey = selectedSubject.replace(/\s+/g, "_");
-
+        const summaryId = `${student.studentId}_${selectedYear.replace(/\//g, "_")}_${term.replace(/\s+/g, "")}`;
         batch.set(
-          summaryRef,
+          doc(db, "academicRecordsSummary", summaryId),
           {
             studentId: student.studentId,
             classId: selectedClassId,
             academicYear: selectedYear,
             term,
             scores: {
-              [subjectKey]: {
+              [selectedSubject.replace(/\s+/g, "_")]: {
                 finalScore: parseFloat(student.finalScore) || 0,
                 grade: student.grade,
-                reportType: reportType,
+                reportType,
                 status: "pending",
                 lastUpdated: serverTimestamp(),
               },
@@ -422,217 +380,134 @@ export default function StudentAcademicRecords() {
 
       await batch.commit();
       setServerStudents(JSON.parse(JSON.stringify(allStudents)));
-      showToast({
-        message: "Academic ledger saved successfully.",
-        type: "success",
-      });
+      showToast({ message: "Saved successfully.", type: "success" });
       router.back();
     } catch (err) {
-      console.error(err);
-      showToast({ message: "Failed to save records.", type: "error" });
+      showToast({ message: "Save failed.", type: "error" });
     }
   };
 
-  if (loading || acadConfig.loading)
+  const renderHeader = () => (
+    <>
+      <Animatable.View animation="fadeInDown" duration={500} style={styles.configCard}>
+        <Text style={styles.sectionLabel}>LEDGER CONFIGURATION</Text>
+        <View style={styles.lockedConfigRow}>
+          <View style={styles.lockedConfigItem}>
+            <Text style={styles.miniLabel}>ACADEMIC YEAR</Text>
+            <View style={styles.lockedBadge}>
+              <Text style={styles.lockedBadgeText}>{selectedYear || "---"}</Text>
+            </View>
+          </View>
+          <View style={styles.lockedConfigItem}>
+            <Text style={styles.miniLabel}>CURRENT TERM</Text>
+            <View style={styles.lockedBadge}>
+              <Text style={styles.lockedBadgeText}>{term || "---"}</Text>
+            </View>
+          </View>
+        </View>
+
+        <SelectionGroup
+          label="REPORT TYPE"
+          items={["End of Term", "Mid-Term", "Mock Exams"]}
+          selectedId={reportType}
+          onSelect={setReportType}
+        />
+        <SelectionGroup
+          label="TARGET CLASS"
+          items={teacherClasses}
+          selectedId={selectedClassId}
+          onSelect={setSelectedClassId}
+          getLabel={(item) => item.name}
+          getId={(item) => item.id}
+        />
+        <SelectionGroup
+          label="SUBJECT"
+          items={appUser?.subjects || []}
+          selectedId={selectedSubject}
+          onSelect={setSelectedSubject}
+        />
+      </Animatable.View>
+
+      <View style={styles.listHeaderContainer}>
+        <View style={styles.listHeader}>
+          <Text style={styles.listTitle}>STUDENT PERFORMANCE LIST</Text>
+          <Text style={styles.listCount}>{allStudents.length} Students</Text>
+        </View>
+        {error && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={syncRecords} style={styles.retryBtn}>
+              <Text style={styles.retryBtnText}>RETRY</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </>
+  );
+
+  const renderEmpty = () => (
+    <View style={styles.emptyState}>
+      <SVGIcon name="people-outline" size={48} color="#CBD5E1" />
+      <Text style={styles.emptyStateText}>
+        {!selectedSubject
+          ? "Please select a subject first"
+          : "No active students found in this class"}
+      </Text>
+    </View>
+  );
+
+  if (loading || acadConfig.loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient
-        colors={[COLORS.primary, "#1E293B"]}
-        style={styles.headerGradient}
-      >
+      <LinearGradient colors={[COLORS.primary, "#1E293B"]} style={styles.headerGradient}>
         <View style={styles.headerTitleRow}>
           <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 15 }}>
             <Text style={styles.headerTitle}>Academic Ledger</Text>
-            <Text style={styles.headerSubtitle}>
-              {selectedYear} • {term}
-            </Text>
+            <Text style={styles.headerSubtitle}>{selectedYear} • {term}</Text>
           </View>
           <SVGIcon name="journal" size={24} color={COLORS.secondary} />
         </View>
       </LinearGradient>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
-        removeClippedSubviews={true} // Performance optimization for Android
-      >
-        <Animatable.View
-          animation="fadeInDown"
-          duration={500}
-          style={styles.configCard}
-        >
-          <Text style={styles.sectionLabel}>LEDGER CONFIGURATION</Text>
-
-          <View style={styles.lockedConfigRow}>
-            <View style={styles.lockedConfigItem}>
-              <Text style={styles.miniLabel}>ACADEMIC YEAR</Text>
-              <View style={styles.lockedBadge}>
-                <Text style={styles.lockedBadgeText}>
-                  {selectedYear || "---"}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.lockedConfigItem}>
-              <Text style={styles.miniLabel}>CURRENT TERM</Text>
-              <View style={styles.lockedBadge}>
-                <Text style={styles.lockedBadgeText}>{term || "---"}</Text>
-              </View>
-            </View>
-          </View>
-
-          <Text style={[styles.label, { marginTop: 15 }]}>REPORT TYPE</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {(["End of Term", "Mid-Term", "Mock Exams"] as ReportType[]).map(
-              (type) => (
-                <TouchableOpacity
-                  key={type}
-                  onPress={() => setReportType(type)}
-                  style={[
-                    styles.bubble,
-                    reportType === type && {
-                      backgroundColor: COLORS.secondary,
-                      borderColor: COLORS.secondary,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.bubbleText,
-                      reportType === type && styles.bubbleTextActive,
-                    ]}
-                  >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ),
-            )}
-          </ScrollView>
-          <Text style={styles.label}>TARGET CLASS</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {teacherClasses.map((c) => (
-              <TouchableOpacity
-                key={c.id}
-                onPress={() => setSelectedClassId(c.id)}
-                style={[
-                  styles.bubble,
-                  selectedClassId === c.id && styles.bubbleActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    selectedClassId === c.id && styles.bubbleTextActive,
-                  ]}
-                >
-                  {c.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <Text style={styles.label}>SUBJECT</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {(appUser?.subjects || []).map((s: string) => (
-              <TouchableOpacity
-                key={s}
-                onPress={() => setSelectedSubject(s)}
-                style={[
-                  styles.bubble,
-                  selectedSubject === s && styles.bubbleActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    selectedSubject === s && styles.bubbleTextActive,
-                  ]}
-                >
-                  {s}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </Animatable.View>
-
-        {syncing ? (
-          <View style={styles.syncBox}>
-            <ActivityIndicator color={COLORS.primary} />
-            <Text style={styles.syncText}>Syncing Ledger Data...</Text>
-          </View>
-        ) : (
-          <View style={styles.recordsList}>
-            <View style={styles.listHeader}>
-              <Text style={styles.listTitle}>STUDENT PERFORMANCE LIST</Text>
-              <Text style={styles.listCount}>
-                {allStudents.length} Students
-              </Text>
-            </View>
-
-            {error && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
-                <TouchableOpacity onPress={() => syncRecords()} style={styles.retryBtn}>
-                  <Text style={styles.retryBtnText}>RETRY</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {!error && allStudents.length === 0 ? (
-              <View style={styles.emptyState}>
-                <SVGIcon name="people-outline" size={48} color="#CBD5E1" />
-                <Text style={styles.emptyStateText}>
-                  {!selectedSubject ? "Please select a subject first" :
-                   !selectedYear ? "Academic Year not set in Admin Settings" :
-                   "No active students found in this class"}
-                </Text>
-              </View>
-            ) : (
-              visibleStudents.map((student) => (
-                <StudentCard
-                  key={student.studentId}
-                  student={student}
-                  onUpdate={updateStudentScore}
-                  reportType={reportType}
-                  isClassTeacher={isClassTeacher}
-                  primaryColor={COLORS.primary}
-                />
-              ))
-            )}
-            {allStudents.length > visibleStudents.length && (
-              <TouchableOpacity onPress={loadMore} style={styles.loadMoreBtn}>
-                <Text style={styles.loadMoreText}>LOAD MORE STUDENTS</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </ScrollView>
+      {syncing ? (
+        <View style={styles.syncBox}>
+          <ActivityIndicator color={COLORS.primary} />
+          <Text style={styles.syncText}>Syncing Ledger Data...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={allStudents}
+          keyExtractor={(item) => item.studentId}
+          renderItem={({ item }) => (
+            <StudentCard
+              student={item}
+              onUpdate={updateStudentScore}
+              reportType={reportType}
+            />
+          )}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={!syncing ? renderEmpty : null}
+          contentContainerStyle={styles.listContent}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={true}
+        />
+      )}
 
       <TouchableOpacity onPress={saveRecord} style={styles.saveFab}>
-        <LinearGradient
-          colors={[COLORS.primary, "#4F46E5"]}
-          style={styles.fabGrad}
-        >
+        <LinearGradient colors={[COLORS.primary, "#4F46E5"]} style={styles.fabGrad}>
           <Text style={styles.saveFabText}>SAVE PERFORMANCE LEDGER</Text>
           <SVGIcon name="checkmark-done" size={24} color="#fff" />
         </LinearGradient>
@@ -660,66 +535,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   headerTitle: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  headerSubtitle: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.7)",
-    fontWeight: "700",
-  },
-  signatureCard: {
-    backgroundColor: "#fff",
-    margin: 20,
-    padding: 20,
-    borderRadius: 24,
-    ...SHADOWS.small,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  sigHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 4,
-  },
-  sigTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
-  sigSubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    marginBottom: 15,
-    fontWeight: "600",
-  },
-  sigContent: { alignItems: "center" },
-  sigImage: {
-    width: "100%",
-    height: 100,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  sigPlaceholder: {
-    width: "100%",
-    height: 100,
-    backgroundColor: "#F1F5F9",
-    borderRadius: 12,
-    borderStyle: "dashed",
-    borderWidth: 2,
-    borderColor: "#CBD5E1",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sigPlaceholderText: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginTop: 8,
-    fontWeight: "700",
-  },
-  sigUploadBtn: {
-    marginTop: 15,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-  },
-  sigUploadBtnText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  headerSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: "700" },
   configCard: {
     backgroundColor: "#fff",
     margin: 20,
@@ -729,6 +545,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
+  selectionWrapper: { marginTop: 15 },
   sectionLabel: {
     fontSize: 10,
     fontWeight: "900",
@@ -736,13 +553,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 15,
   },
-  label: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#94A3B8",
-    marginBottom: 10,
-  },
-  bubbleRow: { gap: 10, paddingBottom: 15 },
+  label: { fontSize: 10, fontWeight: "900", color: "#94A3B8", marginBottom: 10 },
+  bubbleRow: { gap: 10, paddingBottom: 5 },
   bubble: {
     paddingVertical: 10,
     paddingHorizontal: 18,
@@ -750,21 +562,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     borderWidth: 1,
     borderColor: "#E2E8F0",
+    marginRight: 8,
   },
-  bubbleActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
+  bubbleActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   bubbleText: { fontSize: 12, color: "#475569", fontWeight: "700" },
   bubbleTextActive: { color: "#fff" },
   lockedConfigRow: { flexDirection: "row", gap: 15, marginBottom: 5 },
   lockedConfigItem: { flex: 1 },
-  miniLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#94A3B8",
-    marginBottom: 6,
-  },
+  miniLabel: { fontSize: 9, fontWeight: "900", color: "#94A3B8", marginBottom: 6 },
   lockedBadge: {
     backgroundColor: "#F1F5F9",
     padding: 12,
@@ -775,13 +580,9 @@ const styles = StyleSheet.create({
   lockedBadgeText: { fontSize: 13, fontWeight: "800", color: COLORS.primary },
   syncBox: { padding: 50, alignItems: "center" },
   syncText: { marginTop: 15, color: "#64748B", fontWeight: "700" },
-  recordsList: { padding: 20 },
-  listHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
+  listContent: { padding: 20, paddingBottom: 120 },
+  listHeaderContainer: { marginBottom: 15 },
+  listHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   listTitle: { fontSize: 12, fontWeight: "900", color: "#64748B" },
   listCount: { fontSize: 12, fontWeight: "800", color: COLORS.primary },
   studentCard: {
@@ -791,28 +592,13 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     ...SHADOWS.small,
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
+  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15 },
   studentName: { fontSize: 15, fontWeight: "800", color: "#1E293B" },
-  gradeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: "#F1F5F9",
-  },
+  gradeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: "#F1F5F9" },
   gradeText: { fontSize: 12, fontWeight: "900", color: COLORS.primary },
   scoresGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   scoreInput: { width: "47%", marginBottom: 10 },
-  scoreLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#94A3B8",
-    marginBottom: 5,
-  },
+  scoreLabel: { fontSize: 9, fontWeight: "900", color: "#94A3B8", marginBottom: 5 },
   input: {
     backgroundColor: "#F8FAFC",
     borderRadius: 10,
@@ -832,17 +618,6 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 9, fontWeight: "900", color: COLORS.primary },
   totalVal: { fontSize: 16, fontWeight: "900", color: COLORS.primary },
-  behavioralGrid: {
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderColor: "#F1F5F9",
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  loadMoreBtn: { padding: 15, alignItems: "center" },
-  loadMoreText: { fontSize: 12, fontWeight: "900", color: COLORS.primary },
   saveFab: {
     position: "absolute",
     bottom: 30,
@@ -859,19 +634,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 15,
   },
-  saveFabText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 16,
-    letterSpacing: 1,
-  },
+  saveFabText: { color: "#fff", fontWeight: "900", fontSize: 16, letterSpacing: 1 },
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
     padding: 40,
     backgroundColor: "#fff",
     borderRadius: 20,
-    marginTop: 10,
     ...SHADOWS.small,
   },
   emptyStateText: {
@@ -882,28 +651,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   errorBox: {
-    padding: 20,
+    padding: 15,
     backgroundColor: "#FEF2F2",
-    borderRadius: 15,
+    borderRadius: 12,
     alignItems: "center",
-    marginBottom: 20,
-  },
-  errorText: {
-    color: "#EF4444",
-    fontWeight: "600",
-    textAlign: "center",
-    fontSize: 12,
-  },
-  retryBtn: {
     marginTop: 10,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    backgroundColor: "#EF4444",
-    borderRadius: 8,
   },
-  retryBtnText: {
-    color: "#fff",
-    fontWeight: "800",
-    fontSize: 11,
-  },
+  errorText: { color: "#EF4444", fontWeight: "600", fontSize: 12 },
+  retryBtn: { marginTop: 8, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: "#EF4444", borderRadius: 6 },
+  retryBtnText: { color: "#fff", fontWeight: "800", fontSize: 10 },
 });

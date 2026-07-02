@@ -1,3 +1,41 @@
+import { AppUser } from "../types/users";
+
+/**
+ * Standardizes isClassTeacher logic to match firestore.rules
+ * A user is a class teacher if:
+ * 1. They are signed in (user object exists)
+ * 2. They have a teacher, admin, or staff role
+ * 3. The classId matches their 'classTeacherOf' property OR is in their 'classes' array
+ */
+export const isClassTeacher = (user: AppUser | null | undefined, classId: string): boolean => {
+  if (!user || !classId) return false;
+
+  const role = user.role?.toLowerCase();
+  const isAdmin = role === "admin";
+  const isTeacher = role === "teacher";
+  const isStaff = role === "staff";
+
+  if (!isAdmin && !isTeacher && !isStaff) return false;
+
+  const classTeacherOf = user.classTeacherOf;
+  const classes = user.classes || [];
+
+  return classTeacherOf === classId || classes.includes(classId);
+};
+
+/**
+ * Returns all class IDs associated with a teacher or staff member.
+ * Combines classTeacherOf and the classes array.
+ */
+export const getTeacherClasses = (user: AppUser | null | undefined): string[] => {
+  if (!user) return [];
+  const list = [...(user.classes || [])];
+  if (user.classTeacherOf && !list.includes(user.classTeacherOf)) {
+    list.push(user.classTeacherOf);
+  }
+  return list;
+};
+
 /**
  * Sorts educational classes logically based on school levels and numeric grades.
  * Expected Order: Creche -> Nursery -> KG -> Class/Primary/Grade 1-6 -> JHS 1-3 -> SHS 1-3

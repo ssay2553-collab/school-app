@@ -374,27 +374,36 @@ export default function AdminGalleryUpload() {
   const deleteItem = (item: GalleryItem) => {
     if (!canManageGallery) return;
 
-    Alert.alert("Delete Post", "Remove this from the gallery?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            if (item.storagePath) {
-              await deleteObject(sRef(storage, item.storagePath));
-            }
+    const performDelete = async () => {
+      try {
+        if (item.storagePath) {
+          await deleteObject(sRef(storage, item.storagePath));
+        }
 
-            await deleteDoc(doc(db, "gallery", item.id));
-            setGallery((prev) => prev.filter((g) => g.id !== item.id));
-            setModalVisible(false);
-          } catch (e) {
-            console.error(e);
-            showToast({ message: "Delete failed", type: "error" });
-          }
+        await deleteDoc(doc(db, "gallery", item.id));
+        setGallery((prev) => prev.filter((g) => g.id !== item.id));
+        setModalVisible(false);
+        showToast({ message: "Item removed from gallery.", type: "success" });
+      } catch (e) {
+        console.error(e);
+        showToast({ message: "Delete failed", type: "error" });
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to remove this from the gallery?")) {
+        performDelete();
+      }
+    } else {
+      Alert.alert("Delete Post", "Remove this from the gallery?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: performDelete,
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   const renderFullItem = ({ item }: { item: GalleryItem }) => (

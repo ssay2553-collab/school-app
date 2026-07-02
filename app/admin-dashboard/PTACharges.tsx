@@ -1,7 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
-  arrayUnion,
   collection,
   doc,
   getDocsFromServer,
@@ -11,48 +10,46 @@ import {
   serverTimestamp,
   where,
   writeBatch,
+  limit,
+  startAfter,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import moment from "moment";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
-  SectionList,
   StatusBar,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  Dimensions,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
-import { COLORS, SHADOWS } from "../../constants/theme";
+import { COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
-
 import { sendNotification } from "../../src/services/notificationService";
 
-const VIBE = {
-  primary: "#F59E0B", // PTA Color
-  secondary: "#D97706",
-  bg: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#1E293B",
-  muted: "#64748B",
-  border: "#E2E8F0",
-  danger: "#EF4444",
-  success: "#10B981",
-  info: "#3B82F6",
-};
+import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
+import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
+
+const { width } = Dimensions.get("window");
+const PAGE_SIZE = 50;
 
 type Student = {
   uid: string;
@@ -62,6 +59,17 @@ type Student = {
   ptaPaid: number;
   ptaBill: number;
   ptaBalance: number;
+  walletBalance: number;
+  admissionBalance?: number;
+  maintenanceBalance?: number;
+  booksBalance?: number;
+  uniformBalance?: number;
+  otherBalance?: number;
+};
+
+const THEME = {
+  primary: "#F59E0B", // PTA Orange
+  secondary: "#D97706",
 };
 
 export default function PTACharges() {
@@ -70,15 +78,14 @@ export default function PTACharges() {
   const router = useRouter();
   const acadConfig = useAcademicConfig();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [classes, setClasses] = useState<any[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("all");
-  const [students, setStudents] = useState<Student[]>([]);
-  const [excludedUids, setExcludedUids] = useState<Set<string>>(new Set());
-  const [ptaAmount, setPtaAmount] = useState("");
   const [classModalVisible, setClassModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [students, setStudents] = useState<Student[]>([]);
 
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -87,13 +94,22 @@ export default function PTACharges() {
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [activeTab, setActiveTab] = useState<"payment" | "billing">("payment");
-  const [billAmount, setBillAmount] = useState("");
-  const [stats, setStats] = useState<any>({
-    totalCollected: 0,
-    totalBilled: 0,
-    count: 0
-  });
+
+  const [chargeAmount, setChargeAmount] = useState("");
+  const [stats, setStats] = useState({ totalBilled: 0, totalCollected: 0 });
+
+  const lastVisibleRef = useRef<any>(null);
+  const hasMoreRef = useRef(true);
+  const isFetchingRef = useRef(false);
+
+  // Initialize classes
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "classes"), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name, ...d.data() }));
+      setClasses(sortClasses(list));
+    });
+    return () => unsub();
+  }, []);
 
   const fetchStats = async () => {
     try {
@@ -112,115 +128,93 @@ export default function PTACharges() {
         if (data.type === "pta_payment") collected += (data.amount || 0);
         if (data.type === "pta") billed += (data.amount || 0);
       });
-      setStats({ totalCollected: collected, totalBilled: billed, count: snap.docs.length });
+      setStats({ totalCollected: collected, totalBilled: billed });
     } catch (e) {
       console.error("Error fetching PTA stats:", e);
     }
   };
 
-  // Brand colors
-  const primaryBrand = SCHOOL_CONFIG.primaryColor || COLORS.primary || VIBE.primary;
+  const fetchStudents = useCallback(async (isFirstLoad = false) => {
+    if (isFetchingRef.current) return;
+    if (!isFirstLoad && !hasMoreRef.current) return;
 
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "classes"), (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name, ...d.data() }));
-      setClasses(sortClasses(list));
-    });
-    return () => unsub();
-  }, []);
-
-  useEffect(() => {
-    if (selectedClassId !== "all" || searchQuery.length >= 2) {
-      fetchStudents();
-    } else {
-      setStudents([]);
-      setLoading(false);
-    }
-  }, [selectedClassId, searchQuery]);
-
-  useEffect(() => {
-    if (acadConfig.academicYear) {
-      fetchStats();
-    }
-  }, [acadConfig.academicYear, acadConfig.currentTerm]);
-
-  const sections = useMemo(() => {
-    if (students.length === 0) return [];
-
-    let filtered = students;
-    if (searchQuery.length >= 2) {
-      const lower = searchQuery.toLowerCase();
-      filtered = students.filter(s => s.fullName.toLowerCase().includes(lower));
+    isFetchingRef.current = true;
+    if (isFirstLoad) {
+      setLoading(true);
+      lastVisibleRef.current = null;
+      hasMoreRef.current = true;
     }
 
-    if (selectedClassId !== "all") {
-      const cls = classes.find((c) => c.id === selectedClassId);
-      return [
-        {
-          title: cls?.name || "Selected Class",
-          data: filtered,
-        },
-      ];
-    }
-
-    const grouped = classes
-      .map((cls) => ({
-        title: cls.name,
-        data: filtered.filter((s) => s.classId === cls.id),
-      }))
-      .filter((section) => section.data.length > 0);
-
-    const assignedClassIds = new Set(classes.map((c) => c.id));
-    const unassigned = filtered.filter((s) => !assignedClassIds.has(s.classId));
-    if (unassigned.length > 0) {
-      grouped.push({
-        title: "Other / Unassigned",
-        data: unassigned,
-      });
-    }
-
-    return grouped;
-  }, [classes, students, selectedClassId, searchQuery]);
-
-  const fetchStudents = async () => {
-    setLoading(true);
     try {
       let q = query(
         collection(db, "users"),
         where("role", "==", "student"),
-        where("status", "in", ["active", "pending_activation"])
+        where("status", "in", ["active", "pending_activation"]),
+        limit(PAGE_SIZE)
       );
 
       if (selectedClassId !== "all") {
         q = query(q, where("classId", "==", selectedClassId));
-      } else if (searchQuery.length < 2) {
-        setStudents([]);
-        setLoading(false);
-        return;
+      }
+
+      if (!isFirstLoad && lastVisibleRef.current) {
+        q = query(q, startAfter(lastVisibleRef.current));
       }
 
       const snap = await getDocsFromServer(q);
-      const list: Student[] = snap.docs.map((d) => {
+      if (snap.empty) {
+        hasMoreRef.current = false;
+        if (isFirstLoad) setStudents([]);
+        return;
+      }
+
+      const batch: Student[] = snap.docs.map(d => {
         const data = d.data();
         return {
           uid: d.id,
-          fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
+          fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Student",
           classId: data.classId || "unknown",
           className: data.className || "Class",
           ptaPaid: data.ptaPaid || 0,
           ptaBill: data.ptaBill || 0,
           ptaBalance: data.ptaBalance || 0,
-          ...data,
+          walletBalance: data.walletBalance || 0,
+          admissionBalance: data.admissionBalance || 0,
+          maintenanceBalance: data.maintenanceBalance || 0,
+          booksBalance: data.booksBalance || 0,
+          uniformBalance: data.uniformBalance || 0,
+          otherBalance: data.otherBalance || 0,
         };
       });
-      setStudents(list.sort((a, b) => a.fullName.localeCompare(b.fullName)));
-      setExcludedUids(new Set());
+
+      lastVisibleRef.current = snap.docs[snap.docs.length - 1];
+      hasMoreRef.current = snap.docs.length === PAGE_SIZE;
+      setStudents(prev => isFirstLoad ? batch : [...prev, ...batch]);
     } catch (e) {
       console.error(e);
+      showToast({ message: "Failed to fetch students", type: "error" });
     } finally {
+      isFetchingRef.current = false;
       setLoading(false);
+      setRefreshing(false);
     }
+  }, [selectedClassId]);
+
+  useEffect(() => {
+    fetchStudents(true);
+    fetchStats();
+  }, [selectedClassId, acadConfig.academicYear, acadConfig.currentTerm]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchStudents(true);
+    fetchStats();
   };
+
+  const filteredStudents = useMemo(() => {
+    const lower = searchQuery.toLowerCase();
+    return students.filter(s => s.fullName.toLowerCase().includes(lower));
+  }, [students, searchQuery]);
 
   const fetchPaymentHistory = async (studentUid: string) => {
     setLoadingHistory(true);
@@ -240,19 +234,95 @@ export default function PTACharges() {
     }
   };
 
+  const handleDeletePayment = (payment: any) => {
+    if (!selectedStudent) return;
+
+    const performDeletion = async () => {
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+
+      if (!year || !term) {
+        return showToast({
+          message: "Action blocked: Academic year and term must be configured.",
+          type: "error",
+        });
+      }
+
+      setSaving(true);
+      try {
+        const recordId = `${selectedStudent.uid}_${year}_${term}`;
+        const batch = writeBatch(db);
+        const amount = Number(payment.amount) || 0;
+        const isPayment = (payment.type || "").toLowerCase() === "pta_payment";
+
+        if (isPayment) {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            ptaPaid: increment(-amount),
+            ptaBalance: increment(amount),
+            balance: increment(amount),
+          });
+          batch.update(doc(db, "users", selectedStudent.uid), {
+            ptaPaid: increment(-amount),
+            ptaBalance: increment(amount),
+            walletBalance: increment(amount),
+          });
+        } else {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            ptaBill: increment(-amount),
+            ptaBalance: increment(-amount),
+            balance: increment(-amount),
+          });
+          batch.update(doc(db, "users", selectedStudent.uid), {
+            ptaBill: increment(-amount),
+            ptaBalance: increment(-amount),
+            walletBalance: increment(-amount),
+          });
+        }
+
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          payments: arrayRemove(payment),
+          lastUpdated: serverTimestamp(),
+        });
+
+        if (payment.receiptNo) {
+          batch.delete(doc(db, "feePayments", payment.receiptNo));
+        }
+
+        await batch.commit();
+        showToast({ message: "Transaction reverted successfully", type: "success" });
+        setPaymentModalVisible(false);
+        fetchStats();
+        fetchStudents(true);
+      } catch (err) {
+        console.error("Delete transaction error:", err);
+        showToast({ message: "Failed to revert transaction", type: "error" });
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    Alert.alert("Confirm Deletion", "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: performDeletion },
+    ]);
+  };
+
   const handleLogPayment = async () => {
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0 || !selectedStudent || !receivedFrom.trim()) {
-      return showToast({ message: "Please enter valid payment details", type: "error" });
+    const val = parseFloat(paymentAmount);
+    if (isNaN(val) || val <= 0 || !selectedStudent || !receivedFrom.trim()) {
+       return showToast({ message: "Invalid details", type: "error" });
     }
 
     setSaving(true);
     try {
       const batch = writeBatch(db);
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+      const recordId = `${selectedStudent.uid}_${year}_${term}`;
       const serial = `PTA-PAY-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const paymentEntry = {
-        amount,
+        amount: val,
         method: paymentMethod,
         receivedFrom: receivedFrom.trim(),
         updatedBy: appUser?.adminRole || "Admin",
@@ -269,52 +339,39 @@ export default function PTACharges() {
         term: acadConfig.currentTerm,
       };
 
-      // 1. Record the Payment
       batch.set(doc(db, "feePayments", serial), paymentEntry);
 
-      // 2. Update student record
-      batch.update(doc(db, "users", selectedStudent.uid), {
-        ptaPaid: increment(amount),
-        ptaBalance: increment(-amount),
-      });
-
-      // 3. Update ledger (studentFeeRecords)
-      const year = acadConfig.academicYear?.replace(/\//g, "-");
-      const term = acadConfig.currentTerm?.replace(/\s/g, "");
-      const recordId = `${selectedStudent.uid}_${year}_${term}`;
-
       batch.set(doc(db, "studentFeeRecords", recordId), {
-        ptaPaid: increment(amount),
-        ptaBalance: increment(-amount),
+        ptaBalance: increment(-val),
+        ptaPaid: increment(val),
+        balance: increment(-val),
         payments: arrayUnion(paymentEntry),
         lastUpdated: serverTimestamp(),
       }, { merge: true });
 
+      batch.update(doc(db, "users", selectedStudent.uid), {
+        ptaBalance: increment(-val),
+        ptaPaid: increment(val),
+        walletBalance: increment(-val),
+      });
+
       await batch.commit();
 
-      try {
-        await sendNotification({
-          recipientId: selectedStudent.uid,
-          senderId: appUser?.uid || "admin",
-          senderName: "School Finance",
-          title: "PTA Payment Received",
-          body: `A PTA payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been recorded for ${selectedStudent.fullName}.`,
-          type: "payment",
-          data: {
-            studentUid: selectedStudent.uid,
-            amount,
-            type: "pta_payment"
-          }
-        });
-      } catch (notifErr) {
-        console.error("Failed to send PTA notification:", notifErr);
-      }
+      sendNotification({
+        recipientId: selectedStudent.uid,
+        senderId: appUser?.uid || "admin",
+        senderName: appUser?.displayName || "Administrator",
+        title: "PTA Payment Received",
+        body: `A PTA payment of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} has been recorded for ${selectedStudent.fullName}.`,
+        type: "payment",
+      }).catch(e => console.error(e));
 
-      showToast({ message: `PTA payment recorded: ${serial}`, type: "success" });
+      showToast({ message: "Payment recorded", type: "success" });
       setPaymentModalVisible(false);
       setPaymentAmount("");
       setReceivedFrom("");
-      fetchStudents();
+      fetchStudents(true);
+      fetchStats();
     } catch (e) {
       console.error(e);
       showToast({ message: "Failed to record payment", type: "error" });
@@ -323,167 +380,134 @@ export default function PTACharges() {
     }
   };
 
-  const handleLogBill = async () => {
-    const amount = parseFloat(billAmount);
-    if (isNaN(amount) || amount <= 0 || !selectedStudent) {
-      return showToast({ message: "Please enter a valid billing amount", type: "error" });
-    }
+  const applyBulkCharge = async () => {
+    const val = parseFloat(chargeAmount);
+    if (isNaN(val) || val <= 0) return showToast({ message: "Invalid amount", type: "error" });
+    if (selectedClassId === "all") return showToast({ message: "Please select a specific class first", type: "error" });
 
     setSaving(true);
     try {
-      const batch = writeBatch(db);
-      const serial = `PTA-BILL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const q = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("classId", "==", selectedClassId),
+        where("status", "in", ["active", "pending_activation"])
+      );
+      const snap = await getDocsFromServer(q);
 
-      const billEntry = {
-        amount,
-        method: "PTA Bill",
-        receivedFrom: "System Billing",
-        updatedBy: appUser?.adminRole || "Admin",
-        adminUid: appUser?.uid || "unknown",
-        createdAt: new Date().toISOString(),
-        receiptNo: serial,
-        date: moment().format("YYYY-MM-DD"),
-        studentUid: selectedStudent.uid,
-        studentName: selectedStudent.fullName,
-        classId: selectedStudent.classId,
-        className: selectedStudent.className,
-        type: "pta",
-        academicYear: acadConfig.academicYear,
-        term: acadConfig.currentTerm,
-      };
+      if (snap.empty) {
+        setSaving(false);
+        return showToast({ message: "No active students in this class", type: "warning" });
+      }
 
-      // 1. Record the Bill
-      batch.set(doc(db, "feePayments", serial), billEntry);
-
-      // 2. Update student record
-      batch.update(doc(db, "users", selectedStudent.uid), {
-        ptaBill: increment(amount),
-        ptaBalance: increment(amount),
-      });
-
-      // 3. Update ledger (studentFeeRecords)
-      const year = acadConfig.academicYear?.replace(/\//g, "-");
-      const term = acadConfig.currentTerm?.replace(/\s/g, "");
-      const recordId = `${selectedStudent.uid}_${year}_${term}`;
-
-      batch.set(doc(db, "studentFeeRecords", recordId), {
-        ptaBalance: increment(amount),
-        payments: arrayUnion(billEntry),
-        lastUpdated: serverTimestamp(),
-      }, { merge: true });
-
-      await batch.commit();
-
-      showToast({ message: `PTA bill created: ${serial}`, type: "success" });
-      setPaymentModalVisible(false);
-      setBillAmount("");
-      fetchStudents();
-    } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to create bill", type: "error" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleExclude = (uid: string) => {
-    setExcludedUids((prev) => {
-      const next = new Set(prev);
-      if (next.has(uid)) next.delete(uid);
-      else next.add(uid);
-      return next;
-    });
-  };
-
-  const applyPtaDues = async () => {
-    const amount = parseFloat(ptaAmount);
-    if (isNaN(amount) || amount <= 0) {
-      return showToast({ message: "Enter a valid amount", type: "error" });
-    }
-
-    const targetStudents = students.filter((s) => !excludedUids.has(s.uid));
-    if (targetStudents.length === 0) {
-      return showToast({ message: "No students selected", type: "error" });
-    }
-
-    setSaving(true);
-    try {
       const batch = writeBatch(db);
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
 
-      for (const s of targetStudents) {
-        const recordId = `${s.uid}_${year}_${term}`;
+      snap.docs.forEach(sDoc => {
+        const s = sDoc.data();
         const serial = `PTA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const recordId = `${sDoc.id}_${year}_${term}`;
 
-        // Add to feePayments for tracking
-        const entry = {
-          amount,
-          method: "Bulk Bill",
+        const billData = {
+          amount: val,
+          method: "Bulk Charge",
           receivedFrom: "PTA Dues",
           updatedBy: appUser?.adminRole || "Admin",
           adminUid: appUser?.uid || "unknown",
           createdAt: new Date().toISOString(),
           receiptNo: serial,
           date: moment().format("YYYY-MM-DD"),
-          studentUid: s.uid,
-          studentName: s.fullName,
-          classId: s.classId,
+          studentUid: sDoc.id,
+          studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+          classId: selectedClassId,
           className: s.className,
           type: "pta",
           academicYear: acadConfig.academicYear,
           term: acadConfig.currentTerm,
         };
 
-        batch.set(doc(db, "feePayments", serial), entry);
+        batch.set(doc(db, "feePayments", serial), billData);
 
-        // Update fee record balance (adding to debt)
-        batch.set(
-          doc(db, "studentFeeRecords", recordId),
-          {
-            ptaBalance: increment(amount),
-            payments: arrayUnion(entry),
-            lastUpdated: serverTimestamp(),
-          },
-          { merge: true }
-        );
+        batch.set(doc(db, "studentFeeRecords", recordId), {
+          ptaBill: increment(val),
+          ptaBalance: increment(val),
+          balance: increment(val),
+          payments: arrayUnion(billData),
+          lastUpdated: serverTimestamp(),
+        }, { merge: true });
 
-        // Update user wallet and PTA tracking
-        batch.update(doc(db, "users", s.uid), {
-          ptaBalance: increment(amount),
-          ptaBill: increment(amount),
+        batch.update(sDoc.ref, {
+          ptaBalance: increment(val),
+          ptaBill: increment(val),
+          walletBalance: increment(val),
         });
-      }
+      });
 
       await batch.commit();
 
-      // Send notifications to all target students' parents
-      // Using Promise.allSettled to not fail the whole process if notifications fail
-      Promise.allSettled(targetStudents.map(s =>
-        sendNotification({
-          recipientId: s.uid,
-          senderId: appUser?.uid || "admin",
-          senderName: "School Finance",
-          title: "New PTA Due",
-          body: `A PTA due of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been billed to ${s.fullName}.`,
-          type: "payment",
-          data: {
-            studentUid: s.uid,
-            amount,
-            type: "pta_charge"
-          }
-        })
-      )).catch(err => console.error("Bulk PTA notification error:", err));
-
-      showToast({ message: `Applied PTA Dues to ${targetStudents.length} students`, type: "success" });
-      setPtaAmount("");
-      fetchStudents();
+      showToast({ message: `PTA charges applied to ${snap.size} students`, type: "success" });
+      setChargeAmount("");
+      fetchStats();
+      fetchStudents(true);
     } catch (e) {
       console.error(e);
-      showToast({ message: "Failed to apply dues", type: "error" });
+      showToast({ message: "Operation failed", type: "error" });
     } finally {
       setSaving(false);
     }
+  };
+
+  const renderStudentItem = ({ item }: { item: Student }) => {
+    const isolatedTotal = (item.ptaBalance || 0) + (item.admissionBalance || 0) +
+                          (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
+                          (item.uniformBalance || 0) + (item.otherBalance || 0);
+    const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
+
+    return (
+      <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper}>
+        <TouchableOpacity
+          style={styles.financeCard}
+          onPress={() => {
+            setSelectedStudent(item);
+            setPaymentModalVisible(true);
+            fetchPaymentHistory(item.uid);
+          }}
+        >
+          <View style={styles.cardContent}>
+            <View style={styles.leftSection}>
+              <View style={[styles.avatar, { backgroundColor: THEME.primary + "15" }]}>
+                <SVGIcon name="people-outline" size={24} color={THEME.primary} />
+              </View>
+              <View style={styles.mainInfo}>
+                <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+
+                <View style={styles.tuitionBreakdown}>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>TUITION</Text>
+                    <Text style={styles.breakdownValue}>₵{tuitionBalance.toFixed(0)}</Text>
+                  </View>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>PTA BILLED</Text>
+                    <Text style={styles.breakdownValue}>₵{item.ptaBill.toFixed(0)}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.debtBox}>
+                  <Text style={[styles.debtLabel, { color: item.ptaBalance > 0 ? VIBE.danger : VIBE.success }]}>
+                    {item.ptaBalance > 0 ? "PTA Arrears: " : "Cleared: "}
+                  </Text>
+                  <Text style={[styles.debtValue, { color: item.ptaBalance > 0 ? VIBE.danger : VIBE.success }]}>
+                    ₵{Math.abs(item.ptaBalance).toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
+          </View>
+        </TouchableOpacity>
+      </Animatable.View>
+    );
   };
 
   return (
@@ -491,31 +515,35 @@ export default function PTACharges() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <LinearGradient
-          colors={[VIBE.primary, VIBE.secondary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={[THEME.primary, THEME.secondary]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.headerTop}
         >
           <View style={styles.navBar}>
-            <TouchableOpacity onPress={() => router.push("/admin-dashboard/StudentCharges")} style={styles.headerIconBtn}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerIconBtn}>
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={styles.titleCenter}>
               <Text style={styles.headerTitle}>PTA Dues</Text>
-              <Text style={styles.headerSub}>BULK BILLING</Text>
+              <Text style={styles.headerSub}>ASSOCIATION BILLING</Text>
             </View>
-            <View style={{ width: 44 }} />
+            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn}>
+              <SVGIcon name="funnel-outline" size={22} color="#fff" />
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.classPicker} onPress={() => setClassModalVisible(true)}>
-            <Text style={styles.classLabel}>TARGET CLASS</Text>
-            <View style={styles.classValueRow}>
-              <Text style={styles.classValue}>
-                {selectedClassId === "all" ? "Search or select class" : classes.find(c => c.id === selectedClassId)?.name}
+          <View style={styles.selectorGrid}>
+            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)}>
+              <Text style={styles.glassLabel}>TARGET CLASS</Text>
+              <Text style={styles.glassValue} numberOfLines={1}>
+                {selectedClassId === "all" ? "All Classes" : classes.find(c => c.id === selectedClassId)?.name || "Select Class"}
               </Text>
-              <SVGIcon name="chevron-down" size={20} color="#fff" />
+            </TouchableOpacity>
+            <View style={styles.glassPill}>
+              <Text style={styles.glassLabel}>TERM / YEAR</Text>
+              <Text style={styles.glassValue}>{acadConfig.currentTerm || "---"}</Text>
             </View>
-          </TouchableOpacity>
+          </View>
         </LinearGradient>
 
         <View style={styles.searchStrip}>
@@ -529,368 +557,192 @@ export default function PTACharges() {
               placeholderTextColor={VIBE.muted}
             />
           </View>
-          <TouchableOpacity onPress={() => { fetchStudents(); fetchStats(); }} style={styles.refreshRound}>
-            <SVGIcon name="refresh" size={18} color={VIBE.primary} />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.bulkBox}>
-          <View style={styles.inputWrap}>
-            <Text style={styles.currency}>₵</Text>
-            <TextInput
-              style={styles.bulkInput}
-              placeholder="Enter Amount"
-              keyboardType="numeric"
-              value={ptaAmount}
-              onChangeText={setPtaAmount}
-            />
-          </View>
-          <TouchableOpacity style={styles.applyBtn} onPress={applyPtaDues} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.applyBtnText}>APPLY TO LIST</Text>}
+          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound}>
+            <SVGIcon name="refresh" size={18} color={THEME.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: VIBE.primary, flex: 1.5 }]}>
-          <Text style={styles.statLabel}>Term Collected</Text>
-          <Text style={styles.statValue}>₵{stats.totalCollected.toLocaleString()}</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: VIBE.secondary, flex: 1 }]}>
-          <Text style={styles.statLabel}>Term Billed</Text>
-          <Text style={styles.statValue}>₵{stats.totalBilled.toLocaleString()}</Text>
-        </View>
-      </View>
-
-      <View style={styles.listHeader}>
-        <Text style={styles.listTitle}>
-          Billing List ({students.length - excludedUids.size})
-        </Text>
-        <Text style={styles.listSub}>Tap 'X' to exclude student, or tap card for payment</Text>
-      </View>
-
-      <SectionList
-        sections={sections}
-        keyExtractor={(item) => item.uid}
-        contentContainerStyle={styles.scrollContent}
-        stickySectionHeadersEnabled={false}
-        renderSectionHeader={({ section: { title } }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderTitle}>{title}</Text>
-          </View>
-        )}
-        renderItem={({ item }) => {
-          const isExcluded = excludedUids.has(item.uid);
-          return (
-            <Animatable.View
-              animation="fadeInRight"
-              duration={400}
-              style={[styles.studentItem, isExcluded && styles.excludedItem]}
-            >
-              <TouchableOpacity
-                style={styles.studentDetails}
-                onPress={() => {
-                  setSelectedStudent(item);
-                  setPaymentAmount("");
-                  setReceivedFrom("");
-                  setPaymentModalVisible(true);
-                  fetchPaymentHistory(item.uid);
-                }}
-              >
-                <Text style={[styles.studentName, isExcluded && styles.excludedText]}>{item.fullName}</Text>
-                <Text style={styles.studentClass}>{item.className}</Text>
-                <View style={styles.badgeRow}>
-                  <View style={[styles.badge, { backgroundColor: VIBE.info + "15", marginRight: 8 }]}>
-                    <Text style={[styles.badgeText, { color: VIBE.info }]}>
-                      Bill: ₵{(item.ptaBill || 0).toFixed(2)}
-                    </Text>
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: VIBE.success + "15", marginRight: 8 }]}>
-                    <Text style={[styles.badgeText, { color: VIBE.success }]}>
-                      Paid: ₵{(item.ptaPaid || 0).toFixed(2)}
-                    </Text>
-                  </View>
-                  <View style={[styles.badge, { backgroundColor: (item.ptaBalance > 0) ? VIBE.danger + "15" : VIBE.primary + "15" }]}>
-                    <Text style={[styles.badgeText, { color: (item.ptaBalance > 0) ? VIBE.danger : VIBE.primary }]}>
-                      Owed: ₵{Math.max(0, item.ptaBalance || 0).toFixed(2)}
-                    </Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => toggleExclude(item.uid)}
-                style={[styles.removeBtn]}
-              >
-                <SVGIcon
-                  name={isExcluded ? "add-circle" : "close-circle"}
-                  size={24}
-                  color={isExcluded ? VIBE.success : VIBE.danger}
-                />
-              </TouchableOpacity>
-            </Animatable.View>
-          );
-        }}
-        ListEmptyComponent={
-          loading ? (
-            <ActivityIndicator size="large" color={VIBE.primary} style={{ marginTop: 50 }} />
-          ) : (selectedClassId === "all" && searchQuery.length < 2) ? (
-            <View style={styles.emptyWrap}>
-              <SVGIcon name="search" size={60} color="#CBD5E1" />
-              <Text style={styles.emptyText}>Search students or select a class</Text>
+      <FlatList
+        data={filteredStudents}
+        renderItem={renderStudentItem}
+        keyExtractor={item => item.uid}
+        contentContainerStyle={styles.flatListContent}
+        onEndReached={() => fetchStudents()}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />}
+        ListHeaderComponent={
+          <>
+            <View style={[styles.statsDashboard, { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 }]}>
+               <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: (width - 52)/2 }]}>
+                  <Text style={styles.statLabel}>TERM BILLED</Text>
+                  <Text style={styles.statValue}>₵{stats.totalBilled.toLocaleString()}</Text>
+                  <SVGIcon name="receipt" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+               </LinearGradient>
+               <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: (width - 52)/2 }]}>
+                  <Text style={styles.statLabel}>TERM COLLECTED</Text>
+                  <Text style={styles.statValue}>₵{stats.totalCollected.toLocaleString()}</Text>
+                  <SVGIcon name="cash" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+               </LinearGradient>
             </View>
-          ) : (
+
+            <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
+              <Text style={styles.listTitle}>APPLY PTA DUE (CLASS BULK)</Text>
+              <View style={[styles.bulkInputContainer, { marginTop: 10 }]}>
+                <TextInput
+                  style={styles.bulkInput}
+                  placeholder="Enter Amount (₵)"
+                  keyboardType="numeric"
+                  value={chargeAmount}
+                  onChangeText={setChargeAmount}
+                  placeholderTextColor={VIBE.muted}
+                />
+                <TouchableOpacity
+                   onPress={applyBulkCharge}
+                   style={{ backgroundColor: THEME.primary, height: 44, paddingHorizontal: 15, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
+                   disabled={saving}
+                >
+                  {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '900', fontSize: 12 }}>BILL CLASS</Text>}
+                </TouchableOpacity>
+              </View>
+              {selectedClassId === "all" && (
+                <Text style={{ fontSize: 10, color: VIBE.danger, marginTop: 8, fontWeight: "700" }}>
+                  * Select a specific class to enable bulk billing
+                </Text>
+              )}
+            </View>
+
+            <Text style={[styles.listTitle, { marginHorizontal: 20, marginBottom: 15 }]}>STUDENT DIRECTORY</Text>
+          </>
+        }
+        ListEmptyComponent={
+          loading ? <ActivityIndicator size="large" color={THEME.primary} style={{ marginTop: 50 }} /> : (
             <View style={styles.emptyWrap}>
-              <SVGIcon name="people" size={60} color="#CBD5E1" />
+              <SVGIcon name="people-outline" size={64} color="#CBD5E1" />
               <Text style={styles.emptyText}>No students found</Text>
             </View>
           )
         }
       />
 
+      <ClassSelectorModal
+        visible={classModalVisible}
+        onClose={() => setClassModalVisible(false)}
+        classes={classes}
+        selectedClassId={selectedClassId}
+        onSelect={setSelectedClassId}
+      />
+
       <Modal visible={paymentModalVisible} transparent animationType="slide">
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.overlay}>
-          <View style={styles.modalBody}>
-            <View style={styles.modalHeader}>
+          <View style={styles.sheetBody}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
               <View>
-                <Text style={styles.modalTitle}>{selectedStudent?.fullName}</Text>
-                <Text style={styles.modalSubtitle}>PTA DUES MANAGEMENT</Text>
+                <Text style={styles.sheetTitle}>{selectedStudent?.fullName}</Text>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>PTA PAYMENT</Text>
               </View>
-              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeBtn}>
+              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeRound}>
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === "payment" && styles.activeTab]}
-                onPress={() => setActiveTab("payment")}
-              >
-                <Text style={[styles.tabText, activeTab === "payment" && styles.activeTabText]}>PAYMENT</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.tab, activeTab === "billing" && styles.activeTab]}
-                onPress={() => setActiveTab("billing")}
-              >
-                <Text style={[styles.tabText, activeTab === "billing" && styles.activeTabText]}>BILLING</Text>
-              </TouchableOpacity>
-            </View>
-
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-              {activeTab === "payment" ? (
-                <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Amount to Pay (₵)</Text>
-                    <TextInput
-                      style={styles.mainInput}
-                      placeholder="0.00"
-                      keyboardType="numeric"
-                      value={paymentAmount}
-                      onChangeText={setPaymentAmount}
-                      placeholderTextColor={VIBE.muted}
-                    />
-                  </View>
+              <View style={{ gap: 15, marginBottom: 25 }}>
+                <Text style={styles.breakdownLabel}>AMOUNT TO PAY (₵)</Text>
+                <TextInput
+                  style={styles.pillInput}
+                  placeholder="0.00"
+                  keyboardType="numeric"
+                  value={paymentAmount}
+                  onChangeText={setPaymentAmount}
+                />
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Received From</Text>
-                    <TextInput
-                      style={styles.subInput}
-                      placeholder="Payer Name"
-                      value={receivedFrom}
-                      onChangeText={setReceivedFrom}
-                      placeholderTextColor={VIBE.muted}
-                    />
-                  </View>
+                <Text style={styles.breakdownLabel}>RECEIVED FROM</Text>
+                <TextInput
+                  style={[styles.pillInput, { fontSize: 16 }]}
+                  placeholder="Payer Name"
+                  value={receivedFrom}
+                  onChangeText={setReceivedFrom}
+                />
+              </View>
 
-                  <Text style={styles.inputLabel}>Payment Method</Text>
-                  <View style={styles.methodGrid}>
-                    {["Cash", "Cheque", "Momo", "E-cash"].map(m => (
-                      <TouchableOpacity
-                        key={m}
-                        style={[styles.methodBtn, paymentMethod === m && styles.activeMethod]}
-                        onPress={() => setPaymentMethod(m as any)}
-                      >
-                        <Text style={[styles.methodText, paymentMethod === m && styles.activeMethodText]}>{m}</Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  <TouchableOpacity style={styles.submitBtn} onPress={handleLogPayment} disabled={saving}>
-                    {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>CONFIRM PAYMENT</Text>}
+              <Text style={styles.breakdownLabel}>PAYMENT METHOD</Text>
+              <View style={styles.methodGrid}>
+                {["Cash", "Cheque", "Momo", "E-cash"].map(m => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[styles.methodBtn, paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary }]}
+                    onPress={() => setPaymentMethod(m as any)}
+                  >
+                    <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
                   </TouchableOpacity>
-                </>
-              ) : (
-                <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>PTA Due Amount (₵)</Text>
-                    <TextInput
-                      style={styles.mainInput}
-                      placeholder="0.00"
-                      keyboardType="numeric"
-                      value={billAmount}
-                      onChangeText={setBillAmount}
-                      placeholderTextColor={VIBE.muted}
-                    />
-                  </View>
-                  <TouchableOpacity style={[styles.submitBtn, { backgroundColor: VIBE.secondary }]} onPress={handleLogBill} disabled={saving}>
-                    {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>INITIATE BILLING</Text>}
-                  </TouchableOpacity>
-                </>
-              )}
+                ))}
+              </View>
 
-              <View style={styles.historySection}>
-                <Text style={styles.sectionTitle}>Transaction History</Text>
-                {loadingHistory ? (
-                  <ActivityIndicator color={VIBE.primary} />
-                ) : history.length > 0 ? (
-                  history.map((h, i) => (
-                    <View key={i} style={styles.historyItem}>
-                      <View>
-                        <Text style={styles.historyAmt}>₵{h.amount.toFixed(2)}</Text>
-                        <Text style={styles.historyDate}>{moment(h.createdAt).format("MMM DD, YYYY")}</Text>
-                        <Text style={styles.historyType}>{h.type === 'pta' ? 'Billing' : 'Payment'}</Text>
+              <TouchableOpacity onPress={handleLogPayment} disabled={saving}>
+                <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
+                  {saving ? <ActivityIndicator color="#fff" /> : (
+                    <>
+                      <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
+                      <SVGIcon name="checkmark-circle" size={20} color="#fff" />
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <View style={styles.historyBlock}>
+                <Text style={styles.blockTitle}>Transaction History</Text>
+                {loadingHistory ? <ActivityIndicator color={THEME.primary} style={{ marginTop: 20 }} /> : (
+                  history.length > 0 ? history.map((h, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={styles.transactionTile}
+                      onPress={() => {
+                        setPaymentModalVisible(false);
+                        router.push({
+                          pathname: "/shared/receipt-view",
+                          params: {
+                            type: h.type === 'pta' ? 'bill' : 'payment',
+                            studentId: selectedStudent?.uid,
+                            paymentId: h.receiptNo,
+                            year: h.academicYear,
+                            term: h.term
+                          }
+                        });
+                      }}
+                      onLongPress={() => handleDeletePayment(h)}
+                    >
+                      <View style={styles.tileHeader}>
+                        <Text style={[styles.tileAmt, { color: h.type === 'pta' ? VIBE.info : VIBE.success }]}>
+                          ₵{h.amount.toLocaleString()}
+                        </Text>
+                        <View style={{ backgroundColor: h.type === 'pta' ? VIBE.info + '15' : VIBE.success + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                           <Text style={{ fontSize: 9, fontWeight: '900', color: h.type === 'pta' ? VIBE.info : VIBE.success }}>
+                             {h.type === 'pta' ? 'BILL' : 'PAYMENT'}
+                           </Text>
+                        </View>
                       </View>
-                      <View style={{ alignItems: "flex-end" }}>
-                        <Text style={styles.historyMethod}>{h.method}</Text>
-                        <Text style={styles.historyReceipt}>{h.receiptNo}</Text>
+                      <Text style={styles.tileDetail}>{h.method}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                        <TouchableOpacity
+                          onPress={(e) => {
+                            e.stopPropagation();
+                            handleDeletePayment(h);
+                          }}
+                          style={{ padding: 4 }}
+                        >
+                          <SVGIcon name="trash" size={16} color={VIBE.danger} />
+                        </TouchableOpacity>
+                        <SVGIcon name="eye-outline" size={14} color={VIBE.muted} />
                       </View>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.noHistory}>No previous PTA transactions</Text>
+                    </TouchableOpacity>
+                  )) : <Text style={styles.noHistory}>No history available</Text>
                 )}
               </View>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
-
-      <Modal visible={classModalVisible} transparent animationType="slide">
-        <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setClassModalVisible(false)}>
-          <View style={styles.sheet}>
-            <Text style={styles.sheetTitle}>Select Class</Text>
-            <ScrollView>
-              <TouchableOpacity
-                style={[styles.sheetItem, selectedClassId === "all" && styles.activeSheetItem]}
-                onPress={() => {
-                  setSelectedClassId("all");
-                  setClassModalVisible(false);
-                }}
-              >
-                <Text style={[styles.sheetItemText, selectedClassId === "all" && styles.activeSheetItemText]}>All Classes</Text>
-              </TouchableOpacity>
-              {classes.map((c) => (
-                <TouchableOpacity
-                  key={c.id}
-                  style={[styles.sheetItem, selectedClassId === c.id && styles.activeSheetItem]}
-                  onPress={() => {
-                    setSelectedClassId(c.id);
-                    setClassModalVisible(false);
-                  }}
-                >
-                  <Text style={[styles.sheetItemText, selectedClassId === c.id && styles.activeSheetItemText]}>{c.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: VIBE.bg },
-  header: { backgroundColor: "#fff", borderBottomLeftRadius: 30, borderBottomRightRadius: 30, ...SHADOWS.medium, paddingBottom: 20 },
-  headerTop: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  navBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 },
-  headerIconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
-  titleCenter: { alignItems: "center" },
-  headerTitle: { fontSize: 20, fontWeight: "900", color: "#fff" },
-  headerSub: { fontSize: 10, fontWeight: "800", color: "rgba(255,255,255,0.7)", letterSpacing: 2 },
-  classPicker: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 15, padding: 12 },
-  classLabel: { fontSize: 8, fontWeight: "900", color: "rgba(255,255,255,0.6)", marginBottom: 4 },
-  classValueRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  classValue: { fontSize: 16, fontWeight: "800", color: "#fff" },
-  searchStrip: { flexDirection: "row", paddingHorizontal: 20, marginTop: -25, gap: 10, zIndex: 100 },
-  searchBar: { flex: 1, height: 50, backgroundColor: "#fff", borderRadius: 25, flexDirection: "row", alignItems: "center", paddingHorizontal: 20, ...SHADOWS.medium, borderWidth: 1, borderColor: VIBE.border },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 14, fontWeight: "600", color: VIBE.text },
-  refreshRound: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#fff", justifyContent: "center", alignItems: "center", ...SHADOWS.medium, borderWidth: 1, borderColor: VIBE.border },
-  bulkBox: { flexDirection: "row", paddingHorizontal: 20, marginTop: 15, gap: 10 },
-  inputWrap: { flex: 1, height: 50, backgroundColor: "#fff", borderRadius: 25, flexDirection: "row", alignItems: "center", paddingHorizontal: 20, ...SHADOWS.medium, borderWidth: 1, borderColor: VIBE.border },
-  currency: { fontSize: 18, fontWeight: "900", color: VIBE.primary, marginRight: 8 },
-  bulkInput: { flex: 1, fontSize: 16, fontWeight: "700", color: VIBE.text },
-  applyBtn: { backgroundColor: VIBE.primary, height: 50, paddingHorizontal: 20, borderRadius: 25, justifyContent: "center", alignItems: "center", ...SHADOWS.medium },
-  applyBtnText: { color: "#fff", fontSize: 12, fontWeight: "900" },
-  statsRow: { flexDirection: "row", paddingHorizontal: 20, marginTop: 20, gap: 12 },
-  statCard: { padding: 15, borderRadius: 20, justifyContent: "center", ...SHADOWS.small },
-  statLabel: { color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
-  statValue: { color: "#fff", fontSize: 20, fontWeight: "900", marginTop: 4 },
-  listHeader: { padding: 20, paddingBottom: 10 },
-  listTitle: { fontSize: 16, fontWeight: "900", color: VIBE.text },
-  listSub: { fontSize: 11, fontWeight: "600", color: VIBE.muted, marginTop: 2 },
-  scrollContent: { paddingHorizontal: 20, paddingBottom: 40 },
-  studentItem: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", padding: 15, borderRadius: 18, marginBottom: 10, ...SHADOWS.small, borderWidth: 1, borderColor: VIBE.border },
-  excludedItem: { opacity: 0.5, backgroundColor: "#F1F5F9", borderColor: "transparent" },
-  studentDetails: { flex: 1 },
-  studentName: { fontSize: 15, fontWeight: "800", color: VIBE.text },
-  excludedText: { textDecorationLine: "line-through" },
-  studentClass: { fontSize: 11, color: VIBE.muted, fontWeight: "600", marginTop: 2 },
-  removeBtn: { padding: 5 },
-  badgeRow: { flexDirection: "row", marginTop: 8 },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  badgeText: { fontSize: 10, fontWeight: "800" },
-  emptyWrap: { alignItems: "center", marginTop: 100, opacity: 0.5 },
-  emptyText: { fontSize: 16, fontWeight: "900", color: "#94A3B8", marginTop: 15 },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalBody: { backgroundColor: "#fff", borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 25, maxHeight: "90%" },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 25 },
-  modalTitle: { fontSize: 20, fontWeight: "900", color: VIBE.text },
-  modalSubtitle: { fontSize: 10, fontWeight: "800", color: VIBE.muted, letterSpacing: 1 },
-  closeBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: VIBE.bg, justifyContent: "center", alignItems: "center" },
-  tabContainer: { flexDirection: "row", backgroundColor: VIBE.bg, borderRadius: 15, padding: 5, marginBottom: 20 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: "center", borderRadius: 12 },
-  activeTab: { backgroundColor: "#fff", ...SHADOWS.small },
-  tabText: { fontSize: 12, fontWeight: "800", color: VIBE.muted },
-  activeTabText: { color: VIBE.primary },
-  inputGroup: { marginBottom: 20 },
-  inputLabel: { fontSize: 12, fontWeight: "800", color: VIBE.muted, marginBottom: 8, marginLeft: 5 },
-  mainInput: { backgroundColor: VIBE.bg, borderRadius: 20, padding: 20, fontSize: 28, fontWeight: "900", color: VIBE.primary, borderWidth: 1, borderColor: VIBE.border, textAlign: "center" },
-  subInput: { backgroundColor: VIBE.bg, borderRadius: 15, padding: 15, fontSize: 16, fontWeight: "700", color: VIBE.text, borderWidth: 1, borderColor: VIBE.border },
-  methodGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginBottom: 25 },
-  methodBtn: { flex: 1, minWidth: "45%", height: 50, borderRadius: 15, backgroundColor: VIBE.bg, justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: VIBE.border },
-  activeMethod: { backgroundColor: VIBE.primary, borderColor: VIBE.primary },
-  methodText: { fontSize: 14, fontWeight: "800", color: VIBE.muted },
-  activeMethodText: { color: "#fff" },
-  submitBtn: { backgroundColor: VIBE.primary, height: 65, borderRadius: 25, justifyContent: "center", alignItems: "center", ...SHADOWS.medium },
-  submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "900", letterSpacing: 1 },
-  historySection: { marginTop: 30, borderTopWidth: 1, borderTopColor: VIBE.border, paddingTop: 25 },
-  sectionTitle: { fontSize: 16, fontWeight: "900", color: VIBE.text, marginBottom: 15 },
-  historyItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: VIBE.bg, padding: 15, borderRadius: 15, marginBottom: 10 },
-  historyAmt: { fontSize: 16, fontWeight: "900", color: VIBE.text },
-  historyDate: { fontSize: 11, color: VIBE.muted, fontWeight: "600" },
-  historyType: { fontSize: 9, color: VIBE.muted, fontWeight: "900", textTransform: "uppercase", marginTop: 2 },
-  historyMethod: { fontSize: 12, fontWeight: "800", color: VIBE.primary },
-  historyReceipt: { fontSize: 10, color: VIBE.muted, fontWeight: "700" },
-  noHistory: { textAlign: "center", color: VIBE.muted, fontStyle: "italic", marginTop: 10 },
-  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 35, borderTopRightRadius: 35, padding: 25, maxHeight: "70%" },
-  sheetTitle: { fontSize: 18, fontWeight: "900", color: VIBE.text, textAlign: "center", marginBottom: 20 },
-  sheetItem: { padding: 18, borderRadius: 15, marginBottom: 8, backgroundColor: "#F8FAFC" },
-  activeSheetItem: { backgroundColor: VIBE.primary },
-  sheetItemText: { fontSize: 15, fontWeight: "700", color: VIBE.text, textAlign: "center" },
-  activeSheetItemText: { color: "#fff" },
-  sectionHeader: {
-    backgroundColor: "#F1F5F9",
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    marginTop: 15,
-    marginBottom: 5,
-    borderRadius: 10,
-  },
-  sectionHeaderTitle: {
-    fontSize: 13,
-    fontWeight: "900",
-    color: VIBE.muted,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-});

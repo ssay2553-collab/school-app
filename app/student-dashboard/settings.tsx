@@ -295,7 +295,7 @@ export default function StudentSettings() {
                   mode="date"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   maximumDate={new Date()}
-                  onChange={(event, date) => {
+                  onChange={(event: any, date?: Date) => {
                     setShowDatePicker(false);
                     if (date) saveDOB(date);
                   }}

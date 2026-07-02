@@ -29,15 +29,21 @@ export default function AdminSettingsScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      "Confirm Logout", 
-      "Are you sure you want to sign out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Logout", style: "destructive", onPress: performLogout },
-      ]
-    )
-  }
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to sign out?")) {
+        performLogout();
+      }
+    } else {
+      Alert.alert(
+        "Confirm Logout",
+        "Are you sure you want to sign out?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Logout", style: "destructive", onPress: performLogout },
+        ]
+      );
+    }
+  };
 
   const runCleanup = async () => {
     setIsCleaning(true);
@@ -48,7 +54,7 @@ export default function AdminSettingsScreen() {
       const snap = await getDocs(q);
 
       if (snap.empty) {
-        Alert.alert("Cleanup", "No expired assignments found.");
+        showToast({ message: "No expired assignments found.", type: "info" });
         return;
       }
 
@@ -58,10 +64,10 @@ export default function AdminSettingsScreen() {
       });
       await batch.commit();
 
-      Alert.alert("Success", `Cleaned up ${snap.size} expired assignments.`);
+      showToast({ message: `Cleaned up ${snap.size} expired assignments.`, type: "success" });
     } catch (e) {
       console.error(e);
-      Alert.alert("Error", "Cleanup failed.");
+      showToast({ message: "Cleanup failed.", type: "error" });
     } finally {
       setIsCleaning(false);
     }
@@ -77,10 +83,18 @@ export default function AdminSettingsScreen() {
     {
       title: "Data Maintenance",
       icon: "trash-outline",
-      action: () => Alert.alert("Confirm Cleanup", "Purge assignments older than 60 days?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Run Purge", style: "destructive", onPress: runCleanup }
-      ]),
+      action: () => {
+        if (Platform.OS === "web") {
+          if (window.confirm("Purge assignments older than 60 days?")) {
+            runCleanup();
+          }
+        } else {
+          Alert.alert("Confirm Cleanup", "Purge assignments older than 60 days?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Run Purge", style: "destructive", onPress: runCleanup }
+          ]);
+        }
+      },
       color: "#F59E0B",
       loading: isCleaning,
     },

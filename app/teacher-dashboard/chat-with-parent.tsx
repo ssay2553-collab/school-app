@@ -42,7 +42,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
-import { sortClasses } from "../../lib/classHelpers";
+import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 import { sendNotification } from "../../src/services/notificationService";
 
 type TeacherClass = { id: string; name: string };
@@ -144,8 +144,7 @@ export default function TeacherChatWithParent() {
     const fetchTeacherClasses = async () => {
       if (!appUser) return;
       try {
-        const teacherSnap = await getDoc(doc(db, "users", appUser.uid));
-        const classIds = teacherSnap.data()?.classes || [];
+        const classIds = getTeacherClasses(appUser);
         if (classIds.length > 0) {
           const q = query(
             collection(db, "classes"),

@@ -29,7 +29,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import { sortClasses, getTeacherClasses } from "../../lib/classHelpers";
 
 interface ClassData {
   id: string;
@@ -47,7 +47,164 @@ interface BehavioralRecord {
   promotedTo?: string;
   attendanceTotal?: string;
   attendanceOutOf?: string;
+  // Preschool extensions
+  physicalDev?: {
+    date1?: string;
+    height1?: string;
+    weight1?: string;
+    date2?: string;
+    height2?: string;
+    weight2?: string;
+    date3?: string;
+    height3?: string;
+    weight3?: string;
+  };
+  assessments?: Record<string, string>;
 }
+
+const PRESCHOOL_ASSESSMENTS = [
+  {
+    id: "canThrowCatchKick",
+    label: "Can throw, catch and kick a ball",
+    category: "PHYSICAL DEVELOPMENT",
+  },
+  {
+    id: "activeOutdoorPlay",
+    label: "Active and enjoys outdoor play",
+    category: "PHYSICAL DEVELOPMENT",
+  },
+  {
+    id: "goodPhysicalCoordination",
+    label: "Shows good physical co-ordination",
+    category: "PHYSICAL DEVELOPMENT",
+  },
+  {
+    id: "wearsCleanClothes",
+    label: "Wears clean clothes",
+    category: "HEALTH",
+  },
+  {
+    id: "bladderControl",
+    label: "Good control of bladder",
+    category: "HEALTH",
+  },
+  {
+    id: "attendsToilet",
+    label: "Attends Toilet at acceptable place and times",
+    category: "HEALTH",
+  },
+  {
+    id: "eatsTidily",
+    label: "Eats tidily and independently",
+    category: "HEALTH",
+  },
+  {
+    id: "washesHands",
+    label: "Washes and cleans hands after toilet, meals play",
+    category: "HEALTH",
+  },
+  {
+    id: "remainCheerful",
+    label: "Remain cheerful?",
+    category: "EMOTIONAL AND SOCIAL DEVELOPMENT",
+  },
+  {
+    id: "mixWithOthers",
+    label: "Mix with others and show co-operation?",
+    category: "EMOTIONAL AND SOCIAL DEVELOPMENT",
+  },
+  {
+    id: "showConfidence",
+    label: "Show confidence during different situations?",
+    category: "EMOTIONAL AND SOCIAL DEVELOPMENT",
+  },
+  {
+    id: "showAggression",
+    label: "Show aggression?",
+    category: "EMOTIONAL AND SOCIAL DEVELOPMENT",
+  },
+  {
+    id: "concentration",
+    label: "Concentration - follows activity to conclusion",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "reciteRhymes",
+    label: "Can recite rhymes and sing action songs",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "askQuestions",
+    label: "Ask questions and describe an activity and reports",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "tellNameAge",
+    label: "Tell name, sex, age and common objects",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "solvePuzzles",
+    label: "Solve simple puzzles (sorting, matching)",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "understandWords",
+    label: "Understand and use simple words/sentences/gestures",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "scribblePaint",
+    label: "Scribble/paint and construct with blocks, logos etc",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "fillPourPolish",
+    label: "Can fill, pour, polish, fold and thread",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "scribblePatterns",
+    label: "Scribble, do patterns",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "describePictures",
+    label: "Describes pictures",
+    category: "COGNITIVE AND LANGUAGE DEVELOPMENT",
+  },
+  {
+    id: "enjoysMusic",
+    label: "Enjoys Music, dancing, dramatisation, modelling and moulding",
+    category: "MUSIC, ART AND CREATIVITY",
+  },
+  {
+    id: "enjoysPainting",
+    label: "Enjoys painting, finger painting, tearing and pasting",
+    category: "MUSIC, ART AND CREATIVITY",
+  },
+  {
+    id: "recognisePartMan",
+    label: "Can recognise and mention some part of man",
+    category: "MUSIC, ART AND CREATIVITY",
+  },
+];
+
+const isPreschoolClass = (name: string) => {
+  const n = name.toUpperCase();
+  return (
+    n.includes("CRECHE") ||
+    n.includes("NURSERY") ||
+    n.includes("KG") ||
+    n.includes("KINDERGARTEN") ||
+    n.includes("TODDLER") ||
+    n.includes("PLAYGROUND") ||
+    n === "CLASS A" ||
+    n === "CLASS B" ||
+    n === "LEVEL A" ||
+    n === "LEVEL B"
+  );
+};
 
 const StudentBehavioralCard = React.memo(
   ({
@@ -55,7 +212,7 @@ const StudentBehavioralCard = React.memo(
     onUpdate,
   }: {
     student: BehavioralRecord;
-    onUpdate: (id: string, field: keyof BehavioralRecord, val: string) => void;
+    onUpdate: (id: string, field: keyof BehavioralRecord, val: any) => void;
   }) => {
     return (
       <View style={styles.studentCard}>
@@ -117,6 +274,161 @@ const StudentBehavioralCard = React.memo(
   },
 );
 
+const PreschoolBehavioralCard = React.memo(
+  ({
+    student,
+    onUpdate,
+  }: {
+    student: BehavioralRecord;
+    onUpdate: (id: string, field: keyof BehavioralRecord, val: any) => void;
+  }) => {
+    const updateAssessment = (id: string, val: string) => {
+      const current = student.assessments || {};
+      onUpdate(student.studentId, "assessments", { ...current, [id]: val });
+    };
+
+    const updatePhysical = (field: string, val: string) => {
+      const current = student.physicalDev || {};
+      onUpdate(student.studentId, "physicalDev", { ...current, [field]: val });
+    };
+
+    const assessmentGroups = PRESCHOOL_ASSESSMENTS.reduce((acc, curr) => {
+      if (!acc[curr.category]) acc[curr.category] = [];
+      acc[curr.category].push(curr);
+      return acc;
+    }, {} as Record<string, typeof PRESCHOOL_ASSESSMENTS>);
+
+    return (
+      <View style={styles.studentCard}>
+        <Text style={styles.studentName}>{student.fullName}</Text>
+
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>PHYSICAL DEVELOPMENT (H/W)</Text>
+        </View>
+
+        <View style={styles.hwGrid}>
+          <View style={styles.hwRow}>
+            <Text style={[styles.hwLabel, { flex: 1 }]}>DATE</Text>
+            <TextInput
+              style={styles.hwInput}
+              placeholder="1st"
+              value={student.physicalDev?.date1}
+              onChangeText={(v) => updatePhysical("date1", v)}
+            />
+            <TextInput
+              style={styles.hwInput}
+              placeholder="2nd"
+              value={student.physicalDev?.date2}
+              onChangeText={(v) => updatePhysical("date2", v)}
+            />
+            <TextInput
+              style={styles.hwInput}
+              placeholder="3rd"
+              value={student.physicalDev?.date3}
+              onChangeText={(v) => updatePhysical("date3", v)}
+            />
+          </View>
+          <View style={styles.hwRow}>
+            <Text style={[styles.hwLabel, { flex: 1 }]}>HEIGHT</Text>
+            <TextInput
+              style={styles.hwInput}
+              placeholder="..."
+              value={student.physicalDev?.height1}
+              onChangeText={(v) => updatePhysical("height1", v)}
+            />
+            <TextInput
+              style={styles.hwInput}
+              placeholder="..."
+              value={student.physicalDev?.height2}
+              onChangeText={(v) => updatePhysical("height2", v)}
+            />
+            <TextInput
+              style={styles.hwInput}
+              placeholder="..."
+              value={student.physicalDev?.height3}
+              onChangeText={(v) => updatePhysical("height3", v)}
+            />
+          </View>
+          <View style={styles.hwRow}>
+            <Text style={[styles.hwLabel, { flex: 1 }]}>WEIGHT</Text>
+            <TextInput
+              style={styles.hwInput}
+              placeholder="..."
+              value={student.physicalDev?.weight1}
+              onChangeText={(v) => updatePhysical("weight1", v)}
+            />
+            <TextInput
+              style={styles.hwInput}
+              placeholder="..."
+              value={student.physicalDev?.weight2}
+              onChangeText={(v) => updatePhysical("weight2", v)}
+            />
+            <TextInput
+              style={styles.hwInput}
+              placeholder="..."
+              value={student.physicalDev?.weight3}
+              onChangeText={(v) => updatePhysical("weight3", v)}
+            />
+          </View>
+        </View>
+
+        <View style={styles.gradingLegend}>
+          <Text style={styles.legendText}>
+            VG = Very Good | G = Good | NES = Needs effort
+          </Text>
+        </View>
+
+        {Object.entries(assessmentGroups).map(([category, items]) => (
+          <View key={category} style={styles.assessmentSection}>
+            <Text style={styles.categoryTitle}>{category}</Text>
+            {items.map((item) => (
+              <View key={item.id} style={styles.assessmentRow}>
+                <Text style={styles.assessmentLabel}>{item.label}</Text>
+                <View style={styles.optionsRow}>
+                  {["VG", "G", "NES"].map((opt) => (
+                    <TouchableOpacity
+                      key={opt}
+                      onPress={() => updateAssessment(item.id, opt)}
+                      style={[
+                        styles.optionBtn,
+                        student.assessments?.[item.id] === opt &&
+                          styles.optionBtnActive,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.optionText,
+                          student.assessments?.[item.id] === opt &&
+                            styles.optionTextActive,
+                        ]}
+                      >
+                        {opt}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            ))}
+          </View>
+        ))}
+
+        <View style={styles.fullWidthInput}>
+          <Text style={styles.label}>GENERAL REMARKS AND CONDUCT</Text>
+          <TextInput
+            value={student.teacherRemarks}
+            onChangeText={(v) =>
+              onUpdate(student.studentId, "teacherRemarks", v)
+            }
+            style={[styles.input, { minHeight: 60 }]}
+            multiline
+            placeholder="General comments..."
+          />
+        </View>
+      </View>
+    );
+  },
+);
+
 export default function BehavioralRecords() {
   const router = useRouter();
   const { appUser } = useAuth();
@@ -136,11 +448,21 @@ export default function BehavioralRecords() {
     if (!appUser) return;
     const fetchMyClasses = async () => {
       try {
-        // Fetch classes where current user is the class teacher
-        const q = query(
-          collection(db, "classes"),
-          where("classTeacherId", "==", appUser.uid),
-        );
+        const userRole = (appUser.role || "").toLowerCase();
+        let q;
+
+        if (userRole === "admin") {
+          q = query(collection(db, "classes"));
+        } else {
+          const teacherClasses = getTeacherClasses(appUser);
+          if (teacherClasses.length === 0) {
+            setLoading(false);
+            return;
+          }
+          // Limit to 30 as per Firestore 'in' operator
+          q = query(collection(db, "classes"), where("__name__", "in", teacherClasses.slice(0, 30)));
+        }
+
         const snap = await getDocsFromServer(q);
         const list = snap.docs.map((d) => ({
           id: d.id,
@@ -151,7 +473,7 @@ export default function BehavioralRecords() {
         setMyClasses(sorted);
         if (sorted.length > 0) setSelectedClassId(sorted[0].id);
       } catch (err) {
-        console.error(err);
+        console.error("fetchMyClasses error:", err);
       } finally {
         setLoading(false);
       }
@@ -171,35 +493,32 @@ export default function BehavioralRecords() {
         if (docSnap.exists()) {
           setAllStudents(docSnap.data().students || []);
         } else {
-          // Fetch students with a simpler query to ensure it hits existing indexes
+          // Fetch students with the same logic as attendance
           const q = query(
             collection(db, "users"),
             where("role", "==", "student"),
             where("classId", "==", selectedClassId),
           );
-          const snap = await getDocs(q);
-          const mapped = snap.docs.map((d: any) => {
-            const data = d.data() as any;
-            // Filter out archived students client-side
-            if (data.status === "archived") return null;
+          const snap = await getDocsFromServer(q);
+          const mapped = snap.docs
+            .map((d: any) => ({ uid: d.id, ...d.data() }))
+            .filter((data: any) => ["active", "pending_activation"].includes(data.status))
+            .map((data: any) => {
+              return {
+                studentId: data.uid,
+                fullName:
+                  `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() ||
+                  "Unknown Student",
+                conduct: "Good",
+                interest: "N/A",
+                attitude: "Positive",
+                teacherRemarks: "",
+                promotedTo: "",
+              } as BehavioralRecord;
+            });
 
-            return {
-              studentId: d.id,
-              fullName:
-                `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() ||
-                "Unknown Student",
-              conduct: "Good",
-              interest: "N/A",
-              attitude: "Positive",
-              teacherRemarks: "",
-              promotedTo: "", // always string
-            } as BehavioralRecord;
-          });
-          const filtered = mapped.filter(
-            (s): s is BehavioralRecord => s !== null,
-          );
-          filtered.sort((a, b) => a.fullName.localeCompare(b.fullName));
-          setAllStudents(filtered);
+          mapped.sort((a, b) => a.fullName.localeCompare(b.fullName));
+          setAllStudents(mapped);
         }
       } catch (err) {
         console.error("syncRecords Error:", err);
@@ -214,7 +533,7 @@ export default function BehavioralRecords() {
   const updateRecord = (
     studentId: string,
     field: keyof BehavioralRecord,
-    value: string,
+    value: any,
   ) => {
     setAllStudents((prev) =>
       prev.map((s) =>
@@ -234,6 +553,7 @@ export default function BehavioralRecords() {
         academicYear: selectedYear,
         term,
         students: allStudents,
+        studentIds: allStudents.map((s) => s.studentId),
         updatedBy: appUser?.uid,
         timestamp: serverTimestamp(),
       });
@@ -314,13 +634,23 @@ export default function BehavioralRecords() {
             </Text>
           </View>
         ) : (
-          allStudents.map((student) => (
-            <StudentBehavioralCard
-              key={student.studentId}
-              student={student}
-              onUpdate={updateRecord}
-            />
-          ))
+          allStudents.map((student) => {
+            const className =
+              myClasses.find((c) => c.id === selectedClassId)?.name || "";
+            return isPreschoolClass(className) ? (
+              <PreschoolBehavioralCard
+                key={student.studentId}
+                student={student}
+                onUpdate={updateRecord}
+              />
+            ) : (
+              <StudentBehavioralCard
+                key={student.studentId}
+                student={student}
+                onUpdate={updateRecord}
+              />
+            );
+          })
         )}
       </ScrollView>
 
@@ -403,6 +733,77 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
+  sectionHeader: {
+    marginTop: 10,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+    paddingBottom: 5,
+  },
+  sectionTitle: { fontSize: 11, fontWeight: "900", color: COLORS.primary },
+  hwGrid: { marginBottom: 15 },
+  hwRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 5,
+  },
+  hwLabel: { fontSize: 10, fontWeight: "800", color: "#64748B" },
+  hwInput: {
+    width: 60,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 6,
+    padding: 5,
+    fontSize: 11,
+    textAlign: "center",
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  gradingLegend: {
+    padding: 8,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  legendText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#64748B",
+    textAlign: "center",
+  },
+  assessmentSection: { marginBottom: 20 },
+  categoryTitle: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#475569",
+    marginBottom: 10,
+    backgroundColor: "#F1F5F9",
+    padding: 5,
+    borderRadius: 4,
+  },
+  assessmentRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  assessmentLabel: { flex: 1, fontSize: 11, fontWeight: "600", color: "#334155" },
+  optionsRow: { flexDirection: "row", gap: 5 },
+  optionBtn: {
+    width: 35,
+    height: 25,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+  },
+  optionBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  optionText: { fontSize: 9, fontWeight: "800", color: "#64748B" },
+  optionTextActive: { color: "#fff" },
   syncBox: { padding: 50, alignItems: "center" },
   syncText: { marginTop: 15, color: "#64748B", fontWeight: "700" },
   emptyState: {

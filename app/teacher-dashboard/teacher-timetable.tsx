@@ -20,7 +20,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 import { scheduleTimetableReminders } from "../../src/services/timetableScheduler";
 
 interface Lesson {
@@ -55,6 +55,10 @@ const SUBJECT_COLORS: Record<string, string> = {
   French: "#F1F5F9",
   History: "#FEF3C7",
   "Career Technology": "#E0E7FF",
+  "Practical Life": "#F1F5F9",
+  Sensorial: "#FAE8FF",
+  Language: "#FEE2E2",
+  Culture: "#FEF3C7",
   Break: "#F1F5F9",
   Lunch: "#F1F5F9",
   "Physical Education": "#ECFDF5",
@@ -161,12 +165,14 @@ export default function TeacherTimetable() {
   const brandColor = COLORS.brandPrimary || COLORS.primary || "#2e86de";
   const secondaryColor = COLORS.brandSecondary || COLORS.secondary || "#1E293B";
 
+  const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
+
   const isClassTeacher = useMemo(() => {
     return (
       appUser?.assignedRoles?.includes("Class Teacher") ||
-      !!appUser?.classTeacherOf
+      teacherClasses.length > 0
     );
-  }, [appUser]);
+  }, [appUser, teacherClasses]);
 
   useEffect(() => {
     const today = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
@@ -176,16 +182,13 @@ export default function TeacherTimetable() {
   }, []);
 
   const fetchTimetablesAndNames = useCallback(async () => {
-    if (!appUser?.classes || appUser.classes.length === 0) {
+    if (teacherClasses.length === 0) {
       setLoading(false);
       return;
     }
 
     try {
-      const classes: string[] = [...appUser.classes];
-      if (appUser.classTeacherOf && !classes.includes(appUser.classTeacherOf)) {
-        classes.push(appUser.classTeacherOf);
-      }
+      const classes: string[] = [...teacherClasses];
 
       const ttResult: Record<string, ClassTimetable> = {};
       const nameResult: Record<string, string> = {};
@@ -201,8 +204,21 @@ export default function TeacherTimetable() {
           where("__name__", "in", chunk),
         );
         const classSnaps = await getDocs(classesQuery);
+
+        const teacherCurriculum = appUser?.curriculum || "GES";
+        const role = (appUser?.role || "").toLowerCase();
+        const adminRole = (appUser?.adminRole || "").toLowerCase();
+        const isAdmin = ["admin", "headmaster", "headmistress", "proprietor", "proprietress", "secretary", "manager", "director"].some(r =>
+          role.includes(r) || adminRole.includes(r)
+        );
+
         classSnaps.forEach((doc) => {
-          nameResult[doc.id] = (doc.data() as any).name || doc.id;
+          const data = doc.data() as any;
+          const classCurriculum = data.curriculum || "GES";
+          // Only show classes matching teacher's curriculum, or all for admins
+          if (isAdmin || classCurriculum === teacherCurriculum) {
+            nameResult[doc.id] = data.name || doc.id;
+          }
         });
 
         const ttQuery = query(
@@ -236,7 +252,7 @@ export default function TeacherTimetable() {
     } finally {
       setLoading(false);
     }
-  }, [appUser?.classes, appUser?.classTeacherOf]);
+  }, [teacherClasses, appUser?.curriculum, appUser?.role, appUser?.adminRole]);
 
   useEffect(() => {
     fetchTimetablesAndNames();
@@ -341,7 +357,7 @@ export default function TeacherTimetable() {
               const lessons =
                 timetables[classId]?.timetableDays?.[selectedDay] || [];
               const otherActs = timetables[classId]?.otherActivities || [];
-              const isAssignedClass = classId === appUser?.classTeacherOf;
+              const isAssignedClass = teacherClasses.includes(classId);
 
               if (
                 lessons.length === 0 &&

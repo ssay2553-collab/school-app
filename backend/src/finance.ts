@@ -31,26 +31,13 @@ export const sendFeeReminders = onSchedule("0 15 26,27 * *", async (event) => {
       });
     }
 
-    for (const doc of arrearsStudentsSnap.docs) {
-      const student = doc.data();
-      const existing = notificationsMap.get(doc.id);
-      if (existing) {
-        existing.arrears = student.dailyArrears || 0;
-      } else {
-        notificationsMap.set(doc.id, {
-          name: `${student.profile?.firstName || ""} ${student.profile?.lastName || ""}`.trim() || "your child",
-          balance: 0,
-          arrears: student.dailyArrears || 0,
-          parentUids: student.parentUids || []
-        });
-      }
-    }
-
     for (const [studentUid, info] of notificationsMap) {
       let parentUids = info.parentUids;
       if (parentUids.length === 0) {
         const studentDoc = await db.collection("users").doc(studentUid).get();
-        parentUids = studentDoc.data()?.parentUids || [];
+        const studentData = studentDoc.data();
+        parentUids = studentData?.parentUids || [];
+        info.arrears = studentData?.dailyArrears || 0;
       }
 
       if (parentUids.length === 0) continue;
@@ -64,14 +51,19 @@ export const sendFeeReminders = onSchedule("0 15 26,27 * *", async (event) => {
       }
 
       if (tokens.length > 0) {
-        const totalDebt = info.balance + info.arrears;
+        const totalDebt = info.balance; // Only Tuition/Fees
+        const serviceDebt = info.arrears; // Only Feeding/Bus
+
         let body = `Gentle reminder: ${info.name} has outstanding fees.`;
-        if (info.balance > 0 && info.arrears > 0) {
-          body = `Gentle reminder: ${info.name} has a tuition balance of ₵${info.balance.toFixed(2)} and service arrears of ₵${info.arrears.toFixed(2)}. Total: ₵${totalDebt.toFixed(2)}.`;
-        } else if (info.balance > 0) {
-          body = `Gentle reminder: ${info.name} has an outstanding tuition balance of ₵${info.balance.toFixed(2)}.`;
+
+        if (totalDebt > 0 && serviceDebt > 0) {
+          body = `Gentle reminder: ${info.name} has a tuition balance of ₵${totalDebt.toFixed(2)} and daily service arrears of ₵${serviceDebt.toFixed(2)}.`;
+        } else if (totalDebt > 0) {
+          body = `Gentle reminder: ${info.name} has an outstanding tuition balance of ₵${totalDebt.toFixed(2)}.`;
+        } else if (serviceDebt > 0) {
+          body = `Gentle reminder: ${info.name} has daily service arrears (Feeding/Bus) of ₵${serviceDebt.toFixed(2)}.`;
         } else {
-          body = `Gentle reminder: ${info.name} has service arrears (Feeding/Bus) of ₵${info.arrears.toFixed(2)}.`;
+          continue; // Nothing to remind about
         }
 
         await admin.messaging().sendEachForMulticast({
@@ -157,6 +149,11 @@ export const processDailyArrears = onSchedule("0 22 * * *", async (event) => {
     const batch = db.batch();
     let count = 0;
 
+    const academicYear = config.academicYear || "";
+    const currentTerm = config.currentTerm || "";
+    const cleanYear = academicYear.replace(/\//g, "-");
+    const cleanTerm = currentTerm.replace(/\s/g, "");
+
     for (const studentDoc of studentsSnap.docs) {
       const student = studentDoc.data();
       const uid = studentDoc.id;
@@ -168,8 +165,10 @@ export const processDailyArrears = onSchedule("0 22 * * *", async (event) => {
 
       if (added > 0) {
         batch.update(studentDoc.ref, {
-          dailyArrears: admin.firestore.FieldValue.increment(added)
+          dailyArrears: admin.firestore.FieldValue.increment(added),
+          walletBalance: admin.firestore.FieldValue.increment(added)
         });
+
         count++;
       }
     }

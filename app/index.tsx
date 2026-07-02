@@ -21,6 +21,7 @@ import { useSchoolConfig } from "../constants/Config";
 import { getSchoolLogo } from "../constants/Logos";
 import { COLORS, SHADOWS } from "../constants/theme";
 import { useAuth } from "../contexts/AuthContext";
+import { getTeacherClasses } from "../lib/classHelpers";
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -56,11 +57,8 @@ export default function WelcomeScreen() {
       const isTeacher =
         role === "teacher" ||
         role === "staff" ||
-        !!(
-          appUser.classes?.length ||
-          appUser.subjects?.length ||
-          appUser.classTeacherOf
-        );
+        getTeacherClasses(appUser).length > 0 ||
+        (appUser.subjects || []).length > 0;
       const isParent = role === "parent";
       const isStudent = role === "student";
       const isGuest = role === "guest";

@@ -1,10 +1,10 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import {
   collection,
   doc,
   getDoc,
   getDocsFromServer,
+  increment,
   onSnapshot,
   query,
   serverTimestamp,
@@ -38,7 +38,17 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import {
+  getTeacherClasses,
+  isClassTeacher,
+  sortClasses,
+} from "../../lib/classHelpers";
+
+// Guarded import for native-only library
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 
 const { width } = Dimensions.get("window");
 
@@ -120,9 +130,6 @@ export default function BusFees() {
   const canEdit =
     isSuperAdmin || busPermission === "full" || busPermission === "edit";
 
-  const isClassTeacher = !!appUser?.classTeacherOf;
-  const classTeacherClassId = appUser?.classTeacherOf || "";
-
   const handleBack = () => {
     router.replace("/shared/daily-financials");
   };
@@ -142,27 +149,55 @@ export default function BusFees() {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>("record");
 
+  // Filters
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedClassId, setSelectedClassId] = useState<string>(
-    isClassTeacher && !isSuperAdmin ? classTeacherClassId : "all",
-  );
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDestination, setSelectedDestination] = useState<string | null>(null);
 
+  // Determine initial class selection
+  const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
+
+  const [selectedClassId, setSelectedClassId] = useState<string>(
+    teacherClasses.length > 0 && !isSuperAdmin
+      ? teacherClasses[0] || ""
+      : "all",
+  );
+
+  const isUserClassTeacher = useMemo(() => {
+    if (!appUser || !selectedClassId || selectedClassId === "all") return false;
+    return isClassTeacher(appUser, selectedClassId);
+  }, [appUser, selectedClassId]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDestination, setSelectedDestination] = useState<string | null>(
+    null,
+  );
+
+  // Data
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
+
+  // Derived effective class IDs for queries
+  const effectiveClassIds = useMemo(() => {
+    if (isSuperAdmin) {
+      return selectedClassId === "all" ? [] : [selectedClassId];
+    }
+    if (teacherClasses.length > 0) {
+      return selectedClassId === "all" ? teacherClasses : [selectedClassId];
+    }
+    return [];
+  }, [isSuperAdmin, selectedClassId, teacherClasses]);
+
   const [attendanceMap, setAttendanceMap] = useState<Record<string, any>>({});
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(
     new Set(),
   );
 
   const [busAmount, setBusAmount] = useState("");
-  const [locationRates, setLocationRates] = useState<Record<string, number>>({});
-  const [selectedLocationForRate, setSelectedLocationForRate] = useState<string>(
-    "",
+  const [locationRates, setLocationRates] = useState<Record<string, number>>(
+    {},
   );
+  const [selectedLocationForRate, setSelectedLocationForRate] =
+    useState<string>("");
   const [overrideMap, setOverrideMap] = useState<
     Record<string, string | undefined>
   >({});
@@ -225,16 +260,21 @@ export default function BusFees() {
           where("takesBus", "==", true),
         );
 
-        let effectiveClassId = selectedClassId;
-        if (isClassTeacher && !isSuperAdmin) {
-          effectiveClassId = classTeacherClassId;
-        }
-
-        if (effectiveClassId !== "all") {
-          baseQuery = query(
-            baseQuery,
-            where("classId", "==", effectiveClassId),
-          );
+        if (effectiveClassIds.length > 0) {
+          if (effectiveClassIds.length === 1) {
+            baseQuery = query(
+              baseQuery,
+              where("classId", "==", effectiveClassIds[0]),
+            );
+          } else {
+            baseQuery = query(
+              baseQuery,
+              where("classId", "in", effectiveClassIds),
+            );
+          }
+        } else if (!isSuperAdmin) {
+          setStudents([]);
+          return;
         }
 
         const snap = await getDocsFromServer(baseQuery as any);
@@ -262,13 +302,7 @@ export default function BusFees() {
     };
 
     loadStudents();
-  }, [
-    selectedClassId,
-    classes,
-    isClassTeacher,
-    classTeacherClassId,
-    isSuperAdmin,
-  ]);
+  }, [effectiveClassIds, classes, isSuperAdmin]);
 
   // Load daily records for selected date in real-time
   useEffect(() => {
@@ -281,13 +315,19 @@ export default function BusFees() {
       where("date", "==", dateStr),
     );
 
-    let effectiveClassId = selectedClassId;
-    if (isClassTeacher && !isSuperAdmin) {
-      effectiveClassId = classTeacherClassId;
-    }
-
-    if (effectiveClassId !== "all") {
-      baseQuery = query(baseQuery, where("classId", "==", effectiveClassId));
+    if (effectiveClassIds.length > 0) {
+      if (effectiveClassIds.length === 1) {
+        baseQuery = query(
+          baseQuery,
+          where("classId", "==", effectiveClassIds[0]),
+        );
+      } else {
+        baseQuery = query(baseQuery, where("classId", "in", effectiveClassIds));
+      }
+    } else if (!isSuperAdmin) {
+      setDailyRecords([]);
+      setLoading(false);
+      return;
     }
 
     const unsub = onSnapshot(
@@ -309,33 +349,26 @@ export default function BusFees() {
     );
 
     return () => unsub();
-  }, [
-    selectedDate,
-    selectedClassId,
-    isClassTeacher,
-    isSuperAdmin,
-    classTeacherClassId,
-  ]);
+  }, [selectedDate, effectiveClassIds, isSuperAdmin]);
 
   // Load attendance for selected class/date so we can skip absent students
   useEffect(() => {
     const loadAttendance = async () => {
       try {
-        let effectiveClassId = selectedClassId;
-        if (isClassTeacher && !isSuperAdmin)
-          effectiveClassId = classTeacherClassId;
-        if (!effectiveClassId || effectiveClassId === "all") {
+        if (effectiveClassIds.length !== 1) {
           setAttendanceMap({});
           return;
         }
+        const effectiveClassId = effectiveClassIds[0];
 
         const cleanDate = moment(selectedDate).format("YYYY-MM-DD");
         const acadYear = (acadConfig.academicYear || "").replace(/\//g, "-");
         const term = (acadConfig.currentTerm || "").replace(/\s/g, "");
         const attendanceId = `${effectiveClassId}_${acadYear}_${term}_${cleanDate}`;
-        const snap = await getDocsFromServer(query(collection(db, "attendance"), where("__name__", "==", attendanceId)) as any);
-        if (!snap.empty) {
-          const data = snap.docs[0].data() as any;
+        const ref = doc(db, "attendance", attendanceId);
+        const snap = await getDoc(ref as any);
+        if (snap.exists()) {
+          const data = snap.data() as any;
           setAttendanceMap(data.students || {});
         } else {
           setAttendanceMap({});
@@ -347,29 +380,21 @@ export default function BusFees() {
     };
 
     loadAttendance();
-  }, [
-    selectedClassId,
-    selectedDate,
-    isClassTeacher,
-    classTeacherClassId,
-    isSuperAdmin,
-    acadConfig,
-  ]);
+  }, [effectiveClassIds, selectedDate, acadConfig]);
 
   const filteredStudents = useMemo(() => {
     const low = searchQuery.toLowerCase();
-    return students.filter(
-      (s) => {
-        const matchesSearch = s.fullName.toLowerCase().includes(low) ||
-          s.className.toLowerCase().includes(low) ||
-          (s.busLocation && s.busLocation.toLowerCase().includes(low));
+    return students.filter((s) => {
+      const matchesSearch =
+        s.fullName.toLowerCase().includes(low) ||
+        s.className.toLowerCase().includes(low) ||
+        (s.busLocation && s.busLocation.toLowerCase().includes(low));
 
-        if (selectedDestination) {
-          return matchesSearch && s.busLocation === selectedDestination;
-        }
-        return matchesSearch;
+      if (selectedDestination) {
+        return matchesSearch && s.busLocation === selectedDestination;
       }
-    );
+      return matchesSearch;
+    });
   }, [students, searchQuery, selectedDestination]);
 
   const getExistingRecord = useCallback(
@@ -430,8 +455,15 @@ export default function BusFees() {
     setSaving(true);
     try {
       const docRef = doc(db, "school_settings", "bus_rates");
-      await setDoc(docRef, { [selectedLocationForRate]: rate }, { merge: true });
-      setLocationRates((prev) => ({ ...prev, [selectedLocationForRate]: rate }));
+      await setDoc(
+        docRef,
+        { [selectedLocationForRate]: rate },
+        { merge: true },
+      );
+      setLocationRates((prev) => ({
+        ...prev,
+        [selectedLocationForRate]: rate,
+      }));
       setBusAmount("");
       showToast({
         message: `Default bus rate for ${selectedLocationForRate} updated to ₵${rate}.`,
@@ -457,7 +489,7 @@ export default function BusFees() {
     setSaving(true);
     try {
       const dateStr = moment(selectedDate).format("YYYY-MM-DD");
-      const recordsMap = new Map(dailyRecords.map(r => [r.studentUid, r]));
+      const recordsMap = new Map(dailyRecords.map((r) => [r.studentUid, r]));
       let batch = writeBatch(db);
       let opCount = 0;
 
@@ -474,6 +506,9 @@ export default function BusFees() {
         if (rate <= 0) continue;
 
         const existingRecord = recordsMap.get(uid);
+        const oldFee = existingRecord?.busFee || 0;
+        const feeDiff = rate - oldFee;
+
         const docId = `${uid}_${dateStr}`;
         const recordData: any = {
           studentUid: uid,
@@ -481,21 +516,21 @@ export default function BusFees() {
           classId: student.classId,
           className: student.className,
           date: dateStr,
-          feedingFee: existingRecord?.feedingFee || 0,
           busFee: rate,
-          extraClassesFee: existingRecord?.extraClassesFee || 0,
-          otherFees: existingRecord?.otherFees || 0,
-          otherFeesDescription: existingRecord?.otherFeesDescription || "",
-          total:
-            rate +
-            (existingRecord?.feedingFee || 0) +
-            (existingRecord?.extraClassesFee || 0) +
-            (existingRecord?.otherFees || 0),
+          total: increment(feeDiff),
           busPaid: existingRecord?.busPaid || false,
           recordedBy: appUser?.adminRole || "Admin",
           recordedByUid: appUser?.uid || "unknown",
-          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         };
+
+        if (!existingRecord) {
+          recordData.createdAt = serverTimestamp();
+          recordData.feedingFee = 0;
+          recordData.extraClassesFee = 0;
+          recordData.otherFees = 0;
+          recordData.otherFeesDescription = "";
+        }
 
         batch.set(doc(db, "dailyFinancials", docId), recordData, {
           merge: true,
@@ -539,14 +574,17 @@ export default function BusFees() {
   };
 
   const markStudentPaid = async (uid: string, overrideAmountStr?: string) => {
-    const student = students.find(s => s.uid === uid);
+    const student = students.find((s) => s.uid === uid);
     const rate =
       locationRates[student?.busLocation || ""] ||
       SCHOOL_CONFIG.defaultBusRate ||
       0;
 
     if (!rate || rate <= 0) {
-      showToast({ message: "No bus rate set for this location.", type: "error" });
+      showToast({
+        message: "No bus rate set for this location.",
+        type: "error",
+      });
       return;
     }
     const dateStr = moment(selectedDate).format("YYYY-MM-DD");
@@ -561,7 +599,10 @@ export default function BusFees() {
         overrideAmountStr ? parseFloat(overrideAmountStr) || 0 : rate,
       );
 
-      const existingRecord = getExistingRecord(uid);
+      const existingRecord = dailyRecords.find((r) => r.studentUid === uid);
+      const oldFee = existingRecord?.busFee || 0;
+      const feeDiff = rate - oldFee;
+
       const todayRef = doc(db, "dailyFinancials", docId);
       const todayData: any = {
         studentUid: uid,
@@ -570,22 +611,21 @@ export default function BusFees() {
         className: student?.className || "Class",
         date: dateStr,
         busFee: rate,
-        feedingFee: existingRecord?.feedingFee || 0,
-        extraClassesFee: existingRecord?.extraClassesFee || 0,
-        otherFees: existingRecord?.otherFees || 0,
-        otherFeesDescription: existingRecord?.otherFeesDescription || "",
-        total:
-          rate +
-          (existingRecord?.feedingFee || 0) +
-          (existingRecord?.extraClassesFee || 0) +
-          (existingRecord?.otherFees || 0),
+        total: increment(feeDiff),
         busPaid: true,
         busPaidAt: serverTimestamp(),
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+
+      if (!existingRecord) {
+        todayData.createdAt = serverTimestamp();
+        todayData.feedingFee = 0;
+        todayData.extraClassesFee = 0;
+        todayData.otherFees = 0;
+        todayData.otherFeesDescription = "";
+      }
       ops.push({ ref: todayRef, data: todayData });
 
       if (overrideAmountStr) {
@@ -599,12 +639,21 @@ export default function BusFees() {
           const amountForDay = Math.min(rate, extra);
           const data: any = {
             studentUid: uid,
+            studentName: student?.fullName || "Student",
+            classId: student?.classId || "unknown",
+            className: student?.className || "Class",
             date: nextDateStr,
             busFee: amountForDay,
-            total: amountForDay,
+            total: increment(amountForDay),
             busPaid: true,
             busPaidAt: serverTimestamp(),
+            recordedBy: appUser?.adminRole || "Admin",
+            recordedByUid: appUser?.uid || "unknown",
             updatedAt: serverTimestamp(),
+            feedingFee: 0,
+            extraClassesFee: 0,
+            otherFees: 0,
+            otherFeesDescription: "",
           };
           ops.push({ ref, data });
           extra -= amountForDay;
@@ -623,19 +672,23 @@ export default function BusFees() {
   };
 
   const markStudentNotPaid = async (uid: string) => {
-    const student = students.find(s => s.uid === uid);
+    const student = students.find((s) => s.uid === uid);
     const rate =
       locationRates[student?.busLocation || ""] ||
       SCHOOL_CONFIG.defaultBusRate ||
       0;
 
     if (!rate || rate <= 0) {
-      showToast({ message: "No bus rate set for this location.", type: "error" });
+      showToast({
+        message: "No bus rate set for this location.",
+        type: "error",
+      });
       return;
     }
 
     const existingRecord = getExistingRecord(uid);
-    const isCurrentlyUnpaid = existingRecord && existingRecord.busFee > 0 && !existingRecord.busPaid;
+    const isCurrentlyUnpaid =
+      existingRecord && existingRecord.busFee > 0 && !existingRecord.busPaid;
 
     setSaving(true);
     try {
@@ -643,6 +696,8 @@ export default function BusFees() {
       const ref = doc(db, "dailyFinancials", `${uid}_${dateStr}`);
 
       const newFee = isCurrentlyUnpaid ? 0 : rate;
+      const oldFee = existingRecord?.busFee || 0;
+      const feeDiff = newFee - oldFee;
 
       const data: any = {
         studentUid: uid,
@@ -651,25 +706,26 @@ export default function BusFees() {
         className: student?.className || "Class",
         date: dateStr,
         busFee: newFee,
-        feedingFee: existingRecord?.feedingFee || 0,
-        extraClassesFee: existingRecord?.extraClassesFee || 0,
-        otherFees: existingRecord?.otherFees || 0,
-        otherFeesDescription: existingRecord?.otherFeesDescription || "",
-        total:
-          newFee +
-          (existingRecord?.feedingFee || 0) +
-          (existingRecord?.extraClassesFee || 0) +
-          (existingRecord?.otherFees || 0),
+        total: increment(feeDiff),
         busPaid: false,
-        busPaidAt: null,
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+
+      if (!existingRecord) {
+        data.createdAt = serverTimestamp();
+        data.feedingFee = 0;
+        data.extraClassesFee = 0;
+        data.otherFees = 0;
+        data.otherFeesDescription = "";
+      }
       await setDoc(ref, data, { merge: true } as any);
 
-      showToast({ message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.", type: "success" });
+      showToast({
+        message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
+        type: "success",
+      });
     } catch (e) {
       console.error("Error marking student not paid:", e);
       showToast({ message: "Failed to update record.", type: "error" });
@@ -754,11 +810,8 @@ export default function BusFees() {
           <Text style={styles.errorSub}>
             You do not have the required permissions to view bus fees.
           </Text>
-          <TouchableOpacity
-            style={styles.errorButton}
-            onPress={() => router.replace("/admin-dashboard")}
-          >
-            <Text style={styles.errorButtonText}>Return to Dashboard</Text>
+          <TouchableOpacity style={styles.errorButton} onPress={handleBack}>
+            <Text style={styles.errorButtonText}>Back to Daily Financials</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -771,15 +824,14 @@ export default function BusFees() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={handleBack}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
         <View style={styles.headerTitle}>
           <Text style={styles.headerTitleText}>Bus Fees</Text>
-          <Text style={styles.headerSubtitle}>Record daily transportation fees</Text>
+          <Text style={styles.headerSubtitle}>
+            Record daily transportation fees
+          </Text>
         </View>
         <TouchableOpacity
           onPress={() => setShowDatePicker(true)}
@@ -792,12 +844,12 @@ export default function BusFees() {
         </TouchableOpacity>
       </View>
 
-      {showDatePicker && (
+      {showDatePicker && DateTimePicker && (
         <DateTimePicker
           value={selectedDate}
           mode="date"
           display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, date) => {
+          onChange={(event: any, date?: Date) => {
             setShowDatePicker(false);
             if (date) setSelectedDate(date);
           }}
@@ -885,54 +937,56 @@ export default function BusFees() {
                     </TouchableOpacity>
                   )}
                 </View>
-                  <View style={styles.pickerContainer}>
-                    <Text style={styles.pickerLabel}>Select Destination / Location</Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ paddingBottom: 4 }}
+                <View style={styles.pickerContainer}>
+                  <Text style={styles.pickerLabel}>
+                    Select Destination / Location
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 4 }}
+                  >
+                    <TouchableOpacity
+                      style={[
+                        styles.classChip,
+                        selectedDestination === null && styles.classChipActive,
+                      ]}
+                      onPress={() => setSelectedDestination(null)}
                     >
+                      <Text
+                        style={[
+                          styles.classChipText,
+                          selectedDestination === null &&
+                            styles.classChipTextActive,
+                        ]}
+                      >
+                        All Locations
+                      </Text>
+                    </TouchableOpacity>
+                    {uniqueLocations.map((loc) => (
                       <TouchableOpacity
+                        key={loc}
                         style={[
                           styles.classChip,
-                          selectedDestination === null && styles.classChipActive,
+                          selectedDestination === loc && styles.classChipActive,
                         ]}
-                        onPress={() => setSelectedDestination(null)}
+                        onPress={() => setSelectedDestination(loc)}
                       >
                         <Text
                           style={[
                             styles.classChipText,
-                            selectedDestination === null &&
+                            selectedDestination === loc &&
                               styles.classChipTextActive,
                           ]}
                         >
-                          All Locations
+                          {loc}
                         </Text>
                       </TouchableOpacity>
-                      {uniqueLocations.map((loc) => (
-                        <TouchableOpacity
-                          key={loc}
-                          style={[
-                            styles.classChip,
-                            selectedDestination === loc && styles.classChipActive,
-                          ]}
-                          onPress={() => setSelectedDestination(loc)}
-                        >
-                          <Text
-                            style={[
-                              styles.classChipText,
-                              selectedDestination === loc &&
-                                styles.classChipTextActive,
-                            ]}
-                          >
-                            {loc}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
+                    ))}
+                  </ScrollView>
+                </View>
 
-                {!isClassTeacher && (
+                {!isSuperAdmin && teacherClasses.length > 0 && (
                   <View style={styles.pickerContainer}>
                     <Text style={styles.pickerLabel}>Select Class</Text>
                     <ScrollView
@@ -954,29 +1008,32 @@ export default function BusFees() {
                               styles.classChipTextActive,
                           ]}
                         >
-                          All Classes
+                          All Assigned Classes
                         </Text>
                       </TouchableOpacity>
-                      {classes.map((c) => (
-                        <TouchableOpacity
-                          key={c.id}
-                          style={[
-                            styles.classChip,
-                            selectedClassId === c.id && styles.classChipActive,
-                          ]}
-                          onPress={() => setSelectedClassId(c.id)}
-                        >
-                          <Text
+                      {classes
+                        .filter((c) => teacherClasses.includes(c.id))
+                        .map((c) => (
+                          <TouchableOpacity
+                            key={c.id}
                             style={[
-                              styles.classChipText,
+                              styles.classChip,
                               selectedClassId === c.id &&
-                                styles.classChipTextActive,
+                                styles.classChipActive,
                             ]}
+                            onPress={() => setSelectedClassId(c.id)}
                           >
-                            {c.name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                            <Text
+                              style={[
+                                styles.classChipText,
+                                selectedClassId === c.id &&
+                                  styles.classChipTextActive,
+                              ]}
+                            >
+                              {c.name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
                     </ScrollView>
                   </View>
                 )}
@@ -1021,7 +1078,8 @@ export default function BusFees() {
                               styles.miniLocationChipText,
                               selectedLocationForRate === loc &&
                                 styles.miniLocationChipTextActive,
-                            ]}>
+                            ]}
+                          >
                             {loc} (₵{locationRates[loc] || 0})
                           </Text>
                         </TouchableOpacity>
@@ -1057,7 +1115,8 @@ export default function BusFees() {
                           color: VIBE.muted,
                           fontStyle: "italic",
                           marginTop: 4,
-                        }}>
+                        }}
+                      >
                         Select a location above to set its rate
                       </Text>
                     )}
@@ -1076,7 +1135,8 @@ export default function BusFees() {
                   filteredStudents.map((item) => {
                     const existingRecord = getExistingRecord(item.uid);
                     const isPaid = existingRecord?.busPaid === true;
-                    const isAbsent = attendanceMap[item.uid]?.status === "absent";
+                    const isAbsent =
+                      attendanceMap[item.uid]?.status === "absent";
                     const hasArrears = (item.dailyArrears || 0) > 0;
                     const rate = locationRates[item.busLocation || ""] || 0;
 
@@ -1093,8 +1153,12 @@ export default function BusFees() {
                           <View
                             style={[
                               styles.studentAvatar,
-                              isPaid && { backgroundColor: VIBE.success + "20" },
-                              isAbsent && { backgroundColor: VIBE.danger + "10" },
+                              isPaid && {
+                                backgroundColor: VIBE.success + "20",
+                              },
+                              isAbsent && {
+                                backgroundColor: VIBE.danger + "10",
+                              },
                             ]}
                           >
                             <Text
@@ -1109,12 +1173,17 @@ export default function BusFees() {
                           </View>
                           <View style={styles.studentInfo}>
                             <View style={styles.studentNameRow}>
-                              <Text style={styles.studentName} numberOfLines={1}>
+                              <Text
+                                style={styles.studentName}
+                                numberOfLines={1}
+                              >
                                 {item.fullName}
                               </Text>
                               {hasArrears && (
                                 <View style={styles.arrearsBadge}>
-                                  <Text style={styles.arrearsText}>Arrears: ₵{item.dailyArrears}</Text>
+                                  <Text style={styles.arrearsText}>
+                                    Arrears: ₵{item.dailyArrears}
+                                  </Text>
                                 </View>
                               )}
                             </View>
@@ -1124,7 +1193,8 @@ export default function BusFees() {
                               </Text>
                               {item.busLocation && (
                                 <Text style={styles.busLocation}>
-                                  <Text>• </Text>{item.busLocation} (₵{rate})
+                                  <Text>• </Text>
+                                  {item.busLocation} (₵{rate})
                                 </Text>
                               )}
                               {isAbsent ? (
@@ -1143,7 +1213,8 @@ export default function BusFees() {
                                     Absent
                                   </Text>
                                 </View>
-                              ) : (existingRecord && (existingRecord.busFee || 0) > 0) ? (
+                              ) : existingRecord &&
+                                (existingRecord.busFee || 0) > 0 ? (
                                 <View
                                   style={[
                                     styles.statusBadge,
@@ -1247,7 +1318,11 @@ export default function BusFees() {
                               name="close"
                               size={18}
                               color={
-                                existingRecord && (existingRecord.busFee || 0) > 0 && !isPaid ? "#fff" : VIBE.danger
+                                existingRecord &&
+                                (existingRecord.busFee || 0) > 0 &&
+                                !isPaid
+                                  ? "#fff"
+                                  : VIBE.danger
                               }
                             />
                             <Text
@@ -1255,7 +1330,9 @@ export default function BusFees() {
                                 styles.actionBtnText,
                                 {
                                   color:
-                                    existingRecord && (existingRecord.busFee || 0) > 0 && !isPaid
+                                    existingRecord &&
+                                    (existingRecord.busFee || 0) > 0 &&
+                                    !isPaid
                                       ? "#fff"
                                       : VIBE.danger,
                                 },
@@ -1294,8 +1371,6 @@ export default function BusFees() {
                     </Text>
                   </View>
                 )}
-
-
               </View>
             </ScrollView>
           )}
@@ -1304,12 +1379,7 @@ export default function BusFees() {
             <View style={{ flex: 1 }}>
               {/* Statistics Summary for History */}
               <View style={[styles.statsRow, { paddingBottom: 8 }]}>
-                {renderStatsCard(
-                  "Day Total",
-                  stats.totalBus,
-                  "bus",
-                  VIBE.info,
-                )}
+                {renderStatsCard("Day Total", stats.totalBus, "bus", VIBE.info)}
                 {renderStatsCard(
                   "Records",
                   stats.recordsCount,
@@ -1337,7 +1407,9 @@ export default function BusFees() {
                       size={48}
                       color={VIBE.muted}
                     />
-                    <Text style={styles.emptyText}>No records for this date</Text>
+                    <Text style={styles.emptyText}>
+                      No records for this date
+                    </Text>
                   </View>
                 }
               />
@@ -1373,13 +1445,12 @@ export default function BusFees() {
                 <View style={styles.reportMeta}>
                   <Text style={styles.reportMetaText}>
                     Class:{" "}
-                    {isClassTeacher
-                      ? classes.find((c) => c.id === classTeacherClassId)
-                          ?.name || "Unknown"
-                      : selectedClassId === "all"
-                        ? "All Classes"
-                        : classes.find((c) => c.id === selectedClassId)?.name ||
-                          "Unknown"}
+                    {selectedClassId === "all"
+                      ? teacherClasses.length > 0 && !isSuperAdmin
+                        ? "Assigned Classes"
+                        : "All Classes"
+                      : classes.find((c) => c.id === selectedClassId)?.name ||
+                        "Unknown"}
                   </Text>
                 </View>
               </View>
@@ -1670,7 +1741,12 @@ const styles = StyleSheet.create({
   studentAvatarText: { fontSize: 18, fontWeight: "900", color: VIBE.primary },
   studentInfo: { flex: 1 },
   studentName: { fontSize: 15, fontWeight: "700", color: VIBE.text, flex: 1 },
-  studentNameRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  studentNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
   arrearsBadge: {
     backgroundColor: VIBE.danger + "10",
     paddingHorizontal: 6,
@@ -1694,7 +1770,11 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  statusBadgeText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
 
   studentActions: {
     flexDirection: "row",
@@ -1718,7 +1798,11 @@ const styles = StyleSheet.create({
   actionBtnUnpaid: { borderColor: VIBE.danger, backgroundColor: "#fff" },
   actionBtnActivePaid: { backgroundColor: VIBE.success },
   actionBtnActiveUnpaid: { backgroundColor: VIBE.danger },
-  actionBtnText: { fontSize: 12, fontWeight: "800", textTransform: "uppercase" },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
 
   overrideContainer: { marginTop: 12 },
   overrideInput: {
@@ -1769,7 +1853,12 @@ const styles = StyleSheet.create({
   },
   recordContent: { flex: 1 },
   recordStudentName: { fontSize: 16, fontWeight: "800", color: VIBE.text },
-  recordClass: { fontSize: 13, color: VIBE.muted, marginTop: 2, fontWeight: "500" },
+  recordClass: {
+    fontSize: 13,
+    color: VIBE.muted,
+    marginTop: 2,
+    fontWeight: "500",
+  },
   recordDetails: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1796,8 +1885,17 @@ const styles = StyleSheet.create({
   },
   recordTotalLabel: { fontSize: 13, fontWeight: "600", color: VIBE.muted },
   recordTotalValue: { fontSize: 18, fontWeight: "900", marginLeft: 4 },
-  recordMeta: { justifyContent: "center", paddingLeft: 12, alignItems: "flex-end" },
-  recordRecordedBy: { fontSize: 10, color: VIBE.muted, fontWeight: "700", textTransform: "uppercase" },
+  recordMeta: {
+    justifyContent: "center",
+    paddingLeft: 12,
+    alignItems: "flex-end",
+  },
+  recordRecordedBy: {
+    fontSize: 10,
+    color: VIBE.muted,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
 
   // Empty State
   emptyState: { alignItems: "center", padding: 60 },
@@ -1848,7 +1946,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: VIBE.border,
   },
-  reportMetaText: { fontSize: 13, color: VIBE.muted, textAlign: "center", fontWeight: "600" },
+  reportMetaText: {
+    fontSize: 13,
+    color: VIBE.muted,
+    textAlign: "center",
+    fontWeight: "600",
+  },
   errorContainer: {
     flex: 1,
     justifyContent: "center",

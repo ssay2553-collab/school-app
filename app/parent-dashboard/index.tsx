@@ -128,14 +128,14 @@ export default function ParentDashboard() {
         },
         {
           title: "Fee Ledger",
-          subtitle: "Payments & balance",
+          subtitle: "Balance breakdown",
           icon: "receipt",
           color: "#f59e0b",
           path: "/parent-dashboard/student-fee-history",
         },
         {
           title: "Payment Receipts",
-          subtitle: "Billed items",
+          subtitle: "Transaction history",
           icon: "document-attach-outline",
           color: "#10b981",
           path: "/parent-dashboard/student-fee-history",

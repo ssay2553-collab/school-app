@@ -87,11 +87,14 @@ export default function DailyFinancialsSummary() {
   const isSuperAdmin = [
     "proprietor",
     "proprietress",
+    "manager",
     "headmaster",
     "headmistress",
-    "director",
-    "manager",
     "administrator",
+    "director",
+    "accountant",
+    "bursar",
+    "admin",
   ].includes(currentUserRole);
 
   const generatePDF = async () => {
@@ -184,16 +187,19 @@ export default function DailyFinancialsSummary() {
       </html>
       `;
 
-      const { uri } = await Print.printToFileAsync({ html });
-
-      if (Platform.OS === "ios") {
-        await Sharing.shareAsync(uri);
+      if (Platform.OS === "web") {
+        await Print.printAsync({ html });
       } else {
-        await Sharing.shareAsync(uri, {
-          mimeType: "application/pdf",
-          dialogTitle: "Share Financial Summary",
-          UTI: "com.adobe.pdf",
-        });
+        const { uri } = await Print.printToFileAsync({ html });
+        if (Platform.OS === "ios") {
+          await Sharing.shareAsync(uri);
+        } else {
+          await Sharing.shareAsync(uri, {
+            mimeType: "application/pdf",
+            dialogTitle: "Share Financial Summary",
+            UTI: "com.adobe.pdf",
+          });
+        }
       }
     } catch (error) {
       console.error("Error generating PDF:", error);

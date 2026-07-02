@@ -26,6 +26,7 @@ import { getSchoolLogo } from "../../../constants/Logos";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import { auth, db, functions } from "../../../firebaseConfig";
 import { useToast } from "../../../contexts/ToastContext";
+import { getTeacherClasses } from "../../../lib/classHelpers";
 
 export default function TeacherLoginScreen() {
   const router = useRouter();
@@ -65,7 +66,11 @@ export default function TeacherLoginScreen() {
         // 2. Secondary check: Token Login
         const cleanToken = password.trim().toUpperCase();
         const usersRef = collection(db, "users");
-        const q = query(usersRef, where("profile.email", "==", finalEmail));
+        const q = query(
+          usersRef,
+          where("profile.email", "==", finalEmail),
+          limit(1)
+        );
         const snap = await getDocs(q);
 
         if (!snap.empty) {
@@ -132,14 +137,9 @@ export default function TeacherLoginScreen() {
     // Hybrid logic: Allow if they are explicitly a teacher OR an admin with teaching duties
     const isTeacher =
       role === "teacher" ||
-      !!(
-        userData?.classes?.length ||
-        userData?.subjects?.length ||
-        userData?.classTeacherOf ||
-        userData?.profile?.classes?.length ||
-        userData?.profile?.subjects?.length ||
-        userData?.profile?.classTeacherOf
-      );
+      getTeacherClasses(userData as any).length > 0 ||
+      (userData?.subjects || []).length > 0 ||
+      (userData?.profile?.subjects || []).length > 0;
     const isAdmin = role === "admin" || adminRole !== "";
     const isParent = role === "parent";
     const isStudent = role === "student";

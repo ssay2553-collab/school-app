@@ -26,6 +26,7 @@ import {
   ScrollView,
   Dimensions,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -38,7 +39,7 @@ import moment from "moment";
 import SVGIcon from "../../components/SVGIcon";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
-import { sortClasses } from "../../utils/classSorting";
+import { getTeacherClasses, isClassTeacher, sortClasses } from "../../lib/classHelpers";
 
 import DateTimePicker from "@react-native-community/datetimepicker";
 
@@ -48,10 +49,14 @@ import { sendNotification } from "../../src/services/notificationService";
 
 const FILTERS_KEY = "@attendance_filters_v1";
 
-const { width } = Dimensions.get("window");
-const isLargeScreen = width > 768;
+const CONTENT_MAX_WIDTH = 1200;
 
 export default function DailyAttendanceScreen() {
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width > 768;
+  const isExtraLargeScreen = width > 1100;
+  const numColumns = isExtraLargeScreen ? 3 : isLargeScreen ? 2 : 1;
+
   const { appUser } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams<{
@@ -150,21 +155,8 @@ export default function DailyAttendanceScreen() {
 
   const isOfficialClassTeacher = useMemo(() => {
     if (!classId || !appUser) return false;
-    const selectedClass = availableClasses.find(c => c.id === classId);
-    const userRole = (appUser.role || "").toLowerCase();
-    const teacherClasses = appUser.classes || [];
-    const profileClasses = (appUser.profile as any)?.classes || [];
-
-    return (
-      selectedClass?.classTeacherId === appUser.uid ||
-      appUser.classTeacherOf === classId ||
-      (appUser.profile as any)?.classTeacherOf === classId ||
-      teacherClasses.includes(classId) ||
-      profileClasses.includes(classId) ||
-      ["admin", "superadmin", "super admin", "staff"].includes(userRole) ||
-      (appUser as any).adminRole
-    );
-  }, [classId, availableClasses, appUser]);
+    return isClassTeacher(appUser, classId);
+  }, [classId, appUser]);
 
   useEffect(() => {
     if (!appUser) return;
@@ -175,12 +167,7 @@ export default function DailyAttendanceScreen() {
         if (userRole === "admin") {
             q = query(collection(db, "classes"));
         } else {
-            const teacherClasses = appUser.classes || [];
-            if (appUser.classTeacherOf) {
-              if (!teacherClasses.includes(appUser.classTeacherOf)) {
-                teacherClasses.push(appUser.classTeacherOf);
-              }
-            }
+            const teacherClasses = getTeacherClasses(appUser);
             if (teacherClasses.length === 0) {
               setLoading(false);
               return;
@@ -248,6 +235,11 @@ export default function DailyAttendanceScreen() {
 
   useEffect(() => {
     if (!classId || !academicYear || !term || !selectedDate) return;
+
+    // Immediately clear current records when date/class changes to avoid showing stale data
+    setServerAttendance({});
+    setLocalAttendance({});
+
     const loadAttendance = async () => {
       try {
         const cleanYear = academicYear.replace(/\//g, "-");
@@ -257,9 +249,14 @@ export default function DailyAttendanceScreen() {
         const ref = doc(db, "attendance", attendanceId);
         const snap = await getDoc(ref);
         const data = snap.exists() ? (snap.data() as any) : { students: {} };
+
         setServerAttendance(data.students || {});
         setLocalAttendance(data.students || {});
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        console.error("Load attendance error:", e);
+        setServerAttendance({});
+        setLocalAttendance({});
+      }
     };
     loadAttendance();
   }, [classId, selectedDate, academicYear, term]);
@@ -357,7 +354,7 @@ export default function DailyAttendanceScreen() {
           if (Object.keys(updates).length > 0) {
             batch.set(studentSummaryRef, {
               studentId,
-              classId,
+              classId, // Ensure classId is present for security rules
               academicYear,
               term,
               ...updates,
@@ -365,7 +362,7 @@ export default function DailyAttendanceScreen() {
             }, { merge: true });
 
             batch.set(classSummaryRef, {
-              classId,
+              classId, // Ensure classId is present for security rules
               academicYear,
               term,
               ...updates,
@@ -507,118 +504,155 @@ export default function DailyAttendanceScreen() {
     );
   }
 
+  const renderHeader = () => (
+    <View style={styles.mainContent}>
+      <View style={styles.dateBar}>
+        <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateNavBtn}>
+          <SVGIcon name="chevron-back" size={20} color="#64748B" />
+        </TouchableOpacity>
+
+        {Platform.OS === 'web' ? (
+          <View style={styles.dateDisplay}>
+            <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+            <input
+              type="date"
+              value={selectedDate}
+              max={moment().format("YYYY-MM-DD")}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{
+                border: 'none',
+                background: 'none',
+                fontSize: '14px',
+                color: '#1E293B',
+                fontWeight: '800',
+                fontFamily: 'inherit',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            />
+          </View>
+        ) : (
+          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateDisplay}>
+            <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.dateText}>{moment(selectedDate).format("dddd, MMMM D, YYYY")}</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          onPress={() => changeDate(1)}
+          style={[styles.dateNavBtn, moment(selectedDate).isSame(moment(), 'day') && { opacity: 0.3 }]}
+          disabled={moment(selectedDate).isSame(moment(), 'day')}
+        >
+          <SVGIcon name="chevron-forward" size={20} color="#64748B" />
+        </TouchableOpacity>
+      </View>
+
+      {Platform.OS !== 'web' && showDatePicker && (
+        <DateTimePicker
+          value={moment(selectedDate).toDate()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          maximumDate={new Date()}
+          onChange={(event: any, date?: Date) => {
+            setShowDatePicker(false);
+            if (date) {
+              setSelectedDate(moment(date).format("YYYY-MM-DD"));
+            }
+          }}
+        />
+      )}
+
+      <View style={styles.filterArea}>
+        <ScrollView
+          horizontal={!isLargeScreen}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.classScroll, isLargeScreen && styles.classScrollWrap]}
+        >
+          {availableClasses.map(c => (
+            <TouchableOpacity key={c.id} onPress={() => setClassId(c.id)} style={[styles.classChip, classId === c.id && styles.classChipActive]}>
+              <Text style={[styles.classChipText, classId === c.id && styles.classChipTextActive]}>{c.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    </View>
+  );
+
   const noClassesAssigned = availableClasses.length === 0 && !loading;
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}><SVGIcon name="arrow-back" size={24} color="#1E293B" /></TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Daily Attendance</Text>
-          <Text style={styles.subtitle}>
-            {academicYear} • {term} {students.length > 0 ? `• ${students.length} Students` : ""}
-          </Text>
+        <View style={styles.headerInner}>
+          <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
+            <SVGIcon name="arrow-back" size={24} color="#1E293B" />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>Daily Attendance</Text>
+            <Text style={styles.subtitle}>
+              {academicYear} • {term} {students.length > 0 ? `• ${students.length} Students` : ""}
+            </Text>
+          </View>
         </View>
       </View>
 
       {noClassesAssigned ? (
-        <View style={styles.center}>
-          <SVGIcon name="alert-circle-outline" size={64} color="#94A3B8" />
-          <Text style={[styles.emptyText, { marginTop: 16, textAlign: 'center', paddingHorizontal: 40 }]}>
-            No classes assigned to you for {SCHOOL_CONFIG.name}. Please contact your administrator to assign your classes.
-          </Text>
-          <TouchableOpacity
-            style={[styles.backBtn, { marginTop: 20, width: 'auto', paddingHorizontal: 20 }]}
-            onPress={handleBack}
-          >
-            <Text style={styles.backBtnText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <View style={styles.mainContent}>
+            <View style={styles.center}>
+              <SVGIcon name="alert-circle-outline" size={64} color="#94A3B8" />
+              <Text style={[styles.emptyText, { marginTop: 16, textAlign: 'center', paddingHorizontal: 40 }]}>
+                No classes assigned to you for {SCHOOL_CONFIG.name}. Please contact your administrator to assign your classes.
+              </Text>
+              <TouchableOpacity
+                style={[styles.backBtn, { marginTop: 20, width: 'auto', paddingHorizontal: 20 }]}
+                onPress={handleBack}
+              >
+                <Text style={styles.backBtnText}>Go Back</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
       ) : (
-        <>
-          <View style={styles.dateBar}>
-             <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateNavBtn}><SVGIcon name="chevron-back" size={20} color="#64748B" /></TouchableOpacity>
+        <FlatList
+          style={{ flex: 1 }}
+          contentContainerStyle={[
+            styles.list,
+            { alignSelf: 'center', width: '100%', maxWidth: CONTENT_MAX_WIDTH }
+          ]}
+          key={numColumns}
+          data={students}
+          renderItem={renderStudentItem}
+          keyExtractor={item => item.uid}
+          numColumns={numColumns}
+          columnWrapperStyle={numColumns > 1 ? { gap: 16 } : null}
+          ListHeaderComponent={renderHeader}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No students found in this class.</Text>
+            </View>
+          }
+          showsVerticalScrollIndicator={true}
+        />
+      )}
 
-             {Platform.OS === 'web' ? (
-               <View style={styles.dateDisplay}>
-                 <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
-                 <input
-                    type="date"
-                    value={selectedDate}
-                    max={moment().format("YYYY-MM-DD")}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    style={{
-                      border: 'none',
-                      background: 'none',
-                      fontSize: '14px',
-                      color: '#1E293B',
-                      fontWeight: '800',
-                      fontFamily: 'inherit',
-                      outline: 'none',
-                      cursor: 'pointer'
-                    }}
-                  />
-               </View>
-             ) : (
-               <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateDisplay}>
-                  <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
-                  <Text style={styles.dateText}>{moment(selectedDate).format("dddd, MMMM D, YYYY")}</Text>
-               </TouchableOpacity>
-             )}
-
-             <TouchableOpacity
-               onPress={() => changeDate(1)}
-               style={[styles.dateNavBtn, moment(selectedDate).isSame(moment(), 'day') && { opacity: 0.3 }]}
-               disabled={moment(selectedDate).isSame(moment(), 'day')}
-             >
-               <SVGIcon name="chevron-forward" size={20} color="#64748B" />
-             </TouchableOpacity>
-          </View>
-
-          {Platform.OS !== 'web' && showDatePicker && (
-            <DateTimePicker
-              value={moment(selectedDate).toDate()}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              maximumDate={new Date()}
-              onChange={(event, date) => {
-                setShowDatePicker(false);
-                if (date) {
-                  setSelectedDate(moment(date).format("YYYY-MM-DD"));
-                }
-              }}
-            />
-          )}
-
-          <View style={styles.filterArea}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.classScroll}>
-               {availableClasses.map(c => (
-                 <TouchableOpacity key={c.id} onPress={() => setClassId(c.id)} style={[styles.classChip, classId === c.id && styles.classChipActive]}>
-                    <Text style={[styles.classChipText, classId === c.id && styles.classChipTextActive]}>{c.name}</Text>
-                 </TouchableOpacity>
-               ))}
-            </ScrollView>
-          </View>
-
-          <FlatList
-            data={students}
-            renderItem={renderStudentItem}
-            keyExtractor={item => item.uid}
-            numColumns={isLargeScreen ? 2 : 1}
-            columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
-            contentContainerStyle={styles.list}
-            ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>No students found in this class.</Text></View>}
-          />
-
-          {hasUnsavedChanges && (
-            <Animatable.View animation="slideInUp" duration={400} style={styles.footerAction}>
-               <TouchableOpacity style={styles.saveBtn} onPress={saveToFirestore} disabled={saving}>
-                  {saving ? <ActivityIndicator color="#fff" /> : <><SVGIcon name="cloud-upload" size={20} color="#fff" /><Text style={styles.saveBtnText}>Save Changes Now</Text></>}
-               </TouchableOpacity>
-            </Animatable.View>
-          )}
-        </>
+      {hasUnsavedChanges && (
+        <Animatable.View animation="slideInUp" duration={400} style={styles.footerAction}>
+          <TouchableOpacity style={styles.saveBtn} onPress={saveToFirestore} disabled={saving}>
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <SVGIcon name="cloud-upload" size={20} color="#fff" />
+                <Text style={styles.saveBtnText}>Save Changes Now</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </Animatable.View>
       )}
     </SafeAreaView>
   );
@@ -626,24 +660,27 @@ export default function DailyAttendanceScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 300 },
+  header: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', zIndex: 10 },
+  headerInner: { flexDirection: 'row', alignItems: 'center', padding: 20, maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center', width: '100%' },
+  mainContent: { width: '100%', maxWidth: CONTENT_MAX_WIDTH },
   backBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   backBtnText: { color: '#1E293B', fontWeight: '800', fontSize: 14 },
   title: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  dateBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, backgroundColor: '#fff', margin: 15, borderRadius: 18, ...SHADOWS.small },
+  dateBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, backgroundColor: '#fff', margin: 15, borderRadius: 18, ...SHADOWS.small, maxWidth: 600, alignSelf: 'center', width: '92%' },
   dateNavBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center' },
   dateDisplay: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dateText: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
-  filterArea: { backgroundColor: '#fff', paddingBottom: 15 },
+  filterArea: { paddingBottom: 15, width: '100%' },
   classScroll: { paddingHorizontal: 20, gap: 12 },
+  classScrollWrap: { flexWrap: 'wrap', flexDirection: 'row', justifyContent: 'center' },
   classChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 15, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
   classChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   classChipText: { fontSize: 13, fontWeight: '800', color: '#64748B' },
   classChipTextActive: { color: '#fff' },
-  list: { padding: 20, paddingBottom: 100 },
-  card: { backgroundColor: '#fff', borderRadius: 22, padding: 16, marginBottom: 15, ...SHADOWS.small, borderWidth: 1, borderColor: '#F1F5F9' },
+  list: { padding: 20, paddingBottom: 120 },
+  card: { backgroundColor: '#fff', borderRadius: 22, padding: 16, marginBottom: 15, ...SHADOWS.small, borderWidth: 1, borderColor: '#F1F5F9', flex: 1, minWidth: 300 },
   presentCard: { borderColor: '#10B981', backgroundColor: '#F0FDF4' },
   absentCard: { borderColor: '#EF4444', backgroundColor: '#FEF2F2' },
   lateCard: { borderColor: '#F59E0B', backgroundColor: '#FFFBEB' },
@@ -662,8 +699,8 @@ const styles = StyleSheet.create({
   presentActive: { backgroundColor: '#10B981', borderColor: '#10B981' },
   absentActive: { backgroundColor: '#EF4444', borderColor: '#EF4444' },
   lateActive: { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
-  footerAction: { position: 'absolute', bottom: 25, left: 20, right: 20, ...SHADOWS.large },
-  saveBtn: { backgroundColor: COLORS.primary, height: 65, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
+  footerAction: { position: 'absolute', bottom: 25, left: 20, right: 20, ...SHADOWS.large, alignItems: 'center' },
+  saveBtn: { backgroundColor: COLORS.primary, height: 65, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', maxWidth: 400 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
   empty: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontWeight: '600' }

@@ -85,16 +85,27 @@ export const updateUserEmail = onCall(async (req) => {
         "director",
         "manager",
         "administrator",
+        "accountant",
+        "bursar",
+        "admin",
       ].includes(callerData?.adminRole?.toLowerCase() || ""));
   const hasManageUsers = callerData?.permissions?.["manage-users"] === "full" || isSuperAdmin;
 
-  // Teachers can also update their own students if permitted (optional logic)
+  // Teachers and Staff can also update their own students if they are the class teacher
   let authorized = hasManageUsers;
 
-  if (!authorized && callerData?.role === "teacher") {
+  if (!authorized && (callerData?.role === "teacher" || callerData?.role === "staff")) {
     const targetUser = await db.collection("users").doc(uid).get();
-    if (targetUser.exists && targetUser.data()?.role === "student" && callerData?.classes?.includes(targetUser.data()?.classId)) {
+    const targetData = targetUser.data();
+    if (targetUser.exists && targetData?.role === "student") {
+      const classId = targetData.classId;
+      const isClassTeacher =
+        callerData?.classTeacherOf === classId ||
+        (Array.isArray(callerData?.classes) && callerData.classes.includes(classId));
+
+      if (isClassTeacher) {
         authorized = true;
+      }
     }
   }
 
@@ -168,14 +179,25 @@ export const updateUserPassword = onCall(async (req) => {
         "director",
         "manager",
         "administrator",
+        "accountant",
+        "bursar",
+        "admin",
       ].includes(callerData?.adminRole?.toLowerCase() || ""));
   const hasManageUsers = callerData?.permissions?.["manage-users"] === "full" || isSuperAdmin;
 
   let authorized = hasManageUsers;
-  if (!authorized && callerData?.role === "teacher") {
+  if (!authorized && (callerData?.role === "teacher" || callerData?.role === "staff")) {
     const targetUser = await db.collection("users").doc(uid).get();
-    if (targetUser.exists && targetUser.data()?.role === "student" && callerData?.classes?.includes(targetUser.data()?.classId)) {
+    const targetData = targetUser.data();
+    if (targetUser.exists && targetData?.role === "student") {
+      const classId = targetData.classId;
+      const isClassTeacher =
+        callerData?.classTeacherOf === classId ||
+        (Array.isArray(callerData?.classes) && callerData.classes.includes(classId));
+
+      if (isClassTeacher) {
         authorized = true;
+      }
     }
   }
 

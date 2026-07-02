@@ -169,28 +169,37 @@ export default function AdminGuestChat() {
 
   const markAsHandled = async () => {
     if (!activeTicketId) return;
-    Alert.alert(
-      "Resolve Ticket",
-      "This will mark the inquiry as handled. It will be cleared from your list in 30 minutes.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Mark Handled",
-          onPress: async () => {
-            try {
-              await updateDoc(doc(db, "guestTickets", activeTicketId), {
-                status: "handled",
-                handledAt: serverTimestamp(),
-              });
-              setActiveTicketId(null);
-              showToast({ message: "Ticket resolved.", type: "success" });
-            } catch {
-              showToast({ message: "Failed to update status.", type: "error" });
-            }
+
+    const performMarkHandled = async () => {
+      try {
+        await updateDoc(doc(db, "guestTickets", activeTicketId), {
+          status: "handled",
+          handledAt: serverTimestamp(),
+        });
+        setActiveTicketId(null);
+        showToast({ message: "Ticket resolved.", type: "success" });
+      } catch {
+        showToast({ message: "Failed to update status.", type: "error" });
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm("This will mark the inquiry as handled. It will be cleared from your list in 30 minutes.")) {
+        performMarkHandled();
+      }
+    } else {
+      Alert.alert(
+        "Resolve Ticket",
+        "This will mark the inquiry as handled. It will be cleared from your list in 30 minutes.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Mark Handled",
+            onPress: performMarkHandled,
           },
-        },
-      ],
-    );
+        ],
+      );
+    }
   };
 
   const sendMessage = async () => {

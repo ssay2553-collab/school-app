@@ -38,7 +38,8 @@ import * as ImageManipulator from "expo-image-manipulator";
 import SVGIcon from "../../../components/SVGIcon";
 import { SHADOWS, COLORS as THEME_COLORS } from "../../../constants/theme";
 import { useToast } from "../../../contexts/ToastContext";
-import { auth, db, storage } from "../../../firebaseConfig";
+import { httpsCallable } from "firebase/functions";
+import { auth, db, storage, functions } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import DateTimePicker from "@react-native-community/datetimepicker";
 
@@ -214,6 +215,10 @@ export default function StudentSignupScreen() {
         showToast({ message: "Please enter an email address.", type: "error" });
         return false;
       }
+      if (form.email.trim().includes(" ")) {
+        showToast({ message: "Email or username cannot contain spaces.", type: "error" });
+        return false;
+      }
       if (form.password.length < 6) {
         showToast({ message: "Password must be at least 6 characters.", type: "error" });
         return false;
@@ -313,18 +318,31 @@ export default function StudentSignupScreen() {
       }
 
       // Auto-format "email" if they just entered a username
-      let finalEmail = form.email.trim().toLowerCase();
-      if (!finalEmail.includes("@")) {
-        finalEmail = `${finalEmail}@${SCHOOL_CONFIG.schoolId || 'student'}.edueaz.com`;
+      // Remove all spaces and invalid characters for a safe email format
+      let finalEmail = form.email.trim().toLowerCase().replace(/\s+/g, "");
+
+      if (finalEmail && !finalEmail.includes("@")) {
+        // Use a safe slug for the domain, defaulting to 'student'
+        const domainSlug = (SCHOOL_CONFIG.schoolId || 'student')
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, ''); // Ensure domain part is alphanumeric
+        finalEmail = `${finalEmail}@${domainSlug}.edueaz.com`;
       }
+
+      // Final validation check before calling Firebase
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(finalEmail)) {
+        throw new Error("The email or username format is invalid. Please avoid special characters.");
+      }
+
+      console.log("[Signup] Attempting registration with email:", finalEmail);
 
       // Create Authentication Entry
       const cred = await createUserWithEmailAndPassword(auth, finalEmail, form.password);
       const userId = cred.user.uid;
 
-      if (cred.user) {
-        await cred.user.getIdToken(true);
-      }
+      // Force token refresh to ensure custom claims or immediate visibility if needed
+      await cred.user.getIdToken(true);
 
       // Safe Image Upload
       let profileImageUrl = null;
@@ -339,45 +357,19 @@ export default function StudentSignupScreen() {
         }
       }
 
-      const batch = writeBatch(db);
-
-      // Merge logic: use pre-registered data if available
-      const userData = {
-        uid: userId,
-        role: "student",
-        // Redundant schoolId property injection removed as per "one database per school" architecture
-        // UID and role-based access are enforced via firestore.rules
-        // schoolId is managed via environment variables for branding/config only
-        status: "active",
-        classId: preRegisteredData?.classId || form.selectedClassId,
-        gender: form.gender || preRegisteredData?.profile?.gender || "",
-        secretCode: cleanCode,
-        parentLinkCode: preRegisteredData?.parentLinkCode || generateLinkCode(),
-        parentUids: preRegisteredData?.parentUids || [],
-        dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : (preRegisteredData?.dateOfBirth || null),
-        walletBalance: preRegisteredData?.walletBalance || 0,
-        profile: {
-          firstName: form.firstName.trim() || preRegisteredData?.profile?.firstName,
-          lastName: form.lastName.trim() || preRegisteredData?.profile?.lastName,
+      // Call the Cloud Function to handle profile creation and data migration
+      const completeSignupFn = httpsCallable(functions, 'completeStudentSignup');
+      await completeSignupFn({
+        form: {
+          ...form,
           email: finalEmail,
-          phone: preRegisteredData?.profile?.phone || "",
-          gender: form.gender || preRegisteredData?.profile?.gender || "",
-          profileImage: profileImageUrl || preRegisteredData?.profile?.profileImage || null,
+          dateOfBirth: form.dateOfBirth?.toISOString() // Pass as string for serialization
         },
-        createdAt: serverTimestamp(),
-        claimedAt: serverTimestamp(),
-      };
-
-      batch.set(doc(db, "users", userId), userData);
-
-      // Clean up
-      if (pendingDocId) {
-        batch.delete(doc(db, "users", pendingDocId));
-      } else if (codeDocId) {
-        batch.update(doc(db, "signupCodes", codeDocId), { used: true, usedBy: userId });
-      }
-
-      await batch.commit();
+        pendingDocId,
+        codeDocId,
+        profileImageUrl,
+        cleanCode,
+      });
 
       showToast({ message: "Account created successfully! Welcome to your school portal.", type: "success" });
       router.replace("/(auth)/login/student");
@@ -575,7 +567,7 @@ export default function StudentSignupScreen() {
                            mode="date"
                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                            maximumDate={new Date()}
-                           onChange={(event, date) => {
+                           onChange={(event: any, date?: Date) => {
                              setShowDatePicker(false);
                              if (date) setForm({ ...form, dateOfBirth: date });
                            }}

@@ -132,6 +132,9 @@ const PersonalTimetable = () => {
           setTimetable(initialData);
         }
         setLoading(false);
+      }, (err) => {
+        console.warn("Personal timetable listener failed:", err);
+        setLoading(false);
       });
       return () => unsubscribe();
     } catch (error) {

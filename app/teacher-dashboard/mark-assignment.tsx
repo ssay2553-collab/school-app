@@ -36,6 +36,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import { getTeacherClasses } from "../../lib/classHelpers";
 import { db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 
@@ -304,7 +305,8 @@ export default function MarkAssignment() {
 
   /* ---------------- FETCH CLASS NAMES ---------------- */
   useEffect(() => {
-    if (!appUser || !appUser.classes || appUser.classes.length === 0) {
+    const classIds = getTeacherClasses(appUser);
+    if (classIds.length === 0) {
       setFetchingNames(false);
       return;
     }
@@ -312,7 +314,7 @@ export default function MarkAssignment() {
     const fetchNames = async () => {
       try {
         const classInfos: ClassInfo[] = [];
-        for (const classId of appUser.classes || []) {
+        for (const classId of classIds) {
           const classSnap = await getDoc(doc(db, "classes", classId));
           if (classSnap.exists()) {
             classInfos.push({

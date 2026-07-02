@@ -1,557 +1,89 @@
-import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import React, { useCallback, useMemo } from "react";
 import {
-    collection,
-    doc,
-    getDoc,
-    getDocsFromServer,
-    onSnapshot,
-    query,
-    serverTimestamp,
-    setDoc,
-    updateDoc,
-    where,
-    writeBatch,
-} from "firebase/firestore";
-import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    RefreshControl,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
+import { AcademicFilterCard } from "../../components/admin-dashboard/AcademicFilterCard";
+import { AcademicSignatureCard } from "../../components/admin-dashboard/AcademicSignatureCard";
+import { AcademicStudentItem } from "../../components/admin-dashboard/AcademicStudentItem";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
-import { useAuth } from "../../contexts/AuthContext";
-import { db } from "../../firebaseConfig";
-import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { getAutoRemarks, getGradeDetails, sortClasses } from "../../lib/classHelpers";
-
-import { useToast } from "../../contexts/ToastContext";
-
-const storage = getStorage();
-
-type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
-
-interface ScoreData {
-  id: string;
-  studentId: string;
-  fullName: string;
-  total: number;
-  position: number;
-  grade: string;
-  aggregate?: number; // Sum of grades (1-9) for Core 3 + Best 3
-  tas?: number; // Sum of raw scores for Core 3 + Best 3
-  conduct?: string;
-  attitude?: string;
-  interest?: string;
-  teacherRemarks?: string;
-}
-
-interface ClassStats {
-  average: number;
-  passRate: number;
-  studentCount: number;
-}
-
-const StudentItem = React.memo(
-  ({
-    item,
-    onPress,
-    onEditMetadata,
-    primary,
-  }: {
-    item: ScoreData;
-    onPress: () => void;
-    onEditMetadata: () => void;
-    primary: string;
-  }) => (
-    <Animatable.View
-      animation="fadeInUp"
-      duration={400}
-      style={styles.studentCard}
-    >
-      <TouchableOpacity
-        style={styles.cardInner}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        <View style={[styles.posBadge, { backgroundColor: primary + "10" }]}>
-          <Text style={[styles.posText, { color: primary }]}>
-            #{item.position}
-          </Text>
-        </View>
-        <View style={{ flex: 1, marginLeft: 15 }}>
-          <Text style={styles.name}>{item.fullName}</Text>
-          <Text style={styles.idSub}>ID: {item.studentId.substring(0, 8)}</Text>
-          {item.teacherRemarks ? (
-            <Text style={styles.remarkPreview} numberOfLines={1}>
-              Teacher: {item.teacherRemarks}
-            </Text>
-          ) : null}
-        </View>
-        <View style={styles.scoreInfo}>
-          <Text style={[styles.score, { color: primary }]}>{item.total}</Text>
-          <View style={[styles.gradeBadge, { backgroundColor: "#f1f5f9" }]}>
-            <Text style={styles.gradeText}>{item.grade}</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.editBtn} onPress={onEditMetadata}>
-          <SVGIcon name="create-outline" color={primary} size={22} />
-        </TouchableOpacity>
-        <SVGIcon name="chevron-forward" color="#CBD5E1" size={18} />
-      </TouchableOpacity>
-    </Animatable.View>
-  ),
-);
-StudentItem.displayName = "StudentItem";
+import { ScoreData, useViewAcademicRecords } from "../../hooks/admin-dashboard/useViewAcademicRecords";
 
 export default function ViewAcademicRecords() {
   const router = useRouter();
-  const { appUser } = useAuth();
-  const { showToast } = useToast();
-  const acadConfig = useAcademicConfig();
-
-  const [loading, setLoading] = useState(true);
-  const [listLoading, setListLoading] = useState(false);
-  const [fetchingSubjects, setFetchingSubjects] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [savingMetadata, setSavingMetadata] = useState(false);
-  const [uploadingSig, setUploadingSig] = useState(false);
-  const [signatureUrl, setSignatureUrl] = useState<string>(
-    (appUser?.profile as any)?.signatureUrl || "",
-  );
-
-  const [classes, setClasses] = useState<any[]>([]);
-  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
-
-  const primary = SCHOOL_CONFIG.primaryColor || "#2e86de";
-  const secondary = SCHOOL_CONFIG.secondaryColor || "#c53b59";
-
-  const availableYears = useMemo(() => {
-    const start = 2024;
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let y = start; y <= currentYear + 3; y++) {
-      years.push(`${y}/${y + 1}`);
-    }
-    if (acadConfig.academicYear && !years.includes(acadConfig.academicYear)) {
-      years.push(acadConfig.academicYear);
-    }
-    return Array.from(new Set(years)).sort().reverse();
-  }, [acadConfig.academicYear]);
-
-  const [selectedClassId, setSelectedClassId] = useState("");
-  const [selectedYear, setSelectedYear] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [term, setTerm] = useState("");
-  const [selectedReportType, setSelectedReportType] =
-    useState<ReportType>("End of Term");
-
-  const [studentScores, setStudentScores] = useState<ScoreData[]>([]);
-  const [stats, setStats] = useState<ClassStats | null>(null);
-  const [hasSearched, setHasSearched] = useState(false);
-
-  // Metadata Editor State
-  const [metadataModalVisible, setMetadataModalVisible] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<ScoreData | null>(null);
-  const [mConduct, setConduct] = useState("Excellent");
-  const [mAttitude, setAttitude] = useState("Very Positive");
-  const [mInterest, setInterest] = useState("High");
-  const [mPromotedTo, setPromotedTo] = useState("");
-  const [mNextTermBegins, setNextTermBegins] = useState("");
-  const [mAdminRemarks, setAdminRemarks] = useState("");
-  const [mTeacherRemarks, setTeacherRemarks] = useState("");
-
-  // Sync with global academic config
-  useEffect(() => {
-    if (!acadConfig.loading) {
-      setSelectedYear(acadConfig.academicYear);
-      setTerm(acadConfig.currentTerm);
-    }
-  }, [acadConfig]);
-
-  // Use onSnapshot for real-time subject list updates
-  useEffect(() => {
-    if (!selectedClassId || !selectedYear || !term) return;
-
-    setFetchingSubjects(true);
-    const q = query(
-      collection(db, "academicRecords"),
-      where("classId", "==", selectedClassId),
-      where("academicYear", "==", selectedYear),
-      where("term", "==", term),
-      where("reportType", "==", selectedReportType),
-      where("status", "==", "approved"),
-    );
-
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        const subs = snap.docs.map((d) => (d.data() as any).subject).sort();
-        setAvailableSubjects(subs);
-
-        if (subs.length > 0) {
-          if (!selectedSubject || !subs.includes(selectedSubject)) {
-            setSelectedSubject(subs[0]);
-          }
-        } else {
-          setSelectedSubject("");
-        }
-        setFetchingSubjects(false);
-        setRefreshing(false);
-      },
-      (error) => {
-        console.error("onSnapshot Error:", error);
-        setFetchingSubjects(false);
-        setRefreshing(false);
-      },
-    );
-
-    return () => unsubscribe();
-  }, [selectedClassId, selectedYear, term, selectedReportType]);
-
-  const loadData = useCallback(async () => {
-    if (!selectedClassId || !selectedSubject) {
-      return showToast({
-        message: "Please select a class and an approved subject.",
-        type: "error",
-      });
-    }
-
-    setListLoading(true);
-    setHasSearched(true);
-
-    try {
-      // 1. Fetch ALL approved records for this class to calculate aggregates
-      const allRecordsSnap = await getDocsFromServer(
-        query(
-          collection(db, "academicRecords"),
-          where("classId", "==", selectedClassId),
-          where("academicYear", "==", selectedYear),
-          where("term", "==", term),
-          where("status", "==", "approved"),
-        ),
-      );
-
-      // Map to store every student's data across all subjects
-      const studentPerformanceMap: Record<
-        string,
-        {
-          fullName: string;
-          subjects: Record<string, { grade: number; score: number }>;
-          subjectScore?: number;
-        }
-      > = {};
-      const coreSubjects = ["mathematics", "science", "english"];
-
-      allRecordsSnap.docs.forEach((doc) => {
-        const data = doc.data() as any;
-        const subName = (data.subject || "").toLowerCase();
-        const students = data.students || [];
-
-        students.forEach((s: any) => {
-          if (!studentPerformanceMap[s.studentId]) {
-            studentPerformanceMap[s.studentId] = {
-              fullName: s.fullName,
-              subjects: {},
-            };
-          }
-
-          let scoreValue = 0;
-          if (data.reportType === "End of Term") {
-            scoreValue = parseFloat(
-              s.finalScore ||
-                (
-                  parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)
-                ).toFixed(2),
-            );
-          } else {
-            scoreValue = parseFloat(s.finalScore || s.examsMark || 0);
-          }
-
-          const grade = parseInt(getGradeDetails(scoreValue).grade) || 9;
-          studentPerformanceMap[s.studentId].subjects[subName] = {
-            grade,
-            score: scoreValue,
-          };
-
-          if (subName === selectedSubject.toLowerCase()) {
-            studentPerformanceMap[s.studentId].subjectScore = scoreValue;
-          }
-        });
-      });
-
-      const processed = Object.keys(studentPerformanceMap)
-        .filter((sid) => studentPerformanceMap[sid].subjectScore !== undefined)
-        .map((sid) => {
-          const p = studentPerformanceMap[sid];
-          const subs = p.subjects;
-
-          // Core 3
-          const coreEntries = Object.keys(subs)
-            .filter((k) => coreSubjects.includes(k))
-            .map((k) => subs[k]);
-
-          // Best 3 Electives
-          const electiveEntries = Object.keys(subs)
-            .filter((k) => !coreSubjects.includes(k))
-            .map((k) => subs[k])
-            .sort((a, b) => a.grade - b.grade); // Sort by grade (lower is better)
-
-          const coreGradeSum =
-            coreEntries.reduce((a, b) => a + b.grade, 0) +
-            Math.max(0, 3 - coreEntries.length) * 9;
-          const electiveGradeSum =
-            electiveEntries.slice(0, 3).reduce((a, b) => a + b.grade, 0) +
-            Math.max(0, 3 - electiveEntries.length) * 9;
-          const aggregate = coreGradeSum + electiveGradeSum;
-
-          const coreScoreSum = coreEntries.reduce((a, b) => a + b.score, 0);
-          const electiveScoreSum = electiveEntries
-            .slice(0, 3)
-            .reduce((a, b) => a + b.score, 0);
-          const tas = coreScoreSum + electiveScoreSum;
-
-          return {
-            id: sid,
-            studentId: sid,
-            fullName: p.fullName,
-            total: p.subjectScore || 0,
-            grade: getGradeDetails(p.subjectScore || 0).grade,
-            aggregate: aggregate,
-            tas: tas,
-          };
-        })
-        .sort((a, b) => b.total - a.total)
-        .map((s, i) => ({ ...s, position: i + 1 }));
-
-      setStudentScores(processed);
-
-      if (processed.length > 0) {
-        const sumValue = processed.reduce(
-          (acc: number, curr: any) => acc + curr.total,
-          0,
-        );
-        setStats({
-          average: parseFloat((sumValue / processed.length).toFixed(2)),
-          studentCount: processed.length,
-          passRate: 100,
-        });
-      } else {
-        setStats(null);
-      }
-    } catch (e) {
-      console.error("Load Data Error:", e);
-      showToast({ message: "Could not fetch records.", type: "error" });
-    } finally {
-      setListLoading(false);
-    }
-  }, [
+  const {
+    loading,
+    listLoading,
+    fetchingSubjects,
+    refreshing,
+    savingMetadata,
+    uploadingSig,
+    signatureUrl,
+    classes,
+    availableSubjects,
     selectedClassId,
-    selectedSubject,
+    setSelectedClassId,
     selectedYear,
+    setSelectedYear,
+    selectedSubject,
+    setSelectedSubject,
     term,
+    setTerm,
     selectedReportType,
-  ]);
+    setSelectedReportType,
+    studentScores,
+    stats,
+    hasSearched,
+    metadataModalVisible,
+    setMetadataModalVisible,
+    editingStudent,
+    mConduct,
+    setConduct,
+    mAttitude,
+    setAttitude,
+    mInterest,
+    setInterest,
+    mPromotedTo,
+    setPromotedTo,
+    mNextTermBegins,
+    setNextTermBegins,
+    mAdminRemarks,
+    setAdminRemarks,
+    mTeacherRemarks,
+    setTeacherRemarks,
+    loadData,
+    onRefresh,
+    handleEditMetadata,
+    saveMetadata,
+    handleUploadSignature,
+    handleBulkUpdate,
+    availableYears,
+    acadConfig,
+    primary
+  } = useViewAcademicRecords();
 
-  const loadClassesList = async () => {
-    try {
-      const snap = await getDocsFromServer(collection(db, "classes") as any);
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        name: (d.data() as any)?.name || d.id,
-      }));
-      const sorted = sortClasses(list);
-      setClasses(sorted);
-      if (sorted.length > 0 && !selectedClassId)
-        setSelectedClassId(sorted[0].id);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    const init = async () => {
-      await loadClassesList();
-      setLoading(false);
-    };
-    init();
-  }, []);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    // onSnapshot will handle the update
-  };
-
-  const handleEditMetadata = async (student: ScoreData) => {
-    setEditingStudent(student);
-
-    // 1. Initial Defaults
-    setConduct("Excellent");
-    setAttitude("Very Positive");
-    setInterest("High");
-    setTeacherRemarks("");
-    setPromotedTo("");
-    setNextTermBegins("");
-
-    // 2. Fetch Behavioral Records from Teacher Module (Source of truth for conduct/remarks)
-    try {
-      const yearSlug = selectedYear.replace(/\//g, "-");
-      const termSlug = term.replace(/\s+/g, "");
-      const behDocId = `behavioral_${selectedClassId}_${yearSlug}_${termSlug}`;
-      const behSnap = await getDoc(doc(db, "behavioralRecords", behDocId));
-
-      if (behSnap.exists()) {
-        const behData = behSnap.data();
-        const studentBeh = (behData.students || []).find(
-          (s: any) => s.studentId === student.studentId,
-        );
-        if (studentBeh) {
-          if (studentBeh.conduct) setConduct(studentBeh.conduct);
-          if (studentBeh.attitude) setAttitude(studentBeh.attitude);
-          if (studentBeh.interest) setInterest(studentBeh.interest);
-          if (studentBeh.teacherRemarks)
-            setTeacherRemarks(studentBeh.teacherRemarks);
-          if (studentBeh.promotedTo) setPromotedTo(studentBeh.promotedTo);
-        }
-      }
-    } catch (e) {
-      console.log("Error fetching behavioral defaults:", e);
-    }
-
-    // Auto-generate admin remarks based on OVERALL Aggregate performance
-    const agg = student.aggregate || 54;
-    const autoAdminRemarks = getAutoRemarks(agg, false);
-    const autoTeacherRemarks = getAutoRemarks(agg, true);
-
-    setAdminRemarks(autoAdminRemarks);
-    setTeacherRemarks(autoTeacherRemarks);
-
-    setMetadataModalVisible(true);
-
-    // 3. Fetch existing metadata from student-reports if it exists (Admin overrides)
-    try {
-      const reportId =
-        `${student.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
-          /\//g,
-          "-",
-        );
-      const snap = await getDoc(doc(db, "student-reports", reportId));
-      if (snap.exists()) {
-        const d = snap.data() as any;
-        if (d.assessment?.conduct) setConduct(d.assessment.conduct);
-        if (d.assessment?.attitude) setAttitude(d.assessment.attitude);
-        if (d.assessment?.interest) setInterest(d.assessment.interest);
-        if (d.promotedTo) setPromotedTo(d.promotedTo);
-        if (d.nextTermBegins) setNextTermBegins(d.nextTermBegins);
-        if (d.adminRemarks) setAdminRemarks(d.adminRemarks);
-        if (d.teacherRemarks) setTeacherRemarks(d.teacherRemarks);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const saveMetadata = async () => {
-    if (!editingStudent) return;
-    setSavingMetadata(true);
-    try {
-      const reportId =
-        `${editingStudent.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
-          /\//g,
-          "-",
-        );
-      await setDoc(
-        doc(db, "student-reports", reportId),
-        {
-          studentId: editingStudent.studentId,
-          studentName: editingStudent.fullName,
-          academicYear: selectedYear,
-          term: term,
-          reportType: selectedReportType,
-          classId: selectedClassId,
-          assessment: {
-            conduct: mConduct,
-            attitude: mAttitude,
-            interest: mInterest,
-          },
-          promotedTo: mPromotedTo,
-          nextTermBegins: mNextTermBegins,
-          adminRemarks: mAdminRemarks,
-          teacherRemarks: mTeacherRemarks,
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-
-      setMetadataModalVisible(false);
-      showToast({
-        message: "Terminal metadata saved for " + editingStudent.fullName,
-        type: "success",
-      });
-    } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to save metadata.", type: "error" });
-    } finally {
-      setSavingMetadata(false);
-    }
-  };
-
-  const handleUploadSignature = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [2, 1],
-        quality: 0.5,
-      });
-
-      if (!result.canceled && result.assets[0].uri) {
-        setUploadingSig(true);
-        const uri = result.assets[0].uri;
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const storageRef = ref(storage, `signatures/${appUser?.uid}`);
-        await uploadBytes(storageRef, blob);
-        const downloadURL = await getDownloadURL(storageRef);
-
-        await updateDoc(doc(db, "users", appUser!.uid), {
-          "profile.signatureUrl": downloadURL,
-        });
-        setSignatureUrl(downloadURL);
-        showToast({
-          message: "Institution signature updated successfully!",
-          type: "success",
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      showToast({ message: "Failed to upload signature.", type: "error" });
-    } finally {
-      setUploadingSig(false);
-    }
-  };
+  const secondary = SCHOOL_CONFIG.secondaryColor || "#c53b59";
 
   const renderStudentItem = useCallback(
     ({ item }: { item: ScoreData }) => (
-      <StudentItem
+      <AcademicStudentItem
         item={item}
         primary={primary}
         onEditMetadata={() => handleEditMetadata(item)}
@@ -578,6 +110,7 @@ export default function ViewAcademicRecords() {
       selectedSubject,
       selectedReportType,
       router,
+      handleEditMetadata
     ],
   );
 
@@ -602,312 +135,34 @@ export default function ViewAcademicRecords() {
           </View>
         </LinearGradient>
 
-        <Animatable.View animation="fadeInDown" style={styles.signatureCard}>
-          <View style={styles.sigHeader}>
-            <SVGIcon
-              name="shield-checkmark-outline"
-              size={20}
-              color={primary}
-            />
-            <Text style={styles.sigTitle}>
-              Institution's Official Signature
-            </Text>
-          </View>
-          <Text style={styles.sigSubtitle}>
-            Tip: Sign on plain white paper and{" "}
-            <Text style={{ fontWeight: "bold", color: primary }}>
-              apply the school stamp
-            </Text>{" "}
-            over it before uploading for a professional look.
-          </Text>
-          <View style={styles.sigContent}>
-            {signatureUrl ? (
-              <Image
-                source={{ uri: signatureUrl }}
-                style={styles.sigImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.sigPlaceholder}>
-                <SVGIcon name="image-outline" size={32} color="#94A3B8" />
-                <Text style={styles.sigPlaceholderText}>
-                  No Signature Uploaded
-                </Text>
-              </View>
-            )}
-            <TouchableOpacity
-              style={[styles.sigUploadBtn, { backgroundColor: primary }]}
-              onPress={handleUploadSignature}
-              disabled={uploadingSig}
-            >
-              {uploadingSig ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.sigUploadBtnText}>
-                  {signatureUrl ? "Replace Signature" : "Upload Signature"}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        </Animatable.View>
+        <AcademicSignatureCard
+          signatureUrl={signatureUrl}
+          uploadingSig={uploadingSig}
+          handleUploadSignature={handleUploadSignature}
+          primary={primary}
+        />
 
-        <Animatable.View animation="fadeInDown" style={styles.filterCard}>
-          <Text style={styles.sectionLabel}>LEDGER SCOPE</Text>
-
-          <Text style={styles.bubbleLabel}>
-            ACADEMIC YEAR{" "}
-            {selectedYear === acadConfig.academicYear && "(CURRENT)"}
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {availableYears.map((y) => (
-              <TouchableOpacity
-                key={y}
-                onPress={() => setSelectedYear(y)}
-                style={[
-                  styles.bubble,
-                  selectedYear === y && {
-                    backgroundColor: primary,
-                    borderColor: primary,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    selectedYear === y && { color: "#fff" },
-                  ]}
-                >
-                  {y}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <Text style={styles.bubbleLabel}>
-            TERM {term === acadConfig.currentTerm && "(CURRENT)"}
-          </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {["Term 1", "Term 2", "Term 3"].map((t) => (
-              <TouchableOpacity
-                key={t}
-                onPress={() => setTerm(t as any)}
-                style={[
-                  styles.bubble,
-                  term === t && {
-                    backgroundColor: primary,
-                    borderColor: primary,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.bubbleText, term === t && { color: "#fff" }]}
-                >
-                  {t}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <Text style={styles.bubbleLabel}>REPORT TYPE</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {(["End of Term", "Mid-Term", "Mock Exams"] as ReportType[]).map(
-              (type) => (
-                <TouchableOpacity
-                  key={type}
-                  onPress={() => setSelectedReportType(type)}
-                  style={[
-                    styles.bubble,
-                    selectedReportType === type && {
-                      backgroundColor: primary,
-                      borderColor: primary,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.bubbleText,
-                      selectedReportType === type && { color: "#fff" },
-                    ]}
-                  >
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ),
-            )}
-          </ScrollView>
-
-          <Text style={styles.bubbleLabel}>CLASSROOM</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {classes.map((cls) => (
-              <TouchableOpacity
-                key={cls.id}
-                onPress={() => setSelectedClassId(cls.id)}
-                style={[
-                  styles.bubble,
-                  selectedClassId === cls.id && {
-                    backgroundColor: primary,
-                    borderColor: primary,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.bubbleText,
-                    selectedClassId === cls.id && { color: "#fff" },
-                  ]}
-                >
-                  {cls.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <Text style={styles.bubbleLabel}>APPROVED SUBJECTS</Text>
-          <View style={styles.subjectSelectBox}>
-            {fetchingSubjects ? (
-              <ActivityIndicator color={primary} size="small" />
-            ) : availableSubjects.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.bubbleRow}
-              >
-                {availableSubjects.map((sub) => (
-                  <TouchableOpacity
-                    key={sub}
-                    onPress={() => setSelectedSubject(sub)}
-                    style={[
-                      styles.subBubble,
-                      selectedSubject === sub && {
-                        backgroundColor: "#f0f9ff",
-                        borderColor: primary,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.subBubbleText,
-                        selectedSubject === sub && {
-                          color: primary,
-                          fontWeight: "bold",
-                        },
-                      ]}
-                    >
-                      {sub}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            ) : (
-              <View style={styles.noApprovedBox}>
-                <SVGIcon name="alert-circle" size={20} color="#94A3B8" />
-                <Text style={styles.noApprovedText}>
-                  No approved records for this selection.
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <TouchableOpacity
-            onPress={loadData}
-            disabled={listLoading || !selectedSubject}
-            style={[
-              styles.searchBtn,
-              { backgroundColor: primary },
-              (!selectedSubject || listLoading) && { opacity: 0.6 },
-            ]}
-          >
-            {listLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <View style={styles.btnRow}>
-                <Text style={styles.searchBtnText}>View Ledger</Text>
-                <SVGIcon name="arrow-forward" color="#fff" size={20} />
-              </View>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={async () => {
-              if (studentScores.length === 0) return;
-              Alert.alert(
-                "Bulk Update",
-                "This will apply the current 'Next Term Begins' and 'Promoted To' values to ALL students in this list. Continue?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Apply to All",
-                    onPress: async () => {
-                      setListLoading(true);
-                      try {
-                        const batch = writeBatch(db);
-                        for (const student of studentScores) {
-                          const reportId =
-                            `${student.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
-                              /\//g,
-                              "-",
-                            );
-
-                          // Auto-generate remarks for each student in the loop based on their AGGREGATE
-                          const agg = student.aggregate || 54;
-                          const autoAdminRemarks = getAutoRemarks(agg, false);
-                          const autoTeacherRemarks = getAutoRemarks(agg, true);
-
-                          batch.set(
-                            doc(db, "student-reports", reportId),
-                            {
-                              nextTermBegins: mNextTermBegins,
-                              promotedTo: mPromotedTo,
-                              adminRemarks: autoAdminRemarks,
-                              teacherRemarks: autoTeacherRemarks,
-                              updatedAt: serverTimestamp(),
-                            },
-                            { merge: true },
-                          );
-                        }
-                        await batch.commit();
-                        showToast({
-                          message: "Settings applied to all students.",
-                          type: "success",
-                        });
-                      } catch (e) {
-                        console.error(e);
-                        showToast({
-                          message: "Bulk update failed.",
-                          type: "error",
-                        });
-                      } finally {
-                        setListLoading(false);
-                      }
-                    },
-                  },
-                ],
-              );
-            }}
-            style={[styles.bulkBtn, { borderColor: primary }]}
-          >
-            <SVGIcon name="copy-outline" size={18} color={primary} />
-            <Text style={[styles.bulkBtnText, { color: primary }]}>
-              Apply Reopening & Auto-Remarks to All
-            </Text>
-          </TouchableOpacity>
-        </Animatable.View>
+        <AcademicFilterCard
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
+          availableYears={availableYears}
+          acadConfig={acadConfig}
+          term={term}
+          setTerm={setTerm}
+          selectedReportType={selectedReportType}
+          setSelectedReportType={setSelectedReportType}
+          classes={classes}
+          selectedClassId={selectedClassId}
+          setSelectedClassId={setSelectedClassId}
+          availableSubjects={availableSubjects}
+          selectedSubject={selectedSubject}
+          setSelectedSubject={setSelectedSubject}
+          fetchingSubjects={fetchingSubjects}
+          listLoading={listLoading}
+          loadData={loadData}
+          handleBulkUpdate={handleBulkUpdate}
+          primary={primary}
+        />
 
         {stats && studentScores.length > 0 && (
           <Animatable.View animation="fadeIn" style={styles.statsContainer}>
@@ -946,6 +201,16 @@ export default function ViewAcademicRecords() {
       acadConfig,
       signatureUrl,
       uploadingSig,
+      availableYears,
+      handleBulkUpdate,
+      handleUploadSignature,
+      loadData,
+      router,
+      setSelectedClassId,
+      setSelectedSubject,
+      setSelectedYear,
+      setTerm,
+      setSelectedReportType
     ],
   );
 
@@ -1137,68 +402,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 2,
   },
-  filterCard: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    marginTop: 15,
-    borderRadius: 25,
-    padding: 20,
-    ...SHADOWS.medium,
-  },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#64748B",
-    letterSpacing: 1.5,
-    marginBottom: 15,
-  },
-  bubbleLabel: {
-    fontSize: 9,
-    fontWeight: "800",
-    color: "#94A3B8",
-    marginBottom: 8,
-    marginTop: 5,
-  },
-  bubbleRow: { paddingBottom: 12, gap: 10 },
-  bubble: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: "#F1F5F9",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  bubbleText: { fontSize: 12, fontWeight: "700", color: "#475569" },
-  subjectSelectBox: { minHeight: 60, justifyContent: "center" },
-  subBubble: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginBottom: 5,
-  },
-  subBubbleText: { fontSize: 13, color: "#64748B" },
-  noApprovedBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    padding: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  noApprovedText: { fontSize: 12, color: "#94A3B8", fontWeight: "600" },
-  searchBtn: {
-    height: 56,
-    borderRadius: 18,
-    marginTop: 15,
-    justifyContent: "center",
-    alignItems: "center",
-    ...SHADOWS.small,
-  },
-  btnRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  searchBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
   statsContainer: {
     flexDirection: "row",
     backgroundColor: "#fff",
@@ -1218,48 +421,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   statDivider: { width: 1, height: 30, backgroundColor: "#F1F5F9" },
-  studentCard: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    marginTop: 12,
-    borderRadius: 18,
-    ...SHADOWS.small,
-  },
-  cardInner: { flexDirection: "row", alignItems: "center", padding: 15 },
-  posBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  posText: { fontSize: 16, fontWeight: "900" },
-  name: { fontSize: 15, fontWeight: "800", color: "#1E293B" },
-  idSub: { fontSize: 11, color: "#94A3B8", marginTop: 2, fontWeight: "600" },
-  remarkPreview: {
-    fontSize: 10,
-    color: "#64748B",
-    marginTop: 4,
-    fontStyle: "italic",
-  },
-  scoreInfo: { alignItems: "flex-end", marginRight: 15 },
-  score: { fontSize: 17, fontWeight: "900" },
-  gradeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginTop: 4,
-  },
-  gradeText: { fontSize: 10, fontWeight: "800", color: "#64748B" },
-  editBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: "#F1F5F9",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-  },
   emptyContainer: { alignItems: "center", marginTop: 60 },
   emptyText: {
     color: "#94A3B8",
@@ -1267,65 +428,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 15,
   },
-
-  signatureCard: {
-    backgroundColor: "#fff",
-    margin: 20,
-    padding: 20,
-    borderRadius: 24,
-    ...SHADOWS.small,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginTop: -40,
-  },
-  sigHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 4,
-  },
-  sigTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
-  sigSubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    marginBottom: 15,
-    fontWeight: "600",
-  },
-  sigContent: { alignItems: "center" },
-  sigImage: {
-    width: "100%",
-    height: 80,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  sigPlaceholder: {
-    width: "100%",
-    height: 80,
-    backgroundColor: "#F1F5F9",
-    borderRadius: 12,
-    borderStyle: "dashed",
-    borderWidth: 2,
-    borderColor: "#CBD5E1",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  sigPlaceholderText: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginTop: 8,
-    fontWeight: "700",
-  },
-  sigUploadBtn: {
-    marginTop: 15,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-  },
-  sigUploadBtnText: { color: "#fff", fontWeight: "800", fontSize: 13 },
-
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -1373,21 +475,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   textArea: { textAlignVertical: "top", minHeight: 80 },
-  bulkBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 15,
-    padding: 15,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderStyle: "dashed",
-  },
-  bulkBtnText: {
-    fontSize: 13,
-    fontWeight: "800",
-  },
   saveMetadataBtn: {
     padding: 18,
     borderRadius: 16,

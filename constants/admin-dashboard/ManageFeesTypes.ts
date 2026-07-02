@@ -1,0 +1,33 @@
+export type StudentDraft = {
+  uid: string;
+  studentID: string;
+  fullName: string;
+  classId: string;
+  className: string;
+  previousBalance: number;
+  amountPaid: number;
+  currentBalance: number;
+  hasRecordInTerm: boolean;
+  payments: any[];
+  termBill: number;
+  discount?: number;
+  ptaPaid?: number;
+  maintenancePaid?: number;
+  admissionPaid?: number;
+  booksPaid?: number;
+  uniformPaid?: number;
+  otherPaid?: number;
+  editCount: number;
+  onDiscount?: boolean;
+  discountAmount?: number;
+  onScholarship?: boolean;
+  ptaBalance: number;
+  admissionBalance: number;
+  maintenanceBalance: number;
+  booksBalance: number;
+  uniformBalance: number;
+  otherBalance: number;
+};
+
+export const FILTERS_PERSISTENCE_KEY = "@manage_fees_filters_v14";
+export const PAGE_SIZE = 50;

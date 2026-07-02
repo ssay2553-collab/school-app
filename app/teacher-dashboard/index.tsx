@@ -30,6 +30,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useDataFreshness } from "../../hooks/useDataFreshness";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
+import { getTeacherClasses } from "../../lib/classHelpers";
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -104,22 +105,13 @@ export default function TeacherDashboard() {
     setRefreshing(false);
   }, [fetchStats]);
 
-  const isAssignedTeacher =
-    (appUser?.classes && appUser.classes.length > 0) ||
-    !!appUser?.classTeacherOf;
+  const isAssignedTeacher = getTeacherClasses(appUser).length > 0;
 
   const sections = [
     {
       title: "CLASSROOM HUB 🏫",
       color: brandPrimary,
       items: [
-        {
-          title: "Student List",
-          subtitle: "Profiles & Info",
-          route: "/teacher-dashboard/students-list",
-          icon: "people",
-          color: "#6366f1",
-        },
         {
           title: "Attendance",
           subtitle: "Daily tracking",
@@ -174,9 +166,9 @@ export default function TeacherDashboard() {
           color: "#8b5cf6",
         },
         {
-          title: "Class Remarks",
-          subtitle: "Conduct logs",
-          route: "/teacher-dashboard/behavioral-records",
+          title: "Preschool Remarks",
+          subtitle: "Child conduct logs",
+          route: "/teacher-dashboard/preschool-remarks",
           icon: "chatbubble-ellipses",
           color: "#10b981",
         },
@@ -511,8 +503,7 @@ export default function TeacherDashboard() {
                 <View>
                   <Text style={styles.statLabel}>CLASSES</Text>
                   <Text style={styles.statValue}>
-                    {appUser?.classes?.length ||
-                      (appUser?.classTeacherOf ? 1 : 0)}
+                    {getTeacherClasses(appUser).length}
                   </Text>
                 </View>
               </View>

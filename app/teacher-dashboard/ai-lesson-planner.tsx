@@ -40,7 +40,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
-import { sortClasses } from "../../utils/classSorting";
+import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 
 import { httpsCallable } from "firebase/functions";
 import { functions } from "../../firebaseConfig";
@@ -118,11 +118,12 @@ export default function AILessonPlanner() {
   }, [appUser?.uid]);
 
   const fetchClasses = async () => {
-    if (!appUser?.classes || appUser.classes.length === 0) return;
+    const classIds = getTeacherClasses(appUser);
+    if (classIds.length === 0) return;
     try {
       const q = query(
         collection(db, "classes"),
-        where("__name__", "in", appUser.classes),
+        where("__name__", "in", classIds),
       );
       const snap = await getDocs(q);
       const list = snap.docs.map((doc) => ({

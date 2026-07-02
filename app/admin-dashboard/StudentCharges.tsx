@@ -15,20 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
-
-const VIBE = {
-  primary: "#6366F1",
-  secondary: "#F59E0B",
-  success: "#10B981",
-  danger: "#EF4444",
-  info: "#3B82F6",
-  purple: "#8B5CF6",
-  bg: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#1E293B",
-  muted: "#64748B",
-  border: "#E2E8F0",
-};
+import { VIBE } from "../../constants/admin-dashboard/ManageFeesStyles";
 
 export default function StudentCharges() {
   const router = useRouter();
@@ -96,7 +83,7 @@ export default function StudentCharges() {
         >
           <View style={styles.navBar}>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => router.push("/admin-dashboard/")}
               style={styles.headerIconBtn}
             >
               <SVGIcon name="arrow-back" size={24} color="#fff" />

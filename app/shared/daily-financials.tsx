@@ -7,7 +7,7 @@ import {
   where,
 } from "firebase/firestore";
 import moment from "moment";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -25,7 +25,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import { sortClasses, getTeacherClasses } from "../../lib/classHelpers";
 
 const { width } = Dimensions.get("window");
 
@@ -62,6 +62,8 @@ export default function DailyFinancials() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
 
+  const isTeacherRole = appUser?.role === "teacher";
+
   // ACCESS CONTROL LOGIC
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
   const isSuperAdmin = [
@@ -84,35 +86,16 @@ export default function DailyFinancials() {
 
   const canView =
     isSuperAdmin ||
-    feedingPermission === "full" ||
-    feedingPermission === "view" ||
-    feedingPermission === "edit" ||
-    busFeePermission === "full" ||
-    busFeePermission === "view" ||
-    busFeePermission === "edit" ||
-    extraClassesPermission === "full" ||
-    extraClassesPermission === "view" ||
-    extraClassesPermission === "edit";
+    feedingPermission !== "deny" ||
+    busFeePermission !== "deny" ||
+    extraClassesPermission !== "deny";
 
-  const canEdit =
-    isSuperAdmin ||
-    feedingPermission === "full" ||
-    feedingPermission === "edit" ||
-    busFeePermission === "full" ||
-    busFeePermission === "edit" ||
-    extraClassesPermission === "full" ||
-    extraClassesPermission === "edit";
-
-  const canRecordFeeding =
-    isSuperAdmin ||
-    feedingPermission === "full" ||
-    feedingPermission === "edit";
-  const canRecordBus =
-    isSuperAdmin || busFeePermission === "full" || busFeePermission === "edit";
-  const canRecordExtraClasses =
-    isSuperAdmin ||
-    extraClassesPermission === "full" ||
-    extraClassesPermission === "edit";
+  const canViewFeeding =
+    isSuperAdmin || feedingPermission !== "deny";
+  const canViewBus =
+    isSuperAdmin || busFeePermission !== "deny";
+  const canViewExtraClasses =
+    isSuperAdmin || extraClassesPermission !== "deny";
 
   const handleBack = () => {
     if (appUser?.role === "admin") {
@@ -141,8 +124,26 @@ export default function DailyFinancials() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedClassId, setSelectedClassId] = useState<string>("all");
+
+  // Determine initial class selection and assigned classes
+  const teacherClasses = useMemo(() => {
+    return getTeacherClasses(appUser);
+  }, [appUser]);
+
+  const [selectedClassId, setSelectedClassId] = useState<string>(
+    !isSuperAdmin && teacherClasses.length > 0 ? "all" : "all"
+  );
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
+
+  // Derived effective class IDs for queries
+  const effectiveClassIds = useMemo(() => {
+    if (isSuperAdmin) {
+      return selectedClassId === "all" ? [] : [selectedClassId];
+    }
+    // For teachers/staff, if "all" is selected, use all their assigned classes
+    return selectedClassId === "all" ? teacherClasses : [selectedClassId];
+  }, [isSuperAdmin, selectedClassId, teacherClasses]);
+
   const [stats, setStats] = useState<CategoryStats>({
     feeding: 0,
     bus: 0,
@@ -177,11 +178,31 @@ export default function DailyFinancials() {
         where("status", "in", ["active", "pending_activation"]),
       );
 
-      if (selectedClassId !== "all") {
-        studentQuery = query(
-          studentQuery,
-          where("classId", "==", selectedClassId),
-        );
+      if (effectiveClassIds.length > 0) {
+        if (effectiveClassIds.length === 1) {
+          studentQuery = query(
+            studentQuery,
+            where("classId", "==", effectiveClassIds[0]),
+          );
+        } else {
+          studentQuery = query(
+            studentQuery,
+            where("classId", "in", effectiveClassIds),
+          );
+        }
+      } else if (!isSuperAdmin) {
+        // If not super admin and no classes assigned, stats are zero
+        setStats({
+          feeding: 0,
+          bus: 0,
+          extraClasses: 0,
+          totalStudents: 0,
+          recordedToday: 0,
+        });
+        setBusLocations([]);
+        setLoading(false);
+        setRefreshing(false);
+        return;
       }
 
       const studentSnap = await getDocsFromServer(studentQuery as any);
@@ -200,11 +221,18 @@ export default function DailyFinancials() {
         where("date", "==", dateStr),
       );
 
-      if (selectedClassId !== "all") {
-        recordsQuery = query(
-          recordsQuery,
-          where("classId", "==", selectedClassId),
-        );
+      if (effectiveClassIds.length > 0) {
+        if (effectiveClassIds.length === 1) {
+          recordsQuery = query(
+            recordsQuery,
+            where("classId", "==", effectiveClassIds[0]),
+          );
+        } else {
+          recordsQuery = query(
+            recordsQuery,
+            where("classId", "in", effectiveClassIds),
+          );
+        }
       }
 
       const recordsSnap = await getDocsFromServer(recordsQuery as any);
@@ -255,6 +283,8 @@ export default function DailyFinancials() {
   useEffect(() => {
     loadStats();
   }, [loadStats]);
+
+  const canAccessStats = isSuperAdmin || teacherClasses.length > 0;
 
   const renderCategoryCard = (
     title: string,
@@ -382,8 +412,8 @@ export default function DailyFinancials() {
             />
           }
         >
-          {/* Class Filter - Admin Only */}
-          {isSuperAdmin && (
+          {/* Class Filter - Admin or assigned teacher */}
+          {(isSuperAdmin || teacherClasses.length > 0) && (
             <View style={styles.filterSection}>
               <Text style={styles.filterLabel}>Filter by Class:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -402,36 +432,38 @@ export default function DailyFinancials() {
                       selectedClassId === "all" && { color: "#fff" },
                     ]}
                   >
-                    All Classes
+                    {isSuperAdmin ? "All Classes" : "My Classes"}
                   </Text>
                 </TouchableOpacity>
-                {classes.map((c) => (
-                  <TouchableOpacity
-                    key={c.id}
-                    style={[
-                      styles.classChip,
-                      selectedClassId === c.id && {
-                        backgroundColor: COLORS.primary,
-                      },
-                    ]}
-                    onPress={() => setSelectedClassId(c.id)}
-                  >
-                    <Text
+                {classes
+                  .filter((c) => isSuperAdmin || teacherClasses.includes(c.id))
+                  .map((c) => (
+                    <TouchableOpacity
+                      key={c.id}
                       style={[
-                        styles.classChipText,
-                        selectedClassId === c.id && { color: "#fff" },
+                        styles.classChip,
+                        selectedClassId === c.id && {
+                          backgroundColor: COLORS.primary,
+                        },
                       ]}
+                      onPress={() => setSelectedClassId(c.id)}
                     >
-                      {c.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text
+                        style={[
+                          styles.classChipText,
+                          selectedClassId === c.id && { color: "#fff" },
+                        ]}
+                      >
+                        {c.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
               </ScrollView>
             </View>
           )}
 
-          {/* Summary Stats - Admin Only */}
-          {isSuperAdmin && (
+          {/* Summary Stats - Admin or assigned teacher */}
+          {canAccessStats && (
             <>
               <View style={styles.summaryRow}>
                 <View style={styles.summaryCard}>
@@ -500,7 +532,7 @@ export default function DailyFinancials() {
             </Text>
 
             {/* Feeding Fees - only if user has permission */}
-            {canRecordFeeding &&
+            {canViewFeeding &&
               renderCategoryCard(
                 "Feeding Fees",
                 "Daily meal fees",
@@ -512,7 +544,7 @@ export default function DailyFinancials() {
               )}
 
             {/* Bus Fees - only if user has permission */}
-            {canRecordBus &&
+            {canViewBus &&
               renderCategoryCard(
                 "Bus Fees",
                 "Transportation fees",
@@ -524,7 +556,7 @@ export default function DailyFinancials() {
               )}
 
             {/* Extra Classes - only if user has permission */}
-            {canRecordExtraClasses &&
+            {canViewExtraClasses &&
               renderCategoryCard(
                 "Extra Classes",
                 "Additional classes fees",

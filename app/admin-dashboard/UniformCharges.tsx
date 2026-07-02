@@ -6,16 +6,21 @@ import {
   getDocsFromServer,
   increment,
   limit,
+  onSnapshot,
   query,
   serverTimestamp,
   startAfter,
   where,
   writeBatch,
+  arrayUnion,
+  arrayRemove,
+  documentId,
 } from "firebase/firestore";
 import moment from "moment";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -38,19 +43,16 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-
+import { sortClasses } from "../../lib/classHelpers";
 import { sendNotification } from "../../src/services/notificationService";
 
+import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
+import { styles as sharedStyles, VIBE as sharedVibe } from "../../constants/admin-dashboard/ManageFeesStyles";
+
 const VIBE = {
+  ...sharedVibe,
   primary: "#10B981", // Uniforms Color
   secondary: "#059669",
-  bg: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#1E293B",
-  muted: "#64748B",
-  border: "#E2E8F0",
-  success: "#10B981",
-  info: "#3B82F6",
 };
 
 const UNIFORM_TYPES = [
@@ -81,6 +83,11 @@ export default function UniformCharges() {
   const [receivedFrom, setReceivedFrom] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [purchases, setPurchases] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState("all");
+  const [classModalVisible, setClassModalVisible] = useState(false);
   const [stats, setStats] = useState<any>({
     totalCollected: 0,
     count: 0,
@@ -100,12 +107,17 @@ export default function UniformCharges() {
   const fetchStats = async () => {
     try {
       if (!acadConfig.academicYear || !acadConfig.currentTerm) return;
-      const q = query(
+      let q = query(
         collection(db, "feePayments"),
         where("type", "==", "uniform"),
         where("academicYear", "==", acadConfig.academicYear),
         where("term", "==", acadConfig.currentTerm)
       );
+
+      if (selectedClassId !== "all") {
+        q = query(q, where("classId", "==", selectedClassId));
+      }
+
       const snap = await getDocsFromServer(q);
       let total = 0;
       let breakdown: any = {
@@ -154,16 +166,84 @@ export default function UniformCharges() {
     }
   };
 
+  const fetchPaymentHistory = async (studentUid: string) => {
+    setLoadingHistory(true);
+    try {
+      const q = query(
+        collection(db, "feePayments"),
+        where("studentUid", "==", studentUid),
+        where("type", "==", "uniform")
+      );
+      const snap = await getDocsFromServer(q);
+      const list = snap.docs.map(d => d.data());
+      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const fetchUniformStudents = useCallback(async () => {
+    setLoading(true);
+    setStudents([]);
+    try {
+      const year = acadConfig.academicYear;
+      if (!year) return;
+
+      let q = query(
+        collection(db, "feePayments"),
+        where("type", "==", "uniform"),
+        where("academicYear", "==", year)
+      );
+
+      if (selectedClassId !== "all") {
+        q = query(q, where("classId", "==", selectedClassId));
+      }
+
+      const snap = await getDocsFromServer(q);
+      const uids = Array.from(new Set(snap.docs.map(d => d.data().studentUid)));
+
+      if (uids.length === 0) {
+        setStudents([]);
+        return;
+      }
+
+      const list: any[] = [];
+      for (let i = 0; i < uids.length; i += 30) {
+        const batch = uids.slice(i, i + 30);
+        const uq = query(collection(db, "users"), where(documentId(), "in", batch));
+        const uSnap = await getDocsFromServer(uq);
+        uSnap.docs.forEach(d => {
+          const data = d.data();
+          list.push({
+            uid: d.id,
+            fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
+            ...data
+          });
+        });
+      }
+      setStudents(list.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+    } catch (e) {
+      console.error(e);
+      showToast({ message: "Failed to fetch uniform students", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }, [acadConfig.academicYear, selectedClassId]);
+
   const fetchStudents = useCallback(async (isFirstLoad = false) => {
-    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+    if (isFetchingRef.current) return;
+    if (!isFirstLoad && !hasMoreRef.current) return;
+
+    // IMPORTANT: General billing list only shows students when searching
+    if (searchQuery.trim().length < 2) {
       if (isFirstLoad) {
         setStudents([]);
         setLoading(false);
       }
       return;
     }
-    if (isFetchingRef.current) return;
-    if (!isFirstLoad && !hasMoreRef.current) return;
 
     isFetchingRef.current = true;
     if (isFirstLoad) {
@@ -180,16 +260,23 @@ export default function UniformCharges() {
         limit(PAGE_SIZE)
       );
 
+      if (selectedClassId !== "all") {
+        q = query(q, where("classId", "==", selectedClassId));
+      }
+
       if (!isFirstLoad && lastVisibleRef.current) {
         q = query(q, startAfter(lastVisibleRef.current));
       }
 
       const snap = await getDocsFromServer(q);
-      const batch = snap.docs.map(d => ({
-        uid: d.id,
-        fullName: `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
-        ...d.data()
-      }));
+      const batch = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          uid: d.id,
+          fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
+          ...data
+        };
+      });
 
       lastVisibleRef.current = snap.docs[snap.docs.length - 1];
       hasMoreRef.current = snap.docs.length === PAGE_SIZE;
@@ -201,13 +288,32 @@ export default function UniformCharges() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [searchQuery]);
+  }, [selectedClassId]);
+
+  useEffect(() => {
+    if (searchQuery.trim().length >= 2) {
+      if (activeFilter) setActiveFilter(null);
+      fetchStudents(true);
+    } else if (selectedClassId !== "all") {
+      fetchUniformStudents();
+    } else {
+      setStudents([]);
+    }
+  }, [selectedClassId, searchQuery]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "classes"), (snap) => {
+      const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name, ...d.data() }));
+      setClasses(sortClasses(list));
+    });
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (acadConfig.academicYear) {
       fetchStats();
     }
-  }, [acadConfig.academicYear, acadConfig.currentTerm]);
+  }, [acadConfig.academicYear, acadConfig.currentTerm, selectedClassId]);
 
   useEffect(() => {
     if (activeFilter) {
@@ -218,13 +324,6 @@ export default function UniformCharges() {
   useEffect(() => {
     if (searchQuery.trim().length >= 2) {
       setActiveFilter(null);
-      const delayDebounceFn = setTimeout(() => {
-        fetchStudents(true);
-      }, 500);
-      return () => clearTimeout(delayDebounceFn);
-    } else if (!activeFilter) {
-      setStudents([]);
-      setLoading(false);
     }
   }, [searchQuery]);
 
@@ -234,16 +333,78 @@ export default function UniformCharges() {
       fetchPurchases(activeFilter);
     } else if (searchQuery.trim().length >= 2) {
       fetchStudents(true);
-    } else {
-      setRefreshing(false);
+    } else if (selectedClassId !== "all") {
+      fetchUniformStudents();
     }
     fetchStats();
   };
 
   const filteredStudents = useMemo(() => {
+    if (!students) return [];
     const lower = searchQuery.toLowerCase();
-    return students.filter(s => s.fullName.toLowerCase().includes(lower));
+    return students.filter(s => s && s.fullName && s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
+
+  const handleDeletePayment = (payment: any) => {
+    if (!selectedStudent) return;
+
+    const performDeletion = async () => {
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+
+      if (!year || !term) {
+        return showToast({
+          message: "Action blocked: Academic year and term must be configured.",
+          type: "error",
+        });
+      }
+
+      setSaving(true);
+      try {
+        const recordId = `${selectedStudent.uid}_${year}_${term}`;
+        const batch = writeBatch(db);
+        const amount = Number(payment.amount) || 0;
+
+        // For Uniforms, the payment and billing are simultaneous.
+        // So we reduce BOTH uniformPaid AND uniformBill.
+        // Wallet balance remains unchanged as it was never truly increased/decreased (net zero impact).
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          uniformPaid: increment(-amount),
+          uniformBill: increment(-amount),
+          payments: arrayRemove(payment),
+          lastUpdated: serverTimestamp(),
+        });
+        batch.update(doc(db, "users", selectedStudent.uid), {
+          uniformPaid: increment(-amount),
+          uniformBill: increment(-amount),
+        });
+
+        if (payment.receiptNo) {
+          batch.delete(doc(db, "feePayments", payment.receiptNo));
+        }
+
+        await batch.commit();
+        showToast({ message: "Transaction reverted successfully", type: "success" });
+        setPaymentModalVisible(false);
+        fetchStats();
+      } catch (err) {
+        console.error("Delete transaction error:", err);
+        showToast({ message: "Failed to revert transaction", type: "error" });
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    const msg = "Confirm Deletion\n\nAre you sure you want to delete this transaction? This will automatically adjust the student's records.";
+    if (Platform.OS === "web") {
+      if (window.confirm(msg)) performDeletion();
+    } else {
+      Alert.alert("Confirm Deletion", msg, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: performDeletion },
+      ]);
+    }
+  };
 
   const handleLogPayment = async () => {
     const val = parseFloat(amount);
@@ -285,16 +446,17 @@ export default function UniformCharges() {
       const recordId = `${selectedStudent.uid}_${year}_${term}`;
 
       batch.set(doc(db, "studentFeeRecords", recordId), {
-        uniformBalance: increment(val),
+        uniformPaid: increment(val),
         uniformBill: increment(val),
-        balance: increment(val),
+        balance: increment(0),
+        payments: arrayUnion(entry),
         lastUpdated: serverTimestamp(),
       }, { merge: true });
 
       batch.update(doc(db, "users", selectedStudent.uid), {
-        uniformBalance: increment(val),
+        uniformPaid: increment(val),
         uniformBill: increment(val),
-        walletBalance: increment(val),
+        walletBalance: increment(0),
       });
 
       await batch.commit();
@@ -304,7 +466,7 @@ export default function UniformCharges() {
         await sendNotification({
           recipientId: selectedStudent.uid,
           senderId: appUser?.uid || "admin",
-          senderName: "School Finance",
+          senderName: appUser?.displayName || "Administrator",
           title: "Uniform Payment Recorded",
           body: `A payment for ${typeLabel} (${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()}) has been recorded for ${selectedStudent.fullName}.`,
           type: "payment",
@@ -335,60 +497,80 @@ export default function UniformCharges() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
+      <View style={sharedStyles.header}>
         <LinearGradient
           colors={[VIBE.primary, VIBE.secondary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.headerTop}
+          style={sharedStyles.headerTop}
         >
-          <View style={styles.navBar}>
-            <TouchableOpacity onPress={() => router.push("/admin-dashboard/StudentCharges")} style={styles.headerIconBtn}>
+          <View style={sharedStyles.navBar}>
+            <TouchableOpacity onPress={() => router.push("/admin-dashboard/StudentCharges")} style={sharedStyles.headerIconBtn}>
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
-            <View style={styles.titleCenter}>
-              <Text style={styles.headerTitle}>Uniforms</Text>
-              <Text style={styles.headerSub}>WEAR & GEAR</Text>
+            <View style={sharedStyles.titleCenter}>
+              <Text style={sharedStyles.headerTitle}>Uniforms</Text>
+              <Text style={sharedStyles.headerSub}>WEAR & GEAR</Text>
             </View>
-            <View style={{ width: 44 }} />
+            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={sharedStyles.headerIconBtn}>
+              <SVGIcon name="funnel-outline" size={22} color="#fff" />
+            </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            style={sharedStyles.glassPill}
+            onPress={() => setClassModalVisible(true)}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <SVGIcon name="layers-outline" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 6 }} />
+              <Text style={sharedStyles.glassLabel}>FILTER BY CLASS</Text>
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={sharedStyles.glassValue}>
+                {selectedClassId === "all" ? "All Classes" : classes.find(c => c.id === selectedClassId)?.name || "Select Class"}
+              </Text>
+              <SVGIcon name="chevron-down" size={18} color="rgba(255,255,255,0.6)" />
+            </View>
+          </TouchableOpacity>
         </LinearGradient>
 
-        <View style={styles.searchStrip}>
-          <View style={styles.searchBar}>
+        <View style={sharedStyles.searchStrip}>
+          <View style={sharedStyles.searchBar}>
             <SVGIcon name="search" size={18} color={VIBE.muted} />
             <TextInput
               placeholder="Search students..."
-              style={styles.searchInput}
+              style={sharedStyles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor={VIBE.muted}
             />
           </View>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound}>
+          <TouchableOpacity onPress={handleRefresh} style={sharedStyles.refreshRound}>
             <SVGIcon name="refresh" size={18} color={VIBE.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.statsRow}>
-        <View style={[styles.statCard, { backgroundColor: VIBE.primary, flex: 1.5 }]}>
-          <Text style={styles.statLabel}>Term Total</Text>
-          <Text style={styles.statValue}>₵{stats.totalCollected.toLocaleString()}</Text>
-        </View>
-        <View style={[styles.statCard, { backgroundColor: VIBE.info, flex: 1 }]}>
-          <Text style={styles.statLabel}>Trans.</Text>
-          <Text style={styles.statValue}>{stats.count}</Text>
+      <View style={sharedStyles.statsDashboard}>
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <View style={[sharedStyles.statBox, { backgroundColor: VIBE.primary, flex: 1.5, width: 'auto' }]}>
+            <Text style={sharedStyles.statLabel}>Term Total</Text>
+            <Text style={sharedStyles.statValue}>₵{stats.totalCollected.toLocaleString()}</Text>
+          </View>
+          <View style={[sharedStyles.statBox, { backgroundColor: VIBE.info, flex: 1, width: 'auto' }]}>
+            <Text style={sharedStyles.statLabel}>Trans.</Text>
+            <Text style={sharedStyles.statValue}>{stats.count}</Text>
+          </View>
         </View>
       </View>
 
-      <View style={styles.breakdownContainer}>
-        <Text style={styles.sectionLabel}>Revenue Breakdown</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.breakdownScroll}>
+      <View style={sharedStyles.breakdownContainer}>
+        <Text style={sharedStyles.sectionLabel}>Revenue Breakdown</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={sharedStyles.breakdownScroll}>
           {UNIFORM_TYPES.map(type => (
             <TouchableOpacity
               key={type.id}
-              style={[styles.breakdownCard, activeFilter === type.id && styles.activeBreakdownCard]}
+              style={[sharedStyles.breakdownCard, activeFilter === type.id && sharedStyles.activeBreakdownCard]}
               onPress={() => {
                 if (activeFilter === type.id) {
                   setActiveFilter(null);
@@ -399,12 +581,12 @@ export default function UniformCharges() {
                 }
               }}
             >
-              <View style={[styles.typeIconWrap, { backgroundColor: activeFilter === type.id ? "#fff" : VIBE.primary + "10" }]}>
+              <View style={[sharedStyles.typeIconWrap, { backgroundColor: activeFilter === type.id ? "#fff" : VIBE.primary + "10" }]}>
                 <SVGIcon name={type.icon} size={16} color={activeFilter === type.id ? VIBE.primary : VIBE.primary} />
               </View>
               <View>
-                <Text style={[styles.breakdownLabel, activeFilter === type.id && styles.activeBreakdownLabel]}>{type.label}</Text>
-                <Text style={[styles.breakdownValue, activeFilter === type.id && styles.activeBreakdownValue]}>₵{(stats.breakdown?.[type.id] || 0).toLocaleString()}</Text>
+                <Text style={[sharedStyles.breakdownLabel, activeFilter === type.id && sharedStyles.activeBreakdownLabel]}>{type.label}</Text>
+                <Text style={[sharedStyles.breakdownValue, activeFilter === type.id && sharedStyles.activeBreakdownValue]}>₵{(stats.breakdown?.[type.id] || 0).toLocaleString()}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -412,8 +594,8 @@ export default function UniformCharges() {
       </View>
 
       {activeFilter && (
-        <View style={styles.filterInfoBar}>
-          <Text style={styles.filterInfoText}>Showing {UNIFORM_TYPES.find(t => t.id === activeFilter)?.label} purchases</Text>
+        <View style={sharedStyles.filterInfoBar}>
+          <Text style={sharedStyles.filterInfoText}>Showing {UNIFORM_TYPES.find(t => t.id === activeFilter)?.label} purchases</Text>
           <TouchableOpacity onPress={() => setActiveFilter(null)}>
             <SVGIcon name="close-circle" size={20} color={VIBE.muted} />
           </TouchableOpacity>
@@ -423,105 +605,158 @@ export default function UniformCharges() {
       <FlatList
         data={activeFilter ? purchases : filteredStudents}
         keyExtractor={item => item.uid || item.id}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={sharedStyles.flatListContent}
         onEndReached={() => !activeFilter && fetchStudents()}
         renderItem={({ item }) => {
           if (activeFilter) {
             return (
-              <View style={styles.purchaseCard}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{item.studentName?.charAt(0)}</Text>
+              <TouchableOpacity
+                style={sharedStyles.financeCard}
+                onPress={() => {
+                  router.push({
+                    pathname: "/shared/receipt-view",
+                    params: {
+                      type: 'payment',
+                      studentId: item.studentUid,
+                      paymentId: item.receiptNo,
+                      year: item.academicYear,
+                      term: item.term
+                    }
+                  });
+                }}
+              >
+                <View style={sharedStyles.cardContent}>
+                  <View style={sharedStyles.leftSection}>
+                    <View style={[sharedStyles.avatar, { backgroundColor: VIBE.primary + '15' }]}>
+                      <Text style={[sharedStyles.avatarText, { color: VIBE.primary }]}>{item.studentName?.charAt(0)}</Text>
+                    </View>
+                    <View style={sharedStyles.mainInfo}>
+                      <Text style={sharedStyles.studentName}>{item.studentName}</Text>
+                      <Text style={sharedStyles.debtLabel}>{item.className} • {moment(item.createdAt).format("MMM DD, HH:mm")}</Text>
+                      <Text style={sharedStyles.dailyReceipt}>{item.receiptNo}</Text>
+                    </View>
+                  </View>
+                  <View style={sharedStyles.rightSection}>
+                    <Text style={sharedStyles.dailyAmount}>₵{item.amount.toLocaleString()}</Text>
+                    <SVGIcon name="eye-outline" size={14} color={VIBE.muted} style={{ marginTop: 4 }} />
+                  </View>
                 </View>
-                <View style={styles.studentInfo}>
-                  <Text style={styles.studentName}>{item.studentName}</Text>
-                  <Text style={styles.studentClass}>{item.className} • {moment(item.createdAt).format("MMM DD, HH:mm")}</Text>
-                  <Text style={styles.receiptNo}>{item.receiptNo}</Text>
-                </View>
-                <View style={styles.purchaseAmount}>
-                  <Text style={styles.amountText}>₵{item.amount.toLocaleString()}</Text>
-                </View>
-              </View>
+              </TouchableOpacity>
             );
           }
+
+          // Tuition balance logic
+          const isolatedTotal = (item.ptaBalance || 0) + (item.admissionBalance || 0) +
+                                (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
+                                (item.uniformBalance || 0) + (item.otherBalance || 0);
+          const tuitionBalance = Math.max(0, (item.walletBalance || 0) - (isolatedTotal - (item.uniformBalance || 0)));
+
           return (
             <TouchableOpacity
-              style={styles.studentCard}
+              style={sharedStyles.financeCard}
               onPress={() => {
                 setSelectedStudent(item);
                 setPaymentModalVisible(true);
+                fetchPaymentHistory(item.uid);
               }}
             >
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{item.fullName.charAt(0)}</Text>
+              <View style={sharedStyles.cardContent}>
+                <View style={sharedStyles.leftSection}>
+                  <View style={[sharedStyles.avatar, { backgroundColor: VIBE.primary + '15' }]}>
+                    <Text style={[sharedStyles.avatarText, { color: VIBE.primary }]}>{item.fullName.charAt(0)}</Text>
+                  </View>
+                  <View style={sharedStyles.mainInfo}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={sharedStyles.studentName}>{item.fullName}</Text>
+                      <View style={[sharedStyles.filterChip, { backgroundColor: tuitionBalance > 0 ? VIBE.danger + '10' : VIBE.success + '10', borderColor: 'transparent' }]}>
+                        <Text style={[sharedStyles.filterChipText, { color: tuitionBalance > 0 ? VIBE.danger : VIBE.success }]}>
+                          Tuition: ₵{tuitionBalance.toFixed(0)}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={sharedStyles.debtLabel}>{item.className}</Text>
+                    <View style={sharedStyles.tuitionBreakdown}>
+                      <View style={sharedStyles.breakdownItem}>
+                        <Text style={sharedStyles.breakdownLabel}>TOTAL UNIFORM</Text>
+                        <Text style={[sharedStyles.breakdownValue, { color: VIBE.info }]}>₵{(item.uniformPaid || 0).toFixed(0)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+                <View style={{ marginLeft: 10 }}>
+                  <SVGIcon name="cart-outline" size={24} color={VIBE.primary} />
+                </View>
               </View>
-              <View style={styles.studentInfo}>
-                <Text style={styles.studentName}>{item.fullName}</Text>
-                <Text style={styles.studentClass}>{item.className}</Text>
-              </View>
-              <SVGIcon name="cart-outline" size={24} color={VIBE.primary} />
             </TouchableOpacity>
           );
         }}
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator size="large" color={VIBE.primary} style={{ marginTop: 50 }} />
-          ) : (searchQuery.length < 2 && !activeFilter) ? (
-            <View style={styles.emptyWrap}>
+          ) : (searchQuery.length < 2 && !activeFilter && selectedClassId === "all") ? (
+            <View style={sharedStyles.emptyWrap}>
               <SVGIcon name="search" size={64} color="#CBD5E1" />
-              <Text style={styles.emptyText}>Search students to begin</Text>
+              <Text style={sharedStyles.emptyText}>Search students to begin</Text>
             </View>
           ) : (
-            <View style={styles.emptyWrap}>
-              <SVGIcon name={activeFilter ? "receipt" : "shirt"} size={64} color="#CBD5E1" />
-              <Text style={styles.emptyText}>{activeFilter ? "No purchases found for this category" : "No students found"}</Text>
+            <View style={sharedStyles.emptyWrap}>
+              <SVGIcon name={activeFilter ? "receipt" : selectedClassId !== "all" ? "person" : "shirt"} size={64} color="#CBD5E1" />
+              <Text style={sharedStyles.emptyText}>
+                {activeFilter
+                  ? "No purchases found for this category"
+                  : selectedClassId !== "all"
+                    ? "No students with uniform records in this class"
+                    : "No students found"}
+              </Text>
             </View>
           )
         }
       />
 
       <Modal visible={paymentModalVisible} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.overlay}>
-          <View style={styles.modalBody}>
-            <View style={styles.modalHeader}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={sharedStyles.overlay}>
+          <View style={sharedStyles.sheetBody}>
+            <View style={sharedStyles.sheetHandle} />
+            <View style={sharedStyles.sheetHeader}>
               <View>
-                <Text style={styles.modalTitle}>{selectedStudent?.fullName}</Text>
-                <Text style={styles.modalSubtitle}>UNIFORM PURCHASE</Text>
+                <Text style={sharedStyles.sheetTitle}>{selectedStudent?.fullName}</Text>
+                <Text style={sharedStyles.glassLabel}>UNIFORM PURCHASE</Text>
               </View>
-              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeBtn}>
+              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={sharedStyles.closeRound}>
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.label}>Select Category</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeScroll} contentContainerStyle={{ gap: 10 }}>
+              <Text style={sharedStyles.glassLabel}>Select Category</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 25 }} contentContainerStyle={{ gap: 10 }}>
                 {UNIFORM_TYPES.map(t => (
                   <TouchableOpacity
                     key={t.id}
-                    style={[styles.typeBtn, selectedType === t.id && styles.activeTypeBtn]}
+                    style={[sharedStyles.methodBtn, selectedType === t.id && { backgroundColor: VIBE.primary, borderColor: VIBE.primary }, { flexDirection: 'row', gap: 8, paddingHorizontal: 15 }]}
                     onPress={() => setSelectedType(t.id)}
                   >
                     <SVGIcon name={t.icon} size={20} color={selectedType === t.id ? "#fff" : VIBE.muted} />
-                    <Text style={[styles.typeText, selectedType === t.id && styles.activeTypeText]}>{t.label}</Text>
+                    <Text style={[sharedStyles.methodText, selectedType === t.id && { color: "#fff" }]}>{t.label}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              <View style={styles.inputRow}>
+              <View style={{ flexDirection: 'row', gap: 15, marginBottom: 25 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>Price (₵)</Text>
+                  <Text style={sharedStyles.glassLabel}>Price (₵)</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={sharedStyles.pillInput}
                     placeholder="0.00"
                     keyboardType="numeric"
                     value={amount}
                     onChangeText={setAmount}
                   />
                 </View>
-                <View style={{ flex: 1, marginLeft: 15 }}>
-                  <Text style={styles.label}>Payer Name</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={sharedStyles.glassLabel}>Payer Name</Text>
                   <TextInput
-                    style={styles.modalInput}
+                    style={[sharedStyles.pillInput, { fontSize: 16 }]}
                     placeholder="Student/Parent"
                     value={receivedFrom}
                     onChangeText={setReceivedFrom}
@@ -529,84 +764,74 @@ export default function UniformCharges() {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.submitBtn} onPress={handleLogPayment} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>RECORD PURCHASE</Text>}
+              <TouchableOpacity style={[sharedStyles.saveBtn, { backgroundColor: VIBE.primary }]} onPress={handleLogPayment} disabled={saving}>
+                {saving ? <ActivityIndicator color="#fff" /> : <Text style={sharedStyles.saveBtnText}>RECORD PURCHASE</Text>}
               </TouchableOpacity>
+
+              <View style={sharedStyles.historyBlock}>
+                <Text style={sharedStyles.blockTitle}>Recent Uniform Purchases</Text>
+                {loadingHistory ? (
+                  <ActivityIndicator color={VIBE.primary} />
+                ) : history.length > 0 ? (
+                  history.map((h, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={sharedStyles.transactionTile}
+                      onPress={() => {
+                        setPaymentModalVisible(false);
+                        router.push({
+                          pathname: "/shared/receipt-view",
+                          params: {
+                            type: 'payment',
+                            studentId: selectedStudent?.uid,
+                            paymentId: h.receiptNo,
+                            year: h.academicYear,
+                            term: h.term
+                          }
+                        });
+                      }}
+                      onLongPress={() => handleDeletePayment(h)}
+                    >
+                      <View style={sharedStyles.tileHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={sharedStyles.tileAmt}>₵{h.amount.toFixed(2)}</Text>
+                          <View style={[sharedStyles.filterChip, { backgroundColor: VIBE.primary + '15', borderColor: 'transparent' }]}>
+                            <Text style={[sharedStyles.filterChipText, { color: VIBE.primary }]}>
+                              {h.subTypeLabel || 'UNIFORM'}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={sharedStyles.methodText}>{h.method}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                        <Text style={sharedStyles.tileDate}>{moment(h.createdAt).format("MMM DD, YYYY")}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <Text style={sharedStyles.dailyReceipt}>{h.receiptNo}</Text>
+                          <SVGIcon name="eye-outline" size={14} color={VIBE.muted} />
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <Text style={sharedStyles.noHistory}>No previous uniform transactions</Text>
+                )}
+              </View>
             </ScrollView>
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ClassSelectorModal
+        visible={classModalVisible}
+        onClose={() => setClassModalVisible(false)}
+        classes={classes}
+        selectedClassId={selectedClassId}
+        onSelect={setSelectedClassId}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: VIBE.bg },
-  header: { backgroundColor: "#fff", borderBottomLeftRadius: 30, borderBottomRightRadius: 30, ...SHADOWS.medium, paddingBottom: 20 },
-  headerTop: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  navBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  headerIconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
-  titleCenter: { alignItems: "center" },
-  headerTitle: { fontSize: 20, fontWeight: "900", color: "#fff" },
-  headerSub: { fontSize: 10, fontWeight: "800", color: "rgba(255,255,255,0.7)", letterSpacing: 2 },
-  searchStrip: { flexDirection: "row", paddingHorizontal: 20, marginTop: -25, gap: 10 },
-  searchBar: { flex: 1, height: 50, backgroundColor: "#fff", borderRadius: 25, flexDirection: "row", alignItems: "center", paddingHorizontal: 20, ...SHADOWS.medium, borderWidth: 1, borderColor: VIBE.border },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 14, fontWeight: "600", color: VIBE.text },
-  refreshRound: { width: 50, height: 50, borderRadius: 25, backgroundColor: "#fff", justifyContent: "center", alignItems: "center", ...SHADOWS.medium, borderWidth: 1, borderColor: VIBE.border },
-  listContent: { padding: 20, paddingTop: 30 },
-  studentCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", padding: 15, borderRadius: 20, marginBottom: 12, ...SHADOWS.small, borderWidth: 1, borderColor: VIBE.border },
-  avatar: { width: 45, height: 45, borderRadius: 15, backgroundColor: VIBE.primary + "15", justifyContent: "center", alignItems: "center" },
-  avatarText: { fontSize: 20, fontWeight: "900", color: VIBE.primary },
-  studentInfo: { flex: 1, marginLeft: 15 },
-  studentName: { fontSize: 15, fontWeight: "800", color: VIBE.text },
-  studentClass: { fontSize: 11, color: VIBE.muted, fontWeight: "600", marginTop: 2 },
-  emptyWrap: { alignItems: "center", marginTop: 100, opacity: 0.5 },
-  emptyText: { fontSize: 16, fontWeight: "900", color: "#94A3B8", marginTop: 15 },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalBody: { backgroundColor: "#fff", borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 25, maxHeight: "80%" },
-  modalHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 25 },
-  modalTitle: { fontSize: 18, fontWeight: "900", color: VIBE.text },
-  modalSubtitle: { fontSize: 10, fontWeight: "800", color: VIBE.muted, letterSpacing: 1 },
-  closeBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: VIBE.bg, justifyContent: "center", alignItems: "center" },
-  label: { fontSize: 11, fontWeight: "900", color: VIBE.muted, marginBottom: 10, textTransform: "uppercase" },
-  typeScroll: { marginBottom: 25 },
-  typeBtn: { paddingHorizontal: 15, paddingVertical: 10, borderRadius: 12, backgroundColor: VIBE.bg, flexDirection: "row", alignItems: "center", gap: 8, borderWidth: 1, borderColor: VIBE.border },
-  activeTypeBtn: { backgroundColor: VIBE.primary, borderColor: VIBE.primary },
-  typeText: { fontSize: 13, fontWeight: "700", color: VIBE.muted },
-  activeTypeText: { color: "#fff" },
-  inputRow: { flexDirection: "row", marginBottom: 25 },
-  modalInput: { backgroundColor: VIBE.bg, borderRadius: 15, padding: 15, fontSize: 16, fontWeight: "700", color: VIBE.text, borderWidth: 1, borderColor: VIBE.border },
-  submitBtn: { backgroundColor: VIBE.primary, height: 60, borderRadius: 20, justifyContent: "center", alignItems: "center", ...SHADOWS.medium, marginBottom: 20 },
-  submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "900" },
-  statsRow: { flexDirection: "row", paddingHorizontal: 20, marginTop: 20, gap: 12 },
-  statCard: { padding: 15, borderRadius: 20, justifyContent: "center", ...SHADOWS.small },
-  statLabel: { color: "rgba(255,255,255,0.8)", fontSize: 10, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.5 },
-  statValue: { color: "#fff", fontSize: 20, fontWeight: "900", marginTop: 4 },
-  sectionLabel: { fontSize: 10, fontWeight: "900", color: VIBE.muted, marginLeft: 20, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 },
-  breakdownContainer: { marginTop: 15 },
-  breakdownScroll: { paddingHorizontal: 20, gap: 10, paddingBottom: 5 },
-  breakdownCard: {
-    backgroundColor: "#fff",
-    padding: 12,
-    borderRadius: 15,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    borderWidth: 1,
-    borderColor: VIBE.border,
-    minWidth: 120,
-    ...SHADOWS.small,
-  },
-  typeIconWrap: { width: 32, height: 32, borderRadius: 10, justifyContent: "center", alignItems: "center" },
-  activeBreakdownCard: { backgroundColor: VIBE.primary, borderColor: VIBE.primary },
-  activeBreakdownLabel: { color: "rgba(255,255,255,0.8)" },
-  activeBreakdownValue: { color: "#fff" },
-  filterInfoBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginHorizontal: 20, marginTop: 15, padding: 10, backgroundColor: VIBE.bg, borderRadius: 10, borderWidth: 1, borderColor: VIBE.border },
-  filterInfoText: { fontSize: 12, fontWeight: "700", color: VIBE.muted },
-  purchaseCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", padding: 15, borderRadius: 20, marginBottom: 12, ...SHADOWS.small, borderWidth: 1, borderColor: VIBE.border },
-  receiptNo: { fontSize: 9, fontWeight: "800", color: VIBE.primary, marginTop: 4, textTransform: "uppercase" },
-  purchaseAmount: { alignItems: "flex-end" },
-  amountText: { fontSize: 16, fontWeight: "900", color: VIBE.text },
-  breakdownLabel: { fontSize: 9, fontWeight: "800", color: VIBE.muted, textTransform: "uppercase" },
-  breakdownValue: { fontSize: 14, fontWeight: "900", color: VIBE.text, marginTop: 1 },
+  container: { flex: 1, backgroundColor: sharedVibe.bg },
 });

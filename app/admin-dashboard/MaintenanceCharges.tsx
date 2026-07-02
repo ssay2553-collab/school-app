@@ -10,43 +10,66 @@ import {
   serverTimestamp,
   where,
   writeBatch,
+  limit,
+  startAfter,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import moment from "moment";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
+  RefreshControl,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
+  Dimensions,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
-import { COLORS, SHADOWS } from "../../constants/theme";
+import { COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { sortClasses } from "../../lib/classHelpers";
-
 import { sendNotification } from "../../src/services/notificationService";
 
-const VIBE = {
+import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
+import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
+
+const { width } = Dimensions.get("window");
+const PAGE_SIZE = 50;
+
+type Student = {
+  uid: string;
+  fullName: string;
+  classId: string;
+  className: string;
+  maintenancePaid: number;
+  maintenanceBill: number;
+  maintenanceBalance: number;
+  walletBalance: number;
+  admissionBalance?: number;
+  ptaBalance?: number;
+  otherBalance?: number;
+  booksBalance?: number;
+  uniformBalance?: number;
+};
+
+const THEME = {
   primary: "#EF4444", // Maintenance Color
   secondary: "#DC2626",
-  bg: "#F8FAFC",
-  surface: "#FFFFFF",
-  text: "#1E293B",
-  muted: "#64748B",
-  border: "#E2E8F0",
-  success: "#10B981",
 };
 
 export default function MaintenanceCharges() {
@@ -55,140 +78,268 @@ export default function MaintenanceCharges() {
   const router = useRouter();
   const acadConfig = useAcademicConfig();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [classes, setClasses] = useState<any[]>([]);
-  const [selectedClassId, setSelectedClassId] = useState("");
-  const [students, setStudents] = useState<any[]>([]);
-  const [chargeAmount, setChargeAmount] = useState("");
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState("");
+  const [selectedClassId, setSelectedClassId] = useState("all");
+  const [classModalVisible, setClassModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [students, setStudents] = useState<Student[]>([]);
 
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [receivedFrom, setReceivedFrom] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const [chargeAmount, setChargeAmount] = useState("");
+  const [stats, setStats] = useState({ totalBilled: 0, totalCollected: 0 });
+
+  const lastVisibleRef = useRef<any>(null);
+  const hasMoreRef = useRef(true);
+  const isFetchingRef = useRef(false);
+
+  // Initialize classes
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "classes"), (snap) => {
       const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name, ...d.data() }));
-      const sorted = sortClasses(list);
-      setClasses(sorted);
-      if (sorted.length > 0 && !selectedClassId) setSelectedClassId(sorted[0].id);
+      setClasses(sortClasses(list));
     });
     return () => unsub();
   }, []);
 
-  useEffect(() => {
-    if (selectedClassId) fetchStudents();
-  }, [selectedClassId]);
-
-  const fetchStudents = async () => {
-    setLoading(true);
+  const fetchStats = async () => {
     try {
+      if (!acadConfig.academicYear || !acadConfig.currentTerm) return;
       const q = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("classId", "==", selectedClassId),
-        where("status", "in", ["active", "pending_activation"])
+        collection(db, "feePayments"),
+        where("type", "in", ["maintenance", "maintenance_payment"]),
+        where("academicYear", "==", acadConfig.academicYear),
+        where("term", "==", acadConfig.currentTerm)
       );
       const snap = await getDocsFromServer(q);
-      const list = snap.docs.map((d) => ({
-        uid: d.id,
-        fullName: `${d.data().profile?.firstName || ""} ${d.data().profile?.lastName || ""}`.trim(),
-        ...d.data(),
-      }));
-      setStudents(list.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+      let collected = 0;
+      let billed = 0;
+      snap.docs.forEach(d => {
+        const data = d.data();
+        if (data.type === "maintenance_payment") collected += (data.amount || 0);
+        if (data.type === "maintenance") billed += (data.amount || 0);
+      });
+      setStats({ totalCollected: collected, totalBilled: billed });
     } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
+      console.error("Error fetching Maintenance stats:", e);
     }
   };
 
-  const applyBulkCharge = async () => {
-    const val = parseFloat(chargeAmount);
-    if (isNaN(val) || val <= 0) return showToast({ message: "Invalid amount", type: "error" });
-    if (students.length === 0) return showToast({ message: "No students in class", type: "error" });
+  const fetchStudents = useCallback(async (isFirstLoad = false) => {
+    if (isFetchingRef.current) return;
+
+    if (searchQuery.length < 2 && selectedClassId === "all") {
+      if (isFirstLoad) {
+        setStudents([]);
+        setLoading(false);
+      }
+      return;
+    }
+
+    if (!isFirstLoad && !hasMoreRef.current) return;
+
+    isFetchingRef.current = true;
+    if (isFirstLoad) {
+      setLoading(true);
+      lastVisibleRef.current = null;
+      hasMoreRef.current = true;
+    }
+
+    try {
+      let q = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("status", "in", ["active", "pending_activation"]),
+        limit(PAGE_SIZE)
+      );
+
+      if (selectedClassId !== "all") {
+        q = query(q, where("classId", "==", selectedClassId));
+      }
+
+      if (!isFirstLoad && lastVisibleRef.current) {
+        q = query(q, startAfter(lastVisibleRef.current));
+      }
+
+      const snap = await getDocsFromServer(q);
+      if (snap.empty) {
+        hasMoreRef.current = false;
+        if (isFirstLoad) setStudents([]);
+        return;
+      }
+
+      const batch: Student[] = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          uid: d.id,
+          fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Student",
+          classId: data.classId || "unknown",
+          className: data.className || "Class",
+          maintenancePaid: data.maintenancePaid || 0,
+          maintenanceBill: data.maintenanceBill || 0,
+          maintenanceBalance: data.maintenanceBalance || 0,
+          walletBalance: data.walletBalance || 0,
+          admissionBalance: data.admissionBalance || 0,
+          ptaBalance: data.ptaBalance || 0,
+          otherBalance: data.otherBalance || 0,
+          booksBalance: data.booksBalance || 0,
+          uniformBalance: data.uniformBalance || 0,
+        };
+      });
+
+      lastVisibleRef.current = snap.docs[snap.docs.length - 1];
+      hasMoreRef.current = snap.docs.length === PAGE_SIZE;
+      setStudents(prev => isFirstLoad ? batch : [...prev, ...batch]);
+    } catch (e) {
+      console.error(e);
+      showToast({ message: "Failed to fetch students", type: "error" });
+    } finally {
+      isFetchingRef.current = false;
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [selectedClassId]);
+
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      fetchStudents(true);
+    }, 400);
+    return () => clearTimeout(delay);
+  }, [selectedClassId, searchQuery, acadConfig.academicYear, acadConfig.currentTerm]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [selectedClassId, acadConfig.academicYear, acadConfig.currentTerm]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchStudents(true);
+    fetchStats();
+  };
+
+  const filteredStudents = useMemo(() => {
+    const lower = searchQuery.toLowerCase();
+    return students.filter(s => s.fullName.toLowerCase().includes(lower));
+  }, [students, searchQuery]);
+
+  const fetchPaymentHistory = async (studentUid: string) => {
+    setLoadingHistory(true);
+    try {
+      const q = query(
+        collection(db, "feePayments"),
+        where("studentUid", "==", studentUid),
+        where("type", "in", ["maintenance", "maintenance_payment"])
+      );
+      const snap = await getDocsFromServer(q);
+      const list = snap.docs.map(d => d.data());
+      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleDeletePayment = (payment: any) => {
+    if (!selectedStudent) return;
+
+    const performDeletion = async () => {
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+
+      if (!year || !term) {
+        return showToast({
+          message: "Action blocked: Academic year and term must be configured.",
+          type: "error",
+        });
+      }
+
+      setSaving(true);
+      try {
+        const recordId = `${selectedStudent.uid}_${year}_${term}`;
+        const batch = writeBatch(db);
+        const amount = Number(payment.amount) || 0;
+        const isPayment = (payment.type || "").toLowerCase() === "maintenance_payment";
+
+        if (isPayment) {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            maintenancePaid: increment(-amount),
+            maintenanceBalance: increment(amount),
+            balance: increment(amount),
+          });
+          batch.update(doc(db, "users", selectedStudent.uid), {
+            maintenancePaid: increment(-amount),
+            maintenanceBalance: increment(amount),
+            walletBalance: increment(amount),
+          });
+        } else {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            maintenanceBill: increment(-amount),
+            maintenanceBalance: increment(-amount),
+            balance: increment(-amount),
+          });
+          batch.update(doc(db, "users", selectedStudent.uid), {
+            maintenanceBill: increment(-amount),
+            maintenanceBalance: increment(-amount),
+            walletBalance: increment(-amount),
+          });
+        }
+
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          payments: arrayRemove(payment),
+          lastUpdated: serverTimestamp(),
+        });
+
+        if (payment.receiptNo) {
+          batch.delete(doc(db, "feePayments", payment.receiptNo));
+        }
+
+        await batch.commit();
+        showToast({ message: "Transaction reverted successfully", type: "success" });
+        setPaymentModalVisible(false);
+        fetchStats();
+        fetchStudents(true);
+      } catch (err) {
+        console.error("Delete transaction error:", err);
+        showToast({ message: "Failed to revert transaction", type: "error" });
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    Alert.alert("Confirm Deletion", "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: performDeletion },
+    ]);
+  };
+
+  const handleLogPayment = async () => {
+    const val = parseFloat(paymentAmount);
+    if (isNaN(val) || val <= 0 || !selectedStudent || !receivedFrom.trim()) {
+       return showToast({ message: "Invalid details", type: "error" });
+    }
 
     setSaving(true);
     try {
       const batch = writeBatch(db);
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
-
-      for (const s of students) {
-        const recordId = `${s.uid}_${year}_${term}`;
-        const serial = `MNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-        // Track as a charge entry
-        batch.set(doc(db, "feePayments", serial), {
-          amount: val,
-          method: "Bulk Charge",
-          receivedFrom: "Maintenance Fee",
-          updatedBy: appUser?.adminRole || "Admin",
-          adminUid: appUser?.uid || "unknown",
-          createdAt: new Date().toISOString(),
-          receiptNo: serial,
-          date: moment().format("YYYY-MM-DD"),
-          studentUid: s.uid,
-          studentName: s.fullName,
-          classId: s.classId,
-          className: s.className,
-          type: "maintenance",
-          academicYear: acadConfig.academicYear,
-          term: acadConfig.currentTerm,
-        });
-
-        batch.set(doc(db, "studentFeeRecords", recordId), {
-          maintenanceBalance: increment(val),
-          lastUpdated: serverTimestamp(),
-        }, { merge: true });
-
-        batch.update(doc(db, "users", s.uid), {
-          maintenanceBalance: increment(val),
-        });
-      }
-
-      await batch.commit();
-
-      // Notify parents of charge
-      Promise.allSettled(students.map(s =>
-        sendNotification({
-          recipientId: s.uid,
-          senderId: appUser?.uid || "admin",
-          senderName: "School Finance",
-          title: "Maintenance Fee Applied",
-          body: `A maintenance fee of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} has been applied to ${s.fullName}.`,
-          type: "payment",
-          data: {
-            studentUid: s.uid,
-            amount: val,
-            type: "maintenance_charge"
-          }
-        })
-      )).catch(err => console.error("Bulk Maintenance notification error:", err));
-
-      showToast({ message: `Maintenance charges applied to ${students.length} students`, type: "success" });
-      setChargeAmount("");
-    } catch (e) {
-      console.error(e);
-      showToast({ message: "Operation failed", type: "error" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleLogPayment = async () => {
-    const val = parseFloat(paymentAmount);
-    if (isNaN(val) || val <= 0 || !selectedStudent) return;
-
-    setSaving(true);
-    try {
-      const batch = writeBatch(db);
-      const recordId = `${selectedStudent.uid}_${acadConfig.academicYear?.replace(/\//g, "-")}_${acadConfig.currentTerm?.replace(/\s/g, "")}`;
+      const recordId = `${selectedStudent.uid}_${year}_${term}`;
       const serial = `MNT-PAY-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-      batch.set(doc(db, "feePayments", serial), {
+      const paymentEntry = {
         amount: val,
-        method: "Cash",
-        receivedFrom: selectedStudent.fullName,
+        method: paymentMethod,
+        receivedFrom: receivedFrom.trim(),
         updatedBy: appUser?.adminRole || "Admin",
         adminUid: appUser?.uid || "unknown",
         createdAt: new Date().toISOString(),
@@ -201,48 +352,177 @@ export default function MaintenanceCharges() {
         type: "maintenance_payment",
         academicYear: acadConfig.academicYear,
         term: acadConfig.currentTerm,
-      });
+      };
 
-      batch.update(doc(db, "studentFeeRecords", recordId), {
+      batch.set(doc(db, "feePayments", serial), paymentEntry);
+
+      batch.set(doc(db, "studentFeeRecords", recordId), {
         maintenanceBalance: increment(-val),
         maintenancePaid: increment(val),
+        balance: increment(-val),
+        payments: arrayUnion(paymentEntry),
         lastUpdated: serverTimestamp(),
-      });
+      }, { merge: true });
 
       batch.update(doc(db, "users", selectedStudent.uid), {
         maintenanceBalance: increment(-val),
+        maintenancePaid: increment(val),
+        walletBalance: increment(-val),
       });
 
       await batch.commit();
 
-      // Notify parent of payment
-      try {
-        await sendNotification({
-          recipientId: selectedStudent.uid,
-          senderId: appUser?.uid || "admin",
-          senderName: "School Finance",
-          title: "Maintenance Payment Received",
-          body: `A maintenance payment of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} has been recorded for ${selectedStudent.fullName}.`,
-          type: "payment",
-          data: {
-            studentUid: selectedStudent.uid,
-            amount: val,
-            type: "maintenance_payment"
-          }
-        });
-      } catch (notifErr) {
-        console.error("Failed to send maintenance payment notification:", notifErr);
-      }
+      sendNotification({
+        recipientId: selectedStudent.uid,
+        senderId: appUser?.uid || "admin",
+        senderName: appUser?.profile?.firstName || "School Admin",
+        title: "Maintenance Payment Received",
+        body: `A maintenance payment of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} has been recorded for ${selectedStudent.fullName}.`,
+        type: "payment",
+      }).catch(e => console.error(e));
 
       showToast({ message: "Payment recorded", type: "success" });
       setPaymentModalVisible(false);
       setPaymentAmount("");
-      fetchStudents();
+      setReceivedFrom("");
+      fetchStudents(true);
+      fetchStats();
     } catch (e) {
       console.error(e);
+      showToast({ message: "Failed to record payment", type: "error" });
     } finally {
       setSaving(false);
     }
+  };
+
+  const applyBulkCharge = async () => {
+    const val = parseFloat(chargeAmount);
+    if (isNaN(val) || val <= 0) return showToast({ message: "Invalid amount", type: "error" });
+    if (selectedClassId === "all") return showToast({ message: "Please select a specific class first", type: "error" });
+
+    setSaving(true);
+    try {
+      const q = query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("classId", "==", selectedClassId),
+        where("status", "in", ["active", "pending_activation"])
+      );
+      const snap = await getDocsFromServer(q);
+
+      if (snap.empty) {
+        setSaving(false);
+        return showToast({ message: "No active students in this class", type: "warning" });
+      }
+
+      const batch = writeBatch(db);
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+
+      snap.docs.forEach(sDoc => {
+        const s = sDoc.data();
+        const serial = `MNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const recordId = `${sDoc.id}_${year}_${term}`;
+
+        const billData = {
+          amount: val,
+          method: "Bulk Charge",
+          receivedFrom: "Maintenance Fee",
+          updatedBy: appUser?.adminRole || "Admin",
+          adminUid: appUser?.uid || "unknown",
+          createdAt: new Date().toISOString(),
+          receiptNo: serial,
+          date: moment().format("YYYY-MM-DD"),
+          studentUid: sDoc.id,
+          studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+          classId: selectedClassId,
+          className: s.className,
+          type: "maintenance",
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
+        };
+
+        batch.set(doc(db, "feePayments", serial), billData);
+
+        batch.set(doc(db, "studentFeeRecords", recordId), {
+          maintenanceBill: increment(val),
+          maintenanceBalance: increment(val),
+          balance: increment(val),
+          payments: arrayUnion(billData),
+          lastUpdated: serverTimestamp(),
+        }, { merge: true });
+
+        batch.update(sDoc.ref, {
+          maintenanceBalance: increment(val),
+          maintenanceBill: increment(val),
+          walletBalance: increment(val),
+        });
+      });
+
+      await batch.commit();
+
+      showToast({ message: `Maintenance charges applied to ${snap.size} students`, type: "success" });
+      setChargeAmount("");
+      fetchStats();
+      fetchStudents(true);
+    } catch (e) {
+      console.error(e);
+      showToast({ message: "Operation failed", type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const renderStudentItem = ({ item }: { item: Student }) => {
+    const isolatedTotal = (item.ptaBalance || 0) + (item.admissionBalance || 0) +
+                          (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
+                          (item.uniformBalance || 0) + (item.otherBalance || 0);
+    const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
+
+    return (
+      <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper}>
+        <TouchableOpacity
+          style={styles.financeCard}
+          onPress={() => {
+            setSelectedStudent(item);
+            setPaymentModalVisible(true);
+            fetchPaymentHistory(item.uid);
+          }}
+        >
+          <View style={styles.cardContent}>
+            <View style={styles.leftSection}>
+              <View style={[styles.avatar, { backgroundColor: THEME.primary + "15" }]}>
+                <SVGIcon name="construct-outline" size={24} color={THEME.primary} />
+              </View>
+              <View style={styles.mainInfo}>
+                <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+
+                <View style={styles.tuitionBreakdown}>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>TUITION</Text>
+                    <Text style={styles.breakdownValue}>₵{tuitionBalance.toFixed(0)}</Text>
+                  </View>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>MAINT. BILLED</Text>
+                    <Text style={styles.breakdownValue}>₵{item.maintenanceBill.toFixed(0)}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.debtBox}>
+                  <Text style={[styles.debtLabel, { color: item.maintenanceBalance > 0 ? VIBE.danger : VIBE.success }]}>
+                    {item.maintenanceBalance > 0 ? "Maint. Arrears: " : "Cleared: "}
+                  </Text>
+                  <Text style={[styles.debtValue, { color: item.maintenanceBalance > 0 ? VIBE.danger : VIBE.success }]}>
+                    ₵{Math.abs(item.maintenanceBalance).toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+            </View>
+            <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
+          </View>
+        </TouchableOpacity>
+      </Animatable.View>
+    );
   };
 
   return (
@@ -250,145 +530,243 @@ export default function MaintenanceCharges() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <LinearGradient
-          colors={[VIBE.primary, VIBE.secondary]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={[THEME.primary, THEME.secondary]}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.headerTop}
         >
           <View style={styles.navBar}>
-            <TouchableOpacity onPress={() => router.push("/admin-dashboard/StudentCharges")} style={styles.headerIconBtn}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.headerIconBtn}>
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={styles.titleCenter}>
               <Text style={styles.headerTitle}>Maintenance</Text>
               <Text style={styles.headerSub}>FACILITY BILLING</Text>
             </View>
-            <View style={{ width: 44 }} />
+            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn}>
+              <SVGIcon name="funnel-outline" size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.selectorGrid}>
+            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)}>
+              <Text style={styles.glassLabel}>TARGET CLASS</Text>
+              <Text style={styles.glassValue} numberOfLines={1}>
+                {selectedClassId === "all" ? "All Classes" : classes.find(c => c.id === selectedClassId)?.name || "Select Class"}
+              </Text>
+            </TouchableOpacity>
+            <View style={styles.glassPill}>
+              <Text style={styles.glassLabel}>TERM / YEAR</Text>
+              <Text style={styles.glassValue}>{acadConfig.currentTerm || "---"}</Text>
+            </View>
           </View>
         </LinearGradient>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.classScroll} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
-          {classes.map((c) => (
-            <TouchableOpacity
-              key={c.id}
-              style={[styles.classChip, selectedClassId === c.id && styles.activeClassChip]}
-              onPress={() => setSelectedClassId(c.id)}
-            >
-              <Text style={[styles.classChipText, selectedClassId === c.id && styles.activeClassChipText]}>{c.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      <View style={styles.bulkRow}>
-        <TextInput
-          style={styles.bulkInput}
-          placeholder="Apply Maintenance Fee (₵)"
-          keyboardType="numeric"
-          value={chargeAmount}
-          onChangeText={setChargeAmount}
-        />
-        <TouchableOpacity style={styles.bulkBtn} onPress={applyBulkCharge} disabled={saving}>
-          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.bulkBtnText}>BILL CLASS</Text>}
-        </TouchableOpacity>
+        <View style={styles.searchStrip}>
+          <View style={styles.searchBar}>
+            <SVGIcon name="search" size={18} color={VIBE.muted} />
+            <TextInput
+              placeholder="Search students..."
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor={VIBE.muted}
+            />
+          </View>
+          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound}>
+            <SVGIcon name="refresh" size={18} color={THEME.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
-        data={students}
-        keyExtractor={(item) => item.uid}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <Animatable.View animation="fadeInUp" duration={400} style={styles.studentCard}>
-            <View style={styles.studentInfo}>
-              <Text style={styles.studentName}>{item.fullName}</Text>
-              <Text style={styles.walletLabel}>Maint. Arrears: ₵{(item.maintenanceBalance || 0).toFixed(2)}</Text>
+        data={filteredStudents}
+        renderItem={renderStudentItem}
+        keyExtractor={item => item.uid}
+        contentContainerStyle={styles.flatListContent}
+        onEndReached={() => fetchStudents()}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />}
+        ListHeaderComponent={
+          <>
+            <View style={[styles.statsDashboard, { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 }]}>
+               <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: (width - 52)/2 }]}>
+                  <Text style={styles.statLabel}>TERM BILLED</Text>
+                  <Text style={styles.statValue}>₵{stats.totalBilled.toLocaleString()}</Text>
+                  <SVGIcon name="receipt" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+               </LinearGradient>
+               <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: (width - 52)/2 }]}>
+                  <Text style={styles.statLabel}>TERM COLLECTED</Text>
+                  <Text style={styles.statValue}>₵{stats.totalCollected.toLocaleString()}</Text>
+                  <SVGIcon name="cash" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+               </LinearGradient>
             </View>
-            <TouchableOpacity
-              style={styles.payBtn}
-              onPress={() => {
-                setSelectedStudent(item);
-                setPaymentModalVisible(true);
-              }}
-            >
-              <Text style={styles.payBtnText}>PAY</Text>
-            </TouchableOpacity>
-          </Animatable.View>
-        )}
+
+            <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
+              <Text style={styles.listTitle}>APPLY MAINTENANCE FEE (CLASS BULK)</Text>
+              <View style={[styles.bulkInputContainer, { marginTop: 10 }]}>
+                <TextInput
+                  style={styles.bulkInput}
+                  placeholder="Enter Amount (₵)"
+                  keyboardType="numeric"
+                  value={chargeAmount}
+                  onChangeText={setChargeAmount}
+                  placeholderTextColor={VIBE.muted}
+                />
+                <TouchableOpacity
+                   onPress={applyBulkCharge}
+                   style={{ backgroundColor: THEME.primary, height: 44, paddingHorizontal: 15, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
+                   disabled={saving}
+                >
+                  {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '900', fontSize: 12 }}>BILL CLASS</Text>}
+                </TouchableOpacity>
+              </View>
+              {selectedClassId === "all" && (
+                <Text style={{ fontSize: 10, color: VIBE.danger, marginTop: 8, fontWeight: "700" }}>
+                  * Select a specific class to enable bulk billing
+                </Text>
+              )}
+            </View>
+
+            <Text style={[styles.listTitle, { marginHorizontal: 20, marginBottom: 15 }]}>STUDENT DIRECTORY</Text>
+          </>
+        }
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator size="large" color={VIBE.primary} style={{ marginTop: 50 }} />
+            <ActivityIndicator size="large" color={THEME.primary} style={{ marginTop: 50 }} />
           ) : (
             <View style={styles.emptyWrap}>
-              <SVGIcon name="construct" size={64} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No students in this class</Text>
+              <SVGIcon name="search" size={64} color="#CBD5E1" />
+              <Text style={styles.emptyText}>
+                {searchQuery.length < 2 && selectedClassId === "all"
+                  ? "Search for a student to manage maintenance fees"
+                  : "No students found matching your search"}
+              </Text>
             </View>
           )
         }
       />
 
+      <ClassSelectorModal
+        visible={classModalVisible}
+        onClose={() => setClassModalVisible(false)}
+        classes={classes}
+        selectedClassId={selectedClassId}
+        onSelect={setSelectedClassId}
+      />
+
       <Modal visible={paymentModalVisible} transparent animationType="slide">
-        <View style={styles.overlay}>
-          <View style={styles.modalBody}>
-            <Text style={styles.modalTitle}>Receive Payment</Text>
-            <Text style={styles.modalStudent}>{selectedStudent?.fullName}</Text>
-            <TextInput
-              style={styles.paymentInput}
-              placeholder="0.00"
-              keyboardType="numeric"
-              value={paymentAmount}
-              onChangeText={setPaymentAmount}
-              autoFocus
-            />
-            <View style={styles.modalBtnRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setPaymentModalVisible(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmBtn} onPress={handleLogPayment} disabled={saving}>
-                <Text style={styles.confirmBtnText}>Confirm</Text>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.overlay}>
+          <View style={styles.sheetBody}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <View>
+                <Text style={styles.sheetTitle}>{selectedStudent?.fullName}</Text>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>MAINTENANCE PAYMENT</Text>
+              </View>
+              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeRound}>
+                <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+              <View style={{ gap: 15, marginBottom: 25 }}>
+                <Text style={styles.breakdownLabel}>AMOUNT TO PAY (₵)</Text>
+                <TextInput
+                  style={styles.pillInput}
+                  placeholder="0.00"
+                  keyboardType="numeric"
+                  value={paymentAmount}
+                  onChangeText={setPaymentAmount}
+                />
+
+                <Text style={styles.breakdownLabel}>RECEIVED FROM</Text>
+                <TextInput
+                  style={[styles.pillInput, { fontSize: 16 }]}
+                  placeholder="Payer Name"
+                  value={receivedFrom}
+                  onChangeText={setReceivedFrom}
+                />
+              </View>
+
+              <Text style={styles.breakdownLabel}>PAYMENT METHOD</Text>
+              <View style={styles.methodGrid}>
+                {["Cash", "Cheque", "Momo", "E-cash"].map(m => (
+                  <TouchableOpacity
+                    key={m}
+                    style={[styles.methodBtn, paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary }]}
+                    onPress={() => setPaymentMethod(m as any)}
+                  >
+                    <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity onPress={handleLogPayment} disabled={saving}>
+                <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
+                  {saving ? <ActivityIndicator color="#fff" /> : (
+                    <>
+                      <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
+                      <SVGIcon name="checkmark-circle" size={20} color="#fff" />
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              <View style={styles.historyBlock}>
+                <Text style={styles.blockTitle}>Transaction History</Text>
+                {loadingHistory ? <ActivityIndicator color={THEME.primary} style={{ marginTop: 20 }} /> : (
+                  history.length > 0 ? history.map((h, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={styles.transactionTile}
+                      onPress={() => {
+                        setPaymentModalVisible(false);
+                        router.push({
+                          pathname: "/shared/receipt-view",
+                          params: {
+                            type: h.type === 'maintenance' ? 'bill' : 'payment',
+                            studentId: selectedStudent?.uid,
+                            paymentId: h.receiptNo,
+                            year: h.academicYear,
+                            term: h.term
+                          }
+                        });
+                      }}
+                      onLongPress={() => handleDeletePayment(h)}
+                    >
+                      <View style={styles.tileHeader}>
+                        <Text style={[styles.tileAmt, { color: h.type === 'maintenance' ? VIBE.info : VIBE.success }]}>
+                          ₵{h.amount.toLocaleString()}
+                        </Text>
+                        <View style={{ backgroundColor: h.type === 'maintenance' ? VIBE.info + '15' : VIBE.success + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                           <Text style={{ fontSize: 9, fontWeight: '900', color: h.type === 'maintenance' ? VIBE.info : VIBE.success }}>
+                             {h.type === 'maintenance' ? 'BILL' : 'PAYMENT'}
+                           </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.tileDetail}>{h.method || h.receivedFrom}</Text>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                         <Text style={styles.tileDate}>{moment(h.createdAt).format("MMM DD, YYYY • HH:mm")}</Text>
+                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              handleDeletePayment(h);
+                            }}
+                            style={{ padding: 4 }}
+                          >
+                            <SVGIcon name="trash" size={16} color={VIBE.danger} />
+                          </TouchableOpacity>
+                          <SVGIcon name="eye-outline" size={14} color={VIBE.muted} />
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  )) : <Text style={styles.noHistory}>No history available</Text>
+                )}
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: VIBE.bg },
-  header: { backgroundColor: "#fff", borderBottomLeftRadius: 30, borderBottomRightRadius: 30, ...SHADOWS.medium, paddingBottom: 20 },
-  headerTop: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
-  navBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 15 },
-  headerIconBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", justifyContent: "center", alignItems: "center" },
-  titleCenter: { alignItems: "center" },
-  headerTitle: { fontSize: 20, fontWeight: "900", color: "#fff" },
-  headerSub: { fontSize: 10, fontWeight: "800", color: "rgba(255,255,255,0.7)", letterSpacing: 2 },
-  classScroll: { marginTop: -20 },
-  classChip: { paddingHorizontal: 15, paddingVertical: 8, borderRadius: 12, backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: VIBE.border },
-  activeClassChip: { backgroundColor: VIBE.primary, borderColor: VIBE.primary },
-  classChipText: { fontSize: 13, fontWeight: "700", color: VIBE.muted },
-  activeClassChipText: { color: "#fff" },
-  bulkRow: { flexDirection: "row", padding: 20, gap: 10 },
-  bulkInput: { flex: 1, height: 50, backgroundColor: "#fff", borderRadius: 15, paddingHorizontal: 15, fontSize: 14, fontWeight: "600", ...SHADOWS.small, borderWidth: 1, borderColor: VIBE.border },
-  bulkBtn: { backgroundColor: VIBE.primary, height: 50, paddingHorizontal: 20, borderRadius: 15, justifyContent: "center", alignItems: "center", ...SHADOWS.medium },
-  bulkBtnText: { color: "#fff", fontSize: 12, fontWeight: "900" },
-  listContent: { padding: 20, paddingTop: 0 },
-  studentCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", padding: 15, borderRadius: 18, marginBottom: 10, ...SHADOWS.small, borderWidth: 1, borderColor: VIBE.border },
-  studentInfo: { flex: 1 },
-  studentName: { fontSize: 15, fontWeight: "800", color: VIBE.text },
-  walletLabel: { fontSize: 11, fontWeight: "700", color: VIBE.primary, marginTop: 2 },
-  payBtn: { backgroundColor: VIBE.success, paddingHorizontal: 15, paddingVertical: 8, borderRadius: 10 },
-  payBtnText: { color: "#fff", fontSize: 12, fontWeight: "900" },
-  emptyWrap: { alignItems: "center", marginTop: 80, opacity: 0.5 },
-  emptyText: { fontSize: 16, fontWeight: "900", color: "#94A3B8", marginTop: 15 },
-  overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", padding: 20 },
-  modalBody: { backgroundColor: "#fff", borderRadius: 30, padding: 30, alignItems: "center" },
-  modalTitle: { fontSize: 18, fontWeight: "900", color: VIBE.text },
-  modalStudent: { fontSize: 14, color: VIBE.muted, marginTop: 5, marginBottom: 20 },
-  paymentInput: { width: "100%", height: 60, backgroundColor: "#F8FAFC", borderRadius: 15, textAlign: "center", fontSize: 24, fontWeight: "900", color: VIBE.primary, marginBottom: 25, borderWidth: 1, borderColor: VIBE.border },
-  modalBtnRow: { flexDirection: "row", gap: 15, width: "100%" },
-  cancelBtn: { flex: 1, height: 50, backgroundColor: "#F1F5F9", borderRadius: 15, justifyContent: "center", alignItems: "center" },
-  cancelBtnText: { fontSize: 14, fontWeight: "800", color: VIBE.muted },
-  confirmBtn: { flex: 1, height: 50, backgroundColor: VIBE.primary, borderRadius: 15, justifyContent: "center", alignItems: "center" },
-  confirmBtnText: { fontSize: 14, fontWeight: "800", color: "#fff" },
-});

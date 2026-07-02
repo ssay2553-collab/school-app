@@ -32,7 +32,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 import moment from "moment";
 import { sendNotification } from "../../src/services/notificationService";
 
@@ -73,6 +73,7 @@ export default function UploadAssignment() {
   // File Upload State
   const [file, setFile] = useState<DocumentPicker.DocumentPickerResult | null>(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [backPressCount, setBackPressCount] = useState(0);
 
   // Interactive Questions - Separated states for different types
   const [mcqQuestions, setMcqQuestions] = useState<Question[]>([]);
@@ -86,21 +87,23 @@ export default function UploadAssignment() {
   }, [title, description, mcqQuestions.length, shortAnswerQuestions.length, file]);
 
   const handleBack = useCallback(() => {
-    if (hasUnsavedChanges) {
+    if (hasUnsavedChanges && backPressCount === 0) {
+      setBackPressCount(1);
       showToast({
         message: "Discard changes? Tap back again to confirm.",
-        type: "info"
+        type: "info",
       });
-      // For now, let's just stick to the toast for warning,
-      // but if we want strict blocking, Alert.alert is allowed for destructive confirmation.
-      // Re-reading knowledge: "Alert.alert is reserved for critical, destructive confirmations"
-      // So I will KEEP Alert.alert for the discard confirmation as it's destructive.
+      setTimeout(() => setBackPressCount(0), 3000);
+      return true;
+    }
+
+    if (router.canGoBack()) {
+      router.back();
     } else {
-      if (router.canGoBack()) router.back();
-      else router.replace("/teacher-dashboard");
+      router.replace("/teacher-dashboard");
     }
     return true;
-  }, [hasUnsavedChanges, router, showToast]);
+  }, [hasUnsavedChanges, backPressCount, router, showToast]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
@@ -125,7 +128,7 @@ export default function UploadAssignment() {
     const fetchData = async () => {
       setFetchingMetadata(true);
       try {
-        const classIds = appUser.classes || [];
+        const classIds = getTeacherClasses(appUser);
         if (classIds.length > 0) {
           const results: any[] = [];
           for (let i = 0; i < classIds.length; i += 10) {
@@ -304,7 +307,7 @@ export default function UploadAssignment() {
       await Promise.all(notificationPromises);
 
       showToast({ message: "Assignment posted successfully!", type: "success" });
-      router.back();
+      router.replace("/teacher-dashboard");
     } catch (err) {
       console.error("handleUpload Error:", err);
       showToast({ message: "Failed to post assignment.", type: "error" });

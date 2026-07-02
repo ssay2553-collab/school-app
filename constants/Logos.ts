@@ -19,7 +19,7 @@ export const SCHOOL_LOGOS: Record<string, any> = {
   model: require("../assets/modelpower.png"),
   brain: require("../assets/brain.png"),
   clis: require("../assets/clis.png"),
-  stone: require("../assets/spring.png"),
+  stone: require("../assets/josepac.png"),
   jewel: require("../assets/Jewel.png"),
   abijah: require("../assets/abijah.png"),
   lilies: require("../assets/abijah.png"),

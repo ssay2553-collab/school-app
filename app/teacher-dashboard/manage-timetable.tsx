@@ -41,8 +41,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
-import { sortClasses } from "../../lib/classHelpers";
-import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, COMMON_ACTIVITIES, CurriculumType } from "../../constants/Curriculum";
+import { sortClasses, getTeacherClasses, isClassTeacher } from "../../lib/classHelpers";
+import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, MONTESSORI_SUBJECTS, COMMON_ACTIVITIES, CurriculumType } from "../../constants/Curriculum";
 import SVGIcon from "../../components/SVGIcon";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -76,7 +76,7 @@ export default function CreateLessonTimetable() {
 
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
-  const [curriculum, setCurriculum] = useState<CurriculumType>("GES");
+  const [curriculum, setCurriculum] = useState<CurriculumType>(appUser?.curriculum || "GES");
   const [timetableDays, setTimetableDays] = useState<Record<string, Period[]>>({});
   const [numColumns, setNumColumns] = useState(6);
   const [customSubjects, setCustomSubjects] = useState<string[]>([]);
@@ -91,11 +91,14 @@ export default function CreateLessonTimetable() {
   const neutralDark = "#1E293B";
 
   const availableSubjects = useMemo(() => {
-    const list = curriculum === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS;
+    let list = GES_SUBJECTS;
+    if (curriculum === "Cambridge") list = CAMBRIDGE_SUBJECTS;
+    else if (curriculum === "Montessori") list = MONTESSORI_SUBJECTS;
+
     return [...new Set([...list, ...COMMON_ACTIVITIES, ...customSubjects])].sort();
   }, [curriculum, customSubjects]);
 
-  const canEdit = useMemo(() => {
+  const isAdmin = useMemo(() => {
     if (!appUser) return false;
     const role = (appUser.role || "").toLowerCase();
     const adminRole = (appUser.adminRole || "").toLowerCase();
@@ -110,10 +113,14 @@ export default function CreateLessonTimetable() {
       "manager",
       "director",
     ];
-    const isFullAdmin = adminRoles.some(r => role.includes(r) || adminRole.includes(r));
-    if (isFullAdmin) return true;
-    return appUser.classTeacherOf === selectedClass;
-  }, [appUser, selectedClass]);
+    return adminRoles.some(r => role.includes(r) || adminRole.includes(r));
+  }, [appUser]);
+
+  const canEdit = useMemo(() => {
+    if (!appUser) return false;
+    if (isAdmin) return true;
+    return isClassTeacher(appUser, selectedClass);
+  }, [appUser, selectedClass, isAdmin]);
 
   useEffect(() => {
     mounted.current = true;
@@ -155,14 +162,18 @@ export default function CreateLessonTimetable() {
           name: d.name || d.id,
           curriculum: d.curriculum
         }));
-      const sorted = sortClasses(list);
+
+      const teacherClassIds = getTeacherClasses(appUser);
+      const filtered = list.filter(c => isAdmin || teacherClassIds.includes(c.id));
+      const sorted = sortClasses(filtered);
       
       if (!mounted.current) return;
       setClasses(sorted);
       
       if (!selectedClass) {
-        if (appUser?.classTeacherOf && sorted.find(c => c.id === appUser.classTeacherOf)) {
-          setSelectedClass(appUser.classTeacherOf);
+        const teacherClasses = getTeacherClasses(appUser);
+        if (teacherClasses.length > 0 && sorted.find(c => c.id === teacherClasses[0])) {
+          setSelectedClass(teacherClasses[0]);
         } else if (sorted.length > 0) {
           setSelectedClass(sorted[0].id);
         }
@@ -172,7 +183,7 @@ export default function CreateLessonTimetable() {
     } finally { 
       if (mounted.current) setLoadingClasses(false); 
     }
-  }, [appUser?.classTeacherOf]);
+  }, [appUser, isAdmin]);
 
   useEffect(() => { loadClasses(); }, [loadClasses]);
 
@@ -384,18 +395,33 @@ export default function CreateLessonTimetable() {
 
         <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Curriculum Scope</Text></View>
         <View style={styles.curriculumRow}>
-            <TouchableOpacity 
-                style={[styles.curriculumBtn, curriculum === "GES" && { backgroundColor: brandColor, borderColor: brandColor }]}
-                onPress={() => setCurriculum("GES")}
-            >
-                <Text style={[styles.curriculumBtnText, curriculum === "GES" && { color: '#fff' }]}>GES (National)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-                style={[styles.curriculumBtn, curriculum === "Cambridge" && { backgroundColor: brandColor, borderColor: brandColor }]}
-                onPress={() => setCurriculum("Cambridge")}
-            >
-                <Text style={[styles.curriculumBtnText, curriculum === "Cambridge" && { color: '#fff' }]}>Cambridge (IGCSE)</Text>
-            </TouchableOpacity>
+            {(isAdmin || (appUser?.curriculum || "GES") === "GES") && (
+                <TouchableOpacity
+                    style={[styles.curriculumBtn, curriculum === "GES" && { backgroundColor: brandColor, borderColor: brandColor }]}
+                    onPress={() => setCurriculum("GES")}
+                    disabled={!isAdmin && (appUser?.curriculum !== "GES")}
+                >
+                    <Text style={[styles.curriculumBtnText, curriculum === "GES" && { color: '#fff' }]}>GES (National)</Text>
+                </TouchableOpacity>
+            )}
+            {(isAdmin || appUser?.curriculum === "Cambridge") && (
+                <TouchableOpacity
+                    style={[styles.curriculumBtn, curriculum === "Cambridge" && { backgroundColor: brandColor, borderColor: brandColor }]}
+                    onPress={() => setCurriculum("Cambridge")}
+                    disabled={!isAdmin && appUser?.curriculum !== "Cambridge"}
+                >
+                    <Text style={[styles.curriculumBtnText, curriculum === "Cambridge" && { color: '#fff' }]}>Cambridge (IGCSE)</Text>
+                </TouchableOpacity>
+            )}
+            {(isAdmin || appUser?.curriculum === "Montessori") && (
+                <TouchableOpacity
+                    style={[styles.curriculumBtn, curriculum === "Montessori" && { backgroundColor: brandColor, borderColor: brandColor }]}
+                    onPress={() => setCurriculum("Montessori")}
+                    disabled={!isAdmin && appUser?.curriculum !== "Montessori"}
+                >
+                    <Text style={[styles.curriculumBtnText, curriculum === "Montessori" && { color: '#fff' }]}>Montessori</Text>
+                </TouchableOpacity>
+            )}
         </View>
 
         {loadingData || !selectedClass ? <ActivityIndicator size="large" color={brandColor} style={{ marginTop: 50 }} /> : (

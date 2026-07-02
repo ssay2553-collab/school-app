@@ -1,41 +1,33 @@
 import { Picker } from "@react-native-picker/picker";
-import { Asset } from "expo-asset";
-import Constants from "expo-constants";
-import * as FileSystem from "expo-file-system";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Sharing from "expo-sharing";
 import {
-    collection,
-    doc,
-    documentId,
-    getDoc,
-    getDocs,
-    onSnapshot,
-    query,
-    where,
+  collection,
+  doc,
+  documentId,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  where,
 } from "firebase/firestore";
 import moment from "moment";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
-import { getSchoolLogo } from "../../constants/Logos";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -50,22 +42,6 @@ export default function StudentFeeHistory() {
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
-
-  const schoolId = (
-    Constants.expoConfig?.extra?.schoolId || "afahjoy"
-  ).toLowerCase();
-  const schoolLogo = getSchoolLogo(schoolId);
-
-  const [loading, setLoading] = useState(true);
-  const [fetchingRecord, setFetchingRecord] = useState(false);
-  const [children, setChildren] = useState<any[]>([]);
-  const [selectedChildId, setSelectedChildId] = useState<string>(
-    (paramStudentId as string) || "",
-  );
-
-  const [record, setRecord] = useState<any>(null);
-  const [allTransactions, setAllTransactions] = useState<any[]>([]);
-  const [studentData, setStudentData] = useState<any>(null);
 
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
   const secondary = SCHOOL_CONFIG.secondaryColor || COLORS.secondary;
@@ -85,6 +61,15 @@ export default function StudentFeeHistory() {
 
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("Term 1");
+  const [loading, setLoading] = useState(true);
+  const [fetchingRecord, setFetchingRecord] = useState(false);
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>(
+    (paramStudentId as string) || "",
+  );
+  const [studentData, setStudentData] = useState<any>(null);
+  const [record, setRecord] = useState<any>(null);
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
 
   // Sync with global academic config
   useEffect(() => {
@@ -113,7 +98,8 @@ export default function StudentFeeHistory() {
           name: `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
         }));
         setChildren(list);
-        if (list.length > 0) setSelectedChildId((prev) => prev || list[0].id);
+        if (list.length > 0)
+          setSelectedChildId((prev: string) => prev || list[0].id);
       } catch (e) {
         console.error(e);
       }
@@ -138,22 +124,35 @@ export default function StudentFeeHistory() {
     const cleanTerm = selectedTerm.replace(/\s/g, "");
     const recordId = `${selectedChildId}_${cleanYear}_${cleanTerm}`;
 
-    const unsubRecord = onSnapshot(doc(db, "studentFeeRecords", recordId), (snap) => {
-      setRecord(snap.exists() ? (snap.data() as any) : null);
-    });
+    const unsubRecord = onSnapshot(
+      doc(db, "studentFeeRecords", recordId),
+      (snap) => {
+        setRecord(snap.exists() ? (snap.data() as any) : null);
+      },
+      (err) => {
+        console.warn("Fee record listener failed:", err);
+        setRecord(null);
+      }
+    );
 
     const q = query(
       collection(db, "feePayments"),
       where("studentUid", "==", selectedChildId),
       where("academicYear", "==", selectedYear),
-      where("term", "==", selectedTerm)
+      where("term", "==", selectedTerm),
     );
 
     const unsubTransactions = onSnapshot(q, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setAllTransactions(list.sort((a: any, b: any) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      ));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setAllTransactions(
+        list.sort(
+          (a: any, b: any) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      );
+      setFetchingRecord(false);
+    }, (err) => {
+      console.warn("Transactions listener failed:", err);
       setFetchingRecord(false);
     });
 
@@ -163,234 +162,138 @@ export default function StudentFeeHistory() {
     };
   }, [selectedChildId, selectedYear, selectedTerm]);
 
-  const categorySummary = useMemo(() => {
+  const rawSummary = useMemo(() => {
+    // 1. Initialize with tuition (term bill + arrears - discount)
     const summary: Record<string, { billed: number; paid: number }> = {
-      tuition: { billed: (record?.termBill || 0) + (record?.arrears || 0) - (record?.discount || 0), paid: 0 },
-      pta: { billed: 0, paid: 0 },
-      maintenance: { billed: 0, paid: 0 },
-      admission: { billed: 0, paid: 0 },
-      books: { billed: 0, paid: 0 },
-      uniform: { billed: 0, paid: 0 },
-      other: { billed: 0, paid: 0 },
+      tuition: {
+        billed:
+          (record?.termBill || 0) +
+          (record?.arrears || 0) -
+          (record?.discount || 0),
+        paid: 0,
+      },
     };
 
-    // Fill initial values from record for isolated fields
-    if (record) {
-      summary.pta.billed = (record.ptaBill || 0);
-      summary.pta.paid = (record.ptaPaid || 0);
-      summary.maintenance.billed = (record.maintenanceBill || record.maintenanceBalance + (record.maintenancePaid || 0) || 0);
-      summary.maintenance.paid = (record.maintenancePaid || 0);
-      summary.admission.billed = (record.admissionBill || record.admissionBalance + (record.admissionPaid || 0) || 0);
-      summary.admission.paid = (record.admissionPaid || 0);
-      summary.books.billed = (record.booksBill || record.booksBalance + (record.booksPaid || 0) || 0);
-      summary.books.paid = (record.booksPaid || 0);
-      summary.uniform.billed = (record.uniformBill || record.uniformBalance + (record.uniformPaid || 0) || 0);
-      summary.uniform.paid = (record.uniformPaid || 0);
-      summary.other.billed = (record.otherBill || record.otherBalance + (record.otherPaid || 0) || 0);
-      summary.other.paid = (record.otherPaid || 0);
-    }
-
+    // 2. Aggregate Transactions for all categories
     allTransactions.forEach((t: any) => {
-      const type = t.type?.toLowerCase() || "tuition";
-      const isPayment = type.endsWith("_payment") || type === "tuition";
-      const category = type.replace("_payment", "");
+      const type = (t.type || "tuition").toLowerCase();
+      const isPayment =
+        type.endsWith("_payment") ||
+        type === "tuition" ||
+        type === "tuition_credit";
+      let category = type.replace("_payment", "").replace("_credit", "");
+
+      // Handle specific "Other" categories
+      if (type === "other") {
+        category = (t.otherCategory || "other").toLowerCase();
+      }
 
       if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
 
+      // Only sum payments from transactions - bills come from record or transactions
       if (isPayment) {
         summary[category].paid += t.amount || 0;
-      } else {
+      } else if (type === "other") {
+        // For 'other' type, we sum the billed amount from transactions to get specific names
         summary[category].billed += t.amount || 0;
       }
     });
 
-    // Filter out categories with 0 billed AND 0 paid
-    return Object.fromEntries(
-      Object.entries(summary).filter(([_, vals]) => vals.billed > 0 || vals.paid > 0)
-    );
+    // 3. Reflect Record "Base" Totals for isolated categories
+    if (record) {
+      const isolated = [
+        { key: "pta", bill: record.ptaBill || 0, paid: record.ptaPaid || 0 },
+        {
+          key: "maintenance",
+          bill: record.maintenanceBill || 0,
+          paid: record.maintenancePaid || 0,
+        },
+        {
+          key: "admission",
+          bill: record.admissionBill || 0,
+          paid: record.admissionPaid || 0,
+        },
+        {
+          key: "books",
+          bill: record.booksBill || 0,
+          paid: record.booksPaid || 0,
+        },
+        {
+          key: "uniform",
+          bill: record.uniformBill || 0,
+          paid: record.uniformPaid || 0,
+        },
+      ];
+
+      isolated.forEach((cat) => {
+        if (!summary[cat.key]) summary[cat.key] = { billed: 0, paid: 0 };
+        summary[cat.key].billed = Math.max(summary[cat.key].billed, cat.bill);
+        summary[cat.key].paid = Math.max(summary[cat.key].paid, cat.paid);
+      });
+
+      // Special handling for 'other' to ensure it matches record.otherBill and avoids double counting
+      const specificOtherBilled = Object.entries(summary)
+        .filter(
+          ([k]) =>
+            ![
+              "tuition",
+              "pta",
+              "maintenance",
+              "admission",
+              "books",
+              "uniform",
+              "other",
+            ].includes(k),
+        )
+        .reduce((sum, [_, v]) => sum + v.billed, 0);
+
+      const unnamedOtherBill = Math.max(
+        0,
+        (record.otherBill || 0) - specificOtherBilled,
+      );
+
+      if (unnamedOtherBill > 0 || record.otherPaid > 0) {
+        if (!summary["other"]) summary["other"] = { billed: 0, paid: 0 };
+        summary["other"].billed = Math.max(
+          summary["other"].billed,
+          unnamedOtherBill,
+        );
+        summary["other"].paid = Math.max(summary["other"].paid, record.otherPaid || 0);
+      }
+
+      summary.tuition.paid = Math.max(
+        summary.tuition.paid,
+        record.amountPaid || 0,
+      );
+    }
+    return summary;
   }, [allTransactions, record]);
 
-  const generatePDF = async () => {
-    if (!record || !studentData) return;
-
-    // Attempt to embed logo
-    let logoDataUrl = "";
-    try {
-      const asset = Asset.fromModule(schoolLogo as any);
-      await asset.downloadAsync();
-      const localUri = asset.localUri || asset.uri;
-      if (localUri) {
-        const ext = localUri.split(".").pop()?.toLowerCase() || "png";
-        const mime =
-          ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
-        const b64 = await FileSystem.readAsStringAsync(localUri, {
-          encoding: "base64",
-        });
-        logoDataUrl = `data:${mime};base64,${b64}`;
+  const categorySummary = useMemo(() => {
+    const filtered: Record<string, { billed: number; paid: number }> = {};
+    Object.entries(rawSummary).forEach(([cat, vals]) => {
+      if (vals.billed > 0 || vals.paid > 0) {
+        filtered[cat] = vals;
       }
-    } catch (e) {
-      console.warn("Failed to embed logo for PDF:", e);
-    }
+    });
+    return filtered;
+  }, [rawSummary]);
 
-    const logoImgHtml = logoDataUrl
-      ? `<img src="${logoDataUrl}" style="width:80px;height:80px;object-fit:contain;margin-bottom:10px"/>`
-      : "";
-
-    const sName =
-      `${studentData.profile?.firstName || ""} ${studentData.profile?.lastName || ""}`.trim();
-
-    const totalBalanceAcrossCategories = Object.values(categorySummary).reduce((acc, curr: any) => acc + (curr.billed - curr.paid), 0);
-
-    const html = `
-       <html>
-        <head>
-          <style>
-            body { font-family: 'Helvetica'; padding: 30px; color: #1E293B; background: #fff; }
-            .receipt-container { max-width: 800px; margin: 0 auto; border: 2px solid #eee; padding: 40px; }
-            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid ${primary}; padding-bottom: 20px; display: flex; flex-direction: column; align-items: center; }
-            .school-name { font-size: 28px; font-weight: 900; color: ${primary}; margin-bottom: 5px; text-transform: uppercase; }
-            .school-motto { font-size: 14px; font-style: italic; color: #64748B; margin-bottom: 10px; }
-            .school-contact { font-size: 12px; color: #94A3B8; line-height: 1.5; }
-            .receipt-title { font-size: 22px; margin-top: 30px; font-weight: 900; color: ${secondary}; text-align: center; letter-spacing: 3px; text-decoration: underline; }
-            .info-section { display: flex; justify-content: space-between; margin: 40px 0; padding: 20px; background: #F8FAFC; border-radius: 10px; }
-            .info-column { flex: 1; }
-            .info-label { font-weight: 800; color: #64748B; text-transform: uppercase; font-size: 10px; display: block; margin-bottom: 5px; }
-            .info-value { font-size: 15px; font-weight: 700; color: #1E293B; }
-
-            .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 20px 0; }
-            .summary-card { background: #f8fafc; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
-            .cat-name { font-size: 10px; font-weight: 900; color: ${primary}; text-transform: uppercase; margin-bottom: 5px; border-bottom: 1px solid #eee; }
-            .cat-row { display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 2px; }
-
-            table { width: 100%; border-collapse: collapse; margin-top: 30px; }
-            th { border-bottom: 2px solid #eee; padding: 15px; text-align: left; font-size: 12px; text-transform: uppercase; color: #64748B; }
-            td { border-bottom: 1px solid #f5f5f5; padding: 15px; font-size: 13px; font-weight: 600; }
-            .summary-box { margin-top: 40px; float: right; width: 300px; padding: 20px; background: #fdfdfd; border: 1px solid #eee; }
-            .summary-item { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
-            .grand-total { border-top: 2px solid ${primary}; padding-top: 15px; margin-top: 15px; font-size: 18px; font-weight: 900; color: ${primary}; }
-            .footer { margin-top: 100px; text-align: center; font-size: 11px; color: #94A3B8; border-top: 1px dashed #eee; padding-top: 30px; clear: both; }
-            .stamp-box { margin-top: 50px; width: 150px; height: 150px; border: 2px dashed #eee; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #eee; border-radius: 50%; float: left; transform: rotate(-15deg); }
-          </style>
-        </head>
-        <body>
-          <div class="receipt-container">
-            <div class="header">
-              ${logoImgHtml}
-              <div class="school-name">${SCHOOL_CONFIG.fullName}</div>
-              <div class="school-motto">${SCHOOL_CONFIG.motto}</div>
-              <div class="school-contact">${SCHOOL_CONFIG.address}<br/>TEL: ${SCHOOL_CONFIG.hotline} | EMAIL: ${SCHOOL_CONFIG.email}</div>
-            </div>
-            
-            <div class="receipt-title">OFFICIAL FEE STATEMENT</div>
-            
-            <div class="info-section">
-              <div class="info-column">
-                <span class="info-label">Student Details</span>
-                <div class="info-value">${sName}</div>
-                <div style="font-size: 13px; color: #64748B;">ID: ${selectedChildId.slice(-8).toUpperCase()}</div>
-              </div>
-              <div class="info-column" style="text-align: right;">
-                <span class="info-label">Academic Period</span>
-                <div class="info-value">${record.term} | ${record.academicYear}</div>
-                <div style="font-size: 13px; color: #64748B;">Class: ${record.className || "N/A"}</div>
-              </div>
-            </div>
-
-            <div class="summary-grid">
-              ${Object.entries(categorySummary)
-                .map(
-                  ([cat, vals]: any) => `
-                <div class="summary-card">
-                  <div class="cat-name">${cat}</div>
-                  <div class="cat-row"><span>Billed:</span><span>₵${vals.billed.toFixed(2)}</span></div>
-                  <div class="cat-row"><span>Paid:</span><span style="color: green">₵${vals.paid.toFixed(2)}</span></div>
-                  <div class="cat-row" style="border-top: 1px solid #eee; margin-top: 4px; padding-top: 4px; font-weight: bold;">
-                    <span>Bal:</span>
-                    <span style="color: ${vals.billed - vals.paid > 0 ? "#ef4444" : "#10b981"}">
-                      ₵${(vals.billed - vals.paid).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              `
-                )
-                .join("")}
-            </div>
-
-            <table>
-              <thead>
-                <tr>
-                  <th>Date / Type</th>
-                  <th>Reference #</th>
-                  <th>Received From</th>
-                  <th style="text-align:right">Amount (₵)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${allTransactions
-                  .map(
-                    (p: any) => `
-                  <tr>
-                    <td>
-                      <div>${moment(p.createdAt).format("DD/MM/YYYY")}</div>
-                      <div style="font-size: 10px; color: #64748B; text-transform: uppercase;">${p.type || "tuition"}</div>
-                    </td>
-                    <td>${p.receiptNo || "RC-" + String(p.createdAt).slice(-6)}</td>
-                    <td>${p.receivedFrom || "Self"}</td>
-                    <td style="text-align:right">₵ ${Number(p.amount).toFixed(2)}</td>
-                  </tr>
-                `,
-                  )
-                  .join("")}
-              </tbody>
-            </table>
-
-            <div class="stamp-box">OFFICIAL SCHOOL STAMP</div>
-
-            <div class="summary-box">
-              <div class="summary-item"><span>Tuition Arrears:</span><span>₵ ${record.arrears?.toFixed(2)}</span></div>
-              <div class="summary-item"><span>Tuition Bill:</span><span>₵ ${record.termBill?.toFixed(2)}</span></div>
-              <div class="summary-item"><span>Tuition Discount:</span><span style="color: blue">- ₵ ${(record.discount || 0).toFixed(2)}</span></div>
-              <div class="summary-item"><span>Tuition Paid:</span><span style="color: #10B981;">- ₵ ${categorySummary.tuition.paid.toFixed(2)}</span></div>
-              <div class="summary-item grand-total" style="font-size: 14px;">
-                <span>NET SETTLEMENT:</span>
-                <span style="color: ${totalBalanceAcrossCategories > 0 ? "#ef4444" : "#10B981"};">₵ ${totalBalanceAcrossCategories.toFixed(2)}</span>
-              </div>
-            </div>
-
-            <div class="footer">
-              <p>This is a computer generated document. No signature required.<br/>
-              &copy; ${moment().year()} ${SCHOOL_CONFIG.fullName} | System powered by EduEaze</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-    try {
-      const { uri } = await Print.printToFileAsync({ html });
-      const fileName = `Fee_Statement_${sName.replace(/\s+/g, "_")}_${moment().format("DDMMYY")}.pdf`;
-
-      if (Platform.OS !== "web") {
-        // Move to a permanent-ish location with a nice name before sharing
-        const newUri = (FileSystem as any).documentDirectory + fileName;
-        await FileSystem.copyAsync({ from: uri, to: newUri });
-        await Sharing.shareAsync(newUri, {
-          mimeType: "application/pdf",
-          dialogTitle: "Download Fee Statement",
-          UTI: "com.adobe.pdf",
-        });
-      } else {
-        // Force download on web
-        const link = document.createElement("a");
-        link.href = uri;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    } catch {
-      showToast({ message: "Could not generate PDF statement", type: "error" });
-    }
-  };
+  const { totalBilled, totalPaid, totalBalance } = useMemo(() => {
+    const billed = Object.values(categorySummary).reduce(
+      (acc, curr: any) => acc + curr.billed,
+      0,
+    );
+    const paid = Object.values(categorySummary).reduce(
+      (acc, curr: any) => acc + curr.paid,
+      0,
+    );
+    return {
+      totalBilled: billed,
+      totalPaid: paid,
+      totalBalance: billed - paid,
+    };
+  }, [categorySummary]);
 
   if (loading || acadConfig.loading)
     return (
@@ -414,13 +317,6 @@ export default function StudentFeeHistory() {
             <Text style={styles.headerTitle}>Financial Statement</Text>
             <Text style={styles.headerSub}>Transaction Ledger</Text>
           </View>
-          <TouchableOpacity onPress={generatePDF} disabled={!record}>
-            <SVGIcon
-              name="cloud-download"
-              size={24}
-              color={!record ? "rgba(255,255,255,0.3)" : "#fff"}
-            />
-          </TouchableOpacity>
         </View>
         <View style={styles.filterRow}>
           <View style={[styles.pickerBox, { flex: 1.2 }]}>
@@ -504,7 +400,7 @@ export default function StudentFeeHistory() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.selectorScroll}
             >
-              {children.map((c) => (
+              {children.map((c: any) => (
                 <TouchableOpacity
                   key={c.id}
                   onPress={() => setSelectedChildId(c.id)}
@@ -538,23 +434,31 @@ export default function StudentFeeHistory() {
             duration={600}
             style={styles.receiptPaper}
           >
-            {/* Visual Receipt UI */}
-            <View style={styles.paperHeader}>
-              <Image
-                source={schoolLogo}
-                style={styles.paperLogo}
-                resizeMode="contain"
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.receiptSchoolName, { color: primary }]}>
-                  {SCHOOL_CONFIG.fullName}
-                </Text>
-                <Text style={styles.receiptMotto}>{SCHOOL_CONFIG.motto}</Text>
-              </View>
-            </View>
-
             <View style={styles.paperDivider} />
-            <Text style={styles.receiptTitleText}>OFFICIAL RECEIPT</Text>
+            <View style={styles.receiptHeaderRow}>
+              <Text style={styles.receiptTitleText}>
+                TERM BILL & PAYMENT BREAKDOWN
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  router.push({
+                    pathname: "/shared/receipt-view",
+                    params: {
+                      type: "bill",
+                      studentId: selectedChildId,
+                      year: selectedYear,
+                      term: selectedTerm,
+                    },
+                  });
+                }}
+                style={styles.viewOfficialBtn}
+              >
+                <SVGIcon name="document-text" size={18} color={primary} />
+                <Text style={[styles.viewOfficialText, { color: primary }]}>
+                  OFFICIAL BILL
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <View style={styles.paperInfoGrid}>
               <View style={styles.paperInfoItem}>
@@ -581,95 +485,84 @@ export default function StudentFeeHistory() {
               </View>
             </View>
 
-            {/* Table */}
-            <View style={styles.summaryContainer}>
-              <Text style={styles.summaryTitle}>CATEGORY BREAKDOWN</Text>
-              <View style={styles.summaryGrid}>
-                {Object.entries(categorySummary).map(([cat, vals]: any) => (
-                  <View key={cat} style={styles.summaryCard}>
-                    <Text style={styles.catLabel}>{cat.toUpperCase()}</Text>
-                    <View style={styles.catRow}>
-                      <Text style={styles.catSub}>Billed:</Text>
-                      <Text style={styles.catVal}>₵{vals.billed.toFixed(2)}</Text>
-                    </View>
-                    <View style={styles.catRow}>
-                      <Text style={styles.catSub}>Paid:</Text>
-                      <Text style={[styles.catVal, { color: "#10B981" }]}>₵{vals.paid.toFixed(2)}</Text>
-                    </View>
-                    <View style={[styles.catRow, { borderTopWidth: 1, borderTopColor: "#eee", marginTop: 4, paddingTop: 4 }]}>
-                      <Text style={styles.catSub}>Bal:</Text>
-                      <Text style={[styles.catVal, { color: (vals.billed - vals.paid) > 0 ? "#EF4444" : "#10B981" }]}>
-                        ₵{(vals.billed - vals.paid).toFixed(2)}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.tableContainer}>
-              <View style={styles.tableHeader}>
-                <Text style={[styles.th, { flex: 1 }]}>DATE / TYPE</Text>
-                <Text style={[styles.th, { flex: 1.5 }]}>REF #</Text>
-                <Text style={[styles.th, { flex: 1, textAlign: "right" }]}>
-                  AMOUNT
+            {/* Invoice Table Breakdown */}
+            <View style={styles.invoiceTable}>
+              <View style={styles.invoiceHeader}>
+                <Text style={[styles.invoiceTh, { flex: 2 }]}>DESCRIPTION</Text>
+                <Text
+                  style={[styles.invoiceTh, { flex: 1.2, textAlign: "right" }]}
+                >
+                  BILLED
+                </Text>
+                <Text
+                  style={[styles.invoiceTh, { flex: 1.2, textAlign: "right" }]}
+                >
+                  PAID
+                </Text>
+                <Text
+                  style={[styles.invoiceTh, { flex: 1.2, textAlign: "right" }]}
+                >
+                  BALANCE
                 </Text>
               </View>
-
-              {(allTransactions || []).length === 0 ? (
-                <Text style={styles.noPayments}>No transactions recorded</Text>
-              ) : (
-                allTransactions.map((p: any, i: number) => (
-                  <View key={i} style={styles.tableRow}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.td}>
-                        {moment(p.createdAt).format("DD/MM/YY")}
-                      </Text>
-                      <Text style={{ fontSize: 9, color: primary, fontWeight: '800' }}>
-                        {(p.type || "tuition").toUpperCase()}
-                      </Text>
-                    </View>
-                    <Text style={[styles.td, { flex: 1.5 }]} numberOfLines={1}>
-                      {p.receiptNo || "RC-" + String(p.createdAt).slice(-6)}
-                    </Text>
-                    <Text style={[styles.td, { flex: 1, textAlign: "right", fontWeight: '900' }]}>
-                      ₵{Number(p.amount).toFixed(2)}
-                    </Text>
-                  </View>
-                ))
-              )}
+              {Object.entries(categorySummary).map(([cat, vals]: any) => (
+                <View key={cat} style={styles.invoiceRow}>
+                  <Text
+                    style={[styles.invoiceTd, { flex: 2, fontWeight: "800" }]}
+                  >
+                    {cat.toUpperCase()}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.invoiceTd,
+                      { flex: 1.2, textAlign: "right" },
+                    ]}
+                  >
+                    ₵{vals.billed.toFixed(2)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.invoiceTd,
+                      { flex: 1.2, textAlign: "right", color: "#10B981" },
+                    ]}
+                  >
+                    ₵{vals.paid.toFixed(2)}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.invoiceTd,
+                      { flex: 1.2, textAlign: "right", fontWeight: "900" },
+                    ]}
+                  >
+                    ₵{(vals.billed - vals.paid).toFixed(2)}
+                  </Text>
+                </View>
+              ))}
             </View>
 
             {/* Summary */}
             <View style={styles.totalsSection}>
               <View style={styles.totalsRow}>
-                <Text style={styles.totalsLabel}>ARREARS B/F:</Text>
+                <Text style={styles.totalsLabel}>TOTAL BILLED:</Text>
                 <Text style={styles.totalsValue}>
-                  ₵ {record.arrears?.toFixed(2)}
-                </Text>
-              </View>
-              <View style={styles.totalsRow}>
-                <Text style={styles.totalsLabel}>TERM BILL:</Text>
-                <Text style={styles.totalsValue}>
-                  ₵ {record.termBill?.toFixed(2)}
-                </Text>
-              </View>
-              <View style={styles.totalsRow}>
-                <Text style={styles.totalsLabel}>DISCOUNT:</Text>
-                <Text style={[styles.totalsValue, { color: "#3B82F6" }]}>
-                  - ₵ {(record.discount || 0).toFixed(2)}
+                  ₵ {totalBilled.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>TOTAL PAID:</Text>
                 <Text style={[styles.totalsValue, { color: "#10B981" }]}>
-                  - ₵ {record.amountPaid?.toFixed(2)}
+                  ₵ {totalPaid.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.grandTotalRow}>
-                <Text style={styles.grandTotalLabel}>BALANCE DUE:</Text>
-                <Text style={[styles.grandTotalValue, { color: primary }]}>
-                  ₵ {record.balance?.toFixed(2)}
+                <Text style={styles.grandTotalLabel}>NET BALANCE:</Text>
+                <Text
+                  style={[
+                    styles.grandTotalValue,
+                    { color: totalBalance > 0 ? "#EF4444" : "#10B981" },
+                  ]}
+                >
+                  ₵ {totalBalance.toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -690,14 +583,6 @@ export default function StudentFeeHistory() {
                 color="rgba(0,0,0,0.02)"
               />
             </View>
-
-            <TouchableOpacity
-              onPress={generatePDF}
-              style={[styles.printBtn, { backgroundColor: primary }]}
-            >
-              <SVGIcon name="download" size={24} color="#fff" />
-              <Text style={styles.printBtnText}>Download Official PDF</Text>
-            </TouchableOpacity>
           </Animatable.View>
         ) : (
           selectedChildId && (
@@ -710,6 +595,56 @@ export default function StudentFeeHistory() {
               </Text>
             </View>
           )
+        )}
+
+        {/* Payment History List for Parents */}
+        {selectedChildId && allTransactions.length > 0 && (
+          <View style={styles.historyContainer}>
+            <Text style={styles.historyTitle}>PAYMENT HISTORY</Text>
+            {allTransactions.map((payment: any, idx: number) => (
+              <TouchableOpacity
+                key={payment.id || idx}
+                style={styles.paymentCard}
+                onPress={() => {
+                  router.push({
+                    pathname: "/shared/receipt-view",
+                    params: {
+                      type: "payment",
+                      studentId: selectedChildId,
+                      paymentId: payment.id,
+                      year: selectedYear,
+                      term: selectedTerm,
+                    },
+                  });
+                }}
+              >
+                <View style={styles.paymentLead}>
+                  <View style={styles.iconCircle}>
+                    <SVGIcon name="receipt" size={20} color={primary} />
+                  </View>
+                  <View>
+                    <Text style={styles.paymentLabel}>
+                      {payment.otherCategory?.toUpperCase() ||
+                       payment.type?.replace('_payment', '').replace('_', ' ').toUpperCase() ||
+                       "FEE PAYMENT"}
+                    </Text>
+                    <Text style={styles.paymentDate}>
+                      {moment(payment.timestamp?.toDate()).format(
+                        "MMM DD, YYYY",
+                      )}{" "}
+                      • {payment.receiptNo}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.paymentTail}>
+                  <Text style={styles.paymentValue}>
+                    ₵{payment.amount.toFixed(2)}
+                  </Text>
+                  <SVGIcon name="chevron-forward" size={16} color="#94A3B8" />
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -806,22 +741,34 @@ const styles = StyleSheet.create({
     minHeight: 600,
     position: "relative",
   },
-  paperHeader: { flexDirection: "row", alignItems: "center", marginBottom: 15 },
-  paperLogo: { width: 50, height: 50, marginRight: 15 },
-  receiptSchoolName: {
-    fontSize: 16,
-    fontWeight: "900",
-    textTransform: "uppercase",
-  },
-  receiptMotto: { fontSize: 10, fontStyle: "italic", color: "#64748B" },
   paperDivider: { height: 2, backgroundColor: "#1E293B", marginVertical: 10 },
+  receiptHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
   receiptTitleText: {
-    textAlign: "center",
     fontSize: 14,
     fontWeight: "900",
     color: "#1E293B",
     letterSpacing: 2,
-    marginBottom: 20,
+  },
+  viewOfficialBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  viewOfficialText: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 1,
   },
   paperInfoGrid: {
     flexDirection: "row",
@@ -833,29 +780,26 @@ const styles = StyleSheet.create({
   paperInfoLabel: { fontSize: 8, fontWeight: "900", color: "#94A3B8" },
   paperInfoValue: { fontSize: 11, fontWeight: "700", color: "#1E293B" },
 
-  tableContainer: { marginBottom: 25 },
-  tableHeader: {
+  invoiceTable: { marginBottom: 30, marginTop: 10 },
+  invoiceHeader: {
     flexDirection: "row",
-    borderBottomWidth: 1,
-    borderTopWidth: 1,
-    borderColor: "#000",
-    paddingVertical: 8,
-  },
-  th: { fontSize: 10, fontWeight: "900", color: "#1E293B" },
-  tableRow: {
-    flexDirection: "row",
+    backgroundColor: "#F1F5F9",
     paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderColor: "#1E293B",
   },
-  td: { fontSize: 11, fontWeight: "600", color: "#475569" },
-  noPayments: {
-    textAlign: "center",
-    padding: 20,
-    color: "#94A3B8",
-    fontSize: 12,
-    fontStyle: "italic",
+  invoiceTh: { fontSize: 10, fontWeight: "900", color: "#1E293B" },
+  invoiceRow: {
+    flexDirection: "row",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+    alignItems: "center",
   },
+  invoiceTd: { fontSize: 11, color: "#1E293B" },
 
   totalsSection: { borderTopWidth: 1, borderTopColor: "#000", paddingTop: 15 },
   totalsRow: {
@@ -897,28 +841,100 @@ const styles = StyleSheet.create({
     color: "#CBD5E1",
     marginTop: 4,
   },
-
-  printBtn: {
-    marginTop: 30,
-    height: 60,
-    borderRadius: 20,
+  historyContainer: {
+    padding: 20,
+    marginTop: 10,
+  },
+  historyTitle: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#64748B",
+    marginBottom: 15,
+    letterSpacing: 1,
+  },
+  paymentCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 18,
+    marginBottom: 12,
+    ...SHADOWS.small,
+  },
+  paymentLead: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 12,
-    ...SHADOWS.medium,
+    gap: 15,
   },
-  printBtnText: { color: "#fff", fontSize: 15, fontWeight: "900" },
-
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  paymentLabel: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  paymentDate: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  paymentTail: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  paymentValue: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: "#10B981",
+  },
   watermark: { position: "absolute", bottom: 100, right: 20, opacity: 0.5 },
-  summaryContainer: { marginBottom: 25, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  summaryTitle: { fontSize: 10, fontWeight: '900', color: '#64748B', marginBottom: 10, letterSpacing: 1 },
-  summaryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  summaryCard: { flex: 1, minWidth: '30%', backgroundColor: '#fff', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
-  catLabel: { fontSize: 8, fontWeight: '900', color: COLORS.primary, marginBottom: 4 },
-  catRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  catSub: { fontSize: 8, color: '#94A3B8', fontWeight: '600' },
-  catVal: { fontSize: 9, fontWeight: '700', color: '#1E293B' },
+  summaryContainer: {
+    marginBottom: 25,
+    backgroundColor: "#F8FAFC",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  summaryTitle: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#64748B",
+    marginBottom: 10,
+    letterSpacing: 1,
+  },
+  summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  summaryCard: {
+    flex: 1,
+    minWidth: "30%",
+    backgroundColor: "#fff",
+    padding: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  catLabel: {
+    fontSize: 8,
+    fontWeight: "900",
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  catRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  catSub: { fontSize: 8, color: "#94A3B8", fontWeight: "600" },
+  catVal: { fontSize: 9, fontWeight: "700", color: "#1E293B" },
   emptyContainer: {
     alignItems: "center",
     marginTop: 60,

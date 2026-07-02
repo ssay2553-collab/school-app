@@ -252,11 +252,15 @@ export default function PedagogyVault() {
     `;
 
     try {
-      const { uri } = await Print.printToFileAsync({ html });
-      if (Platform.OS === 'ios') {
-        await Sharing.shareAsync(uri);
+      if (Platform.OS === 'web') {
+        await Print.printAsync({ html });
       } else {
-        await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+        const { uri } = await Print.printToFileAsync({ html });
+        if (Platform.OS === 'ios') {
+          await Sharing.shareAsync(uri);
+        } else {
+          await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+        }
       }
     } catch (error) {
       console.error("PDF Export Error:", error);

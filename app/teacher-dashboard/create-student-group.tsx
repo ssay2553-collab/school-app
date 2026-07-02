@@ -49,7 +49,7 @@ import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 /* ================= TYPES ================= */
@@ -363,8 +363,11 @@ export default function TeacherStudentGroups() {
     if (!appUser?.uid) return;
     setLoading(true);
     try {
-      const userSnap = await getDoc(doc(db, "users", appUser.uid));
-      const classIds = (userSnap.data() as any)?.classes || [];
+      const classIds = getTeacherClasses(appUser);
+      if (classIds.length === 0) {
+        showToast({ message: "No classes assigned to you.", type: "error" });
+        return;
+      }
       const q = query(
         collection(db, "classes"),
         where(documentId(), "in", classIds),
@@ -394,8 +397,11 @@ export default function TeacherStudentGroups() {
   const startEdit = async (group: Group) => {
     setLoading(true);
     try {
-      const userSnap = await getDoc(doc(db, "users", appUser!.uid));
-      const classIds = (userSnap.data() as any)?.classes || [];
+      const classIds = getTeacherClasses(appUser);
+      if (classIds.length === 0) {
+        showToast({ message: "No classes assigned to you.", type: "error" });
+        return;
+      }
       const q = query(
         collection(db, "classes"),
         where(documentId(), "in", classIds),

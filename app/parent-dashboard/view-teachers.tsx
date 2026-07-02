@@ -31,6 +31,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
+import { getTeacherClasses } from "../../lib/classHelpers";
 
 const { width } = Dimensions.get("window");
 
@@ -101,10 +102,10 @@ export default function ViewTeachers() {
         const allTeachers = snap.docs.map(d => ({ uid: d.id, ...(d.data() as any) } as Teacher));
         
         // 3. Filter teachers who teach at least one of the parent's children's classes
-        const filteredList = allTeachers.filter(t => 
-           t.classes?.some(cid => myKidsClasses.includes(cid)) || 
-           (t.classTeacherOf && myKidsClasses.includes(t.classTeacherOf))
-        );
+        const filteredList = allTeachers.filter(t => {
+           const teacherClasses = getTeacherClasses(t);
+           return teacherClasses.some(cid => myKidsClasses.includes(cid));
+        });
 
         setTeachers(filteredList);
       } catch (err) {
@@ -322,11 +323,11 @@ export default function ViewTeachers() {
                   </View>
                 )}
 
-                {viewingTeacher.classes && viewingTeacher.classes.length > 0 && (
+                {getTeacherClasses(viewingTeacher).length > 0 && (
                   <View style={styles.infoSection}>
                     <Text style={styles.sectionLabel}>CLASSES TAUGHT</Text>
                     <View style={styles.profileSubjectGrid}>
-                      {viewingTeacher.classes.map((c, i) => (
+                      {getTeacherClasses(viewingTeacher).map((c, i) => (
                         <View key={i} style={[styles.profileSubjectChip, { backgroundColor: '#F1F5F9' }]}>
                           <Text style={[styles.profileSubjectText, { color: '#475569' }]}>{c}</Text>
                         </View>

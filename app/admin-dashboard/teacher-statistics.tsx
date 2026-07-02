@@ -37,6 +37,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
+import { getTeacherClasses } from "../../lib/classHelpers";
 import moment from "moment";
 
 const { width } = Dimensions.get("window");
@@ -186,6 +187,7 @@ export default function TeacherStatistics() {
           }
         });
 
+        const teacherClasses = getTeacherClasses(t);
         const usageScore = Math.min(100, (tAssignments.length * 10) + (tGroups.length * 15) + (tLessons.length * 20));
 
         return {
@@ -200,7 +202,7 @@ export default function TeacherStatistics() {
           lastActive: t.lastActive,
           onlineTimeMinutes: t.onlineTimeMinutes || 0,
           usageScore,
-          assignedClasses: (t.classes || []).map((cid: string) => classMap[cid] || cid),
+          assignedClasses: teacherClasses.map((cid: string) => classMap[cid] || cid),
           groups: tGroups.map(g => ({
             name: g.name || "Unnamed Group",
             className: classMap[g.classId] || g.classId || "General",

@@ -1,10 +1,10 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import {
   collection,
   doc,
   getDoc,
   getDocsFromServer,
+  increment,
   onSnapshot,
   query,
   serverTimestamp,
@@ -38,7 +38,13 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import { getTeacherClasses, isClassTeacher } from "../../lib/classHelpers";
+
+// Guarded import for native-only library
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 
 const { width } = Dimensions.get("window");
 
@@ -125,8 +131,7 @@ export default function FeedingFees() {
     feedingPermission === "edit";
 
   // Class teacher check
-  const isClassTeacher = !!appUser?.classTeacherOf;
-  const classTeacherClassId = appUser?.classTeacherOf || "";
+  const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
 
   const handleBack = () => {
     router.replace("/shared/daily-financials");
@@ -151,83 +156,88 @@ export default function FeedingFees() {
   // Filters
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Determine initial class selection
   const [selectedClassId, setSelectedClassId] = useState<string>(
-    isClassTeacher && !isSuperAdmin ? classTeacherClassId : "all",
+    teacherClasses.length > 0 && !isSuperAdmin
+      ? teacherClasses[0] || ""
+      : "all",
   );
+
+  const isUserClassTeacher = useMemo(() => {
+    if (!appUser || !selectedClassId || selectedClassId === "all") return false;
+    return isClassTeacher(appUser, selectedClassId);
+  }, [appUser, selectedClassId]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [attendanceMap, setAttendanceMap] = useState<Record<string, any>>({});
+  const [feedingAmount, setFeedingAmount] = useState("");
+  const [classRates, setClassRates] = useState<Record<string, number>>({});
+  const [overrideMap, setOverrideMap] = useState<
+    Record<string, string | undefined>
+  >({});
 
   // Data
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
-  // Attendance map for selected class/date: { [uid]: { status: 'present'|'absent', ... } }
-  const [attendanceMap, setAttendanceMap] = useState<Record<string, any>>({});
 
-  // Class rates for feeding (loaded from school_settings)
-  const [classRates, setClassRates] = useState<Record<string, number>>({});
-  const [loadingRates, setLoadingRates] = useState(false);
-
-  // Feeding amount input for the day
-  const [feedingAmount, setFeedingAmount] = useState("");
-
-  // Override map for per-student payment amounts
-  const [overrideMap, setOverrideMap] = useState<
-    Record<string, string | undefined>
-  >({});
-
-  // Get current class rate (for display to teachers/staff)
-  const currentClassRate = useMemo(() => {
-    if (selectedClassId === "all") return SCHOOL_CONFIG.defaultFeedingRate || 0;
-    return (
-      classRates[selectedClassId] || SCHOOL_CONFIG.defaultFeedingRate || 0
-    );
-  }, [selectedClassId, classRates]);
-
-  // Load class rates from school_settings
-  useEffect(() => {
-    const loadClassRates = async () => {
-      try {
-        setLoadingRates(true);
-        const docRef = doc(db, "school_settings", "feeding_rates");
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const rates = snap.data() as Record<string, number>;
-          setClassRates(rates);
-        }
-      } catch (e) {
-        console.error("Error loading feeding rates:", e);
-      } finally {
-        setLoadingRates(false);
-      }
-    };
-    loadClassRates();
-  }, []);
-
-  // Statistics
+  // Stats calculation
   const stats = useMemo(() => {
     const feedingRecords = dailyRecords.filter((r) => (r.feedingFee || 0) > 0);
-    const paidRecords = feedingRecords.filter((r) => r.feedingPaid === true);
-    const totalFeeding = paidRecords.reduce(
-      (sum, r) => sum + (r.feedingFee || 0),
-      0,
-    );
     return {
-      totalFeeding,
-      recordsCount: paidRecords.length,
+      totalFeeding: feedingRecords.reduce(
+        (acc, curr) => acc + (curr.feedingFee || 0),
+        0,
+      ),
+      recordsCount: feedingRecords.length,
     };
   }, [dailyRecords]);
 
-  // Load classes
+  const currentClassRate = useMemo(() => {
+    if (selectedClassId === "all") return SCHOOL_CONFIG.defaultFeedingRate || 0;
+    return classRates[selectedClassId] || SCHOOL_CONFIG.defaultFeedingRate || 0;
+  }, [selectedClassId, classRates]);
+
+  // Derived effective class IDs for queries
+  const effectiveClassIds = useMemo(() => {
+    if (isSuperAdmin) {
+      return selectedClassId === "all" ? [] : [selectedClassId];
+    }
+    if (teacherClasses.length > 0) {
+      return selectedClassId === "all" ? teacherClasses : [selectedClassId];
+    }
+    return [];
+  }, [isSuperAdmin, selectedClassId, teacherClasses]);
+
+  // Load classes and rates
   useEffect(() => {
-    const q = collection(db, "classes");
-    const unsub = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        name: (d.data() as any).name || d.id,
-      }));
-      setClasses(sortClasses(list));
-    });
-    return () => unsub();
+    const loadClasses = async () => {
+      try {
+        const snap = await getDocsFromServer(collection(db, "classes") as any);
+        const classList = snap.docs.map((d: any) => ({
+          id: d.id,
+          name: d.data().name || "Unnamed Class",
+        }));
+        setClasses(classList);
+      } catch (e) {
+        console.error("Error loading classes:", e);
+      }
+    };
+
+    const loadRates = async () => {
+      try {
+        const ref = doc(db, "school_settings", "feeding_rates");
+        const snap = await getDoc(ref as any);
+        if (snap.exists()) {
+          setClassRates(snap.data() as Record<string, number>);
+        }
+      } catch (e) {
+        console.error("Error loading feeding rates:", e);
+      }
+    };
+
+    loadClasses();
+    loadRates();
   }, []);
 
   // Load students
@@ -242,16 +252,22 @@ export default function FeedingFees() {
           where("isFeeding", "==", true),
         );
 
-        let effectiveClassId = selectedClassId;
-        if (isClassTeacher && !isSuperAdmin) {
-          effectiveClassId = classTeacherClassId;
-        }
-
-        if (effectiveClassId !== "all") {
-          baseQuery = query(
-            baseQuery,
-            where("classId", "==", effectiveClassId),
-          );
+        if (effectiveClassIds.length > 0) {
+          if (effectiveClassIds.length === 1) {
+            baseQuery = query(
+              baseQuery,
+              where("classId", "==", effectiveClassIds[0]),
+            );
+          } else {
+            baseQuery = query(
+              baseQuery,
+              where("classId", "in", effectiveClassIds),
+            );
+          }
+        } else if (!isSuperAdmin) {
+          // If not super admin and no classes assigned, return empty
+          setStudents([]);
+          return;
         }
 
         const snap = await getDocsFromServer(baseQuery as any);
@@ -278,13 +294,7 @@ export default function FeedingFees() {
     };
 
     loadStudents();
-  }, [
-    selectedClassId,
-    classes,
-    isClassTeacher,
-    classTeacherClassId,
-    isSuperAdmin,
-  ]);
+  }, [effectiveClassIds, classes, isSuperAdmin]);
 
   // Load daily records for selected date in real-time
   useEffect(() => {
@@ -297,49 +307,51 @@ export default function FeedingFees() {
       where("date", "==", dateStr),
     );
 
-    let effectiveClassId = selectedClassId;
-    if (isClassTeacher && !isSuperAdmin) {
-      effectiveClassId = classTeacherClassId;
+    if (effectiveClassIds.length > 0) {
+      if (effectiveClassIds.length === 1) {
+        baseQuery = query(
+          baseQuery,
+          where("classId", "==", effectiveClassIds[0]),
+        );
+      } else {
+        baseQuery = query(baseQuery, where("classId", "in", effectiveClassIds));
+      }
+    } else if (!isSuperAdmin) {
+      setDailyRecords([]);
+      setLoading(false);
+      return;
     }
 
-    if (effectiveClassId !== "all") {
-      baseQuery = query(baseQuery, where("classId", "==", effectiveClassId));
-    }
-
-    const unsub = onSnapshot(baseQuery as any, (snap: any) => {
-      const records: DailyRecord[] = snap.docs.map((d: any) => ({
-        id: d.id,
-        ...(d.data() as any),
-      }));
-      setDailyRecords(records);
-      setLoading(false);
-      setRefreshing(false);
-    }, (err: any) => {
-      console.error("Error listening to daily records:", err);
-      setLoading(false);
-      setRefreshing(false);
-    });
+    const unsub = onSnapshot(
+      baseQuery as any,
+      (snap: any) => {
+        const records: DailyRecord[] = snap.docs.map((d: any) => ({
+          id: d.id,
+          ...(d.data() as any),
+        }));
+        setDailyRecords(records);
+        setLoading(false);
+        setRefreshing(false);
+      },
+      (err: any) => {
+        console.error("Error listening to daily records:", err);
+        setLoading(false);
+        setRefreshing(false);
+      },
+    );
 
     return () => unsub();
-  }, [
-    selectedDate,
-    selectedClassId,
-    isClassTeacher,
-    isSuperAdmin,
-    classTeacherClassId,
-  ]);
+  }, [selectedDate, effectiveClassIds, isSuperAdmin]);
 
   // Load attendance for selected class/date so we can skip absent students
   useEffect(() => {
     const loadAttendance = async () => {
       try {
-        let effectiveClassId = selectedClassId;
-        if (isClassTeacher && !isSuperAdmin)
-          effectiveClassId = classTeacherClassId;
-        if (!effectiveClassId || effectiveClassId === "all") {
+        if (effectiveClassIds.length !== 1) {
           setAttendanceMap({});
           return;
         }
+        const effectiveClassId = effectiveClassIds[0];
 
         const cleanDate = moment(selectedDate).format("YYYY-MM-DD");
         const acadYear = (acadConfig.academicYear || "").replace(/\//g, "-");
@@ -360,14 +372,7 @@ export default function FeedingFees() {
     };
 
     loadAttendance();
-  }, [
-    selectedClassId,
-    selectedDate,
-    isClassTeacher,
-    classTeacherClassId,
-    isSuperAdmin,
-    acadConfig,
-  ]);
+  }, [effectiveClassIds, selectedDate, acadConfig]);
 
   // Filter students by search
   const filteredStudents = useMemo(() => {
@@ -464,6 +469,9 @@ export default function FeedingFees() {
         if (rate <= 0) continue;
 
         const existingRecord = recordsMap.get(uid);
+        const oldFee = existingRecord?.feedingFee || 0;
+        const feeDiff = rate - oldFee;
+
         const docId = `${uid}_${dateStr}`;
         const recordData: any = {
           studentUid: uid,
@@ -472,20 +480,20 @@ export default function FeedingFees() {
           className: student.className,
           date: dateStr,
           feedingFee: rate,
-          busFee: existingRecord?.busFee || 0,
-          extraClassesFee: existingRecord?.extraClassesFee || 0,
-          otherFees: existingRecord?.otherFees || 0,
-          otherFeesDescription: existingRecord?.otherFeesDescription || "",
-          total:
-            rate +
-            (existingRecord?.busFee || 0) +
-            (existingRecord?.extraClassesFee || 0) +
-            (existingRecord?.otherFees || 0),
+          total: increment(feeDiff),
           feedingPaid: existingRecord?.feedingPaid || false,
           recordedBy: appUser?.adminRole || "Admin",
           recordedByUid: appUser?.uid || "unknown",
-          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         };
+
+        if (!existingRecord) {
+          recordData.createdAt = serverTimestamp();
+          recordData.busFee = 0;
+          recordData.extraClassesFee = 0;
+          recordData.otherFees = 0;
+          recordData.otherFeesDescription = "";
+        }
 
         batch.set(doc(db, "dailyFinancials", docId), recordData, {
           merge: true,
@@ -554,7 +562,10 @@ export default function FeedingFees() {
       );
 
       // set today's record as paid
-      const existingRecord = getExistingRecord(uid);
+      const existingRecord = dailyRecords.find((r) => r.studentUid === uid);
+      const oldFee = existingRecord?.feedingFee || 0;
+      const feeDiff = classAmount - oldFee;
+
       const todayRef = doc(db, "dailyFinancials", docId);
       const todayData: any = {
         studentUid: uid,
@@ -563,22 +574,20 @@ export default function FeedingFees() {
         className: student?.className || "Class",
         date: dateStr,
         feedingFee: classAmount,
-        busFee: existingRecord?.busFee || 0,
-        extraClassesFee: existingRecord?.extraClassesFee || 0,
-        otherFees: existingRecord?.otherFees || 0,
-        otherFeesDescription: existingRecord?.otherFeesDescription || "",
-        total:
-          classAmount +
-          (existingRecord?.busFee || 0) +
-          (existingRecord?.extraClassesFee || 0) +
-          (existingRecord?.otherFees || 0),
+        total: increment(feeDiff),
         feedingPaid: true,
         feedingPaidAt: serverTimestamp(),
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+
+      if (!existingRecord) {
+        todayData.createdAt = serverTimestamp();
+        todayData.busFee = 0;
+        todayData.extraClassesFee = 0;
+        todayData.otherFees = 0;
+      }
       ops.push({ ref: todayRef, data: todayData });
 
       // If override > classAmount, spread extra to future days
@@ -593,12 +602,21 @@ export default function FeedingFees() {
           const amountForDay = Math.min(classAmount, extra);
           const data: any = {
             studentUid: uid,
+            studentName: student?.fullName || "Student",
+            classId: student?.classId || "unknown",
+            className: student?.className || "Class",
             date: nextDateStr,
             feedingFee: amountForDay,
-            total: amountForDay,
+            total: increment(amountForDay),
             feedingPaid: true,
             feedingPaidAt: serverTimestamp(),
+            recordedBy: appUser?.adminRole || "Admin",
+            recordedByUid: appUser?.uid || "unknown",
             updatedAt: serverTimestamp(),
+            busFee: 0,
+            extraClassesFee: 0,
+            otherFees: 0,
+            otherFeesDescription: "",
           };
           ops.push({ ref, data });
           extra -= amountForDay;
@@ -630,7 +648,10 @@ export default function FeedingFees() {
     }
 
     const existingRecord = getExistingRecord(uid);
-    const isCurrentlyUnpaid = existingRecord && existingRecord.feedingFee > 0 && !existingRecord.feedingPaid;
+    const isCurrentlyUnpaid =
+      existingRecord &&
+      existingRecord.feedingFee > 0 &&
+      !existingRecord.feedingPaid;
 
     setSaving(true);
     try {
@@ -639,6 +660,8 @@ export default function FeedingFees() {
       const ref = doc(db, "dailyFinancials", `${uid}_${dateStr}`);
 
       const newFee = isCurrentlyUnpaid ? 0 : classAmount;
+      const oldFee = existingRecord?.feedingFee || 0;
+      const feeDiff = newFee - oldFee;
 
       const data: any = {
         studentUid: uid,
@@ -647,25 +670,28 @@ export default function FeedingFees() {
         className: student?.className || "Class",
         date: dateStr,
         feedingFee: newFee,
-        busFee: existingRecord?.busFee || 0,
-        extraClassesFee: existingRecord?.extraClassesFee || 0,
-        otherFees: existingRecord?.otherFees || 0,
-        otherFeesDescription: existingRecord?.otherFeesDescription || "",
-        total:
-          newFee +
-          (existingRecord?.busFee || 0) +
-          (existingRecord?.extraClassesFee || 0) +
-          (existingRecord?.otherFees || 0),
+        total: increment(feeDiff),
         feedingPaid: false,
-        feedingPaidAt: null,
-        recordedBy: appUser?.adminRole || "Admin",
-        recordedByUid: appUser?.uid || "unknown",
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+
+      if (!existingRecord) {
+        data.createdAt = serverTimestamp();
+        data.busFee = 0;
+        data.extraClassesFee = 0;
+        data.otherFees = 0;
+        data.otherFeesDescription = "";
+      }
+      data.recordedBy = appUser?.adminRole || "Admin";
+      data.recordedByUid = appUser?.uid || "unknown";
+      data.feedingPaidAt = null;
+
       await setDoc(ref, data, { merge: true } as any);
 
-      showToast({ message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.", type: "success" });
+      showToast({
+        message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
+        type: "success",
+      });
     } catch (e) {
       console.error("Error marking student not paid:", e);
       showToast({ message: "Failed to update record.", type: "error" });
@@ -752,11 +778,8 @@ export default function FeedingFees() {
           <Text style={styles.errorSub}>
             You do not have the required permissions to view feeding fees.
           </Text>
-          <TouchableOpacity
-            style={styles.errorButton}
-            onPress={() => router.replace("/admin-dashboard")}
-          >
-            <Text style={styles.errorButtonText}>Return to Dashboard</Text>
+          <TouchableOpacity style={styles.errorButton} onPress={handleBack}>
+            <Text style={styles.errorButtonText}>Back to Daily Financials</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -769,10 +792,7 @@ export default function FeedingFees() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={handleBack}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
         <View style={styles.headerTitle}>
@@ -790,12 +810,12 @@ export default function FeedingFees() {
         </TouchableOpacity>
       </View>
 
-      {showDatePicker && (
+      {showDatePicker && DateTimePicker && (
         <DateTimePicker
           value={selectedDate}
           mode="date"
           display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, date) => {
+          onChange={(event: any, date?: Date) => {
             setShowDatePicker(false);
             if (date) setSelectedDate(date);
           }}
@@ -883,14 +903,14 @@ export default function FeedingFees() {
                     </TouchableOpacity>
                   )}
                 </View>
-                {!isClassTeacher && (
-                  <View style={styles.pickerContainer}>
-                    <Text style={styles.pickerLabel}>Select Class</Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ paddingBottom: 4 }}
-                    >
+                <View style={styles.pickerContainer}>
+                  <Text style={styles.pickerLabel}>Select Class</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 4 }}
+                  >
+                    {isSuperAdmin && (
                       <TouchableOpacity
                         style={[
                           styles.classChip,
@@ -908,29 +928,32 @@ export default function FeedingFees() {
                           All Classes
                         </Text>
                       </TouchableOpacity>
-                      {classes.map((c) => (
-                        <TouchableOpacity
-                          key={c.id}
+                    )}
+                    {(isSuperAdmin
+                      ? classes
+                      : classes.filter((c) => teacherClasses.includes(c.id))
+                    ).map((c) => (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[
+                          styles.classChip,
+                          selectedClassId === c.id && styles.classChipActive,
+                        ]}
+                        onPress={() => setSelectedClassId(c.id)}
+                      >
+                        <Text
                           style={[
-                            styles.classChip,
-                            selectedClassId === c.id && styles.classChipActive,
+                            styles.classChipText,
+                            selectedClassId === c.id &&
+                              styles.classChipTextActive,
                           ]}
-                          onPress={() => setSelectedClassId(c.id)}
                         >
-                          <Text
-                            style={[
-                              styles.classChipText,
-                              selectedClassId === c.id &&
-                                styles.classChipTextActive,
-                            ]}
-                          >
-                            {c.name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
+                          {c.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
               </View>
 
               {/* Recording Form */}
@@ -1062,7 +1085,8 @@ export default function FeedingFees() {
                                     Absent
                                   </Text>
                                 </View>
-                              ) : (existingRecord && (existingRecord.feedingFee || 0) > 0) ? (
+                              ) : existingRecord &&
+                                (existingRecord.feedingFee || 0) > 0 ? (
                                 <View
                                   style={[
                                     styles.statusBadge,
@@ -1166,7 +1190,11 @@ export default function FeedingFees() {
                               name="close"
                               size={18}
                               color={
-                                existingRecord && (existingRecord.feedingFee || 0) > 0 && !isPaid ? "#fff" : VIBE.danger
+                                existingRecord &&
+                                (existingRecord.feedingFee || 0) > 0 &&
+                                !isPaid
+                                  ? "#fff"
+                                  : VIBE.danger
                               }
                             />
                             <Text
@@ -1174,7 +1202,9 @@ export default function FeedingFees() {
                                 styles.actionBtnText,
                                 {
                                   color:
-                                    existingRecord && (existingRecord.feedingFee || 0) > 0 && !isPaid
+                                    existingRecord &&
+                                    (existingRecord.feedingFee || 0) > 0 &&
+                                    !isPaid
                                       ? "#fff"
                                       : VIBE.danger,
                                 },
@@ -1213,8 +1243,6 @@ export default function FeedingFees() {
                     </Text>
                   </View>
                 )}
-
-
               </View>
             </ScrollView>
           )}
@@ -1256,7 +1284,9 @@ export default function FeedingFees() {
                       size={48}
                       color={VIBE.muted}
                     />
-                    <Text style={styles.emptyText}>No records for this date</Text>
+                    <Text style={styles.emptyText}>
+                      No records for this date
+                    </Text>
                   </View>
                 }
               />
@@ -1294,13 +1324,12 @@ export default function FeedingFees() {
                 <View style={styles.reportMeta}>
                   <Text style={styles.reportMetaText}>
                     Class:{" "}
-                    {isClassTeacher
-                      ? classes.find((c) => c.id === classTeacherClassId)
-                          ?.name || "Unknown"
-                      : selectedClassId === "all"
-                        ? "All Classes"
-                        : classes.find((c) => c.id === selectedClassId)?.name ||
-                          "Unknown"}
+                    {selectedClassId === "all"
+                      ? teacherClasses.length > 0 && !isSuperAdmin
+                        ? "Assigned Classes"
+                        : "All Classes"
+                      : classes.find((c) => c.id === selectedClassId)?.name ||
+                        "Unknown"}
                   </Text>
                 </View>
               </View>

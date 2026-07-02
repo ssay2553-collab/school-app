@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useState } from "react";
 import {
@@ -68,7 +68,11 @@ export default function StudentLoginScreen() {
         // 2. Secondary check: Token Login
         const cleanToken = password.trim().toUpperCase();
         const usersRef = collection(db, "users");
-        const q = query(usersRef, where("profile.email", "==", finalEmail));
+        const q = query(
+          usersRef,
+          where("profile.email", "==", finalEmail),
+          limit(1)
+        );
         const snap = await getDocs(q);
 
         if (!snap.empty) {

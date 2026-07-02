@@ -1,4 +1,3 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import {
   collection,
@@ -6,6 +5,7 @@ import {
   getDoc,
   getDocs,
   getDocsFromServer,
+  increment,
   onSnapshot,
   query,
   serverTimestamp,
@@ -39,7 +39,13 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { sortClasses } from "../../lib/classHelpers";
+import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
+
+// Guarded import for native-only library
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 
 const { width } = Dimensions.get("window");
 
@@ -123,8 +129,8 @@ export default function ExtraClassesFees() {
     extraClassesPermission === "full" ||
     extraClassesPermission === "edit";
 
-  const isClassTeacher = !!appUser?.classTeacherOf;
-  const classTeacherClassId = appUser?.classTeacherOf || "";
+  // Class teacher check
+  const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
 
   const handleBack = () => {
     router.replace("/shared/daily-financials");
@@ -149,8 +155,21 @@ export default function ExtraClassesFees() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string>(
-    isClassTeacher && !isSuperAdmin ? classTeacherClassId : "all",
+    teacherClasses.length > 0 && !isSuperAdmin
+      ? teacherClasses[0] || ""
+      : "all",
   );
+
+  // Derived effective class IDs for queries
+  const effectiveClassIds = useMemo(() => {
+    if (isSuperAdmin) {
+      return selectedClassId === "all" ? [] : [selectedClassId];
+    }
+    if (teacherClasses.length > 0) {
+      return selectedClassId === "all" ? teacherClasses : [selectedClassId];
+    }
+    return [];
+  }, [isSuperAdmin, selectedClassId, teacherClasses]);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
@@ -194,7 +213,9 @@ export default function ExtraClassesFees() {
 
   // Statistics
   const stats = useMemo(() => {
-    const extraRecords = dailyRecords.filter((r) => (Number(r.extraClassesFee) || 0) > 0);
+    const extraRecords = dailyRecords.filter(
+      (r) => (Number(r.extraClassesFee) || 0) > 0,
+    );
     const paidRecords = extraRecords.filter((r) => r.extraPaid === true);
     const totalExtraClasses = paidRecords.reduce(
       (sum, r) => sum + (Number(r.extraClassesFee) || 0),
@@ -228,16 +249,22 @@ export default function ExtraClassesFees() {
           where("takesExtraClasses", "==", true),
         );
 
-        let effectiveClassId = selectedClassId;
-        if (isClassTeacher && !isSuperAdmin) {
-          effectiveClassId = classTeacherClassId;
-        }
-
-        if (effectiveClassId !== "all") {
-          baseQuery = query(
-            baseQuery,
-            where("classId", "==", effectiveClassId),
-          );
+        if (effectiveClassIds.length > 0) {
+          if (effectiveClassIds.length === 1) {
+            baseQuery = query(
+              baseQuery,
+              where("classId", "==", effectiveClassIds[0]),
+            );
+          } else {
+            baseQuery = query(
+              baseQuery,
+              where("classId", "in", effectiveClassIds),
+            );
+          }
+        } else if (!isSuperAdmin) {
+          // If not super admin and no classes assigned, return empty
+          setStudents([]);
+          return;
         }
 
         const snap = await getDocsFromServer(baseQuery as any);
@@ -264,13 +291,7 @@ export default function ExtraClassesFees() {
     };
 
     loadStudents();
-  }, [
-    selectedClassId,
-    classes,
-    isClassTeacher,
-    classTeacherClassId,
-    isSuperAdmin,
-  ]);
+  }, [effectiveClassIds, classes, isSuperAdmin]);
 
   // Load daily records for selected date in real-time
   useEffect(() => {
@@ -283,13 +304,19 @@ export default function ExtraClassesFees() {
       where("date", "==", dateStr),
     );
 
-    let effectiveClassId = selectedClassId;
-    if (isClassTeacher && !isSuperAdmin) {
-      effectiveClassId = classTeacherClassId;
-    }
-
-    if (effectiveClassId !== "all") {
-      baseQuery = query(baseQuery, where("classId", "==", effectiveClassId));
+    if (effectiveClassIds.length > 0) {
+      if (effectiveClassIds.length === 1) {
+        baseQuery = query(
+          baseQuery,
+          where("classId", "==", effectiveClassIds[0]),
+        );
+      } else {
+        baseQuery = query(baseQuery, where("classId", "in", effectiveClassIds));
+      }
+    } else if (!isSuperAdmin) {
+      setDailyRecords([]);
+      setLoading(false);
+      return;
     }
 
     const unsub = onSnapshot(
@@ -311,34 +338,26 @@ export default function ExtraClassesFees() {
     );
 
     return () => unsub();
-  }, [
-    selectedDate,
-    selectedClassId,
-    isClassTeacher,
-    isSuperAdmin,
-    classTeacherClassId,
-  ]);
+  }, [selectedDate, effectiveClassIds, isSuperAdmin]);
 
   // Load attendance for selected class/date so we can skip absent students
   useEffect(() => {
     const loadAttendance = async () => {
       try {
-        let effectiveClassId = selectedClassId;
-        if (isClassTeacher && !isSuperAdmin)
-          effectiveClassId = classTeacherClassId;
-        if (!effectiveClassId || effectiveClassId === "all") {
+        if (effectiveClassIds.length !== 1) {
           setAttendanceMap({});
           return;
         }
+        const effectiveClassId = effectiveClassIds[0];
 
         const cleanDate = moment(selectedDate).format("YYYY-MM-DD");
         const acadYear = (acadConfig.academicYear || "").replace(/\//g, "-");
         const term = (acadConfig.currentTerm || "").replace(/\s/g, "");
         const attendanceId = `${effectiveClassId}_${acadYear}_${term}_${cleanDate}`;
         const ref = doc(db, "attendance", attendanceId);
-        const snap = await getDocsFromServer(query(collection(db, "attendance"), where("__name__", "==", attendanceId)) as any);
-        if (!snap.empty) {
-          const data = snap.docs[0].data() as any;
+        const snap = await getDoc(ref as any);
+        if (snap.exists()) {
+          const data = snap.data() as any;
           setAttendanceMap(data.students || {});
         } else {
           setAttendanceMap({});
@@ -350,14 +369,7 @@ export default function ExtraClassesFees() {
     };
 
     loadAttendance();
-  }, [
-    selectedClassId,
-    selectedDate,
-    isClassTeacher,
-    classTeacherClassId,
-    isSuperAdmin,
-    acadConfig,
-  ]);
+  }, [effectiveClassIds, selectedDate, acadConfig]);
 
   const filteredStudents = useMemo(() => {
     const low = searchQuery.toLowerCase();
@@ -445,7 +457,7 @@ export default function ExtraClassesFees() {
     setSaving(true);
     try {
       const dateStr = moment(selectedDate).format("YYYY-MM-DD");
-      const recordsMap = new Map(dailyRecords.map(r => [r.studentUid, r]));
+      const recordsMap = new Map(dailyRecords.map((r) => [r.studentUid, r]));
       let batch = writeBatch(db);
       let opCount = 0;
 
@@ -460,6 +472,9 @@ export default function ExtraClassesFees() {
         if (rate <= 0) continue;
 
         const existingRecord = recordsMap.get(uid);
+        const oldRate = existingRecord?.extraClassesFee || 0;
+        const rateDiff = rate - oldRate;
+
         const docId = `${uid}_${dateStr}`;
         const recordData: any = {
           studentUid: uid,
@@ -467,23 +482,20 @@ export default function ExtraClassesFees() {
           classId: student.classId,
           className: student.className,
           date: dateStr,
-          feedingFee: existingRecord?.feedingFee || 0,
-          busFee: existingRecord?.busFee || 0,
           extraClassesFee: rate,
-          otherFees: existingRecord?.otherFees || 0,
-          otherFeesDescription: existingRecord?.otherFeesDescription || "",
-          total:
-            rate +
-            (existingRecord?.feedingFee || 0) +
-            (existingRecord?.busFee || 0) +
-            (existingRecord?.otherFees || 0),
-          extraPaid: existingRecord?.extraPaid || false,
-          feedingPaid: existingRecord?.feedingPaid || false,
-          busPaid: existingRecord?.busPaid || false,
+          total: increment(rateDiff),
           recordedBy: appUser?.adminRole || "Admin",
           recordedByUid: appUser?.uid || "unknown",
-          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
         };
+
+        if (!existingRecord) {
+          recordData.createdAt = serverTimestamp();
+          recordData.extraPaid = false;
+          recordData.feedingFee = 0;
+          recordData.busFee = 0;
+          recordData.otherFees = 0;
+        }
 
         batch.set(doc(db, "dailyFinancials", docId), recordData, {
           merge: true,
@@ -530,12 +542,15 @@ export default function ExtraClassesFees() {
       const q = query(
         collection(db, "dailyFinancials"),
         where("extraClassesFee", ">", 0),
-        where("extraPaid", "==", true)
+        where("extraPaid", "==", true),
       );
       const snap = await getDocs(q);
 
       if (snap.empty) {
-        showToast({ message: "No accumulated extra classes fees to disburse.", type: "info" });
+        showToast({
+          message: "No accumulated extra classes fees to disburse.",
+          type: "info",
+        });
         setSaving(false);
         return;
       }
@@ -546,13 +561,14 @@ export default function ExtraClassesFees() {
       for (const docSnap of snap.docs) {
         const data = docSnap.data();
         const newExtraFee = 0;
-        const newTotal = (data.feedingFee || 0) + (data.busFee || 0) + (data.otherFees || 0);
+        const newTotal =
+          (data.feedingFee || 0) + (data.busFee || 0) + (data.otherFees || 0);
 
         batch.update(docSnap.ref, {
-          extraClassesFee: newExtraFee,
-          total: newTotal,
+          extraClassesFee: 0,
+          total: increment(-(data.extraClassesFee || 0)),
           disbursedAt: serverTimestamp(),
-          disbursedBy: appUser?.uid
+          disbursedBy: appUser?.uid,
         });
 
         count++;
@@ -601,7 +617,10 @@ export default function ExtraClassesFees() {
       SCHOOL_CONFIG.defaultExtraClassesRate ||
       0;
     if (!classAmount || classAmount <= 0) {
-      showToast({ message: "Set extra classes fee amount first.", type: "error" });
+      showToast({
+        message: "Set extra classes fee amount first.",
+        type: "error",
+      });
       return;
     }
     const dateStr = moment(selectedDate).format("YYYY-MM-DD");
@@ -617,6 +636,7 @@ export default function ExtraClassesFees() {
       );
 
       const existingRecord = getExistingRecord(uid);
+      const oldExtraFee = existingRecord?.extraClassesFee || 0;
       const todayRef = doc(db, "dailyFinancials", docId);
       const todayData: any = {
         studentUid: uid,
@@ -625,24 +645,19 @@ export default function ExtraClassesFees() {
         className: student?.className || "Class",
         date: dateStr,
         extraClassesFee: classAmount,
-        feedingFee: existingRecord?.feedingFee || 0,
-        busFee: existingRecord?.busFee || 0,
-        otherFees: existingRecord?.otherFees || 0,
-        otherFeesDescription: existingRecord?.otherFeesDescription || "",
-        total:
-          classAmount +
-          (existingRecord?.feedingFee || 0) +
-          (existingRecord?.busFee || 0) +
-          (existingRecord?.otherFees || 0),
+        total: increment(classAmount - oldExtraFee),
         extraPaid: true,
         extraPaidAt: serverTimestamp(),
-        feedingPaid: existingRecord?.feedingPaid || false,
-        busPaid: existingRecord?.busPaid || false,
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+      if (!existingRecord) {
+        todayData.createdAt = serverTimestamp();
+        todayData.feedingFee = 0;
+        todayData.busFee = 0;
+        todayData.otherFees = 0;
+      }
       ops.push({ ref: todayRef, data: todayData });
 
       if (overrideAmountStr) {
@@ -661,13 +676,16 @@ export default function ExtraClassesFees() {
             className: student?.className || "Class",
             date: nextDateStr,
             extraClassesFee: amountForDay,
-            total: amountForDay,
+            total: increment(amountForDay),
             extraPaid: true,
             extraPaidAt: serverTimestamp(),
             recordedBy: appUser?.adminRole || "Admin",
             recordedByUid: appUser?.uid || "unknown",
-            createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
+            feedingFee: 0,
+            busFee: 0,
+            otherFees: 0,
+            otherFeesDescription: "",
           };
           ops.push({ ref, data });
           extra -= amountForDay;
@@ -693,12 +711,18 @@ export default function ExtraClassesFees() {
       SCHOOL_CONFIG.defaultExtraClassesRate ||
       0;
     if (!classAmount || classAmount <= 0) {
-      showToast({ message: "Set extra classes fee amount first.", type: "error" });
+      showToast({
+        message: "Set extra classes fee amount first.",
+        type: "error",
+      });
       return;
     }
 
     const existingRecord = getExistingRecord(uid);
-    const isCurrentlyUnpaid = existingRecord && (existingRecord.extraClassesFee || 0) > 0 && !existingRecord.extraPaid;
+    const isCurrentlyUnpaid =
+      existingRecord &&
+      (existingRecord.extraClassesFee || 0) > 0 &&
+      !existingRecord.extraPaid;
 
     setSaving(true);
     try {
@@ -706,6 +730,7 @@ export default function ExtraClassesFees() {
       const ref = doc(db, "dailyFinancials", `${uid}_${dateStr}`);
 
       const newFee = isCurrentlyUnpaid ? 0 : classAmount;
+      const oldFee = existingRecord?.extraClassesFee || 0;
 
       const data: any = {
         studentUid: uid,
@@ -714,27 +739,25 @@ export default function ExtraClassesFees() {
         className: student?.className || "Class",
         date: dateStr,
         extraClassesFee: newFee,
-        feedingFee: existingRecord?.feedingFee || 0,
-        busFee: existingRecord?.busFee || 0,
-        otherFees: existingRecord?.otherFees || 0,
-        otherFeesDescription: existingRecord?.otherFeesDescription || "",
-        total:
-          newFee +
-          (existingRecord?.feedingFee || 0) +
-          (existingRecord?.busFee || 0) +
-          (existingRecord?.otherFees || 0),
+        total: increment(newFee - oldFee),
         extraPaid: false,
         extraPaidAt: null,
-        feedingPaid: existingRecord?.feedingPaid || false,
-        busPaid: existingRecord?.busPaid || false,
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
-        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
+      if (!existingRecord) {
+        data.createdAt = serverTimestamp();
+        data.feedingFee = 0;
+        data.busFee = 0;
+        data.otherFees = 0;
+      }
       await setDoc(ref, data, { merge: true } as any);
 
-      showToast({ message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.", type: "success" });
+      showToast({
+        message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
+        type: "success",
+      });
     } catch (e) {
       console.error("Error marking student not paid:", e);
       showToast({ message: "Failed to update record.", type: "error" });
@@ -821,11 +844,8 @@ export default function ExtraClassesFees() {
           <Text style={styles.errorSub}>
             You do not have the required permissions to view extra classes fees.
           </Text>
-          <TouchableOpacity
-            style={styles.errorButton}
-            onPress={() => router.replace("/admin-dashboard")}
-          >
-            <Text style={styles.errorButtonText}>Return to Dashboard</Text>
+          <TouchableOpacity style={styles.errorButton} onPress={handleBack}>
+            <Text style={styles.errorButtonText}>Back to Daily Financials</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -838,15 +858,14 @@ export default function ExtraClassesFees() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={handleBack}
-          style={styles.backButton}
-        >
+        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
           <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
         <View style={styles.headerTitle}>
           <Text style={styles.headerTitleText}>Extra Classes Fees</Text>
-          <Text style={styles.headerSubtitle}>Record daily extra classes fees</Text>
+          <Text style={styles.headerSubtitle}>
+            Record daily extra classes fees
+          </Text>
         </View>
         <TouchableOpacity
           onPress={() => setShowDatePicker(true)}
@@ -859,12 +878,12 @@ export default function ExtraClassesFees() {
         </TouchableOpacity>
       </View>
 
-      {showDatePicker && (
+      {showDatePicker && DateTimePicker && (
         <DateTimePicker
           value={selectedDate}
           mode="date"
           display={Platform.OS === "ios" ? "spinner" : "default"}
-          onChange={(event, date) => {
+          onChange={(event: any, date?: Date) => {
             setShowDatePicker(false);
             if (date) setSelectedDate(date);
           }}
@@ -972,14 +991,14 @@ export default function ExtraClassesFees() {
                     </TouchableOpacity>
                   )}
                 </View>
-                {!isClassTeacher && (
-                  <View style={styles.pickerContainer}>
-                    <Text style={styles.pickerLabel}>Select Class</Text>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ paddingBottom: 4 }}
-                    >
+                <View style={styles.pickerContainer}>
+                  <Text style={styles.pickerLabel}>Select Class</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 4 }}
+                  >
+                    {isSuperAdmin && (
                       <TouchableOpacity
                         style={[
                           styles.classChip,
@@ -997,32 +1016,35 @@ export default function ExtraClassesFees() {
                           All Classes
                         </Text>
                       </TouchableOpacity>
-                      {classes.map((c) => (
-                        <TouchableOpacity
-                          key={c.id}
+                    )}
+                    {(isSuperAdmin
+                      ? classes
+                      : classes.filter((c) => teacherClasses.includes(c.id))
+                    ).map((c) => (
+                      <TouchableOpacity
+                        key={c.id}
+                        style={[
+                          styles.classChip,
+                          selectedClassId === c.id && styles.classChipActive,
+                        ]}
+                        onPress={() => setSelectedClassId(c.id)}
+                      >
+                        <Text
                           style={[
-                            styles.classChip,
-                            selectedClassId === c.id && styles.classChipActive,
+                            styles.classChipText,
+                            selectedClassId === c.id &&
+                              styles.classChipTextActive,
                           ]}
-                          onPress={() => setSelectedClassId(c.id)}
                         >
-                          <Text
-                            style={[
-                              styles.classChipText,
-                              selectedClassId === c.id &&
-                                styles.classChipTextActive,
-                            ]}
-                          >
-                            {c.name}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </View>
-                )}
+                          {c.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
               </View>
 
-                {/* Recording Form */}
+              {/* Recording Form */}
               <View style={styles.formSection}>
                 <View style={styles.formHeader}>
                   <View>
@@ -1080,7 +1102,8 @@ export default function ExtraClassesFees() {
                   filteredStudents.map((item) => {
                     const existingRecord = getExistingRecord(item.uid);
                     const isPaid = existingRecord?.extraPaid === true;
-                    const isAbsent = attendanceMap[item.uid]?.status === "absent";
+                    const isAbsent =
+                      attendanceMap[item.uid]?.status === "absent";
                     const hasArrears = (item.dailyArrears || 0) > 0;
 
                     return (
@@ -1096,8 +1119,12 @@ export default function ExtraClassesFees() {
                           <View
                             style={[
                               styles.studentAvatar,
-                              isPaid && { backgroundColor: VIBE.success + "20" },
-                              isAbsent && { backgroundColor: VIBE.danger + "10" },
+                              isPaid && {
+                                backgroundColor: VIBE.success + "20",
+                              },
+                              isAbsent && {
+                                backgroundColor: VIBE.danger + "10",
+                              },
                             ]}
                           >
                             <Text
@@ -1112,12 +1139,17 @@ export default function ExtraClassesFees() {
                           </View>
                           <View style={styles.studentInfo}>
                             <View style={styles.studentNameRow}>
-                              <Text style={styles.studentName} numberOfLines={1}>
+                              <Text
+                                style={styles.studentName}
+                                numberOfLines={1}
+                              >
                                 {item.fullName}
                               </Text>
                               {hasArrears && (
                                 <View style={styles.arrearsBadge}>
-                                  <Text style={styles.arrearsText}>Arrears: ₵{item.dailyArrears}</Text>
+                                  <Text style={styles.arrearsText}>
+                                    Arrears: ₵{item.dailyArrears}
+                                  </Text>
                                 </View>
                               )}
                             </View>
@@ -1141,7 +1173,8 @@ export default function ExtraClassesFees() {
                                     Absent
                                   </Text>
                                 </View>
-                              ) : (existingRecord && (existingRecord.extraClassesFee || 0) > 0) ? (
+                              ) : existingRecord &&
+                                (existingRecord.extraClassesFee || 0) > 0 ? (
                                 <View
                                   style={[
                                     styles.statusBadge,
@@ -1245,7 +1278,11 @@ export default function ExtraClassesFees() {
                               name="close"
                               size={18}
                               color={
-                                existingRecord && (existingRecord.extraClassesFee || 0) > 0 && !isPaid ? "#fff" : VIBE.danger
+                                existingRecord &&
+                                (existingRecord.extraClassesFee || 0) > 0 &&
+                                !isPaid
+                                  ? "#fff"
+                                  : VIBE.danger
                               }
                             />
                             <Text
@@ -1253,7 +1290,9 @@ export default function ExtraClassesFees() {
                                 styles.actionBtnText,
                                 {
                                   color:
-                                    existingRecord && (existingRecord.extraClassesFee || 0) > 0 && !isPaid
+                                    existingRecord &&
+                                    (existingRecord.extraClassesFee || 0) > 0 &&
+                                    !isPaid
                                       ? "#fff"
                                       : VIBE.danger,
                                 },
@@ -1292,8 +1331,6 @@ export default function ExtraClassesFees() {
                     </Text>
                   </View>
                 )}
-
-
               </View>
             </ScrollView>
           )}
@@ -1335,7 +1372,9 @@ export default function ExtraClassesFees() {
                       size={48}
                       color={VIBE.muted}
                     />
-                    <Text style={styles.emptyText}>No records for this date</Text>
+                    <Text style={styles.emptyText}>
+                      No records for this date
+                    </Text>
                   </View>
                 }
               />
@@ -1375,13 +1414,12 @@ export default function ExtraClassesFees() {
                 <View style={styles.reportMeta}>
                   <Text style={styles.reportMetaText}>
                     Class:{" "}
-                    {isClassTeacher
-                      ? classes.find((c) => c.id === classTeacherClassId)
-                          ?.name || "Unknown"
-                      : selectedClassId === "all"
-                        ? "All Classes"
-                        : classes.find((c) => c.id === selectedClassId)?.name ||
-                          "Unknown"}
+                    {selectedClassId === "all"
+                      ? teacherClasses.length > 0 && !isSuperAdmin
+                        ? "Assigned Classes"
+                        : "All Classes"
+                      : classes.find((c) => c.id === selectedClassId)?.name ||
+                        "Unknown"}
                   </Text>
                 </View>
               </View>
@@ -1653,7 +1691,12 @@ const styles = StyleSheet.create({
   studentAvatarText: { fontSize: 18, fontWeight: "900", color: VIBE.primary },
   studentInfo: { flex: 1 },
   studentName: { fontSize: 15, fontWeight: "700", color: VIBE.text, flex: 1 },
-  studentNameRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  studentNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
   arrearsBadge: {
     backgroundColor: VIBE.danger + "10",
     paddingHorizontal: 6,
@@ -1676,7 +1719,11 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  statusBadgeText: { fontSize: 10, fontWeight: "800", textTransform: "uppercase" },
+  statusBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
 
   studentActions: {
     flexDirection: "row",
@@ -1700,7 +1747,11 @@ const styles = StyleSheet.create({
   actionBtnUnpaid: { borderColor: VIBE.danger, backgroundColor: "#fff" },
   actionBtnActivePaid: { backgroundColor: VIBE.success },
   actionBtnActiveUnpaid: { backgroundColor: VIBE.danger },
-  actionBtnText: { fontSize: 12, fontWeight: "800", textTransform: "uppercase" },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
+  },
 
   overrideContainer: { marginTop: 12 },
   overrideInput: {
@@ -1763,7 +1814,12 @@ const styles = StyleSheet.create({
   },
   recordContent: { flex: 1 },
   recordStudentName: { fontSize: 16, fontWeight: "800", color: VIBE.text },
-  recordClass: { fontSize: 13, color: VIBE.muted, marginTop: 2, fontWeight: "500" },
+  recordClass: {
+    fontSize: 13,
+    color: VIBE.muted,
+    marginTop: 2,
+    fontWeight: "500",
+  },
   recordDetails: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1790,8 +1846,17 @@ const styles = StyleSheet.create({
   },
   recordTotalLabel: { fontSize: 13, fontWeight: "600", color: VIBE.muted },
   recordTotalValue: { fontSize: 18, fontWeight: "900", marginLeft: 4 },
-  recordMeta: { justifyContent: "center", paddingLeft: 12, alignItems: "flex-end" },
-  recordRecordedBy: { fontSize: 10, color: VIBE.muted, fontWeight: "700", textTransform: "uppercase" },
+  recordMeta: {
+    justifyContent: "center",
+    paddingLeft: 12,
+    alignItems: "flex-end",
+  },
+  recordRecordedBy: {
+    fontSize: 10,
+    color: VIBE.muted,
+    fontWeight: "700",
+    textTransform: "uppercase",
+  },
 
   // Empty State
   emptyState: { alignItems: "center", padding: 60 },
@@ -1842,7 +1907,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: VIBE.border,
   },
-  reportMetaText: { fontSize: 13, color: VIBE.muted, textAlign: "center", fontWeight: "600" },
+  reportMetaText: {
+    fontSize: 13,
+    color: VIBE.muted,
+    textAlign: "center",
+    fontWeight: "600",
+  },
   errorContainer: {
     flex: 1,
     justifyContent: "center",

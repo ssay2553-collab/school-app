@@ -649,7 +649,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    ...SHADOWS.small,
   },
   statLabel: {
     color: "rgba(255,255,255,0.8)",
@@ -705,7 +704,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 15,
-    ...SHADOWS.small,
   },
   cardInfo: { alignItems: "center" },
   menuText: {

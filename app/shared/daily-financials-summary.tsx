@@ -108,7 +108,35 @@ export default function DailyFinancialsSummary() {
       <html>
         <head>
           <style>
-            body { font-family: 'Helvetica'; padding: 20px; color: #1E293B; }
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              height: auto !important;
+              min-height: 100% !important;
+              overflow: visible !important;
+              display: block !important;
+              background-color: white;
+            }
+            body { font-family: 'Helvetica'; color: #1E293B; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page {
+              padding: 20mm;
+              width: 210mm;
+              min-height: 297mm;
+              box-sizing: border-box;
+              display: block;
+              page-break-after: always;
+              page-break-inside: avoid;
+              overflow: visible !important;
+              position: relative;
+              background-color: white;
+            }
+            .page:last-child {
+              page-break-after: avoid;
+            }
             .header { text-align: center; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; margin-bottom: 20px; }
             .school-name { font-size: 24px; font-weight: bold; margin: 0; color: #4F46E5; }
             .report-title { font-size: 18px; font-weight: bold; margin: 10px 0; text-transform: uppercase; }
@@ -133,55 +161,57 @@ export default function DailyFinancialsSummary() {
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1 class="school-name">${SCHOOL_CONFIG.fullName}</h1>
-            <p style="margin: 5px 0; font-size: 12px;">${SCHOOL_CONFIG.address}</p>
-            <div class="report-title">Financial Summary Report</div>
-            <div class="date-range">Generated on: ${moment().format("MMMM Do YYYY, h:mm a")}</div>
-          </div>
+          <div class="page">
+            <div class="header">
+              <h1 class="school-name">${SCHOOL_CONFIG.fullName}</h1>
+              <p style="margin: 5px 0; font-size: 12px;">${SCHOOL_CONFIG.address}</p>
+              <div class="report-title">Financial Summary Report</div>
+              <div class="date-range">Generated on: ${moment().format("MMMM Do YYYY, h:mm a")}</div>
+            </div>
 
-          <div class="overview-container">
-            <div class="overview-card">
-              <div class="overview-label">Total Revenue</div>
-              <div class="overview-value" style="color: #10B981">₵${totalRevenue.toLocaleString()}</div>
+            <div class="overview-container">
+              <div class="overview-card">
+                <div class="overview-label">Total Revenue</div>
+                <div class="overview-value" style="color: #10B981">₵${totalRevenue.toLocaleString()}</div>
+              </div>
+              <div class="overview-card">
+                <div class="overview-label">Total Expenditure</div>
+                <div class="overview-value" style="color: #EF4444">₵${totalExpenditure.toLocaleString()}</div>
+              </div>
+              <div class="overview-card" style="background-color: ${netBalance >= 0 ? "#F0FDF4" : "#FEF2F2"}">
+                <div class="overview-label">Net Balance</div>
+                <div class="overview-value ${netBalance >= 0 ? "net-surplus" : "net-deficit"}">₵${netBalance.toLocaleString()}</div>
+              </div>
             </div>
-            <div class="overview-card">
-              <div class="overview-label">Total Expenditure</div>
-              <div class="overview-value" style="color: #EF4444">₵${totalExpenditure.toLocaleString()}</div>
-            </div>
-            <div class="overview-card" style="background-color: ${netBalance >= 0 ? "#F0FDF4" : "#FEF2F2"}">
-              <div class="overview-label">Net Balance</div>
-              <div class="overview-value ${netBalance >= 0 ? "net-surplus" : "net-deficit"}">₵${netBalance.toLocaleString()}</div>
-            </div>
-          </div>
 
-          <h3 style="font-size: 14px; margin-bottom: 10px;">Category Breakdown (Current Term)</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th style="text-align:center">Transactions</th>
-                <th style="text-align:right">Total Amount (₵)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${categories.map(cat => `
+            <h3 style="font-size: 14px; margin-bottom: 10px;">Category Breakdown (Current Term)</h3>
+            <table>
+              <thead>
                 <tr>
-                  <td>${cat.name}</td>
-                  <td style="text-align:center">${cat.term.count}</td>
-                  <td class="amount">₵${cat.allPeriodsTotal.toLocaleString()}</td>
+                  <th>Category</th>
+                  <th style="text-align:center">Transactions</th>
+                  <th style="text-align:right">Total Amount (₵)</th>
                 </tr>
-              `).join("")}
-              <tr class="total-row">
-                <td colspan="2">NET TERM BALANCE</td>
-                <td class="amount ${netBalance >= 0 ? "net-surplus" : "net-deficit"}">₵${netBalance.toLocaleString()}</td>
-              </tr>
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                ${categories.map(cat => `
+                  <tr>
+                    <td>${cat.name}</td>
+                    <td style="text-align:center">${cat.term.count}</td>
+                    <td class="amount">₵${cat.allPeriodsTotal.toLocaleString()}</td>
+                  </tr>
+                `).join("")}
+                <tr class="total-row">
+                  <td colspan="2">NET TERM BALANCE</td>
+                  <td class="amount ${netBalance >= 0 ? "net-surplus" : "net-deficit"}">₵${netBalance.toLocaleString()}</td>
+                </tr>
+              </tbody>
+            </table>
 
-          <div class="footer">
-            <p>This is a computer-generated financial report from EduEaz Platform.</p>
-            <p>&copy; ${new Date().getFullYear()} ${SCHOOL_CONFIG.name}. All rights reserved.</p>
+            <div class="footer">
+              <p>This is a computer-generated financial report from EduEaz Platform.</p>
+              <p>&copy; ${new Date().getFullYear()} ${SCHOOL_CONFIG.name}. All rights reserved.</p>
+            </div>
           </div>
         </body>
       </html>

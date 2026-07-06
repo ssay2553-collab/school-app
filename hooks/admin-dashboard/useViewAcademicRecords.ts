@@ -19,7 +19,12 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
-import { getAutoRemarks, getGradeDetails, sortClasses } from "../../lib/classHelpers";
+import {
+  calculateCompetitionRanking,
+  getAutoRemarks,
+  getGradeDetails,
+  sortClasses,
+} from "../../lib/classHelpers";
 import { useAcademicConfig } from "../useAcademicConfig";
 
 const storage = getStorage();
@@ -101,6 +106,8 @@ export function useViewAcademicRecords() {
   const [mNextTermBegins, setNextTermBegins] = useState("");
   const [mAdminRemarks, setAdminRemarks] = useState("");
   const [mTeacherRemarks, setTeacherRemarks] = useState("");
+
+  const [recalculating, setRecalculating] = useState(false);
 
   // Sync with global academic config
   useEffect(() => {
@@ -540,6 +547,165 @@ export function useViewAcademicRecords() {
     }
   };
 
+  const recalculateRankings = async () => {
+    if (!selectedClassId || !selectedYear || !term) {
+      return showToast({
+        message: "Please select Class, Year and Term first.",
+        type: "error",
+      });
+    }
+
+    const performRecalculate = async () => {
+      setRecalculating(true);
+      try {
+        const qAll = query(
+          collection(db, "academicRecords"),
+          where("classId", "==", selectedClassId),
+          where("academicYear", "==", selectedYear),
+          where("term", "==", term),
+          where("reportType", "==", selectedReportType),
+          where("status", "==", "approved"),
+        );
+
+        const allSnap = await getDocsFromServer(qAll);
+        if (allSnap.empty) {
+          showToast({
+            message: "No approved records found to recalculate.",
+            type: "info",
+          });
+          setRecalculating(false);
+          return;
+        }
+
+        const batch = writeBatch(db);
+        const studentTotals: Record<string, number> = {};
+        const studentNames: Record<string, string> = {};
+
+        // 1. Process each subject record for subject-level ranking & summary
+        allSnap.docs.forEach((subjectDoc) => {
+          const data = subjectDoc.data();
+          const students = data.students || [];
+          const subjectName = data.subject;
+          const subjectKey = subjectName.replace(/\s+/g, "_");
+
+          const subjectScoresList = students.map((s: any) => ({
+            id: s.studentId,
+            total: parseFloat(s.finalScore) || 0,
+          }));
+
+          const updatedStudents = students.map((s: any) => {
+            const rankInfo = calculateCompetitionRanking(
+              subjectScoresList,
+              s.studentId,
+            );
+            const posStr = `${rankInfo.rank}/${rankInfo.total}`;
+
+            // Track for overall rank
+            studentTotals[s.studentId] =
+              (studentTotals[s.studentId] || 0) +
+              (parseFloat(s.finalScore) || 0);
+            if (!studentNames[s.studentId])
+              studentNames[s.studentId] = s.fullName;
+
+            // Update Summary doc too
+            const yearSlug = selectedYear.replace(/\//g, "_");
+            const termSlug = term.replace(/\s+/g, "");
+            const summaryId = `${s.studentId}_${yearSlug}_${termSlug}`;
+            const summaryRef = doc(db, "academicRecordsSummary", summaryId);
+
+            batch.set(
+              summaryRef,
+              {
+                studentId: s.studentId,
+                classId: selectedClassId,
+                academicYear: selectedYear,
+                term: term,
+                scores: {
+                  [subjectKey]: {
+                    finalScore: parseFloat(s.finalScore) || 0,
+                    grade: s.grade,
+                    position: posStr,
+                    reportType: selectedReportType,
+                    lastUpdated: serverTimestamp(),
+                  },
+                },
+              },
+              { merge: true },
+            );
+
+            return { ...s, position: posStr };
+          });
+
+          batch.update(subjectDoc.ref, { students: updatedStudents });
+        });
+
+        // 2. Process Overall Rankings
+        const overallRankData = Object.entries(studentTotals).map(
+          ([id, total]) => ({
+            id,
+            total,
+          }),
+        );
+
+        overallRankData.forEach((item) => {
+          const rankInfo = calculateCompetitionRanking(overallRankData, item.id);
+          const reportId =
+            `${item.id}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
+              /\//g,
+              "-",
+            );
+
+          batch.set(
+            doc(db, "student-reports", reportId),
+            {
+              overallPosition: `${rankInfo.rank}/${rankInfo.total}`,
+              totalScore: item.total,
+              studentId: item.id,
+              studentName: studentNames[item.id],
+              classId: selectedClassId,
+              academicYear: selectedYear,
+              term,
+              reportType: selectedReportType,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        });
+
+        await batch.commit();
+        showToast({
+          message: "All class rankings successfully recalculated.",
+          type: "success",
+        });
+        if (selectedSubject) loadData();
+      } catch (e) {
+        console.error("Recalculation error:", e);
+        showToast({ message: "Failed to recalculate rankings.", type: "error" });
+      } finally {
+        setRecalculating(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (
+        window.confirm(
+          "This will re-calculate both subject-level and overall positions for all approved records in this class and term. Continue?",
+        )
+      ) {
+        performRecalculate();
+      }
+    } else {
+      Alert.alert(
+        "Recalculate Rankings",
+        "This will re-calculate both subject-level and overall positions for all approved records in this class and term. Continue?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Recalculate", onPress: performRecalculate },
+        ],
+      );
+    }
+  };
+
   return {
     loading,
     listLoading,
@@ -586,6 +752,8 @@ export function useViewAcademicRecords() {
     saveMetadata,
     handleUploadSignature,
     handleBulkUpdate,
+    recalculateRankings,
+    recalculating,
     availableYears,
     acadConfig,
     primary

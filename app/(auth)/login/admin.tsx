@@ -57,23 +57,37 @@ export default function AdminLogin() {
       let userData = userDoc.data();
 
       if (!userDoc.exists()) {
-          // Fallback: Check for staff with legacy IDs mapped via authUid
+          // Fallback: Check for staff with legacy IDs mapped via authUid or uid
           const q = query(
             collection(db, "users"),
-            where("authUid", "==", cred.user.uid),
+            where("uid", "==", cred.user.uid),
             limit(1)
           );
           const querySnap = await getDocs(q);
+
           if (!querySnap.empty) {
             userDoc = querySnap.docs[0];
             userData = userDoc.data();
           } else {
-            console.error(`Login success but Firestore record missing for UID: ${cred.user.uid}`);
-            await auth.signOut();
-            throw new Error("Your administrative record was not found. Please contact the system owner.");
+            // Check authUid as second fallback
+            const qAuth = query(
+              collection(db, "users"),
+              where("authUid", "==", cred.user.uid),
+              limit(1)
+            );
+            const authSnap = await getDocs(qAuth);
+            if (!authSnap.empty) {
+              userDoc = authSnap.docs[0];
+              userData = userDoc.data();
+            } else {
+              console.error(`Login success but Firestore record missing for UID: ${cred.user.uid}`);
+              await auth.signOut();
+              throw new Error("Your administrative record was not found. Please contact the system owner.");
+            }
           }
       }
 
+      console.log("User Data Found:", userData);
       const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
       const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
 

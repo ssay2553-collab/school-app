@@ -143,7 +143,7 @@ export const useManageFees = ({
       );
       const matchesSearch = matchesName || matchesID || matchesSerial;
       const matchesStatus =
-        statusFilter === "all"
+        activeMode === "discounts" || statusFilter === "all"
           ? true
           : statusFilter === "cleared"
             ? (s.currentBalance || 0) <= 0

@@ -122,10 +122,33 @@ export const useFeeStudents = (
               ? feeData.arrears || 0
               : userData.walletBalance || 0,
             amountPaid: feeData ? feeData.amountPaid || 0 : 0,
-            currentBalance: currentBalance,
+            currentBalance: feeData
+              ? (feeData.arrears || 0) +
+                (feeData.termBill || 0) +
+                (feeData.ptaBill || 0) +
+                (feeData.maintenanceBill || 0) +
+                (feeData.admissionBill || 0) +
+                (feeData.booksBill || 0) +
+                (feeData.uniformBill || 0) +
+                (feeData.otherBill || 0) -
+                (feeData.discount || 0) -
+                ((feeData.amountPaid || 0) +
+                  (feeData.ptaPaid || 0) +
+                  (feeData.maintenancePaid || 0) +
+                  (feeData.admissionPaid || 0) +
+                  (feeData.booksPaid || 0) +
+                  (feeData.uniformPaid || 0) +
+                  (feeData.otherPaid || 0))
+              : userData.walletBalance || 0,
             hasRecordInTerm: !!feeData,
             payments: feeData?.payments || [],
             termBill: feeData?.termBill || 0,
+            ptaBill: feeData?.ptaBill || 0,
+            maintenanceBill: feeData?.maintenanceBill || 0,
+            admissionBill: feeData?.admissionBill || 0,
+            booksBill: feeData?.booksBill || 0,
+            uniformBill: feeData?.uniformBill || 0,
+            otherBill: feeData?.otherBill || 0,
             discount: feeData?.discount || 0,
             ptaPaid: feeData?.ptaPaid || 0,
             maintenancePaid: feeData?.maintenancePaid || 0,

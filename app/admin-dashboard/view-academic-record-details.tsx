@@ -396,9 +396,37 @@ export default function ViewAcademicRecordDetails() {
     <head>
       <meta charset="UTF-8" />
       <style>
-        @page { size: A4; margin: 12mm; }
-        body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; margin:0; color:#0f172a; background:#fff; }
-        .paper { max-width: 794px; margin: 0 auto; padding: 26px 28px; position: relative; }
+        @page {
+          size: A4;
+          margin: 0;
+        }
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          height: auto !important;
+          min-height: 100% !important;
+          overflow: visible !important;
+          display: block !important;
+          background-color: white;
+        }
+        body {
+          font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+          color: #0f172a;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .paper {
+          padding: 15mm 18mm;
+          width: 210mm;
+          min-height: 297mm;
+          box-sizing: border-box;
+          display: block;
+          page-break-after: always;
+          overflow: visible !important;
+          position: relative;
+          margin: 0 auto;
+          background-color: white;
+        }
 
         .header-table { width: 100%; border-bottom: 2pt solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
         .header-logo { width: 80px; vertical-align: middle; }

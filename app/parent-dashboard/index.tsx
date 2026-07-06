@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, documentId, getDoc, getDocsFromServer, query, where } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -35,6 +35,7 @@ export default function ParentDashboard() {
 
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(true);
+  const [hasPreschoolChild, setHasPreschoolChild] = useState(false);
 
   const {
     brandPrimary,
@@ -45,14 +46,44 @@ export default function ParentDashboard() {
   } = config;
   const schoolLogo = getSchoolLogo(schoolId);
 
+  const PRESCHOOL_KEYWORDS = ["CRECHE", "NURSERY", "KG", "KINDERGARTEN", "TODDLER", "PLAYGROUND", "LEVEL A", "LEVEL B", "LEVEL C", "LEVEL D", "CLASS A", "CLASS B", "CLASS C", "CLASS D"];
+
   useEffect(() => {
     if (!appUser) return;
     const fetchProfile = async () => {
       try {
         const snap = await getDoc(doc(db, "users", appUser.uid));
         if (snap.exists()) {
-          const p = (snap.data() as any).profile;
+          const userData = snap.data() as any;
+          const p = userData.profile;
           if (p) setFullName(`${p.firstName || ""} ${p.lastName || ""}`);
+
+          // Check for preschool children
+          const childrenIds = userData.childrenIds || [];
+          if (childrenIds.length > 0) {
+            const q = query(collection(db, "users"), where(documentId(), "in", childrenIds));
+            const cSnap = await getDocsFromServer(q);
+            const classIds = cSnap.docs.map(d => (d.data() as any).classId).filter(id => !!id);
+
+            if (classIds.length > 0) {
+              const cq = query(collection(db, "classes"), where(documentId(), "in", classIds));
+              const clSnap = await getDocsFromServer(cq);
+
+              const hasPreschool = clSnap.docs.some(d => {
+                const cData = d.data() as any;
+                const dept = (cData.department || "").toLowerCase();
+                const level = String(cData.level || "").toUpperCase();
+                const className = (cData.name || "").toUpperCase();
+
+                if (dept === "pre-school") return true;
+                if (["A", "B", "C", "D"].includes(level)) return true;
+
+                const keywords = ["CRECHE", "NURSERY", "KG", "KINDERGARTEN", "TODDLER", "PLAYGROUND"];
+                return keywords.some(kw => className.includes(kw));
+              });
+              setHasPreschoolChild(hasPreschool);
+            }
+          }
         }
       } catch (err) {
         console.error(err);
@@ -99,6 +130,13 @@ export default function ParentDashboard() {
           color: "#6366f1",
           path: "/parent-dashboard/student-academic-report",
         },
+        ...(hasPreschoolChild ? [{
+          title: "Preschool Remarks",
+          subtitle: "Behavioral records",
+          icon: "happy-outline",
+          color: "#ec4899",
+          path: "/parent-dashboard/preschool-remarks",
+        }] : []),
         {
           title: "Recent Scores",
           subtitle: "Assignment marks",
@@ -311,7 +349,7 @@ export default function ParentDashboard() {
             </View>
 
             <View style={styles.heroSection}>
-              <View>
+              <View style={{ flex: 1 }}>
                 <Text style={styles.welcomeText}>WELCOME BACK,</Text>
                 <Text
                   style={[styles.nameText, { fontSize: isSmallScreen ? 24 : 32 }]}
@@ -326,76 +364,39 @@ export default function ParentDashboard() {
                 <Text style={styles.statusText}>PARENT PORTAL</Text>
               </View>
             </View>
+
+            <Animatable.View animation="fadeInUp" delay={400} style={styles.headerContactInfo}>
+              <View style={styles.headerContactItem}>
+                <SVGIcon name="location-outline" size={14} color="#fff" />
+                <Text style={[styles.headerContactText, { flex: 1 }]} numberOfLines={1}>
+                  {config.address}
+                </Text>
+              </View>
+              <View style={styles.headerContactRow}>
+                {phoneNumbers.map((phone: string, index: number) => (
+                  <TouchableOpacity
+                    key={phone}
+                    style={styles.headerContactItem}
+                    onPress={() => handleCall(phone)}
+                    activeOpacity={0.7}
+                  >
+                    <SVGIcon name="call" size={13} color="#fff" />
+                    <Text style={styles.headerContactText}>{phone}</Text>
+                  </TouchableOpacity>
+                ))}
+                {config.email && (
+                  <View style={styles.headerContactItem}>
+                    <SVGIcon name="mail-outline" size={13} color="#fff" />
+                    <Text style={styles.headerContactText}>{config.email}</Text>
+                  </View>
+                )}
+              </View>
+            </Animatable.View>
           </SafeAreaView>
         </LinearGradient>
 
         <View style={styles.contentContainer}>
           <View style={styles.mainContent}>
-            <Animatable.View animation="fadeInUp" duration={1000} style={styles.infoCard}>
-              <View style={styles.infoRow}>
-                <View
-                  style={[
-                    styles.infoIcon,
-                    { backgroundColor: brandPrimary + "15" },
-                  ]}
-                >
-                  <SVGIcon
-                    name="location-outline"
-                    size={18}
-                    color={brandPrimary}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>LOCATION</Text>
-                  <Text style={styles.infoValue}>{config.address}</Text>
-                </View>
-              </View>
-              <View style={[styles.infoRow, { marginTop: 15 }]}>
-                <View
-                  style={[
-                    styles.infoIcon,
-                    { backgroundColor: brandPrimary + "15" },
-                  ]}
-                >
-                  <SVGIcon name="mail-outline" size={18} color={brandPrimary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>EMAIL US</Text>
-                  <Text style={styles.infoValue}>
-                    {config.email || "info@school.edu"}
-                  </Text>
-                </View>
-              </View>
-            </Animatable.View>
-
-            <View style={styles.callCardContainer}>
-              {phoneNumbers.map((phone: string, index: number) => (
-                <Animatable.View
-                  key={phone}
-                  animation="fadeInLeft"
-                  duration={800}
-                  delay={200 + index * 100}
-                  style={styles.callCard}
-                >
-                  <View
-                    style={[styles.callIconBox, { backgroundColor: "#ef444415" }]}
-                  >
-                    <SVGIcon name="megaphone" size={24} color="#ef4444" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.callTitle}>School Hotline</Text>
-                    <Text style={styles.callPhone}>{phone}</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.callActionBtn}
-                    onPress={() => handleCall(phone)}
-                  >
-                    <Text style={styles.callActionText}>Call</Text>
-                  </TouchableOpacity>
-                </Animatable.View>
-              ))}
-            </View>
-
             {sections.map((section, sIndex) => (
               <View key={section.title} style={{ marginBottom: 40 }}>
                 <View style={styles.sectionHeader}>
@@ -512,68 +513,30 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 1100,
   },
-  infoCard: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 24,
-    marginBottom: 25,
-    ...SHADOWS.medium,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+  headerContactInfo: {
+    marginTop: 20,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.2)",
+    gap: 12,
   },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 15 },
-  infoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  infoLabel: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#94A3B8",
-    letterSpacing: 1,
-  },
-  infoValue: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#1E293B",
-    marginTop: 1,
-  },
-  callCardContainer: { marginBottom: 30, gap: 12 },
-  callCard: {
+  headerContactItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    padding: 16,
-    borderRadius: 24,
-    ...SHADOWS.medium,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    gap: 8,
   },
-  callIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: "center",
+  headerContactText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    opacity: 0.9,
+  },
+  headerContactRow: {
+    flexDirection: "row",
     alignItems: "center",
-    marginRight: 15,
+    flexWrap: "wrap",
+    gap: 20,
   },
-  callTitle: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#64748B",
-    textTransform: "uppercase",
-  },
-  callPhone: { fontSize: 16, fontWeight: "800", color: "#1E293B", marginTop: 2 },
-  callActionBtn: {
-    backgroundColor: "#ef4444",
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  callActionText: { color: "#fff", fontWeight: "700", fontSize: 12 },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -611,7 +574,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 15,
-    ...SHADOWS.small,
   },
   cardInfo: { alignItems: "center" },
   menuText: {

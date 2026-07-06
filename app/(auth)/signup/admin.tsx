@@ -91,11 +91,11 @@ export default function AdminSignup() {
       const adminCountSnap = await getCountFromServer(
         collection(db, "adminRoles"),
       );
-      if (adminCountSnap.data().count >= 4) {
+      if (adminCountSnap.data().count >= 5) {
         setLoading(false);
         return notify(
           "Limit Reached",
-          "This school has reached the maximum number of administrator accounts (4).",
+          "This school has reached the maximum number of administrator accounts (5).",
         );
       }
 
@@ -204,7 +204,7 @@ export default function AdminSignup() {
           >
             <Text style={styles.title}>{schoolName} Admin</Text>
             <Text style={styles.subtitle}>
-              Register as a school administrator (Max 4)
+              Register as a school administrator (Max 5)
             </Text>
           </Animatable.View>
 

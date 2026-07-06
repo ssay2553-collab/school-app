@@ -3,8 +3,14 @@ import { useRouter } from "expo-router";
 import {
   collection,
   doc,
+  limit,
   onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  where,
 } from "firebase/firestore";
+import moment from "moment";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -31,18 +37,7 @@ import { useDataFreshness } from "../../hooks/useDataFreshness";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { getTeacherClasses } from "../../lib/classHelpers";
 
-const STATS_CACHE_KEY = "@admin_dashboard_stats_cache_v2";
-let dashboardStatsMemoryCache: any = null;
 let lastDashboardScrollY = 0;
-
-// Cache bust timestamp - cleared when tab regains focus
-let cacheBustTimestamp = Date.now();
-
-type Stats = {
-  totalStudents: number;
-  totalStaff: number;
-  loading: boolean;
-};
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -56,13 +51,8 @@ export default function AdminDashboard() {
     config.brandSecondary || config.secondaryColor || "#4338ca";
   const surface = config.surfaceColor || "#F8FAFC";
 
-  const [stats, setStats] = useState<Stats>(
-    (dashboardStatsMemoryCache as Stats) || {
-      totalStudents: 0,
-      totalStaff: 0,
-      loading: true,
-    },
-  );
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { totalUnread } = useUnreadCounts();
 
@@ -83,58 +73,40 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    setStats((prev) => ({ ...prev, loading: true }));
-    const unsub = onSnapshot(doc(db, "stats", "global"), (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const newStats = {
-          totalStudents: data.totalStudents || 0,
-          totalStaff: data.totalStaff || 0,
-          loading: false,
-        };
-        setStats(newStats);
-        dashboardStatsMemoryCache = newStats;
-      } else {
-        setStats({ totalStudents: 0, totalStaff: 0, loading: false });
-      }
-    }, (err) => {
-      console.error("Error fetching global stats:", err);
-      setStats((prev) => ({ ...prev, loading: false }));
-    });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const q = query(
+      collection(db, "academic_calendar"),
+      where("date", ">=", Timestamp.fromDate(today)),
+      orderBy("date", "asc"),
+      limit(2),
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setUpcomingEvents(list);
+        setEventsLoading(false);
+      },
+      (err) => {
+        console.error("Error fetching upcoming events:", err);
+        setEventsLoading(false);
+      },
+    );
     return () => unsub();
   }, []);
 
   // Use data freshness hook to refresh on focus/visibility change
   const { refresh } = useDataFreshness(
     useCallback(async () => {
-      // stats are now real-time via onSnapshot
+      // Real-time via onSnapshot
     }, []),
     {
       refreshOnFocus: true,
       minRefreshInterval: 10000, // 10 seconds
-      clearMemoryCache: true,
     },
   );
-
-  // Listen for cache clear events
-  useEffect(() => {
-    const handleClearCache = () => {
-      dashboardStatsMemoryCache = null;
-      cacheBustTimestamp = Date.now();
-    };
-
-    if (Platform.OS === "web") {
-      window.addEventListener("edueaz:clearMemoryCache", handleClearCache);
-      window.addEventListener("edueaz:clearAllCaches", handleClearCache);
-    }
-
-    return () => {
-      if (Platform.OS === "web") {
-        window.removeEventListener("edueaz:clearMemoryCache", handleClearCache);
-        window.removeEventListener("edueaz:clearAllCaches", handleClearCache);
-      }
-    };
-  }, []);
 
   const sections = [
     {
@@ -524,40 +496,91 @@ export default function AdminDashboard() {
 
             <View style={styles.statsGrid}>
               <View
-                style={[
-                  styles.statCard,
-                  { backgroundColor: "rgba(255,255,255,0.15)" },
-                ]}
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 8,
+                }}
               >
-                <View
-                  style={[styles.statIconBox, { backgroundColor: "#FFD93D" }]}
+                <Text style={styles.statLabel}>UPCOMING EVENTS 📅</Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/academic-calendar")}
                 >
-                  <SVGIcon name="people" size={18} color="#4338ca" />
-                </View>
-                <View>
-                  <Text style={styles.statLabel}>STUDENTS</Text>
-                  <Text style={styles.statValue}>
-                    {stats.loading ? "--" : stats.totalStudents}
+                  <Text style={[styles.statLabel, { color: "#FFD93D" }]}>
+                    VIEW ALL
                   </Text>
-                </View>
+                </TouchableOpacity>
               </View>
-              <View
-                style={[
-                  styles.statCard,
-                  { backgroundColor: "rgba(255,255,255,0.15)" },
-                ]}
-              >
-                <View
-                  style={[styles.statIconBox, { backgroundColor: "#6BCB77" }]}
-                >
-                  <SVGIcon name="briefcase" size={18} color="#fff" />
-                </View>
-                <View>
-                  <Text style={styles.statLabel}>TOTAL STAFF</Text>
-                  <Text style={styles.statValue}>
-                    {stats.loading ? "--" : stats.totalStaff}
-                  </Text>
-                </View>
+
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {eventsLoading ? (
+                  <View
+                    style={[
+                      styles.statCard,
+                      {
+                        backgroundColor: "rgba(255,255,255,0.1)",
+                        flex: 1,
+                        justifyContent: "center",
+                      },
+                    ]}
+                  >
+                    <ActivityIndicator size="small" color="#fff" />
+                  </View>
+                ) : upcomingEvents.length > 0 ? (
+                  upcomingEvents.map((event) => (
+                    <TouchableOpacity
+                      key={event.id}
+                      onPress={() => router.push("/academic-calendar")}
+                      style={[
+                        styles.statCard,
+                        { backgroundColor: "rgba(255,255,255,0.15)", flex: 1 },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.statIconBox,
+                          {
+                            backgroundColor: event.color || brandPrimary,
+                          },
+                        ]}
+                      >
+                        <SVGIcon name="calendar" size={16} color="#fff" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={[styles.statLabel, { fontSize: 8 }]}
+                          numberOfLines={1}
+                        >
+                          {moment(
+                            event.date?.toDate ? event.date.toDate() : event.date,
+                          ).format("MMM D")}
+                        </Text>
+                        <Text
+                          style={[styles.statValue, { fontSize: 13 }]}
+                          numberOfLines={1}
+                        >
+                          {event.title}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View
+                    style={[
+                      styles.statCard,
+                      {
+                        backgroundColor: "rgba(255,255,255,0.1)",
+                        flex: 1,
+                        justifyContent: "center",
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.statLabel, { textAlign: "center" }]}>
+                      No upcoming events
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
           </SafeAreaView>
@@ -682,8 +705,6 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.3)",
   },
   statsGrid: {
-    flexDirection: "row",
-    gap: 12,
     marginTop: 25,
     paddingHorizontal: 5,
   },
@@ -701,7 +722,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    ...SHADOWS.small,
   },
   statLabel: {
     color: "rgba(255,255,255,0.8)",
@@ -757,7 +777,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 15,
-    ...SHADOWS.small,
   },
   cardInfo: { alignItems: "center" },
   menuText: {

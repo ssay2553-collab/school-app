@@ -10,6 +10,12 @@ export type StudentDraft = {
   hasRecordInTerm: boolean;
   payments: any[];
   termBill: number;
+  ptaBill?: number;
+  maintenanceBill?: number;
+  admissionBill?: number;
+  booksBill?: number;
+  uniformBill?: number;
+  otherBill?: number;
   discount?: number;
   ptaPaid?: number;
   maintenancePaid?: number;

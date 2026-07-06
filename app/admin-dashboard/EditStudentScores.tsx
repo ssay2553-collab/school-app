@@ -41,7 +41,11 @@ import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { getGradeDetails, sortClasses } from "../../lib/classHelpers";
+import {
+  calculateCompetitionRanking,
+  getGradeDetails,
+  sortClasses,
+} from "../../lib/classHelpers";
 
 import { useToast } from "../../contexts/ToastContext";
 
@@ -480,6 +484,7 @@ export default function EditStudentScores() {
     const studentsToSave = allStudents.map(
       (s) => masterDataRef.current[s.studentId] || s,
     );
+
     if (selectedReportType === "End of Term") {
       const invalid = studentsToSave.find((s) => parseFloat(s.classScore) > 50);
       if (invalid)
@@ -488,13 +493,29 @@ export default function EditStudentScores() {
           type: "error",
         });
     }
+
     setSaving(true);
     try {
       const batch = writeBatch(db);
       const recordRef = doc(db, "academicRecords", recordId);
 
+      // Pre-calculate positions for this specific subject before saving
+      const subjectScoresList = studentsToSave.map((s) => ({
+        id: s.studentId,
+        total: parseFloat(s.finalScore) || 0,
+      }));
+
       batch.update(recordRef, {
-        students: studentsToSave,
+        students: studentsToSave.map((s) => {
+          const rankInfo = calculateCompetitionRanking(
+            subjectScoresList,
+            s.studentId,
+          );
+          return {
+            ...s,
+            position: `${rankInfo.rank}/${rankInfo.total}`,
+          };
+        }),
         status: "approved",
         approvedAt: serverTimestamp(),
         approvedBy: appUser?.uid,
@@ -510,6 +531,11 @@ export default function EditStudentScores() {
         // Subject name as key (safe for Firestore keys)
         const subjectKey = selectedSubject.replace(/\s+/g, "_");
 
+        const rankInfo = calculateCompetitionRanking(
+          subjectScoresList,
+          student.studentId,
+        );
+
         batch.set(
           summaryRef,
           {
@@ -521,6 +547,7 @@ export default function EditStudentScores() {
               [subjectKey]: {
                 finalScore: parseFloat(student.finalScore) || 0,
                 grade: student.grade,
+                position: `${rankInfo.rank}/${rankInfo.total}`,
                 reportType: selectedReportType,
                 lastUpdated: serverTimestamp(),
               },
@@ -531,6 +558,12 @@ export default function EditStudentScores() {
       });
 
       await batch.commit();
+
+      // Also update overall class ranking in student-reports
+      // Note: This requires all subjects to be approved for high accuracy,
+      // but we update it incrementally here.
+      await updateOverallRankings();
+
       initialDataRef.current = JSON.stringify(studentsToSave);
       setAllStudents(studentsToSave);
       showToast({
@@ -543,6 +576,63 @@ export default function EditStudentScores() {
       showToast({ message: "Update failed.", type: "error" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const updateOverallRankings = async () => {
+    try {
+      const qAll = query(
+        collection(db, "academicRecords"),
+        where("classId", "==", selectedClassId),
+        where("academicYear", "==", selectedYear),
+        where("term", "==", term),
+        where("reportType", "==", selectedReportType),
+        where("status", "==", "approved"),
+      );
+
+      const allSnap = await getDocsFromServer(qAll);
+      const studentTotals: Record<string, number> = {};
+      const studentNames: Record<string, string> = {};
+
+      allSnap.docs.forEach((d) => {
+        const data = d.data();
+        (data.students || []).forEach((s: any) => {
+          studentTotals[s.studentId] =
+            (studentTotals[s.studentId] || 0) + (parseFloat(s.finalScore) || 0);
+          if (!studentNames[s.studentId]) studentNames[s.studentId] = s.fullName;
+        });
+      });
+
+      const rankedData = Object.entries(studentTotals).map(([id, total]) => ({
+        id,
+        total,
+      }));
+
+      const batch = writeBatch(db);
+      rankedData.forEach((item) => {
+        const rankInfo = calculateCompetitionRanking(rankedData, item.id);
+        const reportId = `${item.id}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(/\//g, "-");
+
+        batch.set(
+          doc(db, "student-reports", reportId),
+          {
+            overallPosition: `${rankInfo.rank}/${rankInfo.total}`,
+            totalScore: item.total,
+            studentId: item.id,
+            studentName: studentNames[item.id],
+            classId: selectedClassId,
+            academicYear: selectedYear,
+            term,
+            reportType: selectedReportType,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      });
+
+      await batch.commit();
+    } catch (e) {
+      console.error("Error updating overall rankings:", e);
     }
   };
 

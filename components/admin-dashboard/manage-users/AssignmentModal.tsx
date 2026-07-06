@@ -30,6 +30,7 @@ const { width } = Dimensions.get("window");
 interface AssignmentModalProps {
   state: AssignmentModalState;
   onClose: () => void;
+  onSetType: (state: AssignmentModalState) => void;
   allClasses: { id: string; name: string }[];
   updating: boolean;
   // Forms and their setters/handlers
@@ -72,6 +73,7 @@ interface AssignmentModalProps {
 export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   state,
   onClose,
+  onSetType,
   allClasses,
   updating,
   newsPermission,
@@ -130,132 +132,97 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
             contentContainerStyle={{ padding: 25, paddingBottom: 60 }}
             showsVerticalScrollIndicator={false}
           >
-            {state.type === "assign_as" && (
-              <>
-                <View style={styles.switchRow}>
-                  <View>
-                    <Text style={styles.switchLabel}>Bulletin Authority</Text>
-                    <Text style={styles.switchSub}>
-                      Allow teacher to post news
-                    </Text>
-                  </View>
-                  <Switch
-                    value={newsPermission}
-                    onValueChange={setNewsPermission}
-                    thumbColor={
-                      newsPermission ? COLORS.secondary || "#c53b59" : "#f4f3f4"
-                    }
-                    trackColor={{
-                      false: "#767577",
-                      true: (COLORS.secondary || "#c53b59") + "80",
-                    }}
-                  />
-                </View>
-                <View style={styles.actionGrid}>
-                  <TouchableOpacity
-                    style={styles.actionCard}
-                    onPress={() => handleAssignRole("Class Teacher")}
-                  >
-                    <SVGIcon
-                      name="school"
-                      size={24}
-                      color={COLORS.primary || "#2e86de"}
-                    />
-                    <Text style={styles.actionLabel}>Class Master</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionCard}
-                    onPress={() => handleAssignRole("Dept Head")}
-                  >
-                    <SVGIcon
-                      name="business"
-                      size={24}
-                      color={COLORS.primary || "#2e86de"}
-                    />
-                    <Text style={styles.actionLabel}>Dept Head</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionCard}
-                    onPress={() => handleAssignRole("Event Organiser")}
-                  >
-                    <SVGIcon
-                      name="calendar"
-                      size={24}
-                      color={COLORS.primary || "#2e86de"}
-                    />
-                    <Text style={styles.actionLabel}>Events</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionCard}
-                    onPress={() => handleAssignRole("Feeding Manager")}
-                  >
-                    <SVGIcon
-                      name="restaurant"
-                      size={24}
-                      color={COLORS.primary || "#2e86de"}
-                    />
-                    <Text style={styles.actionLabel}>Edit Feeding</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionCard}
-                    onPress={() => handleAssignRole("Bus Manager")}
-                  >
-                    <SVGIcon
-                      name="bus"
-                      size={24}
-                      color={COLORS.primary || "#2e86de"}
-                    />
-                    <Text style={styles.actionLabel}>Edit Bus</Text>
-                  </TouchableOpacity>
-                  {/* Additional Actions based on type can go here */}
-                </View>
-              </>
-            )}
-
-            {state.type === "permissions" &&
-              PERMISSION_KEYS.map((pk) => (
-                <View key={pk.key} style={styles.permItem}>
-                  <Text style={styles.permTitle}>{pk.label}</Text>
-                  <View style={styles.permPickerBox}>
-                    <Picker
-                      selectedValue={(tempPermissions[pk.key] || "deny") as any}
-                      onValueChange={(v) => {
-                        const safe =
-                          v === "full" || v === "view" || v === "edit" || v === "deny"
-                            ? (v as PermissionLevel)
-                            : "deny";
-                        setTempPermissions((prev) => ({
-                          ...prev,
-                          [pk.key]: safe,
-                        }));
-                      }}
-                    >
-                      {PERMISSION_LEVELS.map((l) => (
-                        <Picker.Item
-                          key={l.value}
-                          label={l.label}
-                          value={l.value}
-                        />
-                      ))}
-                    </Picker>
-                  </View>
-                </View>
-              ))}
             {state.type === "permissions" && (
-              <TouchableOpacity
-                style={[
-                  styles.saveBtn,
-                  { backgroundColor: COLORS.success || "#05ac5b" },
-                ]}
-                onPress={handleUpdatePermissions}
-                disabled={updating}
-              >
-                {updating ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveBtnText}>Commit Changes</Text>
+              <>
+                {(state.target?.role === "teacher" ||
+                  state.target?.role === "staff" ||
+                  state.target?.role === "admin") && (
+                  <View style={{ marginBottom: 30 }}>
+                    <Text style={styles.sectionHeader}>Authority & Assignments</Text>
+                    <View style={styles.actionGrid}>
+                      <TouchableOpacity
+                        style={styles.actionCard}
+                        onPress={() => onSetType({ ...state, type: "class_teacher" })}
+                      >
+                        <SVGIcon name="school" size={24} color={COLORS.primary} />
+                        <Text style={styles.actionLabel}>Class Master</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.actionCard}
+                        onPress={() => onSetType({ ...state, type: "dept_head" })}
+                      >
+                        <SVGIcon name="business" size={24} color={COLORS.primary} />
+                        <Text style={styles.actionLabel}>Dept Head</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.actionCard}
+                        onPress={() => onSetType({ ...state, type: "manage_classes" })}
+                      >
+                        <SVGIcon name="layers" size={24} color={COLORS.primary} />
+                        <Text style={styles.actionLabel}>Teaching Classes</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.actionCard}
+                        onPress={() => onSetType({ ...state, type: "manage_subjects" })}
+                      >
+                        <SVGIcon name="book" size={24} color={COLORS.primary} />
+                        <Text style={styles.actionLabel}>Subjects</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={styles.actionCard}
+                        onPress={() => onSetType({ ...state, type: "other" })}
+                      >
+                        <SVGIcon name="star" size={24} color={COLORS.primary} />
+                        <Text style={styles.actionLabel}>Other Roles</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 )}
-              </TouchableOpacity>
+                <Text style={styles.sectionHeader}>Delegated Permissions</Text>
+                {PERMISSION_KEYS.map((pk) => (
+                  <View key={pk.key} style={styles.permItem}>
+                    <Text style={styles.permTitle}>{pk.label}</Text>
+                    <View style={styles.permPickerBox}>
+                      <Picker
+                        selectedValue={(tempPermissions[pk.key] || "deny") as any}
+                        onValueChange={(v) => {
+                          const safe =
+                            v === "full" || v === "view" || v === "edit" || v === "deny"
+                              ? (v as PermissionLevel)
+                              : "deny";
+                          setTempPermissions((prev) => ({
+                            ...prev,
+                            [pk.key]: safe,
+                          }));
+                        }}
+                      >
+                        {PERMISSION_LEVELS.map((l) => (
+                          <Picker.Item
+                            key={l.value}
+                            label={l.label}
+                            value={l.value}
+                          />
+                        ))}
+                      </Picker>
+                    </View>
+                  </View>
+                ))}
+
+                <TouchableOpacity
+                  style={[
+                    styles.saveBtn,
+                    { backgroundColor: COLORS.success || "#05ac5b" },
+                  ]}
+                  onPress={handleUpdatePermissions}
+                  disabled={updating}
+                >
+                  {updating ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <Text style={styles.saveBtnText}>Commit Changes</Text>
+                  )}
+                </TouchableOpacity>
+              </>
             )}
 
             {state.type === "manage_classes" && (
@@ -738,6 +705,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   modalTitle: { fontSize: 18, fontWeight: "900", color: "#1E293B" },
+  sectionHeader: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: COLORS.primary,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 15,
+    borderBottomWidth: 2,
+    borderBottomColor: COLORS.primary + "20",
+    paddingBottom: 5,
+  },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",

@@ -183,29 +183,7 @@ export default function StudentAcademicReport() {
         const data = d.data() as any;
         const studentsList = data.students || [];
 
-        // Standard Competition Ranking for Subject Position
-        const subjectRankData = calculateCompetitionRanking(
-          studentsList.map((s: any) => {
-            let totalScore = 0;
-            if (selectedReportType === "End of Term") {
-              totalScore = parseFloat(
-                s.finalScore ??
-                  (
-                    parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)
-                  ).toFixed(2),
-              );
-            } else {
-              totalScore = parseFloat(s.finalScore || s.examsMark || 0);
-            }
-            return {
-              id: s.studentId,
-              total: totalScore,
-            };
-          }),
-          selectedChildId,
-        );
-        const posInSub = subjectRankData.rank;
-
+        // Position is now stored in the student entry during admin approval
         const studentEntry = studentsList.find(
           (s: any) => s.studentId === selectedChildId,
         );
@@ -238,7 +216,7 @@ export default function StudentAcademicReport() {
             grade: gradeObj.grade,
             aggregate: gradeObj.aggregate,
             remark: gradeObj.remark,
-            pos: posInSub,
+            pos: studentEntry.position || "N/A",
           });
         }
       });
@@ -259,52 +237,9 @@ export default function StudentAcademicReport() {
 
       setSubjectsData(results);
 
-      // Fetch overall position ranking
-      try {
-        const qAllReports = query(
-          collection(db, "academicRecords"),
-          where("classId", "==", classId),
-          where("academicYear", "==", selectedYear),
-          where("term", "==", selectedTerm),
-          where("reportType", "==", selectedReportType),
-          where("status", "==", "approved"),
-        );
-        const allSnap = await getDocsFromServer(qAllReports);
-        const studentTotals: { [id: string]: number } = {};
-        allSnap.docs.forEach((d) => {
-          const dData = d.data() as any;
-          (dData.students || []).forEach((s: any) => {
-            let val = 0;
-            if (selectedReportType === "End of Term") {
-              val = parseFloat(
-                s.finalScore ??
-                  (parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)),
-              );
-            } else {
-              val = parseFloat(s.finalScore || s.examsMark || 0);
-            }
-            studentTotals[s.studentId] = (studentTotals[s.studentId] || 0) + val;
-          });
-        });
-
-        const rankedData = Object.entries(studentTotals).map(([id, total]) => ({
-          id,
-          total,
-        }));
-        const overallRankInfo = calculateCompetitionRanking(
-          rankedData,
-          selectedChildId,
-        );
-
-        if (overallRankInfo.rank > 0) {
-          setOverallPosition(`${overallRankInfo.rank}/${overallRankInfo.total}`);
-        } else {
-          setOverallPosition("N/A");
-        }
-      } catch (e) {
-        console.warn("Ranking error:", e);
-        setOverallPosition("N/A");
-      }
+      // Overall position is now fetched from 'student-reports' meta-doc below.
+      // We'll reset it here first to ensure it's updated correctly.
+      setOverallPosition("N/A");
 
       // Fetch class name
       try {
@@ -358,7 +293,11 @@ export default function StudentAcademicReport() {
         );
       const snap = await getDoc(doc(db, "student-reports", reportId));
       if (snap.exists()) {
-        setReport(snap.data() as any);
+        const reportData = snap.data() as any;
+        setReport(reportData);
+        if (reportData.overallPosition) {
+          setOverallPosition(reportData.overallPosition);
+        }
       } else {
         setReport({ studentName: child.name, classId });
       }
@@ -433,9 +372,38 @@ export default function StudentAcademicReport() {
     <head>
       <meta charset="UTF-8" />
       <style>
-        @page { size: A4; margin: 12mm; }
-        body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; margin:0; color:#0f172a; background:#fff; }
-        .paper { max-width: 794px; margin: 0 auto; padding: 26px 28px; position: relative; }
+        @page {
+          size: A4;
+          margin: 0;
+        }
+        html, body {
+          margin: 0 !important;
+          padding: 0 !important;
+          height: auto !important;
+          min-height: 100% !important;
+          overflow: visible !important;
+          display: block !important;
+          background-color: white;
+        }
+        body {
+          font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+          margin:0;
+          color:#0f172a;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .paper {
+          padding: 15mm 18mm;
+          width: 210mm;
+          min-height: 297mm;
+          box-sizing: border-box;
+          display: block;
+          page-break-after: always;
+          overflow: visible !important;
+          position: relative;
+          margin: 0 auto;
+          background-color: white;
+        }
 
         .header-table { width: 100%; border-bottom: 2pt solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
         .header-logo { width: 80px; vertical-align: middle; }

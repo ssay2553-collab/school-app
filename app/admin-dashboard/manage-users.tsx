@@ -311,6 +311,7 @@ export default function ManageUsers() {
         <AssignmentModal
           state={assignmentModal}
           onClose={() => setAssignmentModal({ type: "none", target: null })}
+          onSetType={setAssignmentModal}
           allClasses={allClasses}
           updating={updating}
           newsPermission={newsPermission}

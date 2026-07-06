@@ -4,7 +4,6 @@ import * as FileSystem from "expo-file-system";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Sharing from "expo-sharing";
 import {
     collection,
     deleteDoc,
@@ -40,6 +39,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
+import { shareFile } from "../../utils/shareUtils";
 
 const { width } = Dimensions.get("window");
 
@@ -303,7 +303,7 @@ export default function ReceiptViewScreen() {
                 if (!pSnap.exists()) throw "Payment not found";
 
                 const pData = pSnap.data();
-                const amt = pData.amount || 0;
+                const amt = Number(pData.amount) || 0;
                 const pType = (pData.type || "tuition").toLowerCase();
                 const cleanYear = (pData.academicYear as string).replace(
                   /\//g,
@@ -324,7 +324,11 @@ export default function ReceiptViewScreen() {
 
                 if (rSnap.exists()) {
                   const updateData: any = {};
-                  if (pType === "tuition" || pType === "tuition_payment") {
+                  if (
+                    pType === "tuition" ||
+                    pType === "tuition_payment" ||
+                    pType === "tuition_credit"
+                  ) {
                     updateData.amountPaid = increment(-amt);
                     updateData.balance = increment(amt);
                   } else {
@@ -356,18 +360,36 @@ export default function ReceiptViewScreen() {
   };
 
   const generatePDF = async () => {
-    // PDF Logic similar to existing student-fee-history.tsx but adapted for single receipt/bill
     let logoDataUrl = "";
     try {
+      const getBase64FromUri = async (uri: string) => {
+        if (!uri) return "";
+        try {
+          if (Platform.OS === "web") {
+            const resp = await fetch(uri);
+            const blob = await resp.blob();
+            return new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+          } else {
+            const tempPath = `${FileSystem.cacheDirectory}temp_${Math.random().toString(36).substring(7)}.png`;
+            const downloaded = await FileSystem.downloadAsync(uri, tempPath);
+            const b64 = await FileSystem.readAsStringAsync(downloaded.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            return `data:image/png;base64,${b64}`;
+          }
+        } catch (e) {
+          return uri;
+        }
+      };
+
       const asset = Asset.fromModule(schoolLogo as any);
-      await asset.downloadAsync();
-      const localUri = asset.localUri || asset.uri;
-      if (localUri) {
-        const b64 = await FileSystem.readAsStringAsync(localUri, {
-          encoding: "base64",
-        });
-        logoDataUrl = `data:image/png;base64,${b64}`;
-      }
+      if (!asset.localUri && !asset.uri) await asset.downloadAsync();
+      logoDataUrl = await getBase64FromUri(asset.localUri || asset.uri);
     } catch (e) {}
 
     const sName = studentData
@@ -451,7 +473,38 @@ export default function ReceiptViewScreen() {
             <html>
             <head>
                 <style>
-                    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 40px; color: #1e293b; background: #fff; line-height: 1.5; }
+                    @page {
+                      size: A4;
+                      margin: 0;
+                    }
+                    html, body {
+                      margin: 0 !important;
+                      padding: 0 !important;
+                      height: auto !important;
+                      min-height: 100% !important;
+                      overflow: visible !important;
+                      display: block !important;
+                      background-color: white;
+                    }
+                    body {
+                      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                      color: #1e293b;
+                      -webkit-print-color-adjust: exact;
+                      print-color-adjust: exact;
+                      line-height: 1.5;
+                    }
+                    .page {
+                      padding: 15mm 18mm;
+                      width: 210mm;
+                      min-height: 297mm;
+                      box-sizing: border-box;
+                      display: block;
+                      page-break-after: always;
+                      overflow: visible !important;
+                      position: relative;
+                      margin: 0 auto;
+                      background-color: white;
+                    }
                     .header { display: flex; align-items: center; border-bottom: 3px solid ${primary}; padding-bottom: 20px; margin-bottom: 30px; }
                     .logo { width: 80px; height: 80px; margin-right: 20px; }
                     .school-info { flex: 1; }
@@ -480,32 +533,34 @@ export default function ReceiptViewScreen() {
                 </style>
             </head>
             <body>
-                <div class="header">
-                    ${logoDataUrl ? `<img src="${logoDataUrl}" class="logo"/>` : ""}
-                    <div class="school-info">
-                        <h1 class="school-name">${SCHOOL_CONFIG.fullName}</h1>
-                        <div class="school-motto">${SCHOOL_CONFIG.motto}</div>
-                        <div class="school-contact">
-                            ${SCHOOL_CONFIG.address}<br/>
-                            Tel: ${SCHOOL_CONFIG.hotline} ${SCHOOL_CONFIG.email ? `| Email: ${SCHOOL_CONFIG.email}` : ""}
+                <div class="page">
+                    <div class="header">
+                        ${logoDataUrl ? `<img src="${logoDataUrl}" class="logo"/>` : ""}
+                        <div class="school-info">
+                            <h1 class="school-name">${SCHOOL_CONFIG.fullName}</h1>
+                            <div class="school-motto">${SCHOOL_CONFIG.motto}</div>
+                            <div class="school-contact">
+                                ${SCHOOL_CONFIG.address}<br/>
+                                Tel: ${SCHOOL_CONFIG.hotline} ${SCHOOL_CONFIG.email ? `| Email: ${SCHOOL_CONFIG.email}` : ""}
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="receipt-title">${title}</div>
-                <div class="meta-info">
-                    <div class="meta-col">
-                        <div><span class="meta-label">STUDENT:</span><span class="meta-value">${sName}</span></div>
-                        <div><span class="meta-label">CLASS:</span><span class="meta-value">${studentData?.className || "N/A"}</span></div>
+                    <div class="receipt-title">${title}</div>
+                    <div class="meta-info">
+                        <div class="meta-col">
+                            <div><span class="meta-label">STUDENT:</span><span class="meta-value">${sName}</span></div>
+                            <div><span class="meta-label">CLASS:</span><span class="meta-value">${studentData?.className || "N/A"}</span></div>
+                        </div>
+                        <div class="meta-col" style="text-align: right">
+                            <div><span class="meta-label">TERM:</span><span class="meta-value">${term || record?.term}</span></div>
+                            <div><span class="meta-label">ACADEMIC YEAR:</span><span class="meta-value">${year || record?.academicYear}</span></div>
+                        </div>
                     </div>
-                    <div class="meta-col" style="text-align: right">
-                        <div><span class="meta-label">TERM:</span><span class="meta-value">${term || record?.term}</span></div>
-                        <div><span class="meta-label">ACADEMIC YEAR:</span><span class="meta-value">${year || record?.academicYear}</span></div>
+                    ${contentHtml}
+                    <div class="footer">
+                        <p class="footer-note">Computer generated official document. No physical signature required.</p>
+                        <p style="font-size: 11px; font-weight: 700; color: #cbd5e1;">&copy; ${moment().year()} ${SCHOOL_CONFIG.fullName}</p>
                     </div>
-                </div>
-                ${contentHtml}
-                <div class="footer">
-                    <p class="footer-note">Computer generated official document. No physical signature required.</p>
-                    <p style="font-size: 11px; font-weight: 700; color: #cbd5e1;">&copy; ${moment().year()} ${SCHOOL_CONFIG.fullName}</p>
                 </div>
             </body>
             </html>
@@ -516,7 +571,11 @@ export default function ReceiptViewScreen() {
         await Print.printAsync({ html });
       } else {
         const { uri } = await Print.printToFileAsync({ html });
-        await Sharing.shareAsync(uri, { mimeType: "application/pdf" });
+        const fileName =
+          type === "bill"
+            ? `Statement_${studentId}_${term}_${year}.pdf`.replace(/\s+/g, "_")
+            : `Receipt_${payment?.receiptNo || paymentId}.pdf`;
+        await shareFile(uri, fileName);
       }
     } catch (e) {
       showToast({ message: "Failed to generate PDF", type: "error" });
@@ -613,12 +672,12 @@ export default function ReceiptViewScreen() {
               </Text>
               <Text style={styles.value}>
                 {moment(
-                  type === "payment" ? payment?.createdAt : undefined,
+                  type === "payment" ? (payment?.createdAt || payment?.timestamp?.toDate()) : undefined,
                 ).format("DD/MM/YYYY")}
               </Text>
               <Text style={styles.subValue}>
                 {moment(
-                  type === "payment" ? payment?.createdAt : undefined,
+                  type === "payment" ? (payment?.createdAt || payment?.timestamp?.toDate()) : undefined,
                 ).format("hh:mm A")}
               </Text>
             </View>
@@ -668,7 +727,7 @@ export default function ReceiptViewScreen() {
                           { flex: 1, textAlign: "right", fontWeight: "900" },
                         ]}
                       >
-                        ₵{item.balance.toFixed(0)}
+                        ₵{item.balance.toFixed(2)}
                       </Text>
                     </View>
                   ))

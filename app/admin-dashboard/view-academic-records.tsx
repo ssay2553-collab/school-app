@@ -74,6 +74,8 @@ export default function ViewAcademicRecords() {
     saveMetadata,
     handleUploadSignature,
     handleBulkUpdate,
+    recalculateRankings,
+    recalculating,
     availableYears,
     acadConfig,
     primary
@@ -163,6 +165,25 @@ export default function ViewAcademicRecords() {
           handleBulkUpdate={handleBulkUpdate}
           primary={primary}
         />
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={[styles.recalcBtn, { borderColor: primary }]}
+            onPress={recalculateRankings}
+            disabled={recalculating}
+          >
+            {recalculating ? (
+              <ActivityIndicator size="small" color={primary} />
+            ) : (
+              <>
+                <SVGIcon name="refresh-circle" size={20} color={primary} />
+                <Text style={[styles.recalcBtnText, { color: primary }]}>
+                  Recalculate Class Rankings
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {stats && studentScores.length > 0 && (
           <Animatable.View animation="fadeIn" style={styles.statsContainer}>
@@ -486,6 +507,28 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "900",
     fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  actionRow: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+    flexDirection: "row",
+    justifyContent: "flex-end",
+  },
+  recalcBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    backgroundColor: "#fff",
+    gap: 8,
+  },
+  recalcBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    textTransform: "uppercase",
     letterSpacing: 0.5,
   },
 });

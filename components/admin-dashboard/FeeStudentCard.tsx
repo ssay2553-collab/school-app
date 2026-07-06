@@ -166,7 +166,7 @@ export const FeeStudentCard: React.FC<FeeStudentCardProps> = ({
                     )}
                   </View>
 
-                  <View style={styles.debtBox}>
+                    <View style={styles.debtBox}>
                     <Text
                       style={[
                         styles.debtLabel,
@@ -182,7 +182,7 @@ export const FeeStudentCard: React.FC<FeeStudentCardProps> = ({
                       ]}
                     >
                       ₵
-                      {Math.abs(item.currentBalance || 0).toLocaleString(
+                      {Math.max(0, item.currentBalance || 0).toLocaleString(
                         undefined,
                         { minimumFractionDigits: 2 },
                       )}

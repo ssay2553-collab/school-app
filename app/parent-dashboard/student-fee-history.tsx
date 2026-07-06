@@ -629,7 +629,7 @@ export default function StudentFeeHistory() {
                        "FEE PAYMENT"}
                     </Text>
                     <Text style={styles.paymentDate}>
-                      {moment(payment.timestamp?.toDate()).format(
+                      {moment(payment.createdAt || payment.timestamp?.toDate()).format(
                         "MMM DD, YYYY",
                       )}{" "}
                       • {payment.receiptNo}

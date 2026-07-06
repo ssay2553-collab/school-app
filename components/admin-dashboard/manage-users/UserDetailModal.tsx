@@ -549,7 +549,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                       onPress={() => onOpenPermissions(user)}
                     >
                       <Text style={styles.actionButtonText}>
-                        Delegate Permissions
+                        Modify Authority & Permissions
                       </Text>
                     </TouchableOpacity>
                   )}
@@ -567,20 +567,6 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     <Text style={styles.actionButtonText}>
                       Upgrade Account (Login)
                     </Text>
-                  </TouchableOpacity>
-                )}
-                {user.role === "teacher" && (
-                  <TouchableOpacity
-                    style={[
-                      styles.actionButton,
-                      {
-                        backgroundColor: COLORS.secondary || "#c53b59",
-                        marginBottom: 12,
-                      },
-                    ]}
-                    onPress={() => onModifyAuthority(user)}
-                  >
-                    <Text style={styles.actionButtonText}>Modify Authority</Text>
                   </TouchableOpacity>
                 )}
                 {user.role === "student" && (

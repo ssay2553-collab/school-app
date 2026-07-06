@@ -53,6 +53,7 @@ export const roles: { name: string; role: UserRole; icon: string }[] = [
 ];
 
 export const PERMISSION_KEYS = [
+  { key: "news", label: "News & Announcements" },
   { key: "manage-fees", label: "Manage Fees & Billing" },
   { key: "manage-sales", label: "Financial Records (Sales)" },
   { key: "feeding", label: "Feeding Recording" },
@@ -66,7 +67,6 @@ export const PERMISSION_KEYS = [
   { key: "staff-payroll", label: "Staff Payroll" },
   { key: "expenditure", label: "Expenditure" },
   { key: "manage-users", label: "Manage Users" },
-  { key: "news", label: "News & Announcements" },
   { key: "gallery", label: "Gallery Management" },
   { key: "timetables", label: "Timetable Management" },
   { key: "academic-calendar", label: "Academic Calendar" },

@@ -1,9 +1,8 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
@@ -19,22 +18,21 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
+import { FeeDailyTransactionsModal } from "../../components/admin-dashboard/FeeDailyTransactionsModal";
+import { FeePaymentModal } from "../../components/admin-dashboard/FeePaymentModal";
+import { FeeStatsDashboard } from "../../components/admin-dashboard/FeeStatsDashboard";
+import { FeeStudentCard } from "../../components/admin-dashboard/FeeStudentCard";
 import SVGIcon from "../../components/SVGIcon";
+import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
+import { StudentDraft } from "../../constants/admin-dashboard/ManageFeesTypes";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
-import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
-import { StudentDraft } from "../../constants/admin-dashboard/ManageFeesTypes";
 import { useFeeStats } from "../../hooks/admin-dashboard/useFeeStats";
-import { useFeeStudents } from "../../hooks/admin-dashboard/useFeeStudents";
-import { FeeStatsDashboard } from "../../components/admin-dashboard/FeeStatsDashboard";
-import { FeeStudentCard } from "../../components/admin-dashboard/FeeStudentCard";
-import { FeePaymentModal } from "../../components/admin-dashboard/FeePaymentModal";
-import { FeeDailyTransactionsModal } from "../../components/admin-dashboard/FeeDailyTransactionsModal";
-import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 import { useManageFees } from "../../hooks/admin-dashboard/useManageFees";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 export default function ManageFees() {
   const { appUser } = useAuth();
@@ -191,64 +189,121 @@ export default function ManageFees() {
   const exportPDF = async () => {
     const className =
       classes.find((c) => c.id === selectedClassId)?.name || "Class";
+    const ITEMS_PER_PAGE = 20;
+    const pages: any[] = [];
+
+    for (let i = 0; i < filteredStudents.length; i += ITEMS_PER_PAGE) {
+      pages.push(filteredStudents.slice(i, i + ITEMS_PER_PAGE));
+    }
+
     const html = `
       <html>
         <head>
           <style>
-            body { font-family: sans-serif; padding: 20px; }
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              height: auto !important;
+              min-height: 100% !important;
+              overflow: visible !important;
+              display: block !important;
+              background-color: white;
+            }
+            body { font-family: sans-serif; color: #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page {
+              padding: 20mm;
+              width: 210mm;
+              min-height: 297mm;
+              box-sizing: border-box;
+              display: block;
+              page-break-after: always;
+              page-break-inside: avoid;
+              overflow: visible !important;
+              position: relative;
+              background-color: white;
+            }
+            .page:last-child {
+              page-break-after: avoid;
+            }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
             th { background-color: #f2f2f2; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .summary { margin-top: 30px; }
+            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+            .summary { margin-top: 30px; border-top: 2px solid #eee; padding-top: 10px; }
+            .footer { text-align: center; font-size: 10px; color: #888; margin-top: 20px; }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>${SCHOOL_CONFIG.name}</h1>
-            <h2>Fee Status Report - ${className}</h2>
-            <p>${academicYear} - ${term}</p>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Student Name</th>
-                <th>Student ID</th>
-                <th>Billed</th>
-                <th>Paid</th>
-                <th>Discount</th>
-                <th>Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${filteredStudents
-                .map(
-                  (s) => `
-                <tr>
-                  <td>${s.fullName}</td>
-                  <td>${s.studentID}</td>
-                  <td>₵${(s.termBill || 0).toFixed(2)}</td>
-                  <td>₵${(s.amountPaid || 0).toFixed(2)}</td>
-                  <td>₵${(s.discount || 0).toFixed(2)}</td>
-                  <td>₵${(s.currentBalance || 0).toFixed(2)}</td>
-                </tr>
-              `,
-                )
-                .join("")}
-            </tbody>
-          </table>
-          <div class="summary">
-            <p><strong>Total Expected:</strong> ₵${stats.expected.toLocaleString()}</p>
-            <p><strong>Total Received:</strong> ₵${stats.received.toLocaleString()}</p>
-            <p><strong>Total Discounts:</strong> ₵${stats.totalDiscount.toLocaleString()}</p>
-            <p><strong>Total Outstanding:</strong> ₵${stats.balance.toLocaleString()}</p>
-          </div>
+          ${pages
+            .map(
+              (pageStudents: StudentDraft[], idx: number) => `
+            <div class="page">
+              <div class="header">
+                <h1 style="margin: 0; color: ${primaryBrand};">${SCHOOL_CONFIG.name}</h1>
+                <h2 style="margin: 5px 0; color: #666;">Fee Status Report - ${className}</h2>
+                <p style="margin: 0; font-size: 12px; color: #888;">${academicYear} - ${term} | Page ${idx + 1} of ${pages.length}</p>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Student Name</th>
+                    <th>ID</th>
+                    <th>Billed</th>
+                    <th>Paid</th>
+                    <th>Discount</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${pageStudents
+                    .map(
+                      (s: StudentDraft) => `
+                    <tr>
+                      <td>${s.fullName}</td>
+                      <td>${s.studentID}</td>
+                      <td>₵${(s.termBill || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td>₵${(s.amountPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td>₵${(s.discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td style="font-weight: bold; color: ${s.currentBalance > 0 ? '#EF4444' : '#10B981'};">
+                        ₵${(s.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  `,
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+
+              ${
+                idx === pages.length - 1
+                  ? `
+                <div class="summary">
+                  <p><strong>Total Expected:</strong> ₵${stats.expected.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p><strong>Total Received:</strong> ₵${stats.received.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p><strong>Total Discounts:</strong> ₵${stats.totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p><strong>Total Outstanding:</strong> ₵${stats.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                </div>
+              `
+                  : ""
+              }
+              <div class="footer">
+                Printed on ${new Date().toLocaleString()}<br/>
+                Powered by EduEaz
+              </div>
+            </div>
+          `,
+            )
+            .join("")}
         </body>
       </html>
     `;
 
     try {
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         await Print.printAsync({ html });
       } else {
         const { uri } = await Print.printToFileAsync({ html });
@@ -760,8 +815,21 @@ export default function ManageFees() {
         setPaymentDate={setPaymentDate}
         paymentMethod={paymentMethod}
         setPaymentMethod={setPaymentMethod}
-        onConfirm={() => handleLogPayment(selectedStudent, paymentAmount, receivedFrom, paymentMethod, paymentDate, () => setPaymentModalVisible(false))}
-        onDeletePayment={(p) => handleDeletePayment(selectedStudent, p, () => setPaymentModalVisible(false))}
+        onConfirm={() =>
+          handleLogPayment(
+            selectedStudent,
+            paymentAmount,
+            receivedFrom,
+            paymentMethod,
+            paymentDate,
+            () => setPaymentModalVisible(false),
+          )
+        }
+        onDeletePayment={(p) =>
+          handleDeletePayment(selectedStudent, p, () =>
+            setPaymentModalVisible(false),
+          )
+        }
         saving={saving}
         canEdit={canEdit}
       />
@@ -809,7 +877,9 @@ export default function ManageFees() {
                 <Text style={styles.alertBtnTextSec}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => saveDiscounts(() => setDiscountModalVisible(false))}
+                onPress={() =>
+                  saveDiscounts(() => setDiscountModalVisible(false))
+                }
                 style={[styles.alertBtnPri, { backgroundColor: VIBE.success }]}
               >
                 <Text style={styles.alertBtnTextPri}>Confirm</Text>

@@ -149,9 +149,19 @@ export default function PreschoolRemarks() {
         const list = snap.docs
           .map((d) => ({
             id: d.id,
-            name: (d.data() as any).name || d.id,
+            ...d.data() as any
           }))
-          .filter(c => isPreschoolClass(c.name));
+          .filter(c => {
+            const dept = (c.department || "").toLowerCase();
+            const level = String(c.level || "").toUpperCase();
+            const name = (c.name || "").toUpperCase();
+
+            if (dept === "pre-school") return true;
+            if (["A", "B", "C", "D"].includes(level)) return true;
+
+            const keywords = ["CRECHE", "NURSERY", "KG", "KINDERGARTEN", "TODDLER", "PLAYGROUND"];
+            return keywords.some(kw => name.includes(kw));
+          });
 
         const sorted = sortClasses(list);
         setPreschoolClasses(sorted);

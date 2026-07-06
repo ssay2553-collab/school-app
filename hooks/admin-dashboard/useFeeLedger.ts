@@ -27,9 +27,10 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
     const { showToast } = useToast();
     const acadConfig = useAcademicConfig();
 
-    const isSuperAdmin = appUser?.role === "admin" || [
+    const isSuperAdmin = [
         "admin", "proprietor", "proprietress", "manager", "headmaster",
         "headmistress", "administrator", "director", "accountant", "bursar",
+        "super admin", "superadmin"
     ].includes(appUser?.adminRole?.toLowerCase().trim() || "");
 
     const canManageFees = isSuperAdmin ||

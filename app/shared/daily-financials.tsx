@@ -77,6 +77,8 @@ export default function DailyFinancials() {
     "accountant",
     "bursar",
     "admin",
+    "super admin",
+    "superadmin",
   ].includes(currentUserRole);
 
   const feedingPermission = appUser?.permissions?.["feeding"] || "deny";

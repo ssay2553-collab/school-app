@@ -93,7 +93,20 @@ export const deleteExpenditure = onCall(async (req) => {
   const callerDoc = await db.collection("users").doc(auth.uid).get();
   const callerData = callerDoc.data();
 
-  const isSuperAdmin = ["proprietor", "proprietress", "manager", "headmaster", "headmistress", "administrator", "director"].includes(callerData?.adminRole?.toLowerCase() || "");
+  const isSuperAdmin = [
+    "proprietor",
+    "proprietress",
+    "manager",
+    "headmaster",
+    "headmistress",
+    "administrator",
+    "director",
+    "accountant",
+    "bursar",
+    "admin",
+    "super admin",
+    "superadmin",
+  ].includes(callerData?.adminRole?.toLowerCase() || "");
   const canDelete = isSuperAdmin || callerData?.permissions?.["expenditure"] === "full";
 
   if (!canDelete) throw new HttpsError("permission-denied", "Unauthorized.");

@@ -48,6 +48,8 @@ export default function FeeReports() {
     "accountant",
     "bursar",
     "admin",
+    "super admin",
+    "superadmin",
   ].includes(currentUserRole);
   const feePermission = appUser?.permissions?.["manage-fees"] || "deny";
   const canView =

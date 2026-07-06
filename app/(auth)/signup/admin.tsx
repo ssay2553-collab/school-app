@@ -136,6 +136,11 @@ export default function AdminSignup() {
         "director",
         "manager",
         "administrator",
+        "accountant",
+        "bursar",
+        "super admin",
+        "superadmin",
+        "admin"
       ].includes(normalizedRole);
       const defaultPermission = isSuperAdmin ? "full" : "deny";
 
@@ -157,6 +162,7 @@ export default function AdminSignup() {
           "staff-payroll": defaultPermission,
           expenditure: defaultPermission,
           "manage-users": defaultPermission,
+          attendance: defaultPermission,
         },
         status: "active",
         createdAt: serverTimestamp(),

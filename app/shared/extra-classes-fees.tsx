@@ -113,6 +113,8 @@ export default function ExtraClassesFees() {
     "accountant",
     "bursar",
     "admin",
+    "super admin",
+    "superadmin",
   ].includes(currentUserRole);
 
   const extraClassesPermission =

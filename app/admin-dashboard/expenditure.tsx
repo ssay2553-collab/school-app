@@ -64,6 +64,8 @@ export default function ExpenditureScreen() {
     "accountant",
     "bursar",
     "admin",
+    "super admin",
+    "superadmin",
   ].includes(currentUserRole);
   const expPermission = appUser?.permissions?.["expenditure"] || "deny";
   const canView =

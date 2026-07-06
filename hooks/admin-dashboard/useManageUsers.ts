@@ -49,6 +49,8 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     "accountant",
     "bursar",
     "admin",
+    "super admin",
+    "superadmin",
   ].includes(currentUserRole);
 
   const hasManageUsersAccess =

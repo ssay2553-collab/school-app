@@ -115,6 +115,8 @@ export default function FeedingFees() {
     "accountant",
     "bursar",
     "admin",
+    "super admin",
+    "superadmin",
   ].includes(currentUserRole);
 
   const feedingPermission = appUser?.permissions?.["feeding"] || "deny";

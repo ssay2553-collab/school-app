@@ -11,11 +11,14 @@ export const isClassTeacher = (user: AppUser | null | undefined, classId: string
   if (!user || !classId) return false;
 
   const role = user.role?.toLowerCase();
-  const isAdmin = role === "admin";
+  const isAdmin = role === "admin" || role === "superadmin" || role === "super admin" || !!(user as any).adminRole;
   const isTeacher = role === "teacher";
   const isStaff = role === "staff";
 
   if (!isAdmin && !isTeacher && !isStaff) return false;
+
+  // Admins have universal access to mark attendance
+  if (isAdmin) return true;
 
   const classTeacherOf = user.classTeacherOf;
   const classes = user.classes || [];

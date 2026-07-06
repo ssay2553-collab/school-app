@@ -298,15 +298,33 @@ export const useManageFees = ({
             const cleanTerm = term.replace(/\s/g, "");
             const recordId = `${selectedStudent?.uid}_${cleanYear}_${cleanTerm}`;
             const batch = writeBatch(db);
+
+            // 1. Update the student fee record (array and totals)
             batch.update(doc(db, "studentFeeRecords", recordId), {
               payments: arrayRemove(payment),
               amountPaid: increment(-payment.amount),
               balance: increment(payment.amount),
               lastUpdated: serverTimestamp(),
             });
+
+            // 2. Reverse the wallet balance
             batch.update(doc(db, "users", selectedStudent?.uid!), {
               walletBalance: increment(payment.amount),
             });
+
+            // 3. Delete the global payment document if receiptNo exists
+            if (payment.receiptNo) {
+              const q = query(
+                collection(db, "feePayments"),
+                where("receiptNo", "==", payment.receiptNo),
+                where("studentUid", "==", selectedStudent?.uid)
+              );
+              const snap = await getDocsFromServer(q);
+              snap.forEach((d) => {
+                batch.delete(d.ref);
+              });
+            }
+
             await batch.commit();
             fetchStudents(true);
             onSuccess();

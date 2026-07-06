@@ -70,6 +70,8 @@ export default function StaffPayrollScreen() {
     "accountant",
     "bursar",
     "admin",
+    "super admin",
+    "superadmin",
   ].includes(currentUserRole);
   const payrollPermission = appUser?.permissions?.["staff-payroll"] || "deny";
   const canView =

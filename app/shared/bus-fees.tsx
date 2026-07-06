@@ -117,6 +117,8 @@ export default function BusFees() {
     "accountant",
     "bursar",
     "admin",
+    "super admin",
+    "superadmin",
   ].includes(currentUserRole);
 
   const busPermission = appUser?.permissions?.["record-bus-fee"] || "deny";

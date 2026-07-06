@@ -95,6 +95,8 @@ export default function DailyFinancialsSummary() {
     "accountant",
     "bursar",
     "admin",
+    "super admin",
+    "superadmin",
   ].includes(currentUserRole);
 
   const generatePDF = async () => {

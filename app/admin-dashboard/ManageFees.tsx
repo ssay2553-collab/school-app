@@ -422,7 +422,13 @@ export default function ManageFees() {
         </LinearGradient>
 
         <View style={styles.searchStrip}>
-          <View style={styles.searchBar}>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.searchBar}
+            onPress={() => {
+              // This ensures the input gets focus even if the user taps near the icon
+            }}
+          >
             <SVGIcon name="search" size={18} color={VIBE.muted} />
             <TextInput
               placeholder="Search name or receipt..."
@@ -430,8 +436,9 @@ export default function ManageFees() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor={VIBE.muted}
+              underlineColorAndroid="transparent"
             />
-          </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => setShowArchived(!showArchived)}

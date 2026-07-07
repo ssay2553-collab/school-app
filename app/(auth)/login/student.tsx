@@ -160,32 +160,33 @@ export default function StudentLoginScreen() {
 
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
-          <View style={styles.topHeader}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.backIconButton}
-            >
-              <SVGIcon name="arrow-back" size={24} color={primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => router.replace("/")}
-              style={styles.homeShortcut}
-            >
-              <SVGIcon name="home-outline" size={20} color={primary} />
-              <Text style={[styles.homeShortcutText, { color: primary }]}>
-                Portal
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
+            <View style={styles.topHeader}>
+              <TouchableOpacity
+                onPress={() => router.back()}
+                style={styles.backIconButton}
+              >
+                <SVGIcon name="arrow-back" size={24} color={primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.replace("/")}
+                style={styles.homeShortcut}
+              >
+                <SVGIcon name="home-outline" size={20} color={primary} />
+                <Text style={[styles.homeShortcutText, { color: primary }]}>
+                  Portal
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <Animatable.View
               animation={isWeb ? undefined : "bounceInDown"}
               duration={1000}
@@ -338,7 +339,6 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingTop: 10,
     flexGrow: 1,
-    justifyContent: "center",
   },
   header: { marginBottom: 30, alignItems: "center" },
   logoContainer: {

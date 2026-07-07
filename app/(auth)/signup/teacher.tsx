@@ -217,7 +217,7 @@ export default function TeacherSignupScreen() {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: surface }]}>
       <StatusBar barStyle="dark-content" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <Animatable.View animation="fadeInDown" style={styles.header}>
             <Text style={styles.title}>Teacher Registry</Text>

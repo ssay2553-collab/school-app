@@ -1,22 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  collection,
-  doc,
-  getDocsFromServer,
-  increment,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  where,
-  writeBatch,
-  limit,
-  startAfter,
-  arrayUnion,
-  arrayRemove,
-} from "firebase/firestore";
 import moment from "moment";
-import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -37,40 +22,74 @@ import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
-import { COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { sortClasses } from "../../lib/classHelpers";
-import { sendNotification } from "../../src/services/notificationService";
+import { usePTACharges, Student } from "../../hooks/admin-dashboard/usePTACharges";
 
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 
 const { width } = Dimensions.get("window");
-const PAGE_SIZE = 50;
-
-type Student = {
-  uid: string;
-  fullName: string;
-  classId: string;
-  className: string;
-  ptaPaid: number;
-  ptaBill: number;
-  ptaBalance: number;
-  walletBalance: number;
-  admissionBalance?: number;
-  maintenanceBalance?: number;
-  booksBalance?: number;
-  uniformBalance?: number;
-  otherBalance?: number;
-};
 
 const THEME = {
   primary: "#F59E0B", // PTA Orange
   secondary: "#D97706",
 };
+
+const PTAStudentCard = React.memo(({
+  item,
+  onPress,
+}: {
+  item: Student;
+  onPress: (student: Student) => void;
+}) => {
+  const isolatedTotal = (item.ptaBalance || 0) + (item.admissionBalance || 0) +
+                        (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
+                        (item.uniformBalance || 0) + (item.otherBalance || 0);
+  const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
+
+  return (
+    <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper}>
+      <TouchableOpacity
+        style={styles.financeCard}
+        onPress={() => onPress(item)}
+      >
+        <View style={styles.cardContent}>
+          <View style={styles.leftSection}>
+            <View style={[styles.avatar, { backgroundColor: THEME.primary + "15" }]}>
+              <SVGIcon name="people-outline" size={24} color={THEME.primary} />
+            </View>
+            <View style={styles.mainInfo}>
+              <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+
+              <View style={styles.tuitionBreakdown}>
+                <View style={styles.breakdownItem}>
+                  <Text style={styles.breakdownLabel}>TUITION</Text>
+                  <Text style={styles.breakdownValue}>₵{tuitionBalance.toFixed(0)}</Text>
+                </View>
+                <View style={styles.breakdownItem}>
+                  <Text style={styles.breakdownLabel}>PTA BILLED</Text>
+                  <Text style={styles.breakdownValue}>₵{item.ptaBill.toFixed(0)}</Text>
+                </View>
+              </View>
+
+              <View style={styles.debtBox}>
+                <Text style={[styles.debtLabel, { color: item.ptaBalance > 0 ? VIBE.danger : VIBE.success }]}>
+                  {item.ptaBalance > 0 ? "PTA Arrears: " : "Cleared: "}
+                </Text>
+                <Text style={[styles.debtValue, { color: item.ptaBalance > 0 ? VIBE.danger : VIBE.success }]}>
+                  ₵{Math.abs(item.ptaBalance).toLocaleString()}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
+        </View>
+      </TouchableOpacity>
+    </Animatable.View>
+  );
+});
 
 export default function PTACharges() {
   const { appUser } = useAuth();
@@ -78,436 +97,78 @@ export default function PTACharges() {
   const router = useRouter();
   const acadConfig = useAcademicConfig();
 
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [classes, setClasses] = useState<any[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("all");
   const [classModalVisible, setClassModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [students, setStudents] = useState<Student[]>([]);
+
+  const {
+    loading,
+    refreshing,
+    saving,
+    students,
+    classes,
+    stats,
+    history,
+    loadingHistory,
+    fetchStudents,
+    fetchPaymentHistory,
+    handleLogPayment,
+    applyBulkCharge,
+    handleDeletePayment,
+    handleRefresh,
+  } = usePTACharges({
+    appUser,
+    acadConfig,
+    showToast,
+    selectedClassId,
+  });
 
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [receivedFrom, setReceivedFrom] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
-  const [history, setHistory] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
   const [chargeAmount, setChargeAmount] = useState("");
-  const [stats, setStats] = useState({ totalBilled: 0, totalCollected: 0 });
-
-  const lastVisibleRef = useRef<any>(null);
-  const hasMoreRef = useRef(true);
-  const isFetchingRef = useRef(false);
-
-  // Initialize classes
-  useEffect(() => {
-    const unsub = onSnapshot(collection(db, "classes"), (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name, ...d.data() }));
-      setClasses(sortClasses(list));
-    });
-    return () => unsub();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      if (!acadConfig.academicYear || !acadConfig.currentTerm) return;
-      const q = query(
-        collection(db, "feePayments"),
-        where("type", "in", ["pta", "pta_payment"]),
-        where("academicYear", "==", acadConfig.academicYear),
-        where("term", "==", acadConfig.currentTerm)
-      );
-      const snap = await getDocsFromServer(q);
-      let collected = 0;
-      let billed = 0;
-      snap.docs.forEach(d => {
-        const data = d.data();
-        if (data.type === "pta_payment") collected += (data.amount || 0);
-        if (data.type === "pta") billed += (data.amount || 0);
-      });
-      setStats({ totalCollected: collected, totalBilled: billed });
-    } catch (e) {
-      console.error("Error fetching PTA stats:", e);
-    }
-  };
-
-  const fetchStudents = useCallback(async (isFirstLoad = false) => {
-    if (isFetchingRef.current) return;
-    if (!isFirstLoad && !hasMoreRef.current) return;
-
-    isFetchingRef.current = true;
-    if (isFirstLoad) {
-      setLoading(true);
-      lastVisibleRef.current = null;
-      hasMoreRef.current = true;
-    }
-
-    try {
-      let q = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("status", "in", ["active", "pending_activation"]),
-        limit(PAGE_SIZE)
-      );
-
-      if (selectedClassId !== "all") {
-        q = query(q, where("classId", "==", selectedClassId));
-      }
-
-      if (!isFirstLoad && lastVisibleRef.current) {
-        q = query(q, startAfter(lastVisibleRef.current));
-      }
-
-      const snap = await getDocsFromServer(q);
-      if (snap.empty) {
-        hasMoreRef.current = false;
-        if (isFirstLoad) setStudents([]);
-        return;
-      }
-
-      const batch: Student[] = snap.docs.map(d => {
-        const data = d.data();
-        return {
-          uid: d.id,
-          fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Student",
-          classId: data.classId || "unknown",
-          className: data.className || "Class",
-          ptaPaid: data.ptaPaid || 0,
-          ptaBill: data.ptaBill || 0,
-          ptaBalance: data.ptaBalance || 0,
-          walletBalance: data.walletBalance || 0,
-          admissionBalance: data.admissionBalance || 0,
-          maintenanceBalance: data.maintenanceBalance || 0,
-          booksBalance: data.booksBalance || 0,
-          uniformBalance: data.uniformBalance || 0,
-          otherBalance: data.otherBalance || 0,
-        };
-      });
-
-      lastVisibleRef.current = snap.docs[snap.docs.length - 1];
-      hasMoreRef.current = snap.docs.length === PAGE_SIZE;
-      setStudents(prev => isFirstLoad ? batch : [...prev, ...batch]);
-    } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to fetch students", type: "error" });
-    } finally {
-      isFetchingRef.current = false;
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [selectedClassId]);
-
-  useEffect(() => {
-    fetchStudents(true);
-    fetchStats();
-  }, [selectedClassId, acadConfig.academicYear, acadConfig.currentTerm]);
-
-  const handleRefresh = () => {
-    setRefreshing(true);
-    fetchStudents(true);
-    fetchStats();
-  };
 
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase();
     return students.filter(s => s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
 
-  const fetchPaymentHistory = async (studentUid: string) => {
-    setLoadingHistory(true);
-    try {
-      const q = query(
-        collection(db, "feePayments"),
-        where("studentUid", "==", studentUid),
-        where("type", "in", ["pta", "pta_payment"])
-      );
-      const snap = await getDocsFromServer(q);
-      const list = snap.docs.map(d => d.data());
-      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
+  const handleStudentPress = useCallback((student: Student) => {
+    setSelectedStudent(student);
+    setPaymentModalVisible(true);
+    fetchPaymentHistory(student.uid);
+  }, [fetchPaymentHistory]);
 
-  const handleDeletePayment = (payment: any) => {
+  const renderStudentItem = useCallback(({ item }: { item: Student }) => (
+    <PTAStudentCard item={item} onPress={handleStudentPress} />
+  ), [handleStudentPress]);
+
+  const onConfirmPayment = async () => {
     if (!selectedStudent) return;
-
-    const performDeletion = async () => {
-      const year = acadConfig.academicYear?.replace(/\//g, "-");
-      const term = acadConfig.currentTerm?.replace(/\s/g, "");
-
-      if (!year || !term) {
-        return showToast({
-          message: "Action blocked: Academic year and term must be configured.",
-          type: "error",
-        });
-      }
-
-      setSaving(true);
-      try {
-        const recordId = `${selectedStudent.uid}_${year}_${term}`;
-        const batch = writeBatch(db);
-        const amount = Number(payment.amount) || 0;
-        const isPayment = (payment.type || "").toLowerCase() === "pta_payment";
-
-        if (isPayment) {
-          batch.update(doc(db, "studentFeeRecords", recordId), {
-            ptaPaid: increment(-amount),
-            ptaBalance: increment(amount),
-            balance: increment(amount),
-          });
-          batch.update(doc(db, "users", selectedStudent.uid), {
-            ptaPaid: increment(-amount),
-            ptaBalance: increment(amount),
-            walletBalance: increment(amount),
-          });
-        } else {
-          batch.update(doc(db, "studentFeeRecords", recordId), {
-            ptaBill: increment(-amount),
-            ptaBalance: increment(-amount),
-            balance: increment(-amount),
-          });
-          batch.update(doc(db, "users", selectedStudent.uid), {
-            ptaBill: increment(-amount),
-            ptaBalance: increment(-amount),
-            walletBalance: increment(-amount),
-          });
-        }
-
-        batch.update(doc(db, "studentFeeRecords", recordId), {
-          payments: arrayRemove(payment),
-          lastUpdated: serverTimestamp(),
-        });
-
-        if (payment.receiptNo) {
-          batch.delete(doc(db, "feePayments", payment.receiptNo));
-        }
-
-        await batch.commit();
-        showToast({ message: "Transaction reverted successfully", type: "success" });
-        setPaymentModalVisible(false);
-        fetchStats();
-        fetchStudents(true);
-      } catch (err) {
-        console.error("Delete transaction error:", err);
-        showToast({ message: "Failed to revert transaction", type: "error" });
-      } finally {
-        setSaving(false);
-      }
-    };
-
-    Alert.alert("Confirm Deletion", "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: performDeletion },
-    ]);
-  };
-
-  const handleLogPayment = async () => {
-    const val = parseFloat(paymentAmount);
-    if (isNaN(val) || val <= 0 || !selectedStudent || !receivedFrom.trim()) {
-       return showToast({ message: "Invalid details", type: "error" });
-    }
-
-    setSaving(true);
-    try {
-      const batch = writeBatch(db);
-      const year = acadConfig.academicYear?.replace(/\//g, "-");
-      const term = acadConfig.currentTerm?.replace(/\s/g, "");
-      const recordId = `${selectedStudent.uid}_${year}_${term}`;
-      const serial = `PTA-PAY-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-
-      const paymentEntry = {
-        amount: val,
-        method: paymentMethod,
-        receivedFrom: receivedFrom.trim(),
-        updatedBy: appUser?.adminRole || "Admin",
-        adminUid: appUser?.uid || "unknown",
-        createdAt: new Date().toISOString(),
-        receiptNo: serial,
-        date: moment().format("YYYY-MM-DD"),
-        studentUid: selectedStudent.uid,
-        studentName: selectedStudent.fullName,
-        classId: selectedStudent.classId,
-        className: selectedStudent.className,
-        type: "pta_payment",
-        academicYear: acadConfig.academicYear,
-        term: acadConfig.currentTerm,
-      };
-
-      batch.set(doc(db, "feePayments", serial), paymentEntry);
-
-      batch.set(doc(db, "studentFeeRecords", recordId), {
-        ptaBalance: increment(-val),
-        ptaPaid: increment(val),
-        balance: increment(-val),
-        payments: arrayUnion(paymentEntry),
-        lastUpdated: serverTimestamp(),
-      }, { merge: true });
-
-      batch.update(doc(db, "users", selectedStudent.uid), {
-        ptaBalance: increment(-val),
-        ptaPaid: increment(val),
-        walletBalance: increment(-val),
-      });
-
-      await batch.commit();
-
-      sendNotification({
-        recipientId: selectedStudent.uid,
-        senderId: appUser?.uid || "admin",
-        senderName: appUser?.displayName || "Administrator",
-        title: "PTA Payment Received",
-        body: `A PTA payment of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} has been recorded for ${selectedStudent.fullName}.`,
-        type: "payment",
-      }).catch(e => console.error(e));
-
-      showToast({ message: "Payment recorded", type: "success" });
+    const amount = parseFloat(paymentAmount);
+    const success = await handleLogPayment(selectedStudent, amount, receivedFrom, paymentMethod);
+    if (success) {
       setPaymentModalVisible(false);
       setPaymentAmount("");
       setReceivedFrom("");
-      fetchStudents(true);
-      fetchStats();
-    } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to record payment", type: "error" });
-    } finally {
-      setSaving(false);
     }
   };
 
-  const applyBulkCharge = async () => {
-    const val = parseFloat(chargeAmount);
-    if (isNaN(val) || val <= 0) return showToast({ message: "Invalid amount", type: "error" });
-    if (selectedClassId === "all") return showToast({ message: "Please select a specific class first", type: "error" });
-
-    setSaving(true);
-    try {
-      const q = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("classId", "==", selectedClassId),
-        where("status", "in", ["active", "pending_activation"])
-      );
-      const snap = await getDocsFromServer(q);
-
-      if (snap.empty) {
-        setSaving(false);
-        return showToast({ message: "No active students in this class", type: "warning" });
-      }
-
-      const batch = writeBatch(db);
-      const year = acadConfig.academicYear?.replace(/\//g, "-");
-      const term = acadConfig.currentTerm?.replace(/\s/g, "");
-
-      snap.docs.forEach(sDoc => {
-        const s = sDoc.data();
-        const serial = `PTA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-        const recordId = `${sDoc.id}_${year}_${term}`;
-
-        const billData = {
-          amount: val,
-          method: "Bulk Charge",
-          receivedFrom: "PTA Dues",
-          updatedBy: appUser?.adminRole || "Admin",
-          adminUid: appUser?.uid || "unknown",
-          createdAt: new Date().toISOString(),
-          receiptNo: serial,
-          date: moment().format("YYYY-MM-DD"),
-          studentUid: sDoc.id,
-          studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-          classId: selectedClassId,
-          className: s.className,
-          type: "pta",
-          academicYear: acadConfig.academicYear,
-          term: acadConfig.currentTerm,
-        };
-
-        batch.set(doc(db, "feePayments", serial), billData);
-
-        batch.set(doc(db, "studentFeeRecords", recordId), {
-          ptaBill: increment(val),
-          ptaBalance: increment(val),
-          balance: increment(val),
-          payments: arrayUnion(billData),
-          lastUpdated: serverTimestamp(),
-        }, { merge: true });
-
-        batch.update(sDoc.ref, {
-          ptaBalance: increment(val),
-          ptaBill: increment(val),
-          walletBalance: increment(val),
-        });
-      });
-
-      await batch.commit();
-
-      showToast({ message: `PTA charges applied to ${snap.size} students`, type: "success" });
+  const onApplyBulkCharge = async () => {
+    const success = await applyBulkCharge(chargeAmount);
+    if (success) {
       setChargeAmount("");
-      fetchStats();
-      fetchStudents(true);
-    } catch (e) {
-      console.error(e);
-      showToast({ message: "Operation failed", type: "error" });
-    } finally {
-      setSaving(false);
     }
   };
 
-  const renderStudentItem = ({ item }: { item: Student }) => {
-    const isolatedTotal = (item.ptaBalance || 0) + (item.admissionBalance || 0) +
-                          (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
-                          (item.uniformBalance || 0) + (item.otherBalance || 0);
-    const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
-
-    return (
-      <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper}>
-        <TouchableOpacity
-          style={styles.financeCard}
-          onPress={() => {
-            setSelectedStudent(item);
-            setPaymentModalVisible(true);
-            fetchPaymentHistory(item.uid);
-          }}
-        >
-          <View style={styles.cardContent}>
-            <View style={styles.leftSection}>
-              <View style={[styles.avatar, { backgroundColor: THEME.primary + "15" }]}>
-                <SVGIcon name="people-outline" size={24} color={THEME.primary} />
-              </View>
-              <View style={styles.mainInfo}>
-                <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
-
-                <View style={styles.tuitionBreakdown}>
-                  <View style={styles.breakdownItem}>
-                    <Text style={styles.breakdownLabel}>TUITION</Text>
-                    <Text style={styles.breakdownValue}>₵{tuitionBalance.toFixed(0)}</Text>
-                  </View>
-                  <View style={styles.breakdownItem}>
-                    <Text style={styles.breakdownLabel}>PTA BILLED</Text>
-                    <Text style={styles.breakdownValue}>₵{item.ptaBill.toFixed(0)}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.debtBox}>
-                  <Text style={[styles.debtLabel, { color: item.ptaBalance > 0 ? VIBE.danger : VIBE.success }]}>
-                    {item.ptaBalance > 0 ? "PTA Arrears: " : "Cleared: "}
-                  </Text>
-                  <Text style={[styles.debtValue, { color: item.ptaBalance > 0 ? VIBE.danger : VIBE.success }]}>
-                    ₵{Math.abs(item.ptaBalance).toLocaleString()}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
-          </View>
-        </TouchableOpacity>
-      </Animatable.View>
-    );
+  const onRevertTransaction = (h: any) => {
+    if (!selectedStudent) return;
+    Alert.alert("Confirm Deletion", "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: () => handleDeletePayment(selectedStudent, h) },
+    ]);
   };
 
   return (
@@ -569,6 +230,7 @@ export default function PTACharges() {
         keyExtractor={item => item.uid}
         contentContainerStyle={styles.flatListContent}
         onEndReached={() => fetchStudents()}
+        removeClippedSubviews={Platform.OS === "android"}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />}
         ListHeaderComponent={
           <>
@@ -597,7 +259,7 @@ export default function PTACharges() {
                   placeholderTextColor={VIBE.muted}
                 />
                 <TouchableOpacity
-                   onPress={applyBulkCharge}
+                   onPress={onApplyBulkCharge}
                    style={{ backgroundColor: THEME.primary, height: 44, paddingHorizontal: 15, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
                    disabled={saving}
                 >
@@ -633,7 +295,7 @@ export default function PTACharges() {
       />
 
       <Modal visible={paymentModalVisible} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.overlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.overlay}>
           <View style={styles.sheetBody}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
@@ -679,7 +341,7 @@ export default function PTACharges() {
                 ))}
               </View>
 
-              <TouchableOpacity onPress={handleLogPayment} disabled={saving}>
+              <TouchableOpacity onPress={onConfirmPayment} disabled={saving}>
                 <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
                   {saving ? <ActivityIndicator color="#fff" /> : (
                     <>
@@ -710,7 +372,7 @@ export default function PTACharges() {
                           }
                         });
                       }}
-                      onLongPress={() => handleDeletePayment(h)}
+                      onLongPress={() => onRevertTransaction(h)}
                     >
                       <View style={styles.tileHeader}>
                         <Text style={[styles.tileAmt, { color: h.type === 'pta' ? VIBE.info : VIBE.success }]}>
@@ -727,7 +389,7 @@ export default function PTACharges() {
                         <TouchableOpacity
                           onPress={(e) => {
                             e.stopPropagation();
-                            handleDeletePayment(h);
+                            onRevertTransaction(h);
                           }}
                           style={{ padding: 4 }}
                         >

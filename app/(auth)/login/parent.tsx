@@ -130,13 +130,21 @@ export default function ParentLoginScreen() {
 
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : "height"} 
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboardView}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
           <ScrollView 
               contentContainerStyle={styles.scrollContent} 
               keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
           >
+            <View style={styles.topHeader}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.backIconButton}>
+                <SVGIcon name="arrow-back" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
             <Animatable.View animation="fadeInDown" duration={800} style={styles.header}>
               <View style={[styles.logoContainer, { backgroundColor: surface }]}>
                 <Image source={schoolLogo} style={styles.logo} resizeMode="contain" />
@@ -207,8 +215,8 @@ export default function ParentLoginScreen() {
               </View>
             </Animatable.View>
 
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={styles.backText}>Switch Portal</Text>
+            <TouchableOpacity onPress={() => router.replace("/")} style={styles.backBtn}>
+              <Text style={styles.backText}>Go to Home Hub</Text>
             </TouchableOpacity>
             <View style={{ height: 40 }} />
           </ScrollView>
@@ -222,8 +230,20 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   keyboardView: { flex: 1, pointerEvents: 'auto' } as any,
-  scrollContent: { padding: 24, flexGrow: 1, justifyContent: "center" },
-  header: { marginBottom: 30, alignItems: "center" },
+  scrollContent: { padding: 24, flexGrow: 1 },
+  topHeader: {
+    paddingBottom: 20,
+    flexDirection: 'row',
+  },
+  backIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: { marginBottom: 20, alignItems: "center" },
   logoContainer: { width: 80, height: 80, marginBottom: 16, borderRadius: 40, padding: 10, justifyContent: 'center', alignItems: 'center', ...SHADOWS.medium },
   logo: { width: "100%", height: "100%" },
   title: { fontSize: 32, fontWeight: "900", color: "#fff" },

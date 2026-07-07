@@ -72,10 +72,12 @@ export const styles = StyleSheet.create({
   searchStrip: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    marginTop: -20,
+    marginTop: -25,
     alignItems: "center",
     gap: 10,
     marginBottom: 15,
+    zIndex: 50,
+    elevation: 10,
   },
   archiveToggle: {
     paddingHorizontal: 12,

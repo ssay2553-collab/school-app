@@ -20,7 +20,7 @@ interface FeeStudentCardProps {
   onHistoryPress: () => void;
 }
 
-export const FeeStudentCard: React.FC<FeeStudentCardProps> = ({
+export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
   item,
   isSelected,
   activeMode,
@@ -334,4 +334,4 @@ export const FeeStudentCard: React.FC<FeeStudentCardProps> = ({
       </TouchableOpacity>
     </Animatable.View>
   );
-};
+});

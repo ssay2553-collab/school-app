@@ -32,8 +32,14 @@ service cloud.firestore {
     =============================== */
 
  function isAdmin() {
-  return userData() != null
-    && (userData().role == "admin" || userData().role == "superadmin" || userData().role == "super admin" || userData().get('adminRole', '') != '');
+  return userData() != null && (
+    userData().get('role', '').lower() in ['admin', 'superadmin', 'super admin'] ||
+    userData().get(['profile', 'role'], '').lower() in ['admin', 'superadmin', 'super admin'] ||
+    userData().get('adminRole', '') != '' ||
+    userData().get(['profile', 'adminRole'], '') != '' ||
+    userData().get(['permissions', 'manage-users'], '') == 'full' ||
+    userData().get(['permissions', 'manage-fees'], '') == 'full'
+  );
 }
 
    function isSuperAdmin() {
@@ -202,11 +208,7 @@ function hasScreenPermission(screen, level) {
     }
 
 function isParentOf(studentId) {
-  return isParent() && studentId in userData().get('childrenIds', []);
-}
-
-function isParentOfClass(classId) {
-  return isParent() && classId in userData().get('childrenClassIds', []);
+  return isSignedIn() && studentId in userData().childrenIds;
 }
 
     function isClassTeacher(classId) {
@@ -434,32 +436,165 @@ allow create: if
      allow update, delete: if isSuperAdmin();
    }
 
+    /* ===============================
+       FINANCE & PAYROLL
+    =============================== */
+
+   match /studentFeeRecords/{id} {
+
+  allow read: if
+      canViewFees()
+      || canViewSales()
+      || (
+        isSignedIn() &&
+        (
+          (
+            isParent() &&
+            (
+              id.split('_')[0] in userData().childrenIds ||
+              (resource != null &&
+               resource.data.studentUid in userData().childrenIds)
+            )
+          )
+          ||
+          (
+            isStudent() &&
+            (
+              id.split('_')[0] == uid() ||
+              (resource != null &&
+               resource.data.studentUid == uid())
+            )
+          )
+          ||
+          (
+            isTeacher() &&
+            (
+              resource == null ||
+              isClassTeacher(resource.data.classId)
+            )
+          )
+        )
+      );
+
+  allow write: if
+      canManageFees()
+      || canManageSales()
+      || hasPermission('manage-users', 'full')
+      || (
+        isTeacher()
+        && isClassTeacher(request.resource.data.classId)
+        && (
+          request.resource.data.adminUid == uid()
+          || canManageFeeding()
+          || canRecordBusFee()
+          || canManageExtraClasses()
+          || canManageSales()
+        )
+      );
+}
+
+    match /feePayments/{id} {
+
+  allow read: if
+      canViewFees()
+      || (
+        (
+          canViewFeeding()
+          || canViewBusFee()
+          || canViewExtraClasses()
+          || canViewSales()
+        )
+        &&
+        (
+          isAdmin()
+          || (
+            isTeacher() &&
+            (
+              resource == null ||
+              isClassTeacher(resource.data.classId)
+            )
+          )
+        )
+      )
+      || (
+        isSignedIn()
+        &&
+        (
+          (
+            isParent()
+            &&
+            (
+              resource == null ||
+              resource.data.studentUid in userData().childrenIds
+            )
+          )
+          ||
+          (
+            isStudent()
+            &&
+            (
+              resource == null ||
+              resource.data.studentUid == uid()
+            )
+          )
+        )
+      );
+
+  allow write: if
+      canManageFees()
+      || (
+        (
+          canManageFeeding()
+          || canRecordBusFee()
+          || canManageExtraClasses()
+          || canManageSales()
+        )
+        &&
+        (
+          isAdmin()
+          ||
+          (
+            isTeacher()
+            && isClassTeacher(request.resource.data.classId)
+          )
+        )
+        &&
+        request.resource.data.amount is number
+      )
+      || (
+        isTeacher()
+        && isClassTeacher(request.resource.data.classId)
+        && request.resource.data.adminUid == uid()
+        && request.resource.data.amount is number
+      );
+
+  allow delete: if canManageFees();
+}
+
 /* =========================================================================
    FEE RECORDS & PAYMENTS
 ========================================================================= */
 
-match /studentFeeRecords/{id} {
-  allow read: if canViewFees() || canViewSales() || isAdmin() ||
-    (isParent() && (id.split('_')[0] in userData().get('childrenIds', []) || resource.data.get('studentUid', '') in userData().get('childrenIds', []))) ||
-    (isStudent() && (id.split('_')[0] == uid() || resource.data.get('studentUid', '') == uid())) ||
-    (isTeacher() && (resource == null || isClassTeacher(resource.data.get('classId', ''))));
+match /studentFeeRecords/{recordId} {
+  // Allow read if Admin, or if the parent is linked to the student
+  allow read: if isSignedIn() && (
+    isAdmin() ||
+    (isParent() && recordId.split('_')[0] in userData().childrenIds)
+  );
 
-  allow write: if canManageFees() || canManageSales() || isAdmin() ||
-    (isTeacher() && isClassTeacher(request.resource.data.get('classId', '')) &&
-      (request.resource.data.adminUid == uid() || canManageFeeding() || canRecordBusFee() || canManageExtraClasses() || canManageSales()));
+  // Only Admins or those with fee management permissions can write
+  allow write: if canManageFees();
 }
 
-match /feePayments/{id} {
-  allow read: if canViewFees() || isAdmin() ||
-    ((canViewFeeding() || canViewBusFee() || canViewExtraClasses() || canViewSales()) && (isAdmin() || (isTeacher() && (resource == null || isClassTeacher(resource.data.get('classId', '')))))) ||
-    (isParent() && (resource == null || resource.data.get('studentUid', '') in userData().get('childrenIds', []))) ||
-    (isStudent() && (resource == null || resource.data.get('studentUid', '') == uid()));
+match /feePayments/{paymentId} {
+  // Allow read if Admin, or if the payment belongs to one of the parent's children
+  allow read: if isSignedIn() && (
+    isAdmin() ||
+    (isParent() && resource.data.studentUid in userData().childrenIds)
+  );
 
-  allow write: if canManageFees() ||
-    ((canManageFeeding() || canRecordBusFee() || canManageExtraClasses() || canManageSales()) && (isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.get('classId', '')))) && request.resource.data.amount is number) ||
-    (isTeacher() && isClassTeacher(request.resource.data.get('classId', '')) && request.resource.data.adminUid == uid() && request.resource.data.amount is number);
-
-  allow delete: if canManageFees() || isAdmin();
+  allow create: if canManageFees();
+  allow update, delete: if isAdmin();
 }
 
     match /expenditures/{id} {
@@ -606,9 +741,9 @@ match /feePayments/{id} {
       allow read: if
       canViewAttendance() ||
         isAdmin()
-        || (isTeacher() && ((resource.data.get('classId', '') in userData().get('classes', [])) || (getClassIdFromAttendanceId(id) in userData().get('classes', []))))
-        || (isStudent() && resource.data.get('classId', '') == userData().get('classId', ''))
-        || (isParent() && resource.data.get('students', {}).keys().hasAny(userData().get('childrenIds', [])));
+        || (isTeacher() && ((resource.data.classId in userData().classes) || (getClassIdFromAttendanceId(id) in userData().classes)))
+        || (isStudent() && resource.data.classId == userData().classId)
+        || (isParent() && exists(/databases/$(database)/documents/users/$(uid())) && (resource.data.students.keys().hasAny(userData().childrenIds)));
 
       allow write: if canManageAttendance() || isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
       allow delete: if canManageAttendance() || isAdmin();
@@ -629,9 +764,9 @@ match /feePayments/{id} {
     match /academicRecordsSummary/{id} {
       allow read: if isSignedIn() && (
         isAdmin() ||
-        (isTeacher() && resource.data.get('classId', '') in userData().get('classes', [])) ||
+        (isTeacher() && resource.data.classId in userData().classes) ||
         (isStudent() && id.split('_')[0] == uid()) ||
-        isParentOf(id.split('_')[0])
+        (isParent() && id.split('_')[0] in userData().childrenIds)
       );
       allow write: if isAdmin() || (isTeacher() && canManageAcademicRecords());
     }
@@ -640,17 +775,22 @@ match /feePayments/{id} {
        BEHAVIORAL / PRESCHOOL RECORDS
     =============================== */
     match /behavioralRecords/{recordId} {
+      // READ: Admins, Teachers of the class, or Parents of students in this record
       allow read: if isSignedIn() && (
         isAdmin() ||
-        (isTeacher() && resource.data.get('classId', '') in userData().get('classes', [])) ||
-        isParentOf(resource.data.get('studentId', '')) ||
-        (isParent() && resource.data.get('studentIds', []).hasAny(userData().get('childrenIds', []))) ||
-        isParentOfClass(resource.data.get('classId', ''))
+        (isTeacher() && resource.data.classId in userData().classes) ||
+        (isParent() && resource.data.studentIds.hasAny(userData().childrenIds))
       );
 
+      // WRITE: Admins or Teachers assigned to the class
       allow write: if isSignedIn() && (
         isAdmin() ||
-        (isTeacher() && request.resource.data.get('classId', '') in userData().get('classes', []))
+        (isTeacher() && (
+          // If creating new record
+          (request.resource.data.classId in userData().classes) ||
+          // If updating existing record
+          (resource.data.classId in userData().classes)
+        ))
       );
     }
 
@@ -658,7 +798,7 @@ match /feePayments/{id} {
        ASSIGNMENTS COLLECTION
     =============================== */
    match /assignments/{id} {
-      allow read: if canViewAssignments() || isAdmin() || (isTeacher() && resource.data.get('teacherId', '') == uid()) || (isStudent() && resource.data.get('classId', '') == userData().get('classId', '')) || isParent();
+      allow read: if canViewAssignments() || isAdmin() || (isTeacher() && resource.data.teacherId == uid()) || (isStudent() && resource.data.classId == userData().classId) || isParent();
       allow create, update: if canManageAssignments() || (isTeacher() && request.resource.data.teacherId == uid());
       allow delete: if canManageAssignments() || isAdmin();
     }
@@ -670,8 +810,7 @@ match /feePayments/{id} {
            allow read: if isSignedIn() && (
              isAdmin() ||
              isTeacher() ||
-             (isStudent() && resource.data.studentId == uid()) ||
-             isParentOf(resource.data.get('studentId', ''))
+             (isStudent() && resource.data.studentId == uid())
            );
 
            allow create: if isSignedIn() &&
@@ -737,7 +876,7 @@ match /feePayments/{id} {
        STUDENT GROUPS & MESSAGES
     =============================== */
     match /studentGroups/{groupId} {
-      allow read: if isAdmin() || (isTeacher() && resource.data.get('teacherId', '') == uid()) || (isStudent() && uid() in resource.data.get('studentIds', [])) || (isParent() && userData().get('childrenIds', []).hasAny(resource.data.get('studentIds', [])));
+      allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == uid()) || (isStudent() && uid() in resource.data.studentIds) || (isParent() && userData().childrenIds.hasAny(resource.data.studentIds));
       allow create: if isTeacher() && request.resource.data.teacherId == uid();
       allow update: if isTeacher() && resource.data.teacherId == uid();
       allow delete: if isAdmin() || (isTeacher() && resource.data.teacherId == uid());
@@ -774,52 +913,60 @@ match /feePayments/{id} {
       allow write: if canManageFAQ() || isAdmin();
     }
 
+     /* ===============================
+       SCORES & REPORTS
+    =============================== */
     match /scores/{scoreId} {
-      allow read: if canViewScores() || isAdmin() || (isTeacher() && resource.data.get('classId', '') in userData().get('classes', [])) || (isStudent() && uid() == resource.data.get('studentId', '')) || isParentOf(resource.data.get('studentId', ''));
-      allow write: if canManageScores() || isAdmin() || (isTeacher() && request.resource.data.get('classId', '') in userData().get('classes', []));
+      allow read: if canViewScores() || isAdmin() || (isTeacher() && resource.data.classId in userData().classes) || (isStudent() && uid() == resource.data.studentId) || (isParent() && resource.data.studentId in userData().childrenIds);
+      allow write: if canManageScores() || isAdmin() || (isTeacher() && request.resource.data.classId in userData().classes);
       allow delete: if canManageScores() || isAdmin();
     }
 
     match /student-reports/{reportId} {
-      allow read: if isAdmin() || canViewScores() || canViewAcademicRecords() ||
-        (isTeacher() && resource.data.get('classId', '') in userData().get('classes', [])) ||
-        (isStudent() && uid() == resource.data.get('studentId', '')) ||
-        isParentOf(resource.data.get('studentId', ''));
-
-      allow write: if isAdmin() || canManageScores() || canManageAcademicRecords() ||
-        (isTeacher() && request.resource.data.get('classId', '') in userData().get('classes', []));
-
-      allow delete: if isAdmin();
+      allow read: if canViewScores() || canViewAcademicRecords() || isAdmin() || (isTeacher() && resource.data.classId in userData().classes) || (isStudent() && uid() == resource.data.studentId) || (isParent() && resource.data.studentId in userData().childrenIds);
+      allow write: if canManageScores() || canManageAcademicRecords() || isAdmin() || (isTeacher() && request.resource.data.classId in userData().classes);
+      allow delete: if canManageScores() || canManageAcademicRecords() || isAdmin();
     }
 
-    /* ===============================
-       ACADEMIC RECORDS
-    =============================== */
-    match /academicRecords/{recordId} {
-      allow read: if isSignedIn() && (
-        isAdmin() ||
-        canViewAcademicRecords() ||
-        (isTeacher() && resource.data.get('classId', '') in userData().get('classes', [])) ||
-        (isStudent() && resource.data.get('classId', '') == userData().get('classId', '')) ||
-        (isParent() && resource.data.get('status', '') == 'approved' && isParentOfClass(resource.data.get('classId', '')))
-      );
+/* ===============================
+   ACADEMIC RECORDS
+=============================== */
+match /academicRecords/{recordId} {
 
-      allow write: if isSignedIn() && (
-        isAdmin() ||
-        (
-          isTeacher() &&
-          canManageAcademicRecords() &&
-          (request.resource.data.get('classId', '') in userData().get('classes', [])) &&
-          (request.resource.data.get('subject', '') in userData().get('subjects', [])) &&
-          (
-            (!request.resource.data.get('containsBehavioralData', false)) ||
-            isClassTeacher(request.resource.data.get('classId', ''))
-          )
-        )
-      );
+  allow read: if isSignedIn() && (
+    isAdmin() ||
+    canViewAcademicRecords() ||
+    (isTeacher() && resource.data.classId in userData().classes) ||
+    (isStudent() && resource.data.classId == userData().classId) ||
+    (isParent() && resource.data.status == 'approved' &&
+     resource.data.classId == get(/databases/$(database)/documents/users/$(uid())).data.get('classId', ''))
+  );
 
-      allow delete: if isAdmin() || canManageAcademicRecords();
-    }
+  allow write: if isSignedIn() && (
+    isAdmin() ||
+    (
+      isTeacher() &&
+      canManageAcademicRecords() &&
+      (request.resource.data.classId in userData().classes) &&
+      (request.resource.data.subject in userData().subjects) &&
+      (
+        (!request.resource.data.get('containsBehavioralData', false)) ||
+        isClassTeacher(request.resource.data.classId)
+      )
+    )
+  );
+
+  allow delete: if isAdmin() || canManageAcademicRecords();
+}
+
+match /student-reports/{reportId} {
+  allow read: if isSignedIn() && (
+    isSuperAdmin() ||
+    isParentOf(resource.data.studentId) ||
+    (isTeacher() && resource.data.classId in userData().classes)
+  );
+  allow write: if isSuperAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
+}
 
  /* ===============================
        AI & PEDAGOGY COLLECTIONS

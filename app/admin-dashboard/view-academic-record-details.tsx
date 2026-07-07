@@ -70,6 +70,11 @@ export default function ViewAcademicRecordDetails() {
   const [adminSig, setAdminSig] = useState("");
   const [overallPosition, setOverallPosition] = useState<string>("-");
 
+  // Preschool specific data
+  const [isPreschool, setIsPreschool] = useState(false);
+  const [preschoolAssessments, setPreschoolAssessments] = useState<Record<string, string>>({});
+  const [physicalDev, setPhysicalDev] = useState<Record<string, string>>({});
+
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
   const schoolId = (
     Constants.expoConfig?.extra?.schoolId || "afahjoy"
@@ -169,6 +174,13 @@ export default function ViewAcademicRecordDetails() {
           if (classDoc.exists()) {
             const classData: any = classDoc.data();
             setClassName(classData.className || classData.name || classIdState);
+
+            // Logic to check if preschool
+            const n = (classData.name || "").toUpperCase();
+            const isPre = n.includes("CRECHE") || n.includes("NURSERY") || n.includes("KG") ||
+              n.includes("KINDERGARTEN") || n.includes("TODDLER") || n.includes("PLAYGROUND") ||
+              ["CLASS A", "CLASS B", "LEVEL A", "LEVEL B"].includes(n) || (classData.department || "").toLowerCase() === "pre-school";
+            setIsPreschool(isPre);
           } else {
             setClassName(classIdState);
           }
@@ -226,6 +238,8 @@ export default function ViewAcademicRecordDetails() {
               setInterest(studentBeh.interest || "N/A");
               setTeacherRemarks(studentBeh.teacherRemarks || "");
               setPromotedTo(studentBeh.promotedTo || "");
+              if (studentBeh.assessments) setPreschoolAssessments(studentBeh.assessments);
+              if (studentBeh.physicalDev) setPhysicalDev(studentBeh.physicalDev);
             }
           }
 
@@ -544,7 +558,16 @@ export default function ViewAcademicRecordDetails() {
         </div>
 
         <div class="remarks-box">
-          ${isFullReport ? `<div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>` : ""}
+          ${isFullReport && !isPreschool ? `<div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>` : ""}
+          ${isFullReport && isPreschool ? `
+            <div class="remark-line"><span class="remark-header">PHYSICAL DEV:</span>
+              HT: ${physicalDev.height3 || physicalDev.height2 || physicalDev.height1 || "-"}m |
+              WT: ${physicalDev.weight3 || physicalDev.weight2 || physicalDev.weight1 || "-"}kg
+            </div>
+            <div style="font-size: 8pt; margin-bottom: 10pt; color: #475569;">
+                <b>Assessments:</b> ${Object.entries(preschoolAssessments).filter(([_, v]) => v !== 'N/A').map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ') || 'None recorded'}
+            </div>
+          ` : ""}
           <div class="remark-line"><span class="remark-header">CLASS TEACHER:</span> ${teacherRemarks || "Satisfactory performance."}</div>
           <div class="remark-line"><span class="remark-header">ADMINISTRATIVE:</span> ${adminRemarks || "Keep up the hard work."}</div>
           <div class="remark-line"><span class="remark-header">NEXT TERM BEGINS:</span> <b>${nextTermBegins || "TBA"}</b></div>
@@ -770,7 +793,7 @@ export default function ViewAcademicRecordDetails() {
             </View>
 
             <View style={styles.paperRemarksSection}>
-              {isFullReport && (
+              {isFullReport && !isPreschool && (
                 <>
                   <Text style={styles.paperSectionTitle}>
                     BEHAVIORAL RATINGS
@@ -782,6 +805,21 @@ export default function ViewAcademicRecordDetails() {
                     <Text style={{ fontWeight: "700" }}>{attitude}</Text> |
                     Interest:{" "}
                     <Text style={{ fontWeight: "700" }}>{interest}</Text>
+                  </Text>
+                </>
+              )}
+
+              {isFullReport && isPreschool && (
+                 <>
+                  <Text style={styles.paperSectionTitle}>
+                    PHYSICAL DEVELOPMENT & ASSESSMENTS
+                  </Text>
+                  <Text style={styles.paperRemarkLine}>
+                    Height: <Text style={{ fontWeight: "700" }}>{physicalDev.height3 || physicalDev.height2 || physicalDev.height1 || "N/A"}m</Text> |
+                    Weight: <Text style={{ fontWeight: "700" }}>{physicalDev.weight3 || physicalDev.weight2 || physicalDev.weight1 || "N/A"}kg</Text>
+                  </Text>
+                  <Text style={[styles.paperRemarkText, { marginTop: 5, fontSize: 9 }]}>
+                    {Object.keys(preschoolAssessments).length} key developmental milestones recorded.
                   </Text>
                 </>
               )}

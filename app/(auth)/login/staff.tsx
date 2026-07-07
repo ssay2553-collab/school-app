@@ -59,10 +59,26 @@ export default function StaffLogin() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: surface }]}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.container}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.topHeader}>
+            <TouchableOpacity
+              onPress={() => {
+                  if (router.canGoBack()) router.back();
+                  else router.replace("/(auth)/login");
+              }}
+              style={styles.backBtnCircle}
+            >
+              <SVGIcon name="arrow-back" size={24} color={primary} />
+            </TouchableOpacity>
+          </View>
 
           <Animatable.View animation="fadeInDown" duration={800} style={styles.header}>
             <View style={[styles.logoBadge, { backgroundColor: primary + '15' }]}>
@@ -125,15 +141,12 @@ export default function StaffLogin() {
             </View>
           </Animatable.View>
 
-          <TouchableOpacity
-            onPress={() => {
-                if (router.canGoBack()) router.back();
-                else router.replace("/(auth)/login");
-            }}
-            style={styles.backBtn}
-          >
-            <Text style={styles.backText}>Go Back</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.replace("/")}
+              style={styles.backBtn}
+            >
+              <Text style={styles.backText}>Return to Home</Text>
+            </TouchableOpacity>
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -144,8 +157,20 @@ export default function StaffLogin() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   container: { flex: 1 },
-  scrollContent: { padding: 24, flexGrow: 1, justifyContent: 'center' },
-  header: { marginBottom: 30, alignItems: 'center' },
+  scrollContent: { padding: 24, flexGrow: 1 },
+  topHeader: {
+    paddingBottom: 20,
+    flexDirection: 'row',
+  },
+  backBtnCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  header: { marginBottom: 20, alignItems: 'center' },
   logoBadge: { width: 64, height: 64, borderRadius: 20, justifyContent: "center", alignItems: "center", marginBottom: 16 },
   title: { fontSize: 28, fontWeight: "bold", color: "#0F172A" },
   subtitle: { fontSize: 16, color: "#64748B", marginTop: 4, textAlign: 'center' },

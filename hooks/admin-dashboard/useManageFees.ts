@@ -132,16 +132,19 @@ export const useManageFees = ({
   const isConfigMissing = !academicYear || !term;
 
   const filteredStudents = useMemo(() => {
-    const searchLower = searchQuery.toLowerCase();
+    const searchLower = searchQuery.toLowerCase().trim();
+    if (!searchLower && statusFilter === "all" && activeMode === "discounts") return students;
+
     return students.filter((s) => {
-      const matchesName = (s.fullName || "").toLowerCase().includes(searchLower);
-      const matchesID = (s.studentID || "").toLowerCase().includes(searchLower);
-      const matchesSerial = s.payments?.some(
-        (p: any) =>
-          p.receiptNo?.toLowerCase().includes(searchLower) ||
-          p.createdAt?.toLowerCase().includes(searchLower),
-      );
-      const matchesSearch = matchesName || matchesID || matchesSerial;
+      const matchesSearch = !searchLower ||
+        (s.fullName || "").toLowerCase().includes(searchLower) ||
+        (s.studentID || "").toLowerCase().includes(searchLower) ||
+        s.payments?.some(
+          (p: any) =>
+            p.receiptNo?.toLowerCase().includes(searchLower) ||
+            p.createdAt?.toLowerCase().includes(searchLower),
+        );
+
       const matchesStatus =
         activeMode === "discounts" || statusFilter === "all"
           ? true
@@ -149,8 +152,7 @@ export const useManageFees = ({
             ? (s.currentBalance || 0) <= 0
             : (s.currentBalance || 0) > 0;
 
-      const matchesMode = activeMode === "discounts" ? (!!s.onDiscount && !s.onScholarship) : true;
-      return matchesSearch && matchesStatus && matchesMode;
+      return matchesSearch && matchesStatus;
     });
   }, [students, searchQuery, statusFilter, activeMode]);
 

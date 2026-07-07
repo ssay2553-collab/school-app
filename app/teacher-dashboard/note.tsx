@@ -1,17 +1,4 @@
 // app/teacher-dashboard/note.tsx
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-} from "firebase/firestore";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -31,40 +18,29 @@ import {
 import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEditor";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
-import { useAuth } from "../../contexts/AuthContext";
-import { useToast } from "../../contexts/ToastContext";
-import { db } from "../../firebaseConfig";
-
-const NOTES_KEY = "@teacher_notes_v1";
-
-type Note = {
-  id: string;
-  uid: string;
-  title: string;
-  content: string;
-  pinned?: boolean;
-  createdAt: number;
-  updatedAt?: number;
-  synced?: boolean;
-  docId?: string | null;
-};
+import { useTeacherNotes, Note } from "../../hooks/teacher-dashboard/useTeacherNotes";
 
 const { width } = Dimensions.get("window");
 const isLargeScreen = width > 768;
 
 export default function TeacherNoteScreen() {
   const router = useRouter();
-  const { appUser, loading: authLoading } = useAuth();
-  const { showToast } = useToast();
-  const mountedRef = useRef(true);
+  const {
+    notes,
+    loading,
+    saving,
+    search,
+    setSearch,
+    createNote,
+    updateNote,
+    deleteNote,
+    togglePin,
+    appUser
+  } = useTeacherNotes();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const editorRef = useRef<RichTextEditorRef>(null);
 
@@ -116,219 +92,19 @@ export default function TeacherNoteScreen() {
     return () => sub.remove();
   }, [handleBack]);
 
-  /* ---------------------------------------------
-     Load & Persist Notes
-  --------------------------------------------- */
-  const loadLocalNotes = useCallback(async () => {
-    if (!appUser) return;
-    try {
-      const raw = await AsyncStorage.getItem(NOTES_KEY);
-      const parsed: Note[] = raw ? JSON.parse(raw) : [];
-      const userNotes = parsed.filter((n) => n.uid === appUser.uid);
-      setNotes(userNotes);
-    } catch (e) {
-      console.warn("loadLocalNotes", e);
-      setNotes([]);
-    }
-  }, [appUser]);
-
-  const persistLocalNotes = useCallback(
-    async (next: Note[]) => {
-      if (!appUser) return;
-      try {
-        const raw = await AsyncStorage.getItem(NOTES_KEY);
-        const all: Note[] = raw ? JSON.parse(raw) : [];
-        const others = all.filter((n) => n.uid !== appUser.uid);
-        const merged = [...others, ...next];
-        await AsyncStorage.setItem(NOTES_KEY, JSON.stringify(merged));
-        setNotes(next);
-      } catch (e) {
-        console.warn("persistLocalNotes", e);
-      }
-    },
-    [appUser],
-  );
-
-  /* ---------------------------------------------
-     Fetch from Firestore & merge with local notes
-  --------------------------------------------- */
-  const fetchFromFirestoreAndMerge = useCallback(async () => {
-    if (!appUser) return;
-    try {
-      const q = query(
-        collection(db, "teacher_notes"),
-        where("uid", "==", appUser.uid),
-        orderBy("createdAt", "desc"),
-      );
-      const snap = await getDocs(q);
-
-      const remote: Note[] = snap.docs.map((d) => ({
-        docId: d.id,
-        id: d.id + "_remote",
-        uid: appUser.uid,
-        title: (d.data() as any).title,
-        content: (d.data() as any).content,
-        pinned: (d.data() as any).pinned ?? false,
-        createdAt: (d.data() as any).createdAt?.toMillis() ?? Date.now(),
-        updatedAt: (d.data() as any).updatedAt?.toMillis(),
-        synced: true,
-      }));
-
-      const localRaw = await AsyncStorage.getItem(NOTES_KEY);
-      const localAll: Note[] = localRaw ? JSON.parse(localRaw) : [];
-      const localForUser = localAll.filter((n) => n.uid === appUser.uid);
-
-      const map = new Map<string, Note>();
-      for (const r of remote) {
-        map.set(r.docId ?? r.id, r);
-      }
-      for (const l of localForUser) {
-        const key = l.docId ?? l.id;
-        const existing = map.get(key);
-        if (
-          !existing ||
-          l.synced === false ||
-          (l.updatedAt ?? l.createdAt) >
-            (existing.updatedAt ?? existing.createdAt)
-        ) {
-          map.set(key, l);
-        }
-      }
-
-      const merged = Array.from(map.values()).sort(
-        (a, b) =>
-          (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt - a.createdAt,
-      );
-
-      await persistLocalNotes(merged);
-    } catch (e) {
-      console.warn("fetchFromFirestoreAndMerge", e);
-    }
-  }, [appUser, persistLocalNotes]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    (async () => {
-      await loadLocalNotes();
-      await fetchFromFirestoreAndMerge();
-      setLoading(false);
-    })();
-    const interval = setInterval(() => {
-      fetchFromFirestoreAndMerge();
-    }, 15000);
-    return () => {
-      mountedRef.current = false;
-      clearInterval(interval);
-    };
-  }, [loadLocalNotes, fetchFromFirestoreAndMerge]);
-
-  if (!appUser && !authLoading)
+  if (!appUser && !loading)
     return (
       <View style={styles.center}>
         <Text>Please log in to use notes.</Text>
       </View>
     );
 
-  if (loading || authLoading)
+  if (loading)
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
-
-  /* ---------------------------------------------
-     CRUD
-  --------------------------------------------- */
-  const createLocalNote = async (htmlContent: string) => {
-    if (!appUser) return;
-
-    const newNote: Note = {
-      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      uid: appUser.uid,
-      title: title.trim() || "Untitled Note",
-      content: htmlContent,
-      pinned: false,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      synced: false,
-      docId: null,
-    };
-
-    const next = [newNote, ...notes];
-    await persistLocalNotes(next);
-
-    try {
-      const docRef = await addDoc(collection(db, "teacher_notes"), {
-        uid: appUser.uid,
-        title: newNote.title,
-        content: newNote.content,
-        pinned: false,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-
-      const syncedNext = next.map(n => n.id === newNote.id ? { ...n, docId: docRef.id, synced: true } : n);
-      await persistLocalNotes(syncedNext);
-    } catch (e) {
-      console.warn("Firestore sync failed:", e);
-    }
-
-    setTitle("");
-    setContent("");
-    setEditingId(null);
-    setIsAdding(false);
-  };
-
-  const updateLocalNote = async (id: string, htmlContent: string) => {
-    if (!appUser) return;
-    const next = notes.map((n) =>
-      n.id === id
-        ? {
-            ...n,
-            title: title.trim() || n.title,
-            content: htmlContent,
-            updatedAt: Date.now(),
-            synced: false,
-          }
-        : n,
-    );
-    await persistLocalNotes(next);
-
-    const noteToUpdate = next.find(n => n.id === id);
-    if (noteToUpdate?.docId) {
-      try {
-        await updateDoc(doc(db, "teacher_notes", noteToUpdate.docId), {
-          title: noteToUpdate.title,
-          content: noteToUpdate.content,
-          updatedAt: serverTimestamp(),
-        });
-
-        const syncedNext = next.map(n => n.id === id ? { ...n, synced: true } : n);
-        await persistLocalNotes(syncedNext);
-      } catch (e) {
-        console.warn("Firestore update sync failed:", e);
-      }
-    }
-
-    setEditingId(null);
-    setTitle("");
-    setContent("");
-    setIsAdding(false);
-  };
-
-  const deleteLocalNote = async (id: string) => {
-    const next = notes.filter((n) => n.id !== id);
-    await persistLocalNotes(next);
-
-    const removed = notes.find((n) => n.id === id);
-    if (removed?.docId) {
-      try {
-        await deleteDoc(doc(db, "teacher_notes", removed.docId));
-      } catch (e) {
-        console.warn(e);
-      }
-    }
-  };
 
   const startEdit = (note: Note) => {
     setEditingId(note.id);
@@ -344,12 +120,15 @@ export default function TeacherNoteScreen() {
     setIsAdding(false);
   };
 
-  const filtered = notes
-    .filter(
-      (n) =>
-        n.title.toLowerCase().includes(search.toLowerCase()) ||
-        n.content.toLowerCase().includes(search.toLowerCase()),
-    );
+  const handleSave = async () => {
+    const html = await editorRef.current?.getHTML();
+    if (editingId) {
+      await updateNote(editingId, title, html || "");
+    } else {
+      await createNote(title, html || "");
+    }
+    cancelEdit();
+  };
 
   return (
     <View style={styles.container}>
@@ -392,13 +171,8 @@ export default function TeacherNoteScreen() {
             <View style={styles.actionRow}>
               <TouchableOpacity
                 style={[styles.saveBtn, { flex: 1 }]}
-                onPress={async () => {
-                  setSaving(true);
-                  const html = await editorRef.current?.getHTML();
-                  if (editingId) await updateLocalNote(editingId, html || "");
-                  else await createLocalNote(html || "");
-                  setSaving(false);
-                }}
+                onPress={handleSave}
+                disabled={saving}
               >
                 {saving ? (
                   <ActivityIndicator color="#fff" />
@@ -433,7 +207,7 @@ export default function TeacherNoteScreen() {
           </View>
 
           <FlatList
-            data={filtered}
+            data={notes}
             keyExtractor={(i) => i.id}
             numColumns={isLargeScreen ? 2 : 1}
             columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
@@ -449,14 +223,7 @@ export default function TeacherNoteScreen() {
                     {item.title}
                   </Text>
                   <TouchableOpacity
-                    onPress={async () => {
-                      const next = notes.map((n) =>
-                        n.id === item.id
-                          ? { ...n, pinned: !n.pinned, synced: false }
-                          : n,
-                      );
-                      await persistLocalNotes(next);
-                    }}
+                    onPress={() => togglePin(item.id)}
                   >
                     <SVGIcon
                       name={item.pinned ? "pin" : "pin"}
@@ -487,8 +254,7 @@ export default function TeacherNoteScreen() {
                             {
                               text: "Delete",
                               style: "destructive",
-                              onPress: async () =>
-                                await deleteLocalNote(item.id),
+                              onPress: () => deleteNote(item.id),
                             },
                           ],
                         );

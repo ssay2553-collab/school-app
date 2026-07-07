@@ -1,17 +1,7 @@
 import * as DocumentPicker from "expo-document-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  addDoc,
-  collection,
-  documentId,
-  getDocsFromServer,
-  query,
-  serverTimestamp,
-  where,
-} from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import React, { useEffect, useState, useCallback, memo, useMemo } from "react";
+import React, { useEffect, useState, useCallback, memo } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -29,62 +19,52 @@ import {
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
-import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { db, storage } from "../../firebaseConfig";
-import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 import moment from "moment";
-import { sendNotification } from "../../src/services/notificationService";
+import { useUploadAssignment, Question, AssignmentType } from "../../hooks/teacher-dashboard/useUploadAssignment";
 
 // Guarded import for native-only library
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 
-interface ClassData {
-  id: string;
-  name: string;
-}
-
-type AssignmentType = "standard" | "mcq" | "short_answer";
-
-interface Question {
-  text: string;
-  options: string[];
-}
-
 export default function UploadAssignment() {
   const router = useRouter();
-  const { appUser } = useAuth();
   const { showToast } = useToast();
 
-  const [loading, setLoading] = useState(false);
-  const [fetchingMetadata, setFetchingMetadata] = useState(true);
-  const [teacherClasses, setTeacherClasses] = useState<ClassData[]>([]);
+  const {
+    loading,
+    fetchingMetadata,
+    teacherClasses,
+    selectedClassId,
+    setSelectedClassId,
+    selectedSubject,
+    setSelectedSubject,
+    title,
+    setTitle,
+    description,
+    setDescription,
+    type,
+    setType,
+    dueDate,
+    setDueDate,
+    file,
+    setFile,
+    uploadingFile,
+    questions,
+    hasUnsavedChanges,
+    addQuestion,
+    updateQuestion,
+    updateOption,
+    addOption,
+    removeQuestion,
+    handleUpload,
+    handleWebDateChange,
+    handleWebTimeChange,
+    subjects,
+  } = useUploadAssignment();
 
-  // Form State
-  const [selectedClassId, setSelectedClassId] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [type, setType] = useState<AssignmentType>("standard");
-  const [dueDate, setDueDate] = useState(new Date(Date.now() + 86400000 * 7)); // Default 1 week
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
-
-  // File Upload State
-  const [file, setFile] = useState<DocumentPicker.DocumentPickerResult | null>(null);
-  const [uploadingFile, setUploadingFile] = useState(false);
   const [backPressCount, setBackPressCount] = useState(0);
-
-  // Interactive Questions - Separated states for different types
-  const [mcqQuestions, setMcqQuestions] = useState<Question[]>([]);
-  const [shortAnswerQuestions, setShortAnswerQuestions] = useState<Question[]>([]);
-
-  // Derived current questions based on type
-  const questions = type === "mcq" ? mcqQuestions : shortAnswerQuestions;
-  
-  const hasUnsavedChanges = useMemo(() => {
-    return title !== "" || description !== "" || mcqQuestions.length > 0 || shortAnswerQuestions.length > 0 || file !== null;
-  }, [title, description, mcqQuestions.length, shortAnswerQuestions.length, file]);
 
   const handleBack = useCallback(() => {
     if (hasUnsavedChanges && backPressCount === 0) {
@@ -110,50 +90,6 @@ export default function UploadAssignment() {
     return () => backHandler.remove();
   }, [handleBack]);
 
-  // Wrapper setter to update the correct state based on current type
-  const setQuestions = useCallback((val: React.SetStateAction<Question[]>) => {
-    if (type === "mcq") {
-      setMcqQuestions(val);
-    } else {
-      setShortAnswerQuestions(val);
-    }
-  }, [type]);
-
-  useEffect(() => {
-    if (!appUser) {
-      setFetchingMetadata(false);
-      return;
-    }
-    
-    const fetchData = async () => {
-      setFetchingMetadata(true);
-      try {
-        const classIds = getTeacherClasses(appUser);
-        if (classIds.length > 0) {
-          const results: any[] = [];
-          for (let i = 0; i < classIds.length; i += 10) {
-            const chunk = classIds.slice(i, i + 10);
-            const q = query(collection(db, "classes"), where(documentId(), "in", chunk));
-            const snap = await getDocsFromServer(q);
-            results.push(...snap.docs.map(d => ({ id: d.id, name: (d.data() as any).name || d.id })));
-          }
-          
-          const sorted = sortClasses(results);
-          setTeacherClasses(sorted);
-          if (sorted.length > 0) setSelectedClassId(sorted[0].id);
-        }
-        if (appUser.subjects && appUser.subjects.length > 0) {
-          setSelectedSubject(appUser.subjects[0]);
-        }
-      } catch (err) {
-        console.error("fetchData Error:", err);
-      } finally {
-        setFetchingMetadata(false);
-      }
-    };
-    fetchData();
-  }, [appUser]);
-
   const onDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (event.type === "dismissed") return;
@@ -176,25 +112,6 @@ export default function UploadAssignment() {
     }
   };
 
-  const handleWebDateChange = (val: string) => {
-    // Try multiple formats to be robust against manual user input
-    const parsed = moment(val, ["YYYY-MM-DD", "DD-MM-YYYY", "MM-DD-YYYY", "DD/MM/YYYY", "MM/DD/YYYY"], true);
-    if (parsed.isValid()) {
-      const next = new Date(dueDate);
-      next.setFullYear(parsed.year(), parsed.month(), parsed.date());
-      setDueDate(next);
-    }
-  };
-
-  const handleWebTimeChange = (val: string) => {
-    const parsed = moment(val, ["HH:mm", "h:mm A", "H:mm"], true);
-    if (parsed.isValid()) {
-      const next = new Date(dueDate);
-      next.setHours(parsed.hour(), parsed.minute());
-      setDueDate(next);
-    }
-  };
-
   const pickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -209,111 +126,10 @@ export default function UploadAssignment() {
     }
   };
 
-  const addQuestion = useCallback(() => {
-    setQuestions(prev => [...prev, { text: "", options: ["", ""] }]);
-  }, [setQuestions]);
-
-  const updateQuestion = useCallback((index: number, text: string) => {
-    setQuestions(prev => prev.map((q, i) => i === index ? { ...q, text } : q));
-  }, [setQuestions]);
-
-  const updateOption = useCallback((qIndex: number, oIndex: number, text: string) => {
-    setQuestions(prev => prev.map((q, i) => {
-      if (i === qIndex) {
-        const newOptions = [...q.options];
-        newOptions[oIndex] = text;
-        return { ...q, options: newOptions };
-      }
-      return q;
-    }));
-  }, [setQuestions]);
-
-  const addOption = useCallback((qIndex: number) => {
-    setQuestions(prev => prev.map((q, i) => 
-      i === qIndex ? { ...q, options: [...q.options, ""] } : q
-    ));
-  }, [setQuestions]);
-
-  const removeQuestion = useCallback((index: number) => {
-    setQuestions(prev => prev.filter((_, i) => i !== index));
-  }, [setQuestions]);
-
-  const handleUpload = async () => {
-    if (!title || !selectedClassId || !selectedSubject) {
-      return showToast({ message: "Please fill in all required fields.", type: "error" });
-    }
-
-    if (type === "standard" && !file && !description) {
-      return showToast({ message: "Please provide either instructions or a file.", type: "error" });
-    }
-
-    if ((type === "mcq" || type === "short_answer") && questions.length === 0) {
-      return showToast({ message: "Please add at least one question.", type: "error" });
-    }
-
-    setLoading(true);
-    try {
-      let fileUrl = "";
-      let fileName = "";
-
-      if (file && !file.canceled && file.assets && file.assets[0]) {
-        setUploadingFile(true);
-        const asset = file.assets[0];
-        const response = await fetch(asset.uri);
-        const blob = await response.blob();
-        const storageRef = ref(storage, `assignments/${Date.now()}_${asset.name}`);
-        await uploadBytes(storageRef, blob);
-        fileUrl = await getDownloadURL(storageRef);
-        fileName = asset.name;
-        setUploadingFile(false);
-      }
-
-      const assignmentData = {
-        title,
-        description,
-        type,
-        classId: selectedClassId,
-        subjectId: selectedSubject,
-        teacherId: appUser?.uid,
-        fileUrl,
-        fileName,
-        questions: type === "standard" ? null : questions,
-        dueDate: dueDate,
-        createdAt: serverTimestamp(),
-        code: Math.random().toString(36).substring(2, 8).toUpperCase(),
-      };
-
-      const docRef = await addDoc(collection(db, "assignments"), assignmentData);
-
-      // Notify students in the class
-      const studentsQuery = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("classId", "==", selectedClassId)
-      );
-      const studentsSnap = await getDocsFromServer(studentsQuery);
-
-      const notificationPromises = studentsSnap.docs.map(studentDoc =>
-        sendNotification({
-          recipientId: studentDoc.id,
-          senderId: appUser!.uid,
-          senderName: appUser!.displayName || "Teacher",
-          type: "assignment",
-          title: "New Assignment",
-          body: `${selectedSubject}: ${title}`,
-          data: { assignmentId: docRef.id, classId: selectedClassId }
-        })
-      );
-      await Promise.all(notificationPromises);
-
-      showToast({ message: "Assignment posted successfully!", type: "success" });
+  const onPost = async () => {
+    const success = await handleUpload();
+    if (success) {
       router.replace("/teacher-dashboard");
-    } catch (err) {
-      console.error("handleUpload Error:", err);
-      showToast({ message: "Failed to post assignment.", type: "error" });
-    } finally {
-      setLoading(false);
-      setUploadingFile(false);
     }
   };
 
@@ -353,7 +169,7 @@ export default function UploadAssignment() {
 
             <Text style={styles.inputLabel}>Subject *</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-              {(appUser?.subjects || []).map((s: string) => (
+              {subjects.map((s: string) => (
                 <TouchableOpacity key={s} onPress={() => setSelectedSubject(s)} style={[styles.bubble, selectedSubject === s && styles.bubbleActive]}>
                   <Text style={[styles.bubbleText, selectedSubject === s && styles.bubbleTextActive]}>{s}</Text>
                 </TouchableOpacity>
@@ -463,7 +279,7 @@ export default function UploadAssignment() {
       </KeyboardAvoidingView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={[styles.submitBtn, loading && { opacity: 0.7 }]} onPress={handleUpload} disabled={loading || uploadingFile}>
+        <TouchableOpacity style={[styles.submitBtn, loading && { opacity: 0.7 }]} onPress={onPost} disabled={loading || uploadingFile}>
           <LinearGradient colors={[COLORS.primary, "#4F46E5"]} style={styles.submitBtnGradient}>
             {loading || uploadingFile ? <ActivityIndicator color="#fff" /> : (
               <><Text style={styles.submitBtnText}>Post Assignment</Text><SVGIcon name="send" size={20} color="#fff" style={{ marginLeft: 10 }} /></>

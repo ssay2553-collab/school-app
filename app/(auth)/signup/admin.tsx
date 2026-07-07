@@ -196,7 +196,7 @@ export default function AdminSignup() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: surface }]}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.container}
       >
         <ScrollView

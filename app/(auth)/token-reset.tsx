@@ -107,14 +107,22 @@ export default function TokenResetScreen() {
       <LinearGradient colors={[primary, secondary]} style={StyleSheet.absoluteFill} />
 
       <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-          <View style={styles.topHeader}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <SVGIcon name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.topHeader}>
+              <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <SVGIcon name="arrow-back" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView contentContainerStyle={styles.scrollContent}>
             <Animatable.View animation="fadeInDown" style={styles.header}>
               <Text style={styles.title}>Secure Reset</Text>
               <Text style={styles.subtitle}>Reset your password using your admin-provided token</Text>
@@ -201,8 +209,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  scrollContent: { padding: 24, flexGrow: 1, justifyContent: "center" },
-  header: { marginBottom: 30, alignItems: "center" },
+  scrollContent: { padding: 24, flexGrow: 1 },
+  header: { marginBottom: 20, alignItems: "center" },
   title: { fontSize: 32, fontWeight: "900", color: "#fff" },
   subtitle: { fontSize: 16, color: "rgba(255,255,255,0.8)", textAlign: "center", marginTop: 8 },
   card: { backgroundColor: "#fff", borderRadius: 24, padding: 24, ...SHADOWS.medium },

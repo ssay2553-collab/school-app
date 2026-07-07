@@ -245,7 +245,7 @@ export default function ParentSignup() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: SCHOOL_CONFIG.surfaceColor || "#F8FAFC" }]}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"} 
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.keyboardView}
       >
         <ScrollView 

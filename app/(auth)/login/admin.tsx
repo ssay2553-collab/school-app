@@ -88,11 +88,24 @@ export default function AdminLogin() {
       }
 
       console.log("User Data Found:", userData);
-      const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
-      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
 
-      // Allow if role is "admin" or they have an explicit adminRole defined
-      const isAdmin = role.includes("admin") || adminRole !== "";
+      // Normalize role and adminRole from multiple possible locations
+      const role = (userData?.role || userData?.profile?.role || "").toLowerCase().trim();
+      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase().trim();
+      const permissions = userData?.permissions || {};
+
+      // Robust check for administrative privileges
+      // We check for:
+      // 1. Explicit 'admin' or 'super' role
+      // 2. Presence of an official admin title (adminRole)
+      // 3. Possession of critical administrative permissions
+      const isAdmin =
+        role.includes("admin") ||
+        role.includes("super") ||
+        adminRole !== "" ||
+        permissions['manage-users'] === 'full' ||
+        permissions['manage-fees'] === 'full';
+
       const isTeacher =
         role === "teacher" ||
         !!(
@@ -145,35 +158,36 @@ export default function AdminLogin() {
       />
 
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.headerContainer}>
-          <View style={styles.navRow}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-              <SVGIcon name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => router.replace("/")} style={styles.iconBtn}>
-              <SVGIcon name="home" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-
-          <Animatable.View animation="zoomIn" duration={1000} style={styles.logoCircle}>
-            <View style={[styles.innerCircle, { backgroundColor: surface }]}>
-              <SVGIcon name="shield-checkmark" size={40} color={brandPrimary} />
-            </View>
-          </Animatable.View>
-
-          <Animatable.Text animation="fadeInUp" delay={300} style={styles.headerTitle}>ADMIN PORTAL</Animatable.Text>
-          <Animatable.Text animation="fadeInUp" delay={400} style={styles.headerSubtitle}>MANAGEMENT AUTHENTICATION</Animatable.Text>
+        <View style={styles.navRow}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+            <SVGIcon name="arrow-back" size={24} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.replace("/")} style={styles.iconBtn}>
+            <SVGIcon name="home" size={24} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : "height"} 
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{ flex: 1 }}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
           <ScrollView 
             contentContainerStyle={styles.scrollContent} 
             showsVerticalScrollIndicator={false}
-            bounces={false}
+            keyboardShouldPersistTaps="handled"
           >
+            <View style={styles.headerContainer}>
+              <Animatable.View animation="zoomIn" duration={1000} style={styles.logoCircle}>
+                <View style={[styles.innerCircle, { backgroundColor: surface }]}>
+                  <SVGIcon name="shield-checkmark" size={40} color={brandPrimary} />
+                </View>
+              </Animatable.View>
+
+              <Animatable.Text animation="fadeInUp" delay={300} style={styles.headerTitle}>ADMIN PORTAL</Animatable.Text>
+              <Animatable.Text animation="fadeInUp" delay={400} style={styles.headerSubtitle}>MANAGEMENT AUTHENTICATION</Animatable.Text>
+            </View>
+
             <View style={styles.formWrapper}>
               <Animatable.View animation="fadeInUp" delay={500} style={styles.formCard}>
                 <View style={styles.inputGroup}>
@@ -277,17 +291,15 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   safeArea: { flex: 1 },
   headerContainer: {
-    height: height * 0.35,
+    paddingVertical: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   navRow: {
-    position: 'absolute',
-    top: Platform.OS === 'android' ? 50 : 20,
-    left: 20,
-    right: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 10,
     zIndex: 10,
   },
   iconBtn: {

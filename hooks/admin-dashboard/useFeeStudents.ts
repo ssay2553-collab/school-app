@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { collection, getDocsFromServer, limit, query, startAfter, where } from "firebase/firestore";
+import { collection, getDocs, limit, query, startAfter, where } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { db } from "../../firebaseConfig";
 import { StudentDraft, FILTERS_PERSISTENCE_KEY, PAGE_SIZE } from "../../constants/admin-dashboard/ManageFeesTypes";
@@ -62,7 +62,8 @@ export const useFeeStudents = (
         if (!isFirstLoad && lastVisibleRef.current)
           q = query(q, startAfter(lastVisibleRef.current));
 
-        const snap = await getDocsFromServer(q as any);
+        // Use getDocs instead of getDocsFromServer to leverage Firestore's local cache
+        const snap = await getDocs(q as any);
 
         if (myRequestId !== requestIdRef.current) return;
 
@@ -84,7 +85,7 @@ export const useFeeStudents = (
           const validChunks = chunks.filter((c) => c.length > 0);
           const feesSnaps = await Promise.all(
             validChunks.map((chunk) =>
-              getDocsFromServer(
+              getDocs(
                 query(
                   collection(db, "studentFeeRecords"),
                   where("studentUid", "in", chunk),

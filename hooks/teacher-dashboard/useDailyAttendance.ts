@@ -121,9 +121,28 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
         const attendanceId = `${classId}_${cleanYear}_${cleanTerm}_${selectedDate}`;
         const ref = doc(db, "attendance", attendanceId);
         const snap = await getDoc(ref);
-        const data = snap.exists() ? (snap.data() as any) : { students: {} };
-        setServerAttendance(data.students || {});
-        setLocalAttendance(data.students || {});
+
+        if (snap.exists()) {
+          const data = snap.data() as any;
+          setServerAttendance(data.students || {});
+          setLocalAttendance(data.students || {});
+        } else {
+          // Fallback: Query by classId and date to find records that might have been saved under a different term/year ID
+          const q = query(
+            collection(db, "attendance"),
+            where("classId", "==", classId),
+            where("date", "==", selectedDate)
+          );
+          const querySnap = await getDocsFromServer(q);
+          if (!querySnap.empty) {
+            const data = querySnap.docs[0].data() as any;
+            setServerAttendance(data.students || {});
+            setLocalAttendance(data.students || {});
+          } else {
+            setServerAttendance({});
+            setLocalAttendance({});
+          }
+        }
       } catch (e) {
         console.error("Load attendance error:", e);
       }

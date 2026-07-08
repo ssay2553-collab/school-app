@@ -1,22 +1,22 @@
 import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import {
-  collection,
-  doc,
-  getDocs,
-  limit,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  setDoc,
-  where,
+    collection,
+    doc,
+    getDocs,
+    limit,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    setDoc,
+    where,
 } from "firebase/firestore";
 import React, {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
+    createContext,
+    ReactNode,
+    useContext,
+    useEffect,
+    useRef,
+    useState,
 } from "react";
 import { auth, db } from "../firebaseConfig";
 import { AppUser } from "../types/users";
@@ -90,8 +90,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
 
         const data = snap.data() || {};
         // Normalize role and infer 'staff' for upgraded accounts with adminRole
-        const rawRole = data.role || data.profile?.role || (data.adminRole ? "staff" : undefined);
-        const role = typeof rawRole === "string" ? rawRole.toLowerCase() : rawRole;
+        const rawRole =
+          data.role ||
+          data.profile?.role ||
+          (data.adminRole ? "staff" : undefined);
+        const role =
+          typeof rawRole === "string" ? rawRole.toLowerCase() : rawRole;
 
         const mapped: AppUser = {
           uid: snap.id, // Use document ID
@@ -161,6 +165,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                 // Document found by authUid field
                 const staffDoc = querySnap.docs[0];
                 if (unsubscribeProfile) unsubscribeProfile();
+                // Create a mapping from auth UID to the actual user document ID
+                try {
+                  await setDoc(
+                    doc(db, "userAuthMappings", user.uid),
+                    {
+                      userDocId: staffDoc.id,
+                    },
+                    { merge: true },
+                  );
+                } catch (mapErr) {
+                  console.warn("Failed to create auth mapping doc:", mapErr);
+                }
                 // Setup persistent listener on the actual document
                 unsubscribeProfile = onSnapshot(staffDoc.ref, (innerSnap) => {
                   processSnap(innerSnap);

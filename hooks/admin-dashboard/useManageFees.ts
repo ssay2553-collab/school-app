@@ -17,7 +17,7 @@ import { db } from "../../firebaseConfig";
 import { StudentDraft, FILTERS_PERSISTENCE_KEY } from "../../constants/admin-dashboard/ManageFeesTypes";
 import { sortClasses } from "../../lib/classHelpers";
 import { sendNotification } from "../../src/services/notificationService";
-import { Alert } from "react-native";
+import { Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFeeStudents } from "./useFeeStudents";
 
@@ -288,58 +288,70 @@ export const useManageFees = ({
 
   const handleDeletePayment = async (selectedStudent: StudentDraft | null, payment: any, onSuccess: () => void) => {
     if (!canEdit) return;
-    Alert.alert("Confirm Deletion", "Are you sure you want to delete this payment record? This will reverse the balance.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          setSaving(true);
-          try {
-            const cleanYear = academicYear.replace(/\//g, "-");
-            const cleanTerm = term.replace(/\s/g, "");
-            const recordId = `${selectedStudent?.uid}_${cleanYear}_${cleanTerm}`;
-            const batch = writeBatch(db);
 
-            // 1. Update the student fee record (array and totals)
-            batch.update(doc(db, "studentFeeRecords", recordId), {
-              payments: arrayRemove(payment),
-              amountPaid: increment(-payment.amount),
-              balance: increment(payment.amount),
-              lastUpdated: serverTimestamp(),
-            });
+    const performDelete = async () => {
+      setSaving(true);
+      try {
+        const cleanYear = academicYear.replace(/\//g, "-");
+        const cleanTerm = term.replace(/\s/g, "");
+        const recordId = `${selectedStudent?.uid}_${cleanYear}_${cleanTerm}`;
+        const batch = writeBatch(db);
 
-            // 2. Reverse the wallet balance
-            batch.update(doc(db, "users", selectedStudent?.uid!), {
-              walletBalance: increment(payment.amount),
-            });
+        // 1. Update the student fee record (array and totals)
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          payments: arrayRemove(payment),
+          amountPaid: increment(-payment.amount),
+          balance: increment(payment.amount),
+          lastUpdated: serverTimestamp(),
+        });
 
-            // 3. Delete the global payment document if receiptNo exists
-            if (payment.receiptNo) {
-              const q = query(
-                collection(db, "feePayments"),
-                where("receiptNo", "==", payment.receiptNo),
-                where("studentUid", "==", selectedStudent?.uid)
-              );
-              const snap = await getDocsFromServer(q);
-              snap.forEach((d) => {
-                batch.delete(d.ref);
-              });
-            }
+        // 2. Reverse the wallet balance
+        batch.update(doc(db, "users", selectedStudent?.uid!), {
+          walletBalance: increment(payment.amount),
+        });
 
-            await batch.commit();
-            fetchStudents(true);
-            onSuccess();
-            showToast({ message: "Payment reversed.", type: "success" });
-          } catch (e) {
-            console.error(e);
-            showToast({ message: "Deletion failed", type: "error" });
-          } finally {
-            setSaving(false);
-          }
+        // 3. Delete the global payment document if receiptNo exists
+        if (payment.receiptNo) {
+          const q = query(
+            collection(db, "feePayments"),
+            where("receiptNo", "==", payment.receiptNo),
+            where("studentUid", "==", selectedStudent?.uid)
+          );
+          const snap = await getDocsFromServer(q);
+          snap.forEach((d) => {
+            batch.delete(d.ref);
+          });
+        }
+
+        await batch.commit();
+        fetchStudents(true);
+        onSuccess();
+        showToast({ message: "Payment reversed.", type: "success" });
+      } catch (e) {
+        console.error("Delete Payment Error:", e);
+        showToast({ message: "Deletion failed", type: "error" });
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    const msg = "Are you sure you want to delete this payment record? This will reverse the balance.";
+    const title = "Confirm Deletion";
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${msg}`)) {
+        await performDelete();
+      }
+    } else {
+      Alert.alert(title, msg, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: performDelete,
         },
-      },
-    ]);
+      ]);
+    }
   };
 
   const handleNormalizeDiscounts = async () => {

@@ -362,7 +362,19 @@ export default function ExtraClassesFees() {
           const data = snap.data() as any;
           setAttendanceMap(data.students || {});
         } else {
-          setAttendanceMap({});
+          // Fallback: Query by classId and date
+          const q = query(
+            collection(db, "attendance"),
+            where("classId", "==", effectiveClassId),
+            where("date", "==", cleanDate)
+          );
+          const querySnap = await getDocsFromServer(q);
+          if (!querySnap.empty) {
+            const data = querySnap.docs[0].data() as any;
+            setAttendanceMap(data.students || {});
+          } else {
+            setAttendanceMap({});
+          }
         }
       } catch (e) {
         console.error("Error loading attendance for extra classes screen:", e);

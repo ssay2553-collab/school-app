@@ -51,8 +51,8 @@ export default function StudentAttendanceSummaryScreen({
     if (!studentId || !classId || !selectedYear || !selectedTerm) return;
 
     setLoading(true);
-    const cleanYear = selectedYear.replace("/", "_");
-    const cleanTerm = selectedTerm.replace(/\s+/g, "");
+    const cleanYear = selectedYear.replace(/\//g, "-");
+    const cleanTerm = selectedTerm.replace(/\s/g, "");
     const summaryId = `${studentId}_${cleanYear}_${cleanTerm}`;
     const summaryRef = doc(db, "attendanceSummary", summaryId);
 

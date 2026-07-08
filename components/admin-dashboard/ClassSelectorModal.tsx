@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, TouchableOpacity, View, Text, ScrollView } from 'react-native';
+import { Modal, TouchableOpacity, View, Text, ScrollView, StyleSheet, Pressable, Platform } from 'react-native';
 import * as Animatable from 'react-native-animatable';
 import SVGIcon from '../SVGIcon';
 import { styles, VIBE } from '../../constants/admin-dashboard/ManageFeesStyles';
@@ -25,15 +25,15 @@ export const ClassSelectorModal: React.FC<ClassSelectorModalProps> = ({
 }) => {
   return (
     <Modal visible={visible} transparent animationType="none">
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={onClose}
-      >
+      <View style={styles.overlay}>
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onClose}
+        />
         <Animatable.View
           animation="slideInUp"
           duration={300}
-          style={styles.sheetBody}
+          style={[styles.sheetBody, { maxHeight: '80%', display: 'flex' }]}
         >
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeader}>
@@ -43,7 +43,12 @@ export const ClassSelectorModal: React.FC<ClassSelectorModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.sheetList} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[styles.sheetList, { paddingBottom: 40 }]}
+            showsVerticalScrollIndicator={true}
+            persistentScrollbar={Platform.OS === 'web'}
+          >
             {showAllOption && (
               <TouchableOpacity
                 style={[
@@ -92,7 +97,7 @@ export const ClassSelectorModal: React.FC<ClassSelectorModalProps> = ({
             ))}
           </ScrollView>
         </Animatable.View>
-      </TouchableOpacity>
+      </View>
     </Modal>
   );
 };

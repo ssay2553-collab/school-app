@@ -3,12 +3,12 @@ import { Tabs, useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
 import React from "react";
 import {
-  Alert,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
@@ -24,6 +24,25 @@ export default function TeacherDashboardLayout() {
 
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
   const secondary = SCHOOL_CONFIG.secondaryColor || primary;
+
+  React.useEffect(() => {
+    if (!appUser) return;
+
+    const allowedRoles = ["teacher", "admin"];
+    if (!allowedRoles.includes(appUser.role || "")) {
+      const redirectMap: Record<string, string> = {
+        admin: "/admin-dashboard",
+        teacher: "/teacher-dashboard",
+        student: "/student-dashboard",
+        parent: "/parent-dashboard",
+        staff: "/staff-dashboard",
+        guest: "/guest-dashboard",
+      };
+
+      const targetRoute = redirectMap[appUser.role as string] || "/";
+      router.replace(targetRoute);
+    }
+  }, [appUser, router]);
 
   const isWeb = Platform.OS === "web";
 
@@ -92,7 +111,10 @@ export default function TeacherDashboardLayout() {
 
           <View style={styles.headerActions}>
             {appUser?.role === "admin" && (
-              <TouchableOpacity onPress={switchToAdmin} style={styles.actionBtn}>
+              <TouchableOpacity
+                onPress={switchToAdmin}
+                style={styles.actionBtn}
+              >
                 <SVGIcon name="shield-checkmark" size={18} color="#fff" />
                 <Text style={styles.btnText}>ADMIN VIEW</Text>
               </TouchableOpacity>

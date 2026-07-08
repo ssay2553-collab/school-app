@@ -34,7 +34,7 @@ import { getTeacherClasses } from "../../lib/classHelpers";
 
 export default function TeacherDashboard() {
   const router = useRouter();
-  const { appUser, loading: authLoading } = useAuth();
+  const { appUser, firebaseUser, loading: authLoading } = useAuth();
   const config = useSchoolConfig();
   const { width: windowWidth } = useWindowDimensions();
 
@@ -70,18 +70,19 @@ export default function TeacherDashboard() {
     appUser?.permissions?.["record-extra-classes"] === "edit";
 
   const fetchStats = useCallback(async () => {
-    if (!appUser?.uid) return;
+    const teacherUid = appUser?.uid || firebaseUser?.uid;
+    if (!teacherUid) return;
     try {
       const q = query(
         collection(db, "assignments"),
-        where("teacherId", "==", appUser.uid),
+        where("teacherId", "==", teacherUid),
       );
       const snap = await getCountFromServer(q);
       setAssignmentCount(snap.data().count);
     } catch (e) {
       console.error("Error fetching teacher stats:", e);
     }
-  }, [appUser?.uid]);
+  }, [appUser?.uid, firebaseUser?.uid]);
 
   // Use data freshness hook to refresh on focus/visibility change
   const { refresh } = useDataFreshness(

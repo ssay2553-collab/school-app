@@ -255,12 +255,17 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
                           </View>
                           <TouchableOpacity
                             onPress={() => onDeletePayment(p)}
+                            disabled={saving}
                           >
-                            <SVGIcon
-                              name="trash"
-                              size={16}
-                              color={VIBE.danger}
-                            />
+                            {saving ? (
+                              <ActivityIndicator size="small" color={VIBE.danger} />
+                            ) : (
+                              <SVGIcon
+                                name="trash"
+                                size={16}
+                                color={VIBE.danger}
+                              />
+                            )}
                           </TouchableOpacity>
                         </View>
                         <Text style={styles.tileDetail}>

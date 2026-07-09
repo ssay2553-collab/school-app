@@ -56,7 +56,9 @@ export default function AdminLogin() {
       let userDoc = await getDoc(userDocRef);
       let userData = userDoc.data();
 
-      if (!userDoc.exists()) {
+      // If document doesn't exist OR it exists but has no role/profile (skeleton record)
+      if (!userDoc.exists() || (!userData?.role && !userData?.profile?.role && !userData?.adminRole)) {
+          console.log("Primary UID lookup failed or incomplete, trying field fallbacks...");
           // Fallback: Check for staff with legacy IDs mapped via authUid or uid
           const q = query(
             collection(db, "users"),
@@ -79,7 +81,8 @@ export default function AdminLogin() {
             if (!authSnap.empty) {
               userDoc = authSnap.docs[0];
               userData = userDoc.data();
-            } else {
+            } else if (!userDoc.exists()) {
+              // If we didn't even find a skeleton record and fallbacks failed
               console.error(`Login success but Firestore record missing for UID: ${cred.user.uid}`);
               await auth.signOut();
               throw new Error("Your administrative record was not found. Please contact the system owner.");
@@ -87,7 +90,11 @@ export default function AdminLogin() {
           }
       }
 
-      console.log("User Data Found:", userData);
+      console.log("User Data Found:", {
+        uid: userDoc.id,
+        role: userData?.role || userData?.profile?.role,
+        adminRole: userData?.adminRole || userData?.profile?.adminRole
+      });
 
       // Normalize role and adminRole from multiple possible locations
       const role = (userData?.role || userData?.profile?.role || "").toLowerCase().trim();
@@ -95,13 +102,10 @@ export default function AdminLogin() {
       const permissions = userData?.permissions || {};
 
       // Robust check for administrative privileges
-      // We check for:
-      // 1. Explicit 'admin' or 'super' role
-      // 2. Presence of an official admin title (adminRole)
-      // 3. Possession of critical administrative permissions
       const isAdmin =
         role.includes("admin") ||
         role.includes("super") ||
+        role === "staff" || // Many admins are labeled as staff but have an adminRole
         adminRole !== "" ||
         permissions['manage-users'] === 'full' ||
         permissions['manage-fees'] === 'full';

@@ -656,32 +656,6 @@ function isParentOf(studentId) {
   allow delete: if canManageFees();
 }
 
-/* =========================================================================
-   FEE RECORDS & PAYMENTS
-========================================================================= */
-
-match /studentFeeRecords/{recordId} {
-  // Allow read if Admin, or if the parent is linked to the student
-  allow read: if isSignedIn() && (
-    isAdmin() ||
-    (isParent() && recordId.split('_')[0] in userData().childrenIds)
-  );
-
-  // Only Admins or those with fee management permissions can write
-  allow write: if canManageFees();
-}
-
-match /feePayments/{paymentId} {
-  // Allow read if Admin, or if the payment belongs to one of the parent's children
-  allow read: if isSignedIn() && (
-    isAdmin() ||
-    (isParent() && resource.data.studentUid in userData().childrenIds)
-  );
-
-  allow create: if canManageFees();
-  allow update, delete: if isAdmin();
-}
-
     match /expenditures/{id} {
       allow read: if canViewExpenditure();
       allow create: if canManageExpenditure() &&

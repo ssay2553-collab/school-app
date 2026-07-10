@@ -157,15 +157,7 @@ export default function StudentFeeHistory() {
       q,
       (snap) => {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setAllTransactions(
-          list.sort(
-            (a: any, b: any) => {
-              const dateA = a.createdAt || a.timestamp?.toDate?.() || a.date || 0;
-              const dateB = b.createdAt || b.timestamp?.toDate?.() || b.date || 0;
-              return new Date(dateB).getTime() - new Date(dateA).getTime();
-            }
-          ),
-        );
+        setAllTransactions(list);
         setFetchingRecord(false);
       },
       (err) => {
@@ -180,8 +172,56 @@ export default function StudentFeeHistory() {
     };
   }, [selectedChildId, selectedYear, selectedTerm, showFullHistory]);
 
+  const ledgerTransactions = useMemo(() => {
+    const merged = [...allTransactions];
+    const existingIds = new Set<string>(allTransactions.map((t: any) => String(t.receiptNo || t.id)));
+
+    // If not in full history mode, ensure the ledger list matches the record summary
+    if (!showFullHistory && record) {
+      const categories = [
+        { key: 'tuition', paid: record.amountPaid || 0 },
+        { key: 'pta', paid: record.ptaPaid || 0 },
+        { key: 'maintenance', paid: record.maintenancePaid || 0 },
+        { key: 'admission', paid: record.admissionPaid || 0 },
+        { key: 'books', paid: record.booksPaid || 0 },
+        { key: 'uniform', paid: record.uniformPaid || 0 },
+        { key: 'other', paid: record.otherPaid || 0 },
+      ];
+
+      categories.forEach(cat => {
+        const currentCatSum = merged.reduce((sum: number, t: any) => {
+          const type = (t.type || "tuition").toLowerCase();
+          const category = type.replace("_payment", "").replace("_credit", "");
+          const isPayment = type.endsWith("_payment") || type === "tuition" || type === "tuition_credit";
+          return (category === cat.key && isPayment) ? sum + (Number(t.amount) || 0) : sum;
+        }, 0);
+
+        if (cat.paid > currentCatSum + 0.01) {
+          merged.push({
+            id: `adjustment-${cat.key}`,
+            amount: cat.paid - currentCatSum,
+            type: cat.key === 'tuition' ? 'tuition' : `${cat.key}_payment`,
+            receiptNo: `ADJ-${cat.key.toUpperCase()}`,
+            date: record.createdAt || moment().format("YYYY-MM-DD"),
+            academicYear: selectedYear,
+            term: selectedTerm,
+            receivedFrom: "Historical Record",
+            method: "Migration",
+            isAdjustment: true,
+          });
+        }
+      });
+    }
+
+    return merged.sort((a: any, b: any) => {
+      const dateA = a.createdAt || a.timestamp?.toDate?.() || a.date || 0;
+      const dateB = b.createdAt || b.timestamp?.toDate?.() || b.date || 0;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
+  }, [allTransactions, record, showFullHistory, selectedYear, selectedTerm]);
+
   const paymentLedgerEntries = useMemo(() => {
-    return allTransactions
+    return ledgerTransactions
       .map((payment: any, index: number) => {
         const timestampValue =
           payment.createdAt ||

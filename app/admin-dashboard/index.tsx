@@ -332,7 +332,7 @@ export default function AdminDashboard() {
               style={[
                 styles.iconBox,
                 {
-                  backgroundColor: item.color + "20",
+                  backgroundColor: item.color,
                   width: isSmallScreen ? 50 : 60,
                   height: isSmallScreen ? 50 : 60,
                   borderRadius: isSmallScreen ? 18 : 22,
@@ -342,7 +342,7 @@ export default function AdminDashboard() {
               <SVGIcon
                 name={item.icon}
                 size={numColumns > 3 ? 36 : isSmallScreen ? 26 : 30}
-                color={item.color}
+                color="#FFFFFF"
               />
             </View>
             <View style={styles.cardInfo}>

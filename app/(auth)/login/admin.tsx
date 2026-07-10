@@ -57,14 +57,12 @@ export default function AdminLogin() {
       let userData = userDoc.data();
 
       // If document doesn't exist OR it exists but has no role/profile (skeleton record)
-      if (!userDoc.exists() || (!userData?.role && !userData?.profile?.role && !userData?.adminRole)) {
-          console.log("Primary UID lookup failed or incomplete, trying field fallbacks...");
-          // Fallback: Check for staff with legacy IDs mapped via authUid or uid
-          const q = query(
-            collection(db, "users"),
-            where("uid", "==", cred.user.uid),
-            limit(1)
-          );
+if (!userDoc.exists() || !userData?.role && !userData?.profile?.role) {
+    const q = query(
+      collection(db, "users"),
+      where("uid", "==", cred.user.uid), // Check field uid
+      limit(1)
+    );
           const querySnap = await getDocs(q);
 
           if (!querySnap.empty) {
@@ -105,8 +103,8 @@ export default function AdminLogin() {
       const isAdmin =
         role.includes("admin") ||
         role.includes("super") ||
-        role === "staff" || // Many admins are labeled as staff but have an adminRole
         adminRole !== "" ||
+        role === "staff" ||
         permissions['manage-users'] === 'full' ||
         permissions['manage-fees'] === 'full';
 

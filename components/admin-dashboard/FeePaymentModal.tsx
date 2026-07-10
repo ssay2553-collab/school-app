@@ -81,6 +81,7 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 40 }}
+            nestedScrollEnabled={true}
           >
             <View style={styles.modalInputs}>
               <TextInput

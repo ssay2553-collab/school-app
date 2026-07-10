@@ -46,7 +46,7 @@ export const FeeDailyTransactionsModal: React.FC<
     >
       <View style={styles.overlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.sheetBody, { height: "90%" }]}>
+        <View style={styles.sheetBody}>
           <View style={styles.sheetHandle} />
           <View style={styles.modalTopRow}>
             <Text style={styles.sheetTitle}>Daily Transactions</Text>

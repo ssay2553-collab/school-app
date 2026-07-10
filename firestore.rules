@@ -28,21 +28,25 @@ service cloud.firestore {
     =============================== */
 
     function isAdmin() {
-      return userData() != null && (
-        userData().role == "admin" ||
-        (userData().get(['profile', 'role'], '') == 'admin')
-      );
-    }
+       return isSignedIn() && (
+         userData() != null && (
+           userData().role == "admin" ||
+           userData().get(['profile', 'role'], '') == 'admin'
+         )
+       );
+     }
 
     function isSuperAdmin() {
       return isAdmin() && (
         ("adminRole" in userData() && [
           "proprietor", "proprietress", "manager", "headmaster",
-          "headmistress", "administrator", "director", "accountant", "bursar", "admin"
+          "headmistress", "administrator", "director", "accountant", "bursar", "admin",
+          "super admin", "superadmin"
         ].hasAny([userData().adminRole.lower()])) ||
         ("profile" in userData() && "adminRole" in userData().profile && [
           "proprietor", "proprietress", "manager", "headmaster",
-          "headmistress", "administrator", "director", "accountant", "bursar", "admin"
+          "headmistress", "administrator", "director", "accountant", "bursar", "admin",
+          "super admin", "superadmin"
         ].hasAny([userData().profile.adminRole.lower()]))
       );
     }

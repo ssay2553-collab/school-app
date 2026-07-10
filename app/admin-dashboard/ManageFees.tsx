@@ -147,20 +147,20 @@ export default function ManageFees() {
   const { stats } = useFeeStats(academicYear, term, selectedClassId);
 
   const headerHeight = scrollY.interpolate({
-    inputRange: [0, 110],
-    outputRange: [220, 120],
+    inputRange: [0, 80],
+    outputRange: [135, 75],
     extrapolate: "clamp",
   });
 
   const selectorGridOpacity = scrollY.interpolate({
-    inputRange: [0, 90],
+    inputRange: [0, 60],
     outputRange: [1, 0],
     extrapolate: "clamp",
   });
 
   const selectorGridHeight = scrollY.interpolate({
-    inputRange: [0, 90],
-    outputRange: [92, 0],
+    inputRange: [0, 60],
+    outputRange: [45, 0],
     extrapolate: "clamp",
   });
 

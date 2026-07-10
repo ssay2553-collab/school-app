@@ -1,6 +1,5 @@
 import React from 'react';
 import { Modal, TouchableOpacity, View, Text, ScrollView, StyleSheet, Pressable, Platform } from 'react-native';
-import * as Animatable from 'react-native-animatable';
 import SVGIcon from '../SVGIcon';
 import { styles, VIBE } from '../../constants/admin-dashboard/ManageFeesStyles';
 
@@ -24,17 +23,19 @@ export const ClassSelectorModal: React.FC<ClassSelectorModalProps> = ({
   showAllOption = true,
 }) => {
   return (
-    <Modal visible={visible} transparent animationType="none">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent={Platform.OS === 'android'}
+    >
       <View style={styles.overlay}>
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={onClose}
         />
-        <Animatable.View
-          animation="slideInUp"
-          duration={300}
-          style={[styles.sheetBody, { maxHeight: '80%', display: 'flex' }]}
-        >
+        <View style={[styles.sheetBody, { maxHeight: '80%' }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
@@ -96,7 +97,7 @@ export const ClassSelectorModal: React.FC<ClassSelectorModalProps> = ({
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </Animatable.View>
+        </View>
       </View>
     </Modal>
   );

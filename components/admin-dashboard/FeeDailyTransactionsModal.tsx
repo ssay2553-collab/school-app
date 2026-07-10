@@ -7,6 +7,8 @@ import {
   ActivityIndicator,
   FlatList,
   Platform,
+  Pressable,
+  StyleSheet
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import moment from "moment";
@@ -35,8 +37,15 @@ export const FeeDailyTransactionsModal: React.FC<
   const [showDatePicker, setShowDatePicker] = React.useState(false);
 
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent={Platform.OS === "android"}
+    >
       <View style={styles.overlay}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={[styles.sheetBody, { height: "90%" }]}>
           <View style={styles.sheetHandle} />
           <View style={styles.modalTopRow}>

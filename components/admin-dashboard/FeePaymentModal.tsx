@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Pressable,
+  StyleSheet
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import moment from "moment";
@@ -53,36 +55,21 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
 }) => {
   const [showPaymentDatePicker, setShowPaymentDatePicker] = React.useState(false);
 
-  const safeFormatDate = (dateVal: any, formatStr: string) => {
-    if (!dateVal) return "N/A";
-    const m = moment(dateVal);
-    return m.isValid() ? m.format(formatStr) : "Invalid Date";
-  };
-
-  const safeLocaleDate = (dateVal: any) => {
-    if (!dateVal) return "N/A";
-    const d = new Date(dateVal);
-    return isNaN(d.getTime()) ? "Invalid Date" : d.toLocaleDateString();
-  };
-
-  const safeLocaleTime = (dateVal: any) => {
-    if (!dateVal) return "";
-    const d = new Date(dateVal);
-    return isNaN(d.getTime())
-      ? ""
-      : d.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-  };
-
   return (
-    <Modal visible={visible} transparent animationType="slide">
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      statusBarTranslucent={Platform.OS === "android"}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.overlay}
       >
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.paymentModal}>
+          <View style={styles.sheetHandle} />
           <View style={styles.modalTopRow}>
             <Text style={styles.modalStudentName}>
               {selectedStudent?.fullName || "Student Profile"}

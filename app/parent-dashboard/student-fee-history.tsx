@@ -70,6 +70,7 @@ export default function StudentFeeHistory() {
   const [studentData, setStudentData] = useState<any>(null);
   const [record, setRecord] = useState<any>(null);
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
+  const [showFullHistory, setShowFullHistory] = useState(false);
 
   // Sync with global academic config
   useEffect(() => {
@@ -118,7 +119,9 @@ export default function StudentFeeHistory() {
   }, [selectedChildId]);
 
   useEffect(() => {
-    if (!selectedChildId || !selectedYear || !selectedTerm) return;
+    if (!selectedChildId) return;
+    if (!showFullHistory && (!selectedYear || !selectedTerm)) return;
+
     setFetchingRecord(true);
     const cleanYear = selectedYear.replace(/\//g, "-");
     const cleanTerm = selectedTerm.replace(/\s/g, "");
@@ -135,12 +138,20 @@ export default function StudentFeeHistory() {
       },
     );
 
-    const q = query(
-      collection(db, "feePayments"),
-      where("studentUid", "==", selectedChildId),
-      where("academicYear", "==", selectedYear),
-      where("term", "==", selectedTerm),
-    );
+    let q;
+    if (showFullHistory) {
+      q = query(
+        collection(db, "feePayments"),
+        where("studentUid", "==", selectedChildId)
+      );
+    } else {
+      q = query(
+        collection(db, "feePayments"),
+        where("studentUid", "==", selectedChildId),
+        where("academicYear", "==", selectedYear),
+        where("term", "==", selectedTerm),
+      );
+    }
 
     const unsubTransactions = onSnapshot(
       q,
@@ -148,8 +159,11 @@ export default function StudentFeeHistory() {
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setAllTransactions(
           list.sort(
-            (a: any, b: any) =>
-              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            (a: any, b: any) => {
+              const dateA = a.createdAt || a.timestamp?.toDate?.() || a.date || 0;
+              const dateB = b.createdAt || b.timestamp?.toDate?.() || b.date || 0;
+              return new Date(dateB).getTime() - new Date(dateA).getTime();
+            }
           ),
         );
         setFetchingRecord(false);
@@ -164,7 +178,7 @@ export default function StudentFeeHistory() {
       unsubRecord();
       unsubTransactions();
     };
-  }, [selectedChildId, selectedYear, selectedTerm]);
+  }, [selectedChildId, selectedYear, selectedTerm, showFullHistory]);
 
   const paymentLedgerEntries = useMemo(() => {
     return allTransactions
@@ -678,85 +692,126 @@ export default function StudentFeeHistory() {
         )}
 
         {/* Payment Ledger for Parents */}
-        {selectedChildId && paymentLedgerEntries.length > 0 && (
+        {selectedChildId && (paymentLedgerEntries.length > 0 || showFullHistory) && (
           <View style={styles.historyContainer}>
             <View style={styles.ledgerHeaderRow}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.historyTitle}>PAYMENT LEDGER</Text>
+                <Text style={styles.historyTitle}>
+                  {showFullHistory ? "ALL PAYMENTS" : "PAYMENT LEDGER"}
+                </Text>
                 <Text style={styles.ledgerCaption}>
-                  Installments and payment history for this term
+                  {showFullHistory
+                    ? "Full transaction history for this student"
+                    : "Installments and payment history for this term"}
                 </Text>
               </View>
-              <View style={styles.ledgerBadge}>
-                <Text style={styles.ledgerBadgeText}>
-                  {ledgerSummary.installmentCount} entries
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.ledgerSummaryCard}>
-              <View style={styles.ledgerSummaryItem}>
-                <Text style={styles.ledgerSummaryLabel}>TOTAL PAID</Text>
-                <Text style={styles.ledgerSummaryValue}>
-                  ₵{ledgerSummary.totalPaid.toFixed(2)}
-                </Text>
-              </View>
-              <View style={styles.ledgerSummaryItem}>
-                <Text style={styles.ledgerSummaryLabel}>LAST PAYMENT</Text>
-                <Text style={styles.ledgerSummaryValue}>
-                  {ledgerSummary.lastPaymentDate}
-                </Text>
-              </View>
-            </View>
-
-            {paymentLedgerEntries.map((payment: any, idx: number) => (
               <TouchableOpacity
-                key={payment.id || idx}
-                style={styles.paymentCard}
-                onPress={() => {
-                  router.push({
-                    pathname: "/shared/receipt-view",
-                    params: {
-                      type: "payment",
-                      studentId: selectedChildId,
-                      paymentId: payment.id,
-                      year: selectedYear,
-                      term: selectedTerm,
-                    },
-                  });
-                }}
+                onPress={() => setShowFullHistory(!showFullHistory)}
+                style={[
+                  styles.ledgerBadge,
+                  showFullHistory && { backgroundColor: primary },
+                ]}
               >
-                <View style={styles.paymentLead}>
-                  <View style={styles.iconCircle}>
-                    <SVGIcon name="receipt" size={20} color={primary} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.paymentLabel}>
-                      {payment._title}
-                      {payment._installmentLabel
-                        ? ` • ${payment._installmentLabel}`
-                        : ""}
-                    </Text>
-                    <Text style={styles.paymentDate}>
-                      {payment._displayDate}
-                      {payment._displayTime ? ` • ${payment._displayTime}` : ""}
-                      {" • "}
-                      {payment._method}
-                      {payment.receiptNo ? ` • ${payment.receiptNo}` : ""}
-                    </Text>
-                    <Text style={styles.paymentMeta}>
-                      Received from {payment._receivedFrom}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.paymentTail}>
-                  <Text style={styles.paymentValue}>
-                    ₵{Number(payment.amount || 0).toFixed(2)}
-                  </Text>
-                  <SVGIcon name="chevron-forward" size={16} color="#94A3B8" />
-                </View>
+                <Text
+                  style={[
+                    styles.ledgerBadgeText,
+                    showFullHistory && { color: "#fff" },
+                  ]}
+                >
+                  {showFullHistory ? "View Term Only" : "View All"}
+                </Text>
               </TouchableOpacity>
-            ))}
+            </View>
+
+            {paymentLedgerEntries.length > 0 ? (
+              <>
+                <View style={styles.ledgerSummaryCard}>
+                  <View style={styles.ledgerSummaryItem}>
+                    <Text style={styles.ledgerSummaryLabel}>
+                      {showFullHistory ? "LIFETIME PAID" : "TOTAL PAID"}
+                    </Text>
+                    <Text style={styles.ledgerSummaryValue}>
+                      ₵{ledgerSummary.totalPaid.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.ledgerSummaryItem}>
+                    <Text style={styles.ledgerSummaryLabel}>LAST PAYMENT</Text>
+                    <Text style={styles.ledgerSummaryValue}>
+                      {ledgerSummary.lastPaymentDate}
+                    </Text>
+                  </View>
+                </View>
+
+                {paymentLedgerEntries.map((payment: any, idx: number) => (
+                  <TouchableOpacity
+                    key={payment.id || idx}
+                    style={styles.paymentCard}
+                    onPress={() => {
+                      router.push({
+                        pathname: "/shared/receipt-view",
+                        params: {
+                          type: "payment",
+                          studentId: selectedChildId,
+                          paymentId: payment.id,
+                          year: payment.academicYear || selectedYear,
+                          term: payment.term || selectedTerm,
+                        },
+                      });
+                    }}
+                  >
+                    <View style={styles.paymentLead}>
+                      <View style={styles.iconCircle}>
+                        <SVGIcon name="receipt" size={20} color={primary} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.paymentLabel}>
+                          {payment._title}
+                          {payment._installmentLabel
+                            ? ` • ${payment._installmentLabel}`
+                            : ""}
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Text style={styles.paymentDate}>
+                            {payment._displayDate}
+                          </Text>
+                          {showFullHistory && (
+                            <View style={styles.miniBadge}>
+                              <Text style={styles.miniBadgeText}>
+                                {payment.academicYear} • {payment.term}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.paymentMeta}>
+                          {payment._method}
+                          {payment.receiptNo ? ` • ${payment.receiptNo}` : ""}
+                          {" • "}
+                          {payment._receivedFrom}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.paymentTail}>
+                      <Text style={styles.paymentValue}>
+                        ₵{Number(payment.amount || 0).toFixed(2)}
+                      </Text>
+                      <SVGIcon name="chevron-forward" size={16} color="#94A3B8" />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </>
+            ) : (
+              <View style={styles.emptyLedger}>
+                <Text style={styles.emptyLedgerText}>
+                  No payments recorded for this period.
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -1100,6 +1155,32 @@ const styles = StyleSheet.create({
   },
   catSub: { fontSize: 8, color: "#94A3B8", fontWeight: "600" },
   catVal: { fontSize: 9, fontWeight: "700", color: "#1E293B" },
+  miniBadge: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: "#E2E8F0",
+  },
+  miniBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  emptyLedger: {
+    padding: 20,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderStyle: "dashed",
+  },
+  emptyLedgerText: {
+    color: "#94A3B8",
+    fontSize: 13,
+  },
   emptyContainer: {
     alignItems: "center",
     marginTop: 60,

@@ -34,6 +34,7 @@ import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
+import UnreadBadge from "../../components/UnreadBadge";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -105,8 +106,16 @@ export default function StaffChat() {
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
 
-  const { registerDirectChat, markChatRead, unregisterDirectChat } =
+  const { registerDirectChat, markChatRead, unregisterDirectChat, directUnread } =
     useUnreadCounts();
+
+  useEffect(() => {
+    if (staff.length > 0 && appUser?.uid) {
+      staff.forEach((s) => {
+        registerDirectChat(generateChatId(appUser.uid, s.uid));
+      });
+    }
+  }, [staff, appUser?.uid]);
 
   useEffect(() => {
     return () => {
@@ -569,7 +578,10 @@ export default function StaffChat() {
                   </Text>
                 </View>
               </View>
-              <SVGIcon name="chatbubble-ellipses" size={20} color={primary} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <UnreadBadge count={directUnread[generateChatId(appUser!.uid, item.uid)] || 0} />
+                <SVGIcon name="chatbubble-ellipses" size={20} color={primary} />
+              </View>
             </TouchableOpacity>
           </Animatable.View>
         )}

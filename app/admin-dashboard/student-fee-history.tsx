@@ -1,3 +1,4 @@
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import moment from "moment";
 import { useMemo, useState } from "react";
@@ -53,6 +54,8 @@ export default function StudentFeeHistoryScreen() {
     totals,
     canManageFees,
     availableYears,
+    showFullHistory,
+    setShowFullHistory,
   } = useFeeLedger(
     (params.studentId as string) || "",
     (params.academicYear as string) || "",
@@ -62,6 +65,8 @@ export default function StudentFeeHistoryScreen() {
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [receivedFrom, setReceivedFrom] = useState("");
+  const [paymentDate, setPaymentDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<
     "Cash" | "Cheque" | "E-cash" | "Momo"
   >("Cash");
@@ -85,9 +90,9 @@ export default function StudentFeeHistoryScreen() {
     return filteredPayments
       .map((payment: any, index: number) => {
         const timestampValue =
+          payment.date ||
           payment.createdAt ||
           payment.timestamp?.toDate?.() ||
-          payment.date ||
           payment.paymentDate ||
           payment.timestamp;
         const parsedDate = moment(timestampValue);
@@ -128,10 +133,10 @@ export default function StudentFeeHistoryScreen() {
       })
       .sort((a: any, b: any) => {
         const aTime = new Date(
-          a.createdAt || a.timestamp?.toDate?.() || a.date || 0,
+          a.date || a.createdAt || a.timestamp?.toDate?.() || 0,
         ).getTime();
         const bTime = new Date(
-          b.createdAt || b.timestamp?.toDate?.() || b.date || 0,
+          b.date || b.createdAt || b.timestamp?.toDate?.() || 0,
         ).getTime();
         return bTime - aTime;
       });
@@ -159,10 +164,12 @@ export default function StudentFeeHistoryScreen() {
       paymentAmount,
       receivedFrom,
       paymentMethod,
+      paymentDate,
     );
     if (success) {
       setPaymentAmount("");
       setReceivedFrom("");
+      setPaymentDate(new Date());
       setPaymentModalVisible(false);
     }
   };
@@ -284,78 +291,123 @@ export default function StudentFeeHistoryScreen() {
           )}
 
           {/* Recent Transactions List */}
-          {selectedStudentUid && paymentLedgerEntries.length > 0 && (
+          {selectedStudentUid && (
             <View style={styles.transactionsContainer}>
               <View style={styles.ledgerHeaderRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.sectionTitle}>PAYMENT LEDGER</Text>
+                  <Text style={styles.sectionTitle}>
+                    {showFullHistory ? "ALL PAYMENTS" : "PAYMENT LEDGER"}
+                  </Text>
                   <Text style={styles.ledgerCaption}>
-                    Installments and payment history for this term
+                    {showFullHistory
+                      ? "Full transaction history for this student"
+                      : "Installments and payment history for this term"}
                   </Text>
                 </View>
-                <View style={styles.ledgerBadge}>
-                  <Text style={styles.ledgerBadgeText}>
-                    {ledgerSummary.installmentCount} entries
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.ledgerSummaryCard}>
-                <View style={styles.ledgerSummaryItem}>
-                  <Text style={styles.ledgerSummaryLabel}>TOTAL PAID</Text>
-                  <Text style={styles.ledgerSummaryValue}>
-                    ₵{ledgerSummary.totalPaid.toFixed(2)}
-                  </Text>
-                </View>
-                <View style={styles.ledgerSummaryItem}>
-                  <Text style={styles.ledgerSummaryLabel}>LAST PAYMENT</Text>
-                  <Text style={styles.ledgerSummaryValue}>
-                    {ledgerSummary.lastPaymentDate}
-                  </Text>
-                </View>
-              </View>
-
-              {paymentLedgerEntries.map((payment: any, idx: number) => (
                 <TouchableOpacity
-                  key={payment.id || idx}
-                  style={styles.paymentRow}
-                  onLongPress={() => onRevertPayment(payment)}
-                  onPress={() => {
-                    router.push({
-                      pathname: "/shared/receipt-view",
-                      params: {
-                        type: "payment",
-                        studentId: selectedStudentUid,
-                        paymentId: payment.receiptNo,
-                        year: selectedYear,
-                        term: selectedTerm,
-                      },
-                    });
-                  }}
+                  onPress={() => setShowFullHistory(!showFullHistory)}
+                  style={[
+                    styles.ledgerBadge,
+                    showFullHistory && { backgroundColor: primary },
+                  ]}
                 >
-                  <View style={styles.paymentInfo}>
-                    <Text style={styles.paymentMain}>
-                      {payment._title}
-                      {payment._installmentLabel
-                        ? ` • ${payment._installmentLabel}`
-                        : ""}
-                    </Text>
-                    <Text style={styles.paymentSub}>
-                      {payment.receiptNo} • {payment._displayDate}
-                      {payment._displayTime ? ` • ${payment._displayTime}` : ""}
-                    </Text>
-                    <Text style={styles.paymentMeta}>
-                      {payment._method} • {payment._receivedFrom}
-                    </Text>
-                  </View>
-                  <View style={styles.paymentAction}>
-                    <Text style={styles.paymentAmt}>
-                      ₵{Number(payment.amount || 0).toFixed(2)}
-                    </Text>
-                    <SVGIcon name="chevron-forward" size={16} color="#94A3B8" />
-                  </View>
+                  <Text
+                    style={[
+                      styles.ledgerBadgeText,
+                      showFullHistory && { color: "#fff" },
+                    ]}
+                  >
+                    {showFullHistory ? "View Term Only" : "View All"}
+                  </Text>
                 </TouchableOpacity>
-              ))}
+              </View>
+
+              {paymentLedgerEntries.length > 0 ? (
+                <>
+                  <View style={styles.ledgerSummaryCard}>
+                    <View style={styles.ledgerSummaryItem}>
+                      <Text style={styles.ledgerSummaryLabel}>
+                        {showFullHistory ? "LIFETIME PAID" : "TOTAL PAID"}
+                      </Text>
+                      <Text style={styles.ledgerSummaryValue}>
+                        ₵{ledgerSummary.totalPaid.toFixed(2)}
+                      </Text>
+                    </View>
+                    <View style={styles.ledgerSummaryItem}>
+                      <Text style={styles.ledgerSummaryLabel}>LAST PAYMENT</Text>
+                      <Text style={styles.ledgerSummaryValue}>
+                        {ledgerSummary.lastPaymentDate}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {paymentLedgerEntries.map((payment: any, idx: number) => (
+                    <TouchableOpacity
+                      key={payment.id || idx}
+                      style={styles.paymentRow}
+                      onLongPress={() => onRevertPayment(payment)}
+                      onPress={() => {
+                        router.push({
+                          pathname: "/shared/receipt-view",
+                          params: {
+                            type: "payment",
+                            studentId: selectedStudentUid,
+                            paymentId: payment.receiptNo,
+                            year: payment.academicYear || selectedYear,
+                            term: payment.term || selectedTerm,
+                          },
+                        });
+                      }}
+                    >
+                      <View style={styles.paymentInfo}>
+                        <Text style={styles.paymentMain}>
+                          {payment._title}
+                          {payment._installmentLabel
+                            ? ` • ${payment._installmentLabel}`
+                            : ""}
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Text style={styles.paymentSub}>
+                            {payment.receiptNo} • {payment._displayDate}
+                          </Text>
+                          {showFullHistory && (
+                            <View style={styles.miniBadge}>
+                              <Text style={styles.miniBadgeText}>
+                                {payment.academicYear} • {payment.term}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.paymentMeta}>
+                          {payment._method} • {payment._receivedFrom}
+                        </Text>
+                      </View>
+                      <View style={styles.paymentAction}>
+                        <Text style={styles.paymentAmt}>
+                          ₵{Number(payment.amount || 0).toFixed(2)}
+                        </Text>
+                        <SVGIcon
+                          name="chevron-forward"
+                          size={16}
+                          color="#94A3B8"
+                        />
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </>
+              ) : (
+                <View style={styles.emptyLedger}>
+                  <Text style={styles.emptyLedgerText}>
+                    No payments recorded for this period.
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -397,6 +449,85 @@ export default function StudentFeeHistoryScreen() {
                   onChangeText={setReceivedFrom}
                   placeholderTextColor="#64748B"
                 />
+                {Platform.OS === "web" ? (
+                  <View
+                    style={[styles.pillInput, { justifyContent: "center" }]}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#1E293B",
+                          fontSize: 14,
+                          marginRight: 10,
+                        }}
+                      >
+                        Date:
+                      </Text>
+                      <input
+                        type="date"
+                        value={moment(paymentDate).format("YYYY-MM-DD")}
+                        onChange={(e) =>
+                          setPaymentDate(new Date(e.target.value))
+                        }
+                        style={{
+                          flex: 1,
+                          border: "none",
+                          background: "none",
+                          fontSize: 16,
+                          fontWeight: "700",
+                          color: "#1E293B",
+                          outline: "none",
+                        }}
+                      />
+                      <SVGIcon name="calendar" size={18} color={primary} />
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      style={[styles.pillInput, { justifyContent: "center" }]}
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: paymentDate ? "#1E293B" : "#64748B",
+                            fontSize: 14,
+                          }}
+                        >
+                          Date: {moment(paymentDate).format("DD MMM, YYYY")}
+                        </Text>
+                        <SVGIcon name="calendar" size={18} color={primary} />
+                      </View>
+                    </TouchableOpacity>
+
+                    {showDatePicker && (
+                      <DateTimePicker
+                        value={paymentDate}
+                        mode="date"
+                        display="default"
+                        onChange={(event, selectedDate) => {
+                          setShowDatePicker(Platform.OS === "ios");
+                          if (selectedDate) {
+                            setPaymentDate(selectedDate);
+                          }
+                        }}
+                      />
+                    )}
+                  </>
+                )}
               </View>
               <View style={styles.methodGrid}>
                 {["Cash", "Cheque", "Momo", "E-cash"].map((m) => (
@@ -618,5 +749,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "900",
     letterSpacing: 1,
+  },
+  miniBadge: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: "#E2E8F0",
+  },
+  miniBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  emptyLedger: {
+    padding: 20,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderStyle: "dashed",
+  },
+  emptyLedgerText: {
+    color: "#94A3B8",
+    fontSize: 13,
   },
 });

@@ -2,14 +2,16 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   BackHandler,
   FlatList,
   Modal,
   Platform,
   RefreshControl,
+  ScrollView,
   StatusBar,
   Text,
   TextInput,
@@ -39,6 +41,7 @@ export default function ManageFees() {
   const { showToast } = useToast();
   const router = useRouter();
   const acadConfig = useAcademicConfig();
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   // ACCESS CONTROL LOGIC
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
@@ -142,6 +145,24 @@ export default function ManageFees() {
   });
 
   const { stats } = useFeeStats(academicYear, term, selectedClassId);
+
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, 110],
+    outputRange: [220, 120],
+    extrapolate: "clamp",
+  });
+
+  const selectorGridOpacity = scrollY.interpolate({
+    inputRange: [0, 90],
+    outputRange: [1, 0],
+    extrapolate: "clamp",
+  });
+
+  const selectorGridHeight = scrollY.interpolate({
+    inputRange: [0, 90],
+    outputRange: [92, 0],
+    extrapolate: "clamp",
+  });
 
   useEffect(() => {
     if (appUser && !canView) {
@@ -270,7 +291,7 @@ export default function ManageFees() {
                       <td>₵${(s.termBill || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       <td>₵${(s.amountPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                       <td>₵${(s.discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      <td style="font-weight: bold; color: ${s.currentBalance > 0 ? '#EF4444' : '#10B981'};">
+                      <td style="font-weight: bold; color: ${s.currentBalance > 0 ? "#EF4444" : "#10B981"};">
                         ₵${(s.currentBalance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
@@ -377,12 +398,12 @@ export default function ManageFees() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
+      <Animated.View style={styles.header}>
         <LinearGradient
           colors={[primaryBrand, secondaryBrand]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.headerTop}
+          style={[styles.headerTop, { minHeight: headerHeight }]}
         >
           <View style={styles.navBar}>
             <TouchableOpacity
@@ -397,7 +418,16 @@ export default function ManageFees() {
             </View>
             <View style={{ width: 44 }} />
           </View>
-          <View style={styles.selectorGrid}>
+          <Animated.View
+            style={[
+              styles.selectorGrid,
+              {
+                opacity: selectorGridOpacity,
+                height: selectorGridHeight,
+                overflow: "hidden",
+              },
+            ]}
+          >
             <TouchableOpacity
               style={styles.glassPill}
               onPress={() => setSelectorModal({ visible: true, type: "class" })}
@@ -418,7 +448,7 @@ export default function ManageFees() {
               <Text style={styles.glassLabel}>TERM</Text>
               <Text style={styles.glassValue}>{term || "Not Set"}</Text>
             </View>
-          </View>
+          </Animated.View>
         </LinearGradient>
 
         <View style={styles.searchStrip}>
@@ -431,7 +461,7 @@ export default function ManageFees() {
           >
             <SVGIcon name="search" size={18} color={VIBE.muted} />
             <TextInput
-              placeholder="Search name or receipt..."
+              placeholder="Search..."
               style={styles.searchInput}
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -440,88 +470,98 @@ export default function ManageFees() {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => setShowArchived(!showArchived)}
-            style={[
-              styles.archiveToggle,
-              showArchived && { backgroundColor: COLORS.secondary },
-            ]}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.searchActionsScroll}
+            contentContainerStyle={styles.searchActionsContainer}
           >
-            <SVGIcon
-              name="archive"
-              size={18}
-              color={showArchived ? "#fff" : VIBE.muted}
-            />
-            <Text
-              style={[
-                styles.archiveToggleText,
-                { color: showArchived ? "#fff" : VIBE.muted },
-              ]}
-            >
-              {showArchived ? "ACTIVE" : "ARCHIVE"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() =>
-              router.push({
-                pathname: "/admin-dashboard/FeeReports",
-                params: {
-                  classId: selectedClassId,
-                  academicYear,
-                  term,
-                },
-              })
-            }
-            style={styles.refreshRound}
-          >
-            <SVGIcon name="print" size={18} color={VIBE.primary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound}>
-            <SVGIcon name="refresh" size={18} color={VIBE.primary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setDailyModalVisible(true)}
-            style={styles.refreshRound}
-          >
-            <SVGIcon name="calendar" size={18} color={VIBE.secondary} />
-          </TouchableOpacity>
-
-          {isSuperAdmin && (
             <TouchableOpacity
-              onPress={handleNormalizeDiscounts}
+              onPress={() => setShowArchived(!showArchived)}
               style={[
-                styles.refreshRound,
-                { backgroundColor: VIBE.info + "10" },
+                styles.archiveToggle,
+                showArchived && { backgroundColor: COLORS.secondary },
               ]}
             >
-              <SVGIcon name="sync" size={18} color={VIBE.info} />
-              {inconsistentCount > 0 && (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: -2,
-                    right: -2,
-                    backgroundColor: VIBE.danger,
-                    borderRadius: 8,
-                    minWidth: 16,
-                    height: 16,
-                    justifyContent: "center",
-                    alignItems: "center",
-                    paddingHorizontal: 4,
-                  }}
-                >
-                  <Text
-                    style={{ color: "#fff", fontSize: 8, fontWeight: "900" }}
-                  >
-                    {inconsistentCount}
-                  </Text>
-                </View>
-              )}
+              <SVGIcon
+                name="archive"
+                size={18}
+                color={showArchived ? "#fff" : VIBE.muted}
+              />
+              <Text
+                style={[
+                  styles.archiveToggleText,
+                  { color: showArchived ? "#fff" : VIBE.muted },
+                ]}
+              >
+                {showArchived ? "ACTIVE" : "ARCHIVE"}
+              </Text>
             </TouchableOpacity>
-          )}
+
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: "/admin-dashboard/FeeReports",
+                  params: {
+                    classId: selectedClassId,
+                    academicYear,
+                    term,
+                  },
+                })
+              }
+              style={styles.refreshRound}
+            >
+              <SVGIcon name="print" size={18} color={VIBE.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleRefresh}
+              style={styles.refreshRound}
+            >
+              <SVGIcon name="refresh" size={18} color={VIBE.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setDailyModalVisible(true)}
+              style={styles.refreshRound}
+            >
+              <SVGIcon name="calendar" size={18} color={VIBE.secondary} />
+            </TouchableOpacity>
+
+            {isSuperAdmin && (
+              <TouchableOpacity
+                onPress={handleNormalizeDiscounts}
+                style={[
+                  styles.refreshRound,
+                  { backgroundColor: VIBE.info + "10" },
+                ]}
+              >
+                <SVGIcon name="sync" size={18} color={VIBE.info} />
+                {inconsistentCount > 0 && (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: -2,
+                      right: -2,
+                      backgroundColor: VIBE.danger,
+                      borderRadius: 8,
+                      minWidth: 16,
+                      height: 16,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      paddingHorizontal: 4,
+                    }}
+                  >
+                    <Text
+                      style={{ color: "#fff", fontSize: 8, fontWeight: "900" }}
+                    >
+                      {inconsistentCount}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          </ScrollView>
         </View>
 
         {!isConfigMissing && (
@@ -593,7 +633,7 @@ export default function ManageFees() {
             </View>
           </View>
         )}
-      </View>
+      </Animated.View>
 
       <View style={styles.mainBody}>
         {isConfigMissing && (
@@ -702,6 +742,11 @@ export default function ManageFees() {
 
         <View style={styles.listContainer}>
           <FlatList
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: false },
+            )}
+            scrollEventThrottle={16}
             ListHeaderComponent={() => (
               <FeeStatsDashboard
                 stats={stats}

@@ -51,6 +51,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
     const [fetchingRecord, setFetchingRecord] = useState(false);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [showFullHistory, setShowFullHistory] = useState(false);
 
     // Sync with global academic config if not provided
     useEffect(() => {
@@ -117,32 +118,48 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
 
     // Listen to record and transactions
     useEffect(() => {
-        if (!selectedStudentUid || !selectedYear || !selectedTerm) {
+        if (!selectedStudentUid) {
             setRecord(null);
             setAllTransactions([]);
             return;
         }
+
         setFetchingRecord(true);
-        const cleanYear = selectedYear.replace(/\//g, "-");
-        const cleanTerm = selectedTerm.replace(/\s/g, "");
+        const cleanYear = (selectedYear || "").replace(/\//g, "-");
+        const cleanTerm = (selectedTerm || "").replace(/\s/g, "");
         const recordId = `${selectedStudentUid}_${cleanYear}_${cleanTerm}`;
 
         const unsubRecord = onSnapshot(doc(db, "studentFeeRecords", recordId), (snap) => {
             setRecord(snap.exists() ? snap.data() : null);
         });
 
-        const q = query(
-            collection(db, "feePayments"),
-            where("studentUid", "==", selectedStudentUid),
-            where("academicYear", "==", selectedYear),
-            where("term", "==", selectedTerm)
-        );
+        let q;
+        if (showFullHistory) {
+            q = query(
+                collection(db, "feePayments"),
+                where("studentUid", "==", selectedStudentUid)
+            );
+        } else {
+            if (!selectedYear || !selectedTerm) {
+                setAllTransactions([]);
+                setFetchingRecord(false);
+                return;
+            }
+            q = query(
+                collection(db, "feePayments"),
+                where("studentUid", "==", selectedStudentUid),
+                where("academicYear", "==", selectedYear),
+                where("term", "==", selectedTerm)
+            );
+        }
 
         const unsubTransactions = onSnapshot(q, (snap) => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setAllTransactions(list.sort((a: any, b: any) =>
-                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-            ));
+            setAllTransactions(list.sort((a: any, b: any) => {
+                const dateA = a.date || a.createdAt || 0;
+                const dateB = b.date || b.createdAt || 0;
+                return new Date(dateB).getTime() - new Date(dateA).getTime();
+            }));
             setFetchingRecord(false);
         });
 
@@ -150,9 +167,9 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             unsubRecord();
             unsubTransactions();
         };
-    }, [selectedStudentUid, selectedYear, selectedTerm]);
+    }, [selectedStudentUid, selectedYear, selectedTerm, showFullHistory]);
 
-    const handleLogPayment = async (amountStr: string, receivedFrom: string, paymentMethod: string) => {
+    const handleLogPayment = async (amountStr: string, receivedFrom: string, paymentMethod: string, paymentDate?: Date) => {
         if (!canManageFees) {
             showToast({ message: "You do not have permission to record payments.", type: "error" });
             return;
@@ -169,6 +186,9 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             const cleanTerm = selectedTerm.replace(/\s/g, "");
             const recordId = `${selectedStudentUid}_${cleanYear}_${cleanTerm}`;
             const batch = writeBatch(db);
+
+            const effectivePaymentDate = paymentDate || new Date();
+            const dateStr = moment(effectivePaymentDate).format("YYYY-MM-DD");
 
             let studentName = record?.studentName;
             let classId = record?.classId || selectedClassId;
@@ -225,7 +245,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                     adminUid: appUser?.uid || "unknown",
                     createdAt: new Date().toISOString(),
                     receiptNo: serial,
-                    date: moment().format("YYYY-MM-DD"),
+                    date: dateStr,
                     studentUid: selectedStudentUid,
                     studentName: studentName,
                     classId: classId,
@@ -293,7 +313,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                             adminUid: appUser?.uid || "unknown",
                             createdAt: new Date().toISOString(),
                             receiptNo: subSerial,
-                            date: moment().format("YYYY-MM-DD"),
+                            date: dateStr,
                             studentUid: selectedStudentUid,
                             studentName: studentName,
                             classId: classId,
@@ -349,7 +369,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                             adminUid: appUser?.uid || "unknown",
                             createdAt: new Date().toISOString(),
                             receiptNo: subSerial,
-                            date: moment().format("YYYY-MM-DD"),
+                            date: dateStr,
                             studentUid: selectedStudentUid,
                             studentName: studentName,
                             classId: classId,
@@ -380,7 +400,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                         adminUid: appUser?.uid || "unknown",
                         createdAt: new Date().toISOString(),
                         receiptNo: creditSerial,
-                        date: moment().format("YYYY-MM-DD"),
+                        date: dateStr,
                         studentUid: selectedStudentUid,
                         studentName: studentName,
                         classId: classId,
@@ -559,7 +579,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
         selectedClassId, setSelectedClassId, selectedStudentUid, setSelectedStudentUid,
         record, allTransactions, loading: loading || acadConfig.loading, fetchingStudents,
         fetchingRecord, saving, deleting, handleLogPayment, handleRevertPayment,
-        categorySummary, totals, canManageFees, availableYears: useMemo(() => {
+        categorySummary, totals, canManageFees, showFullHistory, setShowFullHistory, availableYears: useMemo(() => {
             const start = 2024;
             const currentYear = new Date().getFullYear();
             const years = [];

@@ -171,7 +171,7 @@ export default function AdminLogin() {
           </TouchableOpacity>
         </View>
 
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
@@ -236,7 +236,7 @@ export default function AdminLogin() {
                 </View>
 
                 <TouchableOpacity 
-                  style={[styles.loginBtn, { backgroundColor: brandPrimary }]} 
+                  style={[styles.loginBtn, { backgroundColor: brandPrimary }]}
                   onPress={handleLogin}
                   disabled={loading}
                   activeOpacity={0.8}

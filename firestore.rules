@@ -841,7 +841,6 @@ match /gallery_metadata/{id} {
       allow write: if isSuperAdmin();
        }
 
-   firestore
        /* ===============================
           DAILY FINANCIALS
        =============================== */

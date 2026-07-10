@@ -2,28 +2,28 @@ import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  collection,
-  doc,
-  documentId,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  query,
-  where,
+    collection,
+    doc,
+    documentId,
+    getDoc,
+    getDocs,
+    onSnapshot,
+    query,
+    where,
 } from "firebase/firestore";
 import moment from "moment";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Dimensions,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
@@ -132,7 +132,7 @@ export default function StudentFeeHistory() {
       (err) => {
         console.warn("Fee record listener failed:", err);
         setRecord(null);
-      }
+      },
     );
 
     const q = query(
@@ -142,25 +142,102 @@ export default function StudentFeeHistory() {
       where("term", "==", selectedTerm),
     );
 
-    const unsubTransactions = onSnapshot(q, (snap) => {
-      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setAllTransactions(
-        list.sort(
-          (a: any, b: any) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        ),
-      );
-      setFetchingRecord(false);
-    }, (err) => {
-      console.warn("Transactions listener failed:", err);
-      setFetchingRecord(false);
-    });
+    const unsubTransactions = onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setAllTransactions(
+          list.sort(
+            (a: any, b: any) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          ),
+        );
+        setFetchingRecord(false);
+      },
+      (err) => {
+        console.warn("Transactions listener failed:", err);
+        setFetchingRecord(false);
+      },
+    );
 
     return () => {
       unsubRecord();
       unsubTransactions();
     };
   }, [selectedChildId, selectedYear, selectedTerm]);
+
+  const paymentLedgerEntries = useMemo(() => {
+    return allTransactions
+      .map((payment: any, index: number) => {
+        const timestampValue =
+          payment.createdAt ||
+          payment.timestamp?.toDate?.() ||
+          payment.date ||
+          payment.paymentDate ||
+          payment.timestamp;
+        const parsedDate = moment(timestampValue);
+        const installmentSource =
+          payment.installmentLabel ||
+          payment.installmentName ||
+          payment.installment ||
+          payment.installmentNo ||
+          payment.installmentNumber;
+        const installmentLabel =
+          installmentSource !== undefined && installmentSource !== ""
+            ? String(installmentSource)
+            : payment.isInstallment || payment.paymentPlan
+              ? `Installment ${index + 1}`
+              : null;
+
+        return {
+          ...payment,
+          _title:
+            payment.otherCategory?.toUpperCase() ||
+            payment.type
+              ?.replace("_payment", "")
+              .replace("_", " ")
+              .toUpperCase() ||
+            "FEE PAYMENT",
+          _installmentLabel: installmentLabel,
+          _displayDate: parsedDate.isValid()
+            ? parsedDate.format("MMM DD, YYYY")
+            : "Pending",
+          _displayTime: parsedDate.isValid() ? parsedDate.format("h:mm A") : "",
+          _method: payment.method || payment.paymentMethod || "Cash",
+          _receivedFrom:
+            payment.receivedFrom ||
+            payment.paidBy ||
+            payment.customerName ||
+            "School account",
+        };
+      })
+      .sort((a: any, b: any) => {
+        const aTime = new Date(
+          a.createdAt || a.timestamp?.toDate?.() || a.date || 0,
+        ).getTime();
+        const bTime = new Date(
+          b.createdAt || b.timestamp?.toDate?.() || b.date || 0,
+        ).getTime();
+        return bTime - aTime;
+      });
+  }, [allTransactions]);
+
+  const ledgerSummary = useMemo(() => {
+    const totalPaid = paymentLedgerEntries.reduce(
+      (sum, payment: any) => sum + (Number(payment.amount) || 0),
+      0,
+    );
+    const installmentCount =
+      paymentLedgerEntries.filter((payment: any) => payment._installmentLabel)
+        .length || paymentLedgerEntries.length;
+    const lastPayment = paymentLedgerEntries[0];
+
+    return {
+      totalPaid,
+      installmentCount,
+      lastPaymentDate: lastPayment?._displayDate || "No payments yet",
+    };
+  }, [paymentLedgerEntries]);
 
   const rawSummary = useMemo(() => {
     // 1. Initialize with tuition (term bill + arrears - discount)
@@ -258,7 +335,10 @@ export default function StudentFeeHistory() {
           summary["other"].billed,
           unnamedOtherBill,
         );
-        summary["other"].paid = Math.max(summary["other"].paid, record.otherPaid || 0);
+        summary["other"].paid = Math.max(
+          summary["other"].paid,
+          record.otherPaid || 0,
+        );
       }
 
       summary.tuition.paid = Math.max(
@@ -597,11 +677,39 @@ export default function StudentFeeHistory() {
           )
         )}
 
-        {/* Payment History List for Parents */}
-        {selectedChildId && allTransactions.length > 0 && (
+        {/* Payment Ledger for Parents */}
+        {selectedChildId && paymentLedgerEntries.length > 0 && (
           <View style={styles.historyContainer}>
-            <Text style={styles.historyTitle}>PAYMENT HISTORY</Text>
-            {allTransactions.map((payment: any, idx: number) => (
+            <View style={styles.ledgerHeaderRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.historyTitle}>PAYMENT LEDGER</Text>
+                <Text style={styles.ledgerCaption}>
+                  Installments and payment history for this term
+                </Text>
+              </View>
+              <View style={styles.ledgerBadge}>
+                <Text style={styles.ledgerBadgeText}>
+                  {ledgerSummary.installmentCount} entries
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.ledgerSummaryCard}>
+              <View style={styles.ledgerSummaryItem}>
+                <Text style={styles.ledgerSummaryLabel}>TOTAL PAID</Text>
+                <Text style={styles.ledgerSummaryValue}>
+                  ₵{ledgerSummary.totalPaid.toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.ledgerSummaryItem}>
+                <Text style={styles.ledgerSummaryLabel}>LAST PAYMENT</Text>
+                <Text style={styles.ledgerSummaryValue}>
+                  {ledgerSummary.lastPaymentDate}
+                </Text>
+              </View>
+            </View>
+
+            {paymentLedgerEntries.map((payment: any, idx: number) => (
               <TouchableOpacity
                 key={payment.id || idx}
                 style={styles.paymentCard}
@@ -622,23 +730,28 @@ export default function StudentFeeHistory() {
                   <View style={styles.iconCircle}>
                     <SVGIcon name="receipt" size={20} color={primary} />
                   </View>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.paymentLabel}>
-                      {payment.otherCategory?.toUpperCase() ||
-                       payment.type?.replace('_payment', '').replace('_', ' ').toUpperCase() ||
-                       "FEE PAYMENT"}
+                      {payment._title}
+                      {payment._installmentLabel
+                        ? ` • ${payment._installmentLabel}`
+                        : ""}
                     </Text>
                     <Text style={styles.paymentDate}>
-                      {moment(payment.createdAt || payment.timestamp?.toDate()).format(
-                        "MMM DD, YYYY",
-                      )}{" "}
-                      • {payment.receiptNo}
+                      {payment._displayDate}
+                      {payment._displayTime ? ` • ${payment._displayTime}` : ""}
+                      {" • "}
+                      {payment._method}
+                      {payment.receiptNo ? ` • ${payment.receiptNo}` : ""}
+                    </Text>
+                    <Text style={styles.paymentMeta}>
+                      Received from {payment._receivedFrom}
                     </Text>
                   </View>
                 </View>
                 <View style={styles.paymentTail}>
                   <Text style={styles.paymentValue}>
-                    ₵{payment.amount.toFixed(2)}
+                    ₵{Number(payment.amount || 0).toFixed(2)}
                   </Text>
                   <SVGIcon name="chevron-forward" size={16} color="#94A3B8" />
                 </View>
@@ -845,12 +958,59 @@ const styles = StyleSheet.create({
     padding: 20,
     marginTop: 10,
   },
+  ledgerHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 10,
+  },
   historyTitle: {
     fontSize: 12,
     fontWeight: "900",
     color: "#64748B",
-    marginBottom: 15,
     letterSpacing: 1,
+  },
+  ledgerCaption: {
+    fontSize: 11,
+    color: "#94A3B8",
+    marginTop: 4,
+  },
+  ledgerBadge: {
+    backgroundColor: "#E0F2FE",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  ledgerBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+  ledgerSummaryCard: {
+    flexDirection: "row",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 12,
+    marginBottom: 12,
+    gap: 12,
+  },
+  ledgerSummaryItem: {
+    flex: 1,
+  },
+  ledgerSummaryLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#64748B",
+    letterSpacing: 0.8,
+  },
+  ledgerSummaryValue: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginTop: 4,
   },
   paymentCard: {
     flexDirection: "row",
@@ -883,6 +1043,11 @@ const styles = StyleSheet.create({
   paymentDate: {
     fontSize: 11,
     color: "#64748B",
+    marginTop: 2,
+  },
+  paymentMeta: {
+    fontSize: 10,
+    color: "#94A3B8",
     marginTop: 2,
   },
   paymentTail: {

@@ -51,8 +51,8 @@ export const useManageFees = ({
   const [individualDiscountOverrides, setIndividualDiscountOverrides] = useState<Record<string, string>>({});
 
   const [classes, setClasses] = useState<{ id: string; name: string; department?: string | null }[]>([]);
-  const [academicYear, setAcademicYear] = useState("");
-  const [term, setTerm] = useState<string>("");
+  const academicYear = acadConfig.academicYear || "";
+  const term = acadConfig.currentTerm || "";
 
   const {
     students,
@@ -91,13 +91,6 @@ export const useManageFees = ({
   }, [activeMode]);
 
   useEffect(() => {
-    if (!acadConfig.loading) {
-      setAcademicYear(acadConfig.academicYear || "");
-      setTerm(acadConfig.currentTerm || "");
-    }
-  }, [acadConfig]);
-
-  useEffect(() => {
     const q = collection(db, "classes");
     const unsub = onSnapshot(
       q,
@@ -133,9 +126,12 @@ export const useManageFees = ({
 
   const filteredStudents = useMemo(() => {
     const searchLower = searchQuery.toLowerCase().trim();
-    if (!searchLower && statusFilter === "all" && activeMode === "discounts") return students;
 
     return students.filter((s) => {
+      // 1. Scholarship exemption: Scholarship students are exempted from billing/payments list
+      if (s.onScholarship) return false;
+
+      // 2. Search filter
       const matchesSearch = !searchLower ||
         (s.fullName || "").toLowerCase().includes(searchLower) ||
         (s.studentID || "").toLowerCase().includes(searchLower) ||
@@ -145,14 +141,24 @@ export const useManageFees = ({
             p.createdAt?.toLowerCase().includes(searchLower),
         );
 
+      if (!matchesSearch) return false;
+
+      // 3. Discount Mode filtering:
+      // If we are in discounts mode and NOT searching, show only those on the discount profile.
+      // If searching, show all matches (excluding scholarships).
+      if (activeMode === "discounts") {
+        return searchLower ? true : !!s.onDiscount;
+      }
+
+      // 4. Status filter (only for non-discount modes)
       const matchesStatus =
-        activeMode === "discounts" || statusFilter === "all"
+        statusFilter === "all"
           ? true
           : statusFilter === "cleared"
             ? (s.currentBalance || 0) <= 0
             : (s.currentBalance || 0) > 0;
 
-      return matchesSearch && matchesStatus;
+      return matchesStatus;
     });
   }, [students, searchQuery, statusFilter, activeMode]);
 
@@ -252,12 +258,28 @@ export const useManageFees = ({
       const newPaid = (selectedStudent.amountPaid || 0) + amount;
       const newBalance = (selectedStudent.currentBalance || 0) - amount;
 
-      batch.set(recordRef, {
+      // Ensure critical fields are present even if document is created via payment
+      const feeRecordUpdate: any = {
+        studentUid: selectedStudent.uid,
+        studentName: selectedStudent.fullName,
+        classId: selectedStudent.classId,
+        className: selectedStudent.className,
+        academicYear,
+        term,
         amountPaid: newPaid,
         balance: newBalance,
         payments: arrayUnion(paymentObj),
         lastUpdated: serverTimestamp(),
-      }, { merge: true });
+      };
+
+      // If it's a new record (no bill yet), set arrears to current wallet balance (before payment)
+      if (!selectedStudent.hasRecordInTerm) {
+        feeRecordUpdate.arrears = selectedStudent.previousBalance || 0;
+        feeRecordUpdate.termBill = 0;
+        feeRecordUpdate.createdAt = serverTimestamp();
+      }
+
+      batch.set(recordRef, feeRecordUpdate, { merge: true });
 
       batch.update(doc(db, "users", selectedStudent.uid), {
         walletBalance: increment(-amount),

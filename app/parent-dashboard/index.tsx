@@ -131,7 +131,7 @@ export default function ParentDashboard() {
           path: "/parent-dashboard/student-academic-report",
         },
         ...(hasPreschoolChild ? [{
-          title: "Preschool Remarks",
+          title: "Behavioral Remarks",
           subtitle: "Behavioral records",
           icon: "happy-outline",
           color: "#ec4899",

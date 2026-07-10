@@ -1,32 +1,30 @@
 import { Picker } from "@react-native-picker/picker";
-import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useMemo } from "react";
+import { useRouter } from "expo-router";
 import {
-  ActivityIndicator,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  RefreshControl,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    KeyboardAvoidingView,
+    Platform,
+    RefreshControl,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AssignmentModal } from "../../components/admin-dashboard/manage-users/AssignmentModal";
+import { BulkActionBar } from "../../components/admin-dashboard/manage-users/BulkActionBar";
+import { RoleSelector } from "../../components/admin-dashboard/manage-users/RoleSelector";
+import { UserCard } from "../../components/admin-dashboard/manage-users/UserCard";
+import { UserDetailModal } from "../../components/admin-dashboard/manage-users/UserDetailModal";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
 import { useManageUsers } from "../../hooks/admin-dashboard/useManageUsers";
-import { RoleSelector } from "../../components/admin-dashboard/manage-users/RoleSelector";
-import { UserCard } from "../../components/admin-dashboard/manage-users/UserCard";
-import { BulkActionBar } from "../../components/admin-dashboard/manage-users/BulkActionBar";
-import { UserDetailModal } from "../../components/admin-dashboard/manage-users/UserDetailModal";
-import { AssignmentModal } from "../../components/admin-dashboard/manage-users/AssignmentModal";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 export default function ManageUsers() {
   const router = useRouter();
@@ -35,45 +33,83 @@ export default function ManageUsers() {
   const { showToast } = useToast();
 
   const {
-    selectedRole, setSelectedRole,
-    selectedClassId, setSelectedClassId,
-    searchQuery, setSearchQuery,
-    showArchived, setShowArchived,
-    selectedUserUids, setSelectedUserUids,
-    users, loading, refreshing,
+    selectedRole,
+    setSelectedRole,
+    selectedClassId,
+    setSelectedClassId,
+    searchQuery,
+    setSearchQuery,
+    showArchived,
+    setShowArchived,
+    selectedUserUids,
+    setSelectedUserUids,
+    users,
+    loading,
+    refreshing,
     allClasses,
-    viewingUser, setViewingUser,
-    linkedUsers, loadingLinks,
-    assignmentModal, setAssignmentModal,
-    updating, deletingUid,
-    editForm, setEditForm,
-    upgradeForm, setUpgradeForm,
-    customRoleText, setCustomRoleText,
-    deptText, setDeptText,
-    newsPermission, setNewsPermission,
-    selectedSubjects, setSelectedSubjects,
-    selectedClasses, setSelectedClasses,
+    viewingUser,
+    setViewingUser,
+    linkedUsers,
+    loadingLinks,
+    assignmentModal,
+    setAssignmentModal,
+    updating,
+    deletingUid,
+    editForm,
+    setEditForm,
+    upgradeForm,
+    setUpgradeForm,
+    customRoleText,
+    setCustomRoleText,
+    deptText,
+    setDeptText,
+    newsPermission,
+    setNewsPermission,
+    selectedSubjects,
+    setSelectedSubjects,
+    selectedClasses,
+    setSelectedClasses,
     busLocations,
-    isAddingNewBusLoc, setIsAddingNewBusLoc,
-    newBusLocInput, setNewBusLocInput,
-    tempPermissions, setTempPermissions,
-    targetClassId, setTargetClassId,
-    filteredUsers, isHighestClassView,
-    toggleUserSelection, handleSelectAll,
-    handleBulkImport, handleBulkUpdate,
-    fetchLinkedUsers, handleUnlinkParent,
-    handleUpdatePermissions, handleAssignRole,
-    handleUpdateClasses, handleUpdateSubjects,
-    handleAssignDeptHead, handleRemoveAssignedRole,
-    handleAssignClassTeacher, handleToggleArchiveStatus,
-    handleGraduateClass, handleDeleteUser,
-    handleUpdateProfile, handleUpgradeStaff,
-    handleRegenerateSignupCode, handleShareCode,
-    handleUpdateEmail, handleSaveNewBusLocation,
-    openPermissionModal, openEditProfile,
-    handleCopyAllCodes, clearServiceArrears,
-    isSuperAdmin, hasManageUsersAccess,
-    handlePromoteRepeat, openPromoteRepeat,
+    isAddingNewBusLoc,
+    setIsAddingNewBusLoc,
+    newBusLocInput,
+    setNewBusLocInput,
+    tempPermissions,
+    setTempPermissions,
+    targetClassId,
+    setTargetClassId,
+    filteredUsers,
+    isHighestClassView,
+    toggleUserSelection,
+    handleSelectAll,
+    handleBulkImport,
+    handleBulkUpdate,
+    fetchLinkedUsers,
+    handleUnlinkParent,
+    handleUpdatePermissions,
+    handleAssignRole,
+    handleUpdateClasses,
+    handleUpdateSubjects,
+    handleAssignDeptHead,
+    handleRemoveAssignedRole,
+    handleAssignClassTeacher,
+    handleToggleArchiveStatus,
+    handleGraduateClass,
+    handleDeleteUser,
+    handleUpdateProfile,
+    handleUpgradeStaff,
+    handleRegenerateSignupCode,
+    handleShareCode,
+    handleUpdateEmail,
+    handleSaveNewBusLocation,
+    openPermissionModal,
+    openEditProfile,
+    handleCopyAllCodes,
+    clearServiceArrears,
+    isSuperAdmin,
+    hasManageUsersAccess,
+    handlePromoteRepeat,
+    openPromoteRepeat,
   } = useManageUsers({ appUser, acadConfig, showToast, router });
 
   if (!hasManageUsersAccess && appUser) {
@@ -83,7 +119,8 @@ export default function ManageUsers() {
           <SVGIcon name="lock-closed" size={80} color={COLORS.secondary} />
           <Text style={styles.errorTitle}>Access Denied</Text>
           <Text style={styles.errorSub}>
-            You do not have the required permissions to access the User Management module.
+            You do not have the required permissions to access the User
+            Management module.
           </Text>
           <TouchableOpacity
             style={styles.errorButton}
@@ -165,6 +202,15 @@ export default function ManageUsers() {
               onChangeText={setSearchQuery}
             />
           </View>
+          {selectedRole === "student" && (
+            <TouchableOpacity
+              style={styles.bulkImportButton}
+              onPress={handleBulkImport}
+            >
+              <SVGIcon name="cloud-upload" size={18} color="#fff" />
+              <Text style={styles.bulkImportButtonText}>Bulk CSV Upload</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {selectedRole === "student" && (
@@ -189,14 +235,23 @@ export default function ManageUsers() {
                 <Text style={styles.graduateBtnText}>Graduate Class</Text>
               </TouchableOpacity>
             )}
-            {!isHighestClassView && selectedClassId !== "all" && !showArchived && (
-              <TouchableOpacity
-                style={[styles.graduateBtn, { backgroundColor: COLORS.secondary || "#c53b59" }]}
-                onPress={() => setAssignmentModal({ type: "promote_repeat", target: null })}
-              >
-                <Text style={styles.graduateBtnText}>Promote/Repeat Class</Text>
-              </TouchableOpacity>
-            )}
+            {!isHighestClassView &&
+              selectedClassId !== "all" &&
+              !showArchived && (
+                <TouchableOpacity
+                  style={[
+                    styles.graduateBtn,
+                    { backgroundColor: COLORS.secondary || "#c53b59" },
+                  ]}
+                  onPress={() =>
+                    setAssignmentModal({ type: "promote_repeat", target: null })
+                  }
+                >
+                  <Text style={styles.graduateBtnText}>
+                    Promote/Repeat Class
+                  </Text>
+                </TouchableOpacity>
+              )}
           </View>
         )}
 
@@ -220,7 +275,9 @@ export default function ManageUsers() {
             </TouchableOpacity>
             {selectedUserUids.length > 0 && (
               <TouchableOpacity onPress={handleCopyAllCodes}>
-                <Text style={[styles.selectAllText, { color: COLORS.secondary }]}>
+                <Text
+                  style={[styles.selectAllText, { color: COLORS.secondary }]}
+                >
                   Copy Codes
                 </Text>
               </TouchableOpacity>
@@ -297,8 +354,12 @@ export default function ManageUsers() {
           deletingUid={deletingUid}
           onEditProfile={openEditProfile}
           onOpenPermissions={openPermissionModal}
-          onUpgradeStaff={(u) => setAssignmentModal({ type: "upgrade_staff", target: u })}
-          onModifyAuthority={(u) => setAssignmentModal({ type: "assign_as", target: u })}
+          onUpgradeStaff={(u) =>
+            setAssignmentModal({ type: "upgrade_staff", target: u })
+          }
+          onModifyAuthority={(u) =>
+            setAssignmentModal({ type: "assign_as", target: u })
+          }
           onDeleteUser={handleDeleteUser}
           onUnlinkParent={handleUnlinkParent}
           onShareCode={handleShareCode}
@@ -391,6 +452,23 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     paddingHorizontal: 15,
     height: 50,
+  },
+  bulkImportButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 12,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    ...SHADOWS.small,
+  },
+  bulkImportButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
   },
   searchInput: {
     flex: 1,

@@ -123,7 +123,7 @@ export default function TeacherSignupScreen() {
     setLoading(true);
     try {
       const cleanCode = form.signupCode.trim().toUpperCase();
-      const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode));
+      const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode), limit(1));
       const snap = await getDocs(q);
 
       if (snap.empty) {

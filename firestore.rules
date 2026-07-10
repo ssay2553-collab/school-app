@@ -1,8 +1,4 @@
 rules_version = '2';
-
-/* =========================================================
-   FIRESTORE RULES - EduEaz
-========================================================= */
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -18,17 +14,9 @@ service cloud.firestore {
     }
 
     function userDoc() {
-      return isSignedIn() && (
-        exists(/databases/$(database)/documents/users/$(uid())) ?
-          get(/databases/$(database)/documents/users/$(uid())) :
-          (
-            exists(/databases/$(database)/documents/userAuthMappings/$(uid())) &&
-            get(/databases/$(database)/documents/userAuthMappings/$(uid())).data.userDocId is string &&
-            exists(/databases/$(database)/documents/users/$(get(/databases/$(database)/documents/userAuthMappings/$(uid())).data.userDocId)) ?
-            get(/databases/$(database)/documents/users/$(get(/databases/$(database)/documents/userAuthMappings/$(uid())).data.userDocId)) :
-            null
-          )
-      );
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(uid()))
+        ? get(/databases/$(database)/documents/users/$(uid()))
+        : null;
     }
 
     function userData() {
@@ -39,60 +27,50 @@ service cloud.firestore {
        ROLE & PERMISSION CHECKS (Dynamic)
     =============================== */
 
- function isAdmin() {
-  return userData() != null && (
-    userData().get('role', '').lower() in ['admin', 'superadmin', 'super admin'] ||
-    userData().get(['profile', 'role'], '').lower() in ['admin', 'superadmin', 'super admin'] ||
-    userData().get('adminRole', '') != '' ||
-    userData().get(['profile', 'adminRole'], '') != '' ||
-    userData().get(['permissions', 'manage-users'], '') == 'full' ||
-    userData().get(['permissions', 'manage-fees'], '') == 'full'
-  );
-}
-
-   function isSuperAdmin() {
-     return isAdmin() && ((userData().get('adminRole', '').lower() in [
-         "proprietor", "proprietress", "manager", "headmaster",
-         "headmistress", "administrator", "director", "accountant", "bursar", "admin", "super admin", "superadmin"
-       ]) ||
-       (userData().get(['profile', 'adminRole'], '').lower() in [
-         "proprietor", "proprietress", "manager", "headmaster",
-         "headmistress", "administrator", "director", "accountant", "bursar", "admin", "super admin", "superadmin"
-       ])
-     );
-   }
-
-    function getPermission(screen) {
-      return userData() != null ?
-        (
-          (
-            ("permissions" in userData() && screen in userData().permissions) ? userData().permissions[screen] :
-            (("profile" in userData() && "permissions" in userData().profile && screen in userData().profile.permissions) ? userData().profile.permissions[screen] : "deny")
-          ) is string ?
-            (
-              (("permissions" in userData() && screen in userData().permissions) ? userData().permissions[screen] :
-              (("profile" in userData() && "permissions" in userData().profile && screen in userData().profile.permissions) ? userData().profile.permissions[screen] : "deny")).lower()
-            ) :
-            "deny"
-        ) :
-        "deny";
+    function isAdmin() {
+      return userData() != null && (
+        userData().role == "admin" ||
+        (userData().get(['profile', 'role'], '') == 'admin')
+      );
     }
 
-  function hasPermission(screen, level) {
+    function isSuperAdmin() {
+      return isAdmin() && (
+        ("adminRole" in userData() && userData().adminRole.lower() in [
+          "proprietor", "proprietress", "manager", "headmaster",
+          "headmistress", "administrator", "director", "accountant", "bursar", "admin"
+        ]) ||
+        ("profile" in userData() && "adminRole" in userData().profile && userData().profile.adminRole.lower() in [
+          "proprietor", "proprietress", "manager", "headmaster",
+          "headmistress", "administrator", "director", "accountant", "bursar", "admin"
+        ])
+      );
+    }
+
+    function getPermission(screen) {
+      return userData() != null
+        && ("permissions" in userData())
+        && (screen in userData().permissions)
+        ? userData().permissions[screen]
+        : "deny";
+    }
+
+    function hasPermission(screen, level) {
       return (isAdmin() || isStaff() || isTeacher()) &&
         (
-      isSuperAdmin() ||
-      hasScreenPermission(screen, level)
-    );
-}
+          isSuperAdmin() ||
+          hasScreenPermission(screen, level)
+        );
+    }
 
-function hasScreenPermission(screen, level) {
-  return
-    (getPermission(screen) == "full") ||
-    (getPermission(screen) == "edit" && (level == "edit" || level == "view")) ||
-    (getPermission(screen) == "view" && level == "view");
-}
-/* ===============================
+    function hasScreenPermission(screen, level) {
+      let perm = getPermission(screen);
+      return (perm == "full") ||
+        (perm == "edit" && (level == "edit" || level == "view")) ||
+        (perm == "view" && level == "view");
+    }
+
+    /* ===============================
        SCREEN PERMISSION HELPERS
        These functions map screens to their required permissions
     =============================== */
@@ -118,11 +96,21 @@ function hasScreenPermission(screen, level) {
 
     }
 
+    function canManageGallery() {
+      return hasPermission('gallery', 'edit');
+    }
+
+    function canManageNews() {
+      return hasPermission('news', 'edit');
+    }
 
     function canManageFAQ() {
       return hasPermission('faq', 'edit');
     }
 
+    function canManageSettings() {
+      return hasPermission('settings', 'edit');
+    }
 
     function canManageTimetables() {
       return hasPermission('timetables', 'edit');
@@ -133,7 +121,7 @@ function hasScreenPermission(screen, level) {
     }
 
     function canViewAttendance() {
-      return hasPermission('attendance', 'view');
+      return isAdmin() || getPermission('attendance') == 'full' || getPermission('attendance') == 'edit' || getPermission('attendance') == 'view';
     }
 
     function canManageAttendance() {
@@ -172,6 +160,21 @@ function hasScreenPermission(screen, level) {
       return hasPermission('assignments', 'view');
     }
 
+    function canManageStudentGroups() {
+      return hasPermission('student-groups', 'edit');
+    }
+
+    function canViewStudentGroups() {
+      return hasPermission('student-groups', 'view');
+    }
+
+    function canManageGuestChat() {
+      return hasPermission('guest-chat', 'edit');
+    }
+
+    function canViewGuestChat() {
+      return hasPermission('guest-chat', 'view');
+    }
 
     // Financial permissions (for feeding and bus fee recording)
     function canManageFeeding() {
@@ -206,61 +209,40 @@ function hasScreenPermission(screen, level) {
       return isAdmin() || getPermission('manage-sales') == 'full' || getPermission('manage-sales') == 'edit' || getPermission('manage-sales') == 'view';
     }
 
-
-    function isTeacher() {
-      return userData() != null && (
-        userData().get('role', '').lower() == 'teacher' ||
-        userData().get(['profile', 'role'], '').lower() == 'teacher' ||
-        userData().get('classTeacherOf', '') != '' ||
-        userData().get(['profile', 'classTeacherOf'], '') != '' ||
-        userData().get('classes', []).size() > 0 ||
-        userData().get(['profile', 'classes'], []).size() > 0 ||
-        userData().get('subjects', []).size() > 0 ||
-        userData().get(['profile', 'subjects'], []).size() > 0 ||
-        userData().get('assignedRoles', []).hasAny(['Class Teacher']) ||
-        userData().get(['profile', 'assignedRoles'], []).hasAny(['Class Teacher'])
-      );
-    }
-
-    function isStaff() {
-      return userData() != null && (
-        userData().get('role', '').lower() == 'staff' ||
-        userData().get(['profile', 'role'], '').lower() == 'staff'
-      );
-    }
-
-    function isStudent() {
-      return userData() != null && (
-        userData().get('role', '').lower() == 'student' ||
-        userData().get(['profile', 'role'], '').lower() == 'student'
-      );
-    }
-
-    function isParent() {
-      return userData() != null && (
-        userData().get('role', '').lower() == 'parent' ||
-        userData().get(['profile', 'role'], '').lower() == 'parent'
-      );
-    }
-
-function isParentOf(studentId) {
-  return isSignedIn() && studentId in userData().childrenIds;
+ function isTeacher() {
+  return userData() != null && (
+    userData().role == 'teacher' ||
+    userData().get(['profile', 'role'], '') == 'teacher'
+  );
 }
 
+function isStaff() {
+  return userData() != null && (
+    userData().role == 'staff' ||
+    userData().get(['profile', 'role'], '') == 'staff'
+  );
+}
+
+function isStudent() {
+  return userData() != null && (
+    userData().role == 'student' ||
+    userData().get(['profile', 'role'], '') == 'student'
+  );
+}
+
+function isParent() {
+  return userData() != null && (
+    userData().role == 'parent' ||
+    userData().get(['profile', 'role'], '') == 'parent'
+  );
+}
+
+
     function isClassTeacher(classId) {
-      return isSignedIn() && (isTeacher() || isStaff()) && (
-        userData().get('classTeacherOf', '') == classId ||
-        userData().get(['profile', 'classTeacherOf'], '') == classId ||
-        (classId in userData().get('classes', [])) ||
-        (classId in userData().get(['profile', 'classes'], [])) ||
-        (
-          (userData().get('assignedRoles', []).hasAny(["Class Teacher"]) ||
-           userData().get(['profile', 'assignedRoles'], []).hasAny(["Class Teacher"])) &&
-          (
-            userData().get('classTeacherOf', '') == classId ||
-            userData().get(['profile', 'classTeacherOf'], '') == classId
-          )
-        )
+      let user = userData();
+      return isSignedIn() && (isTeacher() || isAdmin() || isStaff()) && (
+        user.get('classTeacherOf', '') == classId ||
+        user.get('classes', []).hasAny([classId])
       );
     }
 
@@ -274,15 +256,15 @@ function isParentOf(studentId) {
     function isEventOrganiser() {
       return isTeacher();
     }
-
-        /* ===============================
+    
+     /* ===============================
            SIGNUP CODES
         =============================== */
         match /signupCodes/{codeId} {
           // 1. Allow verification (Step 1 of signup)
-          // Restricting to limit <= 1 prevents anyone from listing/scraping all valid codes.
+          // Restricting to limit == 1 prevents anyone from listing/scraping all valid codes.
           // Both student.tsx and teacher.tsx use a query with a limit of 1.
-          allow read: if request.query.limit <= 1;
+          allow read: if request.query.limit == 1;
 
           // 2. Allow Admins/Staff to manage codes
           allow create, delete: if canGenerateCode();
@@ -298,363 +280,139 @@ function isParentOf(studentId) {
         }
 
 
-    /* =========================================================================
+        /* =========================================================================
        USERS COLLECTION
     ========================================================================= */
 
-    match /userAuthMappings/{authUid} {
-      allow read: if isSignedIn() && uid() == authUid;
-      allow create: if isSignedIn() && uid() == authUid && request.resource.data.userDocId is string;
-      allow update: if isSignedIn() && uid() == authUid && request.resource.data.userDocId == resource.data.userDocId;
-      allow delete: if isSignedIn() && uid() == authUid;
-    }
-
     match /users/{userId} {
+      // Helper function to check if a teacher has access to a class
+      function teacherHasClass(classId) {
+        let user = userData();
+        return user != null && (
+          user.get('classTeacherOf', '') == classId ||
+          user.get('classes', []).hasAny([classId])
+        );
+      }
+
+      // Helper function to check if user is a teacher or staff
+      function isEducator() {
+        let user = userData();
+        return user != null && (
+          user.role in ['teacher', 'staff'] ||
+          user.get(['profile', 'role'], '') in ['teacher', 'staff']
+        );
+      }
+
+      // 1. REGISTRATION & LINKING (Public/Unauthenticated)
+      // Allows verifying signup codes and parent link codes
       allow read: if (
-          isSignedIn() && (
-            isAdmin() ||
-            uid() == userId ||
-            (isTeacher() || isStaff()) && (
-               resource.data.role == 'student' ||
-               resource.data.role == 'parent' ||
-               resource.data.role == 'teacher'
-            ) ||
-            (isParent() && userId in userData().childrenIds)
-          )
-        ) || (
-          // Public verification (Used by student.tsx Step 1)
-          // Allows checking if a signupCode exists before the user is logged in
-          request.query.limit <= 1 &&
-          resource.data.role == 'student' && (
-            'parentLinkCode' in resource.data ||
-            (resource.data.status == 'pending_activation' && 'signupCode' in resource.data)
-          )
-        );
+        (resource.data.status == 'pending_activation' && resource.data.role == 'student') ||
+        (resource.data.role == 'student' && 'parentLinkCode' in resource.data)
+      ) && (request.query.limit <= 1 || request.query.limit == null);
 
-      /* ===============================
-         CREATE
-      =============================== */
-      allow create: if
-        isSignedIn() &&
-        uid() == userId &&
-        (
-          // Regular users (cannot assign permissions or admin roles)
-          (
-            request.resource.data.role in ['teacher', 'student', 'parent', 'guest'] &&
-            'secretCode' in request.resource.data &&
-            !('permissions' in request.resource.data) &&
-            !('adminRole' in request.resource.data)
-          )
-          ||
-          // Initial admin signup
-          (
-            request.resource.data.role == 'admin' &&
-            existsAfter(
-              /databases/$(database)/documents/adminRoles/$(request.resource.data.adminRole.lower())
-            )
-          )
-        );
-
-      /* ===============================
-         UPDATE
-      =============================== */
-
-      allow update: if
-          isSuperAdmin() ||
-          hasPermission('manage-users', 'full')
-
-          // Case 1: Activation of Bulk-Imported profile
-          // Allows a new user to "claim" a record that was pre-created by an admin
-          || (
-            isSignedIn() &&
-            resource.data.status == 'pending_activation' &&
-            request.resource.data.status == 'active' &&
-            request.resource.data.uid == uid()
-          )
-
-          // Case 2: User updating own profile
-          || (
-            isSignedIn() &&
-            uid() == userId &&
-            !request.resource.data
-              .diff(resource.data)
-              .affectedKeys()
-              .hasAny([
-                'role',
-                'adminRole',
-                'uid',
-                'isAnonymous',
-                'createdAt',
-                'permissions'
-              ])
-          )
-
-      // Teacher changing student's class
-      || (
-        isTeacher() &&
-        resource.data.role == 'student' &&
-        request.resource.data
-          .diff(resource.data)
-          .affectedKeys()
-          .hasOnly(['classId']) &&
-        resource.data.classId in userData().classes
-      )
-
-      // Parent linking to student (maximum 2)
-      || (
-        isSignedIn() &&
-        resource.data.role == 'student' &&
-        request.resource.data
-          .diff(resource.data)
-          .affectedKeys()
-          .hasOnly(['parentUids']) &&
-        uid() in request.resource.data.parentUids &&
-        (
-          !('parentUids' in resource.data) ||
-          resource.data.parentUids.size() < 2
-        )
-      )
-
-      // Fee Management
-      || (
-        canManageFees() &&
-        request.resource.data
-          .diff(resource.data)
-          .affectedKeys()
-          .hasOnly([
-            'walletBalance',
-            'otherBill',
-            'otherPaid',
-            'otherBalance',
-            'admissionBalance',
-            'ptaBalance',
-            'maintenanceBalance',
-            'booksBalance',
-            'uniformBalance',
-            'admissionBill',
-            'ptaBill',
-            'maintenanceBill',
-            'booksBill',
-            'uniformBill',
-            'onDiscount',
-            'discountAmount'
-          ])
-      )
-
-      // Wallet updates by delegated staff
-      || (
-        (
-          canManageFeeding() ||
-          canRecordBusFee() ||
-          canManageExtraClasses() ||
-          canManageSales() ||
-          getPermission('manage-users') == 'full'
-        ) &&
-        (
-          isAdmin() ||
-          ((isTeacher() || isStaff()) &&
-            isClassTeacher(resource.data.classId))
-        ) &&
-        request.resource.data
-          .diff(resource.data)
-          .affectedKeys()
-          .hasOnly(['walletBalance'])
-      )
-
-      // Payroll
-      || (
-        canManagePayroll() &&
-        request.resource.data
-          .diff(resource.data)
-          .affectedKeys()
-          .hasOnly(['salary'])
-      )
-
-      // Staff/Class Teacher editing student records
-      || (
-        (
-          hasPermission('manage-users', 'edit') ||
-          (
-            (isTeacher() || isAdmin() || isStaff()) &&
-            isClassTeacher(resource.data.classId)
-          )
-        ) &&
-        (
-          resource.data.role == 'student' ||
-          resource.data.get(['profile', 'role'], '') == 'student'
-        ) &&
-        !request.resource.data
-          .diff(resource.data)
-          .affectedKeys()
-          .hasAny([
-            'role',
-            'adminRole',
-            'uid',
-            'isAnonymous',
-            'createdAt',
-            'permissions',
-            'walletBalance',
-            'salary',
-            'parentUids',
-            'parentLinkCode'
-          ])
+      // 2. AUTHENTICATED ACCESS
+      allow read: if isSignedIn() && (
+        uid() == userId
+        || (resource.data.get('authUid', '') == uid())
+        || isAdmin()
+        || isStaff()
+        || resource.data.role in ['admin', 'teacher']
+        || (isParent() && userId in userData().get('childrenIds', []))
+        || (isEducator() && resource.data.role in ['student', 'parent'])
+        // 3. TEACHERS/STAFF: Allow querying students in their classes
+        // This allows educators to query students where classId matches their assigned classes
+        || (isEducator() && resource.data.role == 'student' && teacherHasClass(resource.data.classId))
       );
 
-  /* ===============================
-     DELETE
-  =============================== */
+      // Robust creation rule for new users
+      allow create: if isSignedIn() && uid() == userId && (
+          request.resource.data.role in ['admin', 'teacher', 'staff', 'student', 'parent', 'guest']
+      );
 
-  allow delete: if isSuperAdmin();
-}
+      allow update: if
+        isSuperAdmin()
+        || hasPermission('manage-users', 'full')
+        || (
+          // Fee Management: Allow walletBalance updates when reverting payments
+          canManageFees()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'walletBalance', 'otherBill', 'otherPaid', 'otherBalance',
+            'admissionBalance', 'ptaBalance', 'maintenanceBalance', 'booksBalance', 'uniformBalance',
+            'admissionBill', 'ptaBill', 'maintenanceBill', 'booksBill', 'uniformBill',
+            'onDiscount', 'discountAmount'
+          ])
+        )
+        || (
+          // Feeding/Bus/Extra Classes/Sales: Allow walletBalance updates for teachers with permissions
+          // Also allow users delegated full 'manage-users' permission to perform walletBalance updates
+          (canManageFeeding() || canRecordBusFee() || canManageExtraClasses() || canManageSales() || getPermission('manage-users') == 'full')
+          && (isAdmin() || (isTeacher() && isClassTeacher(resource.data.classId)))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['walletBalance'])
+        )
+
+        || (
+          // Staff Payroll: Allow salary updates if the user has payroll permissions
+          canManagePayroll()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['salary'])
+        )
+        || (
+          isSignedIn() && (uid() == userId || (resource.data.get('authUid', '') == uid()))
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'role', 'adminRole', 'uid', 'isAnonymous', 'createdAt', 'permissions'
+          ])
+        )
+        || (
+          // UPDATED: Allow Class Teachers to edit their students' records (supports nested/root role)
+          (isTeacher() || isAdmin())
+          && (resource.data.role == 'student' || resource.data.get(['profile', 'role'], '') == 'student')
+          && isClassTeacher(resource.data.classId)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'role', 'adminRole', 'uid', 'isAnonymous', 'createdAt', 'permissions'
+          ])
+        )
+        || (
+          // Allow parents to link themselves to students (Max 2 parents)
+          isSignedIn() && resource.data.role == 'student'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['parentUids'])
+          && uid() in request.resource.data.parentUids
+          && (!('parentUids' in resource.data) || resource.data.parentUids.size() < 2)
+        );
+
+      allow delete: if isSuperAdmin() || (isSignedIn() && resource.data.status == 'pending_activation');
+    }
+
     /* ===============================
        ADMIN ROLES UNIQUENESS
     =============================== */
-   match /adminRoles/{roleName} {
-     allow read: if isSignedIn();
-
-     allow create: if isSignedIn()
-       && request.resource.data.uid == uid()
-       && request.resource.data.roleName == roleName
-       // Ensure they are also creating their user doc in the same batch
-       && existsAfter(/databases/$(database)/documents/users/$(uid()));
-
-     allow update, delete: if isSuperAdmin();
-   }
+    match /adminRoles/{roleName} {
+      allow read: if true;
+      allow create: if isSignedIn()
+        && request.resource.data.uid == uid()
+        && request.resource.data.roleName == roleName
+        && !exists(/databases/$(database)/documents/adminRoles/$(roleName));
+      allow update, delete: if isSuperAdmin();
+    }
 
     /* ===============================
-       FINANCE & PAYROLL
+       FINANCE
     =============================== */
 
-   match /studentFeeRecords/{id} {
-
-  allow read: if
-      canViewFees()
-      || canViewSales()
-      || (
-        isSignedIn() &&
-        (
-          (
-            isParent() &&
-            (
-              id.split('_')[0] in userData().childrenIds ||
-              (resource != null &&
-               resource.data.studentUid in userData().childrenIds)
-            )
-          )
-          ||
-          (
-            isStudent() &&
-            (
-              id.split('_')[0] == uid() ||
-              (resource != null &&
-               resource.data.studentUid == uid())
-            )
-          )
-          ||
-          (
-            isTeacher() &&
-            (
-              resource == null ||
-              isClassTeacher(resource.data.classId)
-            )
-          )
-        )
-      );
-
-  allow write: if
-      canManageFees()
-      || canManageSales()
-      || hasPermission('manage-users', 'full')
-      || (
-        isTeacher()
-        && isClassTeacher(request.resource.data.classId)
-        && (
-          request.resource.data.adminUid == uid()
-          || canManageFeeding()
-          || canRecordBusFee()
-          || canManageExtraClasses()
-          || canManageSales()
-        )
-      );
-}
-
-    match /feePayments/{id} {
-
-  allow read: if
-      canViewFees()
-      || (
-        (
-          canViewFeeding()
-          || canViewBusFee()
-          || canViewExtraClasses()
-          || canViewSales()
-        )
-        &&
-        (
-          isAdmin()
-          || (
-            isTeacher() &&
-            (
-              resource == null ||
-              isClassTeacher(resource.data.classId)
-            )
-          )
-        )
-      )
-      || (
-        isSignedIn()
-        &&
-        (
-          (
-            isParent()
-            &&
-            (
-              resource == null ||
-              resource.data.studentUid in userData().childrenIds
-            )
-          )
-          ||
-          (
-            isStudent()
-            &&
-            (
-              resource == null ||
-              resource.data.studentUid == uid()
-            )
-          )
-        )
-      );
-
-  allow write: if
-      canManageFees()
-      || (
-        (
-          canManageFeeding()
-          || canRecordBusFee()
-          || canManageExtraClasses()
-          || canManageSales()
-        )
-        &&
-        (
-          isAdmin()
-          ||
-          (
-            isTeacher()
-            && isClassTeacher(request.resource.data.classId)
-          )
-        )
-        &&
-        request.resource.data.amount is number
-      )
-      || (
-        isTeacher()
-        && isClassTeacher(request.resource.data.classId)
-        && request.resource.data.adminUid == uid()
-        && request.resource.data.amount is number
-      );
-
-  allow delete: if canManageFees();
-}
+    match /studentFeeRecords/{id} {
+      allow read: if canViewFees()
+        || canViewSales()
+        || (isParent() && resource.data.studentUid in userData().childrenIds)
+        || (isStudent() && resource.data.studentUid == uid())
+        || (isTeacher() && isClassTeacher(resource.data.classId));
+      allow write: if canManageFees() || canManageSales()
+        || getPermission('manage-users') == 'full'
+        || (isTeacher() && isClassTeacher(request.resource.data.classId) && (
+          request.resource.data.adminUid == uid() ||
+          getPermission('feeding') in ['full', 'edit'] ||
+          getPermission('record-bus-fee') in ['full', 'edit'] ||
+          getPermission('record-extra-classes') in ['full', 'edit'] ||
+          getPermission('manage-sales') in ['full', 'edit']
+        ));
+    }
 
     match /expenditures/{id} {
       allow read: if canViewExpenditure();
@@ -666,10 +424,7 @@ function isParentOf(studentId) {
       allow delete: if false;
     }
 
-   match /payroll/{id} {
-      allow read, create, update, delete: if hasPermission('staff-payroll', 'edit') || (hasPermission('staff-payroll', 'view') && request.method == 'get');
-    }
-     /* ===============================
+    /* ===============================
        TEACHER & STUDENT NOTES
     =============================== */
     match /teacher_notes/{noteId} {
@@ -693,22 +448,26 @@ function isParentOf(studentId) {
 
     match /news/{id} {
       allow read: if true;
-      allow write: if canCreateNews();
+      allow write: if canManageNews() || canCreateNews();
     }
 
-/* ===============================
+    match /newscategories/{id} {
+      allow read: if true;
+      allow write: if canManageNews();
+    }
+    /* ===============================
        SCHOOL SETTINGS
     =============================== */
+
     match /school_settings/{settingId} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if canManageSettings() || isAdmin();
     }
 
-     match /timetables/{classId} {
+    match /timetables/{classId} {
       allow read: if isSignedIn();
       allow write: if canManageTimetables() || isAdmin() || isClassTeacher(classId);
     }
-
 
     /* ===============================
        DIRECT MESSAGES COLLECTION & SUBCOLLECTION
@@ -719,13 +478,13 @@ function isParentOf(studentId) {
           && (chatId.matches('^' + uid() + '_.*|.*_' + uid() + '$'));
       }
 
-      allow read: if isAdmin() || isParticipant() || isTeacher();
+      allow read: if isAdmin() || isParticipant();
 
       match /messages/{messageId} {
-        allow read: if isAdmin() || isParticipant() || isTeacher();
+        allow read: if isAdmin() || isParticipant();
 
         allow create: if
-          isAdmin() || isTeacher()
+          isAdmin()
           || (
             isParticipant()
             && request.resource.data.senderId == uid()
@@ -788,54 +547,21 @@ function isParentOf(studentId) {
       }
 
       allow read: if
-      canViewAttendance() ||
-        isAdmin()
-        || ((isTeacher() || isStaff()) && (isClassTeacher(getClassIdFromAttendanceId(id)) || (resource != null && isClassTeacher(resource.data.classId))))
-        || (isStudent() && resource != null && resource.data.classId == userData().classId)
-        || (isParent() && resource != null && exists(/databases/$(database)/documents/users/$(uid())) && (resource.data.students.keys().hasAny(userData().get('childrenIds', []))));
+        canViewAttendance() ||
+        isAdmin() ||
+        (isTeacher() && (isClassTeacher(resource.data.classId) || isClassTeacher(getClassIdFromAttendanceId(id))))
+        || (isStudent() && (resource.data.classId == userData().classId || getClassIdFromAttendanceId(id) == userData().classId))
+        || (isParent() && ('students' in resource.data) && resource.data.students.keys().hasAny(userData().childrenIds));
 
-      allow write: if canManageAttendance() || isAdmin() || (
-        (isTeacher() || isStaff()) &&
-        isClassTeacher(request.resource.data.classId) &&
-        request.resource.data.classId == getClassIdFromAttendanceId(id) &&
-        request.resource.data.date == id.split('_')[id.split('_').size() - 1] &&
-        request.resource.data.markedBy == uid() &&
-        request.resource.data.lastUpdated == request.time &&
-        request.resource.data.students is map
-      );
+      allow write: if canManageAttendance() || isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
       allow delete: if canManageAttendance() || isAdmin();
     }
 
-    match /attendanceSummary/{id} {
-      allow read: if isSignedIn() && (
-        isAdmin() ||
-        (isTeacher() || isStaff()) ||
-        (isStudent() && id.split('_')[0] == uid()) ||
-        (isParent() && id.split('_')[0] in userData().get('childrenIds', []))
-      );
-      allow write: if isAdmin() ||
-        (isSignedIn() && (isTeacher() || isStaff()) &&
-        (
-          isClassTeacher(request.resource.data.classId) ||
-          (resource != null && isClassTeacher(resource.data.classId))
-        ) &&
-        request.resource.data.lastUpdated == request.time &&
-        (
-          request.resource.data.classId == id.split('_')[0] ||
-          request.resource.data.studentId == id.split('_')[0]
-        )
-      );
+     match /attendanceSummary/{id} {
+      allow read: if isSignedIn();
+      allow write: if canManageAttendance() || isAdmin() || ((isTeacher() || isStaff()) && isClassTeacher(request.resource.data.classId));
     }
 
-    match /academicRecordsSummary/{id} {
-      allow read: if isSignedIn() && (
-        isAdmin() ||
-        ((isTeacher() || isStaff()) && (resource == null || isClassTeacher(resource.data.classId))) ||
-        (isStudent() && id.split('_')[0] == uid()) ||
-        (isParent() && id.split('_')[0] in userData().get('childrenIds', []))
-      );
-      allow write: if isAdmin() || ((isTeacher() || isStaff()) && canManageAcademicRecords());
-    }
 
     /* ===============================
        BEHAVIORAL / PRESCHOOL RECORDS
@@ -874,39 +600,27 @@ function isParentOf(studentId) {
         );
     }
 
+
     /* ===============================
        ASSIGNMENTS COLLECTION
-    =============================== */
-   match /assignments/{id} {
-      allow read: if canViewAssignments() || isAdmin() || (
-            resource != null && (
-              resource.data.teacherId == uid() ||
-              resource.data.teacherId == userDoc().id
-            )
-          ) || (isStudent() && resource != null && resource.data.classId == userData().classId) || isParent();
+       =============================== */
+    match /assignments/{id} {
+      // Helper function to check if user owns the assignment (by teacherId)
+      function isOwner() {
+        return isSignedIn() && resource != null && resource.data.teacherId == uid();
+      }
 
-      // Creation: require teacher to be the actor and assigned to the class, and createdAt must be server time
-      allow create: if canManageAssignments() || (
-        (isTeacher() || isStaff()) &&
-        request.resource.data.teacherId == uid() &&
-        (request.resource.data.classId in userData().get('classes', [])) &&
-        request.resource.data.createdAt == request.time
-      );
-
-      // Updates: allow if manager or teacher-owner; teacher must be the actor and either the new or existing class is one they teach
-      allow update: if canManageAssignments() || (
-        (isTeacher() || isStaff()) &&
-        request.resource.data.teacherId == uid() &&
-        (
-          (request.resource.data.classId in userData().get('classes', [])) ||
-          (resource != null && resource.data.classId in userData().get('classes', []))
-        )
-      );
-
+      allow read: if canViewAssignments()
+        || isAdmin()
+        || isOwner()
+        || (isStudent() && resource != null && resource.data.classId == userData().classId)
+        || isParent();
+      allow create: if isSignedIn() && request.resource.data.teacherId == uid();
+      allow update: if canManageAssignments() || (isSignedIn() && resource != null && resource.data.teacherId == uid());
       allow delete: if canManageAssignments() || isAdmin();
     }
 
-     /* ===============================
+    /* ===============================
             SUBMISSIONS COLLECTION
          =============================== */
          match /submissions/{submissionId} {
@@ -939,7 +653,7 @@ function isParentOf(studentId) {
            allow delete: if isAdmin();
          }
 
-     /* ===============================
+    /* ===============================
        NOTIFICATIONS COLLECTION
     =============================== */
     match /notifications/{notificationId} {
@@ -960,11 +674,11 @@ function isParentOf(studentId) {
     /* ===============================
        GALLERY & METADATA
     =============================== */
-    match /gallery/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
+    match /{collection}/{id} {
+      allow read: if collection in ['gallery', 'gallery_metadata'];
+      allow write: if collection in ['gallery', 'gallery_metadata'] && (canManageGallery() || isAdmin());
     }
-    match /gallery_metadata/{id} {
+match /gallery_metadata/{id} {
       allow read: if true;
       allow write: if isAdmin();
     }
@@ -978,20 +692,19 @@ function isParentOf(studentId) {
     }
 
     /* ===============================
-       NEWS CATEGORIES
-    =============================== */
-    match /newscategories/{id} {
-      allow read: if true;
-    }
-
-    /* ===============================
        STUDENT GROUPS & MESSAGES
     =============================== */
     match /studentGroups/{groupId} {
-      allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == uid()) || (isStudent() && uid() in resource.data.studentIds) || (isParent() && userData().childrenIds.hasAny(resource.data.studentIds));
-      allow create: if isTeacher() && request.resource.data.teacherId == uid();
-      allow update: if isTeacher() && resource.data.teacherId == uid();
-      allow delete: if isAdmin() || (isTeacher() && resource.data.teacherId == uid());
+      allow read: if canViewStudentGroups() || isAdmin()
+        || (isSignedIn() && (
+             resource.data.teacherId == uid()
+             || (('staffIds' in resource.data) && uid() in resource.data.staffIds)
+             || (('studentIds' in resource.data) && uid() in resource.data.studentIds)
+           ))
+        || (isParent() && ('studentIds' in resource.data) && userData().childrenIds.hasAny(resource.data.studentIds));
+      allow create: if canManageStudentGroups() || (isTeacher() && request.resource.data.teacherId == uid());
+      allow update: if canManageStudentGroups() || (isTeacher() && resource.data.teacherId == uid());
+      allow delete: if canManageStudentGroups() || isAdmin() || (isTeacher() && resource.data.teacherId == uid());
 
       match /messages/{messageId} {
         function isGroupMember() {
@@ -999,6 +712,7 @@ function isParentOf(studentId) {
             get(/databases/$(database)/documents/studentGroups/$(groupId)).data.teacherId == uid() ||
             uid() in get(/databases/$(database)/documents/studentGroups/$(groupId)).data.studentIds;
         }
+        
         allow read: if isSignedIn() && isGroupMember();
         allow create: if isSignedIn() && isGroupMember() && request.resource.data.senderId == uid();
       }
@@ -1009,12 +723,12 @@ function isParentOf(studentId) {
     =============================== */
     match /guestTickets/{ticketId} {
       allow create: if isSignedIn();
-      allow read: if isAdmin() || (isSignedIn() && resource.data.guestUid == uid());
-      allow update, delete: if isAdmin();
+      allow read: if canViewGuestChat() || isAdmin() || (isSignedIn() && resource.data.guestUid == uid());
+      allow update, delete: if canManageGuestChat() || isAdmin();
 
       match /messages/{messageId} {
-        allow read, create: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/guestTickets/$(ticketId)).data.guestUid == uid());
-        allow update, delete: if isAdmin();
+        allow read, create: if canViewGuestChat() || isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/guestTickets/$(ticketId)).data.guestUid == uid());
+        allow update, delete: if canManageGuestChat() || isAdmin();
       }
     }
 
@@ -1026,67 +740,74 @@ function isParentOf(studentId) {
       allow write: if canManageFAQ() || isAdmin();
     }
 
-     /* ===============================
+   /* ===============================
        SCORES & REPORTS
     =============================== */
     match /scores/{scoreId} {
-      allow read: if canViewScores() || isAdmin() || ((isTeacher() || isStaff()) && (resource == null || isClassTeacher(resource.data.classId))) || (isStudent() && resource != null && uid() == resource.data.studentId) || (isParent() && resource != null && resource.data.studentId in userData().get('childrenIds', []));
-      allow write: if canManageScores() || isAdmin() || ((isTeacher() || isStaff()) && isClassTeacher(request.resource.data.classId));
+      allow read: if canViewScores() || isAdmin() || (isTeacher() && isClassTeacher(resource.data.classId)) || (isStudent() && uid() == resource.data.studentId) || (isParent() && resource.data.studentId in userData().childrenIds);
+      allow write: if canManageScores() || isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
       allow delete: if canManageScores() || isAdmin();
     }
 
     match /student-reports/{reportId} {
-      allow read: if isSignedIn() && (
-        isAdmin() ||
-        canViewScores() ||
-        canViewAcademicRecords() ||
-        ((isTeacher() || isStaff()) && (resource == null || isClassTeacher(resource.data.classId))) ||
-        (isStudent() && resource != null && uid() == resource.data.studentId) ||
-        (isParent() && (isParentOf(reportId.split('_')[0]) || (resource != null && isParentOf(resource.data.studentId))))
-      );
-      allow write: if isAdmin() || canManageScores() || canManageAcademicRecords() || ((isTeacher() || isStaff()) && isClassTeacher(request.resource.data.classId));
-      allow delete: if isAdmin() || canManageScores() || canManageAcademicRecords();
+      allow read: if canViewScores() || isAdmin() || (isTeacher() && isClassTeacher(resource.data.classId)) || (isStudent() && uid() == resource.data.studentId) || (isParent() && resource.data.studentId in userData().childrenIds);
+      allow write: if canManageScores() || isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
+      allow delete: if canManageScores() || isAdmin();
     }
 
-/* ===============================
-   ACADEMIC RECORDS
-=============================== */
-match /academicRecords/{recordId} {
+   /* ===============================
+   ACADEMIC RECORDS (Production Ready)
+   =============================== */
+   match /academicRecords/{recordId} {
+     // Read: Admin, Class Teacher, or the Subject Teacher who created it
+     allow read: if isAdmin() ||
+                  (isTeacher() && (isClassTeacher(resource.data.classId) || resource.data.teacherId == uid())) ||
+                  (isParent() && resource.data.status == 'approved' && resource.data.studentId in userData().childrenIds);
 
-  allow read: if isSignedIn() && (
-    isAdmin() ||
-    canViewAcademicRecords() ||
-        ((isTeacher() || isStaff()) && (resource == null || isClassTeacher(resource.data.classId))) ||
-        (isStudent() && resource != null && resource.data.classId == userData().classId) ||
-        (isParent() && resource != null && resource.data.status == 'approved')
-      );
+     allow write: if canManageAcademicRecords() || (isSignedIn() && isTeacher() && (
+       // Authorization: Must be Class Teacher OR the teacher assigned to this subject record
+       (isClassTeacher(request.resource.data.classId) || request.resource.data.teacherId == uid()) &&
 
-      allow create, update: if isSignedIn() && (
-        isAdmin() ||
-        (
-          (isTeacher() || isStaff()) &&
-          (canManageAcademicRecords() || canManageScores()) &&
-          // Validate teacher is assigned to this class
-          (request.resource.data.classId in userData().get('classes', [])) &&
-          // Validate teacher teaches this subject (Ensure 'subjects' exists on teacher doc)
-          (request.resource.data.subject in userData().get('subjects', [])) &&
-          // Ensure teacher field matches actor and timestamp is server time
-          request.resource.data.teacherId == uid() &&
-          request.resource.data.timestamp == request.time &&
-          // Final safety check: behavioral data requires class teacher
-          (
-            !request.resource.data.get('containsBehavioralData', false) ||
-            isClassTeacher(request.resource.data.classId)
-          )
-    )
-  );
+       // Data Integrity: Ensure they aren't changing the student, subject, or class of an existing record
+       (resource == null || (
+         request.resource.data.studentId == resource.data.studentId &&
+         request.resource.data.subject == resource.data.subject &&
+         request.resource.data.classId == resource.data.classId
+       )) &&
 
-  allow delete: if isAdmin() || canManageAcademicRecords();
-}
+       // Validation: Max Class Score of 50 (if applicable)
+       (request.resource.data.get('classScore', 0) is number && request.resource.data.classScore <= 50)
+     ));
+   }
 
+   match /academicRecordsSummary/{summaryId} {
+     // FIX: Added 'teacherId == uid()' so Subject Teachers can see the summaries they created
+     allow read: if canViewAcademicRecords() || isAdmin() ||
+                  (isTeacher() && (isClassTeacher(resource.data.classId) || resource.data.teacherId == uid())) ||
+                  (isStudent() && resource.data.studentId == uid()) ||
+                  (isParent() && resource.data.studentId in userData().childrenIds);
 
+     allow write: if canManageAcademicRecords() || (isSignedIn() && isTeacher() && (
+       isClassTeacher(request.resource.data.classId) ||
+       request.resource.data.teacherId == uid()
+     ));
+   }
 
- /* ===============================
+   // Added protection for Behavioral Records (Preschool Remarks)
+   match /behavioralRecords/{recordId} {
+     allow read: if isAdmin() || isTeacher() || (isParent() && resource.data.status == 'approved');
+     allow write: if isAdmin() || isTeacher(); // Teachers usually manage their own class behavioral data
+   }
+
+    /* ===============================
+       METADATA
+    =============================== */
+    match /metadata/schoolStats {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
+
+    /* ===============================
        AI & PEDAGOGY COLLECTIONS
     =============================== */
     match /ai_generations/{id} {
@@ -1112,13 +833,6 @@ match /academicRecords/{recordId} {
     }
 
     /* ===============================
-       METADATA
-    =============================== */
-    match /metadata/schoolStats {
-      allow read, write: if false;
-    }
-
-    /* ===============================
        NON-TEACHING STAFF
        Used for tracking non-teaching staff (drivers, cooks, security, etc.)
        =============================== */
@@ -1127,82 +841,71 @@ match /academicRecords/{recordId} {
       allow write: if isSuperAdmin();
        }
 
-    /* ===============================
-       DAILY FINANCIALS
-    =============================== */
-    match /dailyFinancials/{id} {
-      allow read: if canViewFeeding() || canViewBusFee() || canViewExtraClasses() || isAdmin()
-        || (isTeacher() && (
-             (resource != null && isClassTeacher(resource.data.classId)) ||
-             (id.split('_')[0] == uid()) // fallback for student-specific docs if applicable
-           ))
-        || (isParent() && (id.split('_')[0] in userData().get('childrenIds', []) || (resource != null && resource.data.studentUid in userData().get('childrenIds', []))))
-        || (isStudent() && (id.split('_')[0] == uid() || (resource != null && resource.data.studentUid == uid())));
+   firestore
+       /* ===============================
+          DAILY FINANCIALS
+       =============================== */
+       match /dailyFinancials/{id} {
+         allow read: if isAdmin() || canViewFeeding() || canViewBusFee() || canViewExtraClasses()
+           || (isTeacher() && request.resource.data.classId is string && isClassTeacher(request.resource.data.classId))
+           || (isTeacher() && resource != null && isClassTeacher(resource.data.classId))
+           || (isParent() && (id.split('_')[0] in userData().get('childrenIds', []) || (resource != null && resource.data.studentUid in userData().get('childrenIds', []))))
+           || (isStudent() && (id.split('_')[0] == uid() || (resource != null && resource.data.studentUid == uid())));
 
-      allow create: if isAdmin() || (
-          (isTeacher() || isStaff()) && (
-            // Must provide at least one numeric fee (non-negative)
-            (
-              (request.resource.data.feedingFee is number && request.resource.data.feedingFee >= 0) ||
-              (request.resource.data.busFee is number && request.resource.data.busFee >= 0) ||
-              (request.resource.data.extraClassesFee is number && request.resource.data.extraClassesFee >= 0)
-            )
-            // Document id must follow the convention: <studentUid>_<YYYY-MM-DD>
-            && id == (request.resource.data.studentUid + "_" + request.resource.data.date)
-            // Date must be ISO yyyy-mm-dd
-            && (request.resource.data.date is string && request.resource.data.date.matches('^\\d{4}-\\d{2}-\\d{2}$'))
-            // total may be updated via transforms (e.g. increment()); do not require numeric literal here
-            // Ensure teacher/staff are creating records only for their class OR have explicit permissions
-            && (
-              isClassTeacher(request.resource.data.classId) ||
-              canManageFeeding() ||
-              canRecordBusFee() ||
-              canManageExtraClasses()
-            )
-            // Ensure recordedByUid matches the authenticated user for non-admin creators
-            && request.resource.data.recordedByUid == uid()
-            // createdAt should be set server-side
-            && request.resource.data.createdAt == request.time
-          )
-      );
+         allow create: if isAdmin() || (
+             (isTeacher() || isStaff()) && isClassTeacher(request.resource.data.classId) && (
+               (request.resource.data.feedingFee is number) ||
+               (request.resource.data.busFee is number) ||
+               (request.resource.data.extraClassesFee is number)
+             )
+         );
 
-      allow update: if isAdmin() || (
-          (isTeacher() || isStaff()) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'feedingPaid', 'feedingCollector', 'feedingFee',
-            'busPaid', 'busCollector', 'busFee',
-            'extraPaid', 'extraCollector', 'extraClassesFee',
-            'total', 'disbursedAt', 'disbursedBy',
-            'updatedAt', 'date', 'studentUid', 'studentName', 'classId', 'className',
-            'recordedBy', 'recordedByUid', 'createdAt', 'otherFees', 'otherFeesDescription',
-            'feedingPaidAt', 'busPaidAt', 'extraPaidAt'
-          ]) && (
-            // Feeding fields require feeding permission
-            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['feedingPaid', 'feedingCollector', 'feedingFee']) || canManageFeeding()) &&
+         allow update: if isAdmin() || (
+             (isTeacher() || isStaff()) &&
+             request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+               'feedingPaid', 'feedingCollector', 'feedingFee',
+               'busPaid', 'busCollector', 'busFee',
+               'extraPaid', 'extraCollector', 'extraClassesFee',
+               'total', 'disbursedAt', 'disbursedBy',
+               'updatedAt', 'date', 'studentUid', 'studentName', 'classId', 'className',
+               'recordedBy', 'recordedByUid', 'createdAt', 'otherFees', 'otherFeesDescription',
+               'feedingPaidAt', 'busPaidAt', 'extraPaidAt'
+             ]) && (
+               // 1. Feeding Protection: Skip check if keys not touched, otherwise check permission
+               (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['feedingPaid', 'feedingCollector', 'feedingFee']) || canManageFeeding()) &&
 
-            // Bus fields: allow class-teacher OR those with specific permissions
-            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['busPaid', 'busCollector', 'busFee']) ||
-              canRecordBusFee() ||
-              isClassTeacher(resource.data.classId)
-            ) &&
+               // 2. Bus Protection: Skip check if keys not touched, otherwise check permission or class teacher status
+               (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['busPaid', 'busCollector', 'busFee']) || (
+                 canRecordBusFee() || (
+                   isTeacher() && (isClassTeacher(resource.data.classId)) && (
+                     getPermission('record-bus-fee') in ['full', 'edit'] ||
+                     getPermission('feeding') in ['full', 'edit'] ||
+                     getPermission('record-extra-classes') in ['full', 'edit']
+                   )
+                 )
+               )) &&
 
-            // Extra-classes fields: allow class-teacher OR those with specific permissions
-            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['extraPaid', 'extraCollector', 'extraClassesFee', 'disbursedAt', 'disbursedBy', 'extraPaidAt']) ||
-              canManageExtraClasses() ||
-              isClassTeacher(resource.data.classId)
-            )
-          )
-      );
+               // 3. Extra Classes Protection: Skip check if keys not touched, otherwise check permission or class teacher status
+               (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['extraPaid', 'extraCollector', 'extraClassesFee', 'disbursedAt', 'disbursedBy', 'extraPaidAt']) || canManageExtraClasses() || (
+                 isTeacher() && (isClassTeacher(resource.data.classId)) && (
+                   getPermission('record-extra-classes') in ['full', 'edit'] ||
+                   getPermission('feeding') in ['full', 'edit'] ||
+                   getPermission('record-bus-fee') in ['full', 'edit']
+                 )
+               ))
+             )
+         );
 
-      allow delete: if isAdmin();
-    }
+         allow delete: if isAdmin();
+       }
 
     /* ===============================
        FALLBACK & CATCH-ALL
-    =============================== */
+       =============================== */
     match /{path=**} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow write: if isSuperAdmin();
     }
   }
 }
+

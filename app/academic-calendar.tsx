@@ -291,13 +291,16 @@ export default function AcademicCalendar() {
     }
     setSavingSettings(true);
     try {
-      await setDoc(doc(db, "school_settings", "academic_config"), {
+      const cleanConfig = {
         ...termConfig,
+        academicYear: termConfig.academicYear.trim(),
+        currentTerm: termConfig.currentTerm.trim(),
         termStart: Timestamp.fromDate(termConfig.termStart),
         termEnd: Timestamp.fromDate(termConfig.termEnd),
         updatedAt: serverTimestamp(),
         updatedBy: appUser?.uid,
-      });
+      };
+      await setDoc(doc(db, "school_settings", "academic_config"), cleanConfig);
       setSettingsModalVisible(false);
       showToast({ message: "Academic configuration updated!", type: "success" });
     } catch (error) {

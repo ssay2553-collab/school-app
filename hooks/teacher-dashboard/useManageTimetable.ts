@@ -52,19 +52,36 @@ export const useManageTimetable = () => {
       if (!appUser) return;
       setLoadingClasses(true);
       try {
-        const classIds = getTeacherClasses(appUser);
-        if (classIds.length === 0) {
-          setLoadingClasses(false);
-          return;
+        const role = appUser.role?.toLowerCase();
+        const isAdmin = role === "admin" || role === "superadmin" || role === "super admin" || !!(appUser as any).adminRole;
+
+        let list: ClassData[] = [];
+
+        if (isAdmin) {
+          // Admins can manage all classes
+          const snap = await getDocsFromServer(collection(db, "classes"));
+          list = snap.docs.map(d => ({
+            id: d.id,
+            name: (d.data() as any).name || d.id,
+            curriculum: (d.data() as any).curriculum
+          }));
+        } else {
+          const classIds = getTeacherClasses(appUser);
+          if (classIds.length === 0) {
+            setLoadingClasses(false);
+            return;
+          }
+
+          // Use in query for specific classes, Firestore limit is 30 for 'in'
+          const q = query(collection(db, "classes"), where("__name__", "in", classIds.slice(0, 30)));
+          const snap = await getDocsFromServer(q);
+          list = snap.docs.map(d => ({
+            id: d.id,
+            name: (d.data() as any).name || d.id,
+            curriculum: (d.data() as any).curriculum
+          }));
         }
 
-        const q = query(collection(db, "classes"), where("__name__", "in", classIds.slice(0, 10)));
-        const snap = await getDocsFromServer(q);
-        const list = snap.docs.map(d => ({
-          id: d.id,
-          name: (d.data() as any).name || d.id,
-          curriculum: (d.data() as any).curriculum
-        }));
         const sorted = sortClasses(list);
         setClasses(sorted);
         if (sorted.length > 0 && !selectedClass) {

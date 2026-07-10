@@ -157,7 +157,7 @@ export const useAcademicRecords = () => {
   }, [calculateScores, reportType, showToast]);
 
   const saveRecord = async () => {
-    if (!selectedClassId || !selectedSubject || !term || !academicYear) return;
+    if (!selectedClassId || !selectedSubject || !term || !academicYear || !appUser?.uid) return;
     try {
       const batch = writeBatch(db);
       const yearSlug = academicYear.replace(/\//g, "-");
@@ -166,7 +166,7 @@ export const useAcademicRecords = () => {
 
       batch.set(doc(db, "academicRecords", docId), {
         docId,
-        teacherId: appUser?.uid,
+        teacherId: appUser.uid,
         classId: selectedClassId,
         className: teacherClasses.find(c => c.id === selectedClassId)?.name || selectedClassId,
         subject: selectedSubject,
@@ -182,6 +182,7 @@ export const useAcademicRecords = () => {
       allStudents.forEach(student => {
         const summaryId = `${student.studentId}_${academicYear.replace(/\//g, "_")}_${term.replace(/\s+/g, "")}`;
         batch.set(doc(db, "academicRecordsSummary", summaryId), {
+          teacherId: appUser.uid,
           studentId: student.studentId,
           classId: selectedClassId,
           academicYear,

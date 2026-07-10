@@ -119,7 +119,7 @@ export default function StudentSignupScreen() {
       }
 
       // 2. Check generic signupCodes
-      const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode));
+      const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode), limit(1));
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
@@ -296,7 +296,7 @@ export default function StudentSignupScreen() {
       let codeDocId: string | null = null;
 
       if (!preRegisteredData) {
-        const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode));
+        const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode), limit(1));
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {

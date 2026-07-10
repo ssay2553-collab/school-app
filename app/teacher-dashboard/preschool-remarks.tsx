@@ -123,7 +123,7 @@ export default function PreschoolRemarks() {
       <View style={styles.headerCompact}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color="#1E293B" /></TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 15 }}>
-          <Text style={styles.headerTitleDark}>Student Remarks</Text>
+          <Text style={styles.headerTitleDark}>Behavioral Remarks</Text>
           <Text style={styles.headerSubtitleDark}>{academicYear} • {term}</Text>
         </View>
         <TouchableOpacity onPress={saveRecords} style={styles.headerSaveBtn}><Text style={styles.headerSaveText}>SAVE ALL</Text></TouchableOpacity>

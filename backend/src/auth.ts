@@ -7,6 +7,129 @@ if (admin.apps.length === 0) {
 }
 
 /**
+ * Manually repairs a failed migration by moving data from an old Temp ID to a new Auth UID.
+ * Useful for students who signed up before the migration logic was implemented.
+ */
+export const repairStudentMigration = onCall({
+  maxInstances: 5,
+}, async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "User must be authenticated.");
+  }
+
+  const { targetUid, oldUid } = request.data;
+  if (!targetUid || !oldUid) {
+    throw new HttpsError("invalid-argument", "Both targetUid and oldUid are required.");
+  }
+
+  const db = admin.firestore();
+  const batch = db.batch();
+
+  try {
+    // 1. Fetch Target User to ensure they exist and get their name
+    const targetSnap = await db.collection("users").doc(targetUid).get();
+    if (!targetSnap.exists) {
+      throw new HttpsError("not-found", "Target student not found.");
+    }
+    const targetData = targetSnap.data();
+    const fullName = `${targetData?.profile?.firstName || ""} ${targetData?.profile?.lastName || ""}`.trim();
+
+    // 2. Migrate studentFeeRecords
+    const feeRecordsSnap = await db.collection("studentFeeRecords")
+      .where("studentUid", "==", oldUid)
+      .get();
+
+    for (const recordDoc of feeRecordsSnap.docs) {
+      const d = recordDoc.data();
+      const cleanYear = (d.academicYear || "").replace(/\//g, "-");
+      const cleanTerm = (d.term || "").replace(/\s/g, "");
+      const newRecordId = `${targetUid}_${cleanYear}_${cleanTerm}`;
+
+      batch.set(db.collection("studentFeeRecords").doc(newRecordId), {
+        ...d,
+        studentUid: targetUid,
+        studentName: fullName,
+        lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      batch.delete(recordDoc.ref);
+    }
+
+    // 3. Update feePayments
+    const feePaymentsSnap = await db.collection("feePayments")
+      .where("studentUid", "==", oldUid)
+      .get();
+    for (const paymentDoc of feePaymentsSnap.docs) {
+      batch.update(paymentDoc.ref, {
+        studentUid: targetUid,
+        studentName: fullName
+      });
+    }
+
+    // 4. Update dailyFinancials
+    const dailyFinSnap = await db.collection("dailyFinancials")
+      .where("studentUid", "==", oldUid)
+      .get();
+    for (const finDoc of dailyFinSnap.docs) {
+      const d = finDoc.data();
+      const newFinId = `${targetUid}_${d.date}`;
+      batch.set(db.collection("dailyFinancials").doc(newFinId), {
+        ...d,
+        studentUid: targetUid,
+        studentName: fullName,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      batch.delete(finDoc.ref);
+    }
+
+    // 5. Migrate Attendance Summary
+    const attSummarySnap = await db.collection("attendanceSummary")
+      .where("studentId", "==", oldUid)
+      .get();
+    for (const summaryDoc of attSummarySnap.docs) {
+      const d = summaryDoc.data();
+      const newSummaryId = `${targetUid}_${(d.academicYear || "").replace(/\//g, "-")}_${(d.term || "").replace(/\s/g, "")}`;
+      batch.set(db.collection("attendanceSummary").doc(newSummaryId), {
+        ...d,
+        studentId: targetUid,
+      });
+      batch.delete(summaryDoc.ref);
+    }
+
+    // 6. Migrate Academic Records Summary
+    const acadSummarySnap = await db.collection("academicRecordsSummary")
+      .where("studentId", "==", oldUid)
+      .get();
+    for (const summaryDoc of acadSummarySnap.docs) {
+      const d = summaryDoc.data();
+      const newSummaryId = `${targetUid}_${(d.academicYear || "").replace(/\//g, "_")}_${(d.term || "").replace(/\s/g, "")}`;
+      batch.set(db.collection("academicRecordsSummary").doc(newSummaryId), {
+        ...d,
+        studentId: targetUid,
+      });
+      batch.delete(summaryDoc.ref);
+    }
+
+    // 7. Bulk Update simple references (studentId field)
+    const collectionsToUpdate = [
+      "scores", "submissions", "behavioralRecords", "student-reports", "student_notes", "notifications", "activity_logs"
+    ];
+    for (const col of collectionsToUpdate) {
+      const snap = await db.collection(col).where(col === "student_notes" || col === "activity_logs" ? "uid" : "studentId", "==", oldUid).get();
+      snap.forEach(doc => {
+        batch.update(doc.ref, { [col === "student_notes" || col === "activity_logs" ? "uid" : "studentId"]: targetUid });
+      });
+    }
+
+    await batch.commit();
+    return { success: true, message: `Successfully migrated records from ${oldUid} to ${targetUid}` };
+
+  } catch (error: any) {
+    console.error("repairStudentMigration Error:", error);
+    throw new HttpsError("internal", error.message || "Repair failed.");
+  }
+});
+
+/**
  * Custom auth for non-teaching staff using Username and 4-digit PIN.
  */
 export const loginWithPin = onCall({

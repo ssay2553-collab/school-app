@@ -167,7 +167,7 @@ export default function TeacherDashboard() {
           color: "#8b5cf6",
         },
         {
-          title: "Preschool Remarks",
+          title: "Behavioral Remarks",
           subtitle: "Child conduct logs",
           route: "/teacher-dashboard/preschool-remarks",
           icon: "chatbubble-ellipses",

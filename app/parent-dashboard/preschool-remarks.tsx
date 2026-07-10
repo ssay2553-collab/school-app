@@ -222,11 +222,11 @@ export default function PreschoolRemarksParent() {
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <SVGIcon name="arrow-back" size={24} color="#1E293B" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Preschool Remarks</Text>
+          <Text style={styles.headerTitle}>Behavioral Remarks</Text>
         </View>
         <View style={styles.emptyState}>
           <SVGIcon name="information-circle" size={60} color="#CBD5E1" />
-          <Text style={styles.emptyStateTitle}>No Preschool Records</Text>
+          <Text style={styles.emptyStateTitle}>No Behavioral Records</Text>
           <Text style={styles.emptyStateText}>
             This screen is only for students in preschool levels (Creche, Nursery, KG, Level A-D). None of your children appear to be in these levels.
           </Text>
@@ -245,7 +245,7 @@ export default function PreschoolRemarksParent() {
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 15 }}>
-          <Text style={styles.headerTitle}>Preschool Remarks</Text>
+          <Text style={styles.headerTitle}>Behavioral Remarks</Text>
           <Text style={styles.headerSubtitle}>Progress Monitoring</Text>
         </View>
       </View>
@@ -352,7 +352,7 @@ export default function PreschoolRemarksParent() {
         ) : (
           <View style={styles.noDataBox}>
             <SVGIcon name="document-text-outline" size={50} color="#CBD5E1" />
-            <Text style={styles.noDataText}>No preschool remarks found for this child in the selected period.</Text>
+            <Text style={styles.noDataText}>No behavioral remarks found for this child in the selected period.</Text>
           </View>
         )}
       </ScrollView>

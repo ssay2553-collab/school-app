@@ -1,33 +1,33 @@
 import { useRouter } from "expo-router";
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocsFromServer,
-  increment,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  setDoc,
-  Timestamp,
-  where,
-  writeBatch,
+    collection,
+    doc,
+    getDoc,
+    getDocsFromServer,
+    increment,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    setDoc,
+    Timestamp,
+    where,
+    writeBatch,
 } from "firebase/firestore";
 import moment from "moment";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    FlatList,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -127,11 +127,6 @@ export default function FeedingFees() {
     feedingPermission === "view" ||
     feedingPermission === "edit";
 
-  const canEdit =
-    isSuperAdmin ||
-    feedingPermission === "full" ||
-    feedingPermission === "edit";
-
   // Class teacher check
   const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
 
@@ -157,7 +152,17 @@ export default function FeedingFees() {
 
   // Filters
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const isPastDate = moment(selectedDate).isBefore(moment(), "day");
+  const canEdit =
+    (isSuperAdmin ||
+      feedingPermission === "full" ||
+      feedingPermission === "edit") &&
+    !isPastDate;
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const changeDate = (days: number) => {
+    setSelectedDate(moment(selectedDate).add(days, "days").toDate());
+  };
 
   // Determine initial class selection
   const [selectedClassId, setSelectedClassId] = useState<string>(
@@ -369,7 +374,7 @@ export default function FeedingFees() {
           const q = query(
             collection(db, "attendance"),
             where("classId", "==", effectiveClassId),
-            where("date", "==", cleanDate)
+            where("date", "==", cleanDate),
           );
           const querySnap = await getDocsFromServer(q);
           if (!querySnap.empty) {
@@ -813,16 +818,40 @@ export default function FeedingFees() {
           <Text style={styles.headerTitleText}>Feeding Fees</Text>
           <Text style={styles.headerSubtitle}>Record daily meal fees</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => setShowDatePicker(true)}
-          style={styles.dateButton}
-        >
-          <SVGIcon name="calendar" size={20} color={COLORS.primary} />
-          <Text style={styles.dateButtonText}>
-            {moment(selectedDate).format("MMM DD, YYYY")}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.dateNavContainer}>
+          <TouchableOpacity
+            onPress={() => changeDate(-1)}
+            style={styles.dateNavButton}
+          >
+            <SVGIcon name="chevron-back" size={18} color={COLORS.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowDatePicker(true)}
+            style={styles.dateButton}
+          >
+            <SVGIcon name="calendar" size={20} color={COLORS.primary} />
+            <Text style={styles.dateButtonText}>
+              {moment(selectedDate).format("MMM DD, YYYY")}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => changeDate(1)}
+            style={styles.dateNavButton}
+          >
+            <SVGIcon name="chevron-forward" size={18} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Past Date Banner */}
+      {isPastDate && (
+        <View style={styles.pastDateBanner}>
+          <SVGIcon name="eye-outline" size={18} color={VIBE.muted} />
+          <Text style={styles.pastDateBannerText}>
+            View Only Mode (Historical Record)
+          </Text>
+        </View>
+      )}
 
       {showDatePicker && DateTimePicker && (
         <DateTimePicker
@@ -1383,6 +1412,20 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1 },
   headerTitleText: { fontSize: 20, fontWeight: "900", color: VIBE.text },
   headerSubtitle: { fontSize: 13, color: VIBE.muted, marginTop: 1 },
+  dateNavContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: 8,
+  },
+  dateNavButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: VIBE.primary + "10",
+  },
   dateButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -1817,6 +1860,20 @@ const styles = StyleSheet.create({
     color: VIBE.muted,
     textAlign: "center",
     fontWeight: "600",
+  },
+  pastDateBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: VIBE.border,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  pastDateBannerText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: VIBE.muted,
+    textTransform: "uppercase",
   },
   errorContainer: {
     flex: 1,

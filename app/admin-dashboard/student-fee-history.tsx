@@ -143,21 +143,14 @@ export default function StudentFeeHistoryScreen() {
   }, [filteredPayments]);
 
   const ledgerSummary = useMemo(() => {
-    const totalPaid = paymentLedgerEntries.reduce(
-      (sum, payment: any) => sum + (Number(payment.amount) || 0),
-      0,
-    );
-    const installmentCount =
-      paymentLedgerEntries.filter((payment: any) => payment._installmentLabel)
-        .length || paymentLedgerEntries.length;
+    const totalPaid = totals.totalPaid;
     const lastPayment = paymentLedgerEntries[0];
 
     return {
       totalPaid,
-      installmentCount,
       lastPaymentDate: lastPayment?._displayDate || "No payments yet",
     };
-  }, [paymentLedgerEntries]);
+  }, [paymentLedgerEntries, totals.totalPaid]);
 
   const onLogPayment = async () => {
     const success = await handleLogPayment(

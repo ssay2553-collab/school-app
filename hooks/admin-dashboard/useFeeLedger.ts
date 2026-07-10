@@ -45,7 +45,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
     const [selectedStudentUid, setSelectedStudentUid] = useState(initialStudentUid || "");
 
     const [record, setRecord] = useState<any>(null);
-    const [allTransactions, setAllTransactions] = useState<any[]>([]);
+    const [collectionTransactions, setCollectionTransactions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [fetchingStudents, setFetchingStudents] = useState(false);
     const [fetchingRecord, setFetchingRecord] = useState(false);
@@ -120,7 +120,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
     useEffect(() => {
         if (!selectedStudentUid) {
             setRecord(null);
-            setAllTransactions([]);
+            setCollectionTransactions([]);
             return;
         }
 
@@ -141,7 +141,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             );
         } else {
             if (!selectedYear || !selectedTerm) {
-                setAllTransactions([]);
+                setCollectionTransactions([]);
                 setFetchingRecord(false);
                 return;
             }
@@ -155,11 +155,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
 
         const unsubTransactions = onSnapshot(q, (snap) => {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setAllTransactions(list.sort((a: any, b: any) => {
-                const dateA = a.date || a.createdAt || 0;
-                const dateB = b.date || b.createdAt || 0;
-                return new Date(dateB).getTime() - new Date(dateA).getTime();
-            }));
+            setCollectionTransactions(list);
             setFetchingRecord(false);
         });
 
@@ -168,6 +164,63 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             unsubTransactions();
         };
     }, [selectedStudentUid, selectedYear, selectedTerm, showFullHistory]);
+
+    const allTransactions = useMemo(() => {
+        const collectionList = collectionTransactions;
+        const recordList = record?.payments || [];
+        const merged = [...collectionList];
+        const existingIds = new Set<string>(collectionList.map((t: any) => String(t.receiptNo || t.id)));
+
+        recordList.forEach((p: any) => {
+            const id = String(p.receiptNo || p.id);
+            if (id && id !== 'undefined' && !existingIds.has(id)) {
+                merged.push({ ...p, id: id });
+            }
+        });
+
+        // If not in full history mode, ensure the ledger list matches the record summary
+        if (!showFullHistory && record) {
+            const categories = [
+                { key: 'tuition', paid: record.amountPaid || 0 },
+                { key: 'pta', paid: record.ptaPaid || 0 },
+                { key: 'maintenance', paid: record.maintenancePaid || 0 },
+                { key: 'admission', paid: record.admissionPaid || 0 },
+                { key: 'books', paid: record.booksPaid || 0 },
+                { key: 'uniform', paid: record.uniformPaid || 0 },
+                { key: 'other', paid: record.otherPaid || 0 },
+            ];
+
+            categories.forEach(cat => {
+                const currentCatSum = merged.reduce((sum: number, t: any) => {
+                    const type = (t.type || "tuition").toLowerCase();
+                    const category = type.replace("_payment", "").replace("_credit", "");
+                    const isPayment = type.endsWith("_payment") || type === "tuition" || type === "tuition_credit";
+                    return (category === cat.key && isPayment) ? sum + (Number(t.amount) || 0) : sum;
+                }, 0);
+
+                if (cat.paid > currentCatSum + 0.01) {
+                    merged.push({
+                        id: `adjustment-${cat.key}`,
+                        amount: cat.paid - currentCatSum,
+                        type: cat.key === 'tuition' ? 'tuition' : `${cat.key}_payment`,
+                        receiptNo: `ADJ-${cat.key.toUpperCase()}`,
+                        date: record.createdAt || moment().format("YYYY-MM-DD"),
+                        academicYear: selectedYear,
+                        term: selectedTerm,
+                        receivedFrom: "Historical Record",
+                        method: "Migration",
+                        isAdjustment: true,
+                    });
+                }
+            });
+        }
+
+        return merged.sort((a: any, b: any) => {
+            const dateA = a.date || a.createdAt || 0;
+            const dateB = b.date || b.createdAt || 0;
+            return new Date(dateB).getTime() - new Date(dateA).getTime();
+        });
+    }, [collectionTransactions, record, showFullHistory, selectedYear, selectedTerm]);
 
     const handleLogPayment = async (amountStr: string, receivedFrom: string, paymentMethod: string, paymentDate?: Date) => {
         if (!canManageFees) {

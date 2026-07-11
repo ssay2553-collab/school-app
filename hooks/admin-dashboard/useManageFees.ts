@@ -113,7 +113,9 @@ export const useManageFees = ({
       if (saved) {
         try {
           const { classId } = JSON.parse(saved);
-          setSelectedClassId(classId || "all");
+          if (classId) {
+            setSelectedClassId(classId);
+          }
         } catch {
           setSelectedClassId("all");
         }

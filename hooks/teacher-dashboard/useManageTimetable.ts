@@ -148,6 +148,20 @@ export const useManageTimetable = () => {
     });
   }, []);
 
+  const updateColumnPeriod = useCallback((col: number, updates: Partial<Period>) => {
+    setTimetableDays(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(day => {
+        const newDay = [...(next[day] || [])];
+        if (newDay[col]) {
+          newDay[col] = { ...newDay[col], ...updates };
+          next[day] = newDay;
+        }
+      });
+      return next;
+    });
+  }, []);
+
   const saveTimetable = async () => {
     if (!selectedClass) return;
     setSaving(true);
@@ -182,6 +196,7 @@ export const useManageTimetable = () => {
     loadingData,
     saving,
     updatePeriod,
+    updateColumnPeriod,
     saveTimetable,
     customSubjects,
     setCustomSubjects,

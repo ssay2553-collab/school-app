@@ -25,6 +25,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
+import { useAcademicConfig } from "../../contexts/AcademicContext";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
@@ -81,6 +82,7 @@ export default function DailyFinancialsSummary() {
   const router = useRouter();
   const { appUser } = useAuth();
   const { showToast } = useToast();
+  const acadConfig = useAcademicConfig();
 
   // ACCESS CONTROL - Only superadmins
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
@@ -268,6 +270,14 @@ export default function DailyFinancialsSummary() {
       setLoading(true);
       const baseDate = moment(selectedDate);
 
+      // Parse Academic Config Dates
+      const configStart = acadConfig.termStart
+        ? moment(acadConfig.termStart.toDate ? acadConfig.termStart.toDate() : acadConfig.termStart)
+        : null;
+      const configEnd = acadConfig.termEnd
+        ? moment(acadConfig.termEnd.toDate ? acadConfig.termEnd.toDate() : acadConfig.termEnd)
+        : null;
+
       // Define date ranges
       const ranges = {
         today: {
@@ -283,8 +293,8 @@ export default function DailyFinancialsSummary() {
           end: baseDate.clone().endOf("month").format("YYYY-MM-DD"),
         },
         term: {
-          start: baseDate.clone().subtract(3, "months").startOf("month").format("YYYY-MM-DD"),
-          end: baseDate.clone().endOf("month").format("YYYY-MM-DD"),
+          start: configStart ? configStart.format("YYYY-MM-DD") : baseDate.clone().subtract(3, "months").startOf("month").format("YYYY-MM-DD"),
+          end: configEnd ? configEnd.format("YYYY-MM-DD") : baseDate.clone().endOf("month").format("YYYY-MM-DD"),
         },
       };
 
@@ -499,8 +509,13 @@ export default function DailyFinancialsSummary() {
         const method = data.method || "";
         const daily = getOrCreateDaily(date);
 
-        // Skip debt creation entries (Bulk Charges) - only count actual payments
-        if (method === "Bulk Charge" || method === "Bulk Bill") return;
+        // Skip debt creation entries (Bulk Charges, Bills, System Billing) - only count actual payments
+        const isDebtEntry =
+          method.toLowerCase().includes("charge") ||
+          method.toLowerCase().includes("bill") ||
+          method === "System Billing";
+
+        if (isDebtEntry) return;
 
         let catKey = "Tuition Fees";
         if (type === "admission" || type === "admission_payment") {
@@ -669,23 +684,23 @@ export default function DailyFinancialsSummary() {
               <View style={styles.dailyGrid}>
                 <View style={styles.dailyStat}>
                   <Text style={styles.dailyStatLabel}>Feeding</Text>
-                  <Text style={styles.dailyStatValue}>₵{item.feeding.toLocaleString()}</Text>
+                  <Text style={styles.dailyStatValue} numberOfLines={1} adjustsFontSizeToFit>₵{item.feeding.toLocaleString()}</Text>
                 </View>
                 <View style={styles.dailyStat}>
                   <Text style={styles.dailyStatLabel}>Bus</Text>
-                  <Text style={styles.dailyStatValue}>₵{item.bus.toLocaleString()}</Text>
+                  <Text style={styles.dailyStatValue} numberOfLines={1} adjustsFontSizeToFit>₵{item.bus.toLocaleString()}</Text>
                 </View>
                 <View style={styles.dailyStat}>
                   <Text style={styles.dailyStatLabel}>Extra</Text>
-                  <Text style={styles.dailyStatValue}>₵{item.extra.toLocaleString()}</Text>
+                  <Text style={styles.dailyStatValue} numberOfLines={1} adjustsFontSizeToFit>₵{item.extra.toLocaleString()}</Text>
                 </View>
                 <View style={styles.dailyStat}>
                   <Text style={styles.dailyStatLabel}>Tuition</Text>
-                  <Text style={styles.dailyStatValue}>₵{item.tuition.toLocaleString()}</Text>
+                  <Text style={styles.dailyStatValue} numberOfLines={1} adjustsFontSizeToFit>₵{item.tuition.toLocaleString()}</Text>
                 </View>
                 <View style={styles.dailyStat}>
                   <Text style={styles.dailyStatLabel}>Charges</Text>
-                  <Text style={styles.dailyStatValue}>₵{item.charges.toLocaleString()}</Text>
+                  <Text style={styles.dailyStatValue} numberOfLines={1} adjustsFontSizeToFit>₵{item.charges.toLocaleString()}</Text>
                 </View>
                 <View style={[styles.dailyNetBadge, { backgroundColor: isProfit ? VIBE.success + "15" : VIBE.danger + "15" }]}>
                    <Text style={[styles.dailyNetText, { color: isProfit ? VIBE.success : VIBE.danger }]}>
@@ -764,9 +779,16 @@ export default function DailyFinancialsSummary() {
           {/* Overall Summary */}
           <View style={styles.overviewSection}>
             <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>📊 Financial Overview</Text>
+              <View>
+                <Text style={styles.sectionTitle}>📊 Financial Overview</Text>
+                {acadConfig.termStart && (
+                  <Text style={styles.dateRangeText}>
+                    {moment(acadConfig.termStart.toDate ? acadConfig.termStart.toDate() : acadConfig.termStart).format("MMM D")} - {moment(acadConfig.termEnd.toDate ? acadConfig.termEnd.toDate() : acadConfig.termEnd).format("MMM D, YYYY")}
+                  </Text>
+                )}
+              </View>
               <View style={styles.periodIndicator}>
-                <Text style={styles.periodIndicatorText}>Current Term</Text>
+                <Text style={styles.periodIndicatorText}>{acadConfig.currentTerm || "Current Term"}</Text>
               </View>
             </View>
             <View style={styles.overviewCards}>
@@ -782,21 +804,58 @@ export default function DailyFinancialsSummary() {
                    <Text style={styles.mainBalanceLabel}>Total Net Balance</Text>
                    <SVGIcon name={netBalance >= 0 ? "trending-up" : "trending-down"} size={20} color="#ffffff80" />
                 </View>
-                <Text style={styles.mainBalanceValue}>₵{netBalance.toLocaleString()}</Text>
+                <Text
+                  style={styles.mainBalanceValue}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                >
+                  ₵{netBalance.toLocaleString()}
+                </Text>
                 <View style={styles.mainBalanceFooter}>
                   <Text style={styles.mainBalanceSubtext}>Cumulative surplus from all revenue streams</Text>
                 </View>
               </View>
 
               <View style={styles.secondaryOverviewRow}>
-                <View style={[styles.secondaryCard, { borderLeftColor: VIBE.success }]}>
-                  <Text style={styles.secondaryLabel}>Total Revenue</Text>
-                  <Text style={[styles.secondaryValue, { color: VIBE.success }]}>₵{totalRevenue.toLocaleString()}</Text>
-                </View>
-                <View style={[styles.secondaryCard, { borderLeftColor: VIBE.danger }]}>
-                  <Text style={styles.secondaryLabel}>Total Expenses</Text>
-                  <Text style={[styles.secondaryValue, { color: VIBE.danger }]}>₵{totalExpenditure.toLocaleString()}</Text>
-                </View>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[
+                    styles.secondaryCard,
+                    { borderLeftColor: VIBE.success },
+                  ]}
+                >
+                  <Text style={styles.secondaryLabel} numberOfLines={1}>
+                    Total Revenue
+                  </Text>
+                  <Text
+                    style={[styles.secondaryValue, { color: VIBE.success }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                  >
+                    ₵{totalRevenue.toLocaleString()}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[
+                    styles.secondaryCard,
+                    { borderLeftColor: VIBE.danger },
+                  ]}
+                >
+                  <Text style={styles.secondaryLabel} numberOfLines={1}>
+                    Total Expenses
+                  </Text>
+                  <Text
+                    style={[styles.secondaryValue, { color: VIBE.danger }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.7}
+                  >
+                    ₵{totalExpenditure.toLocaleString()}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
           </View>
@@ -943,6 +1002,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   adminBadgeText: { fontSize: 10, fontWeight: "900", color: "#fff" },
+  dateRangeText: {
+    fontSize: 12,
+    color: VIBE.muted,
+    fontWeight: "600",
+    marginTop: -2,
+  },
   overviewSection: { padding: 20 },
   sectionHeaderRow: {
     flexDirection: "row",
@@ -969,6 +1034,9 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     ...SHADOWS.medium,
     marginBottom: 12,
+    minHeight: 140,
+    justifyContent: "center",
+    elevation: 8,
   },
   mainBalanceHeader: {
     flexDirection: "row",
@@ -1001,26 +1069,36 @@ const styles = StyleSheet.create({
   },
   secondaryOverviewRow: {
     flexDirection: "row",
+    width: "100%",
     gap: 12,
+    marginTop: 8,
   },
   secondaryCard: {
     flex: 1,
     backgroundColor: VIBE.surface,
     padding: 16,
-    borderRadius: 20,
-    ...SHADOWS.small,
-    borderLeftWidth: 4,
+    borderRadius: 24,
+    borderLeftWidth: 6,
+    justifyContent: "center",
+    minHeight: 100,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   secondaryLabel: {
     fontSize: 11,
-    fontWeight: "700",
+    fontWeight: "800",
     color: VIBE.muted,
     textTransform: "uppercase",
+    letterSpacing: 0.5,
     marginBottom: 4,
   },
   secondaryValue: {
-    fontSize: 18,
-    fontWeight: "800",
+    fontSize: 22,
+    fontWeight: "900",
+    includeFontPadding: false,
   },
   section: { paddingHorizontal: 20, paddingBottom: 20 },
   sectionTitle: {
@@ -1122,6 +1200,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "800",
     color: VIBE.text,
+    includeFontPadding: false,
   },
   periodBadge: {
     backgroundColor: VIBE.surface,
@@ -1276,6 +1355,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: VIBE.text,
     marginTop: 4,
+    includeFontPadding: false,
   },
   dailyNetBadge: {
     width: "100%",
@@ -1289,5 +1369,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "900",
     letterSpacing: 0.5,
+    includeFontPadding: false,
   },
 });

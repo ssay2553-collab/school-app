@@ -18,7 +18,8 @@ import {
   Platform,
   Modal,
   FlatList,
-  BackHandler
+  BackHandler,
+  Alert
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -27,6 +28,7 @@ import { useRouter } from "expo-router";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, MONTESSORI_SUBJECTS, COMMON_ACTIVITIES } from "../../constants/Curriculum";
 import SVGIcon from "../../components/SVGIcon";
 import { useManageTimetable, Period } from "../../hooks/teacher-dashboard/useManageTimetable";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -62,11 +64,14 @@ export default function CreateLessonTimetable() {
     loadingData,
     saving,
     updatePeriod,
+    updateColumnPeriod,
     saveTimetable,
     customSubjects,
   } = useManageTimetable();
 
   const [pickerModal, setPickerModal] = useState<{ day: string; col: number } | null>(null);
+  const [timeModal, setTimeModal] = useState<{ col: number; type: "start" | "end" } | null>(null);
+  const [tempTime, setTempTime] = useState(new Date());
 
   const brandColor = COLORS.brandPrimary || COLORS.primary || "#2e86de";
   const neutralDark = "#1E293B";
@@ -126,6 +131,40 @@ export default function CreateLessonTimetable() {
         </View>
       </Modal>
     );
+  };
+
+  const handleTimeChange = (event: any, date?: Date) => {
+    if (Platform.OS === 'android') setTimeModal(null);
+    if (date && timeModal) {
+      const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+      updateColumnPeriod(timeModal.col, timeModal.type === "start" ? { startTime: timeString } : { endTime: timeString });
+    }
+  };
+
+  const handleWebTimeChange = (col: number, type: "start" | "end", val: string) => {
+    // val is in "HH:mm" 24h format from <input type="time">
+    if (!val) return;
+    const [h, m] = val.split(':').map(Number);
+    const date = new Date();
+    date.setHours(h, m, 0, 0);
+    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    updateColumnPeriod(col, type === "start" ? { startTime: timeString } : { endTime: timeString });
+  };
+
+  const openTimePicker = (col: number, type: "start" | "end") => {
+    const currentPeriod = timetableDays["Monday"]?.[col];
+    const timeVal = type === "start" ? currentPeriod?.startTime : currentPeriod?.endTime;
+
+    let d = new Date();
+    if (timeVal) {
+      const [time, modifier] = timeVal.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+      if (modifier === 'PM' && hours < 12) hours += 12;
+      if (modifier === 'AM' && hours === 12) hours = 0;
+      d.setHours(hours, minutes, 0, 0);
+    }
+    setTempTime(d);
+    setTimeModal({ col, type });
   };
 
   if (loadingClasses) {
@@ -190,14 +229,65 @@ export default function CreateLessonTimetable() {
             <View>
               {/* Header Row */}
               <View style={styles.gridHeader}>
-                <View style={[styles.gridCell, { width: DAY_COLUMN_WIDTH, backgroundColor: "#F1F5F9" }]}>
+                <View style={[styles.gridCell, { width: DAY_COLUMN_WIDTH, backgroundColor: "#F1F5F9", height: 110 }]}>
                   <Text style={styles.gridHeaderText}>DAY</Text>
                 </View>
-                {Array.from({ length: numColumns }).map((_, i) => (
-                  <View key={i} style={[styles.gridCell, { width: COLUMN_WIDTH, backgroundColor: "#F1F5F9" }]}>
-                    <Text style={styles.gridHeaderText}>PERIOD {i + 1}</Text>
-                  </View>
-                ))}
+                {Array.from({ length: numColumns }).map((_, i) => {
+                  const firstDayPeriod = timetableDays["Monday"]?.[i];
+
+                  // Convert "10:30 AM" to "10:30" (24h) for web input
+                  const getWebTimeValue = (timeStr?: string) => {
+                    if (!timeStr) return "";
+                    try {
+                      const [time, modifier] = timeStr.split(' ');
+                      let [hours, minutes] = time.split(':').map(Number);
+                      if (modifier === 'PM' && hours < 12) hours += 12;
+                      if (modifier === 'AM' && hours === 12) hours = 0;
+                      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                    } catch (e) { return ""; }
+                  };
+
+                  return (
+                    <View key={i} style={[styles.gridCell, { width: COLUMN_WIDTH, backgroundColor: "#F1F5F9", height: 110 }]}>
+                      <Text style={styles.gridHeaderText}>PERIOD {i + 1}</Text>
+                      <View style={styles.timeControlRow}>
+                        {Platform.OS === 'web' ? (
+                          <View style={{ gap: 4, alignItems: 'center' }}>
+                            <input
+                              type="time"
+                              value={getWebTimeValue(firstDayPeriod?.startTime)}
+                              onChange={(e) => handleWebTimeChange(i, "start", e.target.value)}
+                              style={webTimeStyles}
+                            />
+                            <Text style={{fontSize: 10, color: "#94A3B8"}}>-</Text>
+                            <input
+                              type="time"
+                              value={getWebTimeValue(firstDayPeriod?.endTime)}
+                              onChange={(e) => handleWebTimeChange(i, "end", e.target.value)}
+                              style={webTimeStyles}
+                            />
+                          </View>
+                        ) : (
+                          <>
+                            <TouchableOpacity
+                              style={styles.timeInputBtn}
+                              onPress={() => openTimePicker(i, "start")}
+                            >
+                              <Text style={styles.timeInputText}>{firstDayPeriod?.startTime || "Start"}</Text>
+                            </TouchableOpacity>
+                            <Text style={{fontSize: 10, color: "#94A3B8"}}>-</Text>
+                            <TouchableOpacity
+                              style={styles.timeInputBtn}
+                              onPress={() => openTimePicker(i, "end")}
+                            >
+                              <Text style={styles.timeInputText}>{firstDayPeriod?.endTime || "End"}</Text>
+                            </TouchableOpacity>
+                          </>
+                        )}
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false}>
@@ -241,6 +331,35 @@ export default function CreateLessonTimetable() {
         </View>
       )}
       {renderSubjectPicker()}
+      {timeModal && (
+        Platform.OS === 'ios' ? (
+          <Modal visible transparent animationType="fade">
+            <View style={styles.modalOverlay}>
+              <View style={styles.timePickerContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Set {timeModal.type === "start" ? "Start" : "End"} Time</Text>
+                  <TouchableOpacity onPress={() => setTimeModal(null)}>
+                    <Text style={{color: brandColor, fontWeight: '700'}}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={tempTime}
+                  mode="time"
+                  display="spinner"
+                  onChange={handleTimeChange}
+                />
+              </View>
+            </View>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={tempTime}
+            mode="time"
+            display="default"
+            onChange={handleTimeChange}
+          />
+        )
+      )}
     </SafeAreaView>
   );
 }
@@ -282,6 +401,33 @@ const styles = StyleSheet.create({
   gridHeaderText: { fontSize: 11, fontWeight: "900", color: "#64748B" },
   dayText: { fontSize: 13, fontWeight: "900", color: "#1E293B" },
   periodText: { fontSize: 12, fontWeight: "700", textAlign: "center", color: "#1E293B" },
+  timeControlRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 8
+  },
+  timeInputBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    minWidth: 60,
+    alignItems: 'center'
+  },
+  timeInputText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1E293B'
+  },
+  timePickerContainer: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    paddingBottom: 20
+  },
   legend: { padding: 15, backgroundColor: "#F1F5F9" },
   legendTitle: { fontSize: 10, fontWeight: "900", color: "#64748B", marginBottom: 10, textTransform: "uppercase" },
   legendGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
@@ -311,3 +457,15 @@ const styles = StyleSheet.create({
   subjectItemText: { fontSize: 15, color: "#475569", fontWeight: "600" },
   colorDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
 });
+
+const webTimeStyles = {
+  border: '1px solid #E2E8F0',
+  borderRadius: '4px',
+  padding: '2px 4px',
+  fontSize: '10px',
+  fontWeight: '700',
+  color: '#1E293B',
+  fontFamily: 'inherit',
+  width: '80px',
+  textAlign: 'center' as const
+};

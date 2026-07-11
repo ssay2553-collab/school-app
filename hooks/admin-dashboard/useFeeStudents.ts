@@ -204,8 +204,6 @@ export const useFeeStudents = (
 
   useEffect(() => {
     if (selectedClassId) {
-      setStudents([]);
-      setLoading(true);
       fetchStudents(true);
     }
   }, [selectedClassId, academicYear, term, showArchived]);

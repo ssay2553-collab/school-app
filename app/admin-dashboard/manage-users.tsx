@@ -6,6 +6,7 @@ import {
     KeyboardAvoidingView,
     Platform,
     RefreshControl,
+    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
@@ -157,144 +158,156 @@ export default function ManageUsers() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={{ flex: 1 }}
       >
-        <View style={styles.header}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <TouchableOpacity
-              onPress={() => setSelectedRole(null)}
-              style={styles.backButton}
-            >
-              <SVGIcon name="chevron-back" size={24} color="#1E293B" />
-            </TouchableOpacity>
+        <FlatList
+          data={loading ? [] : filteredUsers}
+          keyExtractor={(item) => item.uid}
+          ListHeaderComponent={
             <View>
-              <Text style={styles.headerTitle}>
-                {selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}s
-              </Text>
-              <Text style={styles.headerSub}>
-                {showArchived ? "Archived Records" : "Active Directory"}
-              </Text>
-            </View>
-          </View>
+              <View style={styles.header}>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <TouchableOpacity
+                    onPress={() => setSelectedRole(null)}
+                    style={styles.backButton}
+                  >
+                    <SVGIcon name="chevron-back" size={24} color="#1E293B" />
+                  </TouchableOpacity>
+                  <View>
+                    <Text style={styles.headerTitle}>
+                      {selectedRole.charAt(0).toUpperCase() +
+                        selectedRole.slice(1)}s
+                    </Text>
+                    <Text style={styles.headerSub}>
+                      {showArchived ? "Archived Records" : "Active Directory"}
+                    </Text>
+                  </View>
+                </View>
 
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            <TouchableOpacity
-              style={styles.iconBtn}
-              onPress={() => setShowArchived(!showArchived)}
-            >
-              <SVGIcon
-                name={showArchived ? "people" : "archive"}
-                size={22}
-                color={COLORS.primary}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleBulkImport}>
-              <SVGIcon name="cloud-upload" size={22} color={COLORS.primary} />
-            </TouchableOpacity>
-          </View>
-        </View>
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <TouchableOpacity
+                    style={styles.iconBtn}
+                    onPress={() => setShowArchived(!showArchived)}
+                  >
+                    <SVGIcon
+                      name={showArchived ? "people" : "archive"}
+                      size={22}
+                      color={COLORS.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
 
-        <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <SVGIcon name="search" size={20} color="#94A3B8" />
-            <TextInput
-              placeholder={`Search ${selectedRole}s...`}
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-          {selectedRole === "student" && (
-            <TouchableOpacity
-              style={styles.bulkImportButton}
-              onPress={handleBulkImport}
-            >
-              <SVGIcon name="cloud-upload" size={18} color="#fff" />
-              <Text style={styles.bulkImportButtonText}>Bulk CSV Upload</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+              <View style={styles.searchContainer}>
+                <View style={styles.searchBar}>
+                  <SVGIcon name="search" size={20} color="#94A3B8" />
+                  <TextInput
+                    placeholder={`Search ${selectedRole}s...`}
+                    style={styles.searchInput}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+              </View>
 
-        {selectedRole === "student" && (
-          <View style={styles.filterRow}>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={selectedClassId}
-                onValueChange={setSelectedClassId}
-                style={styles.picker}
-              >
-                <Picker.Item label="All Classes" value="all" />
-                {allClasses.map((c) => (
-                  <Picker.Item key={c.id} label={c.name} value={c.id} />
-                ))}
-              </Picker>
-            </View>
-            {isHighestClassView && !showArchived && (
-              <TouchableOpacity
-                style={styles.graduateBtn}
-                onPress={handleGraduateClass}
-              >
-                <Text style={styles.graduateBtnText}>Graduate Class</Text>
-              </TouchableOpacity>
-            )}
-            {!isHighestClassView &&
-              selectedClassId !== "all" &&
-              !showArchived && (
-                <TouchableOpacity
-                  style={[
-                    styles.graduateBtn,
-                    { backgroundColor: COLORS.secondary || "#c53b59" },
-                  ]}
-                  onPress={() =>
-                    setAssignmentModal({ type: "promote_repeat", target: null })
-                  }
+              {selectedRole === "student" && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.filterRow}
+                  style={{ backgroundColor: "#fff" }}
                 >
-                  <Text style={styles.graduateBtnText}>
-                    Promote/Repeat Class
-                  </Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.graduateBtn,
+                      {
+                        backgroundColor: COLORS.primary,
+                        flexDirection: "row",
+                        gap: 8,
+                        paddingHorizontal: 15,
+                      },
+                    ]}
+                    onPress={handleBulkImport}
+                  >
+                    <SVGIcon name="cloud-upload" size={18} color="#fff" />
+                    <Text style={styles.graduateBtnText}>Bulk CSV</Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.pickerContainer, { width: 160 }]}>
+                    <Picker
+                      selectedValue={selectedClassId}
+                      onValueChange={setSelectedClassId}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="All Classes" value="all" />
+                      {allClasses.map((c) => (
+                        <Picker.Item key={c.id} label={c.name} value={c.id} />
+                      ))}
+                    </Picker>
+                  </View>
+                  {isHighestClassView && !showArchived && (
+                    <TouchableOpacity
+                      style={styles.graduateBtn}
+                      onPress={handleGraduateClass}
+                    >
+                      <Text style={styles.graduateBtnText}>Graduate Class</Text>
+                    </TouchableOpacity>
+                  )}
+                  {!isHighestClassView &&
+                    selectedClassId !== "all" &&
+                    !showArchived && (
+                      <TouchableOpacity
+                        style={[
+                          styles.graduateBtn,
+                          { backgroundColor: COLORS.secondary || "#c53b59" },
+                        ]}
+                        onPress={() =>
+                          setAssignmentModal({
+                            type: "promote_repeat",
+                            target: null,
+                          })
+                        }
+                      >
+                        <Text style={styles.graduateBtnText}>
+                          Promote/Repeat Class
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                </ScrollView>
               )}
-          </View>
-        )}
 
-        {selectedRole === "student" && !showArchived && (
-          <View style={styles.selectAllRow}>
-            <TouchableOpacity
-              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
-              onPress={handleSelectAll}
-            >
-              <SVGIcon
-                name={
-                  filteredUsers.length > 0 &&
-                  filteredUsers.every((u) => selectedUserUids.includes(u.uid))
-                    ? "checkbox"
-                    : "square-outline"
-                }
-                size={24}
-                color={COLORS.primary}
-              />
-              <Text style={styles.selectAllText}>Select All Visible</Text>
-            </TouchableOpacity>
-            {selectedUserUids.length > 0 && (
-              <TouchableOpacity onPress={handleCopyAllCodes}>
-                <Text
-                  style={[styles.selectAllText, { color: COLORS.secondary }]}
-                >
-                  Copy Codes
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-
-        {loading ? (
-          <View style={styles.loadingState}>
-            <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={styles.loadingText}>Fetching directory...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={filteredUsers}
-            keyExtractor={(item) => item.uid}
-            renderItem={({ item }) => (
+              {selectedRole === "student" && !showArchived && (
+                <View style={styles.selectAllRow}>
+                  <TouchableOpacity
+                    style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+                    onPress={handleSelectAll}
+                  >
+                    <SVGIcon
+                      name={
+                        filteredUsers.length > 0 &&
+                        filteredUsers.every((u) => selectedUserUids.includes(u.uid))
+                          ? "checkbox"
+                          : "square-outline"
+                      }
+                      size={24}
+                      color={COLORS.primary}
+                    />
+                    <Text style={styles.selectAllText}>Select All Visible</Text>
+                  </TouchableOpacity>
+                  {selectedUserUids.length > 0 && (
+                    <TouchableOpacity onPress={handleCopyAllCodes}>
+                      <Text
+                        style={[styles.selectAllText, { color: COLORS.secondary }]}
+                      >
+                        Copy Codes
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+              <View style={{ height: 10 }} />
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
               <UserCard
                 user={item}
                 isSelected={selectedUserUids.includes(item.uid)}
@@ -315,12 +328,19 @@ export default function ManageUsers() {
                   }
                 }}
               />
-            )}
-            contentContainerStyle={styles.listContent}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={() => {}} />
-            }
-            ListEmptyComponent={
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => {}} />
+          }
+          ListEmptyComponent={
+            loading ? (
+              <View style={styles.loadingState}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.loadingText}>Fetching directory...</Text>
+              </View>
+            ) : (
               <View style={styles.emptyState}>
                 <SVGIcon name="people-outline" size={60} color="#E2E8F0" />
                 <Text style={styles.emptyTitle}>No {selectedRole}s Found</Text>
@@ -328,9 +348,9 @@ export default function ManageUsers() {
                   Try adjusting your search or filters
                 </Text>
               </View>
-            }
-          />
-        )}
+            )
+          }
+        />
 
         <BulkActionBar
           selectedCount={selectedUserUids.length}
@@ -444,7 +464,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  searchContainer: { padding: 20, backgroundColor: "#fff" },
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    backgroundColor: "#fff",
+  },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -499,7 +523,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   graduateBtnText: { color: "#fff", fontWeight: "800", fontSize: 12 },
-  listContent: { padding: 20, paddingBottom: 100 },
+  listContent: { flexGrow: 1, paddingBottom: 100 },
   loadingState: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 10, color: "#64748B", fontWeight: "600" },
   emptyState: { alignItems: "center", marginTop: 60 },

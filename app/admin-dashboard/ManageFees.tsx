@@ -850,7 +850,10 @@ export default function ManageFees() {
         onClose={() => setSelectorModal({ visible: false, type: null })}
         classes={classes}
         selectedClassId={selectedClassId}
-        onSelect={setSelectedClassId}
+        onSelect={(id) => {
+          setSelectedClassId(id);
+          setSelectorModal({ visible: false, type: null });
+        }}
       />
 
       {/* Payment Modal */}

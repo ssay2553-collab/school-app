@@ -311,14 +311,14 @@ export const useManageFees = ({
   };
 
   const handleDeletePayment = async (selectedStudent: StudentDraft | null, payment: any, onSuccess: () => void) => {
-    if (!canEdit) return;
+    if (!canEdit || !selectedStudent) return;
 
     const performDelete = async () => {
       setSaving(true);
       try {
         const cleanYear = academicYear.replace(/\//g, "-");
         const cleanTerm = term.replace(/\s/g, "");
-        const recordId = `${selectedStudent?.uid}_${cleanYear}_${cleanTerm}`;
+        const recordId = `${selectedStudent.uid}_${cleanYear}_${cleanTerm}`;
         const batch = writeBatch(db);
 
         // 1. Update the student fee record (array and totals)

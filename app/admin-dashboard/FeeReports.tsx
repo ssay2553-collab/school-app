@@ -134,12 +134,33 @@ export default function FeeReports() {
         const className =
           classesList.find((c) => c.id === s.classId)?.name || "Unknown Class";
 
+        // Extract tuition and other term charges
         const termBill = record?.termBill || 0;
-        const arrears = record?.arrears || 0;
+        const ptaBill = record?.ptaBill || 0;
+        const maintenanceBill = record?.maintenanceBill || 0;
+        const admissionBill = record?.admissionBill || 0;
+        const booksBill = record?.booksBill || 0;
+        const uniformBill = record?.uniformBill || 0;
+        const otherBill = record?.otherBill || 0;
+
+        // Arrears is either from the term record or the current wallet balance if no record exists yet
+        const arrears = record ? (record.arrears || 0) : (s.walletBalance || 0);
         const discount = record?.discount || 0;
-        const amountPaid = record?.amountPaid || 0;
-        const totalPayable = arrears + termBill;
-        const balance = s.walletBalance || 0;
+
+        // Sum up all payments made this term
+        const tuitionPaid = record?.amountPaid || 0;
+        const ptaPaid = record?.ptaPaid || 0;
+        const maintenancePaid = record?.maintenancePaid || 0;
+        const admissionPaid = record?.admissionPaid || 0;
+        const booksPaid = record?.booksPaid || 0;
+        const uniformPaid = record?.uniformPaid || 0;
+        const otherPaid = record?.otherPaid || 0;
+
+        const totalPayable = arrears + termBill + ptaBill + maintenanceBill + admissionBill + booksBill + uniformBill + otherBill;
+        const totalPaid = tuitionPaid + ptaPaid + maintenancePaid + admissionPaid + booksPaid + uniformPaid + otherPaid;
+
+        // Calculate balance for display consistency (Payable - Discount - Paid)
+        const balance = totalPayable - discount - totalPaid;
 
         return {
           uid: s.uid,
@@ -151,7 +172,7 @@ export default function FeeReports() {
           termBill,
           arrears,
           discount,
-          amountPaid,
+          amountPaid: totalPaid,
           totalPayable,
           balance,
         };

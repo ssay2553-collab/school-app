@@ -236,9 +236,9 @@ export default function ManageFees() {
               display: block !important;
               background-color: white;
             }
-            body { font-family: sans-serif; color: #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            body { font-family: sans-serif; color: #333; -webkit-print-color-adjust: exact; print-color-adjust: exact; font-size: 14px; }
             .page {
-              padding: 20mm;
+              padding: 15mm;
               width: 210mm;
               min-height: 297mm;
               box-sizing: border-box;
@@ -252,12 +252,15 @@ export default function ManageFees() {
             .page:last-child {
               page-break-after: avoid;
             }
-            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
-            th { background-color: #f2f2f2; }
-            .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-            .summary { margin-top: 30px; border-top: 2px solid #eee; padding-top: 10px; }
-            .footer { text-align: center; font-size: 10px; color: #888; margin-top: 20px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; table-layout: fixed; }
+            th, td { border: 1px solid #ddd; padding: 10px 8px; text-align: left; font-size: 11px; word-wrap: break-word; }
+            th { background-color: #f8f9fa; font-weight: bold; text-transform: uppercase; color: #444; }
+            .header { text-align: center; margin-bottom: 25px; border-bottom: 3px solid ${primaryBrand}; padding-bottom: 15px; }
+            .summary { margin-top: 30px; border-top: 2px solid #eee; padding-top: 15px; background-color: #fdfdfd; padding: 15px; border-radius: 5px; }
+            .summary p { margin: 5px 0; font-size: 13px; }
+            .footer { text-align: center; font-size: 10px; color: #999; margin-top: 30px; position: absolute; bottom: 15mm; left: 0; right: 0; }
+            .student-name { font-weight: 600; color: #222; }
+            .amount-cell { text-align: right; font-family: monospace; font-size: 12px; }
           </style>
         </head>
         <body>

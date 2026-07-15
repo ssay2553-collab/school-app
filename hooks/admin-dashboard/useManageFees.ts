@@ -40,7 +40,7 @@ export const useManageFees = ({
   const [activeMode, setActiveMode] = useState<"billing" | "payment" | "discounts">("payment");
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<"all" | "debt" | "cleared">("debt");
+  const [statusFilter, setStatusFilter] = useState<"all" | "debt" | "cleared">("all");
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [selectedStudentUids, setSelectedStudentUids] = useState<Set<string>>(new Set());
 

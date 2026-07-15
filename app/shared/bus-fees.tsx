@@ -10,6 +10,7 @@ import {
     serverTimestamp,
     setDoc,
     Timestamp,
+    updateDoc,
     where,
     writeBatch,
 } from "firebase/firestore";
@@ -84,6 +85,7 @@ type DailyRecord = {
   createdAt: Timestamp;
   feedingPaid?: boolean;
   busPaid?: boolean;
+  busPaidAmount?: number;
   extraPaid?: boolean;
 };
 
@@ -175,6 +177,7 @@ export default function BusFees() {
     return isClassTeacher(appUser, selectedClassId);
   }, [appUser, selectedClassId]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showOnlyArrears, setShowOnlyArrears] = useState(false);
   const [selectedDestination, setSelectedDestination] = useState<string | null>(
     null,
   );
@@ -410,12 +413,18 @@ export default function BusFees() {
         s.className.toLowerCase().includes(low) ||
         (s.busLocation && s.busLocation.toLowerCase().includes(low));
 
+      const matchesArrears = showOnlyArrears ? (s.dailyArrears || 0) > 0 : true;
+
       if (selectedDestination) {
-        return matchesSearch && s.busLocation === selectedDestination;
+        return (
+          matchesSearch &&
+          matchesArrears &&
+          s.busLocation === selectedDestination
+        );
       }
-      return matchesSearch;
+      return matchesSearch && matchesArrears;
     });
-  }, [students, searchQuery, selectedDestination]);
+  }, [students, searchQuery, selectedDestination, showOnlyArrears]);
 
   const getExistingRecord = useCallback(
     (studentUid: string) => {
@@ -526,8 +535,7 @@ export default function BusFees() {
         if (rate <= 0) continue;
 
         const existingRecord = recordsMap.get(uid);
-        const oldFee = existingRecord?.busFee || 0;
-        const feeDiff = rate - oldFee;
+        if (existingRecord) continue; // Skip if already recorded
 
         const docId = `${uid}_${dateStr}`;
         const recordData: any = {
@@ -537,27 +545,33 @@ export default function BusFees() {
           className: student.className,
           date: dateStr,
           busFee: rate,
-          total: increment(feeDiff),
-          busPaid: existingRecord?.busPaid || false,
+          total: increment(rate),
+          busPaid: false,
+          busPaidAmount: 0,
           recordedBy: appUser?.adminRole || "Admin",
           recordedByUid: appUser?.uid || "unknown",
           updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          feedingFee: 0,
+          extraClassesFee: 0,
+          otherFees: 0,
+          otherFeesDescription: "",
         };
-
-        if (!existingRecord) {
-          recordData.createdAt = serverTimestamp();
-          recordData.feedingFee = 0;
-          recordData.extraClassesFee = 0;
-          recordData.otherFees = 0;
-          recordData.otherFeesDescription = "";
-        }
 
         batch.set(doc(db, "dailyFinancials", docId), recordData, {
           merge: true,
         } as any);
+
+        // Update student arrears
+        const studentRef = doc(db, "users", uid);
+        batch.update(studentRef, {
+          dailyArrears: increment(rate),
+        });
+
         opCount++;
 
-        if (opCount >= 400) {
+        if (opCount >= 200) {
+          // 2 ops per student
           await batch.commit();
           batch = writeBatch(db);
           opCount = 0;
@@ -614,10 +628,10 @@ export default function BusFees() {
     try {
       const ops: Array<{ ref: any; data: any }> = [];
 
-      const paidToday = Math.min(
-        rate,
-        overrideAmountStr ? parseFloat(overrideAmountStr) || 0 : rate,
-      );
+      const overrideAmount = overrideAmountStr
+        ? parseFloat(overrideAmountStr) || 0
+        : rate;
+      const paidToday = Math.min(rate, overrideAmount);
 
       const existingRecord = dailyRecords.find((r) => r.studentUid === uid);
       const oldFee = existingRecord?.busFee || 0;
@@ -633,6 +647,7 @@ export default function BusFees() {
         busFee: rate,
         total: increment(feeDiff),
         busPaid: true,
+        busPaidAmount: overrideAmount,
         busPaidAt: serverTimestamp(),
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
@@ -648,8 +663,21 @@ export default function BusFees() {
       }
       ops.push({ ref: todayRef, data: todayData });
 
+      // Update student's dailyArrears
+      const studentRef = doc(db, "users", uid);
+      const todayArrearsChange = rate - paidToday;
+
+      let previousUnpaidArrears = 0;
+      if (existingRecord && !existingRecord.busPaid) {
+        previousUnpaidArrears = existingRecord.busFee || 0;
+      }
+
+      await updateDoc(studentRef, {
+        dailyArrears: increment(todayArrearsChange - previousUnpaidArrears),
+      });
+
       if (overrideAmountStr) {
-        let extra = (parseFloat(overrideAmountStr) || 0) - paidToday;
+        let extra = overrideAmount - paidToday;
         let dayIndex = 1;
         const maxSpreadDays = 30;
         while (extra > 0 && dayIndex <= maxSpreadDays) {
@@ -666,6 +694,7 @@ export default function BusFees() {
             busFee: amountForDay,
             total: increment(amountForDay),
             busPaid: true,
+            busPaidAmount: amountForDay,
             busPaidAt: serverTimestamp(),
             recordedBy: appUser?.adminRole || "Admin",
             recordedByUid: appUser?.uid || "unknown",
@@ -728,6 +757,7 @@ export default function BusFees() {
         busFee: newFee,
         total: increment(feeDiff),
         busPaid: false,
+        busPaidAmount: 0,
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
         updatedAt: serverTimestamp(),
@@ -740,7 +770,23 @@ export default function BusFees() {
         data.otherFees = 0;
         data.otherFeesDescription = "";
       }
+      data.busPaidAt = null;
+
       await setDoc(ref, data, { merge: true } as any);
+
+      // Update student's dailyArrears
+      const studentRef = doc(db, "users", uid);
+      let arrearsChange = 0;
+      if (existingRecord?.busPaid) {
+        const paidAmount = existingRecord.busPaidAmount || 0;
+        arrearsChange = rate - (existingRecord.busFee - paidAmount);
+      } else {
+        arrearsChange = feeDiff;
+      }
+
+      await updateDoc(studentRef, {
+        dailyArrears: increment(arrearsChange),
+      });
 
       showToast({
         message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
@@ -981,6 +1027,31 @@ export default function BusFees() {
                     </TouchableOpacity>
                   )}
                 </View>
+
+                <View style={styles.arrearsFilterRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.arrearsToggle,
+                      showOnlyArrears && styles.arrearsToggleActive,
+                    ]}
+                    onPress={() => setShowOnlyArrears(!showOnlyArrears)}
+                  >
+                    <SVGIcon
+                      name={showOnlyArrears ? "funnel" : "funnel-outline"}
+                      size={16}
+                      color={showOnlyArrears ? "#fff" : VIBE.muted}
+                    />
+                    <Text
+                      style={[
+                        styles.arrearsToggleText,
+                        showOnlyArrears && styles.arrearsToggleTextActive,
+                      ]}
+                    >
+                      Show Arrears Only
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 <View style={styles.pickerContainer}>
                   <Text style={styles.pickerLabel}>
                     Select Destination / Location
@@ -1637,6 +1708,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: VIBE.text,
     fontWeight: "500",
+  },
+  arrearsFilterRow: {
+    flexDirection: "row",
+    marginTop: 12,
+  },
+  arrearsToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: VIBE.surface,
+    borderWidth: 1,
+    borderColor: VIBE.border,
+    gap: 8,
+  },
+  arrearsToggleActive: {
+    backgroundColor: VIBE.secondary,
+    borderColor: VIBE.secondary,
+  },
+  arrearsToggleText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: VIBE.muted,
+  },
+  arrearsToggleTextActive: {
+    color: "#fff",
   },
   pickerContainer: { marginTop: 16 },
   pickerLabel: {

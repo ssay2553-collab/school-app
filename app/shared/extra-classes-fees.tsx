@@ -11,6 +11,7 @@ import {
     serverTimestamp,
     setDoc,
     Timestamp,
+    updateDoc,
     where,
     writeBatch,
 } from "firebase/firestore";
@@ -80,6 +81,7 @@ type DailyRecord = {
   recordedByUid: string;
   createdAt: Timestamp;
   extraPaid?: boolean;
+  extraPaidAmount?: number;
   feedingPaid?: boolean;
   busPaid?: boolean;
 };
@@ -178,7 +180,9 @@ export default function ExtraClassesFees() {
     }
     return [];
   }, [isSuperAdmin, selectedClassId, teacherClasses]);
+
   const [searchQuery, setSearchQuery] = useState("");
+  const [showOnlyArrears, setShowOnlyArrears] = useState(false);
 
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -393,12 +397,14 @@ export default function ExtraClassesFees() {
 
   const filteredStudents = useMemo(() => {
     const low = searchQuery.toLowerCase();
-    return students.filter(
-      (s) =>
+    return students.filter((s) => {
+      const matchesSearch =
         s.fullName.toLowerCase().includes(low) ||
-        s.className.toLowerCase().includes(low),
-    );
-  }, [students, searchQuery]);
+        s.className.toLowerCase().includes(low);
+      const matchesArrears = showOnlyArrears ? (s.dailyArrears || 0) > 0 : true;
+      return matchesSearch && matchesArrears;
+    });
+  }, [students, searchQuery, showOnlyArrears]);
 
   const getExistingRecord = useCallback(
     (studentUid: string) => {
@@ -520,6 +526,13 @@ export default function ExtraClassesFees() {
         batch.set(doc(db, "dailyFinancials", docId), recordData, {
           merge: true,
         } as any);
+
+        // SYNC: Update student arrears
+        const studentRef = doc(db, "users", uid);
+        batch.update(studentRef, {
+          dailyArrears: increment(rateDiff),
+        });
+
         opCount++;
 
         if (opCount >= 400) {
@@ -654,6 +667,7 @@ export default function ExtraClassesFees() {
         classAmount,
         overrideAmountStr ? parseFloat(overrideAmountStr) || 0 : classAmount,
       );
+      const totalPaid = overrideAmountStr ? parseFloat(overrideAmountStr) || 0 : classAmount;
 
       const existingRecord = getExistingRecord(uid);
       const oldExtraFee = existingRecord?.extraClassesFee || 0;
@@ -667,6 +681,7 @@ export default function ExtraClassesFees() {
         extraClassesFee: classAmount,
         total: increment(classAmount - oldExtraFee),
         extraPaid: true,
+        extraPaidAmount: totalPaid,
         extraPaidAt: serverTimestamp(),
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
@@ -679,6 +694,19 @@ export default function ExtraClassesFees() {
         todayData.otherFees = 0;
       }
       ops.push({ ref: todayRef, data: todayData });
+
+      // SYNC: Update student's dailyArrears
+      const studentRef = doc(db, "users", uid);
+      const todayArrearsChange = classAmount - paidToday;
+
+      let previousUnpaidArrears = 0;
+      if (existingRecord && !existingRecord.extraPaid) {
+        previousUnpaidArrears = existingRecord.extraClassesFee || 0;
+      }
+
+      await updateDoc(studentRef, {
+        dailyArrears: increment(todayArrearsChange - previousUnpaidArrears),
+      });
 
       if (overrideAmountStr) {
         let extra = (parseFloat(overrideAmountStr) || 0) - paidToday;
@@ -761,6 +789,7 @@ export default function ExtraClassesFees() {
         extraClassesFee: newFee,
         total: increment(newFee - oldFee),
         extraPaid: false,
+        extraPaidAmount: 0,
         extraPaidAt: null,
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
@@ -773,6 +802,20 @@ export default function ExtraClassesFees() {
         data.otherFees = 0;
       }
       await setDoc(ref, data, { merge: true } as any);
+
+      // SYNC: Update student's dailyArrears
+      const studentRef = doc(db, "users", uid);
+      let arrearsChange = 0;
+      if (existingRecord?.extraPaid) {
+        const paidAmount = existingRecord.extraPaidAmount || 0;
+        arrearsChange = classAmount - (existingRecord.extraClassesFee - paidAmount);
+      } else {
+        arrearsChange = newFee - oldFee;
+      }
+
+      await updateDoc(studentRef, {
+        dailyArrears: increment(arrearsChange),
+      });
 
       showToast({
         message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
@@ -1035,6 +1078,31 @@ export default function ExtraClassesFees() {
                     </TouchableOpacity>
                   )}
                 </View>
+
+                <View style={styles.arrearsFilterRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.arrearsToggle,
+                      showOnlyArrears && styles.arrearsToggleActive,
+                    ]}
+                    onPress={() => setShowOnlyArrears(!showOnlyArrears)}
+                  >
+                    <SVGIcon
+                      name={showOnlyArrears ? "funnel" : "funnel-outline"}
+                      size={16}
+                      color={showOnlyArrears ? "#fff" : VIBE.muted}
+                    />
+                    <Text
+                      style={[
+                        styles.arrearsToggleText,
+                        showOnlyArrears && styles.arrearsToggleTextActive,
+                      ]}
+                    >
+                      Show Arrears Only
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 <View style={styles.pickerContainer}>
                   <Text style={styles.pickerLabel}>Select Class</Text>
                   <ScrollView
@@ -1606,6 +1674,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: VIBE.text,
     fontWeight: "500",
+  },
+  arrearsFilterRow: {
+    flexDirection: "row",
+    marginTop: 12,
+  },
+  arrearsToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: VIBE.surface,
+    borderWidth: 1,
+    borderColor: VIBE.border,
+    gap: 8,
+  },
+  arrearsToggleActive: {
+    backgroundColor: VIBE.secondary,
+    borderColor: VIBE.secondary,
+  },
+  arrearsToggleText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: VIBE.muted,
+  },
+  arrearsToggleTextActive: {
+    color: "#fff",
   },
   pickerContainer: { marginTop: 16 },
   pickerLabel: {

@@ -405,9 +405,9 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                     const isPayment = type.endsWith("_payment");
                     if (!categoryMap[category]) categoryMap[category] = { billed: 0, paid: 0 };
                     if (isPayment) categoryMap[category].paid += p.amount;
-                    else if (!['tuition', 'pta', 'maintenance', 'admission'].includes(type)) categoryMap[category].billed += p.amount;
+                    else if (!['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(type)) categoryMap[category].billed += p.amount;
                   });
-                  const categories = Object.keys(categoryMap).filter((cat) => !['tuition', 'pta', 'maintenance', 'admission'].includes(cat));
+                  const categories = Object.keys(categoryMap).filter((cat) => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(cat));
                   for (const cat of categories) {
                     if (remainingAmount <= 0) break;
                     const due = categoryMap[cat].billed - categoryMap[cat].paid;

@@ -10,6 +10,7 @@ import {
     serverTimestamp,
     setDoc,
     Timestamp,
+    updateDoc,
     where,
     writeBatch,
 } from "firebase/firestore";
@@ -79,6 +80,7 @@ type DailyRecord = {
   recordedByUid: string;
   createdAt: Timestamp;
   feedingPaid?: boolean;
+  feedingPaidAmount?: number;
   busPaid?: boolean;
   extraPaid?: boolean;
 };
@@ -176,6 +178,7 @@ export default function FeedingFees() {
     return isClassTeacher(appUser, selectedClassId);
   }, [appUser, selectedClassId]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showOnlyArrears, setShowOnlyArrears] = useState(false);
   const [attendanceMap, setAttendanceMap] = useState<Record<string, any>>({});
   const [feedingAmount, setFeedingAmount] = useState("");
   const [classRates, setClassRates] = useState<Record<string, number>>({});
@@ -396,12 +399,14 @@ export default function FeedingFees() {
   // Filter students by search
   const filteredStudents = useMemo(() => {
     const low = searchQuery.toLowerCase();
-    return students.filter(
-      (s) =>
+    return students.filter((s) => {
+      const matchesSearch =
         s.fullName.toLowerCase().includes(low) ||
-        s.className.toLowerCase().includes(low),
-    );
-  }, [students, searchQuery]);
+        s.className.toLowerCase().includes(low);
+      const matchesArrears = showOnlyArrears ? (s.dailyArrears || 0) > 0 : true;
+      return matchesSearch && matchesArrears;
+    });
+  }, [students, searchQuery, showOnlyArrears]);
 
   // Get existing record for a student on selected date
   const getExistingRecord = useCallback(
@@ -488,8 +493,7 @@ export default function FeedingFees() {
         if (rate <= 0) continue;
 
         const existingRecord = recordsMap.get(uid);
-        const oldFee = existingRecord?.feedingFee || 0;
-        const feeDiff = rate - oldFee;
+        if (existingRecord) continue; // Skip if already recorded
 
         const docId = `${uid}_${dateStr}`;
         const recordData: any = {
@@ -499,27 +503,33 @@ export default function FeedingFees() {
           className: student.className,
           date: dateStr,
           feedingFee: rate,
-          total: increment(feeDiff),
-          feedingPaid: existingRecord?.feedingPaid || false,
+          total: increment(rate),
+          feedingPaid: false,
+          feedingPaidAmount: 0,
           recordedBy: appUser?.adminRole || "Admin",
           recordedByUid: appUser?.uid || "unknown",
           updatedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+          busFee: 0,
+          extraClassesFee: 0,
+          otherFees: 0,
+          otherFeesDescription: "",
         };
-
-        if (!existingRecord) {
-          recordData.createdAt = serverTimestamp();
-          recordData.busFee = 0;
-          recordData.extraClassesFee = 0;
-          recordData.otherFees = 0;
-          recordData.otherFeesDescription = "";
-        }
 
         batch.set(doc(db, "dailyFinancials", docId), recordData, {
           merge: true,
         } as any);
+
+        // Update student arrears
+        const studentRef = doc(db, "users", uid);
+        batch.update(studentRef, {
+          dailyArrears: increment(rate),
+        });
+
         opCount++;
 
-        if (opCount >= 400) {
+        if (opCount >= 200) {
+          // Lower limit because we do 2 ops per student
           await batch.commit();
           batch = writeBatch(db);
           opCount = 0;
@@ -575,10 +585,10 @@ export default function FeedingFees() {
       const student = students.find((s) => s.uid === uid);
       const ops: Array<{ ref: any; data: any }> = [];
 
-      const paidToday = Math.min(
-        classAmount,
-        overrideAmountStr ? parseFloat(overrideAmountStr) || 0 : classAmount,
-      );
+      const overrideAmount = overrideAmountStr
+        ? parseFloat(overrideAmountStr) || 0
+        : classAmount;
+      const paidToday = Math.min(classAmount, overrideAmount);
 
       // set today's record as paid
       const existingRecord = dailyRecords.find((r) => r.studentUid === uid);
@@ -595,6 +605,7 @@ export default function FeedingFees() {
         feedingFee: classAmount,
         total: increment(feeDiff),
         feedingPaid: true,
+        feedingPaidAmount: overrideAmount,
         feedingPaidAt: serverTimestamp(),
         recordedBy: appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
@@ -609,9 +620,23 @@ export default function FeedingFees() {
       }
       ops.push({ ref: todayRef, data: todayData });
 
+      // Update student's dailyArrears and walletBalance
+      const studentRef = doc(db, "users", uid);
+      const todayArrearsChange = classAmount - paidToday;
+
+      // If they were previously recorded as unpaid, we need to subtract that from arrears first
+      let previousUnpaidArrears = 0;
+      if (existingRecord && !existingRecord.feedingPaid) {
+        previousUnpaidArrears = existingRecord.feedingFee || 0;
+      }
+
+      await updateDoc(studentRef, {
+        dailyArrears: increment(todayArrearsChange - previousUnpaidArrears),
+      });
+
       // If override > classAmount, spread extra to future days
       if (overrideAmountStr) {
-        let extra = (parseFloat(overrideAmountStr) || 0) - paidToday;
+        let extra = overrideAmount - paidToday;
         let dayIndex = 1;
         const maxSpreadDays = 30;
         while (extra > 0 && dayIndex <= maxSpreadDays) {
@@ -628,6 +653,7 @@ export default function FeedingFees() {
             feedingFee: amountForDay,
             total: increment(amountForDay),
             feedingPaid: true,
+            feedingPaidAmount: amountForDay,
             feedingPaidAt: serverTimestamp(),
             recordedBy: appUser?.adminRole || "Admin",
             recordedByUid: appUser?.uid || "unknown",
@@ -691,6 +717,7 @@ export default function FeedingFees() {
         feedingFee: newFee,
         total: increment(feeDiff),
         feedingPaid: false,
+        feedingPaidAmount: 0,
         updatedAt: serverTimestamp(),
       };
 
@@ -706,6 +733,25 @@ export default function FeedingFees() {
       data.feedingPaidAt = null;
 
       await setDoc(ref, data, { merge: true } as any);
+
+      // Update student's dailyArrears
+      const studentRef = doc(db, "users", uid);
+      // If was paid, we remove the payment influence and add the full fee
+      // If was unpaid, we just remove the fee (clearing record)
+      // If was nothing, we add the full fee
+      let arrearsChange = 0;
+      if (existingRecord?.feedingPaid) {
+        const paidAmount = existingRecord.feedingPaidAmount || 0;
+        arrearsChange = classAmount - (classAmount - paidAmount); // Effectively adding back the 'paid' part and adding the fee
+        // Simplified: arrears change = newFee (classAmount) - (oldFee - paidAmount)
+        arrearsChange = classAmount - (existingRecord.feedingFee - paidAmount);
+      } else {
+        arrearsChange = feeDiff; // If transitioning from nothing to unpaid or unpaid to nothing
+      }
+
+      await updateDoc(studentRef, {
+        dailyArrears: increment(arrearsChange),
+      });
 
       showToast({
         message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
@@ -946,6 +992,31 @@ export default function FeedingFees() {
                     </TouchableOpacity>
                   )}
                 </View>
+
+                <View style={styles.arrearsFilterRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.arrearsToggle,
+                      showOnlyArrears && styles.arrearsToggleActive,
+                    ]}
+                    onPress={() => setShowOnlyArrears(!showOnlyArrears)}
+                  >
+                    <SVGIcon
+                      name={showOnlyArrears ? "funnel" : "funnel-outline"}
+                      size={16}
+                      color={showOnlyArrears ? "#fff" : VIBE.muted}
+                    />
+                    <Text
+                      style={[
+                        styles.arrearsToggleText,
+                        showOnlyArrears && styles.arrearsToggleTextActive,
+                      ]}
+                    >
+                      Show Arrears Only
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
                 <View style={styles.pickerContainer}>
                   <Text style={styles.pickerLabel}>Select Class</Text>
                   <ScrollView
@@ -1515,6 +1586,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: VIBE.text,
     fontWeight: "500",
+  },
+  arrearsFilterRow: {
+    flexDirection: "row",
+    marginTop: 12,
+  },
+  arrearsToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    backgroundColor: VIBE.surface,
+    borderWidth: 1,
+    borderColor: VIBE.border,
+    gap: 8,
+  },
+  arrearsToggleActive: {
+    backgroundColor: VIBE.secondary,
+    borderColor: VIBE.secondary,
+  },
+  arrearsToggleText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: VIBE.muted,
+  },
+  arrearsToggleTextActive: {
+    color: "#fff",
   },
   pickerContainer: { marginTop: 16 },
   pickerLabel: {

@@ -388,6 +388,7 @@ export const styles = StyleSheet.create({
     borderTopRightRadius: 40,
     padding: 25,
     maxHeight: height * 0.85,
+    minHeight: height * 0.45,
     width: "100%",
     alignItems: "stretch",
     flexShrink: 1,

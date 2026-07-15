@@ -45,8 +45,8 @@ export const ClassSelectorModal: React.FC<ClassSelectorModalProps> = ({
           </View>
 
           <ScrollView
-            style={{ flex: 1, width: '100%' }}
-            contentContainerStyle={[styles.sheetList, { paddingBottom: 60 }]}
+            style={{ width: '100%' }}
+            contentContainerStyle={[styles.sheetList, { flexGrow: 1, paddingBottom: 40 }]}
             showsVerticalScrollIndicator={true}
             persistentScrollbar={Platform.OS === 'web'}
             bounces={false}

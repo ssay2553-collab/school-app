@@ -459,8 +459,25 @@ export const useManageFees = ({
         }
 
         const newBill = currentBill + adjustment;
-        const newBalance = arrears + newBill - discount - totalPaid;
-        const totalPayable = arrears + newBill;
+        const otherBills =
+          (s.ptaBill || 0) +
+          (s.maintenanceBill || 0) +
+          (s.admissionBill || 0) +
+          (s.booksBill || 0) +
+          (s.uniformBill || 0) +
+          (s.otherBill || 0);
+
+        const allPayments =
+          totalPaid +
+          (s.ptaPaid || 0) +
+          (s.maintenancePaid || 0) +
+          (s.admissionPaid || 0) +
+          (s.booksPaid || 0) +
+          (s.uniformPaid || 0) +
+          (s.otherPaid || 0);
+
+        const newBalance = arrears + newBill + otherBills - discount - allPayments;
+        const totalPayable = arrears + newBill + otherBills;
 
         if (isNaN(newBalance)) continue;
 

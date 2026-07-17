@@ -263,6 +263,12 @@ export const useOtherCharges = ({
       batch.set(
         doc(db, "studentFeeRecords", recordId),
         {
+          studentUid: student.uid,
+          studentName: student.fullName,
+          classId: student.classId,
+          className: student.className,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
           otherPaid: increment(amount),
           otherBalance: increment(-amount),
           balance: increment(-amount),
@@ -361,6 +367,12 @@ export const useOtherCharges = ({
         batch.set(
           doc(db, "studentFeeRecords", recordId),
           {
+            studentUid: sDoc.id,
+            studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+            classId: selectedClassId,
+            className: s.className,
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
             otherBill: increment(val),
             otherBalance: increment(val),
             balance: increment(val),

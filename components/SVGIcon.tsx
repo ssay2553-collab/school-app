@@ -233,7 +233,7 @@ const paths: Record<string, string> = {
   fitness: "M20.57 14.86L22 13.43 20.57 12 17 15.57l-1.43-1.43 3.57-3.57L17.71 9.14 14.14 12.71 12.71 11.29l3.57-3.57L14.86 6.29 11.29 9.86 9.86 8.43l3.57-3.57L12 3.43 10.57 4.86 7 1.29 1.29 7 4.86 10.57 3.43 12l1.43 1.43 3.57-3.57 1.43 1.43L6.29 14.86l1.43 1.43 3.57-3.57 1.43 1.43-3.57 3.57 1.43 1.43 3.57-3.57 1.43 1.43-3.57 3.57L13.43 22l1.43-1.43 3.57 3.57L22.71 18.43l-3.57-3.57z",
 };
 
-export default function SVGIcon({
+export default React.memo(function SVGIcon({
   name,
   color = "#000",
   size = 24,
@@ -251,4 +251,4 @@ export default function SVGIcon({
       <Path d={paths[name] || ""} />
     </Svg>
   );
-}
+});

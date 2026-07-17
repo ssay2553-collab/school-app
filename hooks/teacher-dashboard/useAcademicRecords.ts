@@ -30,7 +30,7 @@ export interface StudentScoreRecord {
 }
 
 export const useAcademicRecords = () => {
-  const { appUser } = useAuth();
+  const { appUser, firebaseUser } = useAuth();
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
 
@@ -157,7 +157,7 @@ export const useAcademicRecords = () => {
   }, [calculateScores, reportType, showToast]);
 
   const saveRecord = async () => {
-    if (!selectedClassId || !selectedSubject || !term || !academicYear || !appUser?.uid) return;
+    if (!selectedClassId || !selectedSubject || !term || !academicYear || !firebaseUser?.uid) return;
     try {
       const batch = writeBatch(db);
       const yearSlug = academicYear.replace(/\//g, "-");
@@ -166,7 +166,7 @@ export const useAcademicRecords = () => {
 
       batch.set(doc(db, "academicRecords", docId), {
         docId,
-        teacherId: appUser.uid,
+        teacherId: firebaseUser.uid,
         classId: selectedClassId,
         className: teacherClasses.find(c => c.id === selectedClassId)?.name || selectedClassId,
         subject: selectedSubject,
@@ -174,7 +174,9 @@ export const useAcademicRecords = () => {
         term,
         reportType,
         students: allStudents,
+        studentIds: allStudents.map(s => s.studentId),
         timestamp: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         status: "pending",
         containsBehavioralData: false,
       });
@@ -182,7 +184,7 @@ export const useAcademicRecords = () => {
       allStudents.forEach(student => {
         const summaryId = `${student.studentId}_${academicYear.replace(/\//g, "_")}_${term.replace(/\s+/g, "")}`;
         batch.set(doc(db, "academicRecordsSummary", summaryId), {
-          teacherId: appUser.uid,
+          teacherId: firebaseUser.uid,
           studentId: student.studentId,
           classId: selectedClassId,
           academicYear,
@@ -194,6 +196,7 @@ export const useAcademicRecords = () => {
               reportType,
               status: "pending",
               lastUpdated: serverTimestamp(),
+              updatedAt: serverTimestamp(),
             },
           },
         }, { merge: true });
@@ -204,6 +207,7 @@ export const useAcademicRecords = () => {
       showToast({ message: "Saved successfully.", type: "success" });
       return true;
     } catch (err) {
+      console.error("Save Record Error:", err);
       showToast({ message: "Save failed.", type: "error" });
       return false;
     }

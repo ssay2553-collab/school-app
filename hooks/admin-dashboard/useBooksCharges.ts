@@ -225,6 +225,12 @@ export const useBooksCharges = ({
       const recordId = `${student.uid}_${year}_${term}`;
 
       batch.set(doc(db, "studentFeeRecords", recordId), {
+        studentUid: student.uid,
+        studentName: student.fullName,
+        classId: student.classId,
+        className: student.className,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         booksPaid: increment(amount),
         booksBalance: increment(-amount),
         balance: increment(-amount),
@@ -301,6 +307,12 @@ export const useBooksCharges = ({
       const recordId = `${student.uid}_${year}_${term}`;
 
       batch.set(doc(db, "studentFeeRecords", recordId), {
+        studentUid: student.uid,
+        studentName: student.fullName,
+        classId: student.classId,
+        className: student.className,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         booksBill: increment(amount),
         booksBalance: increment(amount),
         balance: increment(amount),

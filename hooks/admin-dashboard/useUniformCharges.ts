@@ -318,6 +318,12 @@ export const useUniformCharges = ({
       batch.set(
         doc(db, "studentFeeRecords", recordId),
         {
+          studentUid: student.uid,
+          studentName: student.fullName,
+          classId: student.classId,
+          className: student.className,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
           uniformPaid: increment(amount),
           uniformBill: increment(amount),
           balance: increment(0),

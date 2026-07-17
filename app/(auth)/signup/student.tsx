@@ -357,19 +357,31 @@ export default function StudentSignupScreen() {
         }
       }
 
-      // Call the Cloud Function to handle profile creation and data migration
-      const completeSignupFn = httpsCallable(functions, 'completeStudentSignup');
-      await completeSignupFn({
-        form: {
-          ...form,
-          email: finalEmail,
-          dateOfBirth: form.dateOfBirth?.toISOString() // Pass as string for serialization
-        },
-        pendingDocId,
-        codeDocId,
-        profileImageUrl,
-        cleanCode,
-      });
+      // Call the Cloud Function for pre-registered students to migrate data
+      // New students write directly to Firestore to avoid Cloud Function overhead/CORS issues
+      if (pendingDocId) {
+        try {
+          console.log("[Signup] Pre-registered student detected. Calling migration function...");
+          const completeSignupFn = httpsCallable(functions, 'completeStudentSignup');
+          await completeSignupFn({
+            form: {
+              ...form,
+              email: finalEmail,
+              dateOfBirth: form.dateOfBirth?.toISOString()
+            },
+            pendingDocId,
+            codeDocId,
+            profileImageUrl,
+            cleanCode,
+          });
+        } catch (fnErr: any) {
+          console.warn("[Signup] Cloud Function failed, falling back to client-side write for profile claiming:", fnErr);
+          await performClientSideSignup(userId, finalEmail, profileImageUrl, cleanCode, pendingDocId, codeDocId);
+        }
+      } else {
+        console.log("[Signup] New student detected. Performing direct Firestore registration...");
+        await performClientSideSignup(userId, finalEmail, profileImageUrl, cleanCode, null, codeDocId);
+      }
 
       showToast({ message: "Account created successfully! Welcome to your school portal.", type: "success" });
       router.replace("/(auth)/login/student");
@@ -380,6 +392,66 @@ export default function StudentSignupScreen() {
       showToast({ message: msg || "An unexpected error occurred.", type: "error" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const performClientSideSignup = async (
+    userId: string,
+    finalEmail: string,
+    profileImageUrl: string | null,
+    cleanCode: string,
+    pendingDocId: string | null,
+    codeDocId: string | null
+  ) => {
+    const batch = writeBatch(db);
+    const userRef = doc(db, "users", userId);
+
+    const userData = {
+      uid: userId,
+      email: finalEmail,
+      role: "student",
+      status: "active",
+      classId: form.selectedClassId,
+      profile: {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        fullName: `${form.firstName} ${form.lastName}`,
+        gender: form.gender,
+        profileImage: profileImageUrl,
+        dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : null,
+      },
+      signupCode: cleanCode,
+      parentLinkCode: generateLinkCode(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    if (pendingDocId) {
+      // Claim the existing document
+      batch.set(doc(db, "users", pendingDocId), {
+        ...userData,
+        status: 'claimed',
+        claimedBy: userId,
+        claimedAt: serverTimestamp()
+      }, { merge: true });
+    } else {
+      // Create new user document
+      batch.set(userRef, userData);
+    }
+
+    // Mark code as used if it was a generic one
+    if (codeDocId) {
+      batch.update(doc(db, "signupCodes", codeDocId), {
+        used: true,
+        usedBy: userId,
+        usedAt: serverTimestamp()
+      });
+    }
+
+    await batch.commit();
+
+    if (pendingDocId) {
+      console.warn("[Signup] Migration of historical records might be incomplete if Cloud Function failed.");
     }
   };
 

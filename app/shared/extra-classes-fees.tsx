@@ -92,7 +92,6 @@ type StudentRecord = {
   classId: string;
   className: string;
   takesExtraClasses: boolean;
-  dailyArrears?: number;
 };
 
 type TabType = "record" | "history" | "reports";
@@ -182,7 +181,6 @@ export default function ExtraClassesFees() {
   }, [isSuperAdmin, selectedClassId, teacherClasses]);
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [showOnlyArrears, setShowOnlyArrears] = useState(false);
 
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [students, setStudents] = useState<StudentRecord[]>([]);
@@ -291,7 +289,6 @@ export default function ExtraClassesFees() {
             className:
               classes.find((c) => c.id === data.classId)?.name || "Class",
             takesExtraClasses: data.takesExtraClasses || false,
-            dailyArrears: data.dailyArrears || 0,
           };
         });
 
@@ -398,13 +395,12 @@ export default function ExtraClassesFees() {
   const filteredStudents = useMemo(() => {
     const low = searchQuery.toLowerCase();
     return students.filter((s) => {
-      const matchesSearch =
+      return (
         s.fullName.toLowerCase().includes(low) ||
-        s.className.toLowerCase().includes(low);
-      const matchesArrears = showOnlyArrears ? (s.dailyArrears || 0) > 0 : true;
-      return matchesSearch && matchesArrears;
+        s.className.toLowerCase().includes(low)
+      );
     });
-  }, [students, searchQuery, showOnlyArrears]);
+  }, [students, searchQuery]);
 
   const getExistingRecord = useCallback(
     (studentUid: string) => {
@@ -526,12 +522,6 @@ export default function ExtraClassesFees() {
         batch.set(doc(db, "dailyFinancials", docId), recordData, {
           merge: true,
         } as any);
-
-        // SYNC: Update student arrears
-        const studentRef = doc(db, "users", uid);
-        batch.update(studentRef, {
-          dailyArrears: increment(rateDiff),
-        });
 
         opCount++;
 
@@ -695,19 +685,6 @@ export default function ExtraClassesFees() {
       }
       ops.push({ ref: todayRef, data: todayData });
 
-      // SYNC: Update student's dailyArrears
-      const studentRef = doc(db, "users", uid);
-      const todayArrearsChange = classAmount - paidToday;
-
-      let previousUnpaidArrears = 0;
-      if (existingRecord && !existingRecord.extraPaid) {
-        previousUnpaidArrears = existingRecord.extraClassesFee || 0;
-      }
-
-      await updateDoc(studentRef, {
-        dailyArrears: increment(todayArrearsChange - previousUnpaidArrears),
-      });
-
       if (overrideAmountStr) {
         let extra = (parseFloat(overrideAmountStr) || 0) - paidToday;
         let dayIndex = 1;
@@ -802,20 +779,6 @@ export default function ExtraClassesFees() {
         data.otherFees = 0;
       }
       await setDoc(ref, data, { merge: true } as any);
-
-      // SYNC: Update student's dailyArrears
-      const studentRef = doc(db, "users", uid);
-      let arrearsChange = 0;
-      if (existingRecord?.extraPaid) {
-        const paidAmount = existingRecord.extraPaidAmount || 0;
-        arrearsChange = classAmount - (existingRecord.extraClassesFee - paidAmount);
-      } else {
-        arrearsChange = newFee - oldFee;
-      }
-
-      await updateDoc(studentRef, {
-        dailyArrears: increment(arrearsChange),
-      });
 
       showToast({
         message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
@@ -1079,29 +1042,6 @@ export default function ExtraClassesFees() {
                   )}
                 </View>
 
-                <View style={styles.arrearsFilterRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.arrearsToggle,
-                      showOnlyArrears && styles.arrearsToggleActive,
-                    ]}
-                    onPress={() => setShowOnlyArrears(!showOnlyArrears)}
-                  >
-                    <SVGIcon
-                      name={showOnlyArrears ? "funnel" : "funnel-outline"}
-                      size={16}
-                      color={showOnlyArrears ? "#fff" : VIBE.muted}
-                    />
-                    <Text
-                      style={[
-                        styles.arrearsToggleText,
-                        showOnlyArrears && styles.arrearsToggleTextActive,
-                      ]}
-                    >
-                      Show Arrears Only
-                    </Text>
-                  </TouchableOpacity>
-                </View>
 
                 <View style={styles.pickerContainer}>
                   <Text style={styles.pickerLabel}>Select Class</Text>
@@ -1216,7 +1156,6 @@ export default function ExtraClassesFees() {
                     const isPaid = existingRecord?.extraPaid === true;
                     const isAbsent =
                       attendanceMap[item.uid]?.status === "absent";
-                    const hasArrears = (item.dailyArrears || 0) > 0;
 
                     return (
                       <View
@@ -1257,13 +1196,6 @@ export default function ExtraClassesFees() {
                               >
                                 {item.fullName}
                               </Text>
-                              {hasArrears && (
-                                <View style={styles.arrearsBadge}>
-                                  <Text style={styles.arrearsText}>
-                                    Arrears: ₵{item.dailyArrears}
-                                  </Text>
-                                </View>
-                              )}
                             </View>
                             <View style={styles.studentMetaRow}>
                               <Text style={styles.studentClass}>

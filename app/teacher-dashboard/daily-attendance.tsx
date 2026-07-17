@@ -44,11 +44,13 @@ const AttendanceStudentCard = React.memo(({
 }) => {
   const cardStatusStyle = status === "present" ? styles.presentCard : status === "absent" ? styles.absentCard : status === "late" ? styles.lateCard : {};
 
+  // Use a simpler animation approach to avoid re-triggering during rapid updates
   return (
     <Animatable.View
       animation="fadeInUp"
-      delay={Math.min(index * 50, 500)}
+      delay={Math.min(index * 30, 300)}
       duration={400}
+      useNativeDriver
       style={[styles.card, cardStatusStyle, isUnsaved && styles.unsavedCard]}
     >
       <View style={styles.cardInfo}>
@@ -58,7 +60,7 @@ const AttendanceStudentCard = React.memo(({
           </Text>
         </View>
         <View style={{ flex: 1, marginLeft: 15 }}>
-          <Text style={styles.name}>{item.profile?.firstName || "Student"} {item.profile?.lastName || ""}</Text>
+          <Text style={styles.name} numberOfLines={1}>{item.profile?.firstName || "Student"} {item.profile?.lastName || ""}</Text>
           <View style={styles.statusBadge}>
              <View style={[styles.statusDot, { backgroundColor: status === "present" ? "#10B981" : status === "absent" ? "#EF4444" : status === "late" ? "#F59E0B" : "#94A3B8" }]} />
              <Text style={styles.statusLabel}>{(status || "NOT_MARKED").toUpperCase()}</Text>
@@ -72,7 +74,7 @@ const AttendanceStudentCard = React.memo(({
           <TouchableOpacity
             style={[styles.actionBtn, status === "present" && styles.presentActive]}
             onPress={() => markLocal(item.uid, "present")}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
             <SVGIcon name="checkmark-circle" size={18} color={status === 'present' ? '#fff' : '#10B981'} />
             <Text style={[styles.actionBtnText, status === "present" && {color: "#fff"}]}>Present</Text>
@@ -81,7 +83,7 @@ const AttendanceStudentCard = React.memo(({
           <TouchableOpacity
             style={[styles.actionBtn, status === "late" && styles.lateActive]}
             onPress={() => markLocal(item.uid, "late")}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
             <SVGIcon name="time" size={18} color={status === 'late' ? '#fff' : '#F59E0B'} />
             <Text style={[styles.actionBtnText, status === "late" && {color: "#fff"}]}>Late</Text>
@@ -90,7 +92,7 @@ const AttendanceStudentCard = React.memo(({
           <TouchableOpacity
             style={[styles.actionBtn, status === "absent" && styles.absentActive]}
             onPress={() => markLocal(item.uid, "absent")}
-            activeOpacity={0.7}
+            activeOpacity={0.6}
           >
             <SVGIcon name="close-circle" size={18} color={status === 'absent' ? '#fff' : '#EF4444'} />
             <Text style={[styles.actionBtnText, status === "absent" && {color: "#fff"}]}>Absent</Text>
@@ -203,16 +205,18 @@ export default function DailyAttendanceScreen() {
     setSelectedDate(newDate);
   };
 
+  const isToday = useMemo(() => moment(selectedDate).isSame(moment(), 'day'), [selectedDate]);
+
   const renderStudentItem = useCallback(({ item, index }: { item: AppUser, index: number }) => {
-    const status = localAttendance[item.uid]?.status ?? "not_marked";
-    const isUnsaved = localAttendance[item.uid]?.status !== serverAttendance[item.uid]?.status;
+    const studentStatus = localAttendance[item.uid]?.status ?? "not_marked";
+    const studentIsUnsaved = studentStatus !== serverAttendance[item.uid]?.status;
 
     return (
       <AttendanceStudentCard
         item={item}
         index={index}
-        status={status}
-        isUnsaved={isUnsaved}
+        status={studentStatus}
+        isUnsaved={studentIsUnsaved}
         isOfficialClassTeacher={isOfficialClassTeacher}
         markLocal={markLocal}
       />
@@ -264,8 +268,8 @@ export default function DailyAttendanceScreen() {
 
         <TouchableOpacity
           onPress={() => changeDate(1)}
-          style={[styles.dateNavBtn, moment(selectedDate).isSame(moment(), 'day') && { opacity: 0.3 }]}
-          disabled={moment(selectedDate).isSame(moment(), 'day')}
+          style={[styles.dateNavBtn, isToday && { opacity: 0.3 }]}
+          disabled={isToday}
         >
           <SVGIcon name="chevron-forward" size={20} color="#64748B" />
         </TouchableOpacity>
@@ -361,10 +365,11 @@ export default function DailyAttendanceScreen() {
             </View>
           }
           showsVerticalScrollIndicator={true}
-          removeClippedSubviews={true}
-          initialNumToRender={10}
+          removeClippedSubviews={false} // Setting this to false can prevent some Android crashes during rapid updates
+          initialNumToRender={15}
           maxToRenderPerBatch={10}
-          windowSize={5}
+          windowSize={10}
+          extraData={localAttendance} // Ensure FlatList knows when to check items for updates
         />
       )}
 

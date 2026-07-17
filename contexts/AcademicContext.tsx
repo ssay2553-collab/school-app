@@ -17,7 +17,7 @@ const AcademicContext = createContext<AcademicConfig | undefined>(undefined);
 export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState<AcademicConfig>({
     academicYear: "",
-    currentTerm: "Term 1",
+    currentTerm: "",
     termStart: null,
     termEnd: null,
     schoolName: "",
@@ -33,9 +33,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const unsub = onSnapshot(configRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
+        console.log("[AcademicContext] Data received:", data);
         setConfig({
           academicYear: data.academicYear || "",
-          currentTerm: data.currentTerm || "Term 1",
+          currentTerm: data.currentTerm || "",
           termStart: data.termStart,
           termEnd: data.termEnd,
           schoolName: data.schoolName || "",
@@ -43,6 +44,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           loading: false,
         });
       } else {
+        console.warn("[AcademicContext] No academic_config document found at school_settings/academic_config");
         setConfig(prev => ({ ...prev, loading: false }));
       }
     }, (error) => {

@@ -140,7 +140,7 @@ export const useFeeStudents = (
                   (feeData.booksPaid || 0) +
                   (feeData.uniformPaid || 0) +
                   (feeData.otherPaid || 0))
-              : userData.walletBalance || 0,
+              : (userData.walletBalance || 0),
             hasRecordInTerm: !!feeData,
             payments: feeData?.payments || [],
             termBill: feeData?.termBill || 0,

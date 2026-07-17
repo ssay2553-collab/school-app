@@ -562,12 +562,6 @@ export default function BusFees() {
           merge: true,
         } as any);
 
-        // Update student arrears
-        const studentRef = doc(db, "users", uid);
-        batch.update(studentRef, {
-          dailyArrears: increment(rate),
-        });
-
         opCount++;
 
         if (opCount >= 200) {
@@ -662,19 +656,6 @@ export default function BusFees() {
         todayData.otherFeesDescription = "";
       }
       ops.push({ ref: todayRef, data: todayData });
-
-      // Update student's dailyArrears
-      const studentRef = doc(db, "users", uid);
-      const todayArrearsChange = rate - paidToday;
-
-      let previousUnpaidArrears = 0;
-      if (existingRecord && !existingRecord.busPaid) {
-        previousUnpaidArrears = existingRecord.busFee || 0;
-      }
-
-      await updateDoc(studentRef, {
-        dailyArrears: increment(todayArrearsChange - previousUnpaidArrears),
-      });
 
       if (overrideAmountStr) {
         let extra = overrideAmount - paidToday;
@@ -773,20 +754,6 @@ export default function BusFees() {
       data.busPaidAt = null;
 
       await setDoc(ref, data, { merge: true } as any);
-
-      // Update student's dailyArrears
-      const studentRef = doc(db, "users", uid);
-      let arrearsChange = 0;
-      if (existingRecord?.busPaid) {
-        const paidAmount = existingRecord.busPaidAmount || 0;
-        arrearsChange = rate - (existingRecord.busFee - paidAmount);
-      } else {
-        arrearsChange = feeDiff;
-      }
-
-      await updateDoc(studentRef, {
-        dailyArrears: increment(arrearsChange),
-      });
 
       showToast({
         message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",

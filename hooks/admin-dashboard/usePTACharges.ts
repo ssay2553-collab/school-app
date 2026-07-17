@@ -224,6 +224,12 @@ export const usePTACharges = ({
       batch.set(
         doc(db, "studentFeeRecords", recordId),
         {
+          studentUid: student.uid,
+          studentName: student.fullName,
+          classId: student.classId,
+          className: student.className,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
           ptaBalance: increment(-amount),
           ptaPaid: increment(amount),
           balance: increment(-amount),
@@ -322,6 +328,12 @@ export const usePTACharges = ({
         batch.set(
           doc(db, "studentFeeRecords", recordId),
           {
+            studentUid: sDoc.id,
+            studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+            classId: selectedClassId,
+            className: s.className,
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
             ptaBill: increment(val),
             ptaBalance: increment(val),
             balance: increment(val),

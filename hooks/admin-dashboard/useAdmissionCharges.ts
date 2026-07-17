@@ -361,6 +361,12 @@ export const useAdmissionCharges = ({
       const recordId = `${student.uid}_${year}_${term}`;
 
       batch.set(doc(db, "studentFeeRecords", recordId), {
+        studentUid: student.uid,
+        studentName: student.fullName,
+        classId: student.classId,
+        className: student.className,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         admissionPaid: increment(amount),
         admissionBalance: increment(-amount),
         balance: increment(-amount),
@@ -437,6 +443,12 @@ export const useAdmissionCharges = ({
       const recordId = `${student.uid}_${year}_${term}`;
 
       batch.set(doc(db, "studentFeeRecords", recordId), {
+        studentUid: student.uid,
+        studentName: student.fullName,
+        classId: student.classId,
+        className: student.className,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         admissionBill: increment(amount),
         admissionBalance: increment(amount),
         balance: increment(amount),

@@ -37,7 +37,20 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
   const term = acadConfig.currentTerm || "";
 
   const hasUnsavedChanges = useMemo(() => {
-    return JSON.stringify(localAttendance) !== JSON.stringify(serverAttendance);
+    const localKeys = Object.keys(localAttendance);
+    const serverKeys = Object.keys(serverAttendance);
+
+    // Check if any status in local is different from server
+    for (const uid of localKeys) {
+      if (localAttendance[uid]?.status !== serverAttendance[uid]?.status) return true;
+    }
+
+    // Check if any status in server is missing or different in local
+    for (const uid of serverKeys) {
+      if (serverAttendance[uid]?.status !== localAttendance[uid]?.status) return true;
+    }
+
+    return false;
   }, [localAttendance, serverAttendance]);
 
   const isOfficialClassTeacher = useMemo(() => {
@@ -150,18 +163,21 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
     loadAttendance();
   }, [classId, selectedDate, academicYear, term]);
 
-  const markLocal = (studentId: string, status: "present" | "absent" | "late") => {
+  const markLocal = useCallback((studentId: string, status: "present" | "absent" | "late") => {
     if (!isOfficialClassTeacher) {
       showToast({ message: "Only assigned Class Teacher/Admin can mark attendance.", type: "error" });
       return;
     }
-    setLocalAttendance(prev => ({
-      ...prev,
-      [studentId]: { status, markedAt: new Date().toISOString() }
-    }));
-  };
+    setLocalAttendance(prev => {
+      if (prev[studentId]?.status === status) return prev;
+      return {
+        ...prev,
+        [studentId]: { status, markedAt: new Date().toISOString() }
+      };
+    });
+  }, [isOfficialClassTeacher, showToast]);
 
-  const saveToFirestore = async () => {
+  const saveToFirestore = useCallback(async () => {
     if (!classId || !appUser || !academicYear || !term) return;
 
     const currentHour = new Date().getUTCHours();
@@ -189,6 +205,9 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
       const staffName = `${appUser.profile?.firstName || ''} ${appUser.profile?.lastName || ''}`.trim() || "Staff";
       const updatedBy = `${staffName} (${appUser.role || 'Teacher'})`;
 
+      // Copy localAttendance to avoid mutation issues during async batch commit if needed
+      const attendanceToSave = { ...localAttendance };
+
       batch.set(ref, {
         classId,
         date: selectedDate,
@@ -197,12 +216,12 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
         markedBy: appUser.uid,
         updatedBy,
         lastUpdated: serverTimestamp(),
-        students: localAttendance
+        students: attendanceToSave
       }, { merge: true });
 
-      Object.keys(localAttendance).forEach(studentId => {
+      Object.keys(attendanceToSave).forEach(studentId => {
         const oldStatus = serverAttendance[studentId]?.status;
-        const newStatus = localAttendance[studentId]?.status;
+        const newStatus = attendanceToSave[studentId]?.status;
 
         if (oldStatus !== newStatus) {
           const studentSummaryRef = doc(db, "attendanceSummary", `${studentId}_${cleanYear}_${cleanTerm}`);
@@ -221,13 +240,13 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
       await batch.commit();
 
       const changedStudents = students.filter(s =>
-        localAttendance[s.uid]?.status !== serverAttendance[s.uid]?.status &&
-        (localAttendance[s.uid]?.status === "absent" || localAttendance[s.uid]?.status === "late")
+        attendanceToSave[s.uid]?.status !== serverAttendance[s.uid]?.status &&
+        (attendanceToSave[s.uid]?.status === "absent" || attendanceToSave[s.uid]?.status === "late")
       );
 
       for (const student of changedStudents) {
         if (student.parentUids && Array.isArray(student.parentUids)) {
-          const status = localAttendance[student.uid]?.status;
+          const status = attendanceToSave[student.uid]?.status;
           const studentName = `${student.profile?.firstName || ''} ${student.profile?.lastName || ''}`.trim();
           const statusLabel = status?.toUpperCase();
 
@@ -245,7 +264,7 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
         }
       }
 
-      setServerAttendance(localAttendance);
+      setServerAttendance(attendanceToSave);
       showToast({ message: "Attendance saved successfully", type: "success" });
     } catch (e: any) {
       console.error("Save error:", e);
@@ -253,7 +272,7 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
     } finally {
       setSaving(false);
     }
-  };
+  }, [classId, appUser, academicYear, term, isOfficialClassTeacher, selectedDate, localAttendance, serverAttendance, students, showToast]);
 
   return {
     students,

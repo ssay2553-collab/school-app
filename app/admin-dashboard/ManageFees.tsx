@@ -144,7 +144,7 @@ export default function ManageFees() {
     isSuperAdmin,
   });
 
-  const { stats } = useFeeStats(academicYear, term, selectedClassId);
+  const { stats } = useFeeStats(academicYear, term, selectedClassId, showArchived);
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 80],
@@ -453,304 +453,274 @@ export default function ManageFees() {
             </View>
           </Animated.View>
         </LinearGradient>
-
-        <View style={styles.searchStrip}>
-          <TouchableOpacity
-            activeOpacity={1}
-            style={styles.searchBar}
-            onPress={() => {
-              // This ensures the input gets focus even if the user taps near the icon
-            }}
-          >
-            <SVGIcon name="search" size={18} color={VIBE.muted} />
-            <TextInput
-              placeholder="Search..."
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor={VIBE.muted}
-              underlineColorAndroid="transparent"
-            />
-          </TouchableOpacity>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.searchActionsScroll}
-            contentContainerStyle={styles.searchActionsContainer}
-          >
-            <TouchableOpacity
-              onPress={() => setShowArchived(!showArchived)}
-              style={[
-                styles.archiveToggle,
-                showArchived && { backgroundColor: COLORS.secondary },
-              ]}
-            >
-              <SVGIcon
-                name="archive"
-                size={18}
-                color={showArchived ? "#fff" : VIBE.muted}
-              />
-              <Text
-                style={[
-                  styles.archiveToggleText,
-                  { color: showArchived ? "#fff" : VIBE.muted },
-                ]}
-              >
-                {showArchived ? "ACTIVE" : "ARCHIVE"}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() =>
-                router.push({
-                  pathname: "/admin-dashboard/FeeReports",
-                  params: {
-                    classId: selectedClassId,
-                    academicYear,
-                    term,
-                  },
-                })
-              }
-              style={styles.refreshRound}
-            >
-              <SVGIcon name="print" size={18} color={VIBE.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleRefresh}
-              style={styles.refreshRound}
-            >
-              <SVGIcon name="refresh" size={18} color={VIBE.primary} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setDailyModalVisible(true)}
-              style={styles.refreshRound}
-            >
-              <SVGIcon name="calendar" size={18} color={VIBE.secondary} />
-            </TouchableOpacity>
-
-            {isSuperAdmin && (
-              <TouchableOpacity
-                onPress={handleNormalizeDiscounts}
-                style={[
-                  styles.refreshRound,
-                  { backgroundColor: VIBE.info + "10" },
-                ]}
-              >
-                <SVGIcon name="sync" size={18} color={VIBE.info} />
-                {inconsistentCount > 0 && (
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: -2,
-                      right: -2,
-                      backgroundColor: VIBE.danger,
-                      borderRadius: 8,
-                      minWidth: 16,
-                      height: 16,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      paddingHorizontal: 4,
-                    }}
-                  >
-                    <Text
-                      style={{ color: "#fff", fontSize: 8, fontWeight: "900" }}
-                    >
-                      {inconsistentCount}
-                    </Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
-          </ScrollView>
-        </View>
-
-        {!isConfigMissing && (
-          <View style={styles.modeToggleArea}>
-            <View style={styles.modeTabs}>
-              <TouchableOpacity
-                style={[
-                  styles.modeTab,
-                  activeMode === "payment" && styles.activeModeTab,
-                ]}
-                onPress={() => setActiveMode("payment")}
-              >
-                <SVGIcon
-                  name="cash"
-                  size={18}
-                  color={activeMode === "payment" ? "#fff" : VIBE.muted}
-                />
-                <Text
-                  style={[
-                    styles.modeTabText,
-                    activeMode === "payment" && { color: "#fff" },
-                  ]}
-                >
-                  PAYMENTS
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modeTab,
-                  activeMode === "billing" && styles.activeModeTab,
-                ]}
-                onPress={() => setActiveMode("billing")}
-              >
-                <SVGIcon
-                  name="document-text"
-                  size={18}
-                  color={activeMode === "billing" ? "#fff" : VIBE.muted}
-                />
-                <Text
-                  style={[
-                    styles.modeTabText,
-                    activeMode === "billing" && { color: "#fff" },
-                  ]}
-                >
-                  BILLING
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.modeTab,
-                  activeMode === "discounts" && styles.activeModeTab,
-                ]}
-                onPress={() => setActiveMode("discounts")}
-              >
-                <SVGIcon
-                  name="pricetag"
-                  size={18}
-                  color={activeMode === "discounts" ? "#fff" : VIBE.muted}
-                />
-                <Text
-                  style={[
-                    styles.modeTabText,
-                    activeMode === "discounts" && { color: "#fff" },
-                  ]}
-                >
-                  DISCOUNTS
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
       </Animated.View>
 
       <View style={styles.mainBody}>
-        {isConfigMissing && (
-          <View style={styles.warningStrip}>
-            <SVGIcon name="alert-circle" size={18} color="#92400E" />
-            <Text style={styles.warningText}>
-              Academic configuration is missing. Term-based billing is disabled.
-            </Text>
-            <TouchableOpacity onPress={() => router.push("/academic-calendar")}>
-              <Text style={styles.warningLink}>Configure Now</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {!isConfigMissing && activeMode === "billing" ? (
-          <View style={styles.bulkActionStrip}>
-            <View style={styles.bulkInputContainer}>
-              <Text style={styles.bulkSym}>₵</Text>
-              <TextInput
-                placeholder="Bulk Bill (+/-)"
-                placeholderTextColor={VIBE.muted}
-                style={styles.bulkInput}
-                keyboardType="numbers-and-punctuation"
-                value={termBillAmount}
-                onChangeText={setTermBillAmount}
-                editable={canEdit}
-              />
-            </View>
-            <TouchableOpacity
-              style={styles.checkAllBtn}
-              onPress={toggleSelectAll}
-            >
-              <SVGIcon
-                name={
-                  filteredStudents.length > 0 &&
-                  filteredStudents.every((s) => selectedStudentUids.has(s.uid))
-                    ? "checkbox"
-                    : "square"
-                }
-                size={28}
-                color={VIBE.primary}
-              />
-              <Text style={styles.checkAllText}>SELECT ALL</Text>
-            </TouchableOpacity>
-          </View>
-        ) : activeMode === "discounts" ? (
-          <View style={styles.bulkActionStrip}>
-            <View style={styles.bulkInputContainer}>
-              <Text style={[styles.bulkSym, { color: VIBE.success }]}>-</Text>
-              <TextInput
-                placeholder="Bulk Discount (₵)"
-                placeholderTextColor={VIBE.muted}
-                style={styles.bulkInput}
-                keyboardType="numbers-and-punctuation"
-                value={discountAmount}
-                onChangeText={setDiscountAmount}
-                editable={canEdit}
-              />
-            </View>
-            <TouchableOpacity
-              style={styles.checkAllBtn}
-              onPress={toggleSelectAll}
-            >
-              <SVGIcon
-                name={
-                  filteredStudents.length > 0 &&
-                  filteredStudents.every((s) => selectedStudentUids.has(s.uid))
-                    ? "checkbox"
-                    : "square"
-                }
-                size={28}
-                color={VIBE.success}
-              />
-              <Text style={styles.checkAllText}>SELECT ALL</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        <View style={styles.listHeaderRow}>
-          <Text style={styles.listTitle}>Student Directory</Text>
-          <View style={styles.filterChips}>
-            {["all", "debt", "cleared"].map((f) => (
-              <TouchableOpacity
-                key={f}
-                style={[
-                  styles.filterChip,
-                  statusFilter === f && {
-                    backgroundColor: VIBE.primary,
-                    borderColor: VIBE.primary,
-                  },
-                ]}
-                onPress={() => setStatusFilter(f as any)}
-              >
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    statusFilter === f && { color: "#fff" },
-                  ]}
+        <FlatList
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false },
+          )}
+          scrollEventThrottle={16}
+          ListHeaderComponent={() => (
+            <>
+              <View style={styles.searchStrip}>
+                <TouchableOpacity
+                  activeOpacity={1}
+                  style={styles.searchBar}
+                  onPress={() => {}}
                 >
-                  {f === "cleared" ? "PAID" : f.toUpperCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+                  <SVGIcon name="search" size={18} color={VIBE.muted} />
+                  <TextInput
+                    placeholder="Search..."
+                    style={styles.searchInput}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholderTextColor={VIBE.muted}
+                    underlineColorAndroid="transparent"
+                  />
+                </TouchableOpacity>
 
-        <View style={styles.listContainer}>
-          <FlatList
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: false },
-            )}
-            scrollEventThrottle={16}
-            ListHeaderComponent={() => (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.searchActionsScroll}
+                  contentContainerStyle={styles.searchActionsContainer}
+                >
+                  <TouchableOpacity
+                    onPress={() => setShowArchived(!showArchived)}
+                    style={[
+                      styles.archiveToggle,
+                      showArchived && { backgroundColor: COLORS.secondary },
+                    ]}
+                  >
+                    <SVGIcon
+                      name="archive"
+                      size={18}
+                      color={showArchived ? "#fff" : VIBE.muted}
+                    />
+                    <Text
+                      style={[
+                        styles.archiveToggleText,
+                        { color: showArchived ? "#fff" : VIBE.muted },
+                      ]}
+                    >
+                      {showArchived ? "ACTIVE" : "ARCHIVE"}
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({
+                        pathname: "/admin-dashboard/FeeReports",
+                        params: {
+                          classId: selectedClassId,
+                          academicYear,
+                          term,
+                        },
+                      })
+                    }
+                    style={styles.refreshRound}
+                  >
+                    <SVGIcon name="print" size={18} color={VIBE.primary} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleRefresh}
+                    style={styles.refreshRound}
+                  >
+                    <SVGIcon name="refresh" size={18} color={VIBE.primary} />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => setDailyModalVisible(true)}
+                    style={styles.refreshRound}
+                  >
+                    <SVGIcon name="calendar" size={18} color={VIBE.secondary} />
+                  </TouchableOpacity>
+
+                  {isSuperAdmin && (
+                    <TouchableOpacity
+                      onPress={handleNormalizeDiscounts}
+                      style={[
+                        styles.refreshRound,
+                        { backgroundColor: VIBE.info + "10" },
+                      ]}
+                    >
+                      <SVGIcon name="sync" size={18} color={VIBE.info} />
+                      {inconsistentCount > 0 && (
+                        <View
+                          style={{
+                            position: "absolute",
+                            top: -2,
+                            right: -2,
+                            backgroundColor: VIBE.danger,
+                            borderRadius: 8,
+                            minWidth: 16,
+                            height: 16,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            paddingHorizontal: 4,
+                          }}
+                        >
+                          <Text
+                            style={{ color: "#fff", fontSize: 8, fontWeight: "900" }}
+                          >
+                            {inconsistentCount}
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              </View>
+
+              {!isConfigMissing && (
+                <View style={styles.modeToggleArea}>
+                  <View style={styles.modeTabs}>
+                    <TouchableOpacity
+                      style={[
+                        styles.modeTab,
+                        activeMode === "payment" && styles.activeModeTab,
+                      ]}
+                      onPress={() => setActiveMode("payment")}
+                    >
+                      <SVGIcon
+                        name="cash"
+                        size={18}
+                        color={activeMode === "payment" ? "#fff" : VIBE.muted}
+                      />
+                      <Text
+                        style={[
+                          styles.modeTabText,
+                          activeMode === "payment" && { color: "#fff" },
+                        ]}
+                      >
+                        PAYMENTS
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.modeTab,
+                        activeMode === "billing" && styles.activeModeTab,
+                      ]}
+                      onPress={() => setActiveMode("billing")}
+                    >
+                      <SVGIcon
+                        name="document-text"
+                        size={18}
+                        color={activeMode === "billing" ? "#fff" : VIBE.muted}
+                      />
+                      <Text
+                        style={[
+                          styles.modeTabText,
+                          activeMode === "billing" && { color: "#fff" },
+                        ]}
+                      >
+                        BILLING
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.modeTab,
+                        activeMode === "discounts" && styles.activeModeTab,
+                      ]}
+                      onPress={() => setActiveMode("discounts")}
+                    >
+                      <SVGIcon
+                        name="pricetag"
+                        size={18}
+                        color={activeMode === "discounts" ? "#fff" : VIBE.muted}
+                      />
+                      <Text
+                        style={[
+                          styles.modeTabText,
+                          activeMode === "discounts" && { color: "#fff" },
+                        ]}
+                      >
+                        DISCOUNTS
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {isConfigMissing && (
+                <View style={styles.warningStrip}>
+                  <SVGIcon name="alert-circle" size={18} color="#92400E" />
+                  <Text style={styles.warningText}>
+                    Academic configuration is missing. Term-based billing is disabled.
+                  </Text>
+                  <TouchableOpacity onPress={() => router.push("/academic-calendar")}>
+                    <Text style={styles.warningLink}>Configure Now</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {!isConfigMissing && activeMode === "billing" ? (
+                <View style={styles.bulkActionStrip}>
+                  <View style={styles.bulkInputContainer}>
+                    <Text style={styles.bulkSym}>₵</Text>
+                    <TextInput
+                      placeholder="Bulk Bill (+/-)"
+                      placeholderTextColor={VIBE.muted}
+                      style={styles.bulkInput}
+                      keyboardType="numbers-and-punctuation"
+                      value={termBillAmount}
+                      onChangeText={setTermBillAmount}
+                      editable={canEdit}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.checkAllBtn}
+                    onPress={toggleSelectAll}
+                  >
+                    <SVGIcon
+                      name={
+                        filteredStudents.length > 0 &&
+                        filteredStudents.every((s) => selectedStudentUids.has(s.uid))
+                          ? "checkbox"
+                          : "square"
+                      }
+                      size={28}
+                      color={VIBE.primary}
+                    />
+                    <Text style={styles.checkAllText}>SELECT ALL</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : activeMode === "discounts" ? (
+                <View style={styles.bulkActionStrip}>
+                  <View style={styles.bulkInputContainer}>
+                    <Text style={[styles.bulkSym, { color: VIBE.success }]}>-</Text>
+                    <TextInput
+                      placeholder="Bulk Discount (₵)"
+                      placeholderTextColor={VIBE.muted}
+                      style={styles.bulkInput}
+                      keyboardType="numbers-and-punctuation"
+                      value={discountAmount}
+                      onChangeText={setDiscountAmount}
+                      editable={canEdit}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.checkAllBtn}
+                    onPress={toggleSelectAll}
+                  >
+                    <SVGIcon
+                      name={
+                        filteredStudents.length > 0 &&
+                        filteredStudents.every((s) => selectedStudentUids.has(s.uid))
+                          ? "checkbox"
+                          : "square"
+                      }
+                      size={28}
+                      color={VIBE.success}
+                    />
+                    <Text style={styles.checkAllText}>SELECT ALL</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
               <FeeStatsDashboard
                 stats={stats}
                 activeMode={activeMode}
@@ -759,44 +729,121 @@ export default function ManageFees() {
                 totalProfileDiscountsSum={totalProfileDiscountsSum}
                 filteredStudentsCount={filteredStudents.length}
               />
-            )}
-            data={filteredStudents}
-            extraData={{
-              activeMode,
-              termBillAmount,
-              individualBillOverrides,
-              selectedStudentUids,
-            }}
-            keyExtractor={(item) => item.uid}
-            onEndReached={() => fetchStudents(false)}
-            renderItem={renderStudentItem}
-            contentContainerStyle={styles.flatListContent}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                colors={[VIBE.primary]}
-              />
-            }
-            removeClippedSubviews={Platform.OS === "android"}
-            ListEmptyComponent={
-              !loading ? (
-                <View style={styles.emptyWrap}>
-                  <SVGIcon name="people" size={64} color="#CBD5E1" />
-                  <Text style={styles.emptyText}>No records found</Text>
+
+              <View style={styles.listHeaderRow}>
+                <Text style={styles.listTitle}>Student Directory</Text>
+                <View style={styles.filterChips}>
+                  {["all", "debt", "cleared"].map((f) => (
+                    <TouchableOpacity
+                      key={f}
+                      style={[
+                        styles.filterChip,
+                        statusFilter === f && {
+                          backgroundColor: VIBE.primary,
+                          borderColor: VIBE.primary,
+                        },
+                      ]}
+                      onPress={() => setStatusFilter(f as any)}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipText,
+                          statusFilter === f && { color: "#fff" },
+                        ]}
+                      >
+                        {f === "cleared" ? "PAID" : f.toUpperCase()}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              ) : (
-                <ActivityIndicator
-                  size="large"
-                  color={VIBE.primary}
-                  style={{ marginTop: 50 }}
-                />
-              )
-            }
-          />
-        </View>
+              </View>
+            </>
+          )}
+          data={filteredStudents}
+          extraData={{
+            activeMode,
+            termBillAmount,
+            individualBillOverrides,
+            selectedStudentUids,
+          }}
+          keyExtractor={(item) => item.uid}
+          onEndReached={() => fetchStudents(false)}
+          renderItem={renderStudentItem}
+          contentContainerStyle={styles.flatListContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[VIBE.primary]}
+            />
+          }
+          removeClippedSubviews={Platform.OS === "android"}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={styles.emptyWrap}>
+                <SVGIcon name="people" size={64} color="#CBD5E1" />
+                <Text style={styles.emptyText}>No records found</Text>
+              </View>
+            ) : (
+              <ActivityIndicator
+                size="large"
+                color={VIBE.primary}
+                style={{ marginTop: 50 }}
+              />
+            )
+          }
+        />
 
         {activeMode === "billing" &&
+          selectedStudentUids.size > 0 &&
+          canEdit && (
+            <Animatable.View animation="bounceIn" style={styles.fabWrap}>
+              <TouchableOpacity
+                style={styles.mainFab}
+                onPress={() => setBillModalVisible(true)}
+              >
+                <LinearGradient
+                  colors={[VIBE.primary, VIBE.purple]}
+                  style={styles.fabGrad}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.fabText}>
+                    APPLY BILLS ({selectedStudentUids.size})
+                  </Text>
+                  <SVGIcon
+                    name="checkmark-done-circle"
+                    size={22}
+                    color="#fff"
+                  />
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animatable.View>
+          )}
+
+        {activeMode === "discounts" &&
+          selectedStudentUids.size > 0 &&
+          canEdit && (
+            <Animatable.View animation="bounceIn" style={styles.fabWrap}>
+              <TouchableOpacity
+                style={styles.mainFab}
+                onPress={() => setDiscountModalVisible(true)}
+              >
+                <LinearGradient
+                  colors={[VIBE.success, VIBE.info]}
+                  style={styles.fabGrad}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.fabText}>
+                    APPLY DISCOUNTS ({selectedStudentUids.size})
+                  </Text>
+                  <SVGIcon name="pricetag" size={22} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animatable.View>
+          )}
+      </View>veMode === "billing" &&
           selectedStudentUids.size > 0 &&
           canEdit && (
             <Animatable.View animation="bounceIn" style={styles.fabWrap}>

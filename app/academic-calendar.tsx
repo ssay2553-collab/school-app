@@ -141,20 +141,24 @@ export default function AcademicCalendar() {
 
   const fetchTermConfig = useCallback(async () => {
     try {
+      console.log("[AcademicCalendar] Fetching term config...");
       const docSnap = await getDoc(
         doc(db, "school_settings", "academic_config"),
       );
       if (docSnap.exists()) {
         const data = docSnap.data();
+        console.log("[AcademicCalendar] Config found:", data);
         setTermConfig({
           academicYear: data.academicYear || "",
-          currentTerm: data.currentTerm || "Term 1",
+          currentTerm: data.currentTerm || "",
           termStart: parseFirestoreDate(data.termStart) || new Date(),
           termEnd: parseFirestoreDate(data.termEnd) || new Date(),
         });
+      } else {
+        console.warn("[AcademicCalendar] No config document found.");
       }
     } catch (error) {
-      console.error("Error fetching term config:", error);
+      console.error("[AcademicCalendar] Error fetching term config:", error);
     }
   }, [parseFirestoreDate]);
 

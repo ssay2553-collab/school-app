@@ -17,7 +17,7 @@ export const sendFeeReminders = onSchedule("0 15 26,27 * *", async (event) => {
 
   try {
     const recordsSnap = await db.collection("studentFeeRecords").where("balance", ">", 0).get();
-    const arrearsStudentsSnap = await db.collection("users").where("role", "==", "student").where("dailyArrears", ">", 0).get();
+    // const arrearsStudentsSnap = await db.collection("users").where("role", "==", "student").where("dailyArrears", ">", 0).get();
 
     const notificationsMap = new Map<string, { name: string, balance: number, arrears: number, parentUids: string[] }>();
 
@@ -164,8 +164,8 @@ export const processDailyArrears = onSchedule("0 22 * * *", async (event) => {
 
     const academicYear = config.academicYear || "";
     const currentTerm = config.currentTerm || "";
-    const cleanYear = academicYear.replace(/\//g, "-");
-    const cleanTerm = currentTerm.replace(/\s/g, "");
+    // const cleanYear = academicYear.replace(/\//g, "-");
+    // const cleanTerm = currentTerm.replace(/\s/g, "");
 
     for (const studentDoc of studentsSnap.docs) {
       const student = studentDoc.data();

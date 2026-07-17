@@ -91,7 +91,6 @@ type StudentRecord = {
   classId: string;
   className: string;
   isFeeding: boolean;
-  dailyArrears?: number;
 };
 
 // Student payment tracking not required separately; dailyFinancials holds feedingPaid
@@ -178,7 +177,6 @@ export default function FeedingFees() {
     return isClassTeacher(appUser, selectedClassId);
   }, [appUser, selectedClassId]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showOnlyArrears, setShowOnlyArrears] = useState(false);
   const [attendanceMap, setAttendanceMap] = useState<Record<string, any>>({});
   const [feedingAmount, setFeedingAmount] = useState("");
   const [classRates, setClassRates] = useState<Record<string, number>>({});
@@ -292,7 +290,6 @@ export default function FeedingFees() {
             className:
               classes.find((c) => c.id === data.classId)?.name || "Class",
             isFeeding: data.isFeeding || false,
-            dailyArrears: data.dailyArrears || 0,
           };
         });
 
@@ -400,13 +397,12 @@ export default function FeedingFees() {
   const filteredStudents = useMemo(() => {
     const low = searchQuery.toLowerCase();
     return students.filter((s) => {
-      const matchesSearch =
+      return (
         s.fullName.toLowerCase().includes(low) ||
-        s.className.toLowerCase().includes(low);
-      const matchesArrears = showOnlyArrears ? (s.dailyArrears || 0) > 0 : true;
-      return matchesSearch && matchesArrears;
+        s.className.toLowerCase().includes(low)
+      );
     });
-  }, [students, searchQuery, showOnlyArrears]);
+  }, [students, searchQuery]);
 
   // Get existing record for a student on selected date
   const getExistingRecord = useCallback(
@@ -520,12 +516,6 @@ export default function FeedingFees() {
           merge: true,
         } as any);
 
-        // Update student arrears
-        const studentRef = doc(db, "users", uid);
-        batch.update(studentRef, {
-          dailyArrears: increment(rate),
-        });
-
         opCount++;
 
         if (opCount >= 200) {
@@ -619,20 +609,6 @@ export default function FeedingFees() {
         todayData.otherFees = 0;
       }
       ops.push({ ref: todayRef, data: todayData });
-
-      // Update student's dailyArrears and walletBalance
-      const studentRef = doc(db, "users", uid);
-      const todayArrearsChange = classAmount - paidToday;
-
-      // If they were previously recorded as unpaid, we need to subtract that from arrears first
-      let previousUnpaidArrears = 0;
-      if (existingRecord && !existingRecord.feedingPaid) {
-        previousUnpaidArrears = existingRecord.feedingFee || 0;
-      }
-
-      await updateDoc(studentRef, {
-        dailyArrears: increment(todayArrearsChange - previousUnpaidArrears),
-      });
 
       // If override > classAmount, spread extra to future days
       if (overrideAmountStr) {
@@ -733,25 +709,6 @@ export default function FeedingFees() {
       data.feedingPaidAt = null;
 
       await setDoc(ref, data, { merge: true } as any);
-
-      // Update student's dailyArrears
-      const studentRef = doc(db, "users", uid);
-      // If was paid, we remove the payment influence and add the full fee
-      // If was unpaid, we just remove the fee (clearing record)
-      // If was nothing, we add the full fee
-      let arrearsChange = 0;
-      if (existingRecord?.feedingPaid) {
-        const paidAmount = existingRecord.feedingPaidAmount || 0;
-        arrearsChange = classAmount - (classAmount - paidAmount); // Effectively adding back the 'paid' part and adding the fee
-        // Simplified: arrears change = newFee (classAmount) - (oldFee - paidAmount)
-        arrearsChange = classAmount - (existingRecord.feedingFee - paidAmount);
-      } else {
-        arrearsChange = feeDiff; // If transitioning from nothing to unpaid or unpaid to nothing
-      }
-
-      await updateDoc(studentRef, {
-        dailyArrears: increment(arrearsChange),
-      });
 
       showToast({
         message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
@@ -993,29 +950,6 @@ export default function FeedingFees() {
                   )}
                 </View>
 
-                <View style={styles.arrearsFilterRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.arrearsToggle,
-                      showOnlyArrears && styles.arrearsToggleActive,
-                    ]}
-                    onPress={() => setShowOnlyArrears(!showOnlyArrears)}
-                  >
-                    <SVGIcon
-                      name={showOnlyArrears ? "funnel" : "funnel-outline"}
-                      size={16}
-                      color={showOnlyArrears ? "#fff" : VIBE.muted}
-                    />
-                    <Text
-                      style={[
-                        styles.arrearsToggleText,
-                        showOnlyArrears && styles.arrearsToggleTextActive,
-                      ]}
-                    >
-                      Show Arrears Only
-                    </Text>
-                  </TouchableOpacity>
-                </View>
 
                 <View style={styles.pickerContainer}>
                   <Text style={styles.pickerLabel}>Select Class</Text>
@@ -1130,7 +1064,6 @@ export default function FeedingFees() {
                     const isPaid = existingRecord?.feedingPaid === true;
                     const isAbsent =
                       attendanceMap[item.uid]?.status === "absent";
-                    const hasArrears = (item.dailyArrears || 0) > 0;
 
                     return (
                       <View
@@ -1171,13 +1104,6 @@ export default function FeedingFees() {
                               >
                                 {item.fullName}
                               </Text>
-                              {hasArrears && (
-                                <View style={styles.arrearsBadge}>
-                                  <Text style={styles.arrearsText}>
-                                    Arrears: ₵{item.dailyArrears}
-                                  </Text>
-                                </View>
-                              )}
                             </View>
                             <View style={styles.studentMetaRow}>
                               <Text style={styles.studentClass}>

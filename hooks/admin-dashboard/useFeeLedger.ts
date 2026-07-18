@@ -575,17 +575,35 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
 
     const rawSummary = useMemo(() => {
         const summary: Record<string, { billed: number; paid: number }> = {
-            tuition: { billed: (record?.termBill || 0) + (record?.arrears || 0) - (record?.discount || 0), paid: 0 },
+            tuition: { billed: Math.max(0, (record?.termBill || 0) - (record?.discount || 0)), paid: 0 },
         };
+
+        if (record?.arrears > 0) {
+            summary["arrears"] = { billed: record.arrears, paid: 0 };
+        }
+
         allTransactions.forEach((t: any) => {
             const type = (t.type || "tuition").toLowerCase();
             const isPayment = type.endsWith("_payment") || type === "tuition" || type === "tuition_credit";
             let category = type.replace("_payment", "").replace("_credit", "");
             if (type === "other") category = (t.otherCategory || "other").toLowerCase();
+
             if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
-            if (isPayment) summary[category].paid += t.amount || 0;
-            else if (type === "other") summary[category].billed += t.amount || 0;
+
+            if (isPayment) {
+                if (category === "tuition" && summary["arrears"]) {
+                    let amt = t.amount || 0;
+                    const toArrears = Math.min(amt, summary["arrears"].billed - summary["arrears"].paid);
+                    summary["arrears"].paid += toArrears;
+                    summary["tuition"].paid += (amt - toArrears);
+                } else {
+                    summary[category].paid += t.amount || 0;
+                }
+            } else if (type === "other") {
+                summary[category].billed += t.amount || 0;
+            }
         });
+
         if (record) {
             const isolated = [
                 { key: 'pta', bill: (record.ptaBill || 0), paid: record.ptaPaid },
@@ -599,8 +617,21 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                 summary[cat.key].billed = Math.max(summary[cat.key].billed, cat.bill || 0);
                 summary[cat.key].paid = Math.max(summary[cat.key].paid, cat.paid || 0);
             });
+
+            // Special handling for tuition/arrears match with record.amountPaid
+            const totalTuitionPaidInSummary = summary.tuition.paid + (summary.arrears?.paid || 0);
+            if (record.amountPaid > totalTuitionPaidInSummary) {
+                let diff = record.amountPaid - totalTuitionPaidInSummary;
+                if (summary.arrears) {
+                    const extraToArrears = Math.min(diff, summary.arrears.billed - summary.arrears.paid);
+                    summary.arrears.paid += extraToArrears;
+                    diff -= extraToArrears;
+                }
+                summary.tuition.paid += diff;
+            }
+
             const specificOtherBilled = Object.entries(summary)
-                .filter(([k]) => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(k))
+                .filter(([k]) => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other', 'arrears'].includes(k))
                 .reduce((sum, [_, v]) => sum + v.billed, 0);
             const unnamedOtherBill = Math.max(0, (record.otherBill || 0) - specificOtherBilled);
             if (unnamedOtherBill > 0 || record.otherPaid > 0) {
@@ -608,7 +639,6 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                 summary['other'].billed = Math.max(summary['other'].billed, unnamedOtherBill);
                 summary['other'].paid = Math.max(summary['other'].paid, record.otherPaid || 0);
             }
-            summary.tuition.paid = Math.max(summary.tuition.paid, record.amountPaid || 0);
         }
         return summary;
     }, [allTransactions, record]);

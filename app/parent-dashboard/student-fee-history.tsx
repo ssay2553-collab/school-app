@@ -123,6 +123,10 @@ export default function StudentFeeHistory() {
     if (!showFullHistory && (!selectedYear || !selectedTerm)) return;
 
     setFetchingRecord(true);
+    // Clear previous state to avoid leakage
+    setRecord(null);
+    setAllTransactions([]);
+
     const cleanYear = selectedYear.replace(/\//g, "-");
     const cleanTerm = selectedTerm.replace(/\s/g, "");
     const recordId = `${selectedChildId}_${cleanYear}_${cleanTerm}`;
@@ -274,7 +278,7 @@ export default function StudentFeeHistory() {
         ).getTime();
         return bTime - aTime;
       });
-  }, [allTransactions]);
+  }, [ledgerTransactions]);
 
   const ledgerSummary = useMemo(() => {
     const totalPaid = paymentLedgerEntries.reduce(
@@ -294,19 +298,25 @@ export default function StudentFeeHistory() {
   }, [paymentLedgerEntries]);
 
   const rawSummary = useMemo(() => {
-    // 1. Initialize with tuition (term bill + arrears - discount)
+    // 1. Initialize with tuition (term bill - discount) and arrears
     const summary: Record<string, { billed: number; paid: number }> = {
       tuition: {
-        billed:
-          (record?.termBill || 0) +
-          (record?.arrears || 0) -
-          (record?.discount || 0),
+        billed: Math.max(0, (record?.termBill || 0) - (record?.discount || 0)),
         paid: 0,
       },
     };
 
-    // 2. Aggregate Transactions for all categories
-    allTransactions.forEach((t: any) => {
+    if (record?.arrears > 0) {
+      summary["arrears"] = { billed: record.arrears, paid: 0 };
+    }
+
+    // 2. Aggregate Transactions for all categories - Filtered by current selection
+    // We only want to count payments that belong to THIS specific bill period in the summary table
+    const relevantTransactions = allTransactions.filter((t: any) =>
+      t.academicYear === selectedYear && t.term === selectedTerm
+    );
+
+    relevantTransactions.forEach((t: any) => {
       const type = (t.type || "tuition").toLowerCase();
       const isPayment =
         type.endsWith("_payment") ||
@@ -323,7 +333,15 @@ export default function StudentFeeHistory() {
 
       // Only sum payments from transactions - bills come from record or transactions
       if (isPayment) {
-        summary[category].paid += t.amount || 0;
+        if (category === "tuition" && summary["arrears"]) {
+          // If there are arrears, apply tuition payment to arrears first for display logic
+          let amt = t.amount || 0;
+          const toArrears = Math.min(amt, summary["arrears"].billed - summary["arrears"].paid);
+          summary["arrears"].paid += toArrears;
+          summary["tuition"].paid += (amt - toArrears);
+        } else {
+          summary[category].paid += t.amount || 0;
+        }
       } else if (type === "other") {
         // For 'other' type, we sum the billed amount from transactions to get specific names
         summary[category].billed += t.amount || 0;
@@ -346,9 +364,7 @@ export default function StudentFeeHistory() {
         },
         {
           key: "books",
-          bill: record.booksBill || 0,
-          paid: record.booksPaid || 0,
-        },
+          bill: record.booksBill || 0, paid: record.booksPaid || 0 },
         {
           key: "uniform",
           bill: record.uniformBill || 0,
@@ -362,6 +378,19 @@ export default function StudentFeeHistory() {
         summary[cat.key].paid = Math.max(summary[cat.key].paid, cat.paid);
       });
 
+      // Special handling for tuition/arrears match with record.amountPaid
+      // record.amountPaid is total tuition paid (incl arrears)
+      const totalTuitionPaidInSummary = summary.tuition.paid + (summary.arrears?.paid || 0);
+      if (record.amountPaid > totalTuitionPaidInSummary) {
+        let diff = record.amountPaid - totalTuitionPaidInSummary;
+        if (summary.arrears) {
+           const extraToArrears = Math.min(diff, summary.arrears.billed - summary.arrears.paid);
+           summary.arrears.paid += extraToArrears;
+           diff -= extraToArrears;
+        }
+        summary.tuition.paid += diff;
+      }
+
       // Special handling for 'other' to ensure it matches record.otherBill and avoids double counting
       const specificOtherBilled = Object.entries(summary)
         .filter(
@@ -374,6 +403,7 @@ export default function StudentFeeHistory() {
               "books",
               "uniform",
               "other",
+              "arrears"
             ].includes(k),
         )
         .reduce((sum, [_, v]) => sum + v.billed, 0);
@@ -394,14 +424,9 @@ export default function StudentFeeHistory() {
           record.otherPaid || 0,
         );
       }
-
-      summary.tuition.paid = Math.max(
-        summary.tuition.paid,
-        record.amountPaid || 0,
-      );
     }
     return summary;
-  }, [allTransactions, record]);
+  }, [allTransactions, record, selectedYear, selectedTerm]);
 
   const categorySummary = useMemo(() => {
     const filtered: Record<string, { billed: number; paid: number }> = {};

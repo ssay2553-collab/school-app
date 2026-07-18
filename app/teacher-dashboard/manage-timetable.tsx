@@ -331,6 +331,22 @@ export default function CreateLessonTimetable() {
         </View>
       )}
       {renderSubjectPicker()}
+
+      <TouchableOpacity
+        style={[styles.saveFab, { backgroundColor: brandColor }]}
+        onPress={saveTimetable}
+        disabled={saving}
+      >
+        {saving ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <View style={styles.fabContent}>
+            <Text style={styles.saveFabText}>SAVE TIMETABLE & SET REMINDERS</Text>
+            <SVGIcon name="checkmark-done" size={20} color="#fff" />
+          </View>
+        )}
+      </TouchableOpacity>
+
       {timeModal && (
         Platform.OS === 'ios' ? (
           <Modal visible transparent animationType="fade">
@@ -456,6 +472,29 @@ const styles = StyleSheet.create({
   },
   subjectItemText: { fontSize: 15, color: "#475569", fontWeight: "600" },
   colorDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
+  saveFab: {
+    position: "absolute",
+    bottom: 20,
+    left: 20,
+    right: 20,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    ...SHADOWS.large,
+    elevation: 5,
+  },
+  fabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  saveFabText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
 });
 
 const webTimeStyles = {

@@ -309,6 +309,26 @@ export default function PreschoolRemarksParent() {
               <Text style={styles.className}>{selectedChild?.className}</Text>
             </View>
 
+            <View style={styles.categoryBlock}>
+              <View style={styles.categoryHeader}>
+                <Text style={styles.categoryTitle}>PHYSICAL DEVELOPMENT (H/W)</Text>
+              </View>
+              <View style={styles.hwInfoContainer}>
+                <View style={styles.hwInfoItem}>
+                  <Text style={styles.hwInfoLabel}>DATE</Text>
+                  <Text style={styles.hwInfoValue}>{remarksData.physicalDev?.date || "-"}</Text>
+                </View>
+                <View style={styles.hwInfoItem}>
+                  <Text style={styles.hwInfoLabel}>HEIGHT (m)</Text>
+                  <Text style={styles.hwInfoValue}>{remarksData.physicalDev?.height || "-"}</Text>
+                </View>
+                <View style={styles.hwInfoItem}>
+                  <Text style={styles.hwInfoLabel}>WEIGHT (kg)</Text>
+                  <Text style={styles.hwInfoValue}>{remarksData.physicalDev?.weight || "-"}</Text>
+                </View>
+              </View>
+            </View>
+
             {CATEGORIES.map(cat => (
               <View key={cat.name} style={styles.categoryBlock}>
                 <View style={styles.categoryHeader}>
@@ -422,6 +442,27 @@ const styles = StyleSheet.create({
   },
   studentName: { fontSize: 16, fontWeight: "900", color: "#fff" },
   className: { fontSize: 12, fontWeight: "700", color: "#94A3B8" },
+  hwInfoContainer: {
+    flexDirection: "row",
+    padding: 15,
+    backgroundColor: "#fff",
+    justifyContent: "space-between",
+  },
+  hwInfoItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  hwInfoLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#94A3B8",
+    marginBottom: 4,
+  },
+  hwInfoValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
   categoryBlock: {
     backgroundColor: "#fff",
     borderRadius: 20,

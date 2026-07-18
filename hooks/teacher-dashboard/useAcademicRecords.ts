@@ -4,6 +4,7 @@ import {
   doc,
   documentId,
   getDoc,
+  getDocFromServer,
   getDocsFromServer,
   query,
   where,
@@ -72,7 +73,7 @@ export const useAcademicRecords = () => {
     const fetchMetadata = async () => {
       setLoading(true);
       try {
-        const classIds = appUser.classes || [];
+        const classIds = appUser.classes || appUser.profile?.classes || [];
         if (classIds.length > 0) {
           const q = query(collection(db, "classes"), where(documentId(), "in", classIds));
           const snap = await getDocsFromServer(q);
@@ -85,7 +86,13 @@ export const useAcademicRecords = () => {
           setTeacherClasses(sorted);
           if (sorted.length > 0 && !selectedClassId) setSelectedClassId(sorted[0].id);
         }
-        if (appUser.subjects && appUser.subjects.length > 0 && !selectedSubject) setSelectedSubject(appUser.subjects[0]);
+
+        const availableSubjects = appUser.subjects || appUser.profile?.subjects || [];
+        if (availableSubjects.length > 0) {
+          if (!selectedSubject || !availableSubjects.includes(selectedSubject)) {
+             setSelectedSubject(availableSubjects[0]);
+          }
+        }
       } catch (err) {
         console.error("fetchMetadata error:", err);
       } finally {
@@ -95,51 +102,82 @@ export const useAcademicRecords = () => {
     fetchMetadata();
   }, [appUser]);
 
-  const syncRecords = useCallback(async () => {
-    if (!selectedClassId || !selectedSubject || !academicYear || !term) {
-      setAllStudents([]);
-      return;
-    }
-    setSyncing(true);
-    try {
-      const yearSlug = academicYear.replace(/\//g, "-");
-      const reportSlug = reportType.replace(/\s+/g, "");
-      const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
-      const docSnap = await getDoc(doc(db, "academicRecords", docId));
+  useEffect(() => {
+    let isMounted = true;
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const loadedStudents = (data.students || []).map((s: StudentScoreRecord) => calculateScores(s, reportType));
-        setAllStudents(loadedStudents);
-        setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
-      } else {
-        const q = query(collection(db, "users"), where("role", "==", "student"), where("classId", "==", selectedClassId));
-        const snap = await getDocsFromServer(q);
-        const list = snap.docs.map((d: any) => {
-          const data = d.data();
-          if (!["active", "pending_activation", "pending"].includes(data.status)) return null;
-          return {
-            studentId: d.id,
-            fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Unknown Student",
-            classScore: "",
-            classScore50: "0",
-            examsMark: "",
-            exam50: "0",
-            finalScore: "0",
-            grade: "N/A",
-          };
-        }).filter((s): s is StudentScoreRecord => s !== null).sort((a, b) => a.fullName.localeCompare(b.fullName));
-        setAllStudents(list);
-        setServerStudents(JSON.parse(JSON.stringify(list)));
+    const performSync = async () => {
+      if (!selectedClassId || !selectedSubject || !academicYear || !term) {
+        setAllStudents([]);
+        setServerStudents([]);
+        return;
       }
-    } catch (err) {
-      console.error("syncRecords error:", err);
-    } finally {
-      setSyncing(false);
-    }
-  }, [selectedClassId, selectedSubject, academicYear, term, reportType, calculateScores]);
 
-  useEffect(() => { syncRecords(); }, [syncRecords]);
+      setSyncing(true);
+      // Immediately clear students to avoid showing stale data from previous class
+      setAllStudents([]);
+      setServerStudents([]);
+
+      try {
+        const yearSlug = academicYear.replace(/\//g, "-");
+        const reportSlug = reportType.replace(/\s+/g, "");
+        const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
+
+        // Force server fetch to ensure we don't get cached data from a different class/context
+        const docSnap = await getDocFromServer(doc(db, "academicRecords", docId)).catch(() => getDoc(doc(db, "academicRecords", docId)));
+
+        if (!isMounted) return;
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          const loadedStudents = (data.students || []).map((s: StudentScoreRecord) => calculateScores(s, reportType));
+          setAllStudents(loadedStudents);
+          setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
+        } else {
+          // If no ledger exists, fetch students of the selected class
+          // We use the same query pattern as Daily Attendance to ensure compatibility with indexes
+          const q = query(
+            collection(db, "users"),
+            where("role", "==", "student"),
+            where("classId", "==", selectedClassId)
+          );
+          const snap = await getDocsFromServer(q);
+
+          if (!isMounted) return;
+
+          const list = snap.docs.map((d: any) => {
+            const data = d.data();
+            // Filter by status manually to match Daily Attendance logic and avoid rule complexity
+            const status = data.status || (data.profile && data.profile.status) || "active";
+            if (!["active", "pending_activation"].includes(status)) return null;
+
+            return {
+              studentId: d.id,
+              fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Unknown Student",
+              classScore: "",
+              classScore50: "0",
+              examsMark: "",
+              exam50: "0",
+              finalScore: "0",
+              grade: "N/A",
+            };
+          }).filter((s): s is StudentScoreRecord => s !== null).sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+          setAllStudents(list);
+          setServerStudents(JSON.parse(JSON.stringify(list)));
+        }
+      } catch (err) {
+        console.error("syncRecords error:", err);
+      } finally {
+        if (isMounted) setSyncing(false);
+      }
+    };
+
+    performSync();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedClassId, selectedSubject, academicYear, term, reportType, calculateScores]);
 
   const updateStudentScore = useCallback((studentId: string, field: keyof StudentScoreRecord, value: string) => {
     setAllStudents(prev => prev.map(s => {
@@ -231,6 +269,6 @@ export const useAcademicRecords = () => {
     hasUnsavedChanges,
     academicYear,
     term,
-    subjects: appUser?.subjects || [],
+    subjects: appUser?.subjects || appUser?.profile?.subjects || [],
   };
 };

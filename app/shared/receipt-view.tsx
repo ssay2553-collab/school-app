@@ -139,16 +139,17 @@ export default function ReceiptViewScreen() {
   const categorySummary = useMemo(() => {
     if (type !== "bill") return [];
 
-    // 1. Initialize with tuition (term bill + arrears - discount)
+    // 1. Initialize with tuition (term bill - discount) and arrears
     const summary: Record<string, { billed: number; paid: number }> = {
       tuition: {
-        billed:
-          (record?.termBill || 0) +
-          (record?.arrears || 0) -
-          (record?.discount || 0),
+        billed: Math.max(0, (record?.termBill || 0) - (record?.discount || 0)),
         paid: 0,
       },
     };
+
+    if (record?.arrears > 0) {
+      summary["arrears"] = { billed: record.arrears, paid: 0 };
+    }
 
     // 2. Aggregate Transactions for all categories
     allTransactions.forEach((t: any) => {
@@ -168,7 +169,14 @@ export default function ReceiptViewScreen() {
 
       // Only sum payments from transactions - bills come from record or transactions
       if (isPayment) {
-        summary[category].paid += t.amount || 0;
+        if (category === "tuition" && summary["arrears"]) {
+          let amt = t.amount || 0;
+          const toArrears = Math.min(amt, summary["arrears"].billed - summary["arrears"].paid);
+          summary["arrears"].paid += toArrears;
+          summary["tuition"].paid += (amt - toArrears);
+        } else {
+          summary[category].paid += t.amount || 0;
+        }
       } else if (tType === "other") {
         // For 'other' type, we sum the billed amount from transactions to get specific names
         summary[category].billed += t.amount || 0;
@@ -207,11 +215,17 @@ export default function ReceiptViewScreen() {
         summary[cat.key].paid = Math.max(summary[cat.key].paid, cat.paid);
       });
 
-      // Ensure tuition paid matches record if transactions were incomplete
-      summary.tuition.paid = Math.max(
-        summary.tuition.paid,
-        record.amountPaid || 0,
-      );
+      // Special handling for tuition/arrears match with record.amountPaid
+      const totalTuitionPaidInSummary = summary.tuition.paid + (summary.arrears?.paid || 0);
+      if (record.amountPaid > totalTuitionPaidInSummary) {
+        let diff = record.amountPaid - totalTuitionPaidInSummary;
+        if (summary.arrears) {
+           const extraToArrears = Math.min(diff, summary.arrears.billed - summary.arrears.paid);
+           summary.arrears.paid += extraToArrears;
+           diff -= extraToArrears;
+        }
+        summary.tuition.paid += diff;
+      }
 
       // Special handling for 'other' to ensure it matches record.otherBill and avoids double counting
       const specificOtherBilled = Object.entries(summary)
@@ -225,6 +239,7 @@ export default function ReceiptViewScreen() {
               "books",
               "uniform",
               "other",
+              "arrears",
             ].includes(k),
         )
         .reduce((sum, [_, v]) => sum + v.billed, 0);

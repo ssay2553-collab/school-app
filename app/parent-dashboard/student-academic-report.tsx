@@ -16,7 +16,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
     Image,
+    Modal,
     Platform,
     SafeAreaView,
     ScrollView,
@@ -83,6 +85,38 @@ export default function StudentAcademicReport() {
   const [loading, setLoading] = useState(true);
   const [fetchingReport, setFetchingReport] = useState(false);
   const [overallPosition, setOverallPosition] = useState("N/A");
+
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
+  const [reportHistory, setReportHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const fetchHistory = async () => {
+    if (!selectedChildId) {
+      showToast({ message: "Please select a student first", type: "info" });
+      return;
+    }
+    setHistoryModalVisible(true);
+    setLoadingHistory(true);
+    try {
+      const q = query(
+        collection(db, "student-reports"),
+        where("studentId", "==", selectedChildId)
+      );
+      const snap = await getDocsFromServer(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      list.sort((a: any, b: any) => {
+        if (a.academicYear !== b.academicYear) return b.academicYear.localeCompare(a.academicYear);
+        if (a.term !== b.term) return b.term.localeCompare(a.term);
+        return (a.reportType || "").localeCompare(b.reportType || "");
+      });
+      setReportHistory(list);
+    } catch (e) {
+      console.error(e);
+      showToast({ message: "Failed to load history", type: "error" });
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const [teacherSig, setTeacherSig] = useState("");
   const [adminSig, setAdminSig] = useState("");
@@ -567,10 +601,21 @@ export default function StudentAcademicReport() {
         contentContainerStyle={{ paddingBottom: 50 }}
       >
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Academic Reports</Text>
-          <Text style={styles.headerSubtitle}>
-            View and download terminal progress sheets
-          </Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerTitle}>Academic Reports</Text>
+              <Text style={styles.headerSubtitle}>
+                View and download terminal progress sheets
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={styles.historyBtn}
+              onPress={fetchHistory}
+            >
+              <SVGIcon name="calendar" size={18} color={primary} />
+              <Text style={[styles.historyBtnText, { color: primary }]}>History</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.selectorCard}>
@@ -876,6 +921,62 @@ export default function StudentAcademicReport() {
           </Animatable.View>
         )}
       </ScrollView>
+
+      <Modal
+        visible={historyModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setHistoryModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Report History</Text>
+              <TouchableOpacity onPress={() => setHistoryModalVisible(false)}>
+                <SVGIcon name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            {loadingHistory ? (
+              <ActivityIndicator size="large" color={primary} style={{ margin: 40 }} />
+            ) : reportHistory.length === 0 ? (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <Text style={{ color: '#64748B', fontWeight: '600' }}>No previous reports found.</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={reportHistory}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.historyItem}
+                    onPress={() => {
+                      setSelectedYear(item.academicYear);
+                      setSelectedTerm(item.term);
+                      if (["End of Term", "Mid-Term", "Mock Exams"].includes(item.reportType)) {
+                        setSelectedReportType(item.reportType as ReportType);
+                      }
+                      setHistoryModalVisible(false);
+                    }}
+                  >
+                    <View style={styles.historyItemIcon}>
+                      <SVGIcon name="document-text" size={20} color={primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.historyItemTitle}>{item.reportType}</Text>
+                      <Text style={styles.historyItemSubtitle}>
+                        {item.academicYear} • {item.term}
+                      </Text>
+                    </View>
+                    <SVGIcon name="chevron-forward" size={18} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
+                contentContainerStyle={{ padding: 15, paddingBottom: 40 }}
+              />
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1052,5 +1153,76 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     marginLeft: 10,
     fontSize: 14,
+  },
+  historyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  historyBtnText: {
+    marginLeft: 6,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    height: "70%",
+    ...SHADOWS.medium,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 24,
+    borderBottomWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#1E293B",
+  },
+  historyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  historyItemIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+    ...SHADOWS.small,
+  },
+  historyItemTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  historyItemSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    fontWeight: "700",
+    marginTop: 2,
   },
 });

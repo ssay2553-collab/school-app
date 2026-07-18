@@ -843,55 +843,6 @@ export default function ManageFees() {
               </TouchableOpacity>
             </Animatable.View>
           )}
-      </View>veMode === "billing" &&
-          selectedStudentUids.size > 0 &&
-          canEdit && (
-            <Animatable.View animation="bounceIn" style={styles.fabWrap}>
-              <TouchableOpacity
-                style={styles.mainFab}
-                onPress={() => setBillModalVisible(true)}
-              >
-                <LinearGradient
-                  colors={[VIBE.primary, VIBE.purple]}
-                  style={styles.fabGrad}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.fabText}>
-                    APPLY BILLS ({selectedStudentUids.size})
-                  </Text>
-                  <SVGIcon
-                    name="checkmark-done-circle"
-                    size={22}
-                    color="#fff"
-                  />
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animatable.View>
-          )}
-
-        {activeMode === "discounts" &&
-          selectedStudentUids.size > 0 &&
-          canEdit && (
-            <Animatable.View animation="bounceIn" style={styles.fabWrap}>
-              <TouchableOpacity
-                style={styles.mainFab}
-                onPress={() => setDiscountModalVisible(true)}
-              >
-                <LinearGradient
-                  colors={[VIBE.success, VIBE.info]}
-                  style={styles.fabGrad}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.fabText}>
-                    APPLY DISCOUNTS ({selectedStudentUids.size})
-                  </Text>
-                  <SVGIcon name="pricetag" size={22} color="#fff" />
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animatable.View>
-          )}
       </View>
 
       {/* Selector Modal */}

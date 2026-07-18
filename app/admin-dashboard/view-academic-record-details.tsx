@@ -561,8 +561,9 @@ export default function ViewAcademicRecordDetails() {
           ${isFullReport && !isPreschool ? `<div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>` : ""}
           ${isFullReport && isPreschool ? `
             <div class="remark-line"><span class="remark-header">PHYSICAL DEV:</span>
-              HT: ${physicalDev.height3 || physicalDev.height2 || physicalDev.height1 || "-"}m |
-              WT: ${physicalDev.weight3 || physicalDev.weight2 || physicalDev.weight1 || "-"}kg
+              ${physicalDev.date ? `Date: ${physicalDev.date} | ` : ""}
+              HT: ${physicalDev.height || "-"}m |
+              WT: ${physicalDev.weight || "-"}kg
             </div>
             <div style="font-size: 8pt; margin-bottom: 10pt; color: #475569;">
                 <b>Assessments:</b> ${Object.entries(preschoolAssessments).filter(([_, v]) => v !== 'N/A').map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ') || 'None recorded'}
@@ -815,8 +816,9 @@ export default function ViewAcademicRecordDetails() {
                     PHYSICAL DEVELOPMENT & ASSESSMENTS
                   </Text>
                   <Text style={styles.paperRemarkLine}>
-                    Height: <Text style={{ fontWeight: "700" }}>{physicalDev.height3 || physicalDev.height2 || physicalDev.height1 || "N/A"}m</Text> |
-                    Weight: <Text style={{ fontWeight: "700" }}>{physicalDev.weight3 || physicalDev.weight2 || physicalDev.weight1 || "N/A"}kg</Text>
+                    {physicalDev.date ? `Date: ${physicalDev.date} | ` : ""}
+                    Height: <Text style={{ fontWeight: "700" }}>{physicalDev.height || "N/A"}m</Text> |
+                    Weight: <Text style={{ fontWeight: "700" }}>{physicalDev.weight || "N/A"}kg</Text>
                   </Text>
                   <Text style={[styles.paperRemarkText, { marginTop: 5, fontSize: 9 }]}>
                     {Object.keys(preschoolAssessments).length} key developmental milestones recorded.

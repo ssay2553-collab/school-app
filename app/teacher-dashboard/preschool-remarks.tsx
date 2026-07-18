@@ -174,23 +174,19 @@ export default function PreschoolRemarks() {
             <View style={styles.preschoolContent}>
               <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>PHYSICAL DEVELOPMENT (H/W)</Text></View>
               <View style={styles.hwGrid}>
-                 <View style={styles.hwRow}>
-                  <Text style={[styles.hwLabel, { flex: 1 }]}>DATE</Text>
-                  <TextInput style={styles.hwInput} placeholder="1st" value={currentStudent.physicalDev?.date1} onChangeText={(v) => updatePhysical("date1", v)} />
-                  <TextInput style={styles.hwInput} placeholder="2nd" value={currentStudent.physicalDev?.date2} onChangeText={(v) => updatePhysical("date2", v)} />
-                  <TextInput style={styles.hwInput} placeholder="3rd" value={currentStudent.physicalDev?.date3} onChangeText={(v) => updatePhysical("date3", v)} />
-                </View>
                 <View style={styles.hwRow}>
-                  <Text style={[styles.hwLabel, { flex: 1 }]}>HEIGHT (m)</Text>
-                  <TextInput style={styles.hwInput} placeholder="1st" value={currentStudent.physicalDev?.height1} onChangeText={(v) => updatePhysical("height1", v)} keyboardType="numeric" />
-                  <TextInput style={styles.hwInput} placeholder="2nd" value={currentStudent.physicalDev?.height2} onChangeText={(v) => updatePhysical("height2", v)} keyboardType="numeric" />
-                  <TextInput style={styles.hwInput} placeholder="3rd" value={currentStudent.physicalDev?.height3} onChangeText={(v) => updatePhysical("height3", v)} keyboardType="numeric" />
-                </View>
-                <View style={styles.hwRow}>
-                  <Text style={[styles.hwLabel, { flex: 1 }]}>WEIGHT (kg)</Text>
-                  <TextInput style={styles.hwInput} placeholder="1st" value={currentStudent.physicalDev?.weight1} onChangeText={(v) => updatePhysical("weight1", v)} keyboardType="numeric" />
-                  <TextInput style={styles.hwInput} placeholder="2nd" value={currentStudent.physicalDev?.weight2} onChangeText={(v) => updatePhysical("weight2", v)} keyboardType="numeric" />
-                  <TextInput style={styles.hwInput} placeholder="3rd" value={currentStudent.physicalDev?.weight3} onChangeText={(v) => updatePhysical("weight3", v)} keyboardType="numeric" />
+                  <View style={{ flex: 1.5 }}>
+                    <Text style={styles.hwLabel}>DATE</Text>
+                    <TextInput style={styles.hwInputSingle} placeholder="Date" value={currentStudent.physicalDev?.date} onChangeText={(v) => updatePhysical("date", v)} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.hwLabel}>HEIGHT (m)</Text>
+                    <TextInput style={styles.hwInputSingle} placeholder="Height" value={currentStudent.physicalDev?.height} onChangeText={(v) => updatePhysical("height", v)} keyboardType="numeric" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.hwLabel}>WEIGHT (kg)</Text>
+                    <TextInput style={styles.hwInputSingle} placeholder="Weight" value={currentStudent.physicalDev?.weight} onChangeText={(v) => updatePhysical("weight", v)} keyboardType="numeric" />
+                  </View>
                 </View>
               </View>
 
@@ -258,9 +254,9 @@ const styles = StyleSheet.create({
   sectionHeader: { paddingHorizontal: 20, paddingVertical: 10, backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
   sectionTitle: { fontSize: 11, fontWeight: "900", color: COLORS.primary },
   hwGrid: { padding: 20 },
-  hwRow: { flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 10 },
-  hwLabel: { fontSize: 11, fontWeight: "800", color: "#64748B" },
-  hwInput: { width: 65, backgroundColor: "#F1F5F9", borderRadius: 8, padding: 8, fontSize: 12, textAlign: "center", fontWeight: "700", color: "#1E293B", borderWidth: 1, borderColor: "#E2E8F0" },
+  hwRow: { flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 12 },
+  hwLabel: { fontSize: 10, fontWeight: "900", color: "#94A3B8", marginBottom: 5, textTransform: 'uppercase' },
+  hwInputSingle: { backgroundColor: "#F1F5F9", borderRadius: 10, padding: 10, fontSize: 13, fontWeight: "700", color: "#1E293B", borderWidth: 1, borderColor: "#E2E8F0" },
   tableContainer: { backgroundColor: "#fff" },
   categorySection: { marginBottom: 10 },
   tableHeadRow: { flexDirection: "row", backgroundColor: "#F1F5F9", padding: 12, alignItems: "center" },

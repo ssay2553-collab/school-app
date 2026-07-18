@@ -14,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { getTeacherClasses, sortClasses } from '../../lib/classHelpers';
 import { CurriculumType } from '../../constants/Curriculum';
+import { scheduleTimetableReminders } from '../../src/services/timetableScheduler';
 
 export type Period = {
   id: string;
@@ -174,7 +175,25 @@ export const useManageTimetable = () => {
         lastUpdated: serverTimestamp(),
         updatedBy: appUser?.uid
       });
-      showToast({ message: "Timetable saved successfully!", type: "success" });
+
+      // After saving to DB, schedule local reminders for the teacher
+      const flatLessons: any[] = [];
+      Object.keys(timetableDays).forEach(day => {
+        timetableDays[day].forEach(period => {
+          if (period.subject && period.startTime && period.endTime) {
+            flatLessons.push({
+              subject: period.subject,
+              startTime: period.startTime,
+              endTime: period.endTime,
+              day: day
+            });
+          }
+        });
+      });
+
+      await scheduleTimetableReminders(flatLessons);
+
+      showToast({ message: "Timetable saved and reminders scheduled!", type: "success" });
     } catch (err) {
       console.error("saveTimetable error:", err);
       showToast({ message: "Failed to save timetable.", type: "error" });

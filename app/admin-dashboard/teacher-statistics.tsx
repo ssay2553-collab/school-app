@@ -28,7 +28,8 @@ import {
   ScrollView,
   RefreshControl,
   Modal,
-  AppState
+  AppState,
+  Platform
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Animatable from "react-native-animatable";
@@ -49,21 +50,18 @@ interface TeacherStats {
   profileImage?: string;
   totalAssignments: number;
   totalGroups: number;
-  totalLessonPlans: number;
-  weeklyTopics: {
-    subject: string,
-    topic: string,
-    className: string,
-    strand?: string,
-    duration?: string,
-    plan?: any
-  }[];
+  totalTopics: number;
   lastActive?: any;
   onlineTimeMinutes: number; // Simulated or calculated if available
   usageScore: number; // Percentage
   assignedClasses: string[];
   groups: { name: string, className: string, memberCount: number }[];
   assignmentBreakdown: {
+    subject: string;
+    className: string;
+    count: number;
+  }[];
+  topicBreakdown: {
     subject: string;
     className: string;
     count: number;
@@ -77,7 +75,6 @@ export default function TeacherStatistics() {
   const [refreshing, setRefreshing] = useState(false);
   const [teachers, setTeachers] = useState<TeacherStats[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherStats | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const lastFetchRef = useRef<number>(0);
 
   const CACHE_KEY = `teacher_stats_${SCHOOL_CONFIG.schoolId}`;
@@ -99,7 +96,6 @@ export default function TeacherStatistics() {
     if (!appUser) return;
     try {
       setLoading(true);
-      const startOfWeek = getStartOfWeek();
 
       // 0. Fetch metadata once
       const classesSnap = await getDocsFromServer(collection(db, "classes"));
@@ -110,22 +106,12 @@ export default function TeacherStatistics() {
       });
 
       // 1. Batch Fetch all required collections for the school
-      const [teacherSnap, allAssignmentsSnap, allGroupsSnap, vaultSnap] = await Promise.all([
+      const [teacherSnap, allAssignmentsSnap, allGroupsSnap, allTopicsSnap] = await Promise.all([
         getDocsFromServer(query(collection(db, "users"), where("role", "==", "teacher"))),
         getDocsFromServer(collection(db, "assignments")),
         getDocsFromServer(collection(db, "studentGroups")),
-        getDocsFromServer(collection(db, "pedagogy_vault"))
+        getDocsFromServer(collection(db, "weeklyTopics")),
       ]);
-
-      // Filter vault items by date in-memory to avoid composite index requirements
-      const startTimestamp = startOfWeek.getTime();
-      const weeklyLessons = vaultSnap.docs
-        .map(d => ({ id: d.id, ...(d.data() as any) } as any))
-        .filter(d => {
-          const createdAt = d.createdAt?.toMillis ? d.createdAt.toMillis() : (d.createdAt ? new Date(d.createdAt).getTime() : 0);
-          return createdAt >= startTimestamp;
-        })
-        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
 
       // 2. Map data to teachers in memory (O(1) lookup)
       const assignmentMap: Record<string, any[]> = {};
@@ -142,14 +128,11 @@ export default function TeacherStatistics() {
         groupMap[data.teacherId].push(data);
       });
 
-      const lessonsMap: Record<string, any[]> = {};
-      weeklyLessons.forEach(data => {
-        if (!lessonsMap[data.teacherId || data.userId]) {
-          const key = data.teacherId || data.userId;
-          if (key) lessonsMap[key] = [];
-        }
-        const key = data.teacherId || data.userId;
-        if (key) lessonsMap[key].push(data);
+      const topicMap: Record<string, any[]> = {};
+      allTopicsSnap.docs.forEach((d: any) => {
+        const data = d.data();
+        if (!topicMap[data.teacherId]) topicMap[data.teacherId] = [];
+        topicMap[data.teacherId].push(data);
       });
 
       // 3. Assemble final teacher list
@@ -157,12 +140,12 @@ export default function TeacherStatistics() {
         const t = { uid: tDoc.id, ...tDoc.data() } as any;
         const tAssignments = assignmentMap[t.uid] || [];
         const tGroups = groupMap[t.uid] || [];
-        const tLessons = lessonsMap[t.uid] || [];
+        const tTopics = topicMap[t.uid] || [];
 
-        // Calculate breakdown
+        // Calculate assignment breakdown
         const breakdownMap: Record<string, number> = {};
         tAssignments.forEach(a => {
-          const key = `${a.classId}|||${a.subjectId}`;
+          const key = `${a.classId}|||${a.subjectId || a.subject}`;
           breakdownMap[key] = (breakdownMap[key] || 0) + 1;
         });
 
@@ -171,24 +154,20 @@ export default function TeacherStatistics() {
           return { subject, className: classMap[classId] || classId, count };
         });
 
-        // Group topics (Keep latest per subject/class)
-        const topicsMap: Record<string, any> = {};
-        tLessons.forEach(data => {
-          const key = `${data.subject}|||${data.classLevel}`;
-          if (!topicsMap[key]) {
-            topicsMap[key] = {
-              subject: data.subject,
-              topic: data.topic,
-              className: classMap[data.classLevel] || data.classLevel,
-              strand: data.strand,
-              duration: data.duration,
-              plan: data.plan
-            };
-          }
+        // Calculate topic breakdown
+        const topicBreakdownMap: Record<string, number> = {};
+        tTopics.forEach(top => {
+          const key = `${top.classId}|||${top.subject}`;
+          topicBreakdownMap[key] = (topicBreakdownMap[key] || 0) + 1;
+        });
+
+        const topicBreakdown = Object.entries(topicBreakdownMap).map(([key, count]) => {
+          const [classId, subject] = key.split("|||");
+          return { subject, className: classMap[classId] || classId, count };
         });
 
         const teacherClasses = getTeacherClasses(t);
-        const usageScore = Math.min(100, (tAssignments.length * 10) + (tGroups.length * 15) + (tLessons.length * 20));
+        const usageScore = Math.min(100, (tAssignments.length * 8) + (tGroups.length * 12) + (tTopics.length * 15));
 
         return {
           uid: t.uid,
@@ -197,8 +176,7 @@ export default function TeacherStatistics() {
           profileImage: t.profile?.profileImage,
           totalAssignments: tAssignments.length,
           totalGroups: tGroups.length,
-          totalLessonPlans: tLessons.length,
-          weeklyTopics: Object.values(topicsMap),
+          totalTopics: tTopics.length,
           lastActive: t.lastActive,
           onlineTimeMinutes: t.onlineTimeMinutes || 0,
           usageScore,
@@ -208,7 +186,8 @@ export default function TeacherStatistics() {
             className: classMap[g.classId] || g.classId || "General",
             memberCount: (g.studentIds || []).length
           })),
-          assignmentBreakdown
+          assignmentBreakdown,
+          topicBreakdown
         };
       });
 
@@ -305,16 +284,12 @@ export default function TeacherStatistics() {
           <Text style={styles.statLabel}>Tasks</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statValue}>{item.totalLessonPlans}</Text>
-          <Text style={styles.statLabel}>Lessons</Text>
+          <Text style={styles.statValue}>{item.totalTopics}</Text>
+          <Text style={styles.statLabel}>Topics</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={styles.statValue}>{item.totalGroups}</Text>
           <Text style={styles.statLabel}>Groups</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{Math.floor(item.onlineTimeMinutes / 60)}h</Text>
-          <Text style={styles.statLabel}>Active</Text>
         </View>
       </View>
 
@@ -429,6 +404,27 @@ export default function TeacherStatistics() {
                 )}
               </View>
 
+              <Text style={styles.sectionTitle}>Weekly Lesson Plans</Text>
+              <View style={styles.breakdownList}>
+                {selectedTeacher?.topicBreakdown && selectedTeacher.topicBreakdown.length > 0 ? (
+                  selectedTeacher.topicBreakdown.map((item, idx) => (
+                    <View key={idx} style={styles.breakdownItem}>
+                      <View style={styles.breakdownInfo}>
+                        <Text style={styles.breakdownClass}>{item.className}</Text>
+                        <Text style={styles.breakdownSubject}>{item.subject}</Text>
+                      </View>
+                      <View style={[styles.countBadge, { backgroundColor: primary + "20" }]}>
+                        <Text style={[styles.countText, { color: primary }]}>{item.count} Weeks</Text>
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.noDataBox}>
+                    <Text style={styles.noDataText}>No weekly topics recorded.</Text>
+                  </View>
+                )}
+              </View>
+
               <Text style={styles.sectionTitle}>Student Groups</Text>
               <View style={styles.breakdownList}>
                 {selectedTeacher?.groups && selectedTeacher.groups.length > 0 ? (
@@ -450,33 +446,6 @@ export default function TeacherStatistics() {
                 )}
               </View>
 
-              <Text style={styles.sectionTitle}>Weekly Lesson Plans</Text>
-              <View style={styles.plansList}>
-                {selectedTeacher?.weeklyTopics && selectedTeacher.weeklyTopics.length > 0 ? (
-                  selectedTeacher.weeklyTopics.map((plan, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.planCard}
-                      onPress={() => setSelectedPlan(plan)}
-                    >
-                      <View style={styles.planHeader}>
-                        <Text style={styles.planClassText}>{plan.className}</Text>
-                        <Text style={styles.planSubject}>{plan.subject}</Text>
-                      </View>
-                      <Text style={styles.planTopic}>{plan.topic}</Text>
-                      <View style={styles.planFooter}>
-                        <Text style={styles.viewPlanText}>Tap to view full objectives & content</Text>
-                        <SVGIcon name="eye-outline" size={14} color={primary} />
-                      </View>
-                    </TouchableOpacity>
-                  ))
-                ) : (
-                  <View style={styles.noPlans}>
-                    <Text style={styles.noPlansText}>No lesson plans generated this week.</Text>
-                  </View>
-                )}
-              </View>
-
               <TouchableOpacity
                 style={[styles.closeModalBtn, { backgroundColor: primary }]}
                 onPress={() => setSelectedTeacher(null)}
@@ -487,106 +456,67 @@ export default function TeacherStatistics() {
           </View>
         </View>
       </Modal>
-
-      {/* Lesson Plan Detail Modal */}
-      <Modal
-        visible={!!selectedPlan}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedPlan(null)}
-      >
-        <View style={styles.planDetailOverlay}>
-          <View style={styles.planDetailContent}>
-            <View style={styles.planDetailHeader}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.detailSubject}>{selectedPlan?.subject}</Text>
-                <Text style={styles.detailTopic}>{selectedPlan?.topic}</Text>
-                <Text style={styles.detailMeta}>{selectedPlan?.className} • {selectedPlan?.duration}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setSelectedPlan(null)} style={styles.closeDetailBtn}>
-                <SVGIcon name="close" size={24} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
-              {selectedPlan?.strand && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Strand</Text>
-                  <Text style={styles.detailValue}>{selectedPlan.strand}</Text>
-                </View>
-              )}
-
-              {selectedPlan?.plan?.objectives && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Learning Objectives</Text>
-                  {selectedPlan.plan.objectives.map((obj: string, i: number) => (
-                    <View key={i} style={styles.bulletItem}>
-                      <Text style={styles.bullet}>•</Text>
-                      <Text style={styles.bulletText}>{obj}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {selectedPlan?.plan?.teachingActivities && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Teaching Activities</Text>
-                  {selectedPlan.plan.teachingActivities.map((act: string, i: number) => (
-                    <View key={i} style={styles.bulletItem}>
-                      <Text style={styles.bullet}>{i + 1}.</Text>
-                      <Text style={styles.bulletText}>{act}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
-              {selectedPlan?.plan?.assessment && (
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailLabel}>Assessment</Text>
-                  {selectedPlan.plan.assessment.map((ass: string, i: number) => (
-                    <View key={i} style={styles.bulletItem}>
-                      <Text style={styles.bullet}>✓</Text>
-                      <Text style={styles.bulletText}>{ass}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F8FAFC" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loadingText: { marginTop: 15, fontSize: 14, color: "#64748B", fontWeight: "600" },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
   headerGradient: {
-    paddingTop: 20,
+    paddingTop: Platform.OS === "ios" ? 60 : 40,
     paddingHorizontal: 20,
     paddingBottom: 30,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    ...SHADOWS.medium,
   },
   headerTitleRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
-  backBtn: { padding: 5 },
-  headerTitle: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  headerSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: "500", lineHeight: 18 },
-  listContent: { padding: 16, paddingBottom: 40 },
+  backBtn: {
+    padding: 8,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    flex: 1,
+    marginLeft: 15,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+    lineHeight: 20,
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+  },
+  loadingText: {
+    marginTop: 15,
+    fontSize: 16,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  listContent: {
+    padding: 20,
+    paddingBottom: 100,
+  },
   teacherCard: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
     borderRadius: 24,
     padding: 20,
-    marginBottom: 16,
-    ...SHADOWS.small,
+    marginBottom: 20,
+    ...SHADOWS.medium,
     borderWidth: 1,
     borderColor: "#F1F5F9",
   },
@@ -596,170 +526,217 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     marginBottom: 20,
   },
-  teacherInfo: { flexDirection: "row", alignItems: "center", flex: 1 },
-  avatar: { width: 50, height: 50, borderRadius: 16, marginRight: 15 },
+  teacherInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: 15,
+  },
   avatarPlaceholder: {
     width: 50,
     height: 50,
-    borderRadius: 16,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
   },
-  avatarText: { fontSize: 20, fontWeight: "bold" },
-  teacherName: { fontSize: 17, fontWeight: "800", color: "#1E293B" },
-  teacherEmail: { fontSize: 12, color: "#94A3B8", fontWeight: "600", marginTop: 2 },
+  avatarText: {
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  teacherName: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  teacherEmail: {
+    fontSize: 13,
+    color: "#64748B",
+    marginTop: 2,
+  },
   usageBadge: {
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
   },
-  usageText: { fontSize: 11, fontWeight: "900" },
+  usageText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
   statsGrid: {
     flexDirection: "row",
+    justifyContent: "space-between",
     backgroundColor: "#F8FAFC",
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 15,
-    marginBottom: 15,
+    marginBottom: 20,
   },
-  statBox: { flex: 1, alignItems: "center" },
-  statValue: { fontSize: 18, fontWeight: "900", color: "#1E293B" },
-  statLabel: { fontSize: 10, fontWeight: "700", color: "#94A3B8", marginTop: 4, textTransform: "uppercase" },
+  statBox: {
+    alignItems: "center",
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#1E293B",
+  },
+  statLabel: {
+    fontSize: 11,
+    color: "#94A3B8",
+    fontWeight: "700",
+    marginTop: 4,
+    textTransform: "uppercase",
+  },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingTop: 15,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
-    paddingTop: 15,
   },
-  lastActive: { fontSize: 11, color: "#94A3B8", fontWeight: "600" },
-  viewBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
-  viewBtnText: { fontSize: 12, fontWeight: "800" },
-  emptyCenter: { alignItems: "center", justifyContent: "center", marginTop: 100 },
-  emptyText: { color: "#94A3B8", marginTop: 15, fontWeight: "600" },
+  lastActive: {
+    fontSize: 12,
+    color: "#94A3B8",
+  },
+  viewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  viewBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  emptyCenter: {
+    alignItems: "center",
+    marginTop: 100,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#94A3B8",
+    marginTop: 15,
+    fontWeight: "600",
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#fff",
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
     padding: 24,
-    maxHeight: "85%",
+    maxHeight: "90%",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    marginBottom: 25,
   },
-  modalTitle: { fontSize: 20, fontWeight: "900", color: "#1E293B" },
-  modalSubtitle: { fontSize: 13, color: "#64748B", fontWeight: "600" },
-  sectionTitle: { fontSize: 14, fontWeight: "800", color: "#64748B", textTransform: "uppercase", marginTop: 20, marginBottom: 12, letterSpacing: 0.5 },
-  tagContainer: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  classTag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  classTagText: { fontSize: 12, fontWeight: "700" },
-  breakdownList: { gap: 10 },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#1E293B",
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  tagContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  classTag: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  classTagText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  emptyTextSmall: {
+    fontSize: 13,
+    color: "#94A3B8",
+    fontStyle: "italic",
+  },
+  breakdownList: {
+    gap: 12,
+  },
   breakdownItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
     padding: 12,
+    backgroundColor: "#F8FAFC",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "#F1F5F9",
   },
-  breakdownInfo: { flex: 1 },
-  breakdownClass: { fontSize: 14, fontWeight: "700", color: "#1E293B" },
-  breakdownSubject: { fontSize: 12, color: "#64748B", fontWeight: "600" },
-  countBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-  countText: { fontSize: 11, fontWeight: "800" },
-  plansList: { gap: 12 },
-  planCard: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 16,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+  breakdownInfo: {
+    flex: 1,
   },
-  planHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-    paddingBottom: 4,
-  },
-  planClassText: {
-    fontSize: 10,
-    fontWeight: "900",
+  breakdownClass: {
+    fontSize: 15,
+    fontWeight: "700",
     color: "#1E293B",
-    textTransform: "uppercase",
   },
-  planSubject: { fontSize: 10, fontWeight: "800", color: "#64748B", textTransform: "uppercase" },
-  planTopic: { fontSize: 15, fontWeight: "700", color: "#1E293B" },
-  planFooter: {
-    flexDirection: "row",
+  breakdownSubject: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 70,
     alignItems: "center",
-    justifyContent: "space-between",
-    marginTop: 10,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#F1F5F9",
   },
-  viewPlanText: { fontSize: 11, color: "#94A3B8", fontWeight: "600" },
+  countText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  noDataBox: {
+    padding: 20,
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    borderStyle: "dashed",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+  },
+  noDataText: {
+    fontSize: 13,
+    color: "#94A3B8",
+  },
   closeModalBtn: {
-    marginTop: 30,
-    height: 55,
+    marginVertical: 30,
+    padding: 16,
     borderRadius: 16,
-    justifyContent: "center",
     alignItems: "center",
     ...SHADOWS.medium,
-    marginBottom: 20,
   },
-  closeModalBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  noPlans: { padding: 20, alignItems: "center" },
-  noPlansText: { color: "#94A3B8", fontWeight: "600", fontSize: 13 },
-  noDataBox: { padding: 15, alignItems: "center" },
-  noDataText: { color: "#94A3B8", fontSize: 13, fontWeight: "600" },
-  emptyTextSmall: { fontSize: 13, color: "#94A3B8", fontWeight: "600", fontStyle: "italic" },
-
-  // Detail Modal Styles
-  planDetailOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.7)",
-    justifyContent: "center",
-    padding: 20,
+  closeModalBtnText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "800",
   },
-  planDetailContent: {
-    backgroundColor: "#fff",
-    borderRadius: 24,
-    maxHeight: "80%",
-    padding: 24,
-  },
-  planDetailHeader: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    paddingBottom: 15,
-    marginBottom: 15,
-  },
-  detailSubject: { fontSize: 12, fontWeight: "800", color: "#64748B", textTransform: "uppercase" },
-  detailTopic: { fontSize: 20, fontWeight: "900", color: "#1E293B", marginVertical: 4 },
-  detailMeta: { fontSize: 13, color: "#94A3B8", fontWeight: "600" },
-  closeDetailBtn: { padding: 5 },
-  detailSection: { marginTop: 20 },
-  detailLabel: { fontSize: 11, fontWeight: "900", color: "#64748B", textTransform: "uppercase", marginBottom: 8, letterSpacing: 0.5 },
-  detailValue: { fontSize: 15, color: "#334155", fontWeight: "500", lineHeight: 22 },
-  bulletItem: { flexDirection: "row", marginBottom: 8, paddingRight: 10 },
-  bullet: { fontSize: 14, color: "#64748B", width: 25, fontWeight: "bold" },
-  bulletText: { flex: 1, fontSize: 14, color: "#334155", lineHeight: 20, fontWeight: "500" },
 });

@@ -13,7 +13,7 @@ import {
   ref,
   uploadBytes,
 } from "firebase/storage";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,6 +23,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
@@ -32,6 +33,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { auth, db, storage } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
+import { MotiView } from "moti";
 
 export default function SubmitAssignment() {
   const router = useRouter();
@@ -42,6 +44,7 @@ export default function SubmitAssignment() {
   const [note, setNote] = useState(prefillTitle ? `Attached Note: ${prefillTitle}` : "");
   const [file, setFile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
 
   const primary = SCHOOL_CONFIG.primaryColor;
@@ -151,12 +154,12 @@ export default function SubmitAssignment() {
         });
       }
 
-      showToast({ message: "Assignment submitted successfully!", type: "success" });
+      setShowSuccess(true);
 
-      // Give the user a moment to see the success message before redirecting
+      // Give the user a moment to see the success animation before redirecting
       setTimeout(() => {
         router.replace("/student-dashboard");
-      }, 1500);
+      }, 3000);
 
     } catch (error) {
       console.error("Submission error:", error);
@@ -241,12 +244,108 @@ export default function SubmitAssignment() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Success Animation Modal */}
+      <Modal visible={showSuccess} transparent animationType="fade">
+        <View style={styles.successOverlay}>
+          <MotiView
+            from={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", duration: 1000 }}
+            style={styles.successCircle}
+          >
+            <MotiView
+              from={{ rotate: "0deg" }}
+              animate={{ rotate: "360deg" }}
+              transition={{ loop: true, duration: 4000, type: "timing" }}
+              style={styles.successRing}
+            />
+            <SVGIcon name="checkmark-circle" size={100} color="#fff" />
+          </MotiView>
+
+          <MotiView
+            from={{ translateY: 20, opacity: 0 }}
+            animate={{ translateY: 0, opacity: 1 }}
+            transition={{ delay: 500 }}
+            style={{ alignItems: 'center' }}
+          >
+            <Text style={styles.successTitle}>Magic Upload Successful!</Text>
+            <Text style={styles.successSubtitle}>Your assignment has been teleported to your teacher.</Text>
+
+            <View style={styles.xpBadge}>
+              <Text style={styles.xpText}>+20 XP Collected</Text>
+            </View>
+          </MotiView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
+  successOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(30, 41, 59, 0.95)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  successCircle: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: "#10B981",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 40,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  successRing: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    borderWidth: 4,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+    borderStyle: 'dashed',
+  },
+  successTitle: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#fff",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  successSubtitle: {
+    fontSize: 16,
+    color: "#CBD5E1",
+    textAlign: "center",
+    fontWeight: "600",
+    lineHeight: 24,
+  },
+  xpBadge: {
+    marginTop: 30,
+    backgroundColor: "#F59E0B",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 100,
+    shadowColor: "#F59E0B",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  xpText: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 14,
+    textTransform: "uppercase",
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",

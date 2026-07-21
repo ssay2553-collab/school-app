@@ -162,11 +162,6 @@ export const processDailyArrears = onSchedule("0 22 * * *", async (event) => {
     const batch = db.batch();
     let count = 0;
 
-    const academicYear = config.academicYear || "";
-    const currentTerm = config.currentTerm || "";
-    // const cleanYear = academicYear.replace(/\//g, "-");
-    // const cleanTerm = currentTerm.replace(/\s/g, "");
-
     for (const studentDoc of studentsSnap.docs) {
       const student = studentDoc.data();
       const uid = studentDoc.id;

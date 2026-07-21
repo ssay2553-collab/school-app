@@ -320,19 +320,19 @@ export default function AdminDashboard() {
         style={[styles.cardWrapper, { width: cardWidth }]}
       >
         <TouchableOpacity
-          style={[styles.menuCard, { borderBottomColor: item.color + "40" }]}
+          style={[styles.menuCard, { borderBottomColor: "rgba(0,0,0,0.1)" }]}
           onPress={() => router.push(item.route as any)}
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={["#FFFFFF", item.color + "05"]}
+            colors={[item.color, item.color]}
             style={styles.cardGradient}
           >
             <View
               style={[
                 styles.iconBox,
                 {
-                  backgroundColor: item.color,
+                  backgroundColor: "rgba(255,255,255,0.2)",
                   width: isSmallScreen ? 50 : 60,
                   height: isSmallScreen ? 50 : 60,
                   borderRadius: isSmallScreen ? 18 : 22,
@@ -347,7 +347,10 @@ export default function AdminDashboard() {
             </View>
             <View style={styles.cardInfo}>
               <Text
-                style={[styles.menuText, { fontSize: isSmallScreen ? 13 : 15 }]}
+                style={[
+                  styles.menuText,
+                  { fontSize: isSmallScreen ? 13 : 15, color: "#FFFFFF" },
+                ]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
@@ -356,7 +359,10 @@ export default function AdminDashboard() {
               <Text
                 style={[
                   styles.menuSubtitle,
-                  { color: item.color, fontSize: isSmallScreen ? 9 : 10 },
+                  {
+                    color: "rgba(255,255,255,0.8)",
+                    fontSize: isSmallScreen ? 9 : 10,
+                  },
                 ]}
                 numberOfLines={1}
               >
@@ -754,12 +760,11 @@ const styles = StyleSheet.create({
   },
   cardWrapper: { marginBottom: 10 },
   menuCard: {
-    backgroundColor: "#fff",
     borderRadius: 24,
     overflow: "hidden",
     ...SHADOWS.medium,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "rgba(0,0,0,0.05)",
     borderBottomWidth: 4,
     minHeight: 130,
     width: "100%",
@@ -789,7 +794,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
     fontWeight: "800",
-    backgroundColor: "#F1F5F9",
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 10,

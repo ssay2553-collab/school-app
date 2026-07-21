@@ -11,7 +11,7 @@ export * from "./chat";
 export * from "./attendance";
 export * from "./finance";
 export * from "./birthdays";
-export * from "./ai";
+// export * from "./ai";
 export * from "./auth";
 export * from "./admin";
 export * from "./lifecycle";

@@ -18,7 +18,7 @@ export const WRONG_REMARKS = [
   "Keep your chin up! You can do it! ⭐",
 ];
 
-export type GameMode = "menu" | "quiz" | "word" | "memory" | "math" | "scramble";
+export type GameMode = "menu" | "quiz" | "word" | "memory" | "math" | "scramble" | "writing" | "scoreboard";
 
 export const GAME_BG = {
   quiz: "#0EA5E9",
@@ -26,8 +26,19 @@ export const GAME_BG = {
   memory: "#F59E0B",
   math: "#8B5CF6",
   scramble: "#F43F5E",
+  writing: "#EC4899",
   menu: "#FDFDFD",
+  scoreboard: "#F8FAFC",
 };
+
+export const PEN_COLORS = [
+  "#EC4899", // Pink (Default)
+  "#3B82F6", // Blue
+  "#10B981", // Green
+  "#F59E0B", // Yellow
+  "#EF4444", // Red
+  "#8B5CF6", // Purple
+];
 
 export const QUIZ_DATA = [
   // Level 1
@@ -220,4 +231,53 @@ export const MEMORY_EMOJIS = [
   "🍕",
   "🎸",
   "🦋",
+];
+
+export const WRITING_DATA = [
+  { char: "A", type: "letter", startPos: { top: "15%", left: "48%" }, dir: "down" },
+  { char: "B", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "C", type: "letter", startPos: { top: "20%", left: "65%" }, dir: "left" },
+  { char: "D", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "E", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "right" },
+  { char: "F", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "right" },
+  { char: "G", type: "letter", startPos: { top: "20%", left: "65%" }, dir: "left" },
+  { char: "H", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "I", type: "letter", startPos: { top: "15%", left: "48%" }, dir: "down" },
+  { char: "J", type: "letter", startPos: { top: "15%", left: "60%" }, dir: "down" },
+  { char: "K", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "L", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "M", type: "letter", startPos: { top: "15%", left: "20%" }, dir: "down" },
+  { char: "N", type: "letter", startPos: { top: "15%", left: "25%" }, dir: "down" },
+  { char: "O", type: "letter", startPos: { top: "15%", left: "48%" }, dir: "left" },
+  { char: "P", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "Q", type: "letter", startPos: { top: "15%", left: "48%" }, dir: "left" },
+  { char: "R", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "S", type: "letter", startPos: { top: "20%", left: "65%" }, dir: "left" },
+  { char: "T", type: "letter", startPos: { top: "15%", left: "48%" }, dir: "down" },
+  { char: "U", type: "letter", startPos: { top: "15%", left: "25%" }, dir: "down" },
+  { char: "V", type: "letter", startPos: { top: "15%", left: "25%" }, dir: "down" },
+  { char: "W", type: "letter", startPos: { top: "15%", left: "20%" }, dir: "down" },
+  { char: "X", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "Y", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "Z", type: "letter", startPos: { top: "15%", left: "30%" }, dir: "right" },
+  { char: "1", type: "number", startPos: { top: "15%", left: "48%" }, dir: "down" },
+  { char: "2", type: "number", startPos: { top: "20%", left: "35%" }, dir: "right" },
+  { char: "3", type: "number", startPos: { top: "20%", left: "35%" }, dir: "right" },
+  { char: "4", type: "number", startPos: { top: "15%", left: "65%" }, dir: "down" },
+  { char: "5", type: "number", startPos: { top: "15%", left: "65%" }, dir: "left" },
+  { char: "6", type: "number", startPos: { top: "15%", left: "60%" }, dir: "left" },
+  { char: "7", type: "number", startPos: { top: "15%", left: "35%" }, dir: "right" },
+  { char: "8", type: "number", startPos: { top: "15%", left: "48%" }, dir: "left" },
+  { char: "9", type: "number", startPos: { top: "15%", left: "60%" }, dir: "left" },
+  { char: "10", type: "number", startPos: { top: "15%", left: "30%" }, dir: "down" },
+  { char: "11", type: "number", startPos: { top: "15%", left: "40%" }, dir: "down" },
+  { char: "12", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
+  { char: "13", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
+  { char: "14", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
+  { char: "15", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
+  { char: "16", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
+  { char: "17", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
+  { char: "18", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
+  { char: "19", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
+  { char: "20", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
 ];

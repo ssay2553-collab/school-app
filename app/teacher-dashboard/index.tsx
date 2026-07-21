@@ -153,6 +153,13 @@ export default function TeacherDashboard() {
           icon: "document-text",
           color: "#6366f1",
         },
+        {
+          title: "Weekly Topics",
+          subtitle: "Lesson Planning",
+          route: "/teacher-dashboard/weekly-topics",
+          icon: "book",
+          color: "#f59e0b",
+        },
       ],
     },
     {
@@ -200,27 +207,6 @@ export default function TeacherDashboard() {
           route: "/teacher-dashboard/tlm-hub",
           icon: "library",
           color: "#f59e0b",
-        },
-        {
-          title: "Pedagogy",
-          subtitle: "Curriculum",
-          route: "/teacher-dashboard/pedagogy-vault",
-          icon: "briefcase",
-          color: "#10b981",
-        },
-        {
-          title: "AI Planner",
-          subtitle: "Lesson aid",
-          route: "/teacher-dashboard/ai-lesson-planner",
-          icon: "sparkles",
-          color: "#8b5cf6",
-        },
-        {
-          title: "AI Search",
-          subtitle: "Fact finder",
-          route: "/ai-search",
-          icon: "search",
-          color: "#0ea5e9",
         },
         {
           title: "Coding Hub",
@@ -310,19 +296,19 @@ export default function TeacherDashboard() {
         style={[styles.cardWrapper, { width: cardWidth }]}
       >
         <TouchableOpacity
-          style={[styles.menuCard, { borderBottomColor: item.color + "40" }]}
+          style={[styles.menuCard, { borderBottomColor: "rgba(0,0,0,0.1)" }]}
           onPress={() => item.route && router.push(item.route as any)}
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={["#FFFFFF", item.color + "05"]}
+            colors={[item.color, item.color]}
             style={styles.cardGradient}
           >
             <View
               style={[
                 styles.iconBox,
                 {
-                  backgroundColor: item.color + "20",
+                  backgroundColor: "rgba(255,255,255,0.2)",
                   width: isSmallScreen ? 50 : 60,
                   height: isSmallScreen ? 50 : 60,
                   borderRadius: isSmallScreen ? 18 : 22,
@@ -332,12 +318,15 @@ export default function TeacherDashboard() {
               <SVGIcon
                 name={item.icon}
                 size={numColumns > 3 ? 36 : isSmallScreen ? 26 : 30}
-                color={item.color}
+                color="#FFFFFF"
               />
             </View>
             <View style={styles.cardInfo}>
               <Text
-                style={[styles.menuText, { fontSize: isSmallScreen ? 13 : 15 }]}
+                style={[
+                  styles.menuText,
+                  { fontSize: isSmallScreen ? 13 : 15, color: "#FFFFFF" },
+                ]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
@@ -346,7 +335,10 @@ export default function TeacherDashboard() {
               <Text
                 style={[
                   styles.menuSubtitle,
-                  { color: item.color, fontSize: isSmallScreen ? 9 : 10 },
+                  {
+                    color: "rgba(255,255,255,0.8)",
+                    fontSize: isSmallScreen ? 9 : 10,
+                  },
                 ]}
                 numberOfLines={1}
               >
@@ -682,12 +674,11 @@ const styles = StyleSheet.create({
   },
   cardWrapper: { marginBottom: 10 },
   menuCard: {
-    backgroundColor: "#fff",
     borderRadius: 24,
     overflow: "hidden",
     ...SHADOWS.medium,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "rgba(0,0,0,0.05)",
     borderBottomWidth: 4,
     minHeight: 130,
     width: "100%",
@@ -717,7 +708,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
     fontWeight: "800",
-    backgroundColor: "#F1F5F9",
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 10,

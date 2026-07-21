@@ -8,10 +8,13 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import * as Speech from "expo-speech";
 import SVGIcon from "../../SVGIcon";
 import { usePersistedState } from "../../../hooks/student-dashboard/usePersistedState";
 import { WORD_DATA, REMARKS, WRONG_REMARKS } from "./GameConstants";
 import { SHADOWS } from "../../../constants/theme";
+import { useAuth } from "../../../contexts/AuthContext";
+import { syncAchievementsToCloud } from "../../../utils/gameSync";
 
 const getRandomRemark = (isCorrect: boolean = true) => {
   const list = isCorrect ? REMARKS : WRONG_REMARKS;
@@ -23,6 +26,7 @@ interface WordHuntGameProps {
 }
 
 export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
+  const { appUser } = useAuth();
   const [level, setLevel] = usePersistedState("@word_level", 1);
   const [words, setWords] = useState<any[]>([]);
   const [index, setIndex] = useState(0);
@@ -43,11 +47,23 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
 
   useEffect(() => {
     startStage();
+    return () => { Speech.stop(); };
   }, [startStage]);
 
+  useEffect(() => {
+    if (words[index]) {
+      Speech.stop();
+      Speech.speak("Guess the word for: " + words[index].hint, { rate: 0.9 });
+    }
+  }, [index, words]);
+
   const handleNextLevel = () => {
+    Speech.stop();
     if (score >= 4) {
       setLevel(level + 1);
+      if (appUser?.uid) {
+        syncAchievementsToCloud(appUser.uid, appUser.displayName, appUser.classId);
+      }
     } else {
       startStage();
     }
@@ -55,13 +71,18 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
 
   const check = () => {
     const isCorrect = input.toUpperCase().trim() === words[index].word;
+    const remark = getRandomRemark(isCorrect);
+
+    Speech.stop();
+    Speech.speak(remark, { rate: 1.0 });
+
     if (isCorrect) {
       setScore((s) => s + 1);
-      Alert.alert("Correct!", getRandomRemark(true));
+      Alert.alert("Correct!", remark);
     } else {
       Alert.alert(
         "Oops!",
-        `${getRandomRemark(false)}\n\nThe word was ${words[index].word}`,
+        `${remark}\n\nThe word was ${words[index].word}`,
       );
     }
     if (index + 1 < words.length) {
@@ -93,10 +114,13 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
   return (
     <View style={styles.gameContainer}>
       <View style={styles.gameHeader}>
-        <TouchableOpacity onPress={onExit}>
+        <TouchableOpacity onPress={() => { Speech.stop(); onExit(); }}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
         <Text style={styles.levelText}>Word Hunt 🔍</Text>
+        <TouchableOpacity onPress={() => Speech.speak(words[index].hint)}>
+          <SVGIcon name="volume-high" color="#fff" size={28} />
+        </TouchableOpacity>
       </View>
       <View style={styles.scrambleContainer}>
         <Text style={styles.hintLabel}>GUESS THE WORD:</Text>

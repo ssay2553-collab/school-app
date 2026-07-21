@@ -158,7 +158,6 @@ export default function TeacherDashboardLayout() {
           <Tabs.Screen name="staff-chat" options={{ href: null }} />
           <Tabs.Screen name="news-screen" options={{ href: null }} />
           <Tabs.Screen name="chat-with-parent" options={{ href: null }} />
-          <Tabs.Screen name="ai-lesson-planner" options={{ href: null }} />
           <Tabs.Screen name="upload-assignment" options={{ href: null }} />
           <Tabs.Screen name="mark-assignment" options={{ href: null }} />
           <Tabs.Screen name="create-student-group" options={{ href: null }} />

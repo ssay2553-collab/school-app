@@ -137,77 +137,7 @@ export const useTLMHub = () => {
     const hasInternet = await checkInternet();
     if (!hasInternet) return;
 
-    const requestId = Date.now();
-    latestSearchRef.current = requestId;
-
-    const cacheKey = `${subject}-${topic}`.toLowerCase().trim();
-
-    if (searchCache[cacheKey]) {
-      const cached = searchCache[cacheKey];
-      setDiscoveryResults(
-        cached.results.map((r) => ({
-          ...r,
-          isSaved: savedTlms.some((s) => s.url === r.url),
-        })),
-      );
-      setAiTip(cached.tip);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setAiTip(null);
-
-      const ytFn = httpsCallable(functions, "searchYouTube");
-      const { data: ytData } = (await ytFn({
-        query: `${subject} ${topic}`,
-        maxResults: 8,
-      })) as { data: any[] };
-
-      if (latestSearchRef.current !== requestId) return;
-
-      const youtubeResults: TLM[] = ytData.map((item) => ({
-        id: item.id,
-        title: item.title,
-        subject: subject || "General",
-        topic,
-        type: "video",
-        url: item.url,
-        thumbnail: item.thumbnail,
-        description: item.description,
-        isSaved: savedTlms.some((s) => s.url === item.url),
-      }));
-
-      if (!isMounted.current) return;
-      setDiscoveryResults(youtubeResults);
-
-      const aiFn = httpsCallable(functions, "aiSearch");
-      const { data: aiData } = (await aiFn({
-        queryText: `Give me 3 creative and low-cost teaching aid ideas for teaching ${topic} in ${subject || "class"}. Keep it brief.`,
-        schoolName: SCHOOL_CONFIG.name,
-      })) as { data: { text: string } };
-
-      if (latestSearchRef.current !== requestId) return;
-
-      if (aiData?.text) {
-        setAiTip(aiData.text);
-      }
-
-      setSearchCache((prev) => ({
-        ...prev,
-        [cacheKey]: {
-          results: youtubeResults,
-          tip: aiData?.text || null,
-        },
-      }));
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to fetch learning materials.");
-    } finally {
-      if (isMounted.current) {
-        setLoading(false);
-      }
-    }
+    Alert.alert("Feature unavailable", "Content discovery is currently disabled.");
   };
 
   const debouncedSearch = useMemo(

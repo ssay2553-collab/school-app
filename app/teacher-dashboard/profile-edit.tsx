@@ -122,18 +122,9 @@ export default function TeacherProfileEdit() {
       const curr = (appUser.curriculum as CurriculumType) || "GES";
       setCurriculum(curr);
 
-      // Detect custom subjects not in predefined lists
-      const predefined = curr === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS;
-      const custom = subjects.find(s => !predefined.includes(s));
-      if (custom) {
-        setCustomSubject(custom);
-        setIsOtherSelected(true);
-        setSelectedSubjects(subjects.filter(s => predefined.includes(s)));
-      } else {
-        setSelectedSubjects(subjects);
-        setCustomSubject("");
-        setIsOtherSelected(false);
-      }
+      setSelectedSubjects(subjects);
+      setCustomSubject("");
+      setIsOtherSelected(false);
     }
   }, [appUser]);
 
@@ -299,6 +290,8 @@ export default function TeacherProfileEdit() {
       });
       showToast({ message: "Work assignments updated!", type: "success" });
       setWorkModalVisible(false);
+      setCustomSubject("");
+      setIsOtherSelected(false);
     } catch (err) {
       console.error(err);
       showToast({ message: "Failed to update work assignments.", type: "error" });
@@ -741,6 +734,7 @@ export default function TeacherProfileEdit() {
                 >
                   <Picker.Item label="GES (National)" value="GES" />
                   <Picker.Item label="Cambridge (IGCSE)" value="Cambridge" />
+                  <Picker.Item label="Montessori" value="Montessori" />
                 </Picker>
               </View>
 
@@ -755,6 +749,18 @@ export default function TeacherProfileEdit() {
                     <Text style={[styles.chipText, selectedSubjects.includes(s) && { color: '#fff' }]}>{s}</Text>
                   </TouchableOpacity>
                 ))}
+
+                {/* Show custom subjects as active chips */}
+                {selectedSubjects.filter(s => !(curriculum === "GES" ? GES_SUBJECTS : CAMBRIDGE_SUBJECTS).includes(s)).map(s => (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => setSelectedSubjects(prev => prev.filter(item => item !== s))}
+                    style={[styles.chip, { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}
+                  >
+                    <Text style={[styles.chipText, { color: '#fff' }]}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+
                 <TouchableOpacity
                   onPress={() => setIsOtherSelected(!isOtherSelected)}
                   style={[styles.chip, isOtherSelected && { backgroundColor: COLORS.primary, borderColor: COLORS.primary }]}

@@ -40,7 +40,6 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
   const hasActiveBill =
     !!currentBillValue && parseFloat(String(currentBillValue)) !== 0;
   const hasOverride = individualBillOverrides[item.uid] !== undefined;
-  const isEditLocked = item.editCount >= 5;
   const isDiscountMode = activeMode === "discounts";
   const currentDiscountValue =
     individualDiscountOverrides[item.uid] ?? (isSelected ? discountAmount : "");
@@ -230,21 +229,9 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
                       )
                     }
                     keyboardType="numbers-and-punctuation"
-                    editable={canEdit && !isEditLocked}
+                    editable={canEdit}
                   />
                 </View>
-                {isEditLocked && (
-                  <Text
-                    style={{
-                      fontSize: 8,
-                      color: VIBE.danger,
-                      fontWeight: "700",
-                      marginTop: 2,
-                    }}
-                  >
-                    EDIT LIMIT REACHED
-                  </Text>
-                )}
               </View>
             ) : activeMode === "discounts" ? (
               <View style={styles.discountRightSection}>
@@ -299,21 +286,9 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
                       }))
                     }
                     keyboardType="numeric"
-                    editable={canEdit && !isEditLocked}
+                    editable={canEdit}
                   />
                 </View>
-                {isEditLocked && (
-                  <Text
-                    style={{
-                      fontSize: 8,
-                      color: VIBE.danger,
-                      fontWeight: "700",
-                      marginTop: 4,
-                    }}
-                  >
-                    EDIT LIMIT
-                  </Text>
-                )}
               </View>
             ) : (
               <View style={styles.actionIcons}>

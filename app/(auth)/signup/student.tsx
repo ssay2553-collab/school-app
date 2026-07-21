@@ -376,11 +376,11 @@ export default function StudentSignupScreen() {
           });
         } catch (fnErr: any) {
           console.warn("[Signup] Cloud Function failed, falling back to client-side write for profile claiming:", fnErr);
-          await performClientSideSignup(userId, finalEmail, profileImageUrl, cleanCode, pendingDocId, codeDocId);
+          await performClientSideSignup(userId, finalEmail, profileImageUrl, cleanCode, pendingDocId, codeDocId, preRegisteredData);
         }
       } else {
         console.log("[Signup] New student detected. Performing direct Firestore registration...");
-        await performClientSideSignup(userId, finalEmail, profileImageUrl, cleanCode, null, codeDocId);
+        await performClientSideSignup(userId, finalEmail, profileImageUrl, cleanCode, null, codeDocId, null);
       }
 
       showToast({ message: "Account created successfully! Welcome to your school portal.", type: "success" });
@@ -401,7 +401,8 @@ export default function StudentSignupScreen() {
     profileImageUrl: string | null,
     cleanCode: string,
     pendingDocId: string | null,
-    codeDocId: string | null
+    codeDocId: string | null,
+    preRegisteredData: any | null
   ) => {
     const batch = writeBatch(db);
     const userRef = doc(db, "users", userId);
@@ -411,32 +412,34 @@ export default function StudentSignupScreen() {
       email: finalEmail,
       role: "student",
       status: "active",
-      classId: form.selectedClassId,
+      classId: preRegisteredData?.classId || form.selectedClassId,
       profile: {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        fullName: `${form.firstName} ${form.lastName}`,
-        gender: form.gender,
-        profileImage: profileImageUrl,
-        dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : null,
+        firstName: form.firstName || preRegisteredData?.profile?.firstName,
+        lastName: form.lastName || preRegisteredData?.profile?.lastName,
+        fullName: `${form.firstName || preRegisteredData?.profile?.firstName} ${form.lastName || preRegisteredData?.profile?.lastName}`,
+        gender: form.gender || preRegisteredData?.profile?.gender || "",
+        profileImage: profileImageUrl || preRegisteredData?.profile?.profileImage || null,
+        dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : (preRegisteredData?.dateOfBirth || null),
       },
       signupCode: cleanCode,
-      parentLinkCode: generateLinkCode(),
-      createdAt: serverTimestamp(),
+      parentLinkCode: preRegisteredData?.parentLinkCode || generateLinkCode(),
+      parentUids: preRegisteredData?.parentUids || [],
+      walletBalance: preRegisteredData?.walletBalance || 0,
+      createdAt: preRegisteredData?.createdAt || serverTimestamp(),
+      claimedAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
+    // Always create/update the document at the Auth UID to ensure system helpers work
+    batch.set(userRef, userData);
+
     if (pendingDocId) {
-      // Claim the existing document
-      batch.set(doc(db, "users", pendingDocId), {
-        ...userData,
+      // Mark the pre-registered profile as claimed
+      batch.update(doc(db, "users", pendingDocId), {
         status: 'claimed',
         claimedBy: userId,
         claimedAt: serverTimestamp()
-      }, { merge: true });
-    } else {
-      // Create new user document
-      batch.set(userRef, userData);
+      });
     }
 
     // Mark code as used if it was a generic one

@@ -1,17 +1,21 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+import * as Speech from "expo-speech";
+import * as Animatable from "react-native-animatable";
+import * as Haptics from "expo-haptics";
 import SVGIcon from "../../SVGIcon";
 import { usePersistedState } from "../../../hooks/student-dashboard/usePersistedState";
 import { SCRAMBLE_DATA, REMARKS, WRONG_REMARKS } from "./GameConstants";
 import { SHADOWS } from "../../../constants/theme";
+import { useAuth } from "../../../contexts/AuthContext";
+import { syncAchievementsToCloud } from "../../../utils/gameSync";
 
 const getRandomRemark = (isCorrect: boolean = true) => {
   const list = isCorrect ? REMARKS : WRONG_REMARKS;
@@ -23,6 +27,7 @@ interface ScrambleGameProps {
 }
 
 export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
+  const { appUser } = useAuth();
   const [level, setLevel] = usePersistedState("@scramble_level", 1);
   const [words, setWords] = useState<string[]>([]);
   const [scrambled, setScrambled] = useState("");
@@ -30,6 +35,8 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
   const [score, setScore] = useState(0);
   const [input, setInput] = useState("");
   const [showSummary, setShowSummary] = useState(false);
+  const [feedback, setFeedback] = useState<{ isCorrect: boolean; message: string; subMessage?: string } | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const shuffle = (word: string) =>
     word
@@ -53,33 +60,65 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
 
   useEffect(() => {
     startStage();
+    return () => { Speech.stop(); };
   }, [startStage]);
 
+  useEffect(() => {
+    if (scrambled) {
+      Speech.stop();
+      Speech.speak("Unscramble this word", { rate: 0.9 });
+    }
+  }, [scrambled]);
+
   const handleNextLevel = () => {
+    Speech.stop();
     if (score >= 4) {
       setLevel(level + 1);
+      if (appUser?.uid) {
+        syncAchievementsToCloud(appUser.uid, appUser.displayName, appUser.classId);
+      }
     } else {
       startStage();
     }
   };
 
-  const check = () => {
+  const check = async () => {
+    if (isProcessing || !input.trim()) return;
+    setIsProcessing(true);
+
     const isCorrect = input.toUpperCase().trim() === words[index];
+    const remark = getRandomRemark(isCorrect);
+
+    Speech.stop();
+    Speech.speak(remark, { rate: 1.0 });
+
     if (isCorrect) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setScore((s) => s + 1);
-      Alert.alert("Bravo!", getRandomRemark(true));
+      setFeedback({ isCorrect: true, message: remark });
     } else {
-      Alert.alert(
-        "Not Quite",
-        `${getRandomRemark(false)}\n\nThe word was ${words[index]}`,
-      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setFeedback({
+        isCorrect: false,
+        message: remark,
+        subMessage: `The word was ${words[index]}`
+      });
     }
-    if (index + 1 < words.length) {
-      const nextIdx = index + 1;
-      setIndex(nextIdx);
-      setScrambled(shuffle(words[nextIdx]));
-      setInput("");
-    } else setShowSummary(true);
+
+    // Show feedback for 2 seconds before moving on
+    setTimeout(() => {
+      setFeedback(null);
+      if (index + 1 < words.length) {
+        const nextIdx = index + 1;
+        setIndex(nextIdx);
+        setScrambled(shuffle(words[nextIdx]));
+        setInput("");
+        setIsProcessing(false);
+      } else {
+        setShowSummary(true);
+        setIsProcessing(false);
+      }
+    }, 2000);
   };
 
   if (showSummary)
@@ -105,10 +144,13 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
   return (
     <View style={styles.gameContainer}>
       <View style={styles.gameHeader}>
-        <TouchableOpacity onPress={onExit}>
+        <TouchableOpacity onPress={() => { Speech.stop(); onExit(); }}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
         <Text style={styles.levelText}>Scramble 🔠 (Lvl {level})</Text>
+        <TouchableOpacity onPress={() => Speech.speak("Unscramble " + scrambled.split('').join(' '))}>
+          <SVGIcon name="volume-high" color="#fff" size={28} />
+        </TouchableOpacity>
       </View>
       <View style={styles.scrambleContainer}>
         <Text style={styles.hintLabel}>UNSCRAMBLE THIS:</Text>
@@ -137,12 +179,34 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
           style={[
             styles.checkButton,
             { backgroundColor: "rgba(255,255,255,0.3)" },
+            isProcessing && { opacity: 0.5 }
           ]}
           onPress={check}
+          disabled={isProcessing}
         >
-          <Text style={styles.checkButtonText}>CHECK</Text>
+          <Text style={styles.checkButtonText}>{isProcessing ? "CHECKING..." : "CHECK"}</Text>
         </TouchableOpacity>
       </View>
+
+      {feedback && (
+        <Animatable.View
+          animation="bounceIn"
+          style={[
+            styles.feedbackOverlay,
+            { backgroundColor: feedback.isCorrect ? "#22C55E" : "#EF4444" }
+          ]}
+        >
+          <SVGIcon
+            name={feedback.isCorrect ? "checkmark-circle" : "close-circle"}
+            color="#fff"
+            size={60}
+          />
+          <Text style={styles.feedbackText}>{feedback.message}</Text>
+          {feedback.subMessage && (
+            <Text style={styles.feedbackSubText}>{feedback.subMessage}</Text>
+          )}
+        </Animatable.View>
+      )}
     </View>
   );
 };
@@ -222,5 +286,31 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.6)",
     fontWeight: "700",
     fontSize: 16,
+  },
+  feedbackOverlay: {
+    position: 'absolute',
+    top: '30%',
+    left: '10%',
+    right: '10%',
+    padding: 30,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOWS.large,
+    zIndex: 1000,
+  },
+  feedbackText: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '900',
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  feedbackSubText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 5,
   },
 });

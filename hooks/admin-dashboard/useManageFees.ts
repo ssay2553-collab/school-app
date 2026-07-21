@@ -303,7 +303,7 @@ export const useManageFees = ({
       onSuccess();
       fetchStudents(true);
     } catch (error) {
-      console.error(error);
+      console.error("Log Payment Error:", error);
       showToast({ message: "Failed to log payment", type: "error" });
     } finally {
       setSaving(false);
@@ -451,12 +451,6 @@ export const useManageFees = ({
         }
 
         const currentBill = s.hasRecordInTerm ? s.termBill || 0 : 0;
-        const currentEditCount = s.editCount || 0;
-
-        if (currentEditCount >= 5) {
-          showToast({ message: `Student ${s.fullName} has reached the limit of 5 edits this term.`, type: "error" });
-          continue;
-        }
 
         const newBill = currentBill + adjustment;
         const otherBills =
@@ -494,7 +488,7 @@ export const useManageFees = ({
           amountPaid: totalPaid,
           balance: newBalance,
           totalPayable: totalPayable,
-          editCount: currentEditCount + 1,
+          editCount: (s.editCount || 0) + 1,
           lastUpdated: serverTimestamp(),
         };
 
@@ -512,10 +506,18 @@ export const useManageFees = ({
       setSelectedStudentUids(new Set());
       setIndividualBillOverrides({});
       fetchStudents(true);
-      showToast({ message: "Billing updated successfully.", type: "success" });
+      if (showToast) {
+        showToast({ message: "Billing updated successfully.", type: "success" });
+      } else {
+        alert("Billing updated successfully.");
+      }
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Save failed", type: "error" });
+      console.error("Save Fees Error:", e);
+      if (showToast) {
+        showToast({ message: "Save failed", type: "error" });
+      } else {
+        alert("Save failed");
+      }
     } finally {
       setSaving(false);
     }

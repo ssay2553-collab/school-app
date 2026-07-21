@@ -1,4 +1,3 @@
-import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import {
@@ -9,7 +8,6 @@ import {
   getDocsFromServer,
   query,
   serverTimestamp,
-  updateDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
@@ -43,13 +41,13 @@ import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import {
   calculateCompetitionRanking,
-  getGradeDetails,
   sortClasses,
 } from "../../lib/classHelpers";
-
 import { useToast } from "../../contexts/ToastContext";
 
-type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
+// Components
+import { StudentScoreCard, ReportType } from "../../components/admin-dashboard/StudentScoreCard";
+import { ScoreFilterSection } from "../../components/admin-dashboard/ScoreFilterSection";
 
 interface SubjectInfo {
   name: string;
@@ -57,211 +55,6 @@ interface SubjectInfo {
   reportType: ReportType;
   hasBehavioral?: boolean;
 }
-
-const StudentScoreCard = React.memo(
-  ({
-    item,
-    onUpdateRef,
-    primary,
-    reportType,
-  }: {
-    item: any;
-    onUpdateRef: (id: string, updated: any) => void;
-    primary: string;
-    reportType: ReportType;
-  }) => {
-    const { showToast } = useToast();
-    const [localItem, setLocalItem] = useState(item);
-
-    useEffect(() => {
-      setLocalItem(item);
-    }, [item]);
-
-    const handleUpdate = (field: string, v: string) => {
-      setLocalItem((prev: any) => {
-        const updated = { ...prev, [field]: v };
-        if (reportType === "End of Term") {
-          if (field === "classScore" && parseFloat(v) > 50) {
-            return prev; // Don't update state if above 50
-          }
-          const classScoreRaw = parseFloat(updated.classScore) || 0;
-          updated.classScore50 = classScoreRaw.toFixed(2); // Directly use score (max 50)
-          const examsMark = parseFloat(updated.examsMark) || 0;
-          updated.exam50 = (examsMark * 0.5).toFixed(2);
-          updated.finalScore = (
-            parseFloat(updated.classScore50) + parseFloat(updated.exam50)
-          ).toFixed(2);
-          updated.grade = getGradeDetails(parseFloat(updated.finalScore)).grade;
-        } else {
-          const examsMark = parseFloat(updated.examsMark) || 0;
-          updated.finalScore = examsMark.toFixed(2);
-          updated.grade = getGradeDetails(examsMark).grade;
-          updated.classScore = "";
-          updated.classScore50 = "0";
-          updated.exam50 = "0";
-        }
-        onUpdateRef(item.studentId, updated);
-        return updated;
-      });
-    };
-
-    return (
-      <Animatable.View animation="fadeInUp" duration={500} style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={[styles.avatarBox, { backgroundColor: primary + "15" }]}>
-            <Text style={[styles.avatarText, { color: primary }]}>
-              {localItem.fullName?.charAt(0) || "S"}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.studentName}>{localItem.fullName}</Text>
-            <Text style={styles.studentIdLabel}>ID: {localItem.studentId}</Text>
-          </View>
-        </View>
-
-        {reportType === "End of Term" ? (
-          <View style={styles.scoreGrid}>
-            <View style={styles.gridSection}>
-              <Text style={styles.sectionLabel}>
-                CLASS SCORE ASSESSMENT (MAX 50)
-              </Text>
-              <View style={styles.gridRow}>
-                <View style={[styles.inputCol, { flex: 2 }]}>
-                  <Text style={styles.miniHeader}>CLASS SCORE (50)</Text>
-                  <TextInput
-                    style={styles.gridInput}
-                    keyboardType="numeric"
-                    value={String(localItem.classScore || "")}
-                    placeholder="Max 50"
-                    onChangeText={(v) => {
-                      if (parseFloat(v) > 50) {
-                        showToast({ message: "Class Score must not be above 50%", type: "error" });
-                        return;
-                      }
-                      handleUpdate("classScore", v);
-                    }}
-                  />
-                </View>
-                <View style={styles.valueCol}>
-                  <Text style={styles.miniHeader}>FINAL WT</Text>
-                  <View
-                    style={[
-                      styles.gridValueBox,
-                      { backgroundColor: primary + "10" },
-                    ]}
-                  >
-                    <Text style={[styles.gridValueText, { color: primary }]}>
-                      {localItem.classScore50}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.gridDivider} />
-
-            <View style={styles.gridSection}>
-              <Text style={styles.sectionLabel}>FINAL EXAMS & GRADING</Text>
-              <View style={styles.gridRow}>
-                <View style={[styles.inputCol, { flex: 1.5 }]}>
-                  <Text style={styles.miniHeader}>EXAMS (100)</Text>
-                  <TextInput
-                    style={[styles.gridInput, { height: 44 }]}
-                    keyboardType="numeric"
-                    value={String(localItem.examsMark || "")}
-                    onChangeText={(v) => handleUpdate("examsMark", v)}
-                  />
-                </View>
-                <View style={styles.valueCol}>
-                  <Text style={styles.miniHeader}>50% WT</Text>
-                  <View
-                    style={[styles.gridValueBox, { backgroundColor: "#ecfdf5" }]}
-                  >
-                    <Text style={[styles.gridValueText, { color: "#059669" }]}>
-                      {localItem.exam50}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.valueCol}>
-                  <Text style={styles.miniHeader}>TOTAL</Text>
-                  <View
-                    style={[styles.gridValueBox, { backgroundColor: "#fffbeb" }]}
-                  >
-                    <Text style={[styles.gridValueText, { color: "#d97706" }]}>
-                      {localItem.finalScore}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.valueCol}>
-                  <Text style={styles.miniHeader}>GRADE</Text>
-                  <View
-                    style={[styles.gridValueBox, { backgroundColor: "#f0f9ff" }]}
-                  >
-                    <Text style={[styles.gridValueText, { color: "#0284c7" }]}>
-                      {localItem.grade}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.scoreGrid}>
-            <Text style={styles.sectionLabel}>RAW SCORE ASSESSMENT</Text>
-            <View style={styles.gridRow}>
-              <View style={{ flex: 2 }}>
-                <Text style={styles.miniHeader}>EXAMINATION SCORE (100)</Text>
-                <TextInput
-                  style={[
-                    styles.gridInput,
-                    {
-                      height: 48,
-                      fontSize: 18,
-                      textAlign: "left",
-                      paddingHorizontal: 15,
-                    },
-                  ]}
-                  keyboardType="numeric"
-                  value={String(localItem.examsMark || "")}
-                  onChangeText={(v) => handleUpdate("examsMark", v)}
-                  placeholder="0.00"
-                />
-              </View>
-              <View style={{ flex: 1, marginLeft: 15 }}>
-                <Text style={styles.miniHeader}>GRADE</Text>
-                <View
-                  style={[
-                    styles.gridValueBox,
-                    { height: 48, backgroundColor: "#f0f9ff" },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.gridValueText,
-                      { color: "#0284c7", fontSize: 20 },
-                    ]}
-                  >
-                    {localItem.grade}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {localItem.teacherRemarks ? (
-          <View style={[styles.remarksBox, { borderLeftColor: primary }]}>
-            <Text style={styles.remarksLabel}>TEACHER&apos;S REMARKS</Text>
-            <Text style={styles.remarksText}>{localItem.teacherRemarks}</Text>
-          </View>
-        ) : null}
-      </Animatable.View>
-    );
-  },
-);
-
-
-StudentScoreCard.displayName = "StudentScoreCard";
 
 export default function EditStudentScores() {
   const router = useRouter();
@@ -279,25 +72,14 @@ export default function EditStudentScores() {
 
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
 
-  const availableYears = useMemo(() => {
-    const start = 2024;
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let y = start; y <= currentYear + 3; y++) {
-      years.push(`${y}/${y + 1}`);
-    }
-    if (acadConfig.academicYear && !years.includes(acadConfig.academicYear)) {
-      years.push(acadConfig.academicYear);
-    }
-    return Array.from(new Set(years)).sort().reverse();
-  }, [acadConfig.academicYear]);
-
   // Selections
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [subjects, setSubjects] = useState<SubjectInfo[]>([]);
   const [selectedReportType, setSelectedReportType] =
     useState<ReportType>("End of Term");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(true);
 
   // Local derived values for active period (Read-only)
   const selectedYear = acadConfig.academicYear || "";
@@ -314,6 +96,16 @@ export default function EditStudentScores() {
   const hasUnsavedChanges = useMemo(() => {
     return JSON.stringify(allStudents) !== initialDataRef.current;
   }, [allStudents]);
+
+  const filteredStudents = useMemo(() => {
+    if (!searchQuery) return allStudents;
+    const q = searchQuery.toLowerCase();
+    return allStudents.filter(
+      (s) =>
+        s.fullName?.toLowerCase().includes(q) ||
+        s.studentId?.toLowerCase().includes(q),
+    );
+  }, [allStudents, searchQuery]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -436,9 +228,7 @@ export default function EditStudentScores() {
       if (snap.exists()) {
         setRecordId(snap.id);
         const students = (snap.data() as any).students || [];
-        allStudents.forEach((s: any) => {
-          masterDataRef.current[s.studentId] = s;
-        });
+        masterDataRef.current = {};
         setAllStudents(students);
         initialDataRef.current = JSON.stringify(students);
         setVisibleStudents(students.slice(0, PAGE_SIZE));
@@ -460,24 +250,46 @@ export default function EditStudentScores() {
     }
   };
 
-  const reportTypeToSlug = (type: string) => type.replace(/\s+/g, "");
-
   const loadMoreStudents = useCallback(() => {
     setVisibleStudents((prev) => {
-      if (prev.length >= allStudents.length) return prev;
+      if (prev.length >= filteredStudents.length) return prev;
       const nextPage = Math.floor(prev.length / PAGE_SIZE) + 1;
       setPage(nextPage);
-      return allStudents.slice(0, nextPage * PAGE_SIZE);
+      return filteredStudents.slice(0, nextPage * PAGE_SIZE);
     });
-  }, [allStudents]);
+  }, [filteredStudents]);
 
   const onUpdateRef = useCallback((id: string, updated: any) => {
     masterDataRef.current[id] = updated;
+    setAllStudents(prev => {
+      const index = prev.findIndex(s => s.studentId === id);
+      if (index === -1) return prev;
+      const next = [...prev];
+      next[index] = updated;
+      return next;
+    });
   }, []);
 
+  const classStats = useMemo(() => {
+    if (allStudents.length === 0) return { avg: "0.00", graded: 0, high: "0.00" };
+    const scores = allStudents
+      .map(s => parseFloat(s.finalScore) || 0)
+      .filter(s => s > 0);
+
+    const graded = scores.length;
+    const totalScore = allStudents.reduce((sum, s) => sum + (parseFloat(s.finalScore) || 0), 0);
+    const high = scores.length > 0 ? Math.max(...scores).toFixed(2) : "0.00";
+
+    return {
+      avg: (totalScore / allStudents.length).toFixed(2),
+      graded,
+      high
+    };
+  }, [allStudents]);
+
   useEffect(() => {
-    setVisibleStudents(allStudents.slice(0, page * PAGE_SIZE));
-  }, [allStudents, page]);
+    setVisibleStudents(filteredStudents.slice(0, page * PAGE_SIZE));
+  }, [filteredStudents, page]);
 
   const approveAndSave = async () => {
     if (!recordId || allStudents.length === 0) return;
@@ -499,7 +311,6 @@ export default function EditStudentScores() {
       const batch = writeBatch(db);
       const recordRef = doc(db, "academicRecords", recordId);
 
-      // Pre-calculate positions for this specific subject before saving
       const subjectScoresList = studentsToSave.map((s) => ({
         id: s.studentId,
         total: parseFloat(s.finalScore) || 0,
@@ -521,14 +332,11 @@ export default function EditStudentScores() {
         approvedBy: appUser?.uid,
       });
 
-      // Aggregate into academicRecordsSummary for each student
       studentsToSave.forEach((student) => {
         const yearSlug = selectedYear.replace(/\//g, "_");
         const termSlug = term.replace(/\s+/g, "");
         const summaryId = `${student.studentId}_${yearSlug}_${termSlug}`;
         const summaryRef = doc(db, "academicRecordsSummary", summaryId);
-
-        // Subject name as key (safe for Firestore keys)
         const subjectKey = selectedSubject.replace(/\s+/g, "_");
 
         const rankInfo = calculateCompetitionRanking(
@@ -558,10 +366,6 @@ export default function EditStudentScores() {
       });
 
       await batch.commit();
-
-      // Also update overall class ranking in student-reports
-      // Note: This requires all subjects to be approved for high accuracy,
-      // but we update it incrementally here.
       await updateOverallRankings();
 
       initialDataRef.current = JSON.stringify(studentsToSave);
@@ -707,7 +511,12 @@ export default function EditStudentScores() {
             <Text style={styles.headerTitle} numberOfLines={1}>
               {SCHOOL_CONFIG.fullName}
             </Text>
-            <Text style={styles.headerSub}>Admin Score Editor</Text>
+            <View style={styles.statusRow}>
+              <Text style={styles.headerSub}>Admin Score Editor</Text>
+              {hasUnsavedChanges && (
+                <View style={styles.unsavedDot} />
+              )}
+            </View>
           </View>
           <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
             <SVGIcon name="refresh" color="#fff" size={22} />
@@ -722,116 +531,76 @@ export default function EditStudentScores() {
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <Animatable.View animation="fadeInDown" style={styles.filterSection}>
-            <View style={styles.lockedConfigRow}>
-              <View style={styles.lockedConfigItem}>
-                <Text style={styles.miniLabel}>ACADEMIC YEAR</Text>
-                <View style={styles.lockedBadge}>
-                  <Text style={styles.lockedBadgeText}>
-                    {selectedYear || "---"}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.lockedConfigItem}>
-                <Text style={styles.miniLabel}>CURRENT TERM</Text>
-                <View style={styles.lockedBadge}>
-                  <Text style={styles.lockedBadgeText}>{term || "---"}</Text>
-                </View>
-              </View>
-            </View>
+          <>
+            <ScoreFilterSection
+              showFilters={showFilters}
+              setShowFilters={setShowFilters}
+              selectedYear={selectedYear}
+              term={term}
+              selectedReportType={selectedReportType}
+              setSelectedReportType={setSelectedReportType}
+              selectedClassId={selectedClassId}
+              setSelectedClassId={setSelectedClassId}
+              classes={classes}
+              selectedSubject={selectedSubject}
+              setSelectedSubject={setSelectedSubject}
+              subjects={subjects}
+              loadSubmission={loadSubmission}
+              listLoading={listLoading}
+              recordId={recordId}
+              primary={primary}
+            />
 
-            <View style={[styles.pickerBox, { width: "100%", marginTop: 12 }]}>
-              <Text style={styles.miniLabel}>REPORT TYPE</Text>
-              <Picker
-                selectedValue={selectedReportType}
-                onValueChange={(v) => setSelectedReportType(v as ReportType)}
-                style={styles.picker}
-                dropdownIconColor={primary}
+            {recordId && (
+              <Animatable.View
+                animation="fadeIn"
+                style={styles.searchContainer}
               >
-                <Picker.Item
-                  label="End of Term"
-                  value="End of Term"
-                  color="#0F172A"
-                />
-                <Picker.Item
-                  label="Mid-Term"
-                  value="Mid-Term"
-                  color="#0F172A"
-                />
-                <Picker.Item
-                  label="Mock Exams"
-                  value="Mock Exams"
-                  color="#0F172A"
-                />
-              </Picker>
-            </View>
-
-            <View style={[styles.pickerBox, { width: "100%", marginTop: 12 }]}>
-              <Text style={styles.miniLabel}>TARGET CLASS</Text>
-              <Picker
-                selectedValue={selectedClassId}
-                onValueChange={setSelectedClassId}
-                style={styles.picker}
-                dropdownIconColor={primary}
-              >
-                {classes.map((c) => (
-                  <Picker.Item
-                    key={c.id}
-                    label={c.name}
-                    value={c.id}
-                    color="#0F172A"
+                <View style={styles.searchBar}>
+                  <SVGIcon name="search-outline" size={20} color="#94A3B8" />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search student by name or ID..."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholderTextColor="#94A3B8"
+                    clearButtonMode="while-editing"
                   />
-                ))}
-              </Picker>
-            </View>
-
-            <View style={[styles.pickerBox, { width: "100%", marginTop: 12 }]}>
-              <Text style={styles.miniLabel}>PENDING SUBMISSIONS</Text>
-              <Picker
-                selectedValue={selectedSubject}
-                onValueChange={setSelectedSubject}
-                style={styles.picker}
-                dropdownIconColor={primary}
-              >
-                {subjects.length > 0 ? (
-                  subjects.map((s) => (
-                    <Picker.Item
-                      key={s.name}
-                      label={`${s.name} (${s.status.toUpperCase()})`}
-                      value={s.name}
-                      color="#0F172A"
-                    />
-                  ))
-                ) : (
-                  <Picker.Item
-                    label="No Submissions Found"
-                    value=""
-                    color="#94A3B8"
-                  />
-                )}
-              </Picker>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.loadBtn, { backgroundColor: primary }]}
-              onPress={loadSubmission}
-              disabled={listLoading}
-            >
-              {listLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <View style={styles.btnContent}>
-                  <Text style={styles.loadBtnText}>Load Records</Text>
-                  <SVGIcon
-                    name="cloud-download"
-                    size={20}
-                    color="#fff"
-                    style={{ marginLeft: 8 }}
-                  />
+                  {searchQuery !== "" && Platform.OS !== 'ios' && (
+                    <TouchableOpacity onPress={() => setSearchQuery("")}>
+                      <SVGIcon
+                        name="close-circle-outline"
+                        size={20}
+                        color="#94A3B8"
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
-              )}
-            </TouchableOpacity>
-          </Animatable.View>
+
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{allStudents.length}</Text>
+                    <Text style={styles.statLabel}>Total</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{classStats.graded}</Text>
+                    <Text style={styles.statLabel}>Graded</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statValue, { color: primary }]}>{classStats.avg}</Text>
+                    <Text style={styles.statLabel}>Avg</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Text style={[styles.statValue, { color: "#10B981" }]}>{classStats.high}</Text>
+                    <Text style={styles.statLabel}>High</Text>
+                  </View>
+                </View>
+              </Animatable.View>
+            )}
+          </>
         }
         renderItem={({ item }) => (
           <StudentScoreCard
@@ -842,7 +611,17 @@ export default function EditStudentScores() {
           />
         )}
         ListEmptyComponent={
-          recordId ? null : (
+          recordId ? (
+            <View style={styles.empty}>
+              <View style={styles.emptyIconCircle}>
+                <SVGIcon name="search-outline" size={40} color="#CBD5E1" />
+              </View>
+              <Text style={styles.emptyTitle}>No Results Found</Text>
+              <Text style={styles.emptyText}>
+                We couldn't find any students matching "{searchQuery}".
+              </Text>
+            </View>
+          ) : (
             <View style={styles.empty}>
               <View style={styles.emptyIconCircle}>
                 <SVGIcon name="document-text" size={40} color="#CBD5E1" />
@@ -929,6 +708,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   titleContainer: { flex: 1, alignItems: "center" },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  unsavedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#F87171",
+    marginTop: 2,
+  },
   headerTitle: {
     color: "#fff",
     fontSize: 20,
@@ -942,173 +729,60 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginTop: 2,
   },
-  filterSection: {
-    padding: 25,
-    backgroundColor: "#fff",
-    borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    marginBottom: 10,
+  searchContainer: {
+    marginTop: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 15,
   },
-  filterRow: { flexDirection: "row", gap: 15 },
-  lockedConfigRow: { flexDirection: "row", gap: 15, marginBottom: 5 },
-  lockedConfigItem: { flex: 1 },
-  lockedBadge: {
-    backgroundColor: "#F8FAFC",
-    padding: 12,
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
+    paddingHorizontal: 15,
     height: 50,
-    justifyContent: "center",
-  },
-  lockedBadgeText: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: SCHOOL_CONFIG.primaryColor || "#2e86de",
-  },
-  pickerBox: {
-    flex: 1,
-    height: 70,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 15,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    paddingTop: 24,
-    paddingHorizontal: 5,
+    ...SHADOWS.small,
   },
-  miniLabel: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#94A3B8",
-    position: "absolute",
-    top: 8,
-    left: 15,
-    zIndex: 10,
-    letterSpacing: 0.5,
-  },
-  picker: {
+  searchInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 14,
     color: "#1E293B",
-    ...Platform.select({
-      web: {
-        height: 40,
-        backgroundColor: "transparent",
-        borderWidth: 0,
-        outlineStyle: "none",
-      },
-    }),
-  } as any,
-  loadBtn: {
-    height: 54,
-    borderRadius: 16,
+    fontWeight: "600",
+  },
+  statsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
     marginTop: 15,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    ...SHADOWS.small,
-  },
-  btnContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  loadBtnText: {
-    color: "#fff",
-    fontWeight: "900",
-    fontSize: 15,
-    letterSpacing: 0.5,
-  },
-  card: {
     backgroundColor: "#fff",
-    marginHorizontal: 15,
-    marginBottom: 15,
-    padding: 20,
-    borderRadius: 24,
-    ...SHADOWS.small,
+    padding: 15,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#F1F5F9",
+    ...SHADOWS.small,
   },
-  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
-  avatarBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: "center",
+  statItem: {
     alignItems: "center",
-    marginRight: 15,
   },
-  avatarText: { fontSize: 20, fontWeight: "900" },
-  studentName: { fontSize: 17, fontWeight: "800", color: "#1E293B" },
-  studentIdLabel: {
-    fontSize: 11,
-    color: "#94A3B8",
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  scoreGrid: { marginTop: 0 },
-  gridSection: { marginBottom: 15 },
-  sectionLabel: {
-    fontSize: 9,
+  statValue: {
+    fontSize: 16,
     fontWeight: "900",
-    color: "#64748B",
-    marginBottom: 12,
-    letterSpacing: 1,
-  },
-  gridRow: { flexDirection: "row", gap: 10 },
-  inputCol: { flex: 1 },
-  valueCol: { flex: 1, alignItems: "center" },
-  miniHeader: {
-    fontSize: 8,
-    fontWeight: "900",
-    color: "#94A3B8",
-    textAlign: "center",
-    marginBottom: 5,
-    textTransform: "uppercase",
-  },
-  gridInput: {
-    height: 40,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    textAlign: "center",
-    fontWeight: "900",
-    fontSize: 14,
     color: "#1E293B",
   },
-  gridValueBox: {
-    height: 40,
-    width: "100%",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  gridValueText: { fontSize: 13, fontWeight: "900" },
-  gridDivider: {
-    height: 1,
-    backgroundColor: "#F1F5F9",
-    marginVertical: 15,
-    borderStyle: "dashed",
-    borderRadius: 1,
-  },
-  remarksBox: {
-    marginTop: 5,
-    padding: 12,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    borderLeftWidth: 4,
-  },
-  remarksLabel: {
-    fontSize: 8,
-    fontWeight: "900",
+  statLabel: {
+    fontSize: 10,
     color: "#94A3B8",
-    marginBottom: 4,
-    letterSpacing: 0.5,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    marginTop: 2,
   },
-  remarksText: {
-    fontSize: 12,
-    color: "#475569",
-    fontStyle: "italic",
-    fontWeight: "600",
+  statDivider: {
+    width: 1,
+    height: 20,
+    backgroundColor: "#E2E8F0",
   },
   footer: {
     position: "absolute",

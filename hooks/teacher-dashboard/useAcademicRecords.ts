@@ -73,7 +73,7 @@ export const useAcademicRecords = () => {
     const fetchMetadata = async () => {
       setLoading(true);
       try {
-        const classIds = appUser.classes || appUser.profile?.classes || [];
+        const classIds = appUser.classes || [];
         if (classIds.length > 0) {
           const q = query(collection(db, "classes"), where(documentId(), "in", classIds));
           const snap = await getDocsFromServer(q);
@@ -87,7 +87,7 @@ export const useAcademicRecords = () => {
           if (sorted.length > 0 && !selectedClassId) setSelectedClassId(sorted[0].id);
         }
 
-        const availableSubjects = appUser.subjects || appUser.profile?.subjects || [];
+        const availableSubjects = appUser.subjects || [];
         if (availableSubjects.length > 0) {
           if (!selectedSubject || !availableSubjects.includes(selectedSubject)) {
              setSelectedSubject(availableSubjects[0]);
@@ -269,6 +269,6 @@ export const useAcademicRecords = () => {
     hasUnsavedChanges,
     academicYear,
     term,
-    subjects: appUser?.subjects || appUser?.profile?.subjects || [],
+    subjects: appUser?.subjects || [],
   };
 };

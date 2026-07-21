@@ -98,11 +98,14 @@ export default function ViewAcademicRecordDetails() {
         );
 
         const scoresSnap = await getDocsFromServer(qScores);
-        let studentResults: any[] = [];
+        const resultsMap = new Map();
         let nameFound = "";
 
         scoresSnap.docs.forEach((d) => {
           const data = d.data() as any;
+          const subjectName = data.subject;
+          if (!subjectName) return;
+
           const studentsList = data.students || [];
 
           // Standard Competition Ranking for Subject Position
@@ -149,8 +152,8 @@ export default function ViewAcademicRecordDetails() {
             }
 
             const gradeObj = getGradeDetails(scoreValue);
-            studentResults.push({
-              subject: data.subject,
+            resultsMap.set(subjectName, {
+              subject: subjectName,
               classScore: studentEntry.classScore || "-",
               examsScore:
                 reportType === "End of Term"
@@ -166,7 +169,7 @@ export default function ViewAcademicRecordDetails() {
         });
 
         setStudentName(nameFound);
-        setSubjectsData(studentResults);
+        setSubjectsData(Array.from(resultsMap.values()));
 
         // Fetch class details
         try {

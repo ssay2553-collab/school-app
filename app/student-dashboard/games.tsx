@@ -15,7 +15,9 @@ import { GAME_BG, GameMode } from "../../components/student-dashboard/games/Game
 import { QuizGame } from "../../components/student-dashboard/games/QuizGame";
 import { WordHuntGame } from "../../components/student-dashboard/games/WordHuntGame";
 import { ScrambleGame } from "../../components/student-dashboard/games/ScrambleGame";
+import { WritingGame } from "../../components/student-dashboard/games/WritingGame";
 import { MenuCard } from "../../components/student-dashboard/games/MenuCard";
+import { Scoreboard } from "../../components/student-dashboard/games/Scoreboard";
 
 export default function GamesScreen() {
   const router = useRouter();
@@ -29,6 +31,10 @@ export default function GamesScreen() {
         return <WordHuntGame onExit={() => setMode("menu")} />;
       case "scramble":
         return <ScrambleGame onExit={() => setMode("menu")} />;
+      case "writing":
+        return <WritingGame onExit={() => setMode("menu")} />;
+      case "scoreboard":
+        return <Scoreboard onBack={() => setMode("menu")} />;
       default:
         return (
           <View style={styles.center}>
@@ -95,6 +101,18 @@ export default function GamesScreen() {
               icon="calculator"
               color="#8B5CF6"
               onPress={() => setMode("math")}
+            />
+            <MenuCard
+              title="Writing Fun"
+              icon="create"
+              color="#EC4899"
+              onPress={() => setMode("writing")}
+            />
+            <MenuCard
+              title="Scoreboard"
+              icon="trophy"
+              color="#64748B"
+              onPress={() => setMode("scoreboard")}
             />
           </View>
         </ScrollView>

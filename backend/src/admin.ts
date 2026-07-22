@@ -6,7 +6,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
  * payload: { uid: string }
  * Requires the caller to be authenticated and have an admin claim OR an "admin" role in Firestore.
  */
-export const deleteUserAccount = onCall(async (req) => {
+export const deleteUserAccount = onCall({ invoker: "public" }, async (req) => {
   const auth = req.auth;
   if (!auth) {
     throw new HttpsError("unauthenticated", "Must be logged in to delete an account.");

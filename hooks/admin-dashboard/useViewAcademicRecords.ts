@@ -104,6 +104,7 @@ export function useViewAcademicRecords() {
   const [mInterest, setInterest] = useState("High");
   const [mPromotedTo, setPromotedTo] = useState("");
   const [mNextTermBegins, setNextTermBegins] = useState("");
+  const [showNextTermPicker, setShowNextTermPicker] = useState(false);
   const [mAdminRemarks, setAdminRemarks] = useState("");
   const [mTeacherRemarks, setTeacherRemarks] = useState("");
 
@@ -742,6 +743,8 @@ export function useViewAcademicRecords() {
     setPromotedTo,
     mNextTermBegins,
     setNextTermBegins,
+    showNextTermPicker,
+    setShowNextTermPicker,
     mAdminRemarks,
     setAdminRemarks,
     mTeacherRemarks,

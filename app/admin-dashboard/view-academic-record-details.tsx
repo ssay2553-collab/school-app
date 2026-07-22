@@ -1,1047 +1,136 @@
-import { Asset } from "expo-asset";
-import Constants from "expo-constants";
-import * as FileSystem from "expo-file-system";
-import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Sharing from "expo-sharing";
-import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    getDocsFromServer,
-    query,
-    where,
-} from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import React from "react";
 import {
     ActivityIndicator,
-    Alert,
-    Image,
-    Platform,
     SafeAreaView,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from "react-native";
-import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
-import { SCHOOL_CONFIG } from "../../constants/Config";
-import { getSchoolLogo } from "../../constants/Logos";
-import { COLORS, SHADOWS } from "../../constants/theme";
-import { db } from "../../firebaseConfig";
-import {
-    calculatePerformanceFromList,
-    getGradeDetails,
-    calculateCompetitionRanking,
-} from "../../lib/classHelpers";
-
-type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
+import { AcademicReportPreview } from "../../components/admin-dashboard/AcademicReportPreview";
+import { useAcademicRecordDetails, ReportType } from "../../hooks/admin-dashboard/useAcademicRecordDetails";
 
 export default function ViewAcademicRecordDetails() {
-  const params = useLocalSearchParams();
-  const router = useRouter();
+    const params = useLocalSearchParams();
+    const router = useRouter();
+    const reportType = (params.reportType as ReportType) || "End of Term";
 
-  const studentId = params.studentId as string;
-  const termState = params.term as string;
-  const classIdState = params.classId as string;
-  const academicYearState = params.academicYear as string;
-  const reportType = (params.reportType as ReportType) || "End of Term";
+    const {
+        loading,
+        generating,
+        studentName,
+        className,
+        subjectsData,
+        adminRemarks,
+        teacherRemarks,
+        conduct,
+        attitude,
+        interest,
+        promotedTo,
+        nextTermBegins,
+        attendance,
+        adminSig,
+        overallPosition,
+        isPreschool,
+        preschoolAssessments,
+        physicalDev,
+        primary,
+        schoolLogo,
+        isFullReport,
+        TRS,
+        TAS,
+        AGGREGATE,
+        generatePDF,
+        classIdState,
+        academicYearState
+    } = useAcademicRecordDetails();
 
-  const isFullReport = reportType === "End of Term";
-
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [studentName, setStudentName] = useState("");
-  const [className, setClassName] = useState("");
-  const [subjectsData, setSubjectsData] = useState<any[]>([]);
-
-  const [adminRemarks, setAdminRemarks] = useState("");
-  const [teacherRemarks, setTeacherRemarks] = useState("");
-  const [conduct, setConduct] = useState("Excellent");
-  const [attitude, setAttitude] = useState("Very Positive");
-  const [interest, setInterest] = useState("High");
-  const [promotedTo, setPromotedTo] = useState("");
-  const [nextTermBegins, setNextTermBegins] = useState("");
-  const [attendance, setAttendance] = useState("");
-
-  const [adminSig, setAdminSig] = useState("");
-  const [overallPosition, setOverallPosition] = useState<string>("-");
-
-  // Preschool specific data
-  const [isPreschool, setIsPreschool] = useState(false);
-  const [preschoolAssessments, setPreschoolAssessments] = useState<Record<string, string>>({});
-  const [physicalDev, setPhysicalDev] = useState<Record<string, string>>({});
-
-  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
-  const schoolId = (
-    Constants.expoConfig?.extra?.schoolId || "afahjoy"
-  ).toLowerCase();
-  const schoolLogo = getSchoolLogo(schoolId);
-
-  useEffect(() => {
-    const fetchAllData = async () => {
-      if (!studentId || !termState || !classIdState || !academicYearState)
-        return;
-      setLoading(true);
-      try {
-        // Fetch Academic Scores
-        const qScores = query(
-          collection(db, "academicRecords"),
-          where("classId", "==", classIdState),
-          where("academicYear", "==", academicYearState),
-          where("term", "==", termState),
-          where("reportType", "==", reportType),
-          where("status", "==", "approved"),
-        );
-
-        const scoresSnap = await getDocsFromServer(qScores);
-        const resultsMap = new Map();
-        let nameFound = "";
-
-        scoresSnap.docs.forEach((d) => {
-          const data = d.data() as any;
-          const subjectName = data.subject;
-          if (!subjectName) return;
-
-          const studentsList = data.students || [];
-
-          // Standard Competition Ranking for Subject Position
-          const subjectRankData = calculateCompetitionRanking(
-            studentsList.map((s: any) => {
-              let totalScore = 0;
-              if (reportType === "End of Term") {
-                totalScore = parseFloat(
-                  s.finalScore ||
-                    (
-                      parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0)
-                    ).toFixed(2),
-                );
-              } else {
-                totalScore = parseFloat(s.finalScore || s.examsMark || 0);
-              }
-              return {
-                id: s.studentId,
-                total: totalScore,
-              };
-            }),
-            studentId,
-          );
-          const posInSub = subjectRankData.rank;
-
-          const studentEntry = studentsList.find(
-            (s: any) => s.studentId === studentId,
-          );
-          if (studentEntry) {
-            if (!nameFound) nameFound = studentEntry.fullName;
-            let scoreValue = 0;
-            if (reportType === "End of Term") {
-              scoreValue = parseFloat(
-                studentEntry.finalScore ||
-                  (
-                    parseFloat(studentEntry.classScore || 0) +
-                    parseFloat(studentEntry.exam50 || 0)
-                  ).toFixed(2),
-              );
-            } else {
-              scoreValue = parseFloat(
-                studentEntry.finalScore || studentEntry.examsMark || 0,
-              );
-            }
-
-            const gradeObj = getGradeDetails(scoreValue);
-            resultsMap.set(subjectName, {
-              subject: subjectName,
-              classScore: studentEntry.classScore || "-",
-              examsScore:
-                reportType === "End of Term"
-                  ? studentEntry.exam50 || 0
-                  : studentEntry.examsMark || 0,
-              total: scoreValue,
-              grade: gradeObj.grade,
-              aggregate: gradeObj.aggregate,
-              remark: gradeObj.remark,
-              pos: posInSub,
-            });
-          }
-        });
-
-        setStudentName(nameFound);
-        setSubjectsData(Array.from(resultsMap.values()));
-
-        // Fetch class details
-        try {
-          const classDoc = await getDoc(doc(db, "classes", classIdState));
-          if (classDoc.exists()) {
-            const classData: any = classDoc.data();
-            setClassName(classData.className || classData.name || classIdState);
-
-            // Logic to check if preschool
-            const n = (classData.name || "").toUpperCase();
-            const isPre = n.includes("CRECHE") || n.includes("NURSERY") || n.includes("KG") ||
-              n.includes("KINDERGARTEN") || n.includes("TODDLER") || n.includes("PLAYGROUND") ||
-              ["CLASS A", "CLASS B", "LEVEL A", "LEVEL B"].includes(n) || (classData.department || "").toLowerCase() === "pre-school";
-            setIsPreschool(isPre);
-          } else {
-            setClassName(classIdState);
-          }
-        } catch (e) {
-          setClassName(classIdState);
-        }
-
-        // Fetch Head of Institution Signature
-        const qAdmin = query(
-          collection(db, "users"),
-          where("role", "==", "admin"),
-        );
-
-        const adminSnap = await getDocsFromServer(qAdmin);
-        const headAdmin = adminSnap.docs.find((d) => {
-          const r = ((d.data() as any).adminRole || "").toLowerCase();
-          return [
-            "proprietor",
-            "proprietress",
-            "headmaster",
-            "headmistress",
-            "principal",
-            "director",
-            "administrator",
-            "manager",
-          ].some((title) => r.includes(title));
-        });
-
-        if (headAdmin && (headAdmin.data() as any).profile?.signatureUrl) {
-          setAdminSig((headAdmin.data() as any).profile?.signatureUrl);
-        } else {
-          const anySigAdmin = adminSnap.docs.find(
-            (d) => (d.data() as any).profile?.signatureUrl,
-          );
-          if (anySigAdmin) {
-            setAdminSig((anySigAdmin.data() as any).profile?.signatureUrl);
-          }
-        }
-
-        if (isFullReport) {
-          // 1. Fetch Teacher's Behavioral Input (Source of truth for conduct/remarks)
-          const yearSlug = academicYearState.replace(/\//g, "-");
-          const termSlug = termState.replace(/\s+/g, "");
-          const behDocId = `behavioral_${classIdState}_${yearSlug}_${termSlug}`;
-          const behSnap = await getDoc(doc(db, "behavioralRecords", behDocId));
-
-          if (behSnap.exists()) {
-            const behData = behSnap.data();
-            const studentBeh = (behData.students || []).find(
-              (s: any) => s.studentId === studentId,
-            );
-            if (studentBeh) {
-              setConduct(studentBeh.conduct || "Excellent");
-              setAttitude(studentBeh.attitude || "Positive");
-              setInterest(studentBeh.interest || "N/A");
-              setTeacherRemarks(studentBeh.teacherRemarks || "");
-              setPromotedTo(studentBeh.promotedTo || "");
-              if (studentBeh.assessments) setPreschoolAssessments(studentBeh.assessments);
-              if (studentBeh.physicalDev) setPhysicalDev(studentBeh.physicalDev);
-            }
-          }
-
-          // 1b. Fetch Actual Attendance Data from the 'attendance' collection
-          try {
-            const qAtt = query(
-              collection(db, "attendance"),
-              where("classId", "==", classIdState),
-              where("academicYear", "==", academicYearState),
-              where("term", "==", termState),
-            );
-            const attSnap = await getDocs(qAtt);
-            if (!attSnap.empty) {
-              let presentCount = 0;
-              let totalDays = attSnap.docs.length;
-
-              attSnap.docs.forEach((d) => {
-                const dayData = d.data();
-                const studentEntry = dayData.students?.[studentId];
-                if (studentEntry && studentEntry.status === "present") {
-                  presentCount++;
-                }
-              });
-              setAttendance(`${presentCount} / ${totalDays}`);
-            }
-          } catch (e) {
-            console.log("Error fetching attendance stats:", e);
-          }
-
-          // 2. Fetch Finalized Report (Overlay admin remarks or finalized data)
-          const reportId =
-            `${studentId}_${academicYearState}_${termState}_${reportType.replace(/\s+/g, "")}`.replace(
-              /\//g,
-              "-",
-            );
-          const reportSnap = await getDoc(doc(db, "student-reports", reportId));
-          if (reportSnap.exists()) {
-            const r = reportSnap.data() as any;
-            if (r.adminRemarks) setAdminRemarks(r.adminRemarks);
-            if (r.nextTermBegins) setNextTermBegins(r.nextTermBegins);
-            // If report is finalized, it might overwrite behavioral if preferred,
-            // but usually behavioral from teacher is what's being looked for here.
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAllData();
-  }, [studentId, termState, classIdState, academicYearState, reportType]);
-
-  const {
-    trs: TRS,
-    tas: TAS,
-    aggregate: AGGREGATE,
-  } = useMemo(() => {
-    return calculatePerformanceFromList(subjectsData);
-  }, [subjectsData]);
-
-  const generatePDF = async () => {
-    if (subjectsData.length === 0) {
-      Alert.alert("No Data", "No records found.");
-      return;
-    }
-
-    if (generating) return;
-    setGenerating(true);
-
-    try {
-      let logoDataUri = "";
-      let sigDataUri = "";
-
-      const getBase64FromUri = async (uri: string) => {
-        if (Platform.OS === "web") {
-          try {
-            const resp = await fetch(uri);
-            const blob = await resp.blob();
-            return new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-          } catch (e) {
-            console.warn("Base64 fetch failed for", uri, e);
-            return uri;
-          }
-        } else {
-          try {
-            const tempPath = `${FileSystem.cacheDirectory}temp_${Math.random().toString(36).substring(7)}.png`;
-            const downloaded = await FileSystem.downloadAsync(uri, tempPath);
-            const b64 = await FileSystem.readAsStringAsync(downloaded.uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            return `data:image/png;base64,${b64}`;
-          } catch (e) {
-            console.warn("Base64 mobile failed for", uri, e);
-            return uri;
-          }
-        }
-      };
-
-      // Logo conversion
-      try {
-        const asset = Asset.fromModule(schoolLogo);
-        if (!asset.localUri && !asset.uri) await asset.downloadAsync();
-        logoDataUri = await getBase64FromUri(asset.localUri || asset.uri);
-      } catch (e) {}
-
-      // Signatures conversion
-      if (adminSig) sigDataUri = await getBase64FromUri(adminSig);
-
-      // 🧠 CALCULATE OVERALL POSITION
-      let computedPosition = "-";
-      try {
-        const qAll = query(
-          collection(db, "academicRecords"),
-          where("classId", "==", classIdState),
-          where("academicYear", "==", academicYearState),
-          where("term", "==", termState),
-          where("reportType", "==", reportType),
-          where("status", "==", "approved"),
-        );
-        const snap = await getDocs(qAll);
-        let allStudents: any = {};
-        snap.docs.forEach((doc) => {
-          const data = doc.data() as any;
-          (data.students || []).forEach((s: any) => {
-            if (!allStudents[s.studentId]) {
-              allStudents[s.studentId] = { name: s.fullName, total: 0 };
-            }
-            let score = 0;
-            if (reportType === "End of Term") {
-              score =
-                parseFloat(s.finalScore) ||
-                parseFloat(s.classScore || 0) + parseFloat(s.exam50 || 0);
-            } else {
-              score = parseFloat(s.finalScore || s.examsMark || 0);
-            }
-            allStudents[s.studentId].total += score;
-          });
-        });
-
-        // 🧠 CALCULATE OVERALL POSITION (Standard Competition Ranking)
-        const rankedData = Object.entries(allStudents).map(([id, data]: any) => ({
-          id,
-          total: data.total,
-        }));
-        const overallRankInfo = calculateCompetitionRanking(rankedData, studentId);
-        if (overallRankInfo.rank > 0) {
-          computedPosition = `${overallRankInfo.rank}/${overallRankInfo.total}`;
-        }
-      } catch (e) {
-        console.log("Ranking error:", e);
-      }
-      setOverallPosition(computedPosition);
-
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VERIFY-${studentId}`;
-      const qrDataUri = await getBase64FromUri(qrUrl);
-
-      const generatedOn = new Date().toLocaleString();
-
-      const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8" />
-      <style>
-        @page {
-          size: A4;
-          margin: 0;
-        }
-        html, body {
-          margin: 0 !important;
-          padding: 0 !important;
-          height: auto !important;
-          min-height: 100% !important;
-          overflow: visible !important;
-          display: block !important;
-          background-color: white;
-        }
-        body {
-          font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-          color: #0f172a;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        .paper {
-          padding: 15mm 18mm;
-          width: 210mm;
-          min-height: 297mm;
-          box-sizing: border-box;
-          display: block;
-          page-break-after: always;
-          overflow: visible !important;
-          position: relative;
-          margin: 0 auto;
-          background-color: white;
-        }
-
-        .header-table { width: 100%; border-bottom: 2pt solid #0f172a; padding-bottom: 15px; margin-bottom: 20px; }
-        .header-logo { width: 80px; vertical-align: middle; }
-        .header-text { text-align: left; padding-left: 20px; vertical-align: middle; }
-        .school-name { font-size: 22pt; font-weight: 900; margin: 0; text-transform: uppercase; color: #0f172a; }
-        .school-info { font-size: 9pt; margin: 2px 0; font-weight: 600; color: #475569; }
-
-        .title { text-align:center; font-weight:900; margin: 20px 0; font-size: 14pt; letter-spacing: 1.5pt; text-transform: uppercase; }
-
-        .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1pt solid #E2E8F0; }
-        .info-grid td { padding: 8pt 12pt; font-size: 10pt; border: 1pt solid #E2E8F0; }
-        .label-cell { background-color: #F1F5F9; color: #475569; font-weight: 800; width: 25%; font-size: 8pt; text-transform: uppercase; }
-        .value-cell { width: 25%; font-weight: 700; color: #0f172a; }
-
-        table.results { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; border: 1.5pt solid #0f172a; }
-        table.results th { background-color: #0f172a !important; -webkit-print-color-adjust: exact; color: #fff; padding: 10pt 5pt; font-size: 9pt; border: 1pt solid #0f172a; text-transform: uppercase; }
-        table.results td { padding: 8pt 5pt; font-size: 10pt; border: 1pt solid #cbd5e1; text-align: center; font-weight: 600; color: #0f172a; }
-        table.results tr:nth-child(even) { background-color: #f8fafc; }
-        .subj-name { text-align: left !important; padding-left: 12pt !important; font-weight: 800; text-transform: uppercase; color: #0f172a; }
-
-        .summary-box { border: 1.5pt solid #0f172a; padding: 12pt; margin-bottom: 20px; background-color: #fff; }
-        .summary-text { font-size: 11pt; font-weight: 900; margin: 0; color: #0f172a; text-align: center; letter-spacing: 1pt; }
-
-        .remarks-box { margin-top: 10pt; border: 1pt solid #cbd5e1; padding: 15pt; border-radius: 0; background-color: #fff; }
-        .remark-line { margin-bottom: 10pt; font-size: 10pt; line-height: 1.5; color: #1e293b; border-bottom: 0.5pt dashed #cbd5e1; padding-bottom: 5pt; }
-        .remark-header { font-weight: 900; color: #0f172a; margin-right: 10pt; font-size: 8.5pt; text-transform: uppercase; }
-
-        .footer { display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; }
-        .sig-section { width: 40%; text-align: center; }
-        .sig-image { height: 45pt; object-fit: contain; margin-bottom: -5pt; max-width: 90%; }
-        .sig-line { border-top: 1pt solid #1E293B; width: 85%; margin: 5pt auto; }
-        .sig-label { font-size: 8.5pt; font-weight: 800; text-transform: uppercase; color: #64748B; }
-
-        .qr-section { text-align: right; width: 20%; }
-        .qr-img { width: 50pt; height: 50pt; opacity: 0.8; }
-      </style>
-    </head>
-    <body>
-      <div class="paper">
-        <table class="header-table">
-          <tr>
-            <td class="header-logo">
-              ${logoDataUri ? `<img src="${logoDataUri}" style="width: 80px; height: 80px;" />` : ""}
-            </td>
-            <td class="header-text">
-              <h1 class="school-name">${SCHOOL_CONFIG.fullName}</h1>
-              <p class="school-info">${SCHOOL_CONFIG.address || ""}</p>
-              <p class="school-info">Contact: ${SCHOOL_CONFIG.hotline || ""} | Email: ${SCHOOL_CONFIG.email || ""}</p>
-            </td>
-          </tr>
-        </table>
-
-        <div class="title">${reportType} Progress Report</div>
-
-        <table class="info-grid">
-          <tr>
-            <td class="label-cell">Student Name</td><td class="value-cell">${studentName}</td>
-            <td class="label-cell">Class/Grade</td><td class="value-cell">${className}</td>
-          </tr>
-          <tr>
-            <td class="label-cell">Academic Year</td><td class="value-cell">${academicYearState}</td>
-            <td class="label-cell">Term/Period</td><td class="value-cell">${termState}</td>
-          </tr>
-          <tr>
-            <td class="label-cell">Position</td><td class="value-cell">${overallPosition}</td>
-            <td class="label-cell">Attendance</td><td class="value-cell">${attendance || "N/A"}</td>
-          </tr>
-        </table>
-
-        <table class="results">
-          <thead>
-            <tr>
-              <th style="width: 30%;">Subject</th>
-              ${isFullReport ? '<th style="width: 10%;">Class</th><th style="width: 10%;">Exams</th><th style="width: 10%;">Total</th>' : '<th style="width: 10%;">Total</th>'}
-              <th style="width: 8%;">Grade</th>
-              <th style="width: 8%;">Pos.</th>
-              <th style="width: 24%;">Remark</th>
-            </tr>
-          </thead>
-          <tbody>
-          ${subjectsData
-            .map((s) => {
-              const classScoreDisplay = isNaN(Number(s.classScore))
-                ? s.classScore
-                : Number(s.classScore).toFixed(1);
-              const examsScoreDisplay = isNaN(Number(s.examsScore))
-                ? s.examsScore
-                : Number(s.examsScore).toFixed(1);
-              const totalDisplay = isNaN(Number(s.total))
-                ? s.total
-                : Number(s.total).toFixed(1);
-              return `
-            <tr>
-              <td class="subj-name">${s.subject}</td>
-              ${
-                isFullReport
-                  ? `
-                <td>${classScoreDisplay}</td>
-                <td>${examsScoreDisplay}</td>
-                <td style="font-weight: 900;">${totalDisplay}</td>
-              `
-                  : `<td>${totalDisplay}</td>`
-              }
-              <td>${s.grade}</td>
-              <td>${s.pos}</td>
-              <td style="font-size: 9pt; text-align: left; padding-left: 5pt;">${s.remark}</td>
-            </tr>`;
-            })
-            .join("")}
-          </tbody>
-        </table>
-
-        <div class="summary-box">
-          <p class="summary-text">TRS: ${TRS} | TAS: ${TAS} | AGGREGATE: ${AGGREGATE}</p>
-        </div>
-
-        <div class="remarks-box">
-          ${isFullReport && !isPreschool ? `<div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>` : ""}
-          ${isFullReport && isPreschool ? `
-            <div class="remark-line"><span class="remark-header">PHYSICAL DEV:</span>
-              ${physicalDev.date ? `Date: ${physicalDev.date} | ` : ""}
-              HT: ${physicalDev.height || "-"}m |
-              WT: ${physicalDev.weight || "-"}kg
-            </div>
-            <div style="font-size: 8pt; margin-bottom: 10pt; color: #475569;">
-                <b>Assessments:</b> ${Object.entries(preschoolAssessments).filter(([_, v]) => v !== 'N/A').map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ') || 'None recorded'}
-            </div>
-          ` : ""}
-          <div class="remark-line"><span class="remark-header">CLASS TEACHER:</span> ${teacherRemarks || "Satisfactory performance."}</div>
-          <div class="remark-line"><span class="remark-header">ADMINISTRATIVE:</span> ${adminRemarks || "Keep up the hard work."}</div>
-          <div class="remark-line"><span class="remark-header">NEXT TERM BEGINS:</span> <b>${nextTermBegins || "TBA"}</b></div>
-          ${promotedTo ? `<div class="remark-line"><span class="remark-header">PROMOTED TO:</span> <b>${promotedTo}</b></div>` : ""}
-        </div>
-
-        <div class="footer">
-          <div class="sig-section" style="width: 60%; text-align: left;">
-            ${sigDataUri ? `<img src="${sigDataUri}" class="sig-image" style="margin-left: 20px;" />` : '<div style="height:45pt;"></div>'}
-            <div class="sig-line" style="width: 80%; margin-left: 0;"></div>
-            <div class="sig-label" style="margin-left: 20px;">Head of Institution</div>
-          </div>
-          <div class="qr-section">
-            <img src="${qrDataUri}" class="qr-img"/>
-            <div style="font-size:7pt; color:#64748B; margin-top:4pt;">Verify Report</div>
-          </div>
-        </div>
-      </div>
-    </body>
-    </html>
-    `;
-
-      if (Platform.OS !== "web") {
-        const { uri } = await Print.printToFileAsync({ html });
-        await Sharing.shareAsync(uri);
-      } else {
-        await Print.printAsync({ html });
-      }
-    } catch (err) {
-      console.log(err);
-      Alert.alert("Error", "PDF generation failed");
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <SVGIcon name="chevron-left" size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <Text style={styles.navTitle}>Academic Record Preview</Text>
-        <TouchableOpacity
-          onPress={generatePDF}
-          style={[styles.downloadHeaderBtn, { backgroundColor: primary }]}
-          disabled={generating}
-        >
-          {generating ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <>
-              <SVGIcon name="download" size={18} color="#fff" />
-              <Text style={styles.downloadHeaderText}>PDF</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView contentContainerStyle={{ padding: 15 }}>
-        {loading ? (
-          <ActivityIndicator
-            size="large"
-            color={primary}
-            style={{ marginTop: 50 }}
-          />
-        ) : (
-          <Animatable.View
-            animation="fadeInUp"
-            duration={600}
-            style={styles.paper}
-          >
-            {/* Letterhead */}
-            <View style={styles.paperLetterhead}>
-              <Image
-                source={schoolLogo}
-                style={styles.paperLogo}
-                resizeMode="contain"
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.paperSchoolName}>
-                  {SCHOOL_CONFIG.fullName}
-                </Text>
-                <Text style={styles.paperReportType}>
-                  {reportType.toUpperCase()} PROGRESS REPORT
-                </Text>
-                <Text style={styles.paperSchoolInfo}>
-                  {SCHOOL_CONFIG.hotline} | {SCHOOL_CONFIG.email}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.paperDivider} />
-
-            <View style={styles.paperInfoGrid}>
-              <View style={styles.paperInfoItem}>
-                <Text style={styles.paperInfoLabel}>STUDENT:</Text>
-                <Text style={styles.paperInfoValue}>
-                  {studentName || "N/A"}
-                </Text>
-              </View>
-              <View style={styles.paperInfoItem}>
-                <Text style={styles.paperInfoLabel}>CLASS:</Text>
-                <Text style={styles.paperInfoValue}>
-                  {className || classIdState}
-                </Text>
-              </View>
-              <View style={styles.paperInfoItem}>
-                <Text style={styles.paperInfoLabel}>YEAR:</Text>
-                <Text style={styles.paperInfoValue}>{academicYearState}</Text>
-              </View>
-              <View style={styles.paperInfoItem}>
-                <Text style={styles.paperInfoLabel}>POSITION:</Text>
-                <Text style={styles.paperInfoValue}>{overallPosition}</Text>
-              </View>
-              <View style={styles.paperInfoItem}>
-                <Text style={styles.paperInfoLabel}>ATTENDANCE:</Text>
-                <Text style={styles.paperInfoValue}>{attendance || "N/A"}</Text>
-              </View>
-            </View>
-
-            {/* Table */}
-            <View style={styles.paperTable}>
-              <View style={styles.paperTableHeader}>
-                <Text
-                  style={[
-                    styles.paperHeaderCell,
-                    { flex: 2, textAlign: "left" },
-                  ]}
+    return (
+        <SafeAreaView style={styles.container}>
+            <View style={styles.navBar}>
+                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+                    <SVGIcon name="chevron-left" size={24} color="#1E293B" />
+                </TouchableOpacity>
+                <Text style={styles.navTitle}>Academic Record Preview</Text>
+                <TouchableOpacity
+                    onPress={generatePDF}
+                    style={[styles.downloadHeaderBtn, { backgroundColor: primary }]}
+                    disabled={generating}
                 >
-                  SUBJECT
-                </Text>
-                {isFullReport && (
-                  <>
-                    <Text style={styles.paperHeaderCell}>CLS</Text>
-                    <Text style={styles.paperHeaderCell}>EXM</Text>
-                  </>
-                )}
-                <Text style={styles.paperHeaderCell}>TOT</Text>
-                <Text style={styles.paperHeaderCell}>GRD</Text>
-                <Text style={[styles.paperHeaderCell, { flex: 1.5 }]}>
-                  REMARK
-                </Text>
-              </View>
-              {subjectsData.length === 0 ? (
-                <View style={{ padding: 20, alignItems: "center" }}>
-                  <Text style={{ color: "#94A3B8" }}>No records found</Text>
-                </View>
-              ) : (
-                subjectsData.map((s, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.paperTableRow,
-                      i % 2 !== 0 && { backgroundColor: "#F8FAFC" },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.paperCell,
-                        { flex: 2, textAlign: "left", fontWeight: "800" },
-                      ]}
-                    >
-                      {s.subject}
-                    </Text>
-                    {isFullReport && (
-                      <>
-                        <Text style={styles.paperCell}>
-                          {isNaN(Number(s.classScore))
-                            ? s.classScore
-                            : Number(s.classScore).toFixed(0)}
-                        </Text>
-                        <Text style={styles.paperCell}>
-                          {isNaN(Number(s.examsScore))
-                            ? s.examsScore
-                            : Number(s.examsScore).toFixed(0)}
-                        </Text>
-                      </>
+                    {generating ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                        <>
+                            <SVGIcon name="download" size={18} color="#fff" />
+                            <Text style={styles.downloadHeaderText}>PDF</Text>
+                        </>
                     )}
-                    <Text
-                      style={[
-                        styles.paperCell,
-                        { fontWeight: "900", color: primary },
-                      ]}
-                    >
-                      {isNaN(Number(s.total))
-                        ? s.total
-                        : Number(s.total).toFixed(1)}
-                    </Text>
-                    <Text style={[styles.paperCell, { fontWeight: "700" }]}>
-                      {s.grade}
-                    </Text>
-                    <Text
-                      style={[styles.paperCell, { flex: 1.5, fontSize: 8 }]}
-                    >
-                      {s.remark}
-                    </Text>
-                  </View>
-                ))
-              )}
+                </TouchableOpacity>
             </View>
 
-            <View style={styles.paperSummaryRow}>
-              <View style={{ alignItems: "flex-end" }}>
-                <Text style={[styles.paperSummaryLabel, { fontSize: 9 }]}>
-                  TRS: <Text style={{ color: "#1E293B" }}>{TRS}</Text> | TAS:{" "}
-                  <Text style={{ color: "#1E293B" }}>{TAS}</Text>
-                </Text>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 10,
-                    marginTop: 4,
-                  }}
-                >
-                  <Text style={styles.paperSummaryLabel}>
-                    OVERALL AGGREGATE:
-                  </Text>
-                  <Text style={styles.paperSummaryValue}>{AGGREGATE}</Text>
+            {loading ? (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={primary} />
                 </View>
-              </View>
-            </View>
-
-            <View style={styles.paperRemarksSection}>
-              {isFullReport && !isPreschool && (
-                <>
-                  <Text style={styles.paperSectionTitle}>
-                    BEHAVIORAL RATINGS
-                  </Text>
-                  <Text style={styles.paperRemarkLine}>
-                    Conduct:{" "}
-                    <Text style={{ fontWeight: "700" }}>{conduct}</Text> |
-                    Attitude:{" "}
-                    <Text style={{ fontWeight: "700" }}>{attitude}</Text> |
-                    Interest:{" "}
-                    <Text style={{ fontWeight: "700" }}>{interest}</Text>
-                  </Text>
-                </>
-              )}
-
-              {isFullReport && isPreschool && (
-                 <>
-                  <Text style={styles.paperSectionTitle}>
-                    PHYSICAL DEVELOPMENT & ASSESSMENTS
-                  </Text>
-                  <Text style={styles.paperRemarkLine}>
-                    {physicalDev.date ? `Date: ${physicalDev.date} | ` : ""}
-                    Height: <Text style={{ fontWeight: "700" }}>{physicalDev.height || "N/A"}m</Text> |
-                    Weight: <Text style={{ fontWeight: "700" }}>{physicalDev.weight || "N/A"}kg</Text>
-                  </Text>
-                  <Text style={[styles.paperRemarkText, { marginTop: 5, fontSize: 9 }]}>
-                    {Object.keys(preschoolAssessments).length} key developmental milestones recorded.
-                  </Text>
-                </>
-              )}
-
-              <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>
-                TEACHER'S REMARKS
-              </Text>
-              <Text style={styles.paperRemarkText}>
-                {teacherRemarks || "Satisfactory performance."}
-              </Text>
-
-              <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>
-                ADMIN REMARKS
-              </Text>
-              <Text style={styles.paperRemarkText}>
-                {adminRemarks || "Keep up the hard work."}
-              </Text>
-
-              <View style={styles.paperNextTerm}>
-                <Text style={styles.paperNextTermLabel}>NEXT TERM BEGINS:</Text>
-                <Text style={styles.paperNextTermVal}>
-                  {nextTermBegins || "TBA"}
-                </Text>
-              </View>
-
-              {promotedTo ? (
-                <View style={[styles.paperNextTerm, { marginTop: 5 }]}>
-                  <Text style={styles.paperNextTermLabel}>PROMOTED TO:</Text>
-                  <Text style={[styles.paperNextTermVal, { color: "#10b981" }]}>
-                    {promotedTo}
-                  </Text>
-                </View>
-              ) : null}
-
-              {/* Signature Preview */}
-              <View style={styles.paperSigRow}>
-                <View style={{ flex: 1 }} />
-                <View style={styles.paperSigItem}>
-                  {adminSig ? (
-                    <Image
-                      source={{ uri: adminSig }}
-                      style={styles.paperSigImg}
-                    />
-                  ) : (
-                    <View style={styles.paperSigSpace} />
-                  )}
-                  <View style={styles.paperSigLine} />
-                  <Text style={styles.paperSigLabel}>Head of Institution</Text>
-                </View>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={[styles.downloadBtn, { backgroundColor: primary }]}
-              onPress={generatePDF}
-              disabled={generating}
-            >
-              {generating ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <SVGIcon name="download" size={20} color="#fff" />
-                  <Text style={styles.downloadBtnText}>
-                    Generate Official PDF
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </Animatable.View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
-  );
+            ) : (
+                <AcademicReportPreview
+                    primary={primary}
+                    schoolLogo={schoolLogo}
+                    reportType={reportType}
+                    studentName={studentName}
+                    className={className}
+                    classIdState={classIdState}
+                    academicYearState={academicYearState}
+                    overallPosition={overallPosition}
+                    attendance={attendance}
+                    isFullReport={isFullReport}
+                    subjectsData={subjectsData}
+                    TRS={TRS}
+                    TAS={TAS}
+                    AGGREGATE={AGGREGATE}
+                    isPreschool={isPreschool}
+                    conduct={conduct}
+                    attitude={attitude}
+                    interest={interest}
+                    physicalDev={physicalDev}
+                    preschoolAssessments={preschoolAssessments}
+                    teacherRemarks={teacherRemarks}
+                    adminRemarks={adminRemarks}
+                    nextTermBegins={nextTermBegins}
+                    promotedTo={promotedTo}
+                    adminSig={adminSig}
+                    generating={generating}
+                    generatePDF={generatePDF}
+                />
+            )}
+        </SafeAreaView>
+    );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F1F5F9" },
-  navBar: {
-    height: 65,
-    backgroundColor: "#fff",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 15,
-    borderBottomWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  backBtn: { padding: 8 },
-  navTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
-  downloadHeaderBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 6,
-  },
-  downloadHeaderText: { color: "#fff", fontWeight: "800", fontSize: 12 },
-  paper: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 4,
-    ...SHADOWS.medium,
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-  },
-  paperLetterhead: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  paperLogo: { width: 50, height: 50, marginRight: 15 },
-  paperSchoolName: { fontSize: 16, fontWeight: "900", color: "#1E293B" },
-  paperSchoolInfo: {
-    fontSize: 8,
-    fontWeight: "600",
-    color: "#64748B",
-    marginTop: 2,
-  },
-  paperReportType: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#64748B",
-    marginTop: 2,
-  },
-  paperDivider: { height: 2, backgroundColor: "#1E293B", marginVertical: 10 },
-  paperInfoGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 15,
-  },
-  paperInfoItem: { width: "47%", marginBottom: 5 },
-  paperInfoLabel: { fontSize: 8, fontWeight: "900", color: "#94A3B8" },
-  paperInfoValue: { fontSize: 11, fontWeight: "700", color: "#1E293B" },
-  paperTable: { borderWidth: 1, borderColor: "#E2E8F0", marginBottom: 15 },
-  paperTableHeader: {
-    flexDirection: "row",
-    backgroundColor: "#1E293B",
-    borderBottomWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  paperTableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  paperCell: {
-    flex: 1,
-    padding: 8,
-    fontSize: 10,
-    textAlign: "center",
-    color: "#475569",
-  },
-  paperHeaderCell: {
-    flex: 1,
-    padding: 8,
-    fontSize: 10,
-    textAlign: "center",
-    color: "#fff",
-    fontWeight: "900",
-  },
-  paperSummaryRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 15,
-  },
-  paperSummaryLabel: { fontSize: 10, fontWeight: "900", color: "#64748B" },
-  paperSummaryValue: { fontSize: 18, fontWeight: "900", color: "#ef4444" },
-  paperRemarksSection: {
-    borderTopWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingTop: 15,
-    marginBottom: 15,
-  },
-  paperSectionTitle: {
-    fontSize: 9,
-    fontWeight: "900",
-    color: "#1E293B",
-    textDecorationLine: "underline",
-    marginBottom: 5,
-  },
-  paperRemarkLine: { fontSize: 11, color: "#475569" },
-  paperRemarkText: { fontSize: 11, color: "#475569", fontStyle: "italic" },
-  paperNextTerm: { flexDirection: "row", marginTop: 10, gap: 5 },
-  paperNextTermLabel: { fontSize: 10, fontWeight: "900" },
-  paperNextTermVal: { fontSize: 10, fontWeight: "700", color: COLORS.primary },
-  paperSigRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: 20,
-    gap: 20,
-  },
-  paperSigItem: { flex: 1, alignItems: "center" },
-  paperSigImg: { width: "100%", height: 40, resizeMode: "contain" },
-  paperSigSpace: { height: 40 },
-  paperSigLine: {
-    width: "100%",
-    height: 1,
-    backgroundColor: "#1E293B",
-    marginVertical: 4,
-  },
-  paperSigLabel: { fontSize: 8, fontWeight: "800", color: "#64748B" },
-  downloadBtn: {
-    flexDirection: "row",
-    padding: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 10,
-  },
-  downloadBtnText: {
-    color: "#fff",
-    fontWeight: "900",
-    marginLeft: 10,
-    fontSize: 14,
-  },
+    container: { flex: 1, backgroundColor: "#F1F5F9" },
+    navBar: {
+        height: 65,
+        backgroundColor: "#fff",
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 15,
+        borderBottomWidth: 1,
+        borderColor: "#E2E8F0",
+    },
+    backBtn: { padding: 8 },
+    navTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
+    downloadHeaderBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        gap: 6,
+    },
+    downloadHeaderText: { color: "#fff", fontWeight: "800", fontSize: 12 },
+    loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

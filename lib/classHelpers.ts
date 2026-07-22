@@ -146,59 +146,63 @@ export const getAutoRemarks = (aggregate: number, isTeacher: boolean = false) =>
 };
 
 /**
- * Calculates the TRS (Total Raw Score), TAS (Total Aggregate Score - Core 3 + Best 3),
- * and Aggregate (Sum of grades - Core 3 + Best 3) based on standard education metrics.
+ * Calculates the TRS (Total Raw Score), TAS (Total Aggregate Score - Core + Best Electives),
+ * and Aggregate (Sum of grades - Core + Best Electives) based on standard education metrics.
  *
  * @param subjects Array of subject objects with 'subject', 'total' (score), and 'grade' (string/number)
  */
 export const calculatePerformanceFromList = (subjects: any[]) => {
   if (!subjects || subjects.length === 0) {
-    return { trs: "0.00", tas: "0.00", aggregate: 54 }; // 6 subjects * Grade 9
+    return { trs: "0.00", tas: "0.00", aggregate: 54 }; // Default for 6 subjects * Grade 9
   }
 
-  const coreList = ["Mathematics", "Science", "English", "Social Studies"]; // Standard 4 cores or 3?
-  // Most Ghana systems use 4 cores for JHS/SHS.
-  // Let's stick to what was there but maybe make it more robust.
-  const targetCores = ["mathematics", "science", "english"];
+  // Define potential core subjects
+  const targetCores = ["mathematics", "science", "english", "social studies"];
 
   // 1. TRS: Sum of ALL scores
   const trsValue = subjects.reduce((acc, curr) => acc + (parseFloat(curr.total) || 0), 0);
 
-  // Split into Core and Others
+  // Split into Core and Electives
   const cores = subjects.filter((s) =>
     targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase())
   );
 
-  const others = subjects
-    .filter(
-      (s) => !targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase())
-    )
-    .sort((a, b) => (parseFloat(a.total) || 0) - (parseFloat(b.total) || 0)); // For TAS we want highest scores
+  const electives = subjects.filter(
+    (s) => !targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase())
+  );
 
-  const othersForGrade = [...subjects]
-    .filter(
-      (s) => !targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase())
-    )
-    .sort((a, b) => (parseInt(a.grade) || 9) - (parseInt(b.grade) || 9)); // For Aggregate we want lowest grades
+  /**
+   * Grading Logic:
+   * JHS (BECE): 4 Cores + 2 Best Electives
+   * SHS (WASSCE/University): 3 Cores + 3 Best Electives
+   * We'll adapt based on found cores.
+   */
+  const coreCount = cores.length >= 4 ? 4 : 3;
+  const electiveCount = 6 - coreCount;
 
-  // Aggregate (3 Cores + Best 3 Electives)
-  const coreGradeSum = cores.reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
-  const electiveGradeSum = othersForGrade
-    .slice(0, 3)
-    .reduce((a, c) => a + (parseInt(c.grade) || 9), 0);
+  // Sort electives for Aggregate (best grade first - lowest number)
+  const sortedElectivesForGrade = [...electives].sort(
+    (a, b) => (parseInt(a.aggregate || a.grade) || 9) - (parseInt(b.aggregate || b.grade) || 9)
+  );
 
-  const missingCoresCount = Math.max(0, 3 - cores.length);
-  const missingElectivesCount = Math.max(0, 3 - othersForGrade.length);
+  // Sort electives for Score (highest score first)
+  const sortedElectivesForScore = [...electives].sort(
+    (a, b) => (parseFloat(b.total) || 0) - (parseFloat(a.total) || 0)
+  );
+
+  // Sum up Cores (limited to coreCount)
+  const coreGradeSum = cores.slice(0, coreCount).reduce((a, c) => a + (parseInt(c.aggregate || c.grade) || 9), 0);
+  const coreScoreSum = cores.slice(0, coreCount).reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
+
+  // Sum up Electives (limited to electiveCount)
+  const electiveGradeSum = sortedElectivesForGrade.slice(0, electiveCount).reduce((a, c) => a + (parseInt(c.aggregate || c.grade) || 9), 0);
+  const electiveScoreSum = sortedElectivesForScore.slice(0, electiveCount).reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
+
+  // Penalize missing subjects with Grade 9
+  const missingCoresCount = Math.max(0, coreCount - cores.length);
+  const missingElectivesCount = Math.max(0, electiveCount - electives.length);
   const aggregate = coreGradeSum + electiveGradeSum + (missingCoresCount + missingElectivesCount) * 9;
 
-  // TAS (3 Cores + Best 3 Scores)
-  // Re-sort others for highest scores
-  const othersForScore = others.reverse();
-
-  const coreScoreSum = cores.reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
-  const electiveScoreSum = othersForScore
-    .slice(0, 3)
-    .reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
   const tasValue = coreScoreSum + electiveScoreSum;
 
   return {
@@ -233,6 +237,27 @@ export const calculateCompetitionRanking = (
   }
 
   return { rank: targetRank, total: sorted.length };
+};
+
+/**
+ * Calculates a student's total score for a subject based on report type.
+ */
+export const calculateStudentTotalScore = (s: any, reportType: string): number => {
+  if (reportType === "End of Term") {
+    // Priority: finalScore > classScore + exam50
+    if (s.finalScore !== undefined && s.finalScore !== null && s.finalScore !== "") {
+      return parseFloat(s.finalScore) || 0;
+    }
+    const classScore = parseFloat(s.classScore || 0);
+    const exam50 = parseFloat(s.exam50 || 0);
+    return parseFloat((classScore + exam50).toFixed(2));
+  } else {
+    // Mid-term / Mock
+    if (s.finalScore !== undefined && s.finalScore !== null && s.finalScore !== "") {
+      return parseFloat(s.finalScore) || 0;
+    }
+    return parseFloat(s.examsMark || 0);
+  }
 };
 
 /**

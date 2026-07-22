@@ -82,7 +82,7 @@ export const sendFeeReminders = onSchedule("0 15 26,27 * *", async (event) => {
  * Deletes an expenditure entry and logs the action for audit.
  * KEEPING THIS for secure audit trail.
  */
-export const deleteExpenditure = onCall(async (req) => {
+export const deleteExpenditure = onCall({ invoker: "public" }, async (req) => {
   const auth = req.auth;
   if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
 

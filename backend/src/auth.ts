@@ -12,6 +12,7 @@ if (admin.apps.length === 0) {
  */
 export const repairStudentMigration = onCall({
   maxInstances: 5,
+  invoker: "public",
 }, async (request) => {
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "User must be authenticated.");

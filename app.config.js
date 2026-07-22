@@ -310,7 +310,7 @@ module.exports = ({ config }) => {
       },
     },
     brain: {
-      name: "Bright Brain",
+      name: "BBMS APP",
       slug: "brain",
       package: "com.saysmanage.brain",
       scheme: "brain",

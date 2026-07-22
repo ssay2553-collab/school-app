@@ -86,6 +86,11 @@ export default function StudentAcademicReport() {
   const [fetchingReport, setFetchingReport] = useState(false);
   const [overallPosition, setOverallPosition] = useState("N/A");
 
+  // Preschool specific data
+  const [isPreschool, setIsPreschool] = useState(false);
+  const [preschoolAssessments, setPreschoolAssessments] = useState<Record<string, string>>({});
+  const [physicalDev, setPhysicalDev] = useState<Record<string, string>>({});
+
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [reportHistory, setReportHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -118,8 +123,15 @@ export default function StudentAcademicReport() {
     }
   };
 
-  const [teacherSig, setTeacherSig] = useState("");
   const [adminSig, setAdminSig] = useState("");
+  const [teacherRemarks, setTeacherRemarks] = useState("");
+  const [adminRemarks, setAdminRemarks] = useState("");
+  const [conduct, setConduct] = useState("Excellent");
+  const [attitude, setAttitude] = useState("Very Positive");
+  const [interest, setInterest] = useState("High");
+  const [promotedTo, setPromotedTo] = useState("");
+  const [nextTermBegins, setNextTermBegins] = useState("");
+  const [attendance, setAttendance] = useState("");
 
   useEffect(() => {
     if (!appUser || appUser.role !== "parent") return;
@@ -281,6 +293,13 @@ export default function StudentAcademicReport() {
         if (classDoc.exists()) {
           const classData: any = classDoc.data();
           setClassName(classData.className || classData.name || classId);
+
+          // Logic to check if preschool
+          const n = (classData.name || "").toUpperCase();
+          const isPre = n.includes("CRECHE") || n.includes("NURSERY") || n.includes("KG") ||
+            n.includes("KINDERGARTEN") || n.includes("TODDLER") || n.includes("PLAYGROUND") ||
+            ["CLASS A", "CLASS B", "LEVEL A", "LEVEL B"].includes(n) || (classData.department || "").toLowerCase() === "pre-school";
+          setIsPreschool(isPre);
         } else {
           setClassName(classId);
         }
@@ -320,20 +339,72 @@ export default function StudentAcademicReport() {
         }
       }
 
-      const reportId =
-        `${selectedChildId}_${selectedYear}_${selectedTerm}_${selectedReportType.replace(/\s+/g, "")}`.replace(
-          /\//g,
-          "-",
-        );
+      // Load Metadata from student-reports
+      const reportId = `${selectedChildId}_${selectedYear}_${selectedTerm}_${selectedReportType.replace(/\s+/g, "")}`.replace(/\//g, "-");
       const snap = await getDoc(doc(db, "student-reports", reportId));
+
       if (snap.exists()) {
         const reportData = snap.data() as any;
         setReport(reportData);
-        if (reportData.overallPosition) {
-          setOverallPosition(reportData.overallPosition);
+        if (reportData.overallPosition) setOverallPosition(reportData.overallPosition);
+        if (reportData.adminRemarks) setAdminRemarks(reportData.adminRemarks);
+        if (reportData.teacherRemarks) setTeacherRemarks(reportData.teacherRemarks);
+        if (reportData.nextTermBegins) setNextTermBegins(reportData.nextTermBegins);
+        if (reportData.promotedTo) setPromotedTo(reportData.promotedTo);
+        if (reportData.assessment) {
+          setConduct(reportData.assessment.conduct || "Excellent");
+          setAttitude(reportData.assessment.attitude || "Very Positive");
+          setInterest(reportData.assessment.interest || "High");
         }
       } else {
         setReport({ studentName: child.name, classId });
+      }
+
+      // Fetch Behavioral Records for Teacher Remarks & ratings if not in report meta
+      const yearSlug = selectedYear.replace(/\//g, "-");
+      const termSlug = selectedTerm.replace(/\s+/g, "");
+      const behDocId = `behavioral_${classId}_${yearSlug}_${termSlug}`;
+      const behSnap = await getDoc(doc(db, "behavioralRecords", behDocId));
+
+      if (behSnap.exists()) {
+        const behData = behSnap.data();
+        const studentBeh = (behData.students || []).find((s: any) => s.studentId === selectedChildId);
+        if (studentBeh) {
+          if (!adminRemarks) { // Only set defaults if admin hasn't overridden
+             setConduct(studentBeh.conduct || conduct);
+             setAttitude(studentBeh.attitude || attitude);
+             setInterest(studentBeh.interest || interest);
+             setTeacherRemarks(studentBeh.teacherRemarks || "");
+             setPromotedTo(studentBeh.promotedTo || "");
+             if (studentBeh.assessments) setPreschoolAssessments(studentBeh.assessments);
+             if (studentBeh.physicalDev) setPhysicalDev(studentBeh.physicalDev);
+          }
+        }
+      }
+
+      // Fetch Attendance
+      try {
+        const qAtt = query(
+          collection(db, "attendance"),
+          where("classId", "==", classId),
+          where("academicYear", "==", selectedYear),
+          where("term", "==", selectedTerm),
+        );
+        const attSnap = await getDocsFromServer(qAtt);
+        if (!attSnap.empty) {
+          let presentCount = 0;
+          let totalDays = attSnap.docs.length;
+          attSnap.docs.forEach((d) => {
+            const dayData = d.data();
+            const studentEntry = dayData.students?.[selectedChildId];
+            if (studentEntry && studentEntry.status === "present") {
+              presentCount++;
+            }
+          });
+          setAttendance(`${presentCount} / ${totalDays}`);
+        }
+      } catch (e) {
+        console.log("Error fetching attendance stats:", e);
       }
     } catch (err) {
       console.error("Load report error:", err);
@@ -449,21 +520,21 @@ export default function StudentAcademicReport() {
 
         .info-grid { width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1pt solid #E2E8F0; }
         .info-grid td { padding: 8pt 12pt; font-size: 10pt; border: 1pt solid #E2E8F0; }
-        .label-cell { background-color: #F8FAFC; color: #64748B; font-weight: 800; width: 20%; font-size: 8pt; text-transform: uppercase; }
-        .value-cell { width: 30%; font-weight: 700; color: #1E293B; }
+        .label-cell { background-color: #F1F5F9; color: #475569; font-weight: 800; width: 25%; font-size: 8pt; text-transform: uppercase; }
+        .value-cell { width: 25%; font-weight: 700; color: #0f172a; }
 
-        table.results { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; border: 1pt solid #0b1220; }
-        table.results th { background-color: #1E293B !important; -webkit-print-color-adjust: exact; color: #fff; padding: 10pt 5pt; font-size: 9pt; border: 1pt solid #334155; text-transform: uppercase; }
-        table.results td { padding: 8pt 5pt; font-size: 10pt; border: 1pt solid #E2E8F0; text-align: center; font-weight: 600; color: #1E293B; }
-        table.results tr:nth-child(even) { background-color: #F8FAFC; }
-        .subj-name { text-align: left !important; padding-left: 12pt !important; font-weight: 800; text-transform: uppercase; }
+        table.results { width: 100%; border-collapse: collapse; margin-bottom: 25px; table-layout: fixed; border: 1.5pt solid #0f172a; }
+        table.results th { background-color: #0f172a !important; -webkit-print-color-adjust: exact; color: #fff; padding: 10pt 5pt; font-size: 9pt; border: 1pt solid #0f172a; text-transform: uppercase; }
+        table.results td { padding: 8pt 5pt; font-size: 10pt; border: 1pt solid #cbd5e1; text-align: center; font-weight: 600; color: #0f172a; }
+        table.results tr:nth-child(even) { background-color: #f8fafc; }
+        .subj-name { text-align: left !important; padding-left: 12pt !important; font-weight: 800; text-transform: uppercase; color: #0f172a; }
 
-        .summary-box { border: 1pt solid #E2E8F0; padding: 12pt; margin-bottom: 20px; background-color: #F1F5F9; border-radius: 4pt; }
-        .summary-text { font-size: 11pt; font-weight: 900; margin: 0; color: #1E293B; text-align: center; }
+        .summary-box { border: 1.5pt solid #0f172a; padding: 12pt; margin-bottom: 20px; background-color: #fff; }
+        .summary-text { font-size: 11pt; font-weight: 900; margin: 0; color: #0f172a; text-align: center; letter-spacing: 1pt; }
 
-        .remarks-box { margin-top: 10pt; border: 1pt solid #E2E8F0; padding: 12pt; border-radius: 4pt; background-color: #F8FAFC; }
-        .remark-line { margin-bottom: 8pt; font-size: 10pt; line-height: 1.4; color: #334155; }
-        .remark-header { font-weight: 900; color: #1E293B; margin-right: 8pt; font-size: 8.5pt; text-transform: uppercase; }
+        .remarks-box { margin-top: 10pt; border: 1pt solid #cbd5e1; padding: 15pt; border-radius: 0; background-color: #fff; }
+        .remark-line { margin-bottom: 10pt; font-size: 10pt; line-height: 1.5; color: #1e293b; border-bottom: 0.5pt dashed #cbd5e1; padding-bottom: 5pt; }
+        .remark-header { font-weight: 900; color: #0f172a; margin-right: 10pt; font-size: 8.5pt; text-transform: uppercase; }
 
         .footer { display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; }
         .sig-section { width: 40%; text-align: center; }
@@ -502,12 +573,8 @@ export default function StudentAcademicReport() {
             <td class="label-cell">Term/Period</td><td class="value-cell">${selectedTerm}</td>
           </tr>
           <tr>
-            <td class="label-cell">Aggregate</td><td class="value-cell">${unifiedAggregate}</td>
             <td class="label-cell">Position</td><td class="value-cell">${overallPosition}</td>
-          </tr>
-          <tr>
-            <td class="label-cell">Generated</td><td class="value-cell">${generatedOn}</td>
-            <td class="label-cell">Status</td><td class="value-cell">Approved</td>
+            <td class="label-cell">Attendance</td><td class="value-cell">${attendance || "N/A"}</td>
           </tr>
         </table>
 
@@ -548,11 +615,21 @@ export default function StudentAcademicReport() {
         </div>
 
         <div class="remarks-box">
-          ${isFullReport && report?.assessment ? `<div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${report.assessment.conduct}</b> | Attitude: <b>${report.assessment.attitude}</b> | Interest: <b>${report.assessment.interest || "N/A"}</b></div>` : ""}
-          <div class="remark-line"><span class="remark-header">CLASS TEACHER:</span> ${report?.teacherRemarks || "Satisfactory performance."}</div>
-          <div class="remark-line"><span class="remark-header">ADMINISTRATIVE:</span> ${report?.adminRemarks || "Keep up the hard work."}</div>
-          <div class="remark-line"><span class="remark-header">NEXT TERM BEGINS:</span> <b>${report?.nextTermBegins || "TBA"}</b></div>
-          ${report?.promotedTo ? `<div class="remark-line"><span class="remark-header">PROMOTED TO:</span> <b>${report.promotedTo}</b></div>` : ""}
+          ${isFullReport && !isPreschool ? `<div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>` : ""}
+          ${isFullReport && isPreschool ? `
+            <div class="remark-line"><span class="remark-header">PHYSICAL DEV:</span>
+              ${physicalDev.date ? `Date: ${physicalDev.date} | ` : ""}
+              HT: ${physicalDev.height || "-"}m |
+              WT: ${physicalDev.weight || "-"}kg
+            </div>
+            <div style="font-size: 8pt; margin-bottom: 10pt; color: #475569;">
+                <b>Assessments:</b> ${Object.entries(preschoolAssessments).filter(([_, v]) => v !== 'N/A').map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ') || 'None recorded'}
+            </div>
+          ` : ""}
+          <div class="remark-line"><span class="remark-header">CLASS TEACHER:</span> ${teacherRemarks || "Satisfactory performance."}</div>
+          <div class="remark-line"><span class="remark-header">ADMINISTRATIVE:</span> ${adminRemarks || "Keep up the hard work."}</div>
+          <div class="remark-line"><span class="remark-header">NEXT TERM BEGINS:</span> <b>${nextTermBegins || "TBA"}</b></div>
+          ${promotedTo ? `<div class="remark-line"><span class="remark-header">PROMOTED TO:</span> <b>${promotedTo}</b></div>` : ""}
         </div>
 
         <div class="footer">
@@ -782,6 +859,10 @@ export default function StudentAcademicReport() {
                 <Text style={styles.paperInfoLabel}>POSITION:</Text>
                 <Text style={styles.paperInfoValue}>{overallPosition}</Text>
               </View>
+              <View style={styles.paperInfoItem}>
+                <Text style={styles.paperInfoLabel}>ATTENDANCE:</Text>
+                <Text style={styles.paperInfoValue}>{attendance || "N/A"}</Text>
+              </View>
             </View>
 
             {/* Table */}
@@ -854,13 +935,29 @@ export default function StudentAcademicReport() {
             </View>
 
             <View style={styles.paperRemarksSection}>
-              {selectedReportType === "End of Term" && report?.assessment && (
+              {selectedReportType === "End of Term" && !isPreschool && (
                 <>
                   <Text style={styles.paperSectionTitle}>BEHAVIORAL RATINGS</Text>
                   <Text style={styles.paperRemarkLine}>
-                    Conduct: <Text style={{ fontWeight: "700" }}>{report.assessment.conduct}</Text> | Attitude:{" "}
-                    <Text style={{ fontWeight: "700" }}>{report.assessment.attitude}</Text> | Interest:{" "}
-                    <Text style={{ fontWeight: "700" }}>{report.assessment.interest || "N/A"}</Text>
+                    Conduct: <Text style={{ fontWeight: "700" }}>{conduct}</Text> | Attitude:{" "}
+                    <Text style={{ fontWeight: "700" }}>{attitude}</Text> | Interest:{" "}
+                    <Text style={{ fontWeight: "700" }}>{interest || "N/A"}</Text>
+                  </Text>
+                </>
+              )}
+
+              {selectedReportType === "End of Term" && isPreschool && (
+                 <>
+                  <Text style={styles.paperSectionTitle}>
+                    PHYSICAL DEVELOPMENT & ASSESSMENTS
+                  </Text>
+                  <Text style={styles.paperRemarkLine}>
+                    {physicalDev.date ? `Date: ${physicalDev.date} | ` : ""}
+                    Height: <Text style={{ fontWeight: "700" }}>{physicalDev.height || "N/A"}m</Text> |
+                    Weight: <Text style={{ fontWeight: "700" }}>{physicalDev.weight || "N/A"}kg</Text>
+                  </Text>
+                  <Text style={[styles.paperRemarkText, { marginTop: 5, fontSize: 9 }]}>
+                    {Object.keys(preschoolAssessments).length} key developmental milestones recorded.
                   </Text>
                 </>
               )}

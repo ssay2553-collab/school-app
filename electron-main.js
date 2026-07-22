@@ -84,7 +84,7 @@ const schools = {
     authDomain: "model-power-430de.firebaseapp.com",
   },
   stone: {
-    name: "Spring Gate",
+    name: "JOSEPAC APP",
     backgroundColor: "#f7f6d1ff",
     authDomain: "stepping-stone-90720.firebaseapp.com",
   },

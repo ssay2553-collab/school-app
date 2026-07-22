@@ -79,8 +79,8 @@ const schools = {
   },
   stone: {
     appId: "com.saysmanage.stone",
-    productName: "Spring Gate",
-    icon: "assets/icon-spring.png",
+    productName: "JOSEPAC APP",
+    icon: "assets/icon-josepac.png",
   },
   jewel: {
     appId: "com.saysmanage.jewel",

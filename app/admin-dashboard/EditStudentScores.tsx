@@ -824,6 +824,11 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     letterSpacing: 0.5,
   },
+  btnContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   empty: { alignItems: "center", marginTop: 80, paddingHorizontal: 40 },
   emptyIconCircle: {
     width: 80,

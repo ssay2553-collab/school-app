@@ -138,7 +138,7 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
           activePathRef.current = "";
           setCurrentPath("");
         },
-        onTerminationRequest: () => false,
+        onPanResponderTerminationRequest: () => false,
         onShouldBlockNativeResponder: () => true,
       }),
     []

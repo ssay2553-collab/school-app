@@ -33,7 +33,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { auth, db, storage } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
-import { MotiView } from "moti";
+import * as Animatable from "react-native-animatable";
 
 export default function SubmitAssignment() {
   const router = useRouter();
@@ -248,25 +248,24 @@ export default function SubmitAssignment() {
       {/* Success Animation Modal */}
       <Modal visible={showSuccess} transparent animationType="fade">
         <View style={styles.successOverlay}>
-          <MotiView
-            from={{ scale: 0.5, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", duration: 1000 }}
+          <Animatable.View
+            animation="zoomIn"
+            duration={1000}
             style={styles.successCircle}
           >
-            <MotiView
-              from={{ rotate: "0deg" }}
-              animate={{ rotate: "360deg" }}
-              transition={{ loop: true, duration: 4000, type: "timing" }}
+            <Animatable.View
+              animation="rotate"
+              iterationCount="infinite"
+              duration={4000}
+              easing="linear"
               style={styles.successRing}
             />
             <SVGIcon name="checkmark-circle" size={100} color="#fff" />
-          </MotiView>
+          </Animatable.View>
 
-          <MotiView
-            from={{ translateY: 20, opacity: 0 }}
-            animate={{ translateY: 0, opacity: 1 }}
-            transition={{ delay: 500 }}
+          <Animatable.View
+            animation="fadeInUp"
+            delay={500}
             style={{ alignItems: 'center' }}
           >
             <Text style={styles.successTitle}>Magic Upload Successful!</Text>
@@ -275,7 +274,7 @@ export default function SubmitAssignment() {
             <View style={styles.xpBadge}>
               <Text style={styles.xpText}>+20 XP Collected</Text>
             </View>
-          </MotiView>
+          </Animatable.View>
         </View>
       </Modal>
     </SafeAreaView>

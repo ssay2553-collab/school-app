@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import * as Speech from "expo-speech";
+import { stop, speak } from "expo-speech";
 import SVGIcon from "../../SVGIcon";
 import { usePersistedState } from "../../../hooks/student-dashboard/usePersistedState";
 import { WORD_DATA, REMARKS, WRONG_REMARKS } from "./GameConstants";
@@ -47,18 +47,18 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
 
   useEffect(() => {
     startStage();
-    return () => { Speech.stop(); };
+    return () => { stop(); };
   }, [startStage]);
 
   useEffect(() => {
     if (words[index]) {
-      Speech.stop();
-      Speech.speak("Guess the word for: " + words[index].hint, { rate: 0.9 });
+      stop();
+      speak("Guess the word for: " + words[index].hint, { rate: 0.9 });
     }
   }, [index, words]);
 
   const handleNextLevel = () => {
-    Speech.stop();
+    stop();
     if (score >= 4) {
       setLevel(level + 1);
       if (appUser?.uid) {
@@ -73,8 +73,8 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
     const isCorrect = input.toUpperCase().trim() === words[index].word;
     const remark = getRandomRemark(isCorrect);
 
-    Speech.stop();
-    Speech.speak(remark, { rate: 1.0 });
+    stop();
+    speak(remark, { rate: 1.0 });
 
     if (isCorrect) {
       setScore((s) => s + 1);
@@ -114,11 +114,11 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
   return (
     <View style={styles.gameContainer}>
       <View style={styles.gameHeader}>
-        <TouchableOpacity onPress={() => { Speech.stop(); onExit(); }}>
+        <TouchableOpacity onPress={() => { stop(); onExit(); }}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
         <Text style={styles.levelText}>Word Hunt 🔍</Text>
-        <TouchableOpacity onPress={() => Speech.speak(words[index].hint)}>
+        <TouchableOpacity onPress={() => speak(words[index].hint)}>
           <SVGIcon name="volume-high" color="#fff" size={28} />
         </TouchableOpacity>
       </View>

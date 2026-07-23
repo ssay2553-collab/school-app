@@ -5,9 +5,20 @@ const path = require('path');
 const config = getDefaultConfig(__dirname);
 
 // Force Metro to resolve modules from the project root's node_modules
-// This helps in CI environments where resolution might be ambiguous
 config.resolver.nodeModulesPaths = [
   path.resolve(__dirname, 'node_modules'),
 ];
+
+// Add support for modern package formats often used in React 19 ecosystems
+config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs', 'cjs'];
+
+// Optimization for large bundles
+config.transformer.minifierConfig = {
+  keep_classnames: true,
+  keep_fnames: true,
+  mangle: {
+    keep_fnames: true,
+  },
+};
 
 module.exports = config;

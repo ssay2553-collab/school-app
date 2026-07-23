@@ -611,7 +611,7 @@ match /feePayments/{paymentId} {
        SCHOOL SETTINGS
     =============================== */
     match /school_settings/{settingId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isAdmin();
     }
 

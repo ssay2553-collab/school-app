@@ -139,10 +139,10 @@ function createWindow() {
   // FORCE CLEAR STORAGE ON STARTUP (Fixes IBS stickiness)
   win.webContents.session
     .clearStorageData({
-      storages: ["localstorage", "cookies", "cachestorage"],
+      storages: ["localstorage", "cookies", "cachestorage", "indexeddb", "websql"],
     })
     .then(() => {
-      console.log("[Electron] Storage cleared to ensure fresh branding.");
+      console.log("[Electron] All storage (including IndexedDB) cleared to ensure fresh branding.");
     });
 
   session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
@@ -171,9 +171,46 @@ function createWindow() {
     });
   });
 
-  Menu.setApplicationMenu(null);
+  // Enable basic shortcuts for reload and DevTools
+  const template = [
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+      ],
+    },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    {
+      role: "window",
+      submenu: [{ role: "minimize" }, { role: "close" }],
+    },
+  ];
 
   const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
+
+  if (isDev) {
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  } else {
+    Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+  }
 
   if (isDev && process.env.NODE_ENV === "development") {
     const url = process.env.EXPO_DEV_URL || "http://localhost:8081";

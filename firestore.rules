@@ -705,7 +705,7 @@ match /feePayments/{paymentId} {
         || (isStudent() && resource.data.classId == userData().classId)
         || (isParent() && exists(/databases/$(database)/documents/users/$(uid())) && (resource.data.students.keys().hasAny(userData().childrenIds)));
 
-      allow write: if canManageAttendance() || isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
+      allow write: if canManageAttendance() || isAdmin() || (isTeacher() && (isClassTeacher(request.resource.data.classId) || (request.resource.data.classId in userData().get('classes', []))));
       allow delete: if canManageAttendance() || isAdmin();
     }
 
@@ -716,8 +716,10 @@ match /feePayments/{paymentId} {
         (
           // Allow if they are the teacher for the class being updated
           isClassTeacher(request.resource.data.classId) ||
+          (request.resource.data.classId in userData().get('classes', [])) ||
           // Or if the resource already exists and they are the teacher
-          isClassTeacher(resource.data.classId)
+          isClassTeacher(resource.data.classId) ||
+          (resource.data.classId in userData().get('classes', []))
         ));
     }
 

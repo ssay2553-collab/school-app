@@ -1,4 +1,4 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
+const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 import { useRouter } from "expo-router";
 import {
     addDoc,
@@ -114,6 +114,15 @@ export default function AcademicCalendar() {
     field: "termStart" | "termEnd" | "eventDate" | null;
     currentDate: Date;
   } | null>(null);
+
+  const webInputStyle = Platform.OS === 'web' ? {
+    padding: '10px',
+    borderRadius: '8px',
+    border: '1px solid #E2E8F0',
+    fontSize: '16px',
+    width: '100%',
+    marginBottom: '10px'
+  } : {};
 
   const primaryColor = SCHOOL_CONFIG.primaryColor || COLORS.primary;
 
@@ -926,6 +935,28 @@ export default function AcademicCalendar() {
 }
 
 const styles = StyleSheet.create<any>({
+  webDatePickerContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.medium,
+    alignItems: 'center',
+    gap: 10,
+  },
+  webCloseBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  webCloseBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   header: {
     flexDirection: "row",

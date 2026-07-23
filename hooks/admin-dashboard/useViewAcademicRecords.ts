@@ -104,7 +104,10 @@ export function useViewAcademicRecords() {
   const [mInterest, setInterest] = useState("High");
   const [mPromotedTo, setPromotedTo] = useState("");
   const [mNextTermBegins, setNextTermBegins] = useState("");
+  const [globalNextTermBegins, setGlobalNextTermBegins] = useState("");
+  const [globalPromotedTo, setGlobalPromotedTo] = useState("");
   const [showNextTermPicker, setShowNextTermPicker] = useState(false);
+  const [showGlobalNextTermPicker, setShowGlobalNextTermPicker] = useState(false);
   const [mAdminRemarks, setAdminRemarks] = useState("");
   const [mTeacherRemarks, setTeacherRemarks] = useState("");
 
@@ -392,6 +395,7 @@ export function useViewAcademicRecords() {
         if (d.assessment?.interest) setInterest(d.assessment.interest);
         if (d.promotedTo) setPromotedTo(d.promotedTo);
         if (d.nextTermBegins) setNextTermBegins(d.nextTermBegins);
+        // Only override auto-remarks if they actually exist in DB
         if (d.adminRemarks) setAdminRemarks(d.adminRemarks);
         if (d.teacherRemarks) setTeacherRemarks(d.teacherRemarks);
       }
@@ -492,17 +496,22 @@ export function useViewAcademicRecords() {
             "-",
           );
 
+        // Fetch existing report to see if we should preserve existing remarks
+        const reportRef = doc(db, "student-reports", reportId);
+        const reportSnap = await getDoc(reportRef);
+        const existingData = reportSnap.exists() ? reportSnap.data() : {};
+
         const agg = student.aggregate || 54;
         const autoAdminRemarks = getAutoRemarks(agg, false);
         const autoTeacherRemarks = getAutoRemarks(agg, true);
 
         batch.set(
-          doc(db, "student-reports", reportId),
+          reportRef,
           {
-            nextTermBegins: mNextTermBegins,
-            promotedTo: mPromotedTo,
-            adminRemarks: autoAdminRemarks,
-            teacherRemarks: autoTeacherRemarks,
+            nextTermBegins: globalNextTermBegins,
+            promotedTo: globalPromotedTo || mPromotedTo,
+            adminRemarks: existingData.adminRemarks || autoAdminRemarks,
+            teacherRemarks: existingData.teacherRemarks || autoTeacherRemarks,
             updatedAt: serverTimestamp(),
           },
           { merge: true },
@@ -528,7 +537,7 @@ export function useViewAcademicRecords() {
     if (Platform.OS === "web") {
       if (
         window.confirm(
-          "This will apply the current 'Next Term Begins' and 'Promoted To' values to ALL students in this list. Continue?",
+          "This will apply 'Next Term Begins' and 'Promoted To' values to ALL students. Remarks will be auto-generated for those without existing ones. Continue?",
         )
       ) {
         performBulkUpdate();
@@ -536,7 +545,7 @@ export function useViewAcademicRecords() {
     } else {
       Alert.alert(
         "Bulk Update",
-        "This will apply the current 'Next Term Begins' and 'Promoted To' values to ALL students in this list. Continue?",
+        "This will apply 'Next Term Begins' and 'Promoted To' values to ALL students. Remarks will be auto-generated for those without existing ones. Continue?",
         [
           { text: "Cancel", style: "cancel" },
           {
@@ -759,6 +768,12 @@ export function useViewAcademicRecords() {
     recalculating,
     availableYears,
     acadConfig,
-    primary
+    primary,
+    globalNextTermBegins,
+    setGlobalNextTermBegins,
+    globalPromotedTo,
+    setGlobalPromotedTo,
+    showGlobalNextTermPicker,
+    setShowGlobalNextTermPicker
   };
 }

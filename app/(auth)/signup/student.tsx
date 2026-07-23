@@ -41,7 +41,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { httpsCallable } from "firebase/functions";
 import { auth, db, storage, functions } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
-import DateTimePicker from "@react-native-community/datetimepicker";
+const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 
 const { width } = Dimensions.get("window");
 
@@ -58,6 +58,15 @@ export default function StudentSignupScreen() {
   const { showToast } = useToast();
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
+
+  const webInputStyle = Platform.OS === 'web' ? {
+    padding: '10px',
+    borderRadius: '8px',
+    border: '1px solid #E2E8F0',
+    fontSize: '16px',
+    width: '100%',
+    marginBottom: '10px'
+  } : {};
 
   const [step, setStep] = useState(1);
   const [classes, setClasses] = useState<ClassItem[]>(cachedClasses || []);

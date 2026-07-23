@@ -21,7 +21,7 @@ import * as Animatable from "react-native-animatable";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import moment from "moment";
 import SVGIcon from "../../components/SVGIcon";
-import DateTimePicker from "@react-native-community/datetimepicker";
+const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 import { AppUser } from "../../types/users";
 import { useDailyAttendance } from "../../hooks/teacher-dashboard/useDailyAttendance";
 
@@ -105,6 +105,16 @@ const AttendanceStudentCard = React.memo(({
 
 export default function DailyAttendanceScreen() {
   const { width } = useWindowDimensions();
+
+  const webInputStyle = Platform.OS === 'web' ? {
+    padding: '10px',
+    borderRadius: '8px',
+    border: '1px solid #E2E8F0',
+    fontSize: '16px',
+    width: '100%',
+    marginBottom: '10px'
+  } : {};
+
   const isLargeScreen = width > 768;
   const isExtraLargeScreen = width > 1100;
   const numColumns = isExtraLargeScreen ? 3 : isLargeScreen ? 2 : 1;
@@ -275,19 +285,37 @@ export default function DailyAttendanceScreen() {
         </TouchableOpacity>
       </View>
 
-      {Platform.OS !== 'web' && showDatePicker && (
-        <DateTimePicker
-          value={moment(selectedDate).toDate()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          maximumDate={new Date()}
-          onChange={(event: any, date?: Date) => {
-            setShowDatePicker(false);
-            if (date) {
-              setSelectedDate(moment(date).format("YYYY-MM-DD"));
-            }
-          }}
-        />
+      {showDatePicker && (
+        Platform.OS === 'web' ? (
+          <View style={styles.webDatePickerContainer}>
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value);
+                setShowDatePicker(false);
+              }}
+              style={webInputStyle}
+              max={new Date().toISOString().split('T')[0]}
+            />
+            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.webCloseBtn}>
+              <Text style={styles.webCloseBtnText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <DateTimePicker
+            value={moment(selectedDate).toDate()}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            maximumDate={new Date()}
+            onChange={(event: any, date?: Date) => {
+              setShowDatePicker(false);
+              if (date) {
+                setSelectedDate(moment(date).format("YYYY-MM-DD"));
+              }
+            }}
+          />
+        )
       )}
 
       <View style={styles.filterArea}>
@@ -392,6 +420,28 @@ export default function DailyAttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
+  webDatePickerContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.medium,
+    alignItems: 'center',
+    gap: 10,
+  },
+  webCloseBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  webCloseBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 300 },
   header: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', zIndex: 10 },

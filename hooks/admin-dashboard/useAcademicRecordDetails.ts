@@ -23,6 +23,7 @@ import {
     calculateCompetitionRanking,
     calculatePerformanceFromList,
     calculateStudentTotalScore,
+    getAutoRemarks,
     getGradeDetails,
 } from "../../lib/classHelpers";
 import { generateAcademicReportHtml } from "../../lib/reportTemplates";
@@ -217,13 +218,29 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
                         }
                     } catch (e) { }
 
-                    // Admin Remarks / Next Term Begins
                     const reportId = `${studentId}_${academicYearState}_${termState}_${reportType.replace(/\s+/g, "")}`.replace(/\//g, "-");
                     const reportSnap = await getDoc(doc(db, "student-reports", reportId));
                     if (reportSnap.exists()) {
                         const r = reportSnap.data() as any;
-                        if (r.adminRemarks) setAdminRemarks(r.adminRemarks);
+                        if (r.adminRemarks) {
+                            setAdminRemarks(r.adminRemarks);
+                        } else {
+                            setAdminRemarks(getAutoRemarks(AGGREGATE, false));
+                        }
+
+                        if (r.teacherRemarks) {
+                            setTeacherRemarks(r.teacherRemarks);
+                        } else if (!teacherRemarks) {
+                            setTeacherRemarks(getAutoRemarks(AGGREGATE, true));
+                        }
+
                         if (r.nextTermBegins) setNextTermBegins(r.nextTermBegins);
+                    } else {
+                        // If report record doesn't exist, set auto remarks
+                        setAdminRemarks(getAutoRemarks(AGGREGATE, false));
+                        if (!teacherRemarks) {
+                            setTeacherRemarks(getAutoRemarks(AGGREGATE, true));
+                        }
                     }
                 }
             } catch (err) {

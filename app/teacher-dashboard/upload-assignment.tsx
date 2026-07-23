@@ -26,6 +26,18 @@ import { useUploadAssignment, Question, AssignmentType } from "../../hooks/teach
 // Guarded import for native-only library
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 
+const webInputStyle = Platform.OS === 'web' ? {
+  border: 'none',
+  background: 'none',
+  fontSize: '14px',
+  color: '#1E293B',
+  fontWeight: '700',
+  fontFamily: 'inherit',
+  outline: 'none',
+  cursor: 'pointer',
+  width: '100%'
+} : {};
+
 export default function UploadAssignment() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -191,20 +203,20 @@ export default function UploadAssignment() {
                 <>
                   <View style={[styles.datePickerBtn, { flex: 1.2 }]}>
                     <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
-                    <TextInput
-                      style={styles.webInput}
-                      defaultValue={webDateValue}
-                      onChangeText={handleWebDateChange}
-                      {...({ type: 'date' } as any)}
+                    <input
+                      type="date"
+                      value={webDateValue}
+                      onChange={(e) => handleWebDateChange(e.target.value)}
+                      style={webInputStyle}
                     />
                   </View>
                   <View style={[styles.datePickerBtn, { flex: 1 }]}>
                     <SVGIcon name="time-outline" size={18} color={COLORS.primary} />
-                    <TextInput
-                      style={styles.webInput}
-                      defaultValue={webTimeValue}
-                      onChangeText={handleWebTimeChange}
-                      {...({ type: 'time' } as any)}
+                    <input
+                      type="time"
+                      value={webTimeValue}
+                      onChange={(e) => handleWebTimeChange(e.target.value)}
+                      style={webInputStyle}
                     />
                   </View>
                 </>

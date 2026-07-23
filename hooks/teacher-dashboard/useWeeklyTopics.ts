@@ -30,6 +30,7 @@ export interface WeeklyTopic {
   teacherId: string;
   academicYear: string;
   term: string;
+  weekNumber?: string;
 }
 
 export const useWeeklyTopics = () => {
@@ -46,6 +47,7 @@ export const useWeeklyTopics = () => {
   // Dates
   const [startDate, setStartDate] = useState(moment().startOf('isoWeek').format('YYYY-MM-DD'));
   const [endDate, setEndDate] = useState(moment().startOf('isoWeek').add(4, 'days').format('YYYY-MM-DD'));
+  const [weekNumber, setWeekNumber] = useState("");
 
   const [topicData, setTopicData] = useState<Partial<WeeklyTopic>>({
     topic: '',
@@ -110,14 +112,17 @@ export const useWeeklyTopics = () => {
             objectives: data.objectives || '',
           });
           setEndDate(data.endDate || moment(startDate).add(4, 'days').format('YYYY-MM-DD'));
+          setWeekNumber(data.weekNumber || "");
           setServerTopicData({
             topic: data.topic || '',
             subTopics: data.subTopics || '',
             objectives: data.objectives || '',
             endDate: data.endDate || '',
+            weekNumber: data.weekNumber || "",
           });
         } else {
           setTopicData({ topic: '', subTopics: '', objectives: '' });
+          setWeekNumber("");
           setServerTopicData({});
           // Only update end date if it's a new week selection, not just a clear
         }
@@ -147,6 +152,7 @@ export const useWeeklyTopics = () => {
         subject: selectedSubject,
         startDate: startDate,
         endDate: endDate,
+        weekNumber: weekNumber,
         academicYear,
         term,
         topic: topicData.topic,
@@ -157,7 +163,7 @@ export const useWeeklyTopics = () => {
       };
 
       await setDoc(docRef, dataToSave, { merge: true });
-      setServerTopicData({ ...topicData, endDate });
+      setServerTopicData({ ...topicData, endDate, weekNumber });
       showToast({ message: "Lesson plan saved successfully!", type: "success" });
     } catch (err) {
       console.error("saveTopic error:", err);
@@ -168,8 +174,8 @@ export const useWeeklyTopics = () => {
   };
 
   const hasUnsavedChanges = useMemo(() => {
-    return JSON.stringify({ ...topicData, endDate }) !== JSON.stringify(serverTopicData);
-  }, [topicData, endDate, serverTopicData]);
+    return JSON.stringify({ ...topicData, endDate, weekNumber }) !== JSON.stringify(serverTopicData);
+  }, [topicData, endDate, weekNumber, serverTopicData]);
 
   return {
     loading,
@@ -183,6 +189,8 @@ export const useWeeklyTopics = () => {
     setStartDate,
     endDate,
     setEndDate,
+    weekNumber,
+    setWeekNumber,
     topicData,
     setTopicData,
     saveTopic,

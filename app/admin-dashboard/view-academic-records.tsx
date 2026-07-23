@@ -77,10 +77,24 @@ export default function ViewAcademicRecords() {
     recalculating,
     availableYears,
     acadConfig,
-    primary
+    primary,
+    globalNextTermBegins,
+    setGlobalNextTermBegins,
+    globalPromotedTo,
+    setGlobalPromotedTo,
+    showGlobalNextTermPicker,
+    setShowGlobalNextTermPicker
   } = useViewAcademicRecords();
 
   const secondary = SCHOOL_CONFIG.secondaryColor || "#c53b59";
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/admin-dashboard");
+    }
+  };
 
   const renderStudentItem = useCallback(
     ({ item }: { item: ScoreData }) => (
@@ -121,7 +135,7 @@ export default function ViewAcademicRecords() {
         <LinearGradient colors={[primary, secondary]} style={styles.header}>
           <View style={styles.headerTop}>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={handleBack}
               style={styles.miniBackBtn}
             >
               <SVGIcon name="arrow-back" color="#fff" size={24} />
@@ -161,8 +175,13 @@ export default function ViewAcademicRecords() {
           fetchingSubjects={fetchingSubjects}
           listLoading={listLoading}
           loadData={loadData}
-          handleBulkUpdate={handleBulkUpdate}
           primary={primary}
+          globalNextTermBegins={globalNextTermBegins}
+          setGlobalNextTermBegins={setGlobalNextTermBegins}
+          globalPromotedTo={globalPromotedTo}
+          setGlobalPromotedTo={setGlobalPromotedTo}
+          showGlobalNextTermPicker={showGlobalNextTermPicker}
+          setShowGlobalNextTermPicker={setShowGlobalNextTermPicker}
         />
 
         <View style={styles.actionRow}>
@@ -232,7 +251,13 @@ export default function ViewAcademicRecords() {
       setTerm,
       setSelectedReportType,
       recalculateRankings,
-      recalculating
+      recalculating,
+      globalNextTermBegins,
+      setGlobalNextTermBegins,
+      globalPromotedTo,
+      setGlobalPromotedTo,
+      showGlobalNextTermPicker,
+      setShowGlobalNextTermPicker
     ],
   );
 
@@ -284,10 +309,6 @@ export default function ViewAcademicRecords() {
         setInterest={setInterest}
         mPromotedTo={mPromotedTo}
         setPromotedTo={setPromotedTo}
-        mNextTermBegins={mNextTermBegins}
-        setNextTermBegins={setNextTermBegins}
-        showNextTermPicker={showNextTermPicker}
-        setShowNextTermPicker={setShowNextTermPicker}
         mAdminRemarks={mAdminRemarks}
         setAdminRemarks={setAdminRemarks}
         mTeacherRemarks={mTeacherRemarks}

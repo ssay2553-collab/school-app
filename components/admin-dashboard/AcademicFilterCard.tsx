@@ -1,9 +1,25 @@
+import moment from "moment";
 import React from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../SVGIcon";
-import { SHADOWS } from "../../constants/theme";
+import { COLORS, SHADOWS } from "../../constants/theme";
 import { ReportType } from "../../hooks/admin-dashboard/useViewAcademicRecords";
+
+// Guarded import for native-only library
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 
 interface AcademicFilterCardProps {
   selectedYear: string;
@@ -23,8 +39,13 @@ interface AcademicFilterCardProps {
   fetchingSubjects: boolean;
   listLoading: boolean;
   loadData: () => void;
-  handleBulkUpdate: () => void;
   primary: string;
+  globalNextTermBegins: string;
+  setGlobalNextTermBegins: (v: string) => void;
+  globalPromotedTo: string;
+  setGlobalPromotedTo: (v: string) => void;
+  showGlobalNextTermPicker: boolean;
+  setShowGlobalNextTermPicker: (v: boolean) => void;
 }
 
 export const AcademicFilterCard = ({
@@ -45,8 +66,13 @@ export const AcademicFilterCard = ({
   fetchingSubjects,
   listLoading,
   loadData,
-  handleBulkUpdate,
   primary,
+  globalNextTermBegins,
+  setGlobalNextTermBegins,
+  globalPromotedTo,
+  setGlobalPromotedTo,
+  showGlobalNextTermPicker,
+  setShowGlobalNextTermPicker,
 }: AcademicFilterCardProps) => {
   return (
     <Animatable.View animation="fadeInDown" style={styles.filterCard}>
@@ -173,50 +199,139 @@ export const AcademicFilterCard = ({
         ))}
       </ScrollView>
 
-      <Text style={styles.bubbleLabel}>APPROVED SUBJECTS</Text>
-      <View style={styles.subjectSelectBox}>
-        {fetchingSubjects ? (
-          <ActivityIndicator color={primary} size="small" />
-        ) : availableSubjects.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.bubbleRow}
-          >
-            {availableSubjects.map((sub) => (
+      {selectedClassId && availableSubjects.length > 0 && (
+        <>
+          <Text style={styles.bubbleLabel}>APPROVED SUBJECTS</Text>
+          <View style={styles.subjectSelectBox}>
+            {fetchingSubjects ? (
+              <ActivityIndicator color={primary} size="small" />
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.bubbleRow}
+              >
+                {availableSubjects.map((sub) => (
+                  <TouchableOpacity
+                    key={sub}
+                    onPress={() => setSelectedSubject(sub)}
+                    style={[
+                      styles.subBubble,
+                      selectedSubject === sub && {
+                        backgroundColor: "#f0f9ff",
+                        borderColor: primary,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.subBubbleText,
+                        selectedSubject === sub && {
+                          color: primary,
+                          fontWeight: "bold",
+                        },
+                      ]}
+                    >
+                      {sub}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </>
+      )}
+
+      {selectedClassId && availableSubjects.length === 0 && !fetchingSubjects && (
+        <View style={styles.noApprovedBox}>
+          <SVGIcon name="alert-circle" size={20} color="#94A3B8" />
+          <Text style={styles.noApprovedText}>
+            No approved records for this selection.
+          </Text>
+        </View>
+      )}
+
+      <View style={styles.configSection}>
+        <View style={styles.configGrid}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.bubbleLabel}>NEXT TERM BEGINS (GLOBAL)</Text>
+            {Platform.OS === "web" ? (
+              <input
+                type="date"
+                value={
+                  moment(globalNextTermBegins, "Do MMM, YYYY").isValid()
+                    ? moment(globalNextTermBegins, "Do MMM, YYYY").format("YYYY-MM-DD")
+                    : ""
+                }
+                onChange={(e) => {
+                  const date = e.target.value;
+                  if (date) {
+                    setGlobalNextTermBegins(moment(date).format("Do MMM, YYYY"));
+                  }
+                }}
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "1px solid #E2E8F0",
+                  fontSize: 14,
+                  outline: "none",
+                  width: "100%",
+                  boxSizing: "border-box",
+                  backgroundColor: "#F8FAFC",
+                  color: "#1E293B",
+                  fontWeight: "600",
+                  height: 48,
+                }}
+              />
+            ) : (
               <TouchableOpacity
-                key={sub}
-                onPress={() => setSelectedSubject(sub)}
-                style={[
-                  styles.subBubble,
-                  selectedSubject === sub && {
-                    backgroundColor: "#f0f9ff",
-                    borderColor: primary,
-                  },
-                ]}
+                style={styles.configInput}
+                onPress={() => setShowGlobalNextTermPicker(true)}
               >
                 <Text
-                  style={[
-                    styles.subBubbleText,
-                    selectedSubject === sub && {
-                      color: primary,
-                      fontWeight: "bold",
-                    },
-                  ]}
+                  style={{
+                    color: globalNextTermBegins ? "#1E293B" : "#94A3B8",
+                    fontSize: 14,
+                    fontWeight: "600",
+                  }}
                 >
-                  {sub}
+                  {globalNextTermBegins || "Tap to select"}
                 </Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        ) : (
-          <View style={styles.noApprovedBox}>
-            <SVGIcon name="alert-circle" size={20} color="#94A3B8" />
-            <Text style={styles.noApprovedText}>
-              No approved records for this selection.
-            </Text>
+            )}
+
+            {showGlobalNextTermPicker && Platform.OS !== "web" && (
+              <DateTimePicker
+                value={
+                  moment(globalNextTermBegins, "Do MMM, YYYY").isValid()
+                    ? moment(globalNextTermBegins, "Do MMM, YYYY").toDate()
+                    : new Date()
+                }
+                mode="date"
+                display="default"
+                onChange={(event: any, selectedDate?: Date) => {
+                  setShowGlobalNextTermPicker(false);
+                  if (selectedDate) {
+                    setGlobalNextTermBegins(
+                      moment(selectedDate).format("Do MMM, YYYY"),
+                    );
+                  }
+                }}
+              />
+            )}
           </View>
-        )}
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.bubbleLabel}>PROMOTED TO (GLOBAL)</Text>
+            <TextInput
+              style={styles.configInput}
+              placeholder="e.g. Basic 5"
+              value={globalPromotedTo}
+              onChangeText={setGlobalPromotedTo}
+              placeholderTextColor="#94A3B8"
+            />
+          </View>
+        </View>
       </View>
 
       <TouchableOpacity
@@ -236,16 +351,6 @@ export const AcademicFilterCard = ({
             <SVGIcon name="arrow-forward" color="#fff" size={20} />
           </View>
         )}
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={handleBulkUpdate}
-        style={[styles.bulkBtn, { borderColor: primary }]}
-      >
-        <SVGIcon name="copy-outline" size={18} color={primary} />
-        <Text style={[styles.bulkBtnText, { color: primary }]}>
-          Apply Reopening & Auto-Remarks to All
-        </Text>
       </TouchableOpacity>
     </Animatable.View>
   );
@@ -304,6 +409,26 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   noApprovedText: { fontSize: 12, color: "#94A3B8", fontWeight: "600" },
+  configSection: {
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  configGrid: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  configInput: {
+    height: 48,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    fontSize: 14,
+    color: "#1E293B",
+    fontWeight: "600",
+    justifyContent: "center",
+  },
   searchBtn: {
     height: 56,
     borderRadius: 18,

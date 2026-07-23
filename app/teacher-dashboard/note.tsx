@@ -133,17 +133,38 @@ export default function TeacherNoteScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>My Notes 🗒️</Text>
-        <TouchableOpacity
-          style={styles.addCircle}
-          onPress={() => setIsAdding(!isAdding)}
-        >
-          <SVGIcon
-            name={isAdding ? "close-circle" : "add-circle"}
-            size={32}
-            color={COLORS.primary}
-          />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>
+          {isAdding ? (editingId ? "Edit Note" : "New Note") : "My Notes 🗒️"}
+        </Text>
+        {isAdding ? (
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.headerSaveBtn}
+              onPress={handleSave}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.headerSaveBtnText}>Save</Text>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerCancelBtn} onPress={cancelEdit}>
+              <Text style={styles.headerCancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.addCircle}
+            onPress={() => setIsAdding(!isAdding)}
+          >
+            <SVGIcon
+              name="add-circle"
+              size={32}
+              color={COLORS.primary}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {isAdding ? (
@@ -166,26 +187,6 @@ export default function TeacherNoteScreen() {
                 ref={editorRef}
                 initialContent={content}
               />
-            </View>
-
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={[styles.saveBtn, { flex: 1 }]}
-                onPress={handleSave}
-                disabled={saving}
-              >
-                {saving ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveBtnText}>
-                    {editingId ? "Update Note" : "Save Note"}
-                  </Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.cancelBtn} onPress={cancelEdit}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
             </View>
           </ScrollView>
         </View>
@@ -295,6 +296,37 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "800",
     color: "#1A1C1E",
+    flex: 1,
+  },
+  headerActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  headerSaveBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerSaveBtnText: {
+    color: "#FFF",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  headerCancelBtn: {
+    backgroundColor: "#F1F3F5",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerCancelBtnText: {
+    color: "#495057",
+    fontWeight: "700",
+    fontSize: 14,
   },
   addCircle: {
     padding: 4,
@@ -316,6 +348,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 15,
     marginBottom: 20,
+    minHeight: 1800,
     overflow: "hidden",
     ...SHADOWS.small,
   },

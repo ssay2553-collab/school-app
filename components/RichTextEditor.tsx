@@ -38,7 +38,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     const resolver = useRef<((html: string) => void) | null>(null);
     const lastHtml = useRef(initialContent);
     const isFirstMount = useRef(true);
-    const [webViewHeight, setWebViewHeight] = useState(initialContent ? 400 : 200);
+    const [webViewHeight, setWebViewHeight] = useState(initialContent ? 1800 : 1500);
 
     const send = useCallback((script: string) => {
       if (Platform.OS === "web") {
@@ -109,7 +109,7 @@ button:active { background: #eee; }
 #editor {
   padding:12px;
   outline:none;
-  min-height: 100px;
+  min-height: 1500px;
 }
 
 /* Highlight */
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    minHeight: 200,
+    minHeight: 1500,
     height: Platform.OS === "web" ? "100%" : undefined,
   },
 });

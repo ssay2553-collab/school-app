@@ -21,7 +21,7 @@ import {
   BackHandler,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
+const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -53,6 +53,15 @@ export default function TeacherProfileEdit() {
   const [gender, setGender] = useState(appUser?.profile?.gender || "");
   const [dob, setDob] = useState<Date>(appUser?.profile?.dob ? new Date(appUser.profile.dob) : new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const webInputStyle = Platform.OS === 'web' ? {
+    padding: '10px',
+    borderRadius: '8px',
+    border: '1px solid #E2E8F0',
+    fontSize: '16px',
+    width: '100%',
+    marginBottom: '10px'
+  } : {};
 
   // Work Assignments state
   const [workModalVisible, setWorkModalVisible] = useState(false);
@@ -911,6 +920,28 @@ const SettingItem = ({ icon, title, value }: any) => (
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#FDFDFD" },
+  webDatePickerContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.medium,
+    alignItems: 'center',
+    gap: 10,
+  },
+  webCloseBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  webCloseBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

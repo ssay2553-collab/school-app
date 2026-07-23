@@ -33,10 +33,6 @@ interface AcademicMetadataModalProps {
     setInterest: (val: string) => void;
     mPromotedTo: string;
     setPromotedTo: (val: string) => void;
-    mNextTermBegins: string;
-    setNextTermBegins: (val: string) => void;
-    showNextTermPicker: boolean;
-    setShowNextTermPicker: (val: boolean) => void;
     mAdminRemarks: string;
     setAdminRemarks: (val: string) => void;
     mTeacherRemarks: string;
@@ -58,10 +54,6 @@ export const AcademicMetadataModal: React.FC<AcademicMetadataModalProps> = ({
     setInterest,
     mPromotedTo,
     setPromotedTo,
-    mNextTermBegins,
-    setNextTermBegins,
-    showNextTermPicker,
-    setShowNextTermPicker,
     mAdminRemarks,
     setAdminRemarks,
     mTeacherRemarks,
@@ -119,75 +111,13 @@ export const AcademicMetadataModal: React.FC<AcademicMetadataModalProps> = ({
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>PROMOTED / REPEATED TO (Global)</Text>
+                            <Text style={styles.inputLabel}>PROMOTED / REPEATED TO</Text>
                             <TextInput
                                 style={styles.textInput}
                                 value={mPromotedTo}
                                 onChangeText={setPromotedTo}
                                 placeholder="e.g. Promoted to Basic 5"
                             />
-                        </View>
-
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>NEXT TERM BEGINS (Global)</Text>
-                            {Platform.OS === "web" ? (
-                                <input
-                                    type="date"
-                                    value={
-                                        moment(mNextTermBegins, "Do MMM, YYYY").isValid()
-                                            ? moment(mNextTermBegins, "Do MMM, YYYY").format("YYYY-MM-DD")
-                                            : ""
-                                    }
-                                    onChange={(e) => {
-                                        const date = e.target.value;
-                                        if (date) {
-                                            setNextTermBegins(moment(date).format("Do MMM, YYYY"));
-                                        }
-                                    }}
-                                    style={{
-                                        padding: 12,
-                                        borderRadius: 8,
-                                        border: "1px solid #E2E8F0",
-                                        fontSize: 16,
-                                        outline: "none",
-                                        width: "100%",
-                                        boxSizing: "border-box",
-                                        backgroundColor: "#F8FAFC",
-                                    }}
-                                />
-                            ) : (
-                                <TouchableOpacity
-                                    style={styles.textInput}
-                                    onPress={() => setShowNextTermPicker(true)}
-                                >
-                                    <Text
-                                        style={{
-                                            color: mNextTermBegins ? COLORS.text : COLORS.muted,
-                                            fontSize: 16,
-                                        }}
-                                    >
-                                        {mNextTermBegins || "Tap to select date"}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-
-                            {showNextTermPicker && Platform.OS !== "web" && (
-                                <DateTimePicker
-                                    value={
-                                        moment(mNextTermBegins, "Do MMM, YYYY").isValid()
-                                            ? moment(mNextTermBegins, "Do MMM, YYYY").toDate()
-                                            : new Date()
-                                    }
-                                    mode="date"
-                                    display="default"
-                                    onChange={(event: any, selectedDate?: Date) => {
-                                        setShowNextTermPicker(false);
-                                        if (selectedDate) {
-                                            setNextTermBegins(moment(selectedDate).format("Do MMM, YYYY"));
-                                        }
-                                    }}
-                                />
-                            )}
                         </View>
 
                         <View style={styles.inputGroup}>

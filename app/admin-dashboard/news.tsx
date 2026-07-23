@@ -37,7 +37,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebaseConfig";
 import { Audience, NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
-import DateTimePicker from "@react-native-community/datetimepicker";
+const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -45,6 +45,15 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useToast } from "../../contexts/ToastContext";
 
 const storage = getStorage();
+
+const webInputStyle = Platform.OS === 'web' ? {
+  padding: '10px',
+  borderRadius: '8px',
+  border: '1px solid #E2E8F0',
+  fontSize: '16px',
+  width: '100%',
+  marginBottom: '10px'
+} : {};
 
 const uriToBlob = async (uri: string): Promise<Blob> => {
   const response = await fetch(uri);
@@ -432,17 +441,34 @@ export default function NewsCenter() {
                 </TouchableOpacity>
               </View>
 
-              {Platform.OS !== 'web' && showDatePicker && (
-                <DateTimePicker
-                  value={expiryDate || new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  minimumDate={new Date()}
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(Platform.OS === 'ios');
-                    if (selectedDate) setExpiryDate(selectedDate);
-                  }}
-                />
+              {showDatePicker && (
+                Platform.OS === 'web' ? (
+                  <View style={styles.webDatePickerContainer}>
+                    <input
+                      type="date"
+                      value={expiryDate ? expiryDate.toISOString().split('T')[0] : ''}
+                      onChange={(e) => {
+                        setExpiryDate(new Date(e.target.value));
+                        setShowDatePicker(false);
+                      }}
+                      style={webInputStyle}
+                    />
+                    <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.webCloseBtn}>
+                      <Text style={styles.webCloseBtnText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <DateTimePicker
+                    value={expiryDate || new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    minimumDate={new Date()}
+                    onChange={(event: any, selectedDate?: Date) => {
+                      setShowDatePicker(Platform.OS === 'ios');
+                      if (selectedDate) setExpiryDate(selectedDate);
+                    }}
+                  />
+                )
               )}
 
               {media && (
@@ -601,6 +627,28 @@ const styles = StyleSheet.create({
   },
 
   formSection: { padding: 20, marginTop: -20 },
+  webDatePickerContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.medium,
+    alignItems: 'center',
+    gap: 10,
+  },
+  webCloseBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  webCloseBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   formCard: {
     backgroundColor: "#fff",
     borderRadius: 24,

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -11,7 +11,12 @@ import {
   TouchableOpacity,
   View,
   useWindowDimensions,
+  Alert,
+  BackHandler,
 } from "react-native";
+// Conditional import for DateTimePicker to support Web/Electron
+const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
+
 import { useRouter } from "expo-router";
 import moment from "moment";
 import * as Animatable from "react-native-animatable";
@@ -33,10 +38,12 @@ export default function WeeklyTopicsScreen() {
     setSelectedClassId,
     selectedSubject,
     setSelectedSubject,
-    startDate: selectedWeek,
-    setStartDate: setSelectedWeek,
+    startDate,
+    setStartDate,
     endDate,
     setEndDate,
+    weekNumber,
+    setWeekNumber,
     topicData,
     setTopicData,
     saveTopic,
@@ -44,14 +51,69 @@ export default function WeeklyTopicsScreen() {
     subjects,
   } = useWeeklyTopics();
 
-  const weekRange = {
-    start: selectedWeek,
-    end: endDate
-  };
+  const webInputStyle = Platform.OS === 'web' ? {
+    padding: '10px',
+    borderRadius: '8px',
+    border: '1px solid #E2E8F0',
+    fontSize: '16px',
+    width: '100%',
+    marginBottom: '10px'
+  } : {};
+
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+
+  const handleBack = useCallback(() => {
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        "Discard Changes?",
+        "You have unsaved changes in your planning. Do you want to discard them?",
+        [
+          { text: "Keep Editing", style: "cancel" },
+          {
+            text: "Discard",
+            style: "destructive",
+            onPress: () => router.back(),
+          },
+        ]
+      );
+      return true;
+    }
+    router.back();
+    return true;
+  }, [hasUnsavedChanges, router]);
+
+  useEffect(() => {
+    const onBackPress = () => {
+      handleBack();
+      return true;
+    };
+    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => sub.remove();
+  }, [handleBack]);
 
   const changeWeek = (weeks: number) => {
-    const newWeek = moment(selectedWeek).add(weeks, "weeks").startOf("isoWeek").format("YYYY-MM-DD");
-    setSelectedWeek(newWeek);
+    const newStart = moment(startDate).add(weeks, "weeks").startOf("isoWeek");
+    setStartDate(newStart.format("YYYY-MM-DD"));
+    setEndDate(newStart.clone().add(4, "days").format("YYYY-MM-DD"));
+  };
+
+  const onStartDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS !== 'web') {
+      setShowStartDatePicker(Platform.OS === 'ios');
+    }
+    if (selectedDate) {
+      setStartDate(moment(selectedDate).format("YYYY-MM-DD"));
+    }
+  };
+
+  const onEndDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS !== 'web') {
+      setShowEndDatePicker(Platform.OS === 'ios');
+    }
+    if (selectedDate) {
+      setEndDate(moment(selectedDate).format("YYYY-MM-DD"));
+    }
   };
 
   if (loading) {
@@ -67,13 +129,26 @@ export default function WeeklyTopicsScreen() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <View style={[styles.headerInner, isLargeScreen && styles.maxContent]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
             <SVGIcon name="arrow-back" size={24} color="#1E293B" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>Weekly Planning</Text>
             <Text style={styles.subtitle}>Subject-Based Lesson Topics</Text>
           </View>
+          {hasUnsavedChanges && (
+            <TouchableOpacity
+              style={[styles.headerSaveBtn, saving && styles.disabledBtn]}
+              onPress={saveTopic}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.headerSaveText}>Save</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -127,7 +202,19 @@ export default function WeeklyTopicsScreen() {
 
           <View style={isLargeScreen ? styles.mainForm : null}>
             <View style={styles.weekPickerContainer}>
-              <Text style={styles.label}>3. Week Duration</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={styles.label}>3. Week Duration & Number</Text>
+                <View style={styles.weekNumInputContainer}>
+                  <Text style={styles.weekNumLabel}>Week:</Text>
+                  <TextInput
+                    style={styles.weekNumInput}
+                    placeholder="e.g. 1"
+                    value={weekNumber}
+                    onChangeText={setWeekNumber}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
               <View style={styles.weekPicker}>
                 <TouchableOpacity onPress={() => changeWeek(-1)} style={styles.weekNavBtn}>
                   <SVGIcon name="chevron-back" size={20} color="#64748B" />
@@ -135,15 +222,15 @@ export default function WeeklyTopicsScreen() {
 
                 <View style={styles.weekInfo}>
                   <View style={styles.dateRow}>
-                    <View style={styles.dateBox}>
+                    <TouchableOpacity onPress={() => setShowStartDatePicker(true)} style={styles.dateBox}>
                       <Text style={styles.dateLabel}>WEEK START</Text>
-                      <Text style={styles.dateValue}>{moment(weekRange.start).format("ddd, MMM D")}</Text>
-                    </View>
+                      <Text style={styles.dateValue}>{moment(startDate).format("ddd, MMM D")}</Text>
+                    </TouchableOpacity>
                     <View style={styles.dateDivider} />
-                    <View style={styles.dateBox}>
+                    <TouchableOpacity onPress={() => setShowEndDatePicker(true)} style={styles.dateBox}>
                       <Text style={styles.dateLabel}>WEEK ENDING</Text>
-                      <Text style={styles.dateValue}>{moment(weekRange.end).format("ddd, MMM D")}</Text>
-                    </View>
+                      <Text style={styles.dateValue}>{moment(endDate).format("ddd, MMM D")}</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
 
@@ -151,6 +238,57 @@ export default function WeeklyTopicsScreen() {
                   <SVGIcon name="chevron-forward" size={20} color="#64748B" />
                 </TouchableOpacity>
               </View>
+
+              {showStartDatePicker && (
+                Platform.OS === 'web' ? (
+                  <View style={styles.webDatePickerContainer}>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => {
+                        setStartDate(e.target.value);
+                        setShowStartDatePicker(false);
+                      }}
+                      style={webInputStyle}
+                    />
+                    <TouchableOpacity onPress={() => setShowStartDatePicker(false)} style={styles.webCloseBtn}>
+                      <Text style={styles.webCloseBtnText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <DateTimePicker
+                    value={moment(startDate).toDate()}
+                    mode="date"
+                    display="default"
+                    onChange={onStartDateChange}
+                  />
+                )
+              )}
+              {showEndDatePicker && (
+                Platform.OS === 'web' ? (
+                  <View style={styles.webDatePickerContainer}>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => {
+                        setEndDate(e.target.value);
+                        setShowEndDatePicker(false);
+                      }}
+                      style={webInputStyle}
+                    />
+                    <TouchableOpacity onPress={() => setShowEndDatePicker(false)} style={styles.webCloseBtn}>
+                      <Text style={styles.webCloseBtnText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <DateTimePicker
+                    value={moment(endDate).toDate()}
+                    mode="date"
+                    display="default"
+                    onChange={onEndDateChange}
+                  />
+                )
+              )}
             </View>
 
             <Animatable.View animation="fadeInUp" duration={600} style={styles.formCard}>
@@ -192,21 +330,6 @@ export default function WeeklyTopicsScreen() {
 
         <View style={{ height: 120 }} />
       </ScrollView>
-
-      {hasUnsavedChanges && (
-        <Animatable.View animation="slideInUp" duration={400} style={[styles.footer, isLargeScreen && styles.maxContent]}>
-          <TouchableOpacity style={styles.saveBtn} onPress={saveTopic} disabled={saving}>
-            {saving ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <>
-                <SVGIcon name="cloud-upload" size={20} color="#fff" />
-                <Text style={styles.saveBtnText}>Save Weekly Lesson Plan</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </Animatable.View>
-      )}
     </SafeAreaView>
   );
 }
@@ -217,6 +340,21 @@ const styles = StyleSheet.create({
   maxContent: { width: "100%", maxWidth: 1100, alignSelf: "center" },
   header: { backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#F1F5F9", zIndex: 10 },
   headerInner: { flexDirection: "row", alignItems: "center", padding: 20 },
+  headerSaveBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 12,
+    ...SHADOWS.small,
+  },
+  headerSaveText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  disabledBtn: {
+    opacity: 0.6,
+  },
   backBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: "#F8FAFC", justifyContent: "center", alignItems: "center", marginRight: 15 },
   title: { fontSize: 20, fontWeight: "900", color: "#1E293B" },
   subtitle: { fontSize: 12, color: "#64748B", fontWeight: "700", textTransform: "uppercase" },
@@ -240,7 +378,54 @@ const styles = StyleSheet.create({
   dateBox: { alignItems: "center", flex: 1 },
   dateLabel: { fontSize: 9, fontWeight: "900", color: "#94A3B8", marginBottom: 2 },
   dateValue: { fontSize: 14, fontWeight: "800", color: "#1E293B" },
+  weekNumInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.small,
+  },
+  weekNumLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+    marginRight: 6,
+  },
+  weekNumInput: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: COLORS.primary,
+    width: 40,
+    padding: 0,
+    textAlign: 'center',
+  },
   dateDivider: { width: 1, height: 30, backgroundColor: "#E2E8F0", marginHorizontal: 15 },
+  webDatePickerContainer: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.medium,
+    alignItems: 'center',
+    gap: 10,
+  },
+  webCloseBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  webCloseBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
+  },
   formCard: { backgroundColor: "#fff", borderRadius: 24, padding: 25, ...SHADOWS.medium, borderWidth: 1, borderColor: "#F1F5F9" },
   inputGroup: { marginBottom: 25 },
   inputLabel: { fontSize: 13, fontWeight: "900", color: "#1E293B", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },

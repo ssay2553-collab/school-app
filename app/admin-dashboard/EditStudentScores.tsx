@@ -25,6 +25,7 @@ import {
     FlatList,
     Platform,
     SafeAreaView,
+    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
@@ -75,11 +76,48 @@ export default function EditStudentScores() {
   // Selections
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
+
+  const selectedClassName = useMemo(() => {
+    return classes.find((c) => c.id === selectedClassId)?.name || selectedClassId;
+  }, [classes, selectedClassId]);
+
   const [subjects, setSubjects] = useState<SubjectInfo[]>([]);
   const [selectedReportType, setSelectedReportType] =
     useState<ReportType>("End of Term");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(true);
+
+  // Unsaved Changes check
+  const confirmDiscard = (onConfirm: () => void) => {
+    if (hasUnsavedChanges) {
+      if (Platform.OS === "web") {
+        if (window.confirm("You have unsaved changes. Discard them?")) {
+          onConfirm();
+        }
+      } else {
+        Alert.alert(
+          "Unsaved Changes",
+          "You have modified scores. Switching will discard these changes.",
+          [
+            { text: "Stay", style: "cancel" },
+            { text: "Discard", style: "destructive", onPress: onConfirm }
+          ]
+        );
+      }
+    } else {
+      onConfirm();
+    }
+  };
+
+  const handleBack = () => {
+    confirmDiscard(() => {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/admin-dashboard");
+      }
+    });
+  };
 
   // Local derived values for active period (Read-only)
   const selectedYear = acadConfig.academicYear || "";
@@ -92,6 +130,7 @@ export default function EditStudentScores() {
   const PAGE_SIZE = 10;
   const masterDataRef = useRef<Record<string, any>>({});
   const initialDataRef = useRef<string>("");
+  const initialDataMapRef = useRef<Map<string, string>>(new Map());
 
   const hasUnsavedChanges = useMemo(() => {
     return JSON.stringify(allStudents) !== initialDataRef.current;
@@ -109,28 +148,25 @@ export default function EditStudentScores() {
 
   useEffect(() => {
     const onBackPress = () => {
-      if (allStudents.length > 0 && JSON.stringify(allStudents) !== initialDataRef.current) {
+      if (hasUnsavedChanges) {
         if (Platform.OS === "web") {
-          if (window.confirm("You have modified scores. Are you sure you want to exit without saving?")) {
-            router.back();
-          }
-        } else {
-          Alert.alert(
-            "Unsaved Changes",
-            "You have modified scores. Are you sure you want to exit without saving?",
-            [
-              { text: "Stay", style: "cancel" },
-              { text: "Exit", style: "destructive", onPress: () => router.back() }
-            ]
-          );
+          return false; // Browser handles its own back confirm if we use beforeunload, but standard back button won't trigger this anyway
         }
+        Alert.alert(
+          "Unsaved Changes",
+          "You have modified scores. Are you sure you want to exit without saving?",
+          [
+            { text: "Stay", style: "cancel" },
+            { text: "Exit", style: "destructive", onPress: () => router.back() }
+          ]
+        );
         return true;
       }
       return false;
     };
     const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
     return () => sub.remove();
-  }, [allStudents]);
+  }, [hasUnsavedChanges, router]);
 
   const loadClasses = async () => {
     try {
@@ -213,8 +249,9 @@ export default function EditStudentScores() {
     }
   }, [selectedClassId, selectedYear, term, selectedReportType, fetchSubjects]);
 
-  const loadSubmission = async () => {
-    if (!selectedClassId || !selectedSubject || !selectedYear || !term)
+  const loadSubmission = async (subjectOverride?: string) => {
+    const subject = subjectOverride || selectedSubject;
+    if (!selectedClassId || !subject || !selectedYear || !term)
       return showToast({
         message: "Please select Year, Class and Subject.",
         type: "error",
@@ -223,7 +260,7 @@ export default function EditStudentScores() {
     try {
       const yearSlug = selectedYear.replace(/\//g, "-");
       const reportSlug = selectedReportType.replace(/\s+/g, "");
-      const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
+      const docId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
       const snap = await getDoc(doc(db, "academicRecords", docId));
       if (snap.exists()) {
         setRecordId(snap.id);
@@ -231,6 +268,13 @@ export default function EditStudentScores() {
         masterDataRef.current = {};
         setAllStudents(students);
         initialDataRef.current = JSON.stringify(students);
+
+        // Populate initial data map for per-student modification tracking
+        initialDataMapRef.current.clear();
+        students.forEach((s: any) => {
+          initialDataMapRef.current.set(s.studentId, JSON.stringify(s));
+        });
+
         setVisibleStudents(students.slice(0, PAGE_SIZE));
         setPage(1);
       } else {
@@ -369,6 +413,13 @@ export default function EditStudentScores() {
       await updateOverallRankings();
 
       initialDataRef.current = JSON.stringify(studentsToSave);
+
+      // Update the map after successful save
+      initialDataMapRef.current.clear();
+      studentsToSave.forEach((s: any) => {
+        initialDataMapRef.current.set(s.studentId, JSON.stringify(s));
+      });
+
       setAllStudents(studentsToSave);
       showToast({
         message: "Scores updated and records marked as approved.",
@@ -499,30 +550,6 @@ export default function EditStudentScores() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={[primary, secondary]} style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={styles.backBtn}
-          >
-            <SVGIcon name="arrow-back" color="#fff" size={24} />
-          </TouchableOpacity>
-          <View style={styles.titleContainer}>
-            <Text style={styles.headerTitle} numberOfLines={1}>
-              {SCHOOL_CONFIG.fullName}
-            </Text>
-            <View style={styles.statusRow}>
-              <Text style={styles.headerSub}>Admin Score Editor</Text>
-              {hasUnsavedChanges && (
-                <View style={styles.unsavedDot} />
-              )}
-            </View>
-          </View>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshBtn}>
-            <SVGIcon name="refresh" color="#fff" size={22} />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
 
       <FlatList
         data={visibleStudents}
@@ -532,6 +559,86 @@ export default function EditStudentScores() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
+            <LinearGradient colors={[primary, secondary]} style={styles.header}>
+              <View style={styles.headerTop}>
+                <TouchableOpacity
+                  onPress={handleBack}
+                  style={styles.headerBtn}
+                >
+                  <SVGIcon name="arrow-back" color="#fff" size={22} />
+                </TouchableOpacity>
+                <View style={styles.titleContainer}>
+                  <Text style={styles.headerTitle} numberOfLines={1}>
+                    {selectedSubject || "Score Editor"}
+                  </Text>
+                  <View style={styles.statusRow}>
+                    <View style={[styles.statusDot, { backgroundColor: '#10B981' }]} />
+                    <Text style={styles.headerSub} numberOfLines={1}>{selectedClassName || 'No Class Selected'}</Text>
+                    {hasUnsavedChanges && (
+                      <View style={styles.unsavedBadge}>
+                        <Text style={styles.unsavedText}>UNSAVED</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <TouchableOpacity onPress={handleRefresh} style={styles.headerBtn}>
+                  <SVGIcon name="refresh" color="#fff" size={20} />
+                </TouchableOpacity>
+              </View>
+
+              {subjects.length > 0 && (
+                <Animatable.View animation="fadeIn" duration={600} style={styles.subjectScrollContainer}>
+                  <View style={styles.subjectHeaderRow}>
+                    <Text style={styles.subjectLabel}>SUBMITTED SUBJECTS</Text>
+                    <View style={styles.subjectCountBadge}>
+                        <Text style={styles.subjectCountText}>{subjects.length}</Text>
+                    </View>
+                  </View>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.subjectScrollContent}
+                  >
+                    {subjects.map((s) => (
+                      <TouchableOpacity
+                        key={s.name}
+                        style={[
+                          styles.subjectChip,
+                          s.status === 'approved' ? styles.approvedChip : styles.pendingChip,
+                          selectedSubject === s.name && styles.activeSubjectChip
+                        ]}
+                        onPress={() => {
+                          if (selectedSubject === s.name) return;
+                          confirmDiscard(() => {
+                            setSelectedSubject(s.name);
+                            loadSubmission(s.name);
+                          });
+                        }}
+                      >
+                        <View style={[
+                          styles.statusDotSmall,
+                          { backgroundColor: s.status === 'approved' ? '#10B981' : '#F59E0B' }
+                        ]} />
+                        <Text style={[
+                          styles.subjectChipText,
+                          selectedSubject === s.name ? { color: primary } : { color: '#fff' }
+                        ]}>
+                          {s.name}
+                        </Text>
+                        {s.status === 'approved' && (
+                          <SVGIcon
+                            name="checkmark-circle"
+                            size={14}
+                            color={selectedSubject === s.name ? primary : "#10B981"}
+                            style={{ marginLeft: 6 }}
+                          />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </Animatable.View>
+              )}
+            </LinearGradient>
             <ScoreFilterSection
               showFilters={showFilters}
               setShowFilters={setShowFilters}
@@ -545,7 +652,7 @@ export default function EditStudentScores() {
               selectedSubject={selectedSubject}
               setSelectedSubject={setSelectedSubject}
               subjects={subjects}
-              loadSubmission={loadSubmission}
+              loadSubmission={() => confirmDiscard(loadSubmission)}
               listLoading={listLoading}
               recordId={recordId}
               primary={primary}
@@ -554,81 +661,73 @@ export default function EditStudentScores() {
             {recordId && (
               <Animatable.View
                 animation="fadeIn"
-                style={styles.searchContainer}
+                style={styles.searchSection}
               >
                 <View style={styles.searchBar}>
-                  <SVGIcon name="search-outline" size={20} color="#94A3B8" />
+                  <SVGIcon name="search" size={18} color="#94A3B8" />
                   <TextInput
                     style={styles.searchInput}
-                    placeholder="Search student by name or ID..."
+                    placeholder="Search student name..."
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                     placeholderTextColor="#94A3B8"
                     clearButtonMode="while-editing"
                   />
-                  {searchQuery !== "" && Platform.OS !== 'ios' && (
-                    <TouchableOpacity onPress={() => setSearchQuery("")}>
-                      <SVGIcon
-                        name="close-circle-outline"
-                        size={20}
-                        color="#94A3B8"
-                      />
-                    </TouchableOpacity>
-                  )}
                 </View>
 
-                <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{allStudents.length}</Text>
-                    <Text style={styles.statLabel}>Total</Text>
+                <View style={styles.statsContainer}>
+                  <View style={styles.statBox}>
+                    <Text style={styles.statVal}>{allStudents.length}</Text>
+                    <Text style={styles.statLab}>Students</Text>
                   </View>
                   <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{classStats.graded}</Text>
-                    <Text style={styles.statLabel}>Graded</Text>
+                  <View style={styles.statBox}>
+                    <Text style={[styles.statVal, { color: primary }]}>{classStats.avg}</Text>
+                    <Text style={styles.statLab}>Average</Text>
                   </View>
                   <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: primary }]}>{classStats.avg}</Text>
-                    <Text style={styles.statLabel}>Avg</Text>
-                  </View>
-                  <View style={styles.statDivider} />
-                  <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: "#10B981" }]}>{classStats.high}</Text>
-                    <Text style={styles.statLabel}>High</Text>
+                  <View style={styles.statBox}>
+                    <Text style={[styles.statVal, { color: "#10B981" }]}>{classStats.high}</Text>
+                    <Text style={styles.statLab}>Highest</Text>
                   </View>
                 </View>
               </Animatable.View>
             )}
           </>
         }
-        renderItem={({ item }) => (
-          <StudentScoreCard
-            item={item}
-            onUpdateRef={onUpdateRef}
-            primary={primary}
-            reportType={selectedReportType}
-          />
-        )}
+        renderItem={({ item }) => {
+          const originalJson = initialDataMapRef.current.get(item.studentId);
+          const isModified = JSON.stringify(item) !== originalJson;
+
+          return (
+            <StudentScoreCard
+              item={item}
+              onUpdateRef={onUpdateRef}
+              primary={primary}
+              reportType={selectedReportType}
+              isModified={isModified}
+            />
+          );
+        }}
         ListEmptyComponent={
           recordId ? (
             <View style={styles.empty}>
-              <View style={styles.emptyIconCircle}>
-                <SVGIcon name="search-outline" size={40} color="#CBD5E1" />
+              <View style={[styles.emptyIconCircle, { backgroundColor: '#F1F5F9' }]}>
+                <SVGIcon name="search" size={32} color="#94A3B8" />
               </View>
-              <Text style={styles.emptyTitle}>No Results Found</Text>
+              <Text style={styles.emptyTitle}>No matching students</Text>
               <Text style={styles.emptyText}>
-                We couldn't find any students matching "{searchQuery}".
+                Try a different search term or check filters.
               </Text>
             </View>
           ) : (
             <View style={styles.empty}>
-              <View style={styles.emptyIconCircle}>
-                <SVGIcon name="document-text" size={40} color="#CBD5E1" />
+              <View style={[styles.emptyIconCircle, { backgroundColor: primary + '10' }]}>
+                <SVGIcon name="document-text" size={32} color={primary} />
               </View>
-              <Text style={styles.emptyTitle}>Ready to Edit</Text>
+              <Text style={styles.emptyTitle}>Ready to begin</Text>
               <Text style={styles.emptyText}>
-                Select class and subject to begin updating student scores.
+                Use the filters above to load a class subject.
               </Text>
             </View>
           )
@@ -637,7 +736,7 @@ export default function EditStudentScores() {
       />
 
       {recordId && allStudents.length > 0 ? (
-        <Animatable.View animation="slideInUp" style={styles.footer}>
+        <Animatable.View animation="slideInUp" duration={400} style={styles.footer}>
           <TouchableOpacity
             style={styles.deleteBtn}
             onPress={handleDeleteRecord}
@@ -646,7 +745,7 @@ export default function EditStudentScores() {
             {deleting ? (
               <ActivityIndicator color="#EF4444" />
             ) : (
-              <SVGIcon name="trash-outline" size={24} color="#EF4444" />
+              <SVGIcon name="trash" size={22} color="#EF4444" />
             )}
           </TouchableOpacity>
           <TouchableOpacity
@@ -658,12 +757,12 @@ export default function EditStudentScores() {
               <ActivityIndicator color="#fff" />
             ) : (
               <View style={styles.btnContent}>
-                <Text style={styles.saveBtnText}>Approve & Save Changes</Text>
+                <Text style={styles.saveBtnText}>Save & Approve</Text>
                 <SVGIcon
-                  name="checkmark-done-circle"
-                  size={22}
+                  name="checkmark-done"
+                  size={20}
                   color="#fff"
-                  style={{ marginLeft: 10 }}
+                  style={{ marginLeft: 8 }}
                 />
               </View>
             )}
@@ -678,69 +777,144 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
-    paddingTop: Platform.OS === "android" ? 45 : 60,
-    paddingHorizontal: 25,
-    paddingBottom: 40,
-    borderBottomLeftRadius: 35,
-    borderBottomRightRadius: 35,
-    ...SHADOWS.large,
+    paddingTop: Platform.OS === "android" ? 40 : 50,
+    paddingHorizontal: 20,
+    paddingBottom: 25,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    ...SHADOWS.medium,
+  },
+  subjectScrollContainer: {
+    marginTop: 20,
+  },
+  subjectHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8
+  },
+  subjectLabel: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  subjectCountBadge: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  subjectCountText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '900',
+  },
+  subjectScrollContent: {
+    paddingRight: 20,
+    paddingBottom: 4
+  },
+  subjectChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    marginRight: 10,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  approvedChip: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  pendingChip: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+  },
+  activeSubjectChip: {
+    backgroundColor: '#fff',
+    borderColor: '#fff',
+    ...SHADOWS.medium,
+  },
+  subjectChipText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3
+  },
+  statusDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
   },
   headerTop: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 20,
   },
-  backBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.15)",
+  headerBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
   },
-  refreshBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    justifyContent: "center",
+  titleContainer: {
+    flex: 1,
     alignItems: "center",
+    marginHorizontal: 10,
+    justifyContent: 'center'
   },
-  titleContainer: { flex: 1, alignItems: "center" },
-  statusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  unsavedDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+  statusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 4,
+    maxWidth: '100%',
+    flexWrap: 'nowrap'
+  },
+  statusDot: { width: 6, height: 6, borderRadius: 3, flexShrink: 0 },
+  unsavedBadge: {
     backgroundColor: "#F87171",
-    marginTop: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+  unsavedText: {
+    color: '#fff',
+    fontSize: 8,
+    fontWeight: '900'
   },
   headerTitle: {
     color: "#fff",
-    fontSize: 20,
-    fontWeight: "900",
-    letterSpacing: 0.5,
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+    textAlign: 'center'
   },
   headerSub: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 13,
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 12,
     fontWeight: "700",
-    textTransform: "uppercase",
-    marginTop: 2,
+    flexShrink: 1,
   },
-  searchContainer: {
-    marginTop: 10,
-    paddingHorizontal: 20,
-    paddingBottom: 15,
+  searchSection: {
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
-    borderRadius: 12,
-    paddingHorizontal: 15,
-    height: 50,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    height: 48,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     ...SHADOWS.small,
@@ -752,37 +926,38 @@ const styles = StyleSheet.create({
     color: "#1E293B",
     fontWeight: "600",
   },
-  statsRow: {
+  statsContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    marginTop: 15,
+    marginTop: 12,
     backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#F1F5F9",
     ...SHADOWS.small,
   },
-  statItem: {
+  statBox: {
     alignItems: "center",
+    flex: 1
   },
-  statValue: {
+  statVal: {
     fontSize: 16,
-    fontWeight: "900",
+    fontWeight: "800",
     color: "#1E293B",
   },
-  statLabel: {
+  statLab: {
     fontSize: 10,
     color: "#94A3B8",
-    fontWeight: "800",
+    fontWeight: "700",
     textTransform: "uppercase",
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 20,
-    backgroundColor: "#E2E8F0",
+    backgroundColor: "#F1F5F9",
   },
   footer: {
     position: "absolute",
@@ -790,19 +965,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: "#fff",
-    padding: 20,
-    paddingBottom: Platform.OS === "ios" ? 35 : 20,
+    padding: 16,
+    paddingBottom: Platform.OS === "ios" ? 34 : 16,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
-    ...SHADOWS.large,
     flexDirection: "row",
     alignItems: "center",
-    gap: 15,
+    gap: 12,
+    ...SHADOWS.large,
   },
   deleteBtn: {
-    width: 58,
-    height: 58,
-    borderRadius: 18,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     backgroundColor: "#FEF2F2",
     justifyContent: "center",
     alignItems: "center",
@@ -811,45 +986,43 @@ const styles = StyleSheet.create({
   },
   saveBtn: {
     flex: 1,
-    height: 58,
-    borderRadius: 18,
+    height: 52,
+    borderRadius: 14,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    ...SHADOWS.medium,
+    ...SHADOWS.small,
   },
   saveBtnText: {
     color: "#fff",
     fontSize: 15,
-    fontWeight: "900",
-    letterSpacing: 0.5,
+    fontWeight: "800",
   },
   btnContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  empty: { alignItems: "center", marginTop: 80, paddingHorizontal: 40 },
+  empty: { alignItems: "center", marginTop: 60, paddingHorizontal: 40 },
   emptyIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F1F5F9",
+    width: 70,
+    height: 70,
+    borderRadius: 24,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: "900",
+    fontSize: 17,
+    fontWeight: "800",
     color: "#1E293B",
-    marginBottom: 10,
+    marginBottom: 6,
   },
   emptyText: {
     color: "#94A3B8",
-    fontWeight: "600",
+    fontWeight: "500",
     textAlign: "center",
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

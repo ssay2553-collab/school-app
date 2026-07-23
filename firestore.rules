@@ -564,7 +564,16 @@ match /feePayments/{paymentId} {
     }
 
     match /student_notes/{noteId} {
-      allow read, write: if isSignedIn() && (isStudent() || isAdmin()) && (resource == null || resource.data.uid == uid()) && (request.resource == null || request.resource.data.uid == uid());
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        uid() == resource.data.uid ||
+        (isTeacher() && isClassTeacher(get(/databases/$(database)/documents/users/$(resource.data.uid)).data.classId))
+      );
+      allow create: if isSignedIn() && (
+        isStudent() && request.resource.data.uid == uid()
+      );
+      allow update: if isSignedIn() && uid() == resource.data.uid;
+      allow delete: if isSignedIn() && (isAdmin() || uid() == resource.data.uid);
     }
 
     /* ===============================
@@ -919,7 +928,11 @@ match /academicRecordsSummary/{id} {
     =============================== */
     match /weeklyTopics/{topicId} {
       allow read: if isSignedIn();
-      allow write: if isSignedIn() && (isAdmin() || (isTeacher() && request.resource.data.classId in userData().classes));
+      allow create, update: if isSignedIn() && (
+        isAdmin() ||
+        (isTeacher() && request.resource.data.classId in userData().classes)
+      );
+      allow delete: if isAdmin();
     }
 
     /* ===============================

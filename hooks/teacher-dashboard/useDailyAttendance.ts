@@ -178,14 +178,24 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
   }, [isOfficialClassTeacher, showToast]);
 
   const saveToFirestore = useCallback(async () => {
-    if (!classId || !appUser || !academicYear || !term) return;
+    if (!classId || !appUser || !academicYear || !term) {
+      showToast({ message: "Unable to save: Missing academic configuration or user session. Please refresh.", type: "error" });
+      return;
+    }
 
-    const currentHour = new Date().getUTCHours();
+    const now = new Date();
+    // Using getHours() (local time) instead of getUTCHours() to better align with the user's wall clock.
+    // This resolves issues where users in Ghana with slightly misconfigured timezones were seeing time errors
+    // because their UTC time was falling outside the 6AM-6PM window even if their local clock was correct.
+    const currentHour = now.getHours();
     const userRole = (appUser.role || "").toLowerCase();
     const isAdminUser = ["admin", "superadmin", "super admin"].includes(userRole) || !!(appUser as any).adminRole;
 
-    if (!isAdminUser && (currentHour < 6 || currentHour >= 18)) {
-      showToast({ message: "Attendance marking is only allowed between 6:00 AM and 6:00 PM Ghana Time.", type: "error" });
+    if (!isAdminUser && (currentHour < 6 || currentHour >= 10)) {
+      showToast({
+        message: `Attendance marking is only allowed between 6:00 AM and 10:00 AM Ghana Time. Current device time: ${moment().format('hh:mm A')}`,
+        type: "error"
+      });
       return;
     }
 

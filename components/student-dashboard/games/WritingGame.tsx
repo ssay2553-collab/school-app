@@ -10,7 +10,7 @@ import {
 import Svg, { Path } from "react-native-svg";
 import * as Animatable from "react-native-animatable";
 import { Audio } from "expo-av";
-import { stop, speak } from "expo-speech";
+import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import SVGIcon from "../../SVGIcon";
@@ -56,8 +56,8 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
           ? `Trace the letter ${currentTask.char}`
           : `Trace the number ${currentTask.char}`;
 
-        stop();
-        speak(textToSpeak, {
+        Speech.stop();
+        Speech.speak(textToSpeak, {
           language: 'en',
           pitch: 1.1,
           rate: 0.9,
@@ -75,7 +75,7 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
       if (soundRef.current) {
         soundRef.current.unloadAsync();
       }
-      stop();
+      Speech.stop();
     };
   }, []);
 
@@ -161,7 +161,7 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
 
     // Basic completeness check
     if (paths.length === 0) {
-      speak("Try tracing the " + (activeType === "letter" ? "letter" : "number") + " first!", { rate: 1.0 });
+      Speech.speak("Try tracing the " + (activeType === "letter" ? "letter" : "number") + " first!", { rate: 1.0 });
       return;
     }
 
@@ -172,7 +172,7 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
 
     if (!isReasonableEffort) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      speak("Keep going! Trace the whole shape.", { rate: 1.0 });
+      Speech.speak("Keep going! Trace the whole shape.", { rate: 1.0 });
       return;
     }
 
@@ -199,7 +199,7 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
           const newStickers = [...unlockedStickers, emoji];
           await AsyncStorage.setItem("@unlocked_stickers", JSON.stringify(newStickers));
           setNewSticker(emoji);
-          speak(`Wow! You earned a sticker!`, { rate: 1.0 });
+          Speech.speak(`Wow! You earned a sticker!`, { rate: 1.0 });
         }
       }
 
@@ -212,7 +212,7 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
     }
 
     // Announce success
-    speak(selectedRemark, { rate: 1.0 });
+    Speech.speak(selectedRemark, { rate: 1.0 });
 
     setTimeout(() => {
       setShowRemark(false);
@@ -276,7 +276,7 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
         <Text style={styles.headerTitle}>Writing Fun! ✍️</Text>
         <TouchableOpacity onPress={() => {
            const text = activeType === "letter" ? `The letter ${currentTask.char}` : `The number ${currentTask.char}`;
-           speak(text);
+           Speech.speak(text);
         }}>
           <SVGIcon name="volume-high" color="#fff" size={32} />
         </TouchableOpacity>

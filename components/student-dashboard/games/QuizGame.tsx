@@ -7,7 +7,7 @@ import {
     View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
-import { stop, speak } from "expo-speech";
+import * as Speech from "expo-speech";
 import SVGIcon from "../../SVGIcon";
 import { usePersistedState } from "../../../hooks/student-dashboard/usePersistedState";
 import { QUIZ_DATA, REMARKS, WRONG_REMARKS } from "./GameConstants";
@@ -50,19 +50,19 @@ export const QuizGame: React.FC<QuizGameProps> = ({ onExit }) => {
 
   useEffect(() => {
     startStage();
-    return () => { stop(); };
+    return () => { Speech.stop(); };
   }, [startStage]);
 
   useEffect(() => {
     if (questions[index]) {
       const q = questions[index];
-      stop();
-      speak(q.question, { rate: 0.9 });
+      Speech.stop();
+      Speech.speak(q.question, { rate: 0.9 });
     }
   }, [index, questions]);
 
   const handleNextLevel = () => {
-    stop();
+    Speech.stop();
     if (score >= 4) {
       setLevel(level + 1);
       if (appUser?.uid) {
@@ -81,8 +81,8 @@ export const QuizGame: React.FC<QuizGameProps> = ({ onExit }) => {
     const selectedRemark = getRandomRemark(correct);
     setRemark(selectedRemark);
 
-    stop();
-    speak(selectedRemark, { rate: 1.0 });
+    Speech.stop();
+    Speech.speak(selectedRemark, { rate: 1.0 });
 
     if (correct) setScore((s) => s + 1);
     setTimeout(() => {
@@ -121,11 +121,11 @@ export const QuizGame: React.FC<QuizGameProps> = ({ onExit }) => {
   return (
     <View style={styles.gameContainer}>
       <View style={styles.gameHeader}>
-        <TouchableOpacity onPress={() => { stop(); onExit(); }}>
+        <TouchableOpacity onPress={() => { Speech.stop(); onExit(); }}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
         <Text style={styles.levelText}>Quiz Fun!</Text>
-        <TouchableOpacity onPress={() => speak(q.question)}>
+        <TouchableOpacity onPress={() => Speech.speak(q.question)}>
           <SVGIcon name="volume-high" color="#fff" size={28} />
         </TouchableOpacity>
       </View>

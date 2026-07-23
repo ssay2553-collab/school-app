@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { stop, speak } from "expo-speech";
+import * as Speech from "expo-speech";
 import * as Animatable from "react-native-animatable";
 import * as Haptics from "expo-haptics";
 import SVGIcon from "../../SVGIcon";
@@ -60,18 +60,18 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
 
   useEffect(() => {
     startStage();
-    return () => { stop(); };
+    return () => { Speech.stop(); };
   }, [startStage]);
 
   useEffect(() => {
     if (scrambled) {
-      stop();
-      speak("Unscramble this word", { rate: 0.9 });
+      Speech.stop();
+      Speech.speak("Unscramble this word", { rate: 0.9 });
     }
   }, [scrambled]);
 
   const handleNextLevel = () => {
-    stop();
+    Speech.stop();
     if (score >= 4) {
       setLevel(level + 1);
       if (appUser?.uid) {
@@ -89,8 +89,8 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
     const isCorrect = input.toUpperCase().trim() === words[index];
     const remark = getRandomRemark(isCorrect);
 
-    stop();
-    speak(remark, { rate: 1.0 });
+    Speech.stop();
+    Speech.speak(remark, { rate: 1.0 });
 
     if (isCorrect) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -144,11 +144,11 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
   return (
     <View style={styles.gameContainer}>
       <View style={styles.gameHeader}>
-        <TouchableOpacity onPress={() => { stop(); onExit(); }}>
+        <TouchableOpacity onPress={() => { Speech.stop(); onExit(); }}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
         <Text style={styles.levelText}>Scramble 🔠 (Lvl {level})</Text>
-        <TouchableOpacity onPress={() => speak("Unscramble " + scrambled.split('').join(' '))}>
+        <TouchableOpacity onPress={() => Speech.speak("Unscramble " + scrambled.split('').join(' '))}>
           <SVGIcon name="volume-high" color="#fff" size={28} />
         </TouchableOpacity>
       </View>

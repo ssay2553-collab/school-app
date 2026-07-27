@@ -190,18 +190,32 @@ export default function AttendanceDetails() {
           }
           renderItem={({ item, index }) => (
             <Animatable.View animation="fadeInUp" duration={300} delay={index * 30} style={styles.studentCard}>
-              <View style={[styles.statusIndicator, { backgroundColor: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : item.status === "late" ? "#F59E0B" : "#CBD5E1" }]} />
-              <View style={styles.studentInfo}>
-                <Text style={styles.studentName}>{item.name}</Text>
-                {item.markedAt && (
-                  <Text style={styles.markedTime}>Marked {moment(item.markedAt).format("h:mm A")}</Text>
-                )}
-              </View>
-              <View style={[styles.statusBadge, { backgroundColor: item.status === "present" ? "#F0FDF4" : item.status === "absent" ? "#FEF2F2" : item.status === "late" ? "#FFFBEB" : "#F8FAFC" }]}>
-                <Text style={[styles.statusText, { color: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : item.status === "late" ? "#F59E0B" : "#94A3B8" }]}>
-                  {item.status.replace("_", " ").toUpperCase()}
-                </Text>
-              </View>
+              <TouchableOpacity
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                onPress={() => router.push({
+                  pathname: "/admin-dashboard/student-attendance-details",
+                  params: {
+                    studentId: item.id,
+                    studentName: item.name,
+                    classId,
+                    academicYear,
+                    term
+                  }
+                })}
+              >
+                <View style={[styles.statusIndicator, { backgroundColor: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : item.status === "late" ? "#F59E0B" : "#CBD5E1" }]} />
+                <View style={styles.studentInfo}>
+                  <Text style={styles.studentName}>{item.name}</Text>
+                  {item.markedAt && (
+                    <Text style={styles.markedTime}>Marked {moment(item.markedAt).format("h:mm A")}</Text>
+                  )}
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: item.status === "present" ? "#F0FDF4" : item.status === "absent" ? "#FEF2F2" : item.status === "late" ? "#FFFBEB" : "#F8FAFC" }]}>
+                  <Text style={[styles.statusText, { color: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : item.status === "late" ? "#F59E0B" : "#94A3B8" }]}>
+                    {item.status.replace("_", " ").toUpperCase()}
+                  </Text>
+                </View>
+              </TouchableOpacity>
             </Animatable.View>
           )}
           ListEmptyComponent={

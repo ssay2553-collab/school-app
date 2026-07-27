@@ -184,14 +184,31 @@ export default function ManageUsers() {
 
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <TouchableOpacity
-                    style={styles.iconBtn}
+                    style={[
+                      styles.iconBtn,
+                      {
+                        width: "auto",
+                        paddingHorizontal: 12,
+                        flexDirection: "row",
+                        gap: 8,
+                      },
+                    ]}
                     onPress={() => setShowArchived(!showArchived)}
                   >
                     <SVGIcon
                       name={showArchived ? "people" : "archive"}
-                      size={22}
+                      size={20}
                       color={COLORS.primary}
                     />
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "800",
+                        color: COLORS.primary,
+                      }}
+                    >
+                      {showArchived ? "Active" : "Archive"}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -245,9 +262,18 @@ export default function ManageUsers() {
                   </View>
                   {isHighestClassView && !showArchived && (
                     <TouchableOpacity
-                      style={styles.graduateBtn}
+                      style={[
+                        styles.graduateBtn,
+                        {
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                          paddingHorizontal: 15,
+                        },
+                      ]}
                       onPress={handleGraduateClass}
                     >
+                      <SVGIcon name="school" size={18} color="#fff" />
                       <Text style={styles.graduateBtnText}>Graduate Class</Text>
                     </TouchableOpacity>
                   )}
@@ -257,7 +283,13 @@ export default function ManageUsers() {
                       <TouchableOpacity
                         style={[
                           styles.graduateBtn,
-                          { backgroundColor: COLORS.secondary || "#c53b59" },
+                          {
+                            backgroundColor: COLORS.secondary || "#c53b59",
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 8,
+                            paddingHorizontal: 15,
+                          },
                         ]}
                         onPress={() =>
                           setAssignmentModal({
@@ -266,6 +298,7 @@ export default function ManageUsers() {
                           })
                         }
                       >
+                        <SVGIcon name="trending-up" size={18} color="#fff" />
                         <Text style={styles.graduateBtnText}>
                           Promote/Repeat Class
                         </Text>
@@ -387,6 +420,18 @@ export default function ManageUsers() {
           onClearArrears={clearServiceArrears}
           onRemoveAssignedRole={handleRemoveAssignedRole}
           onPromoteRepeat={openPromoteRepeat}
+          onToggleArchive={handleToggleArchiveStatus}
+          onViewAttendance={(u) => {
+            setViewingUser(null);
+            router.push({
+              pathname: "/admin-dashboard/student-attendance-details",
+              params: {
+                studentId: u.uid,
+                studentName: `${u.profile?.firstName} ${u.profile?.lastName}`,
+                classId: u.classId,
+              },
+            });
+          }}
         />
 
         <AssignmentModal

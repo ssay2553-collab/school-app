@@ -141,6 +141,9 @@ export default function OtherCharges() {
   }, [students, searchQuery]);
 
   const handleStudentPress = useCallback((student: Student) => {
+    setPaymentAmount("");
+    setReceivedFrom("");
+    setPaymentMethod("Cash");
     setSelectedStudent(student);
     setPaymentModalVisible(true);
     fetchPaymentHistory(student.uid);
@@ -170,22 +173,53 @@ export default function OtherCharges() {
   };
 
   const onConfirmDeleteCharge = (category: string) => {
-    Alert.alert(
-      "Reverse Charge",
-      `Delete '${category}' and reverse balances for all students in this class?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete & Reverse", style: "destructive", onPress: () => handleDeleteCharge(category) },
-      ]
-    );
+    const confirmDeletion = () => {
+      handleDeleteCharge(category);
+    };
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        `Delete '${category}' and reverse balances for all students in this class?`
+      );
+      if (confirmed) {
+        confirmDeletion();
+      }
+    } else {
+      Alert.alert(
+        "Reverse Charge",
+        `Delete '${category}' and reverse balances for all students in this class?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete & Reverse", style: "destructive", onPress: confirmDeletion },
+        ]
+      );
+    }
   };
 
   const onRevertTransaction = (h: any) => {
     if (!selectedStudent) return;
-    Alert.alert("Confirm Deletion", "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => handleDeletePayment(selectedStudent, h) },
-    ]);
+
+    const confirmDeletion = () => {
+      handleDeletePayment(selectedStudent, h);
+    };
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance."
+      );
+      if (confirmed) {
+        confirmDeletion();
+      }
+    } else {
+      Alert.alert(
+        "Confirm Deletion",
+        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete", style: "destructive", onPress: confirmDeletion },
+        ]
+      );
+    }
   };
 
   return (

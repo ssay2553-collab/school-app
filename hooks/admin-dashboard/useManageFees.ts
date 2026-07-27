@@ -20,6 +20,7 @@ import { sendNotification } from "../../src/services/notificationService";
 import { Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFeeStudents } from "./useFeeStudents";
+import { propagateArrears } from "../../utils/financeUtils";
 
 interface UseManageFeesProps {
   appUser: any;
@@ -244,6 +245,7 @@ export const useManageFees = ({
         receiptNo,
         academicYear,
         term,
+        type: "tuition",
       };
 
       const batch = writeBatch(db);
@@ -257,10 +259,11 @@ export const useManageFees = ({
       });
 
       const recordRef = doc(db, "studentFeeRecords", recordId);
+      // In the new model, amountPaid and balance on the record represent global totals.
+      // However, for immediate UI responsiveness before a full cleanup, we update them based on the current state.
       const newPaid = (selectedStudent.amountPaid || 0) + amount;
       const newBalance = (selectedStudent.currentBalance || 0) - amount;
 
-      // Ensure critical fields are present even if document is created via payment
       const feeRecordUpdate: any = {
         studentUid: selectedStudent.uid,
         studentName: selectedStudent.fullName,
@@ -289,6 +292,9 @@ export const useManageFees = ({
 
       await batch.commit();
       showToast({ message: `Payment of ₵${amount} logged successfully`, type: "success" });
+
+      // Propagate arrears to subsequent terms if they exist
+      propagateArrears(selectedStudent.uid, academicYear, term, -amount, 'payment').catch(console.error);
 
       if (selectedStudent.uid) {
         sendNotification({
@@ -320,19 +326,95 @@ export const useManageFees = ({
         const cleanTerm = term.replace(/\s/g, "");
         const recordId = `${selectedStudent.uid}_${cleanYear}_${cleanTerm}`;
         const batch = writeBatch(db);
+        const amount = Number(payment.amount) || 0;
+        const type = (payment.type || "tuition").toLowerCase();
 
-        // 1. Update the student fee record (array and totals)
-        batch.update(doc(db, "studentFeeRecords", recordId), {
+        // Determine if it's a payment or a charge
+        const isPayment = type.endsWith("_payment") || type === "tuition" || type === "tuition_credit";
+
+        const feeRecordUpdate: any = {
           payments: arrayRemove(payment),
-          amountPaid: increment(-payment.amount),
-          balance: increment(payment.amount),
           lastUpdated: serverTimestamp(),
-        });
+        };
 
-        // 2. Reverse the wallet balance
-        batch.update(doc(db, "users", selectedStudent?.uid!), {
-          walletBalance: increment(payment.amount),
-        });
+        const userUpdate: any = {};
+
+        if (isPayment) {
+          feeRecordUpdate.balance = increment(amount);
+          userUpdate.walletBalance = increment(amount);
+
+          if (type === "tuition" || type === "tuition_credit") {
+            feeRecordUpdate.amountPaid = increment(-amount);
+          } else if (type === "pta_payment") {
+            feeRecordUpdate.ptaPaid = increment(-amount);
+            feeRecordUpdate.ptaBalance = increment(amount);
+            userUpdate.ptaBalance = increment(amount);
+          } else if (type === "maintenance_payment") {
+            feeRecordUpdate.maintenancePaid = increment(-amount);
+            feeRecordUpdate.maintenanceBalance = increment(amount);
+            userUpdate.maintenanceBalance = increment(amount);
+          } else if (type === "admission_payment") {
+            feeRecordUpdate.admissionPaid = increment(-amount);
+            feeRecordUpdate.admissionBalance = increment(amount);
+            userUpdate.admissionBalance = increment(amount);
+          } else if (type === "books_payment") {
+            feeRecordUpdate.booksPaid = increment(-amount);
+            feeRecordUpdate.booksBalance = increment(amount);
+            userUpdate.booksBalance = increment(amount);
+          } else if (type === "uniform_payment") {
+            feeRecordUpdate.uniformPaid = increment(-amount);
+            feeRecordUpdate.uniformBalance = increment(amount);
+            userUpdate.uniformBalance = increment(amount);
+          } else if (type === "other_payment") {
+            feeRecordUpdate.otherPaid = increment(-amount);
+            feeRecordUpdate.otherBalance = increment(amount);
+            userUpdate.otherBalance = increment(amount);
+          } else {
+            feeRecordUpdate.amountPaid = increment(-amount);
+          }
+        } else {
+          // Reversing a charge (bill)
+          feeRecordUpdate.balance = increment(-amount);
+          userUpdate.walletBalance = increment(-amount);
+
+          if (type === "pta") {
+            feeRecordUpdate.ptaBill = increment(-amount);
+            feeRecordUpdate.ptaBalance = increment(-amount);
+            userUpdate.ptaBill = increment(-amount);
+            userUpdate.ptaBalance = increment(-amount);
+          } else if (type === "maintenance") {
+            feeRecordUpdate.maintenanceBill = increment(-amount);
+            feeRecordUpdate.maintenanceBalance = increment(-amount);
+            userUpdate.maintenanceBill = increment(-amount);
+            userUpdate.maintenanceBalance = increment(-amount);
+          } else if (type === "admission") {
+            feeRecordUpdate.admissionBill = increment(-amount);
+            feeRecordUpdate.admissionBalance = increment(-amount);
+            userUpdate.admissionFeeBill = increment(-amount);
+            userUpdate.admissionBalance = increment(-amount);
+          } else if (type === "books") {
+            feeRecordUpdate.booksBill = increment(-amount);
+            feeRecordUpdate.booksBalance = increment(-amount);
+            userUpdate.booksBill = increment(-amount);
+            userUpdate.booksBalance = increment(-amount);
+          } else if (type === "uniform") {
+            feeRecordUpdate.uniformBill = increment(-amount);
+            feeRecordUpdate.uniformBalance = increment(-amount);
+            userUpdate.uniformBill = increment(-amount);
+            userUpdate.uniformBalance = increment(-amount);
+          } else if (type === "other") {
+            feeRecordUpdate.otherBill = increment(-amount);
+            feeRecordUpdate.otherBalance = increment(-amount);
+            userUpdate.otherBill = increment(-amount);
+            userUpdate.otherBalance = increment(-amount);
+          }
+        }
+
+        // 1. Update the student fee record
+        batch.update(doc(db, "studentFeeRecords", recordId), feeRecordUpdate);
+
+        // 2. Update the user document
+        batch.update(doc(db, "users", selectedStudent.uid), userUpdate);
 
         // 3. Delete the global payment document if receiptNo exists
         if (payment.receiptNo) {
@@ -350,7 +432,22 @@ export const useManageFees = ({
         await batch.commit();
         fetchStudents(true);
         onSuccess();
-        showToast({ message: "Payment reversed.", type: "success" });
+        showToast({ message: isPayment ? "Payment reversed." : "Charge removed.", type: "success" });
+
+        // Propagate the reversal
+        const propagationAmount = isPayment ? amount : -amount;
+        const propType = isPayment ? 'payment' : 'bill';
+
+        // Handle category specific propagation for deletions
+        let category: string | undefined = undefined;
+        if (type === "pta_payment" || type === "pta") category = "pta";
+        else if (type === "maintenance_payment" || type === "maintenance") category = "maintenance";
+        else if (type === "admission_payment" || type === "admission") category = "admission";
+        else if (type === "books_payment" || type === "books") category = "books";
+        else if (type === "uniform_payment" || type === "uniform") category = "uniform";
+        else if (type === "other_payment" || type === "other") category = "other";
+
+        propagateArrears(selectedStudent.uid, academicYear, term, propagationAmount, propType, category).catch(console.error);
       } catch (e) {
         console.error("Delete Payment Error:", e);
         showToast({ message: "Deletion failed", type: "error" });
@@ -451,27 +548,20 @@ export const useManageFees = ({
         }
 
         const currentBill = s.hasRecordInTerm ? s.termBill || 0 : 0;
-
         const newBill = currentBill + adjustment;
-        const otherBills =
-          (s.ptaBill || 0) +
-          (s.maintenanceBill || 0) +
-          (s.admissionBill || 0) +
-          (s.booksBill || 0) +
-          (s.uniformBill || 0) +
-          (s.otherBill || 0);
 
-        const allPayments =
-          totalPaid +
-          (s.ptaPaid || 0) +
-          (s.maintenancePaid || 0) +
-          (s.admissionPaid || 0) +
-          (s.booksPaid || 0) +
-          (s.uniformPaid || 0) +
-          (s.otherPaid || 0);
+        // In the global balance model:
+        // New Record Balance = (Current Wallet Balance) + (Adjustment) - (New Discount if applicable)
+        // We use increment for safety if possible, but here we calculate the new absolute balance
+        // for the specific term record to match the cumulative expectation.
 
-        const newBalance = arrears + newBill + otherBills - discount - allPayments;
-        const totalPayable = arrears + newBill + otherBills;
+        let discountEffect = 0;
+        if (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) {
+           discountEffect = s.discountAmount;
+        }
+
+        const newBalance = (s.currentBalance || 0) + adjustment - discountEffect;
+        const totalPayable = (s.totalPayable || 0) + adjustment;
 
         if (isNaN(newBalance)) continue;
 
@@ -483,9 +573,9 @@ export const useManageFees = ({
           academicYear,
           term,
           termBill: newBill,
-          arrears: arrears,
-          discount: discount,
-          amountPaid: totalPaid,
+          arrears: s.previousBalance || 0,
+          discount: s.hasRecordInTerm ? (s.discount || 0) : discountEffect,
+          amountPaid: s.amountPaid || 0,
           balance: newBalance,
           totalPayable: totalPayable,
           editCount: (s.editCount || 0) + 1,
@@ -506,6 +596,18 @@ export const useManageFees = ({
       setSelectedStudentUids(new Set());
       setIndividualBillOverrides({});
       fetchStudents(true);
+
+      // Propagate bill changes
+      selectedUids.forEach(uid => {
+        const s = students.find(stud => stud.uid === uid);
+        if (s) {
+          const adj = parseFloat(latestOverrides[uid] || termBillAmount);
+          if (!isNaN(adj) && Math.abs(adj) > 0.01) {
+            propagateArrears(uid, academicYear, term, adj, 'bill').catch(console.error);
+          }
+        }
+      });
+
       if (showToast) {
         showToast({ message: "Billing updated successfully.", type: "success" });
       } else {
@@ -573,6 +675,19 @@ export const useManageFees = ({
       setSelectedStudentUids(new Set());
       setIndividualDiscountOverrides({});
       fetchStudents(true);
+
+      // Propagate discount changes
+      selectedUids.forEach(uid => {
+        const s = students.find(stud => stud.uid === uid);
+        if (s) {
+          const disc = parseFloat(individualDiscountOverrides[uid] || discountAmount);
+          if (!isNaN(disc) && Math.abs(disc) > 0.01) {
+            // Discounts are treated like payments (negative change to balance)
+            propagateArrears(uid, academicYear, term, -disc, 'payment').catch(console.error);
+          }
+        }
+      });
+
       showToast({ message: "Discounts applied.", type: "success" });
     } catch (e) {
       console.error(e);

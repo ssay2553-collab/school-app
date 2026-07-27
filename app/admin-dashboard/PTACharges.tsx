@@ -136,6 +136,9 @@ export default function PTACharges() {
   }, [students, searchQuery]);
 
   const handleStudentPress = useCallback((student: Student) => {
+    setPaymentAmount("");
+    setReceivedFrom("");
+    setPaymentMethod("Cash");
     setSelectedStudent(student);
     setPaymentModalVisible(true);
     fetchPaymentHistory(student.uid);
@@ -165,10 +168,32 @@ export default function PTACharges() {
 
   const onRevertTransaction = (h: any) => {
     if (!selectedStudent) return;
-    Alert.alert("Confirm Deletion", "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => handleDeletePayment(selectedStudent, h) },
-    ]);
+
+    const confirmDeletion = () => {
+      handleDeletePayment(selectedStudent, h);
+    };
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance."
+      );
+      if (confirmed) {
+        confirmDeletion();
+      }
+    } else {
+      Alert.alert(
+        "Confirm Deletion",
+        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: confirmDeletion,
+          },
+        ]
+      );
+    }
   };
 
   return (

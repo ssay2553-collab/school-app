@@ -19,6 +19,7 @@ import { db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
+import { propagateArrears } from "../../utils/financeUtils";
 
 const PAGE_SIZE = 50;
 
@@ -188,6 +189,10 @@ export const usePTACharges = ({
     receivedFrom: string,
     paymentMethod: string
   ) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot log payment.", type: "error" });
+      return false;
+    }
     if (amount <= 0 || !receivedFrom.trim()) {
       showToast({ message: "Invalid details", type: "error" });
       return false;
@@ -247,6 +252,8 @@ export const usePTACharges = ({
 
       await batch.commit();
 
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'pta').catch(console.error);
+
       sendNotification({
         recipientId: student.uid,
         senderId: appUser?.uid || "admin",
@@ -270,6 +277,10 @@ export const usePTACharges = ({
   };
 
   const applyBulkCharge = async (chargeAmount: string) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot apply charge.", type: "error" });
+      return false;
+    }
     const val = parseFloat(chargeAmount);
     if (isNaN(val) || val <= 0) {
       showToast({ message: "Invalid amount", type: "error" });
@@ -282,6 +293,20 @@ export const usePTACharges = ({
 
     setSaving(true);
     try {
+      // Fetch existing bills for this class/term
+      const qExisting = query(
+        collection(db, "feePayments"),
+        where("type", "==", "pta"),
+        where("classId", "==", selectedClassId),
+        where("academicYear", "==", acadConfig.academicYear),
+        where("term", "==", acadConfig.currentTerm)
+      );
+      const existingSnap = await getDocsFromServer(qExisting);
+      const existingBillsMap = new Map<string, any>();
+      existingSnap.docs.forEach(d => {
+        existingBillsMap.set(d.data().studentUid, { id: d.id, ...d.data() });
+      });
+
       const q = query(
         collection(db, "users"),
         where("role", "==", "student"),
@@ -302,7 +327,13 @@ export const usePTACharges = ({
 
       snap.docs.forEach((sDoc) => {
         const s = sDoc.data();
-        const serial = `PTA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const existing = existingBillsMap.get(sDoc.id);
+        const oldAmount = existing ? existing.amount : 0;
+        const diff = val - oldAmount;
+
+        if (diff === 0) return;
+
+        const serial = existing ? existing.id : `PTA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
         const recordId = `${sDoc.id}_${year}_${term}`;
 
         const billData = {
@@ -325,34 +356,54 @@ export const usePTACharges = ({
 
         batch.set(doc(db, "feePayments", serial), billData);
 
-        batch.set(
-          doc(db, "studentFeeRecords", recordId),
-          {
-            studentUid: sDoc.id,
-            studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-            classId: selectedClassId,
-            className: s.className,
-            academicYear: acadConfig.academicYear,
-            term: acadConfig.currentTerm,
-            ptaBill: increment(val),
-            ptaBalance: increment(val),
-            balance: increment(val),
-            payments: arrayUnion(billData),
+        if (existing) {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            ptaBill: increment(diff),
+            ptaBalance: increment(diff),
+            balance: increment(diff),
             lastUpdated: serverTimestamp(),
-          },
-          { merge: true }
-        );
+          });
+        } else {
+          batch.set(
+            doc(db, "studentFeeRecords", recordId),
+            {
+              studentUid: sDoc.id,
+              studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+              classId: selectedClassId,
+              className: s.className,
+              academicYear: acadConfig.academicYear,
+              term: acadConfig.currentTerm,
+              ptaBill: increment(val),
+              ptaBalance: increment(val),
+              balance: increment(val),
+              payments: arrayUnion(billData),
+              lastUpdated: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
 
         batch.update(sDoc.ref, {
-          ptaBalance: increment(val),
-          ptaBill: increment(val),
-          walletBalance: increment(val),
+          ptaBalance: increment(diff),
+          ptaBill: increment(diff),
+          walletBalance: increment(diff),
         });
       });
 
       await batch.commit();
 
       showToast({ message: `PTA charges applied to ${snap.size} students`, type: "success" });
+
+      // Propagate bulk charges
+      snap.docs.forEach(sDoc => {
+        const existing = existingBillsMap.get(sDoc.id);
+        const oldAmount = existing ? existing.amount : 0;
+        const diff = val - oldAmount;
+        if (Math.abs(diff) > 0.01) {
+          propagateArrears(sDoc.id, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'pta').catch(console.error);
+        }
+      });
+
       fetchStats();
       fetchStudents(true);
       return true;
@@ -419,6 +470,12 @@ export const usePTACharges = ({
 
       await batch.commit();
       showToast({ message: "Transaction reverted successfully", type: "success" });
+
+      // Propagate deletion
+      const propagationAmount = isPayment ? amount : -amount;
+      const propType = isPayment ? 'payment' : 'bill';
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, propagationAmount, propType, 'pta').catch(console.error);
+
       fetchStats();
       fetchStudents(true);
       return true;

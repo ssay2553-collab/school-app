@@ -61,43 +61,30 @@ export const useFeeStats = (
 
       records.forEach((data) => {
         const user = userMap.get(data.studentUid);
-        // Exclude if student is on scholarship or not in the currently filtered student list
         if (!user || user.onScholarship) return;
-
         processedUids.add(data.studentUid);
 
-        // Tuition/General + Other categories
-        const studentGross =
-          (data.termBill || 0) +
-          (data.arrears || 0) +
-          (data.ptaBill || 0) +
-          (data.maintenanceBill || 0) +
-          (data.admissionBill || 0) +
-          (data.booksBill || 0) +
-          (data.uniformBill || 0) +
-          (data.otherBill || 0);
+        // In the cumulative model:
+        // 'totalPayable' is (Arrears + Term Bill + Other Bills)
+        // 'balance' is (totalPayable - Total Payments - Discounts)
+        // We want the Dashboard to reflect:
+        // Expected = Total Payable
+        // Received = amountPaid + other category payments
+        // Discount = data.discount
+        // Balance = data.balance
 
+        const studentExpected = data.totalPayable || 0;
         const studentDiscount = data.discount || 0;
 
-        // Net Expected = Gross - Discount
-        expected += studentGross - studentDiscount;
-
-        received +=
-          (data.amountPaid || 0) +
-          (data.ptaPaid || 0) +
-          (data.maintenancePaid || 0) +
-          (data.admissionPaid || 0) +
-          (data.booksPaid || 0) +
-          (data.uniformPaid || 0) +
-          (data.otherPaid || 0);
-
+        expected += studentExpected - studentDiscount;
+        received += (data.totalPayable || 0) - (data.balance || 0) - (data.discount || 0);
         totalDiscount += studentDiscount;
       });
 
       // Include students who don't have a record for this specific term yet
       users.forEach((user) => {
         if (!processedUids.has(user.id) && !user.onScholarship) {
-          // For students without a term record, their expected amount is their current wallet balance (arrears)
+          // If no record, we use the wallet balance as the primary indicator
           expected += user.walletBalance || 0;
         }
       });

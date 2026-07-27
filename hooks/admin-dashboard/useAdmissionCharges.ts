@@ -20,6 +20,7 @@ import { db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
+import { propagateArrears } from "../../utils/financeUtils";
 
 const PAGE_SIZE = 50;
 
@@ -325,6 +326,10 @@ export const useAdmissionCharges = ({
     receivedFrom: string,
     paymentMethod: string
   ) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot log payment.", type: "error" });
+      return false;
+    }
     setSaving(true);
     try {
       const batch = writeBatch(db);
@@ -376,6 +381,9 @@ export const useAdmissionCharges = ({
 
       await batch.commit();
 
+      // Propagate changes to future terms
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'admission');
+
       try {
         await sendNotification({
           recipientId: student.uid,
@@ -407,10 +415,33 @@ export const useAdmissionCharges = ({
   };
 
   const logBill = async (student: Student, amount: number) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot log bill.", type: "error" });
+      return false;
+    }
     setSaving(true);
     try {
+      // Check for existing bill for this student and current term/year
+      const qExisting = query(
+        collection(db, "feePayments"),
+        where("type", "==", "admission"),
+        where("studentUid", "==", student.uid),
+        where("academicYear", "==", acadConfig.academicYear),
+        where("term", "==", acadConfig.currentTerm)
+      );
+      const existingSnap = await getDocsFromServer(qExisting);
+      const existing = existingSnap.empty ? null : { id: existingSnap.docs[0].id, ...(existingSnap.docs[0].data() as any) };
+
+      const oldAmount = existing ? (existing.amount || 0) : 0;
+      const diff = amount - oldAmount;
+
+      if (diff === 0 && existing) {
+        showToast({ message: "Bill amount is the same", type: "info" });
+        return true;
+      }
+
       const batch = writeBatch(db);
-      const serial = `BILL-ADM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const serial = existing ? existing.id : `BILL-ADM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const billEntry = {
         amount,
@@ -433,32 +464,44 @@ export const useAdmissionCharges = ({
       batch.set(doc(db, "feePayments", serial), billEntry);
 
       batch.update(doc(db, "users", student.uid), {
-        admissionBill: increment(amount),
-        admissionBalance: increment(amount),
-        walletBalance: increment(amount),
+        admissionBill: increment(diff),
+        admissionBalance: increment(diff),
+        walletBalance: increment(diff),
       });
 
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
       const recordId = `${student.uid}_${year}_${term}`;
 
-      batch.set(doc(db, "studentFeeRecords", recordId), {
-        studentUid: student.uid,
-        studentName: student.fullName,
-        classId: student.classId,
-        className: student.className,
-        academicYear: acadConfig.academicYear,
-        term: acadConfig.currentTerm,
-        admissionBill: increment(amount),
-        admissionBalance: increment(amount),
-        balance: increment(amount),
-        payments: arrayUnion(billEntry),
-        lastUpdated: serverTimestamp(),
-      }, { merge: true });
+      if (existing) {
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          admissionBill: increment(diff),
+          admissionBalance: increment(diff),
+          balance: increment(diff),
+          lastUpdated: serverTimestamp(),
+        });
+      } else {
+        batch.set(doc(db, "studentFeeRecords", recordId), {
+          studentUid: student.uid,
+          studentName: student.fullName,
+          classId: student.classId,
+          className: student.className,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
+          admissionBill: increment(amount),
+          admissionBalance: increment(amount),
+          balance: increment(amount),
+          payments: arrayUnion(billEntry),
+          lastUpdated: serverTimestamp(),
+        }, { merge: true });
+      }
 
       await batch.commit();
 
-      showToast({ message: `Admission bill created: ${serial}`, type: "success" });
+      // Propagate changes to future terms
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'admission');
+
+      showToast({ message: existing ? `Admission bill updated` : `Admission bill created: ${serial}`, type: "success" });
       handleRefresh();
       return true;
     } catch (e) {
@@ -523,6 +566,12 @@ export const useAdmissionCharges = ({
       }
 
       await batch.commit();
+
+      // Propagate changes to future terms
+      const propagationAmount = isPayment ? amount : -amount;
+      const propType = isPayment ? 'payment' : 'bill';
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, propagationAmount, propType, 'admission');
+
       showToast({ message: "Transaction reverted successfully", type: "success" });
       handleRefresh();
       return true;

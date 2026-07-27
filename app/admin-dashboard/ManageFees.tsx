@@ -188,6 +188,10 @@ export default function ManageFees() {
       if (paymentModalVisible) {
         setPaymentModalVisible(false);
         setSelectedStudent(null);
+        setPaymentAmount("");
+        setReceivedFrom("");
+        setPaymentMethod("Cash");
+        setPaymentDate(new Date());
         return true;
       }
       if (dailyModalVisible) {
@@ -351,6 +355,9 @@ export default function ManageFees() {
           if (activeMode === "billing" || activeMode === "discounts") {
             toggleStudentSelection(item.uid);
           } else {
+            setPaymentAmount("");
+            setReceivedFrom("");
+            setPaymentMethod("Cash");
             setSelectedStudent(item);
             setPaymentDate(new Date());
             setPaymentModalVisible(true);
@@ -863,6 +870,10 @@ export default function ManageFees() {
         onClose={() => {
           setPaymentModalVisible(false);
           setSelectedStudent(null);
+          setPaymentAmount("");
+          setReceivedFrom("");
+          setPaymentMethod("Cash");
+          setPaymentDate(new Date());
         }}
         selectedStudent={selectedStudent}
         paymentAmount={paymentAmount}
@@ -880,13 +891,25 @@ export default function ManageFees() {
             receivedFrom,
             paymentMethod,
             paymentDate,
-            () => setPaymentModalVisible(false),
+            () => {
+              setPaymentModalVisible(false);
+              setPaymentAmount("");
+              setReceivedFrom("");
+              setPaymentMethod("Cash");
+              setPaymentDate(new Date());
+              setSelectedStudent(null);
+            },
           )
         }
         onDeletePayment={(p) =>
-          handleDeletePayment(selectedStudent, p, () =>
-            setPaymentModalVisible(false),
-          )
+          handleDeletePayment(selectedStudent, p, () => {
+            setPaymentModalVisible(false);
+            setPaymentAmount("");
+            setReceivedFrom("");
+            setPaymentMethod("Cash");
+            setPaymentDate(new Date());
+            setSelectedStudent(null);
+          })
         }
         saving={saving}
         canEdit={canEdit}

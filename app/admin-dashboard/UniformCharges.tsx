@@ -144,16 +144,25 @@ export default function UniformCharges() {
 
   const onDeletePress = (payment: any) => {
     if (!selectedStudent) return;
-    const msg = "Confirm Deletion\n\nAre you sure you want to delete this transaction? This will automatically adjust the student's records.";
-    Alert.alert("Confirm Deletion", msg, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: async () => {
-        const success = await handleDeletePayment(selectedStudent, payment);
-        if (success) {
-          setPaymentModalVisible(false);
-        }
-      }},
-    ]);
+    const msg = "Are you sure you want to delete this transaction? This will automatically adjust the student's records.";
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Confirm Deletion\n\n${msg}`)) {
+        handleDeletePayment(selectedStudent, payment).then(success => {
+          if (success) setPaymentModalVisible(false);
+        });
+      }
+    } else {
+      Alert.alert("Confirm Deletion", msg, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: async () => {
+          const success = await handleDeletePayment(selectedStudent, payment);
+          if (success) {
+            setPaymentModalVisible(false);
+          }
+        }},
+      ]);
+    }
   };
 
   const filteredStudents = useMemo(() => {

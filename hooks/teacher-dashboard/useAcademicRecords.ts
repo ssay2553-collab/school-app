@@ -43,6 +43,7 @@ export const useAcademicRecords = () => {
   const [reportType, setReportType] = useState<ReportType>("End of Term");
   const [allStudents, setAllStudents] = useState<StudentScoreRecord[]>([]);
   const [serverStudents, setServerStudents] = useState<StudentScoreRecord[]>([]);
+  const [recordStatus, setRecordStatus] = useState<string>("pending");
 
   const academicYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
@@ -132,7 +133,9 @@ export const useAcademicRecords = () => {
           const loadedStudents = (data.students || []).map((s: StudentScoreRecord) => calculateScores(s, reportType));
           setAllStudents(loadedStudents);
           setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
+          setRecordStatus(data.status || "pending");
         } else {
+          setRecordStatus("pending");
           // If no ledger exists, fetch students of the selected class
           // We use the same query pattern as Daily Attendance to ensure compatibility with indexes
           const q = query(
@@ -221,6 +224,7 @@ export const useAcademicRecords = () => {
 
       allStudents.forEach(student => {
         const summaryId = `${student.studentId}_${academicYear.replace(/\//g, "_")}_${term.replace(/\s+/g, "")}`;
+        const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${reportType.replace(/\s+/g, "")}`;
         batch.set(doc(db, "academicRecordsSummary", summaryId), {
           teacherId: firebaseUser.uid,
           studentId: student.studentId,
@@ -228,7 +232,7 @@ export const useAcademicRecords = () => {
           academicYear,
           term,
           scores: {
-            [selectedSubject.replace(/\s+/g, "_")]: {
+            [subjectKey]: {
               finalScore: parseFloat(student.finalScore) || 0,
               grade: student.grade,
               reportType,
@@ -270,5 +274,6 @@ export const useAcademicRecords = () => {
     academicYear,
     term,
     subjects: appUser?.subjects || [],
+    recordStatus,
   };
 };

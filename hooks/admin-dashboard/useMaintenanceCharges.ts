@@ -19,6 +19,7 @@ import { db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
+import { propagateArrears } from "../../utils/financeUtils";
 
 const PAGE_SIZE = 50;
 
@@ -256,6 +257,8 @@ export const useMaintenanceCharges = ({
 
       await batch.commit();
 
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'maintenance').catch(console.error);
+
       sendNotification({
         recipientId: student.uid,
         senderId: appUser?.uid || "admin",
@@ -289,6 +292,20 @@ export const useMaintenanceCharges = ({
 
     setSaving(true);
     try {
+      // Fetch existing bills for this class/term
+      const qExisting = query(
+        collection(db, "feePayments"),
+        where("type", "==", "maintenance"),
+        where("classId", "==", selectedClassId),
+        where("academicYear", "==", acadConfig.academicYear),
+        where("term", "==", acadConfig.currentTerm)
+      );
+      const existingSnap = await getDocsFromServer(qExisting);
+      const existingBillsMap = new Map<string, any>();
+      existingSnap.docs.forEach(d => {
+        existingBillsMap.set(d.data().studentUid, { id: d.id, ...d.data() });
+      });
+
       const q = query(
         collection(db, "users"),
         where("role", "==", "student"),
@@ -309,7 +326,13 @@ export const useMaintenanceCharges = ({
 
       snap.docs.forEach((sDoc) => {
         const s = sDoc.data();
-        const serial = `MNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const existing = existingBillsMap.get(sDoc.id);
+        const oldAmount = existing ? existing.amount : 0;
+        const diff = amount - oldAmount;
+
+        if (diff === 0) return;
+
+        const serial = existing ? existing.id : `MNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
         const recordId = `${sDoc.id}_${year}_${term}`;
 
         const billData = {
@@ -332,34 +355,54 @@ export const useMaintenanceCharges = ({
 
         batch.set(doc(db, "feePayments", serial), billData);
 
-        batch.set(
-          doc(db, "studentFeeRecords", recordId),
-          {
-            studentUid: sDoc.id,
-            studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-            classId: selectedClassId,
-            className: s.className,
-            academicYear: acadConfig.academicYear,
-            term: acadConfig.currentTerm,
-            maintenanceBill: increment(amount),
-            maintenanceBalance: increment(amount),
-            balance: increment(amount),
-            payments: arrayUnion(billData),
+        if (existing) {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            maintenanceBill: increment(diff),
+            maintenanceBalance: increment(diff),
+            balance: increment(diff),
             lastUpdated: serverTimestamp(),
-          },
-          { merge: true }
-        );
+          });
+        } else {
+          batch.set(
+            doc(db, "studentFeeRecords", recordId),
+            {
+              studentUid: sDoc.id,
+              studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+              classId: selectedClassId,
+              className: s.className,
+              academicYear: acadConfig.academicYear,
+              term: acadConfig.currentTerm,
+              maintenanceBill: increment(amount),
+              maintenanceBalance: increment(amount),
+              balance: increment(amount),
+              payments: arrayUnion(billData),
+              lastUpdated: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
 
         batch.update(sDoc.ref, {
-          maintenanceBalance: increment(amount),
-          maintenanceBill: increment(amount),
-          walletBalance: increment(amount),
+          maintenanceBalance: increment(diff),
+          maintenanceBill: increment(diff),
+          walletBalance: increment(diff),
         });
       });
 
       await batch.commit();
 
       showToast({ message: `Maintenance charges applied to ${snap.size} students`, type: "success" });
+
+      // Propagate bulk charges
+      snap.docs.forEach(sDoc => {
+        const existing = existingBillsMap.get(sDoc.id);
+        const oldAmount = existing ? existing.amount : 0;
+        const diff = amount - oldAmount;
+        if (Math.abs(diff) > 0.01) {
+          propagateArrears(sDoc.id, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'maintenance').catch(console.error);
+        }
+      });
+
       handleRefresh();
       return true;
     } catch (e) {
@@ -425,6 +468,12 @@ export const useMaintenanceCharges = ({
 
       await batch.commit();
       showToast({ message: "Transaction reverted successfully", type: "success" });
+
+      // Propagate deletion
+      const propagationAmount = isPayment ? amount : -amount;
+      const propType = isPayment ? 'payment' : 'bill';
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, propagationAmount, propType, 'maintenance').catch(console.error);
+
       handleRefresh();
       return true;
     } catch (err) {

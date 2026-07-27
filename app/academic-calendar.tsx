@@ -101,6 +101,7 @@ export default function AcademicCalendar() {
     currentTerm: "Term 1",
     termStart: new Date(),
     termEnd: new Date(),
+    nextTermBegins: "",
   });
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -162,6 +163,7 @@ export default function AcademicCalendar() {
           currentTerm: data.currentTerm || "",
           termStart: parseFirestoreDate(data.termStart) || new Date(),
           termEnd: parseFirestoreDate(data.termEnd) || new Date(),
+          nextTermBegins: data.nextTermBegins || "",
         });
       } else {
         console.warn("[AcademicCalendar] No config document found.");
@@ -740,6 +742,16 @@ export default function AcademicCalendar() {
                   )}
                 </View>
               </View>
+
+              <Text style={styles.label}>NEXT TERM BEGINS</Text>
+              <TextInput
+                style={styles.input}
+                value={termConfig.nextTermBegins}
+                onChangeText={(t) =>
+                  setTermConfig({ ...termConfig, nextTermBegins: t })
+                }
+                placeholder="e.g. 15th Jan, 2024"
+              />
 
               <TouchableOpacity
                 style={[styles.saveBtn, { backgroundColor: primaryColor }]}

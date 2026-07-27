@@ -190,17 +190,33 @@ export default function BooksCharges() {
 
   const handleDeletePayment = (payment: any) => {
     if (!selectedStudent) return;
-    Alert.alert("Confirm Deletion", "Are you sure you want to delete this transaction?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          const success = await deletePayment(selectedStudent, payment);
-          if (success) setModalVisible(false);
-        }
-      },
-    ]);
+
+    const confirmDeletion = async () => {
+      const success = await deletePayment(selectedStudent, payment);
+      if (success) setModalVisible(false);
+    };
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "Are you sure you want to delete this transaction?"
+      );
+      if (confirmed) {
+        confirmDeletion();
+      }
+    } else {
+      Alert.alert(
+        "Confirm Deletion",
+        "Are you sure you want to delete this transaction?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: confirmDeletion,
+          },
+        ]
+      );
+    }
   };
 
   const handleStudentPress = useCallback((student: Student) => {

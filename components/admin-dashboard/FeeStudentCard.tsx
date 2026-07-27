@@ -138,15 +138,7 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
                     <View style={styles.breakdownItem}>
                       <Text style={styles.breakdownLabel}>PAID</Text>
                       <Text style={styles.breakdownValue}>
-                        ₵{(
-                          (item.amountPaid || 0) +
-                          (item.ptaPaid || 0) +
-                          (item.maintenancePaid || 0) +
-                          (item.admissionPaid || 0) +
-                          (item.booksPaid || 0) +
-                          (item.uniformPaid || 0) +
-                          (item.otherPaid || 0)
-                        ).toFixed(2)}
+                        ₵{(item.amountPaid || 0).toFixed(2)}
                       </Text>
                     </View>
                     {!!item.discount && item.discount > 0 && (

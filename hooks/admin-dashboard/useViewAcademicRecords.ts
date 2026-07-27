@@ -118,6 +118,7 @@ export function useViewAcademicRecords() {
     if (!acadConfig.loading) {
       setSelectedYear(acadConfig.academicYear);
       setTerm(acadConfig.currentTerm);
+      if (acadConfig.nextTermBegins) setGlobalNextTermBegins(acadConfig.nextTermBegins);
     }
   }, [acadConfig]);
 
@@ -180,6 +181,7 @@ export function useViewAcademicRecords() {
           where("classId", "==", selectedClassId),
           where("academicYear", "==", selectedYear),
           where("term", "==", term),
+          where("reportType", "==", selectedReportType),
           where("status", "==", "approved"),
         ),
       );
@@ -343,7 +345,7 @@ export function useViewAcademicRecords() {
     setInterest("High");
     setTeacherRemarks("");
     setPromotedTo("");
-    setNextTermBegins("");
+    setNextTermBegins(acadConfig.nextTermBegins || "");
 
     // 2. Fetch Behavioral Records from Teacher Module (Source of truth for conduct/remarks)
     try {
@@ -596,7 +598,7 @@ export function useViewAcademicRecords() {
           const data = subjectDoc.data();
           const students = data.students || [];
           const subjectName = data.subject;
-          const subjectKey = subjectName.replace(/\s+/g, "_");
+          const subjectKey = `${subjectName.replace(/\s+/g, "_")}_${selectedReportType.replace(/\s+/g, "")}`;
 
           const subjectScoresList = students.map((s: any) => ({
             id: s.studentId,

@@ -682,7 +682,7 @@ export default function TeacherProfileEdit() {
                       value={dob}
                       mode="date"
                       display="default"
-                      onChange={(event, selectedDate) => {
+                      onChange={(event: any, selectedDate?: Date) => {
                         setShowDatePicker(Platform.OS === 'ios');
                         if (selectedDate) setDob(selectedDate);
                       }}

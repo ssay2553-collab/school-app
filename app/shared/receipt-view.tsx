@@ -115,6 +115,7 @@ export default function ReceiptViewScreen() {
     books: "Books Fee",
     uniform: "Uniform Fee",
     other: "Other Charges",
+    arrears: "Arrears / Previous Balance",
     tuition_payment: "Tuition Payment",
     pta_payment: "PTA Dues Payment",
     maintenance_payment: "Maintenance Fee Payment",
@@ -142,13 +143,16 @@ export default function ReceiptViewScreen() {
     // 1. Initialize with tuition (term bill - discount) and arrears
     const summary: Record<string, { billed: number; paid: number }> = {
       tuition: {
-        billed: Math.max(0, (record?.termBill || 0) - (record?.discount || 0)),
+        billed: Math.max(
+          0,
+          (Number(record?.termBill) || 0) - (Number(record?.discount) || 0),
+        ),
         paid: 0,
       },
     };
 
-    if (record?.arrears > 0) {
-      summary["arrears"] = { billed: record.arrears, paid: 0 };
+    if (record?.arrears && Number(record.arrears) !== 0) {
+      summary["arrears"] = { billed: Number(record.arrears), paid: 0 };
     }
 
     // 2. Aggregate Transactions for all categories
@@ -161,8 +165,8 @@ export default function ReceiptViewScreen() {
       let category = tType.replace("_payment", "").replace("_credit", "");
 
       // Handle specific "Other" categories
-      if (tType === "other") {
-        category = (t.otherCategory || "other").toLowerCase();
+      if (tType === "other" || tType === "other_payment") {
+        category = (t.otherCategory || "other").trim().toLowerCase();
       }
 
       if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
@@ -228,28 +232,39 @@ export default function ReceiptViewScreen() {
       }
 
       // Special handling for 'other' to ensure it matches record.otherBill and avoids double counting
-      const specificOtherBilled = Object.entries(summary)
-        .filter(
-          ([k]) =>
-            ![
-              "tuition",
-              "pta",
-              "maintenance",
-              "admission",
-              "books",
-              "uniform",
-              "other",
-              "arrears",
-            ].includes(k),
-        )
-        .reduce((sum, [_, v]) => sum + v.billed, 0);
+      const otherEntries = Object.entries(summary).filter(
+        ([k]) =>
+          ![
+            "tuition",
+            "pta",
+            "maintenance",
+            "admission",
+            "books",
+            "uniform",
+            "other",
+            "arrears",
+          ].includes(k),
+      );
+
+      const specificOtherBilled = otherEntries.reduce(
+        (sum, [_, v]) => sum + v.billed,
+        0,
+      );
+      const specificOtherPaid = otherEntries.reduce(
+        (sum, [_, v]) => sum + v.paid,
+        0,
+      );
 
       const unnamedOtherBill = Math.max(
         0,
         (record.otherBill || 0) - specificOtherBilled,
       );
+      const unnamedOtherPaid = Math.max(
+        0,
+        (record.otherPaid || 0) - specificOtherPaid,
+      );
 
-      if (unnamedOtherBill > 0 || record.otherPaid > 0) {
+      if (unnamedOtherBill > 0 || unnamedOtherPaid > 0) {
         if (!summary["other"]) summary["other"] = { billed: 0, paid: 0 };
         summary["other"].billed = Math.max(
           summary["other"].billed,
@@ -257,14 +272,14 @@ export default function ReceiptViewScreen() {
         );
         summary["other"].paid = Math.max(
           summary["other"].paid,
-          record.otherPaid || 0,
+          unnamedOtherPaid,
         );
       }
     }
 
-    // Return only items with outstanding balance for the bill view
+    // Return only items with non-zero balance for the bill view
     return Object.entries(summary)
-      .filter(([_, vals]) => Math.round((vals.billed - vals.paid) * 100) / 100 > 0)
+      .filter(([_, vals]) => Math.abs(Math.round((vals.billed - vals.paid) * 100) / 100) >= 0.01)
       .map(([cat, vals]) => ({
         name:
           nameMap[cat] ||
@@ -277,12 +292,14 @@ export default function ReceiptViewScreen() {
 
   const totals = useMemo(() => {
     if (type !== "bill") return { billed: 0, paid: 0, balance: 0 };
-    const balance = categorySummary.reduce(
+
+    // Calculate total from the entire summary to ensure net balance matches other screens
+    const netBalance = (record?.balance !== undefined) ? record.balance : categorySummary.reduce(
       (acc, curr) => acc + curr.balance,
       0,
     );
-    return { billed: 0, paid: 0, balance };
-  }, [categorySummary, type]);
+    return { billed: 0, paid: 0, balance: netBalance };
+  }, [categorySummary, type, record]);
 
   const handleDelete = async () => {
     if (appUser?.role !== "admin") return;

@@ -16,6 +16,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Platform } from "react-native";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { useAcademicConfig } from "../useAcademicConfig";
 import { getSchoolLogo } from "../../constants/Logos";
 import { COLORS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
@@ -74,6 +75,8 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
     const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
     const schoolId = (Constants.expoConfig?.extra?.schoolId || "afahjoy").toLowerCase();
     const schoolLogo = getSchoolLogo(schoolId);
+
+    const acadConfig = useAcademicConfig();
 
     useEffect(() => {
         const fetchAllData = async () => {
@@ -234,13 +237,18 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
                             setTeacherRemarks(getAutoRemarks(AGGREGATE, true));
                         }
 
-                        if (r.nextTermBegins) setNextTermBegins(r.nextTermBegins);
+                        if (r.nextTermBegins) {
+                            setNextTermBegins(r.nextTermBegins);
+                        } else if (acadConfig.nextTermBegins) {
+                            setNextTermBegins(acadConfig.nextTermBegins);
+                        }
                     } else {
                         // If report record doesn't exist, set auto remarks
                         setAdminRemarks(getAutoRemarks(AGGREGATE, false));
                         if (!teacherRemarks) {
                             setTeacherRemarks(getAutoRemarks(AGGREGATE, true));
                         }
+                        if (acadConfig.nextTermBegins) setNextTermBegins(acadConfig.nextTermBegins);
                     }
                 }
             } catch (err) {
@@ -250,7 +258,7 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
             }
         };
         fetchAllData();
-    }, [studentId, termState, classIdState, academicYearState, reportType]);
+    }, [studentId, termState, classIdState, academicYearState, reportType, acadConfig.nextTermBegins]);
 
     const { trs: TRS, tas: TAS, aggregate: AGGREGATE } = useMemo(() => calculatePerformanceFromList(subjectsData), [subjectsData]);
 

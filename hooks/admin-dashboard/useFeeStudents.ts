@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { collection, getDocs, limit, query, startAfter, where } from "firebase/firestore";
+import { collection, getDocsFromCache, getDocsFromServer, limit, query, startAfter, where } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { db } from "../../firebaseConfig";
 import { StudentDraft, FILTERS_PERSISTENCE_KEY, PAGE_SIZE } from "../../constants/admin-dashboard/ManageFeesTypes";
@@ -62,8 +62,14 @@ export const useFeeStudents = (
         if (!isFirstLoad && lastVisibleRef.current)
           q = query(q, startAfter(lastVisibleRef.current));
 
-        // Use getDocs instead of getDocsFromServer to leverage Firestore's local cache
-        const snap = await getDocs(q as any);
+        // Use getDocsFromServer to bypass stale local cache and get fresh data
+        let snap;
+        try {
+          snap = await getDocsFromServer(q as any);
+        } catch (error) {
+          console.warn("Failed to fetch from server, falling back to cache:", error);
+          snap = await getDocsFromCache(q as any);
+        }
 
         if (myRequestId !== requestIdRef.current) return;
 
@@ -84,16 +90,20 @@ export const useFeeStudents = (
 
           const validChunks = chunks.filter((c) => c.length > 0);
           const feesSnaps = await Promise.all(
-            validChunks.map((chunk) =>
-              getDocs(
-                query(
-                  collection(db, "studentFeeRecords"),
-                  where("studentUid", "in", chunk),
-                  where("academicYear", "==", academicYear),
-                  where("term", "==", term),
-                ) as any,
-              ),
-            ),
+            validChunks.map(async (chunk) => {
+              const qFees = query(
+                collection(db, "studentFeeRecords"),
+                where("studentUid", "in", chunk),
+                where("academicYear", "==", academicYear),
+                where("term", "==", term),
+              );
+              try {
+                return await getDocsFromServer(qFees as any);
+              } catch (error) {
+                console.warn("Fees fetch from server failed, falling back to cache:", error);
+                return await getDocsFromCache(qFees as any);
+              }
+            }),
           );
 
           if (myRequestId !== requestIdRef.current) return;
@@ -119,28 +129,12 @@ export const useFeeStudents = (
             classId: userData.classId || "unknown",
             className:
               classes.find((c) => c.id === userData.classId)?.name || "Class",
-            previousBalance: feeData
-              ? feeData.arrears || 0
-              : userData.walletBalance || 0,
-            amountPaid: feeData ? feeData.amountPaid || 0 : 0,
-            currentBalance: feeData
-              ? (feeData.arrears || 0) +
-                (feeData.termBill || 0) +
-                (feeData.ptaBill || 0) +
-                (feeData.maintenanceBill || 0) +
-                (feeData.admissionBill || 0) +
-                (feeData.booksBill || 0) +
-                (feeData.uniformBill || 0) +
-                (feeData.otherBill || 0) -
-                (feeData.discount || 0) -
-                ((feeData.amountPaid || 0) +
-                  (feeData.ptaPaid || 0) +
-                  (feeData.maintenancePaid || 0) +
-                  (feeData.admissionPaid || 0) +
-                  (feeData.booksPaid || 0) +
-                  (feeData.uniformPaid || 0) +
-                  (feeData.otherPaid || 0))
-              : (userData.walletBalance || 0),
+            // Arrears now represents accumulated tuition debt from previous terms
+            previousBalance: feeData ? (feeData.arrears || 0) : (userData.walletBalance || 0),
+            // Global total paid (tuition)
+            amountPaid: feeData ? (feeData.amountPaid || 0) : 0,
+            // The record balance is now the definitive running total (Total Bills - Total Payments)
+            currentBalance: feeData ? (feeData.balance || 0) : (userData.walletBalance || 0),
             hasRecordInTerm: !!feeData,
             payments: feeData?.payments || [],
             termBill: feeData?.termBill || 0,
@@ -151,16 +145,19 @@ export const useFeeStudents = (
             uniformBill: feeData?.uniformBill || 0,
             otherBill: feeData?.otherBill || 0,
             discount: feeData?.discount || 0,
+            // Category paid and balance fields are now also running totals
             ptaPaid: feeData?.ptaPaid || 0,
             maintenancePaid: feeData?.maintenancePaid || 0,
             admissionPaid: feeData?.admissionPaid || 0,
             booksPaid: feeData?.booksPaid || 0,
             uniformPaid: feeData?.uniformPaid || 0,
             otherPaid: feeData?.otherPaid || 0,
+            totalPayable: feeData?.totalPayable || 0,
             editCount: feeData?.editCount || 0,
             onDiscount: userData.onDiscount,
             discountAmount: userData.discountAmount,
             onScholarship: userData.onScholarship,
+            // Wallet-level category fields
             ptaBalance: userData.ptaBalance || 0,
             admissionBalance: userData.admissionBalance || 0,
             maintenanceBalance: userData.maintenanceBalance || 0,

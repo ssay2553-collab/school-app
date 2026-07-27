@@ -19,6 +19,7 @@ import { db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
+import { propagateArrears } from "../../utils/financeUtils";
 
 const PAGE_SIZE = 50;
 
@@ -220,6 +221,10 @@ export const useOtherCharges = ({
     receivedFrom: string,
     paymentMethod: string
   ) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot log payment.", type: "error" });
+      return false;
+    }
     if (amount <= 0 || !receivedFrom.trim()) {
       showToast({ message: "Invalid details", type: "error" });
       return false;
@@ -280,6 +285,9 @@ export const useOtherCharges = ({
 
       await batch.commit();
 
+      // Propagate changes to future terms
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'other');
+
       sendNotification({
         recipientId: student.uid,
         senderId: appUser?.uid || "admin",
@@ -303,6 +311,10 @@ export const useOtherCharges = ({
   };
 
   const applyOtherCharge = async (chargeType: string, chargeAmount: string) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot apply charge.", type: "error" });
+      return false;
+    }
     const val = parseFloat(chargeAmount);
     if (!chargeType.trim() || isNaN(val) || val <= 0) {
       showToast({ message: "Invalid details", type: "error" });
@@ -313,10 +325,20 @@ export const useOtherCharges = ({
       return false;
     }
 
-    if (appliedCharges.some((c) => c.category.toLowerCase() === chargeType.trim().toLowerCase())) {
-      showToast({ message: "This item already exists for this class", type: "error" });
-      return false;
-    }
+    // Check if this specific category already has a bill for this class/term
+    const qExisting = query(
+      collection(db, "feePayments"),
+      where("type", "==", "other"),
+      where("classId", "==", selectedClassId),
+      where("academicYear", "==", acadConfig.academicYear),
+      where("term", "==", acadConfig.currentTerm),
+      where("otherCategory", "==", chargeType.trim())
+    );
+    const existingSnap = await getDocsFromServer(qExisting);
+    const existingBillsMap = new Map<string, any>();
+    existingSnap.docs.forEach(d => {
+      existingBillsMap.set(d.data().studentUid, { id: d.id, ...d.data() });
+    });
 
     setSaving(true);
     try {
@@ -334,7 +356,13 @@ export const useOtherCharges = ({
 
       snap.docs.forEach((sDoc) => {
         const s = sDoc.data();
-        const serial = `BILL-OTH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const existing = existingBillsMap.get(sDoc.id);
+        const oldAmount = existing ? existing.amount : 0;
+        const diff = val - oldAmount;
+
+        if (diff === 0 && existing) return;
+
+        const serial = existing ? existing.id : `BILL-OTH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
         const recordId = `${sDoc.id}_${year}_${term}`;
 
         const billData = {
@@ -359,41 +387,64 @@ export const useOtherCharges = ({
         batch.set(doc(db, "feePayments", serial), billData);
 
         batch.update(sDoc.ref, {
-          otherBill: increment(val),
-          otherBalance: increment(val),
-          walletBalance: increment(val),
+          otherBill: increment(diff),
+          otherBalance: increment(diff),
+          walletBalance: increment(diff),
         });
 
-        batch.set(
-          doc(db, "studentFeeRecords", recordId),
-          {
-            studentUid: sDoc.id,
-            studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-            classId: selectedClassId,
-            className: s.className,
-            academicYear: acadConfig.academicYear,
-            term: acadConfig.currentTerm,
-            otherBill: increment(val),
-            otherBalance: increment(val),
-            balance: increment(val),
-            payments: arrayUnion(billData),
+        if (existing) {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            otherBill: increment(diff),
+            otherBalance: increment(diff),
+            balance: increment(diff),
             lastUpdated: serverTimestamp(),
-          },
-          { merge: true }
-        );
+          });
+        } else {
+          batch.set(
+            doc(db, "studentFeeRecords", recordId),
+            {
+              studentUid: sDoc.id,
+              studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+              classId: selectedClassId,
+              className: s.className,
+              academicYear: acadConfig.academicYear,
+              term: acadConfig.currentTerm,
+              otherBill: increment(val),
+              otherBalance: increment(val),
+              balance: increment(val),
+              payments: arrayUnion(billData),
+              lastUpdated: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
 
-        sendNotification({
-          recipientId: sDoc.id,
-          senderId: appUser?.uid || "admin",
-          senderName: appUser?.displayName || "Administrator",
-          title: "New Fee Item Billed",
-          body: `An amount of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} for '${chargeType}' has been added to the bill.`,
-          type: "payment",
-        }).catch((err) => console.error("Bulk notification error:", err));
+        if (!existing) {
+          sendNotification({
+            recipientId: sDoc.id,
+            senderId: appUser?.uid || "admin",
+            senderName: appUser?.displayName || "Administrator",
+            title: "New Fee Item Billed",
+            body: `An amount of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} for '${chargeType}' has been added to the bill.`,
+            type: "payment",
+          }).catch((err) => console.error("Bulk notification error:", err));
+        }
       });
 
       await batch.commit();
-      showToast({ message: `Billed ${snap.size} students for ${chargeType}`, type: "success" });
+
+      // Propagate changes to future terms for each student
+      snap.docs.forEach((sDoc) => {
+        const s = sDoc.data();
+        const existing = existingBillsMap.get(sDoc.id);
+        const oldAmount = existing ? existing.amount : 0;
+        const diff = val - oldAmount;
+        if (diff !== 0) {
+          propagateArrears(sDoc.id, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'other');
+        }
+      });
+
+      showToast({ message: existingSnap.empty ? `Billed ${snap.size} students for ${chargeType}` : `Updated '${chargeType}' for ${snap.size} students`, type: "success" });
       fetchStats();
       fetchStudents(true);
       return true;
@@ -449,6 +500,13 @@ export const useOtherCharges = ({
       }
 
       await batch.commit();
+
+      // Propagate changes to future terms for each affected student
+      snap.docs.forEach((d) => {
+        const data = d.data();
+        propagateArrears(data.studentUid, acadConfig.academicYear, acadConfig.currentTerm, -data.amount, 'bill', 'other');
+      });
+
       showToast({ message: `Charge '${category}' removed`, type: "success" });
       fetchStats();
       fetchStudents(true);
@@ -515,6 +573,14 @@ export const useOtherCharges = ({
       }
 
       await batch.commit();
+
+      // Propagate changes to future terms
+      if (isPayment) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'other');
+      } else {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'other');
+      }
+
       showToast({ message: "Transaction reverted successfully", type: "success" });
       fetchStats();
       fetchStudents(true);

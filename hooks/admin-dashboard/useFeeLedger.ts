@@ -21,6 +21,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { sendNotification } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
+import { propagateArrears } from "../../utils/financeUtils";
 
 export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, initialTerm?: string) => {
     const { appUser } = useAuth();
@@ -476,6 +477,9 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             batch.update(doc(db, "users", selectedStudentUid), { walletBalance: increment(-amount) });
             await batch.commit();
 
+            // Propagate balance change to future terms
+            propagateArrears(selectedStudentUid, selectedYear, selectedTerm, -amount, 'payment');
+
             try {
                 await sendNotification({
                     recipientId: selectedStudentUid,
@@ -564,6 +568,14 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             batch.update(doc(db, "studentFeeRecords", recordId), { payments: arrayRemove(payment) });
             if (payment.receiptNo) batch.delete(doc(db, "feePayments", payment.receiptNo));
             await batch.commit();
+
+            // Propagate balance reversal to future terms
+            const propagationAmount = isPayment ? amount : -amount;
+            const type = (payment.type || "tuition").toLowerCase();
+            const category = type.replace("_payment", "").replace("_credit", "");
+            const pType = isPayment ? 'payment' : 'bill';
+            propagateArrears(selectedStudentUid, selectedYear, selectedTerm, propagationAmount, pType, category === 'tuition' ? undefined : category);
+
             showToast({ message: "Transaction deleted and balance reverted.", type: "success" });
         } catch (error) {
             console.error(error);

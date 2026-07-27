@@ -33,6 +33,7 @@ export type StudentDraft = {
   booksBalance: number;
   uniformBalance: number;
   otherBalance: number;
+  totalPayable?: number;
 };
 
 export const FILTERS_PERSISTENCE_KEY = "@manage_fees_filters_v14";

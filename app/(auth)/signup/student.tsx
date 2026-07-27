@@ -416,28 +416,36 @@ export default function StudentSignupScreen() {
     const batch = writeBatch(db);
     const userRef = doc(db, "users", userId);
 
-    const userData = {
-      uid: userId,
-      email: finalEmail,
-      role: "student",
-      status: "active",
-      classId: preRegisteredData?.classId || form.selectedClassId,
-      profile: {
-        firstName: form.firstName || preRegisteredData?.profile?.firstName,
-        lastName: form.lastName || preRegisteredData?.profile?.lastName,
-        fullName: `${form.firstName || preRegisteredData?.profile?.firstName} ${form.lastName || preRegisteredData?.profile?.lastName}`,
-        gender: form.gender || preRegisteredData?.profile?.gender || "",
-        profileImage: profileImageUrl || preRegisteredData?.profile?.profileImage || null,
-        dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : (preRegisteredData?.dateOfBirth || null),
-      },
-      signupCode: cleanCode,
-      parentLinkCode: preRegisteredData?.parentLinkCode || generateLinkCode(),
-      parentUids: preRegisteredData?.parentUids || [],
-      walletBalance: preRegisteredData?.walletBalance || 0,
-      createdAt: preRegisteredData?.createdAt || serverTimestamp(),
-      claimedAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    };
+      const userData: any = {
+        uid: userId,
+        email: finalEmail,
+        role: "student",
+        status: "active",
+        classId: preRegisteredData?.classId || form.selectedClassId,
+        profile: {
+          firstName: form.firstName || preRegisteredData?.profile?.firstName,
+          lastName: form.lastName || preRegisteredData?.profile?.lastName,
+          fullName: `${form.firstName || preRegisteredData?.profile?.firstName} ${form.lastName || preRegisteredData?.profile?.lastName}`,
+          gender: form.gender || preRegisteredData?.profile?.gender || "",
+          profileImage: profileImageUrl || preRegisteredData?.profile?.profileImage || null,
+          dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : (preRegisteredData?.dateOfBirth || null),
+        },
+        signupCode: cleanCode,
+        parentLinkCode: preRegisteredData?.parentLinkCode || generateLinkCode(),
+        parentUids: preRegisteredData?.parentUids || [],
+        createdAt: preRegisteredData?.createdAt || serverTimestamp(),
+        claimedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      // Fallback Migration:
+      // Financial and Academic records are NOT copied here to maintain Firestore security rules
+      // (students cannot set their own balances).
+      // The `useFinanceCleanup` and `useAcademicCleanup` tools in the admin dashboard
+      // will automatically resolve these legacy records to the new Auth UID once they detect the 'claimed' status.
+      if (preRegisteredData) {
+        userData.previousClassId = preRegisteredData.classId;
+      }
 
     // Always create/update the document at the Auth UID to ensure system helpers work
     batch.set(userRef, userData);

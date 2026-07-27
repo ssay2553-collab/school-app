@@ -39,6 +39,8 @@ interface UserDetailModalProps {
   onClearArrears: (user: User) => void;
   onRemoveAssignedRole: (role: string, user: User) => void;
   onPromoteRepeat: (user: User) => void;
+  onViewAttendance?: (user: User) => void;
+  onToggleArchive?: (user: User) => void;
 }
 
 export const UserDetailModal: React.FC<UserDetailModalProps> = ({
@@ -62,6 +64,8 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onClearArrears,
   onRemoveAssignedRole,
   onPromoteRepeat,
+  onViewAttendance,
+  onToggleArchive,
 }) => {
   if (!user) return null;
 
@@ -574,6 +578,21 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     style={[
                       styles.actionButton,
                       {
+                        backgroundColor: COLORS.primary || "#2e86de",
+                        marginBottom: 12,
+                      },
+                    ]}
+                    onPress={() => onViewAttendance?.(user)}
+                  >
+                    <Text style={styles.actionButtonText}>View Attendance Analysis</Text>
+                  </TouchableOpacity>
+                )}
+
+                {user.role === "student" && (
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      {
                         backgroundColor: COLORS.secondary || "#c53b59",
                         marginBottom: 12,
                       },
@@ -581,6 +600,41 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     onPress={() => onPromoteRepeat(user)}
                   >
                     <Text style={styles.actionButtonText}>Promote / Repeat</Text>
+                  </TouchableOpacity>
+                )}
+
+                {user.role === "student" && (
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      {
+                        backgroundColor:
+                          user.status === "archived"
+                            ? COLORS.success
+                            : COLORS.gray || "#94A3B8",
+                        marginBottom: 12,
+                      },
+                    ]}
+                    onPress={() => onToggleArchive?.(user)}
+                  >
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <SVGIcon
+                        name={user.status === "archived" ? "people" : "archive"}
+                        size={20}
+                        color="#fff"
+                      />
+                      <Text style={styles.actionButtonText}>
+                        {user.status === "archived"
+                          ? "Restore Student"
+                          : "Archive Student"}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 )}
 

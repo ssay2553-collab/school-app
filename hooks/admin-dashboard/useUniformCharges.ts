@@ -20,6 +20,7 @@ import { db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
+import { propagateArrears } from "../../utils/financeUtils";
 
 const PAGE_SIZE = 50;
 
@@ -279,6 +280,10 @@ export const useUniformCharges = ({
     selectedType: string,
     typeLabel: string
   ) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot log payment.", type: "error" });
+      return false;
+    }
     if (amount <= 0 || !receivedFrom.trim()) {
       showToast({ message: "Incomplete details", type: "error" });
       return false;
@@ -286,8 +291,29 @@ export const useUniformCharges = ({
 
     setSaving(true);
     try {
+      // Check for existing uniform record of the same subType for this student/term
+      const qExisting = query(
+        collection(db, "feePayments"),
+        where("type", "==", "uniform"),
+        where("studentUid", "==", student.uid),
+        where("subType", "==", selectedType),
+        where("academicYear", "==", acadConfig.academicYear),
+        where("term", "==", acadConfig.currentTerm)
+      );
+      const existingSnap = await getDocsFromServer(qExisting);
+      const existing = existingSnap.empty ? null : { id: existingSnap.docs[0].id, ...(existingSnap.docs[0].data() as any) };
+
+      const oldAmount = existing ? (existing.amount || 0) : 0;
+      const diff = amount - oldAmount;
+
+      if (diff === 0 && existing) {
+        showToast({ message: "Amount is the same as existing record", type: "info" });
+        setSaving(false);
+        return true;
+      }
+
       const batch = writeBatch(db);
-      const serial = `UNI-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const serial = existing ? existing.id : `UNI-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const entry = {
         amount,
@@ -315,31 +341,44 @@ export const useUniformCharges = ({
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
       const recordId = `${student.uid}_${year}_${term}`;
 
-      batch.set(
-        doc(db, "studentFeeRecords", recordId),
-        {
-          studentUid: student.uid,
-          studentName: student.fullName,
-          classId: student.classId,
-          className: student.className,
-          academicYear: acadConfig.academicYear,
-          term: acadConfig.currentTerm,
-          uniformPaid: increment(amount),
-          uniformBill: increment(amount),
-          balance: increment(0),
-          payments: arrayUnion(entry),
+      if (existing) {
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          uniformPaid: increment(diff),
+          uniformBill: increment(diff),
           lastUpdated: serverTimestamp(),
-        },
-        { merge: true }
-      );
+        });
+      } else {
+        batch.set(
+          doc(db, "studentFeeRecords", recordId),
+          {
+            studentUid: student.uid,
+            studentName: student.fullName,
+            classId: student.classId,
+            className: student.className,
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
+            uniformPaid: increment(amount),
+            uniformBill: increment(amount),
+            balance: increment(0),
+            payments: arrayUnion(entry),
+            lastUpdated: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
 
       batch.update(doc(db, "users", student.uid), {
-        uniformPaid: increment(amount),
-        uniformBill: increment(amount),
-        walletBalance: increment(0),
+        uniformPaid: increment(diff),
+        uniformBill: increment(diff),
       });
 
       await batch.commit();
+
+      // Propagate changes to future terms
+      if (Math.abs(diff) >= 0.01) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'uniform');
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -diff, 'payment', 'uniform');
+      }
 
       try {
         await sendNotification({
@@ -406,6 +445,13 @@ export const useUniformCharges = ({
       }
 
       await batch.commit();
+
+      // Propagate changes to future terms
+      if (Math.abs(amount) >= 0.01) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'uniform');
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'uniform');
+      }
+
       showToast({ message: "Transaction reverted successfully", type: "success" });
       handleRefresh();
       return true;

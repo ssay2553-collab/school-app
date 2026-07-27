@@ -35,19 +35,19 @@ const SelectionGroup = React.memo(({ label, items, selectedId, onSelect, getLabe
   </View>
 ));
 
-const StudentCard = React.memo(({ student, onUpdate, reportType }: { student: StudentScoreRecord; onUpdate: (id: string, field: keyof StudentScoreRecord, val: string) => void; reportType: ReportType; }) => {
+const StudentCard = React.memo(({ student, onUpdate, reportType, disabled }: { student: StudentScoreRecord; onUpdate: (id: string, field: keyof StudentScoreRecord, val: string) => void; reportType: ReportType; disabled?: boolean; }) => {
   const isEOT = reportType === "End of Term";
   return (
-    <View style={styles.studentCard}>
+    <View style={[styles.studentCard, disabled && { opacity: 0.7 }]}>
       <View style={styles.cardHeader}>
         <Text style={styles.studentName}>{student.fullName}</Text>
         <View style={styles.gradeBadge}><Text style={styles.gradeText}>{student.grade}</Text></View>
       </View>
       <View style={styles.scoresGrid}>
         {isEOT && (
-          <View style={[styles.scoreInput, { flex: 1 }]}><Text style={styles.scoreLabel}>CLASS SCORE (50)</Text><TextInput value={student.classScore} onChangeText={(v) => onUpdate(student.studentId, "classScore", v)} keyboardType="numeric" placeholder="0.0" style={styles.input} /></View>
+          <View style={[styles.scoreInput, { flex: 1 }]}><Text style={styles.scoreLabel}>CLASS SCORE (50)</Text><TextInput value={student.classScore} onChangeText={(v) => onUpdate(student.studentId, "classScore", v)} keyboardType="numeric" placeholder="0.0" style={styles.input} editable={!disabled} /></View>
         )}
-        <View style={[styles.scoreInput, { flex: 1 }]}><Text style={styles.scoreLabel}>{isEOT ? "EXAMS (100)" : "EXAM SCORE"}</Text><TextInput value={student.examsMark} onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)} keyboardType="numeric" placeholder="0.0" style={styles.input} /></View>
+        <View style={[styles.scoreInput, { flex: 1 }]}><Text style={styles.scoreLabel}>{isEOT ? "EXAMS (100)" : "EXAM SCORE"}</Text><TextInput value={student.examsMark} onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)} keyboardType="numeric" placeholder="0.0" style={styles.input} editable={!disabled} /></View>
         <View style={styles.totalBox}><Text style={styles.totalLabel}>FINAL</Text><Text style={styles.totalVal}>{student.finalScore}</Text></View>
       </View>
     </View>
@@ -73,7 +73,10 @@ export default function StudentAcademicRecords() {
     academicYear,
     term,
     subjects,
+    recordStatus,
   } = useAcademicRecords();
+
+  const isApproved = recordStatus === "approved";
 
   const handleBack = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -94,6 +97,10 @@ export default function StudentAcademicRecords() {
   }, [hasUnsavedChanges, handleBack]);
 
   const handleSave = async () => {
+    if (isApproved) {
+      Alert.alert("Locked", "This record has been approved by the Admin and cannot be edited.");
+      return;
+    }
     const success = await saveRecord();
     if (success) router.back();
   };
@@ -103,7 +110,15 @@ export default function StudentAcademicRecords() {
   const renderHeader = () => (
     <>
       <Animatable.View animation="fadeInDown" duration={500} style={styles.configCard}>
-        <Text style={styles.sectionLabel}>LEDGER CONFIGURATION</Text>
+        <View style={styles.statusRow}>
+          <Text style={styles.sectionLabel}>LEDGER CONFIGURATION</Text>
+          {isApproved && (
+            <View style={styles.approvedBadge}>
+              <SVGIcon name="checkmark-circle" size={14} color="#059669" />
+              <Text style={styles.approvedText}>APPROVED & LOCKED</Text>
+            </View>
+          )}
+        </View>
         <View style={styles.lockedConfigRow}>
           <View style={styles.lockedConfigItem}><Text style={styles.miniLabel}>YEAR</Text><View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{academicYear || "---"}</Text></View></View>
           <View style={styles.lockedConfigItem}><Text style={styles.miniLabel}>TERM</Text><View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{term || "---"}</Text></View></View>
@@ -135,7 +150,7 @@ export default function StudentAcademicRecords() {
         <FlatList
           data={allStudents}
           keyExtractor={(item) => item.studentId}
-          renderItem={({ item }) => <StudentCard student={item} onUpdate={updateStudentScore} reportType={reportType} />}
+          renderItem={({ item }) => <StudentCard student={item} onUpdate={updateStudentScore} reportType={reportType} disabled={isApproved} />}
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={<View style={styles.emptyState}><SVGIcon name="people-outline" size={48} color="#CBD5E1" /><Text style={styles.emptyStateText}>{!selectedSubject ? "Select subject" : "No students found"}</Text></View>}
           contentContainerStyle={styles.listContent}
@@ -144,8 +159,11 @@ export default function StudentAcademicRecords() {
         />
       )}
 
-      <TouchableOpacity onPress={handleSave} style={styles.saveFab}>
-        <LinearGradient colors={[COLORS.primary, "#4F46E5"]} style={styles.fabGrad}><Text style={styles.saveFabText}>SAVE PERFORMANCE LEDGER</Text><SVGIcon name="checkmark-done" size={24} color="#fff" /></LinearGradient>
+      <TouchableOpacity onPress={handleSave} style={[styles.saveFab, isApproved && { opacity: 0.5 }]} disabled={isApproved}>
+        <LinearGradient colors={isApproved ? ["#94A3B8", "#64748B"] : [COLORS.primary, "#4F46E5"]} style={styles.fabGrad}>
+          <Text style={styles.saveFabText}>{isApproved ? "LEDGER APPROVED & LOCKED" : "SAVE PERFORMANCE LEDGER"}</Text>
+          <SVGIcon name={isApproved ? "lock-closed" : "checkmark-done"} size={24} color="#fff" />
+        </LinearGradient>
       </TouchableOpacity>
     </SafeAreaView>
   );
@@ -161,7 +179,10 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: "700" },
   configCard: { backgroundColor: "#fff", margin: 20, padding: 20, borderRadius: 24, ...SHADOWS.small, borderWidth: 1, borderColor: "#E2E8F0" },
   selectionWrapper: { marginTop: 15 },
-  sectionLabel: { fontSize: 10, fontWeight: "900", color: COLORS.primary, letterSpacing: 1, marginBottom: 15 },
+  statusRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15 },
+  approvedBadge: { flexDirection: "row", alignItems: "center", backgroundColor: "#ECFDF5", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 },
+  approvedText: { fontSize: 10, fontWeight: "900", color: "#059669" },
+  sectionLabel: { fontSize: 10, fontWeight: "900", color: COLORS.primary, letterSpacing: 1 },
   label: { fontSize: 10, fontWeight: "900", color: "#94A3B8", marginBottom: 10 },
   bubbleRow: { gap: 10, paddingBottom: 5 },
   bubble: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 15, backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "#E2E8F0", marginRight: 8 },

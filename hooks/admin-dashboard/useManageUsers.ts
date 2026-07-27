@@ -598,6 +598,17 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           updates.previousClassId = user.classId;
           updates.classId = "archived";
         }
+
+        // Keep parent links for historical record access
+        // if (!isArchived && user.role === "student" && user.parentUids?.length) {
+        //   user.parentUids.forEach((pUid) => {
+        //     batch.update(doc(db, "users", pUid), {
+        //       childrenIds: arrayRemove(user.uid),
+        //     });
+        //   });
+        //   updates.parentUids = [];
+        // }
+
         batch.update(doc(db, "users", user.uid), updates);
         if (user.role === "student") {
           const statsRef = doc(db, "stats", "global");
@@ -645,12 +656,24 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         for (const chunk of chunks) {
           const batch = writeBatch(db);
           chunk.forEach((s) => {
-            batch.update(doc(db, "users", s.uid), {
+            const updates: any = {
               status: "archived",
               archivedAt: Timestamp.now(),
               archivedInYear: currentYear,
               classId: "archived",
-            });
+            };
+
+            // Unlink from parents during graduation
+            if (s.parentUids?.length) {
+              s.parentUids.forEach((pUid: string) => {
+                batch.update(doc(db, "users", pUid), {
+                  childrenIds: arrayRemove(s.uid),
+                });
+              });
+              updates.parentUids = [];
+            }
+
+            batch.update(doc(db, "users", s.uid), updates);
           });
           batch.set(doc(db, "stats", "global"), { totalStudents: increment(-chunk.length) }, { merge: true });
           await batch.commit();

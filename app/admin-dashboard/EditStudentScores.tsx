@@ -381,7 +381,7 @@ export default function EditStudentScores() {
         const termSlug = term.replace(/\s+/g, "");
         const summaryId = `${student.studentId}_${yearSlug}_${termSlug}`;
         const summaryRef = doc(db, "academicRecordsSummary", summaryId);
-        const subjectKey = selectedSubject.replace(/\s+/g, "_");
+        const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${selectedReportType.replace(/\s+/g, "")}`;
 
         const rankInfo = calculateCompetitionRanking(
           subjectScoresList,
@@ -401,6 +401,7 @@ export default function EditStudentScores() {
                 grade: student.grade,
                 position: `${rankInfo.rank}/${rankInfo.total}`,
                 reportType: selectedReportType,
+                status: "approved",
                 lastUpdated: serverTimestamp(),
               },
             },

@@ -19,6 +19,7 @@ import { db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
+import { propagateArrears } from "../../utils/financeUtils";
 
 const PAGE_SIZE = 50;
 
@@ -189,6 +190,10 @@ export const useBooksCharges = ({
     receivedFrom: string,
     paymentMethod: string
   ) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot log payment.", type: "error" });
+      return false;
+    }
     setSaving(true);
     try {
       const batch = writeBatch(db);
@@ -240,6 +245,9 @@ export const useBooksCharges = ({
 
       await batch.commit();
 
+      // Propagate changes to future terms
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'books');
+
       try {
         await sendNotification({
           recipientId: student.uid,
@@ -271,10 +279,34 @@ export const useBooksCharges = ({
   };
 
   const logBill = async (student: Student, amount: number, bookTitle: string) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot log bill.", type: "error" });
+      return false;
+    }
     setSaving(true);
     try {
+      // Check for existing bill with same title for this student/term
+      const qExisting = query(
+        collection(db, "feePayments"),
+        where("type", "==", "books"),
+        where("studentUid", "==", student.uid),
+        where("academicYear", "==", acadConfig.academicYear),
+        where("term", "==", acadConfig.currentTerm),
+        where("method", "==", bookTitle || "Books Charge")
+      );
+      const existingSnap = await getDocsFromServer(qExisting);
+      const existing = existingSnap.empty ? null : { id: existingSnap.docs[0].id, ...(existingSnap.docs[0].data() as any) };
+
+      const oldAmount = existing ? (existing.amount || 0) : 0;
+      const diff = amount - oldAmount;
+
+      if (diff === 0 && existing) {
+        showToast({ message: "Bill amount is the same", type: "info" });
+        return true;
+      }
+
       const batch = writeBatch(db);
-      const serial = `BILL-BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const serial = existing ? existing.id : `BILL-BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const billEntry = {
         amount,
@@ -297,32 +329,44 @@ export const useBooksCharges = ({
       batch.set(doc(db, "feePayments", serial), billEntry);
 
       batch.update(doc(db, "users", student.uid), {
-        booksBill: increment(amount),
-        booksBalance: increment(amount),
-        walletBalance: increment(amount),
+        booksBill: increment(diff),
+        booksBalance: increment(diff),
+        walletBalance: increment(diff),
       });
 
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
       const recordId = `${student.uid}_${year}_${term}`;
 
-      batch.set(doc(db, "studentFeeRecords", recordId), {
-        studentUid: student.uid,
-        studentName: student.fullName,
-        classId: student.classId,
-        className: student.className,
-        academicYear: acadConfig.academicYear,
-        term: acadConfig.currentTerm,
-        booksBill: increment(amount),
-        booksBalance: increment(amount),
-        balance: increment(amount),
-        payments: arrayUnion(billEntry),
-        lastUpdated: serverTimestamp(),
-      }, { merge: true });
+      if (existing) {
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          booksBill: increment(diff),
+          booksBalance: increment(diff),
+          balance: increment(diff),
+          lastUpdated: serverTimestamp(),
+        });
+      } else {
+        batch.set(doc(db, "studentFeeRecords", recordId), {
+          studentUid: student.uid,
+          studentName: student.fullName,
+          classId: student.classId,
+          className: student.className,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
+          booksBill: increment(amount),
+          booksBalance: increment(amount),
+          balance: increment(amount),
+          payments: arrayUnion(billEntry),
+          lastUpdated: serverTimestamp(),
+        }, { merge: true });
+      }
 
       await batch.commit();
 
-      showToast({ message: `Bill created: ${serial}`, type: "success" });
+      // Propagate changes to future terms
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'books');
+
+      showToast({ message: existing ? `Bill updated` : `Bill created: ${serial}`, type: "success" });
       handleRefresh();
       return true;
     } catch (e) {
@@ -384,6 +428,12 @@ export const useBooksCharges = ({
       }
 
       await batch.commit();
+
+      // Propagate changes to future terms
+      const propagationAmount = isPayment ? amount : -amount;
+      const propType = isPayment ? 'payment' : 'bill';
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, propagationAmount, propType, 'books');
+
       showToast({ message: "Transaction reverted", type: "success" });
       handleRefresh();
       return true;

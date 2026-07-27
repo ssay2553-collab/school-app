@@ -7,6 +7,7 @@ export interface AcademicConfig {
   currentTerm: string;
   termStart: any;
   termEnd: any;
+  nextTermBegins: string;
   schoolName: string;
   extraClassesRate: number;
   loading: boolean;
@@ -20,6 +21,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     currentTerm: "",
     termStart: null,
     termEnd: null,
+    nextTermBegins: "",
     schoolName: "",
     extraClassesRate: 0,
     loading: true,
@@ -39,6 +41,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           currentTerm: data.currentTerm || "",
           termStart: data.termStart,
           termEnd: data.termEnd,
+          nextTermBegins: data.nextTermBegins || "",
           schoolName: data.schoolName || "",
           extraClassesRate: data.extraClassesRate || 0,
           loading: false,

@@ -218,7 +218,10 @@ function hasScreenPermission(screen, level) {
         || (isSignedIn() && uid() == userId)
         || (isTeacher() && resource.data.role == 'student')
         || (isParent() && resource.data.role == 'teacher')
-        || (isParent() && userData() != null && userId in userData().childrenIds)
+        || (isParent() && userData() != null && (
+             (userId in userData().childrenIds) ||
+             (uid() in resource.data.get('parentUids', []))
+           ))
         || (isTeacher() && resource.data.role == 'parent')
         // UPGRADED: Discovery rule for Signup / Student Claiming
         // Allows users to find a student profile ONLY if they use a limit of 1
@@ -249,7 +252,12 @@ allow create: if
         !('assignedRoles' in request.resource.data) &&
         !('permissions' in request.resource.data.get('profile', {})) &&
         !('adminRole' in request.resource.data.get('profile', {})) &&
-        !('assignedRoles' in request.resource.data.get('profile', {}))
+        !('assignedRoles' in request.resource.data.get('profile', {})) &&
+
+        // Security: Prevent students from setting their own balance during signup
+        (request.resource.data.role == 'student' ? (
+          (!('walletBalance' in request.resource.data) || request.resource.data.walletBalance == 0)
+        ) : true)
       )
 
       ||
@@ -390,7 +398,28 @@ allow create: if
             'uid',
             'isAnonymous',
             'createdAt',
-            'permissions'
+            'permissions',
+            'walletBalance',
+            'financeLastReconciled',
+            'otherBill',
+            'otherPaid',
+            'otherBalance',
+            'admissionBalance',
+            'ptaBalance',
+            'maintenanceBalance',
+            'booksBalance',
+            'uniformBalance',
+            'admissionBill',
+            'ptaBill',
+            'maintenanceBill',
+            'booksBill',
+            'uniformBill',
+            'ptaPaid',
+            'maintenancePaid',
+            'booksPaid',
+            'uniformPaid',
+            'admissionPaid',
+            'salary'
           ])
       )
 
@@ -417,6 +446,7 @@ allow create: if
           .affectedKeys()
           .hasOnly([
             'walletBalance',
+            'financeLastReconciled',
             'otherBill',
             'otherPaid',
             'otherBalance',
@@ -431,7 +461,12 @@ allow create: if
             'booksBill',
             'uniformBill',
             'onDiscount',
-            'discountAmount'
+            'discountAmount',
+            'ptaPaid',
+            'maintenancePaid',
+            'booksPaid',
+            'uniformPaid',
+            'admissionPaid'
           ])
       )
 
@@ -529,7 +564,11 @@ match /studentFeeRecords/{recordId} {
   );
 
   // Only Admins or those with fee management permissions can write
-  allow write: if canManageFees();
+  // Enforce valid academic metadata to prevent orphaned records
+  allow write: if canManageFees() &&
+    request.resource.data.academicYear is string && request.resource.data.academicYear != "" &&
+    request.resource.data.term is string && request.resource.data.term != "" &&
+    request.resource.data.studentUid is string && request.resource.data.studentUid != "";
 }
 
 match /feePayments/{paymentId} {
@@ -539,7 +578,12 @@ match /feePayments/{paymentId} {
     (isParent() && resource.data.studentUid in userData().childrenIds)
   );
 
-  allow create: if canManageFees();
+  // Enforce valid academic metadata for all financial transactions
+  allow create: if canManageFees() &&
+    request.resource.data.academicYear is string && request.resource.data.academicYear != "" &&
+    request.resource.data.term is string && request.resource.data.term != "" &&
+    request.resource.data.studentUid is string && request.resource.data.studentUid != "";
+
   allow update, delete: if isAdmin();
 }
 
@@ -587,18 +631,19 @@ match /feePayments/{paymentId} {
        OTHER COLLECTIONS
     =============================== */
 
-   match /signupCodes/{codeId} {
-      // allow unauthenticated read for verification during signup
-      allow read: if true;
-      allow create, delete: if canGenerateCode();
+    match /signupCodes/{codeId} {
+      // Restrict read to single-code verification to prevent bulk scraping
+      allow get: if true;
+      allow list: if isAdmin() || (request.query.limit <= 1);
+      allow create: if canGenerateCode() && (
+        isAdmin() || (isTeacher() && request.resource.data.intendedForRole == 'student')
+      );
+      allow delete: if isAdmin();
       allow update: if (isSignedIn()
         && (!('used' in resource.data) || resource.data.used == false)
         && request.resource.data.used == true
         && request.resource.data.usedBy == uid())
         || (
-          // Allow Cloud Functions to update code (Admin bypass is handled by default,
-          // but we need to ensure the rules don't block the backend write if it's using a user context)
-          // Actually, Admin SDK bypasses rules, but if it's a client-side update:
           isSignedIn() && isAdmin()
         );
     }
@@ -630,13 +675,13 @@ match /feePayments/{paymentId} {
           && (chatId.matches('^' + uid() + '_.*|.*_' + uid() + '$'));
       }
 
-      allow read: if isAdmin() || isParticipant() || isTeacher();
+      allow read: if isAdmin() || isParticipant();
 
       match /messages/{messageId} {
-        allow read: if isAdmin() || isParticipant() || isTeacher();
+        allow read: if isAdmin() || isParticipant();
 
         allow create: if
-          isAdmin() || isTeacher()
+          isAdmin()
           || (
             isParticipant()
             && request.resource.data.senderId == uid()
@@ -710,7 +755,12 @@ match /feePayments/{paymentId} {
     }
 
     match /attendanceSummary/{id} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        (isTeacher() && (resource == null || (resource.data.classId in userData().get('classes', [])))) ||
+        (isStudent() && (id.split('_')[0] == uid() || (resource != null && resource.data.studentId == uid()))) ||
+        (isParent() && (id.split('_')[0] in userData().get('childrenIds', []) || (resource != null && resource.data.studentId in userData().get('childrenIds', []))))
+      );
       allow write: if isAdmin() ||
         (isSignedIn() && (isTeacher() || isStaff()) &&
         (
@@ -718,8 +768,10 @@ match /feePayments/{paymentId} {
           isClassTeacher(request.resource.data.classId) ||
           (request.resource.data.classId in userData().get('classes', [])) ||
           // Or if the resource already exists and they are the teacher
-          isClassTeacher(resource.data.classId) ||
-          (resource.data.classId in userData().get('classes', []))
+          (resource != null && (
+            isClassTeacher(resource.data.classId) ||
+            (resource.data.classId in userData().get('classes', []))
+          ))
         ));
     }
 
@@ -750,7 +802,11 @@ match /feePayments/{paymentId} {
 
            allow update: if isSignedIn() && (
              isAdmin() ||
-             (isTeacher() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores']))
+             (isTeacher() && (
+               resource.data.assignmentId in (get(/databases/$(database)/documents/users/$(uid())).data.assignedAssignments) ||
+               // Fallback: check if they are the teacher of the student
+               isClassTeacher(get(/databases/$(database)/documents/users/$(resource.data.studentId)).data.classId)
+             ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores']))
            );
 
            allow delete: if isAdmin();
@@ -863,14 +919,27 @@ match /feePayments/{paymentId} {
    ACADEMIC RECORDS
 =============================== */
    match /academicRecords/{recordId} {
-      allow read: if request.auth != null;
+      allow read: if isSignedIn();
 
-      // Admins have full access; Teachers must be authorized for behavioral data
-      allow write: if request.auth != null
-                   && (isAdmin() || (isTeacher() && (
-                     (!request.resource.data.get('containsBehavioralData', false)) ||
-                     isClassTeacher(request.resource.data.classId)
-                   )));
+      // Admins have full access; Teachers can only create/edit if not already approved
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (isTeacher() && isClassTeacher(request.resource.data.classId) && request.resource.data.status == 'pending')
+      );
+
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (
+          isTeacher() &&
+          isClassTeacher(resource.data.classId) &&
+          resource.data.status != 'approved' &&
+          request.resource.data.status == 'pending' &&
+          (
+            !request.resource.data.get('containsBehavioralData', false) ||
+            isClassTeacher(resource.data.classId)
+          )
+        )
+      );
 
       allow delete: if isAdmin();
    }
@@ -897,7 +966,7 @@ match /academicRecordsSummary/{id} {
         (isStudent() && id.split('_')[0] == uid()) ||
         (isParent() && id.split('_')[0] in userData().childrenIds)
       );
-      allow write: if isAdmin() || (isTeacher());
+      allow write: if isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
     }
 
     /* ===============================
@@ -912,8 +981,8 @@ match /academicRecordsSummary/{id} {
           allow read: if isSignedIn() && (
             isAdmin() ||
             (isTeacher() && resource.data.classId in userData().classes) ||
-            (isParent() && resource.data.classId == get(/databases/$(database)/documents/users/$(uid())).data.classId) ||
-            (isParent() && resource.data.studentIds.hasAny(userData().childrenIds))
+            (isParent() && resource.data.classId in userData().get('childrenClassIds', [])) ||
+            (isParent() && resource.data.studentIds.hasAny(userData().get('childrenIds', [])))
           );
 
           // WRITE:

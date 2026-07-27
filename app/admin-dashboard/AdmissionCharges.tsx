@@ -195,17 +195,32 @@ export default function AdmissionCharges() {
   const handleDeletePayment = (payment: any) => {
     if (!selectedStudent) return;
 
-    Alert.alert("Confirm Deletion", "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          const success = await deletePayment(selectedStudent, payment);
-          if (success) setPaymentModalVisible(false);
-        }
-      },
-    ]);
+    const confirmDeletion = async () => {
+      const success = await deletePayment(selectedStudent, payment);
+      if (success) setPaymentModalVisible(false);
+    };
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance."
+      );
+      if (confirmed) {
+        confirmDeletion();
+      }
+    } else {
+      Alert.alert(
+        "Confirm Deletion",
+        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: confirmDeletion,
+          },
+        ]
+      );
+    }
   };
 
   const handleStudentPress = useCallback((student: Student) => {

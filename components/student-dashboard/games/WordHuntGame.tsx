@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import * as Speech from "expo-speech";
+import { safeSpeak, safeStop } from "../../../utils/safeSpeech";
 import SVGIcon from "../../SVGIcon";
 import { usePersistedState } from "../../../hooks/student-dashboard/usePersistedState";
 import { WORD_DATA, REMARKS, WRONG_REMARKS } from "./GameConstants";
@@ -47,13 +47,13 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
 
   useEffect(() => {
     startStage();
-    return () => { Speech.stop(); };
+    return () => { safeStop(); };
   }, [startStage]);
 
   useEffect(() => {
     if (words[index]) {
-      Speech.stop();
-      Speech.speak("Guess the word for: " + words[index].hint, { rate: 0.9 });
+      safeStop();
+      safeSpeak("Guess the word for: " + words[index].hint, { rate: 0.9 });
     }
   }, [index, words]);
 
@@ -73,8 +73,8 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
     const isCorrect = input.toUpperCase().trim() === words[index].word;
     const remark = getRandomRemark(isCorrect);
 
-    Speech.stop();
-    Speech.speak(remark, { rate: 1.0 });
+    safeStop();
+    safeSpeak(remark, { rate: 1.0 });
 
     if (isCorrect) {
       setScore((s) => s + 1);
@@ -114,11 +114,11 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
   return (
     <View style={styles.gameContainer}>
       <View style={styles.gameHeader}>
-        <TouchableOpacity onPress={() => { Speech.stop(); onExit(); }}>
+        <TouchableOpacity onPress={() => { safeStop(); onExit(); }}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
         <Text style={styles.levelText}>Word Hunt 🔍</Text>
-        <TouchableOpacity onPress={() => Speech.speak(words[index].hint)}>
+        <TouchableOpacity onPress={() => safeSpeak(words[index].hint)}>
           <SVGIcon name="volume-high" color="#fff" size={28} />
         </TouchableOpacity>
       </View>

@@ -7,7 +7,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import * as Speech from "expo-speech";
+import { safeSpeak, safeStop } from "../../../utils/safeSpeech";
 import * as Animatable from "react-native-animatable";
 import * as Haptics from "expo-haptics";
 import SVGIcon from "../../SVGIcon";
@@ -60,13 +60,13 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
 
   useEffect(() => {
     startStage();
-    return () => { Speech.stop(); };
+    return () => { safeStop(); };
   }, [startStage]);
 
   useEffect(() => {
     if (scrambled) {
-      Speech.stop();
-      Speech.speak("Unscramble this word", { rate: 0.9 });
+      safeStop();
+      safeSpeak("Unscramble this word", { rate: 0.9 });
     }
   }, [scrambled]);
 
@@ -89,8 +89,8 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
     const isCorrect = input.toUpperCase().trim() === words[index];
     const remark = getRandomRemark(isCorrect);
 
-    Speech.stop();
-    Speech.speak(remark, { rate: 1.0 });
+    safeStop();
+    safeSpeak(remark, { rate: 1.0 });
 
     if (isCorrect) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -144,11 +144,11 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
   return (
     <View style={styles.gameContainer}>
       <View style={styles.gameHeader}>
-        <TouchableOpacity onPress={() => { Speech.stop(); onExit(); }}>
+        <TouchableOpacity onPress={() => { safeStop(); onExit(); }}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
         <Text style={styles.levelText}>Scramble 🔠 (Lvl {level})</Text>
-        <TouchableOpacity onPress={() => Speech.speak("Unscramble " + scrambled.split('').join(' '))}>
+        <TouchableOpacity onPress={() => safeSpeak("Unscramble " + scrambled.split('').join(' '))}>
           <SVGIcon name="volume-high" color="#fff" size={28} />
         </TouchableOpacity>
       </View>

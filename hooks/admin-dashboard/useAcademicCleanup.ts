@@ -1,11 +1,11 @@
 import {
-    collection,
-    doc,
-    getDocs,
-    query,
-    serverTimestamp,
-    where,
-    writeBatch,
+  collection,
+  doc,
+  getDocs,
+  query,
+  serverTimestamp,
+  where,
+  writeBatch,
 } from "firebase/firestore";
 import { useCallback, useState } from "react";
 import { db } from "../../firebaseConfig";
@@ -16,21 +16,39 @@ export const useAcademicCleanup = (showToast: (props: any) => void) => {
     scoresFixed: number;
     reportsFixed: number;
     summaryFixed: number;
+    submissionsFixed: number;
+    attendanceFixed: number;
+    behavioralFixed: number;
+    groupsFixed: number;
+    attendanceSummaryFixed: number;
     orphanedScores: number;
   } | null>(null);
 
   const runCleanup = useCallback(async () => {
     setCleaning(true);
     setReport(null);
+    let currentBatch = writeBatch(db);
+    let opCount = 0;
+
+    const commitBatch = async () => {
+      if (opCount > 0) {
+        await currentBatch.commit();
+        currentBatch = writeBatch(db);
+        opCount = 0;
+      }
+    };
+
     try {
       console.log("Starting academic integrity scan...");
 
       // 1. Fetch all relevant data
-      const [scoresSnap, reportsSnap, summarySnap, usersSnap] = await Promise.all([
+      const [scoresSnap, reportsSnap, summarySnap, usersSnap, submissionsSnap, groupsSnap] = await Promise.all([
         getDocs(collection(db, "scores")),
         getDocs(collection(db, "student-reports")),
         getDocs(collection(db, "academicRecordsSummary")),
         getDocs(query(collection(db, "users"), where("role", "==", "student"))),
+        getDocs(collection(db, "submissions")),
+        getDocs(collection(db, "studentGroups")),
       ]);
 
       const validStudentIds = new Set(usersSnap.docs.map((d) => d.id));
@@ -48,7 +66,7 @@ export const useAcademicCleanup = (showToast: (props: any) => void) => {
         const fullName = `${firstName} ${lastName}`.trim();
         if (fullName) studentNameMap.set(fullName, d.id);
 
-        const studentID = data.profile?.studentID || data.studentID || data.studentId;
+        const studentID = data.profile?.studentID || data.profile?.studentId || data.studentID || data.studentId;
         if (studentID) studentIDMap.set(String(studentID).trim().toLowerCase(), d.id);
       });
 
@@ -76,11 +94,22 @@ export const useAcademicCleanup = (showToast: (props: any) => void) => {
       let scoresFixed = 0;
       let reportsFixed = 0;
       let summaryFixed = 0;
+      let submissionsFixed = 0;
+      let attendanceFixed = 0;
+      let behavioralFixed = 0;
+      let groupsFixed = 0;
+      let attendanceSummaryFixed = 0;
       let orphanedScores = 0;
 
       const scoreUpdates = new Map<string, any>();
       const reportUpdates = new Map<string, any>();
       const summaryUpdates = new Map<string, any>();
+      const recordUpdates = new Map<string, any>();
+      const submissionUpdates = new Map<string, any>();
+      const attendanceUpdates = new Map<string, any>();
+      const behavioralUpdates = new Map<string, any>();
+      const groupUpdates = new Map<string, any>();
+      const attendanceSummaryMigrated = new Set<string>();
 
       // 2. Scan Scores
       scoresSnap.docs.forEach((d) => {
@@ -138,9 +167,112 @@ export const useAcademicCleanup = (showToast: (props: any) => void) => {
         }
       });
 
-      // 5. Parent Link Healing
+      // 5. Scan Academic Summaries
+      summarySnap.docs.forEach((d) => {
+        const data = d.data();
+        const resolved = resolveUid(data.studentId, data.studentName);
+        if (resolved && resolved !== data.studentId) {
+          summaryUpdates.set(d.id, { studentId: resolved, lastCleaned: serverTimestamp() });
+          summaryFixed++;
+        }
+      });
+
+      // 6. Scan Submissions
+      submissionsSnap.docs.forEach((d) => {
+        const data = d.data();
+        const resolved = resolveUid(data.studentId, data.studentName);
+        if (resolved && resolved !== data.studentId) {
+          submissionUpdates.set(d.id, { studentId: resolved, lastCleaned: serverTimestamp() });
+          submissionsFixed++;
+        }
+      });
+
+      // 7. Scan Attendance
+      const attendanceSnap = await getDocs(collection(db, "attendance"));
+      attendanceSnap.docs.forEach((d) => {
+        const data = d.data();
+        let changed = false;
+        const updatedStudents = { ...(data.students || {}) };
+
+        Object.keys(updatedStudents).forEach(oldId => {
+          if (claimedMapping.has(oldId)) {
+            const newId = claimedMapping.get(oldId)!;
+            updatedStudents[newId] = updatedStudents[oldId];
+            delete updatedStudents[oldId];
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          attendanceUpdates.set(d.id, {
+            students: updatedStudents,
+            lastCleaned: serverTimestamp()
+          });
+          attendanceFixed++;
+        }
+      });
+
+      // 8. Scan Behavioral Records
+      const behavioralSnap = await getDocs(collection(db, "behavioralRecords"));
+      behavioralSnap.docs.forEach((d) => {
+        const data = d.data();
+        let changed = false;
+        const updatedStudents = [...(data.students || [])];
+        const updatedIds = [...(data.studentIds || [])];
+
+        updatedStudents.forEach((s: any, idx: number) => {
+          if (claimedMapping.has(s.studentId)) {
+            updatedStudents[idx] = { ...s, studentId: claimedMapping.get(s.studentId)! };
+            changed = true;
+          }
+        });
+
+        updatedIds.forEach((id, idx) => {
+          if (claimedMapping.has(id)) {
+            updatedIds[idx] = claimedMapping.get(id)!;
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          behavioralUpdates.set(d.id, {
+            students: updatedStudents,
+            studentIds: updatedIds,
+            lastCleaned: serverTimestamp()
+          });
+          behavioralFixed++;
+        }
+      });
+
+      // 9. Attendance Summary Healing (Document migration)
+      const attSummarySnap = await getDocs(collection(db, "attendanceSummary"));
+      for (const d of attSummarySnap.docs) {
+        const data = d.data();
+        if (data.studentId && claimedMapping.has(data.studentId)) {
+          const newId = claimedMapping.get(data.studentId)!;
+          const yearSlug = (data.academicYear || "").replace(/\//g, "-");
+          const termSlug = (data.term || "").replace(/\s/g, "");
+          const newDocId = `${newId}_${yearSlug}_${termSlug}`;
+
+          if (!attendanceSummaryMigrated.has(newDocId)) {
+            currentBatch.set(doc(db, "attendanceSummary", newDocId), {
+              ...data,
+              studentId: newId,
+              migratedFrom: d.id,
+              lastCleaned: serverTimestamp()
+            });
+            currentBatch.delete(d.ref);
+            attendanceSummaryMigrated.add(newDocId);
+            attendanceSummaryFixed++;
+            opCount += 2;
+            if (opCount >= 450) await commitBatch();
+          }
+        }
+      }
+
+      // 10. Parent Link Healing
       const parentsSnap = await getDocs(query(collection(db, "users"), where("role", "==", "parent")));
-      parentsSnap.docs.forEach(d => {
+      for (const d of parentsSnap.docs) {
         const data = d.data();
         const childrenIds = data.childrenIds || [];
         let changed = false;
@@ -153,21 +285,35 @@ export const useAcademicCleanup = (showToast: (props: any) => void) => {
         });
 
         if (changed) {
-          // Update the parent's children list to point to the new Auth UID
           currentBatch.update(doc(db, "users", d.id), { childrenIds: newChildrenIds });
           opCount++;
+          if (opCount >= 450) await commitBatch();
+        }
+      }
+
+      // 11. Student Group Healing
+      groupsSnap.docs.forEach((d) => {
+        const data = d.data();
+        let changed = false;
+        const updatedStudentIds = [...(data.studentIds || [])];
+
+        updatedStudentIds.forEach((id, idx) => {
+          if (claimedMapping.has(id)) {
+            updatedStudentIds[idx] = claimedMapping.get(id)!;
+            changed = true;
+          }
+        });
+
+        if (changed) {
+          groupUpdates.set(d.id, {
+            studentIds: updatedStudentIds,
+            lastCleaned: serverTimestamp()
+          });
+          groupsFixed++;
         }
       });
 
-      // 6. Batch Commit
-      const commitBatch = async () => {
-        if (opCount > 0) {
-          await currentBatch.commit();
-          currentBatch = writeBatch(db);
-          opCount = 0;
-        }
-      };
-
+      // 12. Execute Updates
       for (const [id, updates] of recordUpdates.entries()) {
         currentBatch.update(doc(db, "academicRecords", id), updates);
         opCount++;
@@ -188,11 +334,31 @@ export const useAcademicCleanup = (showToast: (props: any) => void) => {
         opCount++;
         if (opCount >= 450) await commitBatch();
       }
+      for (const [id, updates] of submissionUpdates.entries()) {
+        currentBatch.update(doc(db, "submissions", id), updates);
+        opCount++;
+        if (opCount >= 450) await commitBatch();
+      }
+      for (const [id, updates] of attendanceUpdates.entries()) {
+        currentBatch.update(doc(db, "attendance", id), updates);
+        opCount++;
+        if (opCount >= 450) await commitBatch();
+      }
+      for (const [id, updates] of behavioralUpdates.entries()) {
+        currentBatch.update(doc(db, "behavioralRecords", id), updates);
+        opCount++;
+        if (opCount >= 450) await commitBatch();
+      }
+      for (const [id, updates] of groupUpdates.entries()) {
+        currentBatch.update(doc(db, "studentGroups", id), updates);
+        opCount++;
+        if (opCount >= 450) await commitBatch();
+      }
 
       await commitBatch();
 
-      setReport({ scoresFixed, reportsFixed, summaryFixed, orphanedScores });
-      showToast({ message: `Academic scan complete. Fixed ${scoresFixed + reportsFixed + summaryFixed} records.`, type: "success" });
+      setReport({ scoresFixed, reportsFixed, summaryFixed, submissionsFixed, attendanceFixed, behavioralFixed, groupsFixed, attendanceSummaryFixed, orphanedScores });
+      showToast({ message: `Academic scan complete. Fixed ${scoresFixed + reportsFixed + summaryFixed + submissionsFixed + attendanceFixed + behavioralFixed + groupsFixed + attendanceSummaryFixed} records.`, type: "success" });
 
     } catch (error) {
       console.error("Academic Cleanup error:", error);

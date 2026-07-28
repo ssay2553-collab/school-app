@@ -568,18 +568,6 @@ export default function DailyFinancials() {
                 "/shared/extra-classes-fees",
                 true,
               )}
-
-            {/* Summary - only for superadmins */}
-            {isSuperAdmin &&
-              renderCategoryCard(
-                "Financial Summary",
-                "Day / Week / Month / Term",
-                stats.recordedToday,
-                "analytics",
-                VIBE.primary,
-                "/shared/daily-financials-summary",
-                true,
-              )}
           </View>
 
           {/* Quick Actions */}

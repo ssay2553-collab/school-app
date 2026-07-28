@@ -261,13 +261,14 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
           const statusLabel = status?.toUpperCase();
 
           for (const parentId of student.parentUids) {
+            const extraBody = status === "absent" ? " Please tap to provide a reason for the absence." : "";
             sendNotification({
               recipientId: parentId,
               senderId: appUser.uid,
               senderName: staffName,
               type: "attendance",
               title: `Attendance Alert: ${statusLabel}`,
-              body: `${studentName} was marked ${statusLabel} today, ${moment(selectedDate).format("MMM Do")}.`,
+              body: `${studentName} was marked ${statusLabel} today, ${moment(selectedDate).format("MMM Do")}.${extraBody}`,
               data: { studentId: student.uid, date: selectedDate, status }
             });
           }

@@ -726,6 +726,21 @@ export default function StudentFeeHistory() {
               </View>
             </View>
 
+            {totalBalance <= 0 && (
+              <Animatable.View
+                animation="bounceIn"
+                style={styles.celebrationBox}
+              >
+                <SVGIcon name="checkmark-done-circle" size={24} color="#059669" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.celebrationTitle}>Balance Cleared!</Text>
+                  <Text style={styles.celebrationSub}>
+                    Thank you for your promptness. Your account is fully settled for this term!
+                  </Text>
+                </View>
+              </Animatable.View>
+            )}
+
             <View style={styles.paperFooter}>
               <Text style={styles.footerNote}>
                 Computer generated. No signature required.
@@ -1064,6 +1079,29 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     width: 100,
     textAlign: "right",
+  },
+
+  celebrationBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1,
+    borderColor: "#10B981",
+    borderRadius: 12,
+    padding: 15,
+    marginTop: 20,
+    gap: 12,
+  },
+  celebrationTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#065F46",
+  },
+  celebrationSub: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#047857",
+    marginTop: 2,
   },
 
   paperFooter: { marginTop: 50, alignItems: "center" },

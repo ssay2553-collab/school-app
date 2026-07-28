@@ -275,6 +275,26 @@ export const useManageFees = ({
         balance: newBalance,
         payments: arrayUnion(paymentObj),
         lastUpdated: serverTimestamp(),
+        // Initialize all category fields to 0 for schema consistency
+        ptaPaid: selectedStudent.ptaPaid || 0,
+        ptaBalance: selectedStudent.ptaBalance || 0,
+        ptaBill: selectedStudent.ptaBill || 0,
+        maintenancePaid: selectedStudent.maintenancePaid || 0,
+        maintenanceBalance: selectedStudent.maintenanceBalance || 0,
+        maintenanceBill: selectedStudent.maintenanceBill || 0,
+        admissionPaid: selectedStudent.admissionPaid || 0,
+        admissionBalance: selectedStudent.admissionBalance || 0,
+        admissionBill: selectedStudent.admissionBill || 0,
+        booksPaid: selectedStudent.booksPaid || 0,
+        booksBalance: selectedStudent.booksBalance || 0,
+        booksBill: selectedStudent.booksBill || 0,
+        uniformPaid: selectedStudent.uniformPaid || 0,
+        uniformBalance: selectedStudent.uniformBalance || 0,
+        uniformBill: selectedStudent.uniformBill || 0,
+        otherPaid: selectedStudent.otherPaid || 0,
+        otherBalance: selectedStudent.otherBalance || 0,
+        otherBill: selectedStudent.otherBill || 0,
+        totalPayable: selectedStudent.totalPayable || 0,
       };
 
       // If it's a new record (no bill yet), set arrears to current wallet balance (before payment)
@@ -301,8 +321,8 @@ export const useManageFees = ({
           recipientId: selectedStudent.uid,
           senderId: appUser?.uid || "admin",
           senderName: appUser?.displayName || "Administrator",
-          title: "Fee Payment Received",
-          body: `A payment of ₵${amount} has been received for ${selectedStudent.fullName}. Receipt: ${receiptNo}`,
+          title: "Fee Payment Received - Thank You!",
+          body: `Thank you! We've received a payment of ₵${amount.toLocaleString()} for ${selectedStudent.fullName}. We appreciate your promptness! Receipt: ${receiptNo}`,
           type: "payment",
         });
       }
@@ -580,6 +600,25 @@ export const useManageFees = ({
           totalPayable: totalPayable,
           editCount: (s.editCount || 0) + 1,
           lastUpdated: serverTimestamp(),
+          // Ensure full schema is present
+          ptaPaid: s.ptaPaid || 0,
+          ptaBalance: s.ptaBalance || 0,
+          ptaBill: s.ptaBill || 0,
+          maintenancePaid: s.maintenancePaid || 0,
+          maintenanceBalance: s.maintenanceBalance || 0,
+          maintenanceBill: s.maintenanceBill || 0,
+          admissionPaid: s.admissionPaid || 0,
+          admissionBalance: s.admissionBalance || 0,
+          admissionBill: s.admissionBill || 0,
+          booksPaid: s.booksPaid || 0,
+          booksBalance: s.booksBalance || 0,
+          booksBill: s.booksBill || 0,
+          uniformPaid: s.uniformPaid || 0,
+          uniformBalance: s.uniformBalance || 0,
+          uniformBill: s.uniformBill || 0,
+          otherPaid: s.otherPaid || 0,
+          otherBalance: s.otherBalance || 0,
+          otherBill: s.otherBill || 0,
         };
 
         if (!s.hasRecordInTerm) {

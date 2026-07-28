@@ -292,8 +292,8 @@ export const useOtherCharges = ({
         recipientId: student.uid,
         senderId: appUser?.uid || "admin",
         senderName: appUser?.displayName || "Administrator",
-        title: "Other Fees Payment Received",
-        body: `A payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been recorded for ${student.fullName}.`,
+        title: "Other Fees Payment Received - Thank You!",
+        body: `Thank you! We've received a payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} for ${student.fullName} towards miscellaneous charges. We appreciate your promptness!`,
         type: "payment",
       }).catch((e) => console.error(e));
 

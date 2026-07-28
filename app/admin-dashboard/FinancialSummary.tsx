@@ -72,13 +72,12 @@ type DailyTotal = {
   feeding: number;
   bus: number;
   extra: number;
-  tuition: number;
-  charges: number;
+  generalFees: number;
   expenditure: number;
   totalRevenue: number;
 };
 
-export default function DailyFinancialsSummary() {
+export default function FinancialSummary() {
   const router = useRouter();
   const { appUser } = useAuth();
   const { showToast } = useToast();
@@ -175,7 +174,7 @@ export default function DailyFinancialsSummary() {
 
             <div class="overview-container">
               <div class="overview-card">
-                <div class="overview-label">Total Revenue</div>
+                <div class="overview-label">Total Received</div>
                 <div class="overview-value" style="color: #10B981">₵${totalRevenue.toLocaleString()}</div>
               </div>
               <div class="overview-card">
@@ -183,7 +182,7 @@ export default function DailyFinancialsSummary() {
                 <div class="overview-value" style="color: #EF4444">₵${totalExpenditure.toLocaleString()}</div>
               </div>
               <div class="overview-card" style="background-color: ${netBalance >= 0 ? "#F0FDF4" : "#FEF2F2"}">
-                <div class="overview-label">Net Balance</div>
+                <div class="overview-label">Net Financial Position</div>
                 <div class="overview-value ${netBalance >= 0 ? "net-surplus" : "net-deficit"}">₵${netBalance.toLocaleString()}</div>
               </div>
             </div>
@@ -245,7 +244,7 @@ export default function DailyFinancialsSummary() {
   };
 
   const handleBack = () => {
-    router.replace("/shared/daily-financials");
+    router.replace("/admin-dashboard");
   };
 
   useEffect(() => {
@@ -328,6 +327,16 @@ export default function DailyFinancialsSummary() {
 
       // Initialize results mapping
       const catResults: Record<string, CategorySummary> = {
+        "General Student Fees": {
+          name: "General Student Fees",
+          icon: "cash",
+          color: VIBE.primary,
+          today: { label: "Today", total: 0, count: 0 },
+          week: { label: "This Week", total: 0, count: 0 },
+          month: { label: "This Month", total: 0, count: 0 },
+          term: { label: "This Term", total: 0, count: 0 },
+          allPeriodsTotal: 0,
+        },
         "Feeding Fees": {
           name: "Feeding Fees",
           icon: "restaurant",
@@ -352,76 +361,6 @@ export default function DailyFinancialsSummary() {
           name: "Extra Classes",
           icon: "book",
           color: VIBE.purple,
-          today: { label: "Today", total: 0, count: 0 },
-          week: { label: "This Week", total: 0, count: 0 },
-          month: { label: "This Month", total: 0, count: 0 },
-          term: { label: "This Term", total: 0, count: 0 },
-          allPeriodsTotal: 0,
-        },
-        "Tuition Fees": {
-          name: "Tuition Fees",
-          icon: "cash",
-          color: VIBE.primary,
-          today: { label: "Today", total: 0, count: 0 },
-          week: { label: "This Week", total: 0, count: 0 },
-          month: { label: "This Month", total: 0, count: 0 },
-          term: { label: "This Term", total: 0, count: 0 },
-          allPeriodsTotal: 0,
-        },
-        "Admission": {
-          name: "Admission",
-          icon: "person-add",
-          color: "#E11D48",
-          today: { label: "Today", total: 0, count: 0 },
-          week: { label: "This Week", total: 0, count: 0 },
-          month: { label: "This Month", total: 0, count: 0 },
-          term: { label: "This Term", total: 0, count: 0 },
-          allPeriodsTotal: 0,
-        },
-        "PTA": {
-          name: "PTA",
-          icon: "people",
-          color: "#7C3AED",
-          today: { label: "Today", total: 0, count: 0 },
-          week: { label: "This Week", total: 0, count: 0 },
-          month: { label: "This Month", total: 0, count: 0 },
-          term: { label: "This Term", total: 0, count: 0 },
-          allPeriodsTotal: 0,
-        },
-        "Uniforms": {
-          name: "Uniforms",
-          icon: "shirt",
-          color: "#059669",
-          today: { label: "Today", total: 0, count: 0 },
-          week: { label: "This Week", total: 0, count: 0 },
-          month: { label: "This Month", total: 0, count: 0 },
-          term: { label: "This Term", total: 0, count: 0 },
-          allPeriodsTotal: 0,
-        },
-        "Books": {
-          name: "Books",
-          icon: "library",
-          color: "#2563EB",
-          today: { label: "Today", total: 0, count: 0 },
-          week: { label: "This Week", total: 0, count: 0 },
-          month: { label: "This Month", total: 0, count: 0 },
-          term: { label: "This Term", total: 0, count: 0 },
-          allPeriodsTotal: 0,
-        },
-        "Maintenance": {
-          name: "Maintenance",
-          icon: "construct",
-          color: "#D97706",
-          today: { label: "Today", total: 0, count: 0 },
-          week: { label: "This Week", total: 0, count: 0 },
-          month: { label: "This Month", total: 0, count: 0 },
-          term: { label: "This Term", total: 0, count: 0 },
-          allPeriodsTotal: 0,
-        },
-        "Other Charges": {
-          name: "Other Charges",
-          icon: "apps",
-          color: "#4B5563",
           today: { label: "Today", total: 0, count: 0 },
           week: { label: "This Week", total: 0, count: 0 },
           month: { label: "This Month", total: 0, count: 0 },
@@ -453,8 +392,7 @@ export default function DailyFinancialsSummary() {
             feeding: 0,
             bus: 0,
             extra: 0,
-            tuition: 0,
-            charges: 0,
+            generalFees: 0,
             expenditure: 0,
             totalRevenue: 0,
           };
@@ -517,35 +455,10 @@ export default function DailyFinancialsSummary() {
 
         if (isDebtEntry) return;
 
-        let catKey = "Tuition Fees";
-        if (type === "admission" || type === "admission_payment") {
-          catKey = "Admission";
-          daily.charges += amount;
-          daily.totalRevenue += amount;
-        } else if (type === "pta" || type === "pta_payment") {
-          catKey = "PTA";
-          daily.charges += amount;
-          daily.totalRevenue += amount;
-        } else if (type === "uniform" || type === "uniform_payment") {
-          catKey = "Uniforms";
-          daily.charges += amount;
-          daily.totalRevenue += amount;
-        } else if (type === "book" || type === "book_payment") {
-          catKey = "Books";
-          daily.charges += amount;
-          daily.totalRevenue += amount;
-        } else if (type === "maintenance" || type === "maintenance_payment") {
-          catKey = "Maintenance";
-          daily.charges += amount;
-          daily.totalRevenue += amount;
-        } else if (type === "other" || type === "other_payment") {
-          catKey = "Other Charges";
-          daily.charges += amount;
-          daily.totalRevenue += amount;
-        } else {
-          daily.tuition += amount;
-          daily.totalRevenue += amount;
-        }
+        // Group all student ledger payments into General Student Fees
+        const catKey = "General Student Fees";
+        daily.generalFees += amount;
+        daily.totalRevenue += amount;
 
         const cat = catResults[catKey];
         if (cat) {
@@ -601,7 +514,7 @@ export default function DailyFinancialsSummary() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedDate, showToast]);
+  }, [selectedDate, showToast, acadConfig]);
 
 
   useEffect(() => {
@@ -695,12 +608,8 @@ export default function DailyFinancialsSummary() {
                   <Text style={styles.dailyStatValue} numberOfLines={1} adjustsFontSizeToFit>₵{item.extra.toLocaleString()}</Text>
                 </View>
                 <View style={styles.dailyStat}>
-                  <Text style={styles.dailyStatLabel}>Tuition</Text>
-                  <Text style={styles.dailyStatValue} numberOfLines={1} adjustsFontSizeToFit>₵{item.tuition.toLocaleString()}</Text>
-                </View>
-                <View style={styles.dailyStat}>
-                  <Text style={styles.dailyStatLabel}>Charges</Text>
-                  <Text style={styles.dailyStatValue} numberOfLines={1} adjustsFontSizeToFit>₵{item.charges.toLocaleString()}</Text>
+                  <Text style={styles.dailyStatLabel}>Gen. Fees</Text>
+                  <Text style={styles.dailyStatValue} numberOfLines={1} adjustsFontSizeToFit>₵{item.generalFees.toLocaleString()}</Text>
                 </View>
                 <View style={[styles.dailyNetBadge, { backgroundColor: isProfit ? VIBE.success + "15" : VIBE.danger + "15" }]}>
                    <Text style={[styles.dailyNetText, { color: isProfit ? VIBE.success : VIBE.danger }]}>
@@ -801,7 +710,7 @@ export default function DailyFinancialsSummary() {
                 ]}
               >
                 <View style={styles.mainBalanceHeader}>
-                   <Text style={styles.mainBalanceLabel}>Total Net Balance</Text>
+                   <Text style={styles.mainBalanceLabel}>Net Financial Position</Text>
                    <SVGIcon name={netBalance >= 0 ? "trending-up" : "trending-down"} size={20} color="#ffffff80" />
                 </View>
                 <Text
@@ -813,7 +722,7 @@ export default function DailyFinancialsSummary() {
                   ₵{netBalance.toLocaleString()}
                 </Text>
                 <View style={styles.mainBalanceFooter}>
-                  <Text style={styles.mainBalanceSubtext}>Cumulative surplus from all revenue streams</Text>
+                  <Text style={styles.mainBalanceSubtext}>Total Received (All Fees) - Total Expenditure</Text>
                 </View>
               </View>
 
@@ -826,7 +735,7 @@ export default function DailyFinancialsSummary() {
                   ]}
                 >
                   <Text style={styles.secondaryLabel} numberOfLines={1}>
-                    Total Revenue
+                    Total Received Amount
                   </Text>
                   <Text
                     style={[styles.secondaryValue, { color: VIBE.success }]}

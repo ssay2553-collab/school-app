@@ -18,11 +18,23 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
     orphanedPayments: number;
     deletedPayments: number;
     reconciledBalances: number;
+    dailyFinancialsFixed: number;
   } | null>(null);
 
   const runCleanup = useCallback(async () => {
     setCleaning(true);
     setReport(null);
+    let currentBatch = writeBatch(db);
+    let opCount = 0;
+
+    const commitBatch = async () => {
+      if (opCount > 0) {
+        await currentBatch.commit();
+        currentBatch = writeBatch(db);
+        opCount = 0;
+      }
+    };
+
     try {
       console.log("Starting financial data integrity scan...");
 
@@ -41,6 +53,7 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
       const claimedMapping = new Map<string, string>(); // Maps legacy IDs to new Auth UIDs
 
       const recordUpdates = new Map<string, any>();
+      const paymentUpdates = new Map<string, any>();
       const userUpdates = new Map<string, any>();
       const paymentDeletions = new Set<string>();
 
@@ -49,6 +62,7 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
       let orphanedPaymentsCount = 0;
       let deletedPaymentsCount = 0;
       let reconciledBalancesCount = 0;
+      let dailyFinancialsFixedCount = 0;
 
       const studentNameMap = new Map<string, string>();
       const studentIDMap = new Map<string, string>();
@@ -195,10 +209,47 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
           data.studentUid || data.studentID || data.studentId,
           data.studentName || data.receivedFrom || data.paidBy,
         );
+        if (resolvedUid && resolvedUid !== (data.studentUid || data.studentID || data.studentId)) {
+           paymentUpdates.set(d.id, { studentUid: resolvedUid, lastUpdated: serverTimestamp() });
+        }
         if (!resolvedUid) {
           orphanedPaymentsCount++;
         }
       });
+
+      // 3b. Daily Financials Healing (Bus, Feeding, Extra Classes)
+      const dailySnap = await getDocs(collection(db, "dailyFinancials"));
+      const dailyMigrated = new Set<string>();
+
+      for (const d of dailySnap.docs) {
+        const data = d.data();
+        const currentUid = data.studentUid || d.id.split("_")[0];
+        const resolvedUid = resolveUid(currentUid, data.studentName, d.id);
+
+        if (resolvedUid && resolvedUid !== currentUid) {
+          const dateStr = data.date || d.id.split("_")[1];
+          if (dateStr) {
+            const newDocId = `${resolvedUid}_${dateStr}`;
+            if (!dailyMigrated.has(newDocId)) {
+               // We need to move the document to a new ID to maintain consistency
+               // since the ID itself contains the UID.
+               await commitBatch(); // Ensure we commit any pending ops before starting a migration set
+
+               currentBatch.set(doc(db, "dailyFinancials", newDocId), {
+                 ...data,
+                 studentUid: resolvedUid,
+                 migratedFrom: d.id,
+                 lastUpdated: serverTimestamp()
+               });
+               currentBatch.delete(d.ref);
+               dailyFinancialsFixedCount++;
+               dailyMigrated.add(newDocId);
+               opCount += 2;
+               if (opCount >= 450) await commitBatch();
+            }
+          }
+        }
+      }
 
       // 4. Data Grouping for Reconciliation
       const recordsByStudent: Record<string, any[]> = {};
@@ -348,9 +399,9 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
           const category = p._category || normalizeCategory(p);
 
           if (isolatedKeys.includes(category)) {
-            totalCategoryPaid[category] += amt;
+            totalCategoryPaid[category] += (isNaN(amt) ? 0 : amt);
           } else {
-            totalTuitionPaid += amt;
+            totalTuitionPaid += (isNaN(amt) ? 0 : amt);
           }
         });
 
@@ -375,22 +426,38 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
         for (const record of studentRecords) {
           const data = record.data;
 
-          // Arrears is the balance BEFORE this term's bills are added
-          const tuitionArrears = Math.max(0, accumulatedTuitionBills - totalTuitionPaid);
+          // Helper to safely get numeric values and heal NaNs
+          const safeNum = (val: any) => {
+            const n = Number(val);
+            return isNaN(n) ? 0 : n;
+          };
 
-          const currentTuitionBill =
-            Number(data.termBill || 0) - Number(data.discount || 0);
-          accumulatedTuitionBills += currentTuitionBill;
+          // Arrears is the balance BEFORE this term's bills are added
+          // Consolidated Arrears = Net Tuition Arrears + All Category Arrears
+          const tuitionArrears = Math.max(0, accumulatedTuitionBills - totalTuitionPaid);
+          let consolidatedArrears = tuitionArrears;
+
+          isolatedKeys.forEach((k) => {
+            const catArrears = Math.max(0, accumulatedCategoryBills[k] - totalCategoryPaid[k]);
+            consolidatedArrears += catArrears;
+          });
+
+          const termGrossTuition = safeNum(data.termBill);
+          const termDiscount = safeNum(data.discount);
+          const termNetTuition = termGrossTuition - termDiscount;
+
+          accumulatedTuitionBills += termNetTuition;
 
           let currentRecordCategoryBills = 0;
           const updates: any = {
-            arrears: tuitionArrears,
+            arrears: consolidatedArrears,
             lastUpdated: serverTimestamp(),
-            payments: studentPayments
+            payments: studentPayments,
+            discount: termDiscount
           };
 
           isolatedKeys.forEach((k) => {
-            const termBill = Number(data[`${k}Bill`] || 0);
+            const termBill = safeNum(data[`${k}Bill`]);
             accumulatedCategoryBills[k] += termBill;
             currentRecordCategoryBills += termBill;
 
@@ -399,25 +466,44 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
 
             updates[`${k}Paid`] = totalPaid;
             updates[`${k}Balance`] = bal;
+            if (isNaN(Number(data[`${k}Bill`]))) {
+               updates[`${k}Bill`] = 0;
+            }
           });
 
           const totalPaidAllBuckets =
             totalTuitionPaid +
             Object.values(totalCategoryPaid).reduce((a, b) => a + b, 0);
-          accumulatedTotalBills +=
-            currentTuitionBill + currentRecordCategoryBills;
+
+          accumulatedTotalBills += termNetTuition + currentRecordCategoryBills;
 
           const finalBalance = accumulatedTotalBills - totalPaidAllBuckets;
 
+          // totalPayable (Gross for this record) = Arrears (Net) + this term's gross tuition + this term's other gross bills
+          const recordTotalPayableGross = consolidatedArrears + termGrossTuition + currentRecordCategoryBills;
+
           updates.balance = finalBalance;
           updates.amountPaid = totalTuitionPaid;
-          updates.totalPayable = accumulatedTotalBills;
+          updates.totalPayable = recordTotalPayableGross;
+
+          // Heal root NaN fields if they exist
+          if (isNaN(Number(data.termBill))) updates.termBill = 0;
+          if (isNaN(Number(data.discount))) updates.discount = 0;
 
           const existingUpdates = recordUpdates.get(record.id) || {};
+
+          // Check if any schema fields are missing to trigger a normalization update
+          const isMissingSchema = isolatedKeys.some(k =>
+            data[`${k}Paid`] === undefined || data[`${k}Balance`] === undefined
+          ) || data.totalPayable === undefined;
+
           const needsUpdate =
-            Math.abs((data.amountPaid || 0) - totalTuitionPaid) > 0.01 ||
-            Math.abs((data.balance || 0) - finalBalance) > 0.01 ||
-            Math.abs((data.arrears || 0) - tuitionArrears) > 0.01 ||
+            isMissingSchema ||
+            isNaN(Number(data.balance)) ||
+            isNaN(Number(data.amountPaid)) ||
+            Math.abs(safeNum(data.amountPaid) - totalTuitionPaid) > 0.01 ||
+            Math.abs(safeNum(data.balance) - finalBalance) > 0.01 ||
+            Math.abs(safeNum(data.arrears) - tuitionArrears) > 0.01 ||
             (data.payments?.length || 0) !== studentPayments.length ||
             (fixedRecordsCount > 0 && !!recordUpdates.get(record.id));
 
@@ -436,19 +522,14 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
       }
 
       // 6. Batch Commit Operations
-      let currentBatch = writeBatch(db);
-      let opCount = 0;
-
-      const commitBatch = async () => {
-        if (opCount > 0) {
-          await currentBatch.commit();
-          currentBatch = writeBatch(db);
-          opCount = 0;
-        }
-      };
-
       for (const [id, updates] of recordUpdates.entries()) {
         currentBatch.update(doc(db, "studentFeeRecords", id), updates);
+        opCount++;
+        if (opCount >= 450) await commitBatch();
+      }
+
+      for (const [id, updates] of paymentUpdates.entries()) {
+        currentBatch.update(doc(db, "feePayments", id), updates);
         opCount++;
         if (opCount >= 450) await commitBatch();
       }
@@ -475,10 +556,11 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
         orphanedPayments: orphanedPaymentsCount,
         deletedPayments: deletedPaymentsCount,
         reconciledBalances: reconciledBalancesCount,
+        dailyFinancialsFixed: dailyFinancialsFixedCount,
       });
 
       showToast({
-        message: `Cleanup complete. Reconciled ${reconciledBalancesCount} balances.`,
+        message: `Cleanup complete. Reconciled ${reconciledBalancesCount} balances and migrated ${dailyFinancialsFixedCount} daily records.`,
         type: "success",
       });
     } catch (error) {

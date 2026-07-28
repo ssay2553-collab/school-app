@@ -469,7 +469,7 @@ export default function ManageFees() {
             { useNativeDriver: false },
           )}
           scrollEventThrottle={16}
-          ListHeaderComponent={() => (
+          ListHeaderComponent={
             <>
               <View style={styles.searchStrip}>
                 <TouchableOpacity
@@ -765,7 +765,7 @@ export default function ManageFees() {
                 </View>
               </View>
             </>
-          )}
+          }
           data={filteredStudents}
           extraData={{
             activeMode,

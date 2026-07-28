@@ -496,7 +496,7 @@ export default function ReceiptViewScreen() {
                     </div>
                 </div>
                 <div style="margin-top: 30px; text-align: center; border: 1px dashed #ccc; padding: 15px; border-radius: 10px;">
-                    <p style="font-style: italic; color: #666; margin: 0;">Thank you for your payment!</p>
+                    <p style="font-style: italic; color: #666; margin: 0;">Thank you for your prompt payment! We truly appreciate your support.</p>
                 </div>
             `;
     }
@@ -826,7 +826,7 @@ export default function ReceiptViewScreen() {
 
                 <View style={styles.thankYouBox}>
                   <Text style={styles.thankYouText}>
-                    Thank you for your payment!
+                    Thank you for your prompt payment! We truly appreciate your support.
                   </Text>
                 </View>
               </>

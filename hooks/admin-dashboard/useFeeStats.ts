@@ -76,15 +76,27 @@ export const useFeeStats = (
         const studentExpected = data.totalPayable || 0;
         const studentDiscount = data.discount || 0;
 
-        expected += studentExpected - studentDiscount;
-        received += (data.totalPayable || 0) - (data.balance || 0) - (data.discount || 0);
+        // Sum all payment categories directly for accuracy
+        const studentReceived =
+          (data.amountPaid || 0) +
+          (data.ptaPaid || 0) +
+          (data.maintenancePaid || 0) +
+          (data.admissionPaid || 0) +
+          (data.booksPaid || 0) +
+          (data.uniformPaid || 0) +
+          (data.otherPaid || 0);
+
+        // EXPECTED is now the Gross amount (Net Arrears + Gross Current Bills)
+        expected += studentExpected;
+        received += studentReceived;
         totalDiscount += studentDiscount;
       });
 
       // Include students who don't have a record for this specific term yet
       users.forEach((user) => {
         if (!processedUids.has(user.id) && !user.onScholarship) {
-          // If no record, we use the wallet balance as the primary indicator
+          // For students without a record, walletBalance is their net arrears.
+          // In our "Gross Expected" model, this contributes to the total expected.
           expected += user.walletBalance || 0;
         }
       });
@@ -92,8 +104,8 @@ export const useFeeStats = (
       setStats({
         expected,
         received,
-        balance: expected - received,
         totalDiscount,
+        balance: expected - received,
       });
       setTotalDiscountCommitted(totalDiscount);
     };

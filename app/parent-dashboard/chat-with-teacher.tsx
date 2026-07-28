@@ -12,6 +12,7 @@ import {
     where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import { useLocalSearchParams } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -118,6 +119,8 @@ export default function ParentChatWithTeacher() {
     }
   };
 
+  const params = useLocalSearchParams<{ studentId?: string; studentName?: string }>();
+
   useEffect(() => {
     const fetchParentData = async () => {
       if (!appUser || appUser.role !== "parent") return;
@@ -133,6 +136,15 @@ export default function ParentChatWithTeacher() {
             .map((d) => ({ uid: d.id, ...(d.data() as any) }))
             .filter((s: any) => s.role === "student") as Child[];
           setChildren(list);
+
+          if (params.studentId) {
+            const student = list.find(s => s.uid === params.studentId);
+            if (student) {
+              handleSelectChild(student);
+              return;
+            }
+          }
+
           if (list.length === 1) handleSelectChild(list[0]);
         }
       } finally {
@@ -140,7 +152,7 @@ export default function ParentChatWithTeacher() {
       }
     };
     fetchParentData();
-  }, [appUser]);
+  }, [appUser, params.studentId]);
 
   const handleSelectChild = async (child: Child) => {
     setSelectedChild(child);

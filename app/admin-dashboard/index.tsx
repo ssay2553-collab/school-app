@@ -177,6 +177,13 @@ export default function AdminDashboard() {
                 icon: "receipt",
                 color: "#10b981",
               },
+              {
+                title: "Financial Summary",
+                subtitle: "Reports & Analytics",
+                route: "/admin-dashboard/FinancialSummary",
+                icon: "analytics",
+                color: "#4F46E5",
+              },
             ]
           : []),
         {

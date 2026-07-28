@@ -485,8 +485,8 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                     recipientId: selectedStudentUid,
                     senderId: appUser?.uid || "admin",
                     senderName: "School Finance",
-                    title: "Fee Payment Received",
-                    body: `A payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been recorded for ${studentName}.`,
+                    title: "Fee Payment Received - Thank You!",
+                    body: `Thank you! We've received a payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} for ${studentName}. We appreciate your promptness!`,
                     type: "payment",
                     data: { studentUid: selectedStudentUid, amount, academicYear: selectedYear, term: selectedTerm }
                 });

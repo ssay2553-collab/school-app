@@ -102,10 +102,17 @@ export default function FinancialSummary() {
 
   const generatePDF = async () => {
     try {
-      const revenueCategories = categories.filter((c) => c.name !== "Expenditure");
-      const totalRevenue = revenueCategories.reduce((acc, cat) => acc + cat.allPeriodsTotal, 0);
-      const totalExpenditure = categories.find((c) => c.name === "Expenditure")?.allPeriodsTotal || 0;
-      const netBalance = totalRevenue - totalExpenditure;
+      const feeCat = categories.find((c) => c.name === "General Student Fees");
+      const dailyCats = categories.filter((c) => ["Feeding Fees", "Bus Fees", "Extra Classes"].includes(c.name));
+      const expenditureCat = categories.find((c) => c.name === "Expenditure");
+
+      const totalFees = feeCat?.allPeriodsTotal || 0;
+      const totalDaily = dailyCats.reduce((acc, cat) => acc + cat.allPeriodsTotal, 0);
+      const totalExpenditure = expenditureCat?.allPeriodsTotal || 0;
+
+      // Expenditure deducted from fees totals and not daily financials sum
+      const netFees = totalFees - totalExpenditure;
+      const netBalance = netFees + totalDaily;
 
       const html = `
       <html>
@@ -174,8 +181,8 @@ export default function FinancialSummary() {
 
             <div class="overview-container">
               <div class="overview-card">
-                <div class="overview-label">Total Received</div>
-                <div class="overview-value" style="color: #10B981">₵${totalRevenue.toLocaleString()}</div>
+                <div class="overview-label">Total Fees Received</div>
+                <div class="overview-value" style="color: #10B981">₵${totalFees.toLocaleString()}</div>
               </div>
               <div class="overview-card">
                 <div class="overview-label">Total Expenditure</div>
@@ -213,6 +220,7 @@ export default function FinancialSummary() {
 
             <div class="footer">
               <p>This is a computer-generated financial report from EduEaz Platform.</p>
+              <p>Net Position = (Fees - Expenditure) + Daily Financials (Feeding, Bus, Extra)</p>
               <p>&copy; ${new Date().getFullYear()} ${SCHOOL_CONFIG.name}. All rights reserved.</p>
             </div>
           </div>
@@ -414,7 +422,7 @@ export default function FinancialSummary() {
           if (isInRange(date, ranges.month)) { cat.month.total += data.feedingFee; cat.month.count++; }
           if (isInRange(date, ranges.term)) { cat.term.total += data.feedingFee; cat.term.count++; }
           daily.feeding += data.feedingFee;
-          daily.totalRevenue += data.feedingFee;
+          // Not adding to daily.totalRevenue as per requirement
         }
         // Bus
         if (data.busFee > 0 && data.busPaid === true) {
@@ -424,7 +432,7 @@ export default function FinancialSummary() {
           if (isInRange(date, ranges.month)) { cat.month.total += data.busFee; cat.month.count++; }
           if (isInRange(date, ranges.term)) { cat.term.total += data.busFee; cat.term.count++; }
           daily.bus += data.busFee;
-          daily.totalRevenue += data.busFee;
+          // Not adding to daily.totalRevenue as per requirement
         }
         // Extra
         if (data.extraClassesFee > 0 && data.extraPaid === true) {
@@ -434,7 +442,7 @@ export default function FinancialSummary() {
           if (isInRange(date, ranges.month)) { cat.month.total += data.extraClassesFee; cat.month.count++; }
           if (isInRange(date, ranges.term)) { cat.term.total += data.extraClassesFee; cat.term.count++; }
           daily.extra += data.extraClassesFee;
-          daily.totalRevenue += data.extraClassesFee;
+          // Not adding to daily.totalRevenue as per requirement
         }
       });
 
@@ -572,7 +580,11 @@ export default function FinancialSummary() {
     return (
       <View style={styles.dailyTotalsContainer}>
         {dailyTotals.map((item) => {
-          const isProfit = item.totalRevenue >= item.expenditure;
+          const dailyNetFromFees = item.totalRevenue - item.expenditure;
+          const dailyFinancialsSum = item.feeding + item.bus + item.extra;
+          const totalDailyNet = dailyNetFromFees + dailyFinancialsSum;
+          const isProfit = totalDailyNet >= 0;
+
           return (
             <View key={item.date} style={styles.dailyRow}>
               <View style={styles.dailyHeader}>
@@ -586,10 +598,10 @@ export default function FinancialSummary() {
                 </View>
                 <View style={styles.dailySummaryRight}>
                   <Text style={[styles.dailyRevenue, { color: VIBE.success }]}>
-                    +₵{item.totalRevenue.toLocaleString()}
+                    Fees: +₵{item.totalRevenue.toLocaleString()}
                   </Text>
                   <Text style={[styles.dailyExpense, { color: VIBE.danger }]}>
-                    -₵{item.expenditure.toLocaleString()}
+                    Exp: -₵{item.expenditure.toLocaleString()}
                   </Text>
                 </View>
               </View>
@@ -613,7 +625,7 @@ export default function FinancialSummary() {
                 </View>
                 <View style={[styles.dailyNetBadge, { backgroundColor: isProfit ? VIBE.success + "15" : VIBE.danger + "15" }]}>
                    <Text style={[styles.dailyNetText, { color: isProfit ? VIBE.success : VIBE.danger }]}>
-                    {isProfit ? "NET +" : "NET -"}₵{Math.abs(item.totalRevenue - item.expenditure).toLocaleString()}
+                    {isProfit ? "NET +" : "NET -"}₵{Math.abs(totalDailyNet).toLocaleString()}
                   </Text>
                 </View>
               </View>
@@ -635,10 +647,20 @@ export default function FinancialSummary() {
     );
   }
 
-  const revenueCategories = categories.filter((c) => c.name !== "Expenditure");
-  const totalRevenue = revenueCategories.reduce((acc, cat) => acc + cat.allPeriodsTotal, 0);
-  const totalExpenditure = categories.find((c) => c.name === "Expenditure")?.allPeriodsTotal || 0;
-  const netBalance = totalRevenue - totalExpenditure;
+  const feeCat = categories.find((c) => c.name === "General Student Fees");
+  const dailyCats = categories.filter((c) => ["Feeding Fees", "Bus Fees", "Extra Classes"].includes(c.name));
+  const expenditureCat = categories.find((c) => c.name === "Expenditure");
+
+  const totalFees = feeCat?.allPeriodsTotal || 0;
+  const totalDailyFinancials = dailyCats.reduce((acc, cat) => acc + cat.allPeriodsTotal, 0);
+  const totalExpenditure = expenditureCat?.allPeriodsTotal || 0;
+
+  // Expenditure deducted from fees totals and not daily financials sum
+  const netFees = totalFees - totalExpenditure;
+  const netBalance = netFees + totalDailyFinancials;
+
+  // totalRevenue for the "other fees summation" card should exclude daily financials
+  const totalRevenue = totalFees;
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -722,7 +744,7 @@ export default function FinancialSummary() {
                   ₵{netBalance.toLocaleString()}
                 </Text>
                 <View style={styles.mainBalanceFooter}>
-                  <Text style={styles.mainBalanceSubtext}>Total Received (All Fees) - Total Expenditure</Text>
+                  <Text style={styles.mainBalanceSubtext}>(Fees - Expenditure) + Daily Financials (₵{totalDailyFinancials.toLocaleString()})</Text>
                 </View>
               </View>
 
@@ -735,7 +757,7 @@ export default function FinancialSummary() {
                   ]}
                 >
                   <Text style={styles.secondaryLabel} numberOfLines={1}>
-                    Total Received Amount
+                    Total Fees Received
                   </Text>
                   <Text
                     style={[styles.secondaryValue, { color: VIBE.success }]}

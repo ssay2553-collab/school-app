@@ -120,6 +120,13 @@ export default function TeacherDashboard() {
           icon: "checkmark-done-circle",
           color: "#10b981",
         },
+        {
+          title: "My Classes",
+          subtitle: "Set subjects",
+          route: { pathname: "/teacher-dashboard/profile-edit", params: { focus: "work" } } as any,
+          icon: "book",
+          color: "#F59E0B",
+        },
         ...(isAssignedTeacher && (hasFinancialAccess || canEditFinancials)
           ? [
               {
@@ -386,7 +393,7 @@ export default function TeacherDashboard() {
             <View style={styles.headerRow}>
               <View style={styles.teacherInfo}>
                 <TouchableOpacity
-                  onPress={() => router.push("/teacher-dashboard/settings")}
+                  onPress={() => router.push("/teacher-dashboard/profile-edit")}
                   style={[
                     styles.profileBtn,
                     {
@@ -482,7 +489,8 @@ export default function TeacherDashboard() {
                   <Text style={styles.statValue}>{assignmentCount ?? "0"}</Text>
                 </View>
               </View>
-              <View
+              <TouchableOpacity
+                onPress={() => router.push({ pathname: "/teacher-dashboard/profile-edit", params: { focus: "work" } })}
                 style={[
                   styles.statCard,
                   { backgroundColor: "rgba(255,255,255,0.15)" },
@@ -499,7 +507,7 @@ export default function TeacherDashboard() {
                     {getTeacherClasses(appUser).length}
                   </Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             </View>
           </SafeAreaView>
         </LinearGradient>

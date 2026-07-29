@@ -50,8 +50,8 @@ export const useFeeStats = (
     let users: any[] = [];
 
     const calculate = () => {
-      let expected = 0;
-      let received = 0;
+      let totalExpected = 0;
+      let totalReceived = 0;
       let totalDiscount = 0;
 
       const userMap = new Map();
@@ -64,19 +64,9 @@ export const useFeeStats = (
         if (!user || user.onScholarship) return;
         processedUids.add(data.studentUid);
 
-        // In the cumulative model:
-        // 'totalPayable' is (Arrears + Term Bill + Other Bills)
-        // 'balance' is (totalPayable - Total Payments - Discounts)
-        // We want the Dashboard to reflect:
-        // Expected = Total Payable
-        // Received = amountPaid + other category payments
-        // Discount = data.discount
-        // Balance = data.balance
-
-        const studentExpected = data.totalPayable || 0;
-        const studentDiscount = data.discount || 0;
-
-        // Sum all payment categories directly for accuracy
+        // In the new model:
+        // 'balance' on the record is the definitive running net total (Total Bills - Total Payments - Discounts)
+        // RECEIVED is the accumulation of all paid amounts for this term/view
         const studentReceived =
           (data.amountPaid || 0) +
           (data.ptaPaid || 0) +
@@ -86,26 +76,33 @@ export const useFeeStats = (
           (data.uniformPaid || 0) +
           (data.otherPaid || 0);
 
-        // EXPECTED is now the Gross amount (Net Arrears + Gross Current Bills)
-        expected += studentExpected;
-        received += studentReceived;
+        const studentDiscount = data.discount || 0;
+
+        // EXPECTED = "Balance Due" = Net amount that should be collected
+        // To get Expected from the cumulative Balance and current Payments:
+        // Expected = Net Balance + Current Payments
+        // (This effectively equals: Arrears + Current Term Bills - Current Term Discounts)
+        const studentExpected = (data.balance || 0) + studentReceived;
+
+        totalExpected += studentExpected;
+        totalReceived += studentReceived;
         totalDiscount += studentDiscount;
       });
 
       // Include students who don't have a record for this specific term yet
       users.forEach((user) => {
         if (!processedUids.has(user.id) && !user.onScholarship) {
-          // For students without a record, walletBalance is their net arrears.
-          // In our "Gross Expected" model, this contributes to the total expected.
-          expected += user.walletBalance || 0;
+          // For students without a term record, walletBalance is their net arrears.
+          // Since payments are 0, Expected = walletBalance.
+          totalExpected += user.walletBalance || 0;
         }
       });
 
       setStats({
-        expected,
-        received,
+        expected: totalExpected,
+        received: totalReceived,
         totalDiscount,
-        balance: expected - received,
+        balance: totalExpected - totalReceived,
       });
       setTotalDiscountCommitted(totalDiscount);
     };

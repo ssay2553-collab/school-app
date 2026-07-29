@@ -56,6 +56,7 @@ export default function ManageUsers() {
     setAssignmentModal,
     updating,
     deletingUid,
+    uploadingImage,
     editForm,
     setEditForm,
     upgradeForm,
@@ -105,6 +106,7 @@ export default function ManageUsers() {
     handleSaveNewBusLocation,
     openPermissionModal,
     openEditProfile,
+    handleUploadProfileImage,
     handleCopyAllCodes,
     clearServiceArrears,
     isSuperAdmin,
@@ -440,6 +442,8 @@ export default function ManageUsers() {
           onSetType={setAssignmentModal}
           allClasses={allClasses}
           updating={updating}
+          uploadingImage={uploadingImage}
+          handleUploadProfileImage={handleUploadProfileImage}
           newsPermission={newsPermission}
           setNewsPermission={setNewsPermission}
           handleAssignRole={handleAssignRole}

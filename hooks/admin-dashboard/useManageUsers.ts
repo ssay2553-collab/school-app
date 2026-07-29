@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Platform, Share } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { initializeApp } from "firebase/app";
 import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import {
@@ -23,8 +24,9 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
-import { db, functions } from "../../firebaseConfig";
+import { db, functions, storage } from "../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { User, UserRole, PermissionLevel, AssignmentModalState, PERMISSION_KEYS } from "./manage-users-types";
@@ -81,6 +83,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   const [assignmentModal, setAssignmentModal] = useState<AssignmentModalState>({ type: "none", target: null });
   const [updating, setUpdating] = useState(false);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Form states for modals
   const [editForm, setEditForm] = useState({
@@ -961,6 +964,50 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     }
   };
 
+  const handleUploadProfileImage = async (user: User, source: 'library' | 'camera') => {
+    try {
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      };
+
+      const result = source === 'library'
+        ? await ImagePicker.launchImageLibraryAsync(options)
+        : await ImagePicker.launchCameraAsync(options);
+
+      if (result.canceled || !result.assets.length) return;
+
+      setUploadingImage(true);
+      const uri = result.assets[0].uri;
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const storageRef = ref(storage, `profiles/${user.uid}.jpg`);
+
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      await updateDoc(doc(db, "users", user.uid), {
+        "profile.profileImage": downloadURL,
+      });
+
+      if (viewingUser?.uid === user.uid) {
+        setViewingUser({
+          ...viewingUser,
+          profile: { ...viewingUser.profile, profileImage: downloadURL },
+        });
+      }
+
+      showToast?.({ message: "Profile image updated!", type: "success" });
+    } catch (err) {
+      console.error(err);
+      showToast?.({ message: "Could not save image.", type: "error" });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const handlePromoteRepeat = async (action: "Promote" | "Repeat") => {
     if (!targetClassId) {
       showToast?.({ message: "Please select a target class.", type: "error" });
@@ -1016,7 +1063,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     viewingUser, setViewingUser,
     linkedUsers, loadingLinks,
     assignmentModal, setAssignmentModal,
-    updating, deletingUid,
+    updating, deletingUid, uploadingImage,
     editForm, setEditForm,
     upgradeForm, setUpgradeForm,
     customRoleText, setCustomRoleText,
@@ -1042,6 +1089,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     handleRegenerateSignupCode, handleShareCode,
     handleUpdateEmail, handleSaveNewBusLocation,
     openPermissionModal, openEditProfile,
+    handleUploadProfileImage,
     handleCopyAllCodes, clearServiceArrears,
     isSuperAdmin, hasManageUsersAccess,
     handlePromoteRepeat,

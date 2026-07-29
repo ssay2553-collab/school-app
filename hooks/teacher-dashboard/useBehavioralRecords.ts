@@ -34,7 +34,7 @@ export const useBehavioralRecords = () => {
 
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [myClasses, setMyClasses] = useState<{ id: string; name: string; classTeacherId?: string }[]>([]);
+  const [myClasses, setMyClasses] = useState<{ id: string; name: string; classTeacherId?: string; department?: string }[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [allStudents, setAllStudents] = useState<BehavioralRecord[]>([]);
 
@@ -62,6 +62,7 @@ export const useBehavioralRecords = () => {
           id: d.id,
           name: (d.data() as any).name || d.id,
           classTeacherId: (d.data() as any).classTeacherId,
+          department: (d.data() as any).department,
         }));
         const sorted = sortClasses(list);
         setMyClasses(sorted);

@@ -1,0 +1,86 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (getUserData().role == 'admin' || getUserData().adminRole != null);
+    }
+
+    function isStaff() {
+      return isSignedIn() && (getUserData().role == 'staff' || getUserData().role == 'teacher' || isAdmin());
+    }
+
+    // User Profile Pictures
+    match /profiles/{uid} {
+      allow read: if isSignedIn();
+      allow write: if request.auth.uid == uid || isAdmin();
+    }
+
+    // Teacher/Staff Signatures for Reports
+    match /signatures/{uid} {
+      allow read: if isSignedIn();
+      allow write: if request.auth.uid == uid || isAdmin();
+    }
+
+    // Gallery Media
+    match /gallery/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // News & Announcements Media
+    match /newsMedia/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // Teaching & Learning Materials (TLM)
+    match /tlms/{uid}/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if request.auth.uid == uid || isAdmin();
+    }
+
+    // Assignments Uploaded by Teachers
+    match /assignments/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isStaff();
+    }
+
+    // Student Submissions
+    match /submissions/{assignmentId}/{fileName} {
+      allow read: if isStaff() || fileName.startsWith(request.auth.uid);
+      allow write: if isSignedIn();
+    }
+
+    // Chat Media (Staff, Parent-Teacher, Student Groups)
+    match /chats/{path=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Expenditure & Receipts
+    match /expenditures/{fileName} {
+      allow read, write: if isAdmin();
+    }
+
+    // Staff Payroll Documents
+    match /payroll/{fileName} {
+      allow read: if isSignedIn() && (request.auth.uid == fileName.split('_')[0] || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // Default deny
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

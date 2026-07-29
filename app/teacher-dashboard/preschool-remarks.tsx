@@ -100,8 +100,9 @@ export default function PreschoolRemarks() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
 
   const currentStudent = allStudents.find(s => s.studentId === (selectedStudentId || allStudents[0]?.studentId));
-  const selectedClassName = myClasses.find(c => c.id === selectedClassId)?.name || "";
-  const isPreschool = isPreschoolClass(selectedClassName);
+  const selectedClass = myClasses.find(c => c.id === selectedClassId);
+  const selectedClassName = selectedClass?.name || "";
+  const isPreschool = selectedClass?.department === "Pre-School" || isPreschoolClass(selectedClassName);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 

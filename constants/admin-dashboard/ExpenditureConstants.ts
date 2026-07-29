@@ -126,6 +126,7 @@ export type Expenditure = {
   status: "open" | "closed";
   academicYear: string;
   term: string;
+  receiptUrl?: string;
   createdAt: any;
 };
 

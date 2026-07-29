@@ -570,18 +570,15 @@ export const useManageFees = ({
         const currentBill = s.hasRecordInTerm ? s.termBill || 0 : 0;
         const newBill = currentBill + adjustment;
 
+        // Apply profile discount ONLY if this is the first time we're creating a record for this term.
+        const profileDiscount = (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) ? s.discountAmount : 0;
+
         // In the global balance model:
         // New Record Balance = (Current Wallet Balance) + (Adjustment) - (New Discount if applicable)
-        // We use increment for safety if possible, but here we calculate the new absolute balance
-        // for the specific term record to match the cumulative expectation.
+        const newBalance = (s.currentBalance || 0) + adjustment - profileDiscount;
 
-        let discountEffect = 0;
-        if (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) {
-           discountEffect = s.discountAmount;
-        }
-
-        const newBalance = (s.currentBalance || 0) + adjustment - discountEffect;
-        const totalPayable = (s.totalPayable || 0) + adjustment;
+        // Total Payable should be the running total of all bills (including arrears)
+        const totalPayable = (s.hasRecordInTerm ? (s.totalPayable || 0) : (s.previousBalance || 0)) + adjustment;
 
         if (isNaN(newBalance)) continue;
 
@@ -594,7 +591,7 @@ export const useManageFees = ({
           term,
           termBill: newBill,
           arrears: s.previousBalance || 0,
-          discount: s.hasRecordInTerm ? (s.discount || 0) : discountEffect,
+          discount: (s.discount || 0) + profileDiscount,
           amountPaid: s.amountPaid || 0,
           balance: newBalance,
           totalPayable: totalPayable,
@@ -681,6 +678,10 @@ export const useManageFees = ({
         const cleanTerm = term.replace(/\s/g, "");
         const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
 
+        // Apply profile discount ONLY if this is the first time we're creating a record for this term.
+        const profileDiscount = (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) ? s.discountAmount : 0;
+        const totalDiscountToApply = disc + profileDiscount;
+
         if (!s.hasRecordInTerm) {
           batch.set(doc(db, "studentFeeRecords", recordId), {
             studentUid: uid,
@@ -691,9 +692,9 @@ export const useManageFees = ({
             term,
             termBill: 0,
             arrears: s.previousBalance || 0,
-            discount: disc,
+            discount: totalDiscountToApply,
             amountPaid: 0,
-            balance: (s.previousBalance || 0) - disc,
+            balance: (s.previousBalance || 0) - totalDiscountToApply,
             totalPayable: s.previousBalance || 0,
             editCount: 1,
             createdAt: serverTimestamp(),
@@ -707,7 +708,7 @@ export const useManageFees = ({
             lastUpdated: serverTimestamp(),
           });
         }
-        batch.update(doc(db, "users", uid), { walletBalance: increment(-disc) });
+        batch.update(doc(db, "users", uid), { walletBalance: increment(-totalDiscountToApply) });
       }
       await batch.commit();
       onSuccess();

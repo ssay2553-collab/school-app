@@ -77,6 +77,7 @@ export function useExpenditure() {
             date: data.date || "N/A",
             adminName: data.adminName || "Admin",
             adminRole: data.adminRole || "Staff",
+            receiptUrl: data.receiptUrl || "",
             createdAt: data.createdAt || null,
           } as Expenditure;
         });
@@ -194,6 +195,7 @@ export function useExpenditure() {
     subCategory: string;
     amount: string;
     itemDate: Date;
+    receiptUrl?: string;
   }) => {
     const cleanItemName = data.itemName.trim();
     const cleanAmount = parseFloat(data.amount);
@@ -221,6 +223,7 @@ export function useExpenditure() {
         date: data.itemDate instanceof Date
             ? data.itemDate.toISOString().split("T")[0]
             : data.itemDate,
+        receiptUrl: data.receiptUrl || "",
         adminName: appUser?.profile?.firstName || "Admin",
         adminRole: appUser?.adminRole || "Administrator",
         status: "open",

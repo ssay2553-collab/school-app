@@ -83,6 +83,16 @@ export default function ExpenditureScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [viewMode, setViewMode] = useState<"detailed" | "summary">("detailed");
+  const [filterCategory, setFilterCategory] = useState<string | null>(null);
+
+  const filteredExpenditures = useMemo(() => {
+    if (!filterCategory) return expenditures;
+    return expenditures.filter(
+      (exp) =>
+        (exp.category || "").toLowerCase().trim() ===
+        filterCategory.toLowerCase().trim()
+    );
+  }, [expenditures, filterCategory]);
 
   useEffect(() => {
     if (appUser && !canView) {
@@ -207,10 +217,17 @@ export default function ExpenditureScreen() {
 
         <View style={styles.summaryRow}>
           <View style={styles.summaryContent}>
-            <Text style={styles.summaryLabel}>TOTAL PERIOD SPENDING</Text>
+            <Text style={styles.summaryLabel}>
+              {filterCategory
+                ? `TOTAL FOR ${filterCategory.toUpperCase()}`
+                : "TOTAL PERIOD SPENDING"}
+            </Text>
             <Text style={styles.summaryValue}>
               ₵
-              {(serverTotal || 0).toLocaleString(undefined, {
+              {(filterCategory
+                ? filteredExpenditures.reduce((sum, e) => sum + e.amount, 0)
+                : serverTotal || 0
+              ).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
               })}
             </Text>
@@ -220,9 +237,12 @@ export default function ExpenditureScreen() {
             <TouchableOpacity
               style={[
                 styles.toggleItem,
-                viewMode === "detailed" && styles.toggleItemActive,
+                viewMode === "detailed" && !filterCategory && styles.toggleItemActive,
               ]}
-              onPress={() => setViewMode("detailed")}
+              onPress={() => {
+                setViewMode("detailed");
+                setFilterCategory(null);
+              }}
             >
               <SVGIcon name="list" size={14} color="#fff" />
             </TouchableOpacity>
@@ -231,7 +251,10 @@ export default function ExpenditureScreen() {
                 styles.toggleItem,
                 viewMode === "summary" && styles.toggleItemActive,
               ]}
-              onPress={() => setViewMode("summary")}
+              onPress={() => {
+                setViewMode("summary");
+                setFilterCategory(null);
+              }}
             >
               <SVGIcon name="pie-chart" size={14} color="#fff" />
             </TouchableOpacity>
@@ -245,6 +268,15 @@ export default function ExpenditureScreen() {
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{selectedTerm || "N/A"}</Text>
           </View>
+          {filterCategory && (
+            <TouchableOpacity
+              onPress={() => setFilterCategory(null)}
+              style={styles.filterBadge}
+            >
+              <Text style={styles.badgeText}>Category: {filterCategory}</Text>
+              <SVGIcon name="close-circle" size={12} color="#fff" />
+            </TouchableOpacity>
+          )}
           {isPreviousTerm && (
             <TouchableOpacity
               onPress={resetToCurrentTerm}
@@ -303,18 +335,25 @@ export default function ExpenditureScreen() {
             ) : null
           }
           renderItem={({ item, index }) => (
-            <ExpenditureSummaryCard
+            <TouchableOpacity
+              onPress={() => {
+                setFilterCategory(item.displayItem);
+                setViewMode("detailed");
+              }}
+            >
+              <ExpenditureSummaryCard
                 item={item}
                 index={index}
                 summaryTotal={summaryTotal}
                 primaryBrand={primaryBrand}
                 secondaryBrand={secondaryBrand}
-            />
+              />
+            </TouchableOpacity>
           )}
         />
       ) : (
         <FlatList
-          data={expenditures}
+          data={filteredExpenditures}
           keyExtractor={(item) => item.id}
           refreshControl={
             <RefreshControl
@@ -328,15 +367,36 @@ export default function ExpenditureScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <SVGIcon name="receipt" size={80} color="#CBD5E1" />
-              <Text style={styles.emptyText}>No expenses recorded.</Text>
+              <Text style={styles.emptyText}>
+                {filterCategory
+                  ? `No items found in category "${filterCategory}".`
+                  : "No expenses recorded."}
+              </Text>
             </View>
+          }
+          ListHeaderComponent={
+            filterCategory ? (
+              <View style={styles.summaryHeader}>
+                <Text style={styles.summaryHeaderText}>
+                  ITEMS IN {filterCategory.toUpperCase()}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setFilterCategory(null)}
+                  style={{ marginTop: 8 }}
+                >
+                  <Text style={{ color: primaryBrand, fontWeight: "700" }}>
+                    Clear Filter
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
           }
           renderItem={({ item }) => (
             <ExpenditureItemCard
-                item={item}
-                canEdit={canEdit}
-                deletingId={deletingId}
-                onDelete={handleDeleteExpenditure}
+              item={item}
+              canEdit={canEdit}
+              deletingId={deletingId}
+              onDelete={handleDeleteExpenditure}
             />
           )}
         />
@@ -424,6 +484,15 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 10,
     fontWeight: "700",
+  },
+  filterBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.25)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
   },
   archiveBadge: {
     flexDirection: "row",

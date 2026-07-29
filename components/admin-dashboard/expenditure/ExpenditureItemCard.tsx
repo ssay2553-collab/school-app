@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Image, Modal, Pressable } from 'react-native';
 import * as Animatable from 'react-native-animatable';
 import SVGIcon from '../../SVGIcon';
 import { COLORS, SHADOWS } from '../../../constants/theme';
@@ -18,6 +18,8 @@ export const ExpenditureItemCard: React.FC<ExpenditureItemCardProps> = ({
   deletingId,
   onDelete,
 }) => {
+  const [showReceipt, setShowReceipt] = React.useState(false);
+
   return (
     <Animatable.View
       animation="fadeInUp"
@@ -26,12 +28,19 @@ export const ExpenditureItemCard: React.FC<ExpenditureItemCardProps> = ({
     >
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
-          {item.category ? (
-            <Text style={styles.categoryBadgeText}>
-              {item.category.toUpperCase()}
-              {item.subCategory ? ` • ${item.subCategory.toUpperCase()}` : ""}
-            </Text>
-          ) : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {item.category ? (
+              <Text style={styles.categoryBadgeText}>
+                {item.category.toUpperCase()}
+                {item.subCategory ? ` • ${item.subCategory.toUpperCase()}` : ""}
+              </Text>
+            ) : null}
+            {item.receiptUrl ? (
+              <TouchableOpacity onPress={() => setShowReceipt(true)}>
+                <SVGIcon name="image" size={14} color={COLORS.primary} />
+              </TouchableOpacity>
+            ) : null}
+          </View>
           <Text style={styles.itemTitle}>
             {item.item || "Unnamed Expense"}
           </Text>
@@ -83,6 +92,24 @@ export const ExpenditureItemCard: React.FC<ExpenditureItemCardProps> = ({
           )}
         </View>
       </View>
+
+      <Modal visible={showReceipt} transparent animationType="fade">
+        <Pressable style={styles.receiptOverlay} onPress={() => setShowReceipt(false)}>
+          <View style={styles.receiptContainer}>
+            <Image
+              source={{ uri: item.receiptUrl }}
+              style={styles.receiptImage}
+              resizeMode="contain"
+            />
+            <TouchableOpacity
+              style={styles.closeReceipt}
+              onPress={() => setShowReceipt(false)}
+            >
+              <SVGIcon name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </Animatable.View>
   );
 };
@@ -131,4 +158,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  receiptOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  receiptContainer: {
+    width: '90%',
+    height: '80%',
+    position: 'relative',
+  },
+  receiptImage: {
+    width: '100%',
+    height: '100%',
+  },
+  closeReceipt: {
+    position: 'absolute',
+    top: -40,
+    right: 0,
+    padding: 10,
+  }
 });

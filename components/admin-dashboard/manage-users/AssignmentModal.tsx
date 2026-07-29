@@ -3,6 +3,7 @@ import React from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -33,6 +34,8 @@ interface AssignmentModalProps {
   onSetType: (state: AssignmentModalState) => void;
   allClasses: { id: string; name: string }[];
   updating: boolean;
+  uploadingImage: boolean;
+  handleUploadProfileImage: (user: User, source: "library" | "camera") => void;
   // Forms and their setters/handlers
   newsPermission: boolean;
   setNewsPermission: (val: boolean) => void;
@@ -76,6 +79,8 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   onSetType,
   allClasses,
   updating,
+  uploadingImage,
+  handleUploadProfileImage,
   newsPermission,
   setNewsPermission,
   handleAssignRole,
@@ -394,6 +399,49 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
             {state.type === "edit_profile" && (
               <View>
+                {/* Profile Image Editor */}
+                <View style={styles.imageSection}>
+                  <View style={styles.imageContainer}>
+                    {state.target?.profile?.profileImage ? (
+                      <Image
+                        source={{ uri: state.target.profile.profileImage }}
+                        style={styles.profileImg}
+                      />
+                    ) : (
+                      <View style={styles.placeholderImg}>
+                        <SVGIcon name="person" size={40} color="#CBD5E1" />
+                      </View>
+                    )}
+                    {uploadingImage && (
+                      <View style={styles.imageLoader}>
+                        <ActivityIndicator color="#fff" size="small" />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.imageActions}>
+                    <TouchableOpacity
+                      style={styles.imageActionBtn}
+                      onPress={() =>
+                        handleUploadProfileImage(state.target!, "library")
+                      }
+                      disabled={uploadingImage}
+                    >
+                      <SVGIcon name="image" size={20} color={COLORS.primary} />
+                      <Text style={styles.imageActionText}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.imageActionBtn}
+                      onPress={() =>
+                        handleUploadProfileImage(state.target!, "camera")
+                      }
+                      disabled={uploadingImage}
+                    >
+                      <SVGIcon name="camera" size={20} color={COLORS.primary} />
+                      <Text style={styles.imageActionText}>Camera</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
                 <Text style={styles.pickerLabel}>First Name</Text>
                 <TextInput
                   style={[styles.textInput, { marginBottom: 15 }]}
@@ -836,5 +884,61 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: 8,
     height: 45,
+  },
+  // Profile Image Styles
+  imageSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 25,
+    backgroundColor: "#F8FAFC",
+    padding: 15,
+    borderRadius: 20,
+    gap: 20,
+  },
+  imageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 25,
+    overflow: "hidden",
+    backgroundColor: "#E2E8F0",
+    position: "relative",
+  },
+  profileImg: {
+    width: "100%",
+    height: "100%",
+  },
+  placeholderImg: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageLoader: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageActions: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 10,
+  },
+  imageActionBtn: {
+    flex: 1,
+    height: 45,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    ...SHADOWS.small,
+  },
+  imageActionText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#1E293B",
   },
 });

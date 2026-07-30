@@ -286,7 +286,7 @@ export const useOtherCharges = ({
       await batch.commit();
 
       // Propagate changes to future terms
-      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'other');
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'other').catch(console.error);
 
       sendNotification({
         recipientId: student.uid,
@@ -440,7 +440,7 @@ export const useOtherCharges = ({
         const oldAmount = existing ? existing.amount : 0;
         const diff = val - oldAmount;
         if (diff !== 0) {
-          propagateArrears(sDoc.id, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'other');
+          propagateArrears(sDoc.id, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'other').catch(console.error);
         }
       });
 
@@ -504,7 +504,7 @@ export const useOtherCharges = ({
       // Propagate changes to future terms for each affected student
       snap.docs.forEach((d) => {
         const data = d.data();
-        propagateArrears(data.studentUid, acadConfig.academicYear, acadConfig.currentTerm, -data.amount, 'bill', 'other');
+        propagateArrears(data.studentUid, acadConfig.academicYear, acadConfig.currentTerm, -data.amount, 'bill', 'other').catch(console.error);
       });
 
       showToast({ message: `Charge '${category}' removed`, type: "success" });
@@ -576,9 +576,9 @@ export const useOtherCharges = ({
 
       // Propagate changes to future terms
       if (isPayment) {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'other');
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'other').catch(console.error);
       } else {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'other');
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'other').catch(console.error);
       }
 
       showToast({ message: "Transaction reverted successfully", type: "success" });

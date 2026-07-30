@@ -13,12 +13,12 @@ import { useFinanceCleanup } from "../../hooks/admin-dashboard/useFinanceCleanup
 import { useAcademicCleanup } from "../../hooks/admin-dashboard/useAcademicCleanup";
 
 export default function AdminSettingsScreen() {
-  const { theme, isDarkMode, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const { showToast } = useToast();
   const router = useRouter();
 
   const [isCleaning, setIsCleaning] = React.useState(false);
-  const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, report: financeReport } = useFinanceCleanup(showToast);
+  const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, runMigration: runFinanceMigration, report: financeReport } = useFinanceCleanup(showToast);
   const { cleaning: isAcademicCleaning, runCleanup: runAcademicCleanup, report: academicReport } = useAcademicCleanup(showToast);
 
   const performLogout = async () => {
@@ -79,12 +79,6 @@ export default function AdminSettingsScreen() {
 
   const settingsOptions = [
     {
-      title: `${isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}`,
-      icon: isDarkMode ? "flash" : "time", 
-      action: toggleTheme,
-      color: isDarkMode ? "#F1C40F" : COLORS.primary,
-    },
-    {
       title: "Clean Expired Data",
       icon: "trash-outline",
       action: () => {
@@ -103,17 +97,35 @@ export default function AdminSettingsScreen() {
       loading: isCleaning,
     },
     {
-      title: "Financial Data Integrity",
-      icon: "shield-checkmark-outline",
+      title: "Identity & Legacy Migration",
+      icon: "people-circle",
       action: () => {
         if (Platform.OS === "web") {
-          if (window.confirm("Scan and fix orphaned financial records? This ensures all transactions have academic metadata.")) {
+          if (window.confirm("Scan and resolve student identities? This links legacy records to newly registered Auth accounts.")) {
+            runFinanceMigration();
+          }
+        } else {
+          Alert.alert("Identity Migration", "Scan and resolve student identities? This links legacy records to newly registered Auth accounts.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Start Migration", style: "default", onPress: runFinanceMigration }
+          ]);
+        }
+      },
+      color: "#3B82F6",
+      loading: isFinanceCleaning,
+    },
+    {
+      title: "Financial Balance Reconcile",
+      icon: "calculator",
+      action: () => {
+        if (Platform.OS === "web") {
+          if (window.confirm("Re-calculate all student balances from scratch? This fixes discrepancies between billed vs paid amounts.")) {
             runFinanceCleanup();
           }
         } else {
-          Alert.alert("Data Integrity Scan", "Scan and fix orphaned financial records? This ensures all transactions have academic metadata.", [
+          Alert.alert("Financial Reconciliation", "Re-calculate all student balances from scratch? This fixes discrepancies between billed vs paid amounts.", [
             { text: "Cancel", style: "cancel" },
-            { text: "Start Scan", style: "default", onPress: runFinanceCleanup }
+            { text: "Reconcile All", style: "default", onPress: runFinanceCleanup }
           ]);
         }
       },
@@ -122,7 +134,7 @@ export default function AdminSettingsScreen() {
     },
     {
       title: "Academic Integrity Scan",
-      icon: "school-outline",
+      icon: "school",
       action: () => {
         if (Platform.OS === "web") {
           if (window.confirm("Scan academic records (scores, reports) to migrate data from legacy IDs to new Auth UIDs?")) {
@@ -148,7 +160,7 @@ export default function AdminSettingsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+      <StatusBar barStyle="dark-content" />
       
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>

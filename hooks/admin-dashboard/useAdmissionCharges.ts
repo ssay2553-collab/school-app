@@ -365,6 +365,9 @@ export const useAdmissionCharges = ({
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
       const recordId = `${student.uid}_${year}_${term}`;
 
+      // Calculate total record balance update
+      // Since this is a category payment, it reduces the specific category balance
+      // AND the overall record balance.
       batch.set(doc(db, "studentFeeRecords", recordId), {
         studentUid: student.uid,
         studentName: student.fullName,

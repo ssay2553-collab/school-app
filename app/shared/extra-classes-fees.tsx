@@ -92,6 +92,8 @@ type StudentRecord = {
   classId: string;
   className: string;
   takesExtraClasses: boolean;
+  dailyArrears?: number;
+  termArrears?: Record<string, number>;
 };
 
 type TabType = "record" | "history" | "reports";
@@ -121,14 +123,14 @@ export default function ExtraClassesFees() {
   const extraClassesPermission =
     appUser?.permissions?.["record-extra-classes"] || "deny";
 
+  const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
+
   const canView =
     isSuperAdmin ||
+    teacherClasses.length > 0 ||
     extraClassesPermission === "full" ||
     extraClassesPermission === "view" ||
     extraClassesPermission === "edit";
-
-  // Class teacher check
-  const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
 
   const handleBack = () => {
     router.replace("/shared/daily-financials");
@@ -154,6 +156,7 @@ export default function ExtraClassesFees() {
   const isPastDate = moment(selectedDate).isBefore(moment(), "day");
   const canEdit =
     (isSuperAdmin ||
+      teacherClasses.length > 0 ||
       extraClassesPermission === "full" ||
       extraClassesPermission === "edit") &&
     !isPastDate;
@@ -504,9 +507,11 @@ export default function ExtraClassesFees() {
           classId: student.classId,
           className: student.className,
           date: dateStr,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
           extraClassesFee: rate,
           total: increment(rateDiff),
-          recordedBy: appUser?.adminRole || "Admin",
+          recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
           recordedByUid: appUser?.uid || "unknown",
           updatedAt: serverTimestamp(),
         };
@@ -668,12 +673,14 @@ export default function ExtraClassesFees() {
         classId: student?.classId || "unknown",
         className: student?.className || "Class",
         date: dateStr,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         extraClassesFee: classAmount,
         total: increment(classAmount - oldExtraFee),
         extraPaid: true,
         extraPaidAmount: totalPaid,
         extraPaidAt: serverTimestamp(),
-        recordedBy: appUser?.adminRole || "Admin",
+        recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
         updatedAt: serverTimestamp(),
       };
@@ -700,11 +707,13 @@ export default function ExtraClassesFees() {
             classId: student?.classId || "unknown",
             className: student?.className || "Class",
             date: nextDateStr,
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
             extraClassesFee: amountForDay,
             total: increment(amountForDay),
             extraPaid: true,
             extraPaidAt: serverTimestamp(),
-            recordedBy: appUser?.adminRole || "Admin",
+            recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
             recordedByUid: appUser?.uid || "unknown",
             updatedAt: serverTimestamp(),
             feedingFee: 0,
@@ -763,12 +772,14 @@ export default function ExtraClassesFees() {
         classId: student?.classId || "unknown",
         className: student?.className || "Class",
         date: dateStr,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         extraClassesFee: newFee,
         total: increment(newFee - oldFee),
         extraPaid: false,
         extraPaidAmount: 0,
         extraPaidAt: null,
-        recordedBy: appUser?.adminRole || "Admin",
+        recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
         updatedAt: serverTimestamp(),
       };

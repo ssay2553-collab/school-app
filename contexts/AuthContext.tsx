@@ -123,6 +123,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
               ? `${data.profile.firstName} ${data.profile.lastName || ""}`.trim()
               : data.username) ||
             undefined,
+          fullName:
+            data.fullName ||
+            data.profile?.fullName ||
+            data.displayName ||
+            (data.profile?.firstName
+              ? `${data.profile.firstName} ${data.profile.lastName || ""}`.trim()
+              : data.username),
           classes: data.classes ?? data.profile?.classes ?? [],
           subjects: data.subjects ?? data.profile?.subjects ?? [],
           classId: data.classId || data.profile?.classId,

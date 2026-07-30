@@ -91,6 +91,8 @@ type StudentRecord = {
   classId: string;
   className: string;
   isFeeding: boolean;
+  dailyArrears?: number;
+  termArrears?: Record<string, number>;
 };
 
 // Student payment tracking not required separately; dailyFinancials holds feedingPaid
@@ -498,6 +500,8 @@ export default function FeedingFees() {
           classId: student.classId,
           className: student.className,
           date: dateStr,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
           feedingFee: rate,
           total: increment(rate),
           feedingPaid: false,
@@ -592,12 +596,14 @@ export default function FeedingFees() {
         classId: student?.classId || "unknown",
         className: student?.className || "Class",
         date: dateStr,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         feedingFee: classAmount,
         total: increment(feeDiff),
         feedingPaid: true,
         feedingPaidAmount: overrideAmount,
         feedingPaidAt: serverTimestamp(),
-        recordedBy: appUser?.adminRole || "Admin",
+        recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
         updatedAt: serverTimestamp(),
       };
@@ -626,12 +632,14 @@ export default function FeedingFees() {
             classId: student?.classId || "unknown",
             className: student?.className || "Class",
             date: nextDateStr,
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
             feedingFee: amountForDay,
             total: increment(amountForDay),
             feedingPaid: true,
             feedingPaidAmount: amountForDay,
             feedingPaidAt: serverTimestamp(),
-            recordedBy: appUser?.adminRole || "Admin",
+            recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
             recordedByUid: appUser?.uid || "unknown",
             updatedAt: serverTimestamp(),
             busFee: 0,
@@ -690,6 +698,8 @@ export default function FeedingFees() {
         classId: student?.classId || "unknown",
         className: student?.className || "Class",
         date: dateStr,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         feedingFee: newFee,
         total: increment(feeDiff),
         feedingPaid: false,
@@ -704,7 +714,7 @@ export default function FeedingFees() {
         data.otherFees = 0;
         data.otherFeesDescription = "";
       }
-      data.recordedBy = appUser?.adminRole || "Admin";
+      data.recordedBy = appUser?.fullName || appUser?.adminRole || "Admin";
       data.recordedByUid = appUser?.uid || "unknown";
       data.feedingPaidAt = null;
 

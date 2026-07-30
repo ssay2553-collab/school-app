@@ -109,8 +109,18 @@ export default function StudentFeeHistoryScreen() {
               ? `Installment ${index + 1}`
               : null;
 
+        const method = (payment.method || payment.paymentMethod || "").toLowerCase();
+        const type = (payment.type || "").toLowerCase();
+        const receivedFrom = (payment.receivedFrom || "").toLowerCase();
+
+        const isPayment = (
+          !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
+          (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
+        );
+
         return {
           ...payment,
+          _isPayment: isPayment,
           _title:
             payment.otherCategory?.toUpperCase() ||
             payment.type
@@ -131,6 +141,7 @@ export default function StudentFeeHistoryScreen() {
             "School account",
         };
       })
+      .filter((entry: any) => entry._isPayment)
       .sort((a: any, b: any) => {
         const aTime = new Date(
           a.date || a.createdAt || a.timestamp?.toDate?.() || 0,
@@ -353,12 +364,42 @@ export default function StudentFeeHistoryScreen() {
                       }}
                     >
                       <View style={styles.paymentInfo}>
-                        <Text style={styles.paymentMain}>
-                          {payment._title}
-                          {payment._installmentLabel
-                            ? ` • ${payment._installmentLabel}`
-                            : ""}
-                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <Text style={styles.paymentMain}>
+                            {payment._title}
+                            {payment._installmentLabel
+                              ? ` • ${payment._installmentLabel}`
+                              : ""}
+                          </Text>
+                          <View
+                            style={{
+                              backgroundColor: payment._isPayment
+                                ? "#ECFDF5"
+                                : "#FEF2F2",
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 8,
+                                fontWeight: "900",
+                                color: payment._isPayment
+                                  ? "#10B981"
+                                  : "#EF4444",
+                              }}
+                            >
+                              {payment._isPayment ? "PAYMENT" : "BILL"}
+                            </Text>
+                          </View>
+                        </View>
                         <View
                           style={{
                             flexDirection: "row",
@@ -382,7 +423,12 @@ export default function StudentFeeHistoryScreen() {
                         </Text>
                       </View>
                       <View style={styles.paymentAction}>
-                        <Text style={styles.paymentAmt}>
+                        <Text
+                          style={[
+                            styles.paymentAmt,
+                            !payment._isPayment && { color: "#EF4444" },
+                          ]}
+                        >
                           ₵{Number(payment.amount || 0).toFixed(2)}
                         </Text>
                         <SVGIcon

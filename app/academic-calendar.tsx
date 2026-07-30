@@ -80,6 +80,16 @@ const ADMIN_PRIVILEGED_ROLES = [
   "Manager",
 ];
 
+const ACADEMIC_YEARS = (() => {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = -2; i <= 3; i++) {
+    const year = currentYear + i;
+    years.push(`${year}/${year + 1}`);
+  }
+  return years;
+})();
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export default function AcademicCalendar() {
@@ -643,13 +653,41 @@ export default function AcademicCalendar() {
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text style={styles.label}>ACADEMIC YEAR *</Text>
+              <View style={[styles.optionGrid, { flexWrap: 'wrap' }]}>
+                {ACADEMIC_YEARS.map((year) => (
+                  <TouchableOpacity
+                    key={year}
+                    style={StyleSheet.flatten([
+                      styles.optionBtn,
+                      { minWidth: '30%', marginBottom: 10 },
+                      termConfig.academicYear === year && {
+                        backgroundColor: primaryColor,
+                        borderColor: primaryColor,
+                      },
+                    ])}
+                    onPress={() =>
+                      setTermConfig({ ...termConfig, academicYear: year })
+                    }
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        termConfig.academicYear === year && { color: "#fff" },
+                      ]}
+                    >
+                      {year}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {/* Fallback for custom year if needed, but discouraged */}
               <TextInput
-                style={styles.input}
+                style={[styles.input, { marginTop: 5 }]}
                 value={termConfig.academicYear}
                 onChangeText={(t) =>
-                  setTermConfig({ ...termConfig, academicYear: t })
+                  setTermConfig({ ...termConfig, academicYear: t.trim() })
                 }
-                placeholder="e.g. 2023/2024"
+                placeholder="Or type manually: e.g. 2023/2024"
               />
 
               <Text style={styles.label}>CURRENT TERM *</Text>

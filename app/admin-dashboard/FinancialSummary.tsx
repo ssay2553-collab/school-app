@@ -308,30 +308,52 @@ export default function FinancialSummary() {
       const termStart = ranges.term.start;
       const termEnd = ranges.term.end;
 
-      // 1. Fetch all data for the term period in parallel (Only 3 queries total)
-      const [dailySnap, feeSnap, expSnap] = await Promise.all([
-        getDocsFromServer(
-          query(
-            collection(db, "dailyFinancials"),
-            where("date", ">=", termStart),
-            where("date", "<=", termEnd)
-          ) as any
-        ),
-        getDocsFromServer(
-          query(
+      // 1. Fetch all data for the term period in parallel
+      // Use academic tags for fees and expenditures to align with Finance Central
+      const feeQuery = (acadConfig.academicYear && acadConfig.currentTerm)
+        ? query(
+            collection(db, "feePayments"),
+            where("academicYear", "==", acadConfig.academicYear),
+            where("term", "==", acadConfig.currentTerm)
+          )
+        : query(
             collection(db, "feePayments"),
             where("date", ">=", termStart),
             where("date", "<=", termEnd)
-          ) as any
-        ),
-        getDocsFromServer(
-          query(
+          );
+
+      const expQuery = (acadConfig.academicYear && acadConfig.currentTerm)
+        ? query(
+            collection(db, "expenditures"),
+            where("academicYear", "==", acadConfig.academicYear),
+            where("term", "==", acadConfig.currentTerm)
+          )
+        : query(
             collection(db, "expenditures"),
             where("date", ">=", termStart),
             where("date", "<=", termEnd)
-          ) as any
-        ),
+          );
+
+      const dailyQuery = (acadConfig.academicYear && acadConfig.currentTerm)
+        ? query(
+            collection(db, "dailyFinancials"),
+            where("academicYear", "==", acadConfig.academicYear),
+            where("term", "==", acadConfig.currentTerm)
+          )
+        : query(
+            collection(db, "dailyFinancials"),
+            where("date", ">=", termStart),
+            where("date", "<=", termEnd)
+          );
+
+      const [dailySnap, feeSnap, expSnap, scholarshipSnap] = await Promise.all([
+        getDocsFromServer(dailyQuery as any),
+        getDocsFromServer(feeQuery as any),
+        getDocsFromServer(expQuery as any),
+        getDocsFromServer(query(collection(db, "users"), where("role", "==", "student"), where("onScholarship", "==", true)) as any),
       ]);
+
+      const scholarshipUids = new Set(scholarshipSnap.docs.map(d => d.id));
 
       // Initialize results mapping
       const catResults: Record<string, CategorySummary> = {
@@ -414,13 +436,17 @@ export default function FinancialSummary() {
         const date = data.date;
         const daily = getOrCreateDaily(date);
 
+        const matchesTerm = (acadConfig.academicYear && acadConfig.currentTerm)
+          ? (data.academicYear === acadConfig.academicYear && data.term === acadConfig.currentTerm)
+          : isInRange(date, ranges.term);
+
         // Feeding
         if (data.feedingFee > 0 && data.feedingPaid === true) {
           const cat = catResults["Feeding Fees"];
           if (isInRange(date, ranges.today)) { cat.today.total += data.feedingFee; cat.today.count++; }
           if (isInRange(date, ranges.week)) { cat.week.total += data.feedingFee; cat.week.count++; }
           if (isInRange(date, ranges.month)) { cat.month.total += data.feedingFee; cat.month.count++; }
-          if (isInRange(date, ranges.term)) { cat.term.total += data.feedingFee; cat.term.count++; }
+          if (matchesTerm) { cat.term.total += data.feedingFee; cat.term.count++; }
           daily.feeding += data.feedingFee;
           // Not adding to daily.totalRevenue as per requirement
         }
@@ -430,7 +456,7 @@ export default function FinancialSummary() {
           if (isInRange(date, ranges.today)) { cat.today.total += data.busFee; cat.today.count++; }
           if (isInRange(date, ranges.week)) { cat.week.total += data.busFee; cat.week.count++; }
           if (isInRange(date, ranges.month)) { cat.month.total += data.busFee; cat.month.count++; }
-          if (isInRange(date, ranges.term)) { cat.term.total += data.busFee; cat.term.count++; }
+          if (matchesTerm) { cat.term.total += data.busFee; cat.term.count++; }
           daily.bus += data.busFee;
           // Not adding to daily.totalRevenue as per requirement
         }
@@ -440,7 +466,7 @@ export default function FinancialSummary() {
           if (isInRange(date, ranges.today)) { cat.today.total += data.extraClassesFee; cat.today.count++; }
           if (isInRange(date, ranges.week)) { cat.week.total += data.extraClassesFee; cat.week.count++; }
           if (isInRange(date, ranges.month)) { cat.month.total += data.extraClassesFee; cat.month.count++; }
-          if (isInRange(date, ranges.term)) { cat.term.total += data.extraClassesFee; cat.term.count++; }
+          if (matchesTerm) { cat.term.total += data.extraClassesFee; cat.term.count++; }
           daily.extra += data.extraClassesFee;
           // Not adding to daily.totalRevenue as per requirement
         }
@@ -461,7 +487,7 @@ export default function FinancialSummary() {
           method.toLowerCase().includes("bill") ||
           method === "System Billing";
 
-        if (isDebtEntry) return;
+        if (isDebtEntry || scholarshipUids.has(data.studentUid)) return;
 
         // Group all student ledger payments into General Student Fees
         const catKey = "General Student Fees";
@@ -482,7 +508,13 @@ export default function FinancialSummary() {
             cat.month.total += amount;
             cat.month.count++;
           }
-          if (isInRange(date, ranges.term)) {
+
+          // Use tag matching if available to capture pre-payments/archived items correctly
+          const matchesTerm = (acadConfig.academicYear && acadConfig.currentTerm)
+            ? (data.academicYear === acadConfig.academicYear && data.term === acadConfig.currentTerm)
+            : isInRange(date, ranges.term);
+
+          if (matchesTerm) {
             cat.term.total += amount;
             cat.term.count++;
           }
@@ -501,10 +533,50 @@ export default function FinancialSummary() {
         if (isInRange(date, ranges.today)) { cat.today.total += amount; cat.today.count++; }
         if (isInRange(date, ranges.week)) { cat.week.total += amount; cat.week.count++; }
         if (isInRange(date, ranges.month)) { cat.month.total += amount; cat.month.count++; }
-        if (isInRange(date, ranges.term)) { cat.term.total += amount; cat.term.count++; }
+
+        // Use tag matching if available to capture expenditure alignment correctly
+        const matchesTerm = (acadConfig.academicYear && acadConfig.currentTerm)
+          ? (data.academicYear === acadConfig.academicYear && data.term === acadConfig.currentTerm)
+          : isInRange(date, ranges.term);
+
+        if (matchesTerm) { cat.term.total += amount; cat.term.count++; }
       });
 
       // Set authoritative totals (using the Term total)
+      // To ensure "General Student Fees" matches ManageFees (useFeeStats),
+      // we perform a final authoritative sum from studentFeeRecords for the Term total.
+      if (acadConfig.academicYear && acadConfig.currentTerm) {
+        const recordsQuery = query(
+          collection(db, "studentFeeRecords"),
+          where("academicYear", "==", acadConfig.academicYear),
+          where("term", "==", acadConfig.currentTerm)
+        );
+        const recordsSnap = await getDocsFromServer(recordsQuery as any);
+        let authoritativeTermTotal = 0;
+        let authoritativeTermCount = 0;
+
+        recordsSnap.docs.forEach(doc => {
+          const data = doc.data() as any;
+          if (scholarshipUids.has(data.studentUid)) return;
+
+          const received = (data.amountPaid || 0) +
+            (data.ptaPaid || 0) +
+            (data.maintenancePaid || 0) +
+            (data.admissionPaid || 0) +
+            (data.booksPaid || 0) +
+            (data.uniformPaid || 0) +
+            (data.otherPaid || 0);
+
+          if (received > 0) {
+            authoritativeTermTotal += received;
+            authoritativeTermCount++;
+          }
+        });
+
+        catResults["General Student Fees"].term.total = authoritativeTermTotal;
+        catResults["General Student Fees"].term.count = authoritativeTermCount;
+      }
+
       const finalResults = Object.values(catResults).map(cat => ({
         ...cat,
         allPeriodsTotal: cat.term.total

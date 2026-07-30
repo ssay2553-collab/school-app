@@ -58,7 +58,7 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
   }, [index, words]);
 
   const handleNextLevel = () => {
-    Speech.stop();
+    safeStop();
     if (score >= 4) {
       setLevel(level + 1);
       if (appUser?.uid) {

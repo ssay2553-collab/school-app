@@ -161,7 +161,7 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
 
     // Basic completeness check
     if (paths.length === 0) {
-      Speech.speak("Try tracing the " + (activeType === "letter" ? "letter" : "number") + " first!", { rate: 1.0 });
+      safeSpeak("Try tracing the " + (activeType === "letter" ? "letter" : "number") + " first!", { rate: 1.0 });
       return;
     }
 

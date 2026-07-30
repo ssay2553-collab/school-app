@@ -168,7 +168,9 @@ function hasScreenPermission(screen, level) {
 
     // Helper: Check if teacher is the official class teacher for a specific class
     function isClassTeacher(classId) {
-      return get(/databases/$(database)/documents/classes/$(classId)).data.classTeacherId == request.auth.uid;
+      return (get(/databases/$(database)/documents/classes/$(classId)).data.classTeacherId == request.auth.uid) ||
+             (classId in userData().get('classes', [])) ||
+             (userData().get('classTeacherOf', '') == classId);
     }
 
     function isStaff() {
@@ -948,8 +950,8 @@ match /feePayments/{paymentId} {
       allow read: if
         isAdmin()
         || (isTeacher() && resource.data.classId in userData().classes)
-        || (isStudent() && uid() == resource.data.studentId)
-        || (isParent() && resource.data.studentId in userData().childrenIds);
+        || (isStudent() && uid() == resource.data.studentId && resource.data.status == 'approved')
+        || (isParent() && resource.data.studentId in userData().childrenIds && resource.data.status == 'approved');
 
       allow write: if
         isAdmin()
@@ -1052,7 +1054,8 @@ match /academicRecordsSummary/{id} {
         || (isStudent() && (id.split('_')[0] == uid() || (resource != null && resource.data.studentUid == uid())));
 
       allow create: if isAdmin() || (
-          (isTeacher() || isStaff()) && (
+          (isTeacher() || isStaff()) &&
+          isClassTeacher(request.resource.data.classId) && (
             (request.resource.data.feedingFee is number) ||
             (request.resource.data.busFee is number) ||
             (request.resource.data.extraClassesFee is number)
@@ -1062,19 +1065,30 @@ match /academicRecordsSummary/{id} {
       allow update: if isAdmin() || (
           (isTeacher() || isStaff()) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'feedingPaid', 'feedingCollector', 'feedingFee',
-            'busPaid', 'busCollector', 'busFee',
-            'extraPaid', 'extraCollector', 'extraClassesFee',
+            'feedingPaid', 'feedingCollector', 'feedingFee', 'feedingPaidAmount',
+            'busPaid', 'busCollector', 'busFee', 'busPaidAmount',
+            'extraPaid', 'extraCollector', 'extraClassesFee', 'extraPaidAmount',
             'total', 'disbursedAt', 'disbursedBy',
             'updatedAt', 'date', 'studentUid', 'studentName', 'classId', 'className',
             'recordedBy', 'recordedByUid', 'createdAt', 'otherFees', 'otherFeesDescription',
-            'feedingPaidAt', 'busPaidAt', 'extraPaidAt'
+            'feedingPaidAt', 'busPaidAt', 'extraPaidAt', 'academicYear', 'term'
           ]) && (
-            // Feeding fields require feeding permission
-            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['feedingPaid', 'feedingCollector', 'feedingFee']) || canManageFeeding()) &&
+            // Feeding fields: Allow if has feeding permission OR is class teacher with any financial permission
+            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['feedingPaid', 'feedingCollector', 'feedingFee', 'feedingPaidAmount']) || (
+              canManageFeeding() || (
+                isTeacher() && (
+                  (request.resource != null && isClassTeacher(request.resource.data.classId)) ||
+                  (resource != null && isClassTeacher(resource.data.classId))
+                ) && (
+                  getPermission('feeding') in ['full', 'edit'] ||
+                  getPermission('record-bus-fee') in ['full', 'edit'] ||
+                  getPermission('record-extra-classes') in ['full', 'edit']
+                )
+              )
+            )) &&
 
             // Bus fields require either the dedicated bus permission OR be a class-teacher with an appropriate payment permission
-            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['busPaid', 'busCollector', 'busFee']) || (
+            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['busPaid', 'busCollector', 'busFee', 'busPaidAmount']) || (
               canRecordBusFee() || (
                 isTeacher() && (
                   (request.resource != null && isClassTeacher(request.resource.data.classId)) ||
@@ -1088,7 +1102,7 @@ match /academicRecordsSummary/{id} {
             )) &&
 
             // Extra-classes fields: similar logic to allow class-teacher with related permissions
-            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['extraPaid', 'extraCollector', 'extraClassesFee', 'disbursedAt', 'disbursedBy', 'extraPaidAt']) || canManageExtraClasses() || (
+            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['extraPaid', 'extraCollector', 'extraClassesFee', 'disbursedAt', 'disbursedBy', 'extraPaidAt', 'extraPaidAmount']) || canManageExtraClasses() || (
               isTeacher() && (
                 (request.resource != null && isClassTeacher(request.resource.data.classId)) ||
                 (resource != null && isClassTeacher(resource.data.classId))
@@ -1103,5 +1117,13 @@ match /academicRecordsSummary/{id} {
 
       allow delete: if isAdmin();
     }
+    /* ===============================
+           FALLBACK & CATCH-ALL
+        =============================== */
+        match /{path=**} {
+          allow read: if isSignedIn();
+          allow write: if isSignedIn();
+
+        }
   }
 }

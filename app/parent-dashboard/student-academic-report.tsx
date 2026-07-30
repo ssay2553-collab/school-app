@@ -113,7 +113,8 @@ export default function StudentAcademicReport() {
     try {
       const q = query(
         collection(db, "student-reports"),
-        where("studentId", "==", selectedChildId)
+        where("studentId", "==", selectedChildId),
+        where("status", "==", "approved")
       );
       const snap = await getDocsFromServer(q);
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));

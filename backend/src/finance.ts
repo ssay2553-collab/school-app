@@ -145,18 +145,25 @@ export const processDailyArrears = onSchedule("0 22 * * *", async (event) => {
     const config = configSnap.data();
     if (!config) return;
 
+    const academicYear = config.academicYear;
+    const currentTerm = config.currentTerm;
+    const termKey = `${academicYear}_${currentTerm}`.replace(/[\/\s]/g, "_");
+
     const studentsSnap = await db.collection("users").where("role", "==", "student").where("status", "==", "active").get();
-    const paymentsSnap = await db.collection("feePayments").where("date", "==", today).get();
 
-    const paidFeedingUids = new Set();
-    const paidBusUids = new Set();
-    const paidExtraUids = new Set();
+    // Query dailyFinancials instead of feePayments
+    const financialsSnap = await db.collection("dailyFinancials").where("date", "==", today).get();
 
-    paymentsSnap.forEach((doc) => {
+    const feedingStatus = new Map<string, boolean>();
+    const busStatus = new Map<string, boolean>();
+    const extraStatus = new Map<string, boolean>();
+
+    financialsSnap.forEach((doc) => {
       const data = doc.data();
-      if (data.type === "feeding") paidFeedingUids.add(data.studentUid);
-      if (data.type === "bus") paidBusUids.add(data.studentUid);
-      if (data.type === "extra") paidExtraUids.add(data.studentUid);
+      const uid = data.studentUid;
+      if (data.feedingFee > 0) feedingStatus.set(uid, data.feedingPaid || false);
+      if (data.busFee > 0) busStatus.set(uid, data.busPaid || false);
+      if (data.extraClassesFee > 0) extraStatus.set(uid, data.extraPaid || false);
     });
 
     const batch = db.batch();
@@ -167,16 +174,44 @@ export const processDailyArrears = onSchedule("0 22 * * *", async (event) => {
       const uid = studentDoc.id;
 
       let added = 0;
-      if (student.isFeeding && !paidFeedingUids.has(uid)) added += config.dailyFeedingFee || 0;
-      if (student.takesBus && !paidBusUids.has(uid)) added += config.dailyBusFee || 0;
-      if (student.isExtraClasses && !paidExtraUids.has(uid)) added += config.dailyExtraClassesFee || 0;
+
+      // If student is enrolled in service, check if a record exists for today.
+      // If it exists but is unpaid, or if it doesn't exist (meaning they were supposed to be recorded but weren't),
+      // we add the arrears IF the service is active for them.
+
+      // Feeding
+      if (student.isFeeding) {
+        const isPaid = feedingStatus.get(uid);
+        if (isPaid === false || (isPaid === undefined && !feedingStatus.has(uid))) {
+            // Unpaid or not recorded (we assume they owe if they are active feeding students)
+            added += config.dailyFeedingFee || 0;
+        }
+      }
+
+      // Bus
+      if (student.takesBus) {
+        const isPaid = busStatus.get(uid);
+        if (isPaid === false || (isPaid === undefined && !busStatus.has(uid))) {
+            added += config.dailyBusFee || 0;
+        }
+      }
+
+      // Extra Classes
+      if (student.takesExtraClasses || student.isExtraClasses) {
+        const isPaid = extraStatus.get(uid);
+        if (isPaid === false || (isPaid === undefined && !extraStatus.has(uid))) {
+            added += config.dailyExtraClassesFee || 0;
+        }
+      }
 
       if (added > 0) {
-        batch.update(studentDoc.ref, {
+        const updateData: any = {
           dailyArrears: admin.firestore.FieldValue.increment(added),
-          walletBalance: admin.firestore.FieldValue.increment(added)
-        });
+          walletBalance: admin.firestore.FieldValue.increment(added),
+          [`termArrears.${termKey}`]: admin.firestore.FieldValue.increment(added)
+        };
 
+        batch.update(studentDoc.ref, updateData);
         count++;
       }
     }

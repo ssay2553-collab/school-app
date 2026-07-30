@@ -97,6 +97,7 @@ type StudentRecord = {
   takesBus: boolean;
   busLocation?: string;
   dailyArrears?: number;
+  termArrears?: Record<string, number>;
 };
 
 type TabType = "record" | "history" | "reports";
@@ -544,6 +545,8 @@ export default function BusFees() {
           classId: student.classId,
           className: student.className,
           date: dateStr,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
           busFee: rate,
           total: increment(rate),
           busPaid: false,
@@ -638,12 +641,14 @@ export default function BusFees() {
         classId: student?.classId || "unknown",
         className: student?.className || "Class",
         date: dateStr,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         busFee: rate,
         total: increment(feeDiff),
         busPaid: true,
         busPaidAmount: overrideAmount,
         busPaidAt: serverTimestamp(),
-        recordedBy: appUser?.adminRole || "Admin",
+        recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
         updatedAt: serverTimestamp(),
       };
@@ -672,12 +677,14 @@ export default function BusFees() {
             classId: student?.classId || "unknown",
             className: student?.className || "Class",
             date: nextDateStr,
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
             busFee: amountForDay,
             total: increment(amountForDay),
             busPaid: true,
             busPaidAmount: amountForDay,
             busPaidAt: serverTimestamp(),
-            recordedBy: appUser?.adminRole || "Admin",
+            recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
             recordedByUid: appUser?.uid || "unknown",
             updatedAt: serverTimestamp(),
             feedingFee: 0,
@@ -735,11 +742,13 @@ export default function BusFees() {
         classId: student?.classId || "unknown",
         className: student?.className || "Class",
         date: dateStr,
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
         busFee: newFee,
         total: increment(feeDiff),
         busPaid: false,
         busPaidAmount: 0,
-        recordedBy: appUser?.adminRole || "Admin",
+        recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
         recordedByUid: appUser?.uid || "unknown",
         updatedAt: serverTimestamp(),
       };

@@ -71,7 +71,7 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
   }, [scrambled]);
 
   const handleNextLevel = () => {
-    Speech.stop();
+    safeStop();
     if (score >= 4) {
       setLevel(level + 1);
       if (appUser?.uid) {

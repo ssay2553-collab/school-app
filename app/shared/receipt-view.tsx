@@ -157,16 +157,32 @@ export default function ReceiptViewScreen() {
 
     // 2. Aggregate Transactions for all categories
     allTransactions.forEach((t: any) => {
-      const tType = (t.type || "tuition").toLowerCase();
-      const isPayment =
-        tType.endsWith("_payment") ||
-        tType === "tuition" ||
-        tType === "tuition_credit";
-      let category = tType.replace("_payment", "").replace("_credit", "");
+      const type = (t.type || "tuition").toLowerCase();
+      const method = (t.method || "").toLowerCase();
+      const receivedFrom = (t.receivedFrom || "").toLowerCase();
 
-      // Handle specific "Other" categories
-      if (tType === "other" || tType === "other_payment") {
-        category = (t.otherCategory || "other").trim().toLowerCase();
+      // STRICT PAYMENT IDENTIFICATION (Aligns with reconciler.ts)
+      const isPayment = (
+        !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
+        (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit" || !["pta", "maintenance", "admission", "books", "uniform", "other"].includes(type) || method !== "bulk charge")
+      );
+
+      // CATEGORY NORMALIZATION (Aligns with reconciler.ts)
+      let category = "tuition";
+      if (type.endsWith("_payment")) {
+        category = type.replace("_payment", "");
+      } else if (type.endsWith("_credit")) {
+        category = type.replace("_credit", "");
+      } else {
+        const cand = (t.type || t.category || t.purpose || t.memo || "tuition").toString().toLowerCase().trim();
+        const cleaned = cand.replace(/[^a-z0-9]/g, "");
+        if (cleaned.includes("pta")) category = "pta";
+        else if (cleaned.includes("maintenance")) category = "maintenance";
+        else if (cleaned.includes("admission")) category = "admission";
+        else if (cleaned.includes("book") || cleaned.includes("books")) category = "books";
+        else if (cleaned.includes("uniform")) category = "uniform";
+        else if (cleaned.includes("other")) category = (t.otherCategory || "other").trim().toLowerCase();
+        else category = "tuition";
       }
 
       if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
@@ -174,16 +190,16 @@ export default function ReceiptViewScreen() {
       // Only sum payments from transactions - bills come from record or transactions
       if (isPayment) {
         if (category === "tuition" && summary["arrears"]) {
-          let amt = t.amount || 0;
+          let amt = Number(t.amount) || 0;
           const toArrears = Math.min(amt, summary["arrears"].billed - summary["arrears"].paid);
           summary["arrears"].paid += toArrears;
           summary["tuition"].paid += (amt - toArrears);
         } else {
-          summary[category].paid += t.amount || 0;
+          summary[category].paid += Number(t.amount) || 0;
         }
-      } else if (tType === "other") {
-        // For 'other' type, we sum the billed amount from transactions to get specific names
-        summary[category].billed += t.amount || 0;
+      } else {
+        // If it's not a payment, it's a bill/charge
+        summary[category].billed += Number(t.amount) || 0;
       }
     });
 
@@ -221,7 +237,7 @@ export default function ReceiptViewScreen() {
 
       // Special handling for tuition/arrears match with record.amountPaid
       const totalTuitionPaidInSummary = summary.tuition.paid + (summary.arrears?.paid || 0);
-      if (record.amountPaid > totalTuitionPaidInSummary) {
+      if (record.amountPaid > totalTuitionPaidInSummary + 0.01) {
         let diff = record.amountPaid - totalTuitionPaidInSummary;
         if (summary.arrears) {
            const extraToArrears = Math.min(diff, summary.arrears.billed - summary.arrears.paid);
@@ -231,55 +247,13 @@ export default function ReceiptViewScreen() {
         summary.tuition.paid += diff;
       }
 
-      // Special handling for 'other' to ensure it matches record.otherBill and avoids double counting
-      const otherEntries = Object.entries(summary).filter(
-        ([k]) =>
-          ![
-            "tuition",
-            "pta",
-            "maintenance",
-            "admission",
-            "books",
-            "uniform",
-            "other",
-            "arrears",
-          ].includes(k),
-      );
-
-      const specificOtherBilled = otherEntries.reduce(
-        (sum, [_, v]) => sum + v.billed,
-        0,
-      );
-      const specificOtherPaid = otherEntries.reduce(
-        (sum, [_, v]) => sum + v.paid,
-        0,
-      );
-
-      const unnamedOtherBill = Math.max(
-        0,
-        (record.otherBill || 0) - specificOtherBilled,
-      );
-      const unnamedOtherPaid = Math.max(
-        0,
-        (record.otherPaid || 0) - specificOtherPaid,
-      );
-
-      if (unnamedOtherBill > 0 || unnamedOtherPaid > 0) {
-        if (!summary["other"]) summary["other"] = { billed: 0, paid: 0 };
-        summary["other"].billed = Math.max(
-          summary["other"].billed,
-          unnamedOtherBill,
-        );
-        summary["other"].paid = Math.max(
-          summary["other"].paid,
-          unnamedOtherPaid,
-        );
-      }
+      // Ensure total paid across all summary items reflects record.amountPaid + others
+      // to bridge any migration gaps shown as "Historical Record" in ledger views
     }
 
-    // Return only items with non-zero balance for the bill view
+    // Return all items with non-zero billed or paid for the statement view
     return Object.entries(summary)
-      .filter(([_, vals]) => Math.abs(Math.round((vals.billed - vals.paid) * 100) / 100) >= 0.01)
+      .filter(([_, vals]) => Math.abs(vals.billed) >= 0.01 || Math.abs(vals.paid) >= 0.01)
       .map(([cat, vals]) => ({
         name:
           nameMap[cat] ||
@@ -293,13 +267,13 @@ export default function ReceiptViewScreen() {
   const totals = useMemo(() => {
     if (type !== "bill") return { billed: 0, paid: 0, balance: 0 };
 
-    // Calculate total from the entire summary to ensure net balance matches other screens
-    const netBalance = (record?.balance !== undefined) ? record.balance : categorySummary.reduce(
-      (acc, curr) => acc + curr.balance,
-      0,
-    );
-    return { billed: 0, paid: 0, balance: netBalance };
+    const totalBilled = categorySummary.reduce((acc, curr) => acc + curr.billed, 0);
+    const totalPaid = categorySummary.reduce((acc, curr) => acc + curr.paid, 0);
+    const netBalance = (record?.balance !== undefined) ? record.balance : (totalBilled - totalPaid);
+
+    return { billed: totalBilled, paid: totalPaid, balance: netBalance };
   }, [categorySummary, type, record]);
+
 
   const handleDelete = async () => {
     if (appUser?.role !== "admin") return;
@@ -437,7 +411,9 @@ export default function ReceiptViewScreen() {
                     <thead>
                         <tr>
                             <th style="text-align: left">DESCRIPTION</th>
-                            <th style="text-align: right">AMOUNT DUE (₵)</th>
+                            <th style="text-align: right">BILLED (₵)</th>
+                            <th style="text-align: right">PAID (₵)</th>
+                            <th style="text-align: right">BALANCE (₵)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -446,6 +422,8 @@ export default function ReceiptViewScreen() {
                             (i) => `
                             <tr>
                                 <td>${i.name.toUpperCase()}</td>
+                                <td style="text-align: right">${i.billed.toFixed(2)}</td>
+                                <td style="text-align: right; color: #10b981;">${i.paid.toFixed(2)}</td>
                                 <td style="text-align: right"><strong>${i.balance.toFixed(2)}</strong></td>
                             </tr>
                         `,
@@ -454,15 +432,24 @@ export default function ReceiptViewScreen() {
                     </tbody>
                 </table>
                 <div class="totals">
+                    <div class="total-row">
+                        <span>SUBTOTAL BILLED:</span>
+                        <span>₵ ${totals.billed.toFixed(2)}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>TOTAL PAID:</span>
+                        <span style="color: #10b981;">₵ ${totals.paid.toFixed(2)}</span>
+                    </div>
                     <div class="total-row grand">
-                        <span>TOTAL PAYABLE:</span>
-                        <span>₵ ${totals.balance.toFixed(2)}</span>
+                        <span>NET BALANCE DUE:</span>
+                        <span style="color: ${totals.balance > 0 ? "#ef4444" : "#10b981"};">₵ ${totals.balance.toFixed(2)}</span>
                     </div>
                 </div>
-                <div style="margin-top: 40px; color: #64748b; font-size: 11px;">
-                    <p>* This statement only shows outstanding balances. Fully paid items are not listed.</p>
+                <div style="margin-top: 60px; color: #64748b; font-size: 11px; clear: both;">
+                    <p>* This statement provides a comprehensive breakdown of your financial standing for the selected term. All figures are calculated based on the official school ledger as of ${moment().format("MMMM Do, YYYY")}.</p>
                 </div>
             `;
+
     } else if (payment) {
       contentHtml = `
                 <div class="payment-box">

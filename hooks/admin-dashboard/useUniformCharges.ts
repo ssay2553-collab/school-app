@@ -31,6 +31,7 @@ export type Student = {
   className: string;
   uniformPaid: number;
   uniformBill: number;
+  uniformBalance: number;
   walletBalance: number;
   ptaBalance?: number;
   admissionBalance?: number;
@@ -162,6 +163,7 @@ export const useUniformCharges = ({
             className: data.className || "Class",
             uniformPaid: data.uniformPaid || 0,
             uniformBill: data.uniformBill || 0,
+            uniformBalance: data.uniformBalance || 0,
             walletBalance: data.walletBalance || 0,
             ptaBalance: data.ptaBalance || 0,
             admissionBalance: data.admissionBalance || 0,
@@ -226,6 +228,7 @@ export const useUniformCharges = ({
             className: data.className || "Class",
             uniformPaid: data.uniformPaid || 0,
             uniformBill: data.uniformBill || 0,
+            uniformBalance: data.uniformBalance || 0,
             walletBalance: data.walletBalance || 0,
             ptaBalance: data.ptaBalance || 0,
             admissionBalance: data.admissionBalance || 0,
@@ -345,6 +348,7 @@ export const useUniformCharges = ({
         batch.update(doc(db, "studentFeeRecords", recordId), {
           uniformPaid: increment(diff),
           uniformBill: increment(diff),
+          uniformBalance: increment(0),
           lastUpdated: serverTimestamp(),
         });
       } else {
@@ -359,6 +363,7 @@ export const useUniformCharges = ({
             term: acadConfig.currentTerm,
             uniformPaid: increment(amount),
             uniformBill: increment(amount),
+            uniformBalance: increment(0),
             balance: increment(0),
             payments: arrayUnion(entry),
             lastUpdated: serverTimestamp(),
@@ -370,14 +375,15 @@ export const useUniformCharges = ({
       batch.update(doc(db, "users", student.uid), {
         uniformPaid: increment(diff),
         uniformBill: increment(diff),
+        // uniformBalance remains 0 if this is handled as a direct purchase (Paid == Bill)
       });
 
       await batch.commit();
 
       // Propagate changes to future terms
       if (Math.abs(diff) >= 0.01) {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'uniform');
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -diff, 'payment', 'uniform');
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'uniform').catch(console.error);
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -diff, 'payment', 'uniform').catch(console.error);
       }
 
       try {
@@ -432,6 +438,7 @@ export const useUniformCharges = ({
       batch.update(doc(db, "studentFeeRecords", recordId), {
         uniformPaid: increment(-amount),
         uniformBill: increment(-amount),
+        uniformBalance: increment(0),
         payments: arrayRemove(payment),
         lastUpdated: serverTimestamp(),
       });
@@ -448,8 +455,8 @@ export const useUniformCharges = ({
 
       // Propagate changes to future terms
       if (Math.abs(amount) >= 0.01) {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'uniform');
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'uniform');
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'uniform').catch(console.error);
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'uniform').catch(console.error);
       }
 
       showToast({ message: "Transaction reverted successfully", type: "success" });

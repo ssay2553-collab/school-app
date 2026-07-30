@@ -68,9 +68,13 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
     const [adminSig, setAdminSig] = useState("");
     const [overallPosition, setOverallPosition] = useState<string>("-");
 
+    const [isReportApproved, setIsReportApproved] = useState(false);
+    const [reportStatus, setReportStatus] = useState<string>("pending");
+
+    // Preschool states
     const [isPreschool, setIsPreschool] = useState(false);
-    const [preschoolAssessments, setPreschoolAssessments] = useState<Record<string, string>>({});
-    const [physicalDev, setPhysicalDev] = useState<Record<string, string>>({});
+    const [preschoolAssessments, setPreschoolAssessments] = useState<any>(null);
+    const [physicalDev, setPhysicalDev] = useState<any>(null);
 
     const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
     const schoolId = (Constants.expoConfig?.extra?.schoolId || "afahjoy").toLowerCase();
@@ -133,7 +137,11 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
                 });
 
                 setStudentName(nameFound);
-                setSubjectsData(Array.from(resultsMap.values()));
+                const finalSubjects = Array.from(resultsMap.values());
+                setSubjectsData(finalSubjects);
+
+                // Local Aggregate calculation for remarks
+                const { aggregate: localAggregate } = calculatePerformanceFromList(finalSubjects);
 
                 // Overall Position Calculation
                 let computedPosition = "-";
@@ -189,6 +197,7 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
                 if (isFullReport) {
                     const yearSlug = academicYearState.replace(/\//g, "-");
                     const termSlug = termState.replace(/\s+/g, "");
+                    const reportId = `${studentId}_${academicYearState}_${termState}_${reportType.replace(/\s+/g, "")}`.replace(/\//g, "-");
                     const behDocId = `behavioral_${classIdState}_${yearSlug}_${termSlug}`;
                     const behSnap = await getDoc(doc(db, "behavioralRecords", behDocId));
 
@@ -221,20 +230,26 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
                         }
                     } catch (e) { }
 
-                    const reportId = `${studentId}_${academicYearState}_${termState}_${reportType.replace(/\s+/g, "")}`.replace(/\//g, "-");
                     const reportSnap = await getDoc(doc(db, "student-reports", reportId));
                     if (reportSnap.exists()) {
                         const r = reportSnap.data() as any;
+                        setReportStatus(r.status || "pending");
+                        setIsReportApproved(r.status === "approved");
+
+                        // Respect overrides from student-reports
+                        if (r.overallPosition) setOverallPosition(r.overallPosition);
+                        if (r.promotedTo) setPromotedTo(r.promotedTo);
+
                         if (r.adminRemarks) {
                             setAdminRemarks(r.adminRemarks);
                         } else {
-                            setAdminRemarks(getAutoRemarks(AGGREGATE, false));
+                            setAdminRemarks(getAutoRemarks(localAggregate, false));
                         }
 
                         if (r.teacherRemarks) {
                             setTeacherRemarks(r.teacherRemarks);
                         } else if (!teacherRemarks) {
-                            setTeacherRemarks(getAutoRemarks(AGGREGATE, true));
+                            setTeacherRemarks(getAutoRemarks(localAggregate, true));
                         }
 
                         if (r.nextTermBegins) {
@@ -244,15 +259,15 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
                         }
                     } else {
                         // If report record doesn't exist, set auto remarks
-                        setAdminRemarks(getAutoRemarks(AGGREGATE, false));
+                        setAdminRemarks(getAutoRemarks(localAggregate, false));
                         if (!teacherRemarks) {
-                            setTeacherRemarks(getAutoRemarks(AGGREGATE, true));
+                            setTeacherRemarks(getAutoRemarks(localAggregate, true));
                         }
                         if (acadConfig.nextTermBegins) setNextTermBegins(acadConfig.nextTermBegins);
                     }
                 }
             } catch (err) {
-                console.error(err);
+                console.error("Error in fetchAllData:", err);
             } finally {
                 setLoading(false);
             }
@@ -304,7 +319,8 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
 
             if (adminSig) sigDataUri = await getBase64FromUri(adminSig);
 
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VERIFY-${studentId}`;
+            const qrData = `VERIFY-${studentId}-${academicYearState.replace(/\//g, "-")}-${termState.replace(/\s+/g, "")}`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrData}`;
             const qrDataUri = await getBase64FromUri(qrUrl);
 
             const html = generateAcademicReportHtml({
@@ -331,6 +347,6 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
         loading, generating, studentName, className, subjectsData, adminRemarks, teacherRemarks,
         conduct, attitude, interest, promotedTo, nextTermBegins, attendance, adminSig, overallPosition,
         isPreschool, preschoolAssessments, physicalDev, primary, schoolLogo, isFullReport, TRS, TAS, AGGREGATE,
-        generatePDF, classIdState, academicYearState
+        generatePDF, classIdState, academicYearState, isReportApproved, reportStatus
     };
 };

@@ -32,6 +32,7 @@ export interface User {
   dateOfBirth?: any;
   walletBalance?: number;
   dailyArrears?: number;
+  termArrears?: Record<string, number>;
   onScholarship?: boolean;
   onDiscount?: boolean;
   discountAmount?: number;

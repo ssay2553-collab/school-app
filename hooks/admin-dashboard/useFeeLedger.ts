@@ -54,6 +54,11 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
     const [deleting, setDeleting] = useState(false);
     const [showFullHistory, setShowFullHistory] = useState(false);
 
+    // Reset history toggle when filters change to ensure term-specific focus
+    useEffect(() => {
+        setShowFullHistory(false);
+    }, [selectedYear, selectedTerm, selectedStudentUid]);
+
     // Sync with global academic config if not provided
     useEffect(() => {
         if (!acadConfig.loading) {
@@ -180,39 +185,59 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
         });
 
         // If not in full history mode, ensure the ledger list matches the record summary
-        if (!showFullHistory && record) {
-            const categories = [
-                { key: 'tuition', paid: record.amountPaid || 0 },
-                { key: 'pta', paid: record.ptaPaid || 0 },
-                { key: 'maintenance', paid: record.maintenancePaid || 0 },
-                { key: 'admission', paid: record.admissionPaid || 0 },
-                { key: 'books', paid: record.booksPaid || 0 },
-                { key: 'uniform', paid: record.uniformPaid || 0 },
-                { key: 'other', paid: record.otherPaid || 0 },
-            ];
+        if (!showFullHistory) {
+            // STRICT FILTERING: Only transactions belonging to THIS specific term/year
+            const termTransactions = merged.filter((t: any) =>
+                t.academicYear === selectedYear && t.term === selectedTerm
+            );
 
-            categories.forEach(cat => {
-                const currentCatSum = merged.reduce((sum: number, t: any) => {
-                    const type = (t.type || "tuition").toLowerCase();
-                    const category = type.replace("_payment", "").replace("_credit", "");
-                    const isPayment = type.endsWith("_payment") || type === "tuition" || type === "tuition_credit";
-                    return (category === cat.key && isPayment) ? sum + (Number(t.amount) || 0) : sum;
-                }, 0);
+            if (record) {
+                const categories = [
+                    { key: 'tuition', paid: record.amountPaid || 0 },
+                    { key: 'pta', paid: record.ptaPaid || 0 },
+                    { key: 'maintenance', paid: record.maintenancePaid || 0 },
+                    { key: 'admission', paid: record.admissionPaid || 0 },
+                    { key: 'books', paid: record.booksPaid || 0 },
+                    { key: 'uniform', paid: record.uniformPaid || 0 },
+                    { key: 'other', paid: record.otherPaid || 0 },
+                ];
 
-                if (cat.paid > currentCatSum + 0.01) {
-                    merged.push({
-                        id: `adjustment-${cat.key}`,
-                        amount: cat.paid - currentCatSum,
-                        type: cat.key === 'tuition' ? 'tuition' : `${cat.key}_payment`,
-                        receiptNo: `ADJ-${cat.key.toUpperCase()}`,
-                        date: record.createdAt || moment().format("YYYY-MM-DD"),
-                        academicYear: selectedYear,
-                        term: selectedTerm,
-                        receivedFrom: "Historical Record",
-                        method: "Migration",
-                        isAdjustment: true,
-                    });
-                }
+                categories.forEach(cat => {
+                    const currentCatSum = termTransactions.reduce((sum: number, t: any) => {
+                        const type = (t.type || "tuition").toLowerCase();
+                        const method = (t.method || "").toLowerCase();
+                        const receivedFrom = (t.receivedFrom || "").toLowerCase();
+
+                        const isPayment = (
+                            !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
+                            (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
+                        );
+
+                        const category = type.replace("_payment", "").replace("_credit", "");
+                        return (category === cat.key && isPayment) ? sum + (Number(t.amount) || 0) : sum;
+                    }, 0);
+
+                    if (cat.paid > currentCatSum + 0.01) {
+                        termTransactions.push({
+                            id: `adjustment-${cat.key}`,
+                            amount: cat.paid - currentCatSum,
+                            type: cat.key === 'tuition' ? 'tuition' : `${cat.key}_payment`,
+                            receiptNo: `ADJ-${cat.key.toUpperCase()}`,
+                            date: record.createdAt || moment().format("YYYY-MM-DD"),
+                            academicYear: selectedYear,
+                            term: selectedTerm,
+                            receivedFrom: "Historical Record",
+                            method: "Migration",
+                            isAdjustment: true,
+                        });
+                    }
+                });
+            }
+
+            return termTransactions.sort((a: any, b: any) => {
+                const dateA = a.date || a.createdAt || 0;
+                const dateB = b.date || b.createdAt || 0;
+                return new Date(dateB).getTime() - new Date(dateA).getTime();
             });
         }
 
@@ -520,22 +545,22 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             if (isPayment) {
                 batch.update(doc(db, "studentFeeRecords", recordId), { amountPaid: increment(-amount), balance: increment(amount) });
                 const type = (payment.type || "").toLowerCase();
-                if (type === 'pta_payment') {
+                if (type === 'pta_payment' || type === 'pta') {
                     batch.update(doc(db, "studentFeeRecords", recordId), { ptaBalance: increment(amount), ptaPaid: increment(-amount) });
                     batch.update(doc(db, "users", selectedStudentUid), { ptaBalance: increment(amount) });
-                } else if (type === 'maintenance_payment') {
+                } else if (type === 'maintenance_payment' || type === 'maintenance') {
                     batch.update(doc(db, "studentFeeRecords", recordId), { maintenanceBalance: increment(amount), maintenancePaid: increment(-amount) });
                     batch.update(doc(db, "users", selectedStudentUid), { maintenanceBalance: increment(amount) });
-                } else if (type === 'admission_payment') {
+                } else if (type === 'admission_payment' || type === 'admission') {
                     batch.update(doc(db, "studentFeeRecords", recordId), { admissionBalance: increment(amount), admissionPaid: increment(-amount) });
                     batch.update(doc(db, "users", selectedStudentUid), { admissionBalance: increment(amount) });
-                } else if (type === 'books_payment') {
+                } else if (type === 'books_payment' || type === 'books') {
                     batch.update(doc(db, "studentFeeRecords", recordId), { booksBalance: increment(amount), booksPaid: increment(-amount) });
                     batch.update(doc(db, "users", selectedStudentUid), { booksBalance: increment(amount) });
-                } else if (type === 'uniform_payment') {
+                } else if (type === 'uniform_payment' || type === 'uniform') {
                     batch.update(doc(db, "studentFeeRecords", recordId), { uniformBalance: increment(amount), uniformPaid: increment(-amount) });
                     batch.update(doc(db, "users", selectedStudentUid), { uniformBalance: increment(amount) });
-                } else if (type === 'other_payment') {
+                } else if (type === 'other_payment' || type === 'other') {
                     batch.update(doc(db, "studentFeeRecords", recordId), { otherBalance: increment(amount), otherPaid: increment(-amount) });
                     batch.update(doc(db, "users", selectedStudentUid), { otherBalance: increment(amount) });
                 }
@@ -596,7 +621,14 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
 
         allTransactions.forEach((t: any) => {
             const type = (t.type || "tuition").toLowerCase();
-            const isPayment = type.endsWith("_payment") || type === "tuition" || type === "tuition_credit";
+            const method = (t.method || "").toLowerCase();
+            const receivedFrom = (t.receivedFrom || "").toLowerCase();
+
+            const isPayment = (
+                !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
+                (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
+            );
+
             let category = type.replace("_payment", "").replace("_credit", "");
             if (type === "other") category = (t.otherCategory || "other").toLowerCase();
 
@@ -611,7 +643,8 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                 } else {
                     summary[category].paid += t.amount || 0;
                 }
-            } else if (type === "other") {
+            } else {
+                // If it's not a payment, it's a bill/charge
                 summary[category].billed += t.amount || 0;
             }
         });

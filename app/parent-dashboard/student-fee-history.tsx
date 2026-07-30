@@ -72,6 +72,11 @@ export default function StudentFeeHistory() {
   const [allTransactions, setAllTransactions] = useState<any[]>([]);
   const [showFullHistory, setShowFullHistory] = useState(false);
 
+  // Reset history toggle when filters change to ensure term-specific focus
+  useEffect(() => {
+    setShowFullHistory(false);
+  }, [selectedYear, selectedTerm, selectedChildId]);
+
   // Sync with global academic config
   useEffect(() => {
     if (!acadConfig.loading) {
@@ -177,43 +182,81 @@ export default function StudentFeeHistory() {
   }, [selectedChildId, selectedYear, selectedTerm, showFullHistory]);
 
   const ledgerTransactions = useMemo(() => {
-    const merged = [...allTransactions];
-    const existingIds = new Set<string>(allTransactions.map((t: any) => String(t.receiptNo || t.id)));
+    const collectionList = allTransactions;
+    const recordList = record?.payments || [];
+    const merged = [...collectionList];
+    const existingIds = new Set<string>(
+      collectionList.map((t: any) => String(t.receiptNo || t.id)),
+    );
+
+    recordList.forEach((p: any) => {
+      const id = String(p.receiptNo || p.id);
+      if (id && id !== "undefined" && !existingIds.has(id)) {
+        merged.push({ ...p, id: id });
+      }
+    });
 
     // If not in full history mode, ensure the ledger list matches the record summary
-    if (!showFullHistory && record) {
-      const categories = [
-        { key: 'tuition', paid: record.amountPaid || 0 },
-        { key: 'pta', paid: record.ptaPaid || 0 },
-        { key: 'maintenance', paid: record.maintenancePaid || 0 },
-        { key: 'admission', paid: record.admissionPaid || 0 },
-        { key: 'books', paid: record.booksPaid || 0 },
-        { key: 'uniform', paid: record.uniformPaid || 0 },
-        { key: 'other', paid: record.otherPaid || 0 },
-      ];
+    if (!showFullHistory) {
+      // STRICT FILTERING: Only transactions belonging to THIS specific term/year
+      // Normalize comparison by using the same logic as the ledger
+      const termTransactions = merged.filter((t: any) => {
+        const tYear = t.academicYear;
+        const tTerm = t.term;
 
-      categories.forEach(cat => {
-        const currentCatSum = merged.reduce((sum: number, t: any) => {
-          const type = (t.type || "tuition").toLowerCase();
-          const category = type.replace("_payment", "").replace("_credit", "");
-          const isPayment = type.endsWith("_payment") || type === "tuition" || type === "tuition_credit";
-          return (category === cat.key && isPayment) ? sum + (Number(t.amount) || 0) : sum;
-        }, 0);
+        // Ensure we match the selected values exactly
+        return tYear === selectedYear && tTerm === selectedTerm;
+      });
 
-        if (cat.paid > currentCatSum + 0.01) {
-          merged.push({
-            id: `adjustment-${cat.key}`,
-            amount: cat.paid - currentCatSum,
-            type: cat.key === 'tuition' ? 'tuition' : `${cat.key}_payment`,
-            receiptNo: `ADJ-${cat.key.toUpperCase()}`,
-            date: record.createdAt || moment().format("YYYY-MM-DD"),
-            academicYear: selectedYear,
-            term: selectedTerm,
-            receivedFrom: "Historical Record",
-            method: "Migration",
-            isAdjustment: true,
-          });
-        }
+      if (record) {
+        const categories = [
+          { key: "tuition", paid: record.amountPaid || 0 },
+          { key: "pta", paid: record.ptaPaid || 0 },
+          { key: "maintenance", paid: record.maintenancePaid || 0 },
+          { key: "admission", paid: record.admissionPaid || 0 },
+          { key: "books", paid: record.booksPaid || 0 },
+          { key: "uniform", paid: record.uniformPaid || 0 },
+          { key: "other", paid: record.otherPaid || 0 },
+        ];
+
+        categories.forEach((cat) => {
+          const currentCatSum = termTransactions.reduce((sum: number, t: any) => {
+            const type = (t.type || "tuition").toLowerCase();
+            const method = (t.method || "").toLowerCase();
+            const receivedFrom = (t.receivedFrom || "").toLowerCase();
+
+            const isPayment = (
+              !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
+              (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
+            );
+
+            const category = type.replace("_payment", "").replace("_credit", "");
+            return category === cat.key && isPayment
+              ? sum + (Number(t.amount) || 0)
+              : sum;
+          }, 0);
+
+          if (cat.paid > currentCatSum + 0.01) {
+            termTransactions.push({
+              id: `adjustment-${cat.key}`,
+              amount: cat.paid - currentCatSum,
+              type: cat.key === "tuition" ? "tuition" : `${cat.key}_payment`,
+              receiptNo: `ADJ-${cat.key.toUpperCase()}`,
+              date: record.createdAt || moment().format("YYYY-MM-DD"),
+              academicYear: selectedYear,
+              term: selectedTerm,
+              receivedFrom: "Historical Record",
+              method: "Migration",
+              isAdjustment: true,
+            });
+          }
+        });
+      }
+
+      return termTransactions.sort((a: any, b: any) => {
+        const dateA = a.createdAt || a.timestamp?.toDate?.() || a.date || 0;
+        const dateB = b.createdAt || b.timestamp?.toDate?.() || b.date || 0;
+        return new Date(dateB).getTime() - new Date(dateA).getTime();
       });
     }
 
@@ -247,8 +290,18 @@ export default function StudentFeeHistory() {
               ? `Installment ${index + 1}`
               : null;
 
+        const method = (payment.method || payment.paymentMethod || "").toLowerCase();
+        const type = (payment.type || "").toLowerCase();
+        const receivedFrom = (payment.receivedFrom || "").toLowerCase();
+
+        const isPayment = (
+          !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
+          (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
+        );
+
         return {
           ...payment,
+          _isPayment: isPayment,
           _title:
             payment.otherCategory?.toUpperCase() ||
             payment.type
@@ -269,6 +322,7 @@ export default function StudentFeeHistory() {
             "School account",
         };
       })
+      .filter((entry: any) => entry._isPayment)
       .sort((a: any, b: any) => {
         const aTime = new Date(
           a.createdAt || a.timestamp?.toDate?.() || a.date || 0,
@@ -279,23 +333,6 @@ export default function StudentFeeHistory() {
         return bTime - aTime;
       });
   }, [ledgerTransactions]);
-
-  const ledgerSummary = useMemo(() => {
-    const totalPaid = paymentLedgerEntries.reduce(
-      (sum, payment: any) => sum + (Number(payment.amount) || 0),
-      0,
-    );
-    const installmentCount =
-      paymentLedgerEntries.filter((payment: any) => payment._installmentLabel)
-        .length || paymentLedgerEntries.length;
-    const lastPayment = paymentLedgerEntries[0];
-
-    return {
-      totalPaid,
-      installmentCount,
-      lastPaymentDate: lastPayment?._displayDate || "No payments yet",
-    };
-  }, [paymentLedgerEntries]);
 
   const rawSummary = useMemo(() => {
     // 1. Initialize with tuition (term bill - discount) and arrears
@@ -318,10 +355,14 @@ export default function StudentFeeHistory() {
 
     relevantTransactions.forEach((t: any) => {
       const type = (t.type || "tuition").toLowerCase();
-      const isPayment =
-        type.endsWith("_payment") ||
-        type === "tuition" ||
-        type === "tuition_credit";
+      const method = (t.method || "").toLowerCase();
+      const receivedFrom = (t.receivedFrom || "").toLowerCase();
+
+      const isPayment = (
+        !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
+        (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
+      );
+
       let category = type.replace("_payment", "").replace("_credit", "");
 
       // Handle specific "Other" categories
@@ -453,6 +494,26 @@ export default function StudentFeeHistory() {
       totalBalance: billed - paid,
     };
   }, [categorySummary]);
+
+  const ledgerSummary = useMemo(() => {
+    const totalPaidVal = showFullHistory
+      ? paymentLedgerEntries.reduce(
+          (sum, p: any) => sum + (Number(p.amount) || 0),
+          0,
+        )
+      : totalPaid;
+
+    const lastPayment = paymentLedgerEntries[0];
+
+    return {
+      totalPaid: totalPaidVal,
+      installmentCount:
+        paymentLedgerEntries.filter((payment: any) => payment._installmentLabel)
+          .length || paymentLedgerEntries.length,
+      lastPaymentDate: lastPayment?._displayDate || "No payments yet",
+    };
+  }, [paymentLedgerEntries, totalPaid, showFullHistory]);
+
 
   if (loading || acadConfig.loading)
     return (
@@ -644,27 +705,19 @@ export default function StudentFeeHistory() {
               </View>
             </View>
 
-            {/* Invoice Table Breakdown */}
+            {/* Payment Ledger Breakdown */}
             <View style={styles.invoiceTable}>
               <View style={styles.invoiceHeader}>
-                <Text style={[styles.invoiceTh, { flex: 2 }]}>DESCRIPTION</Text>
+                <Text style={[styles.invoiceTh, { flex: 2 }]}>PAYMENT DESCRIPTION</Text>
                 <Text
-                  style={[styles.invoiceTh, { flex: 1.2, textAlign: "right" }]}
+                  style={[styles.invoiceTh, { flex: 1.5, textAlign: "right" }]}
                 >
-                  BILLED
-                </Text>
-                <Text
-                  style={[styles.invoiceTh, { flex: 1.2, textAlign: "right" }]}
-                >
-                  PAID
-                </Text>
-                <Text
-                  style={[styles.invoiceTh, { flex: 1.2, textAlign: "right" }]}
-                >
-                  BALANCE
+                  AMOUNT PAID
                 </Text>
               </View>
-              {Object.entries(categorySummary).map(([cat, vals]: any) => (
+              {Object.entries(categorySummary)
+                .filter(([_, vals]: any) => (vals.paid || 0) > 0)
+                .map(([cat, vals]: any) => (
                 <View key={cat} style={styles.invoiceRow}>
                   <Text
                     style={[styles.invoiceTd, { flex: 2, fontWeight: "800" }]}
@@ -674,26 +727,10 @@ export default function StudentFeeHistory() {
                   <Text
                     style={[
                       styles.invoiceTd,
-                      { flex: 1.2, textAlign: "right" },
-                    ]}
-                  >
-                    ₵{vals.billed.toFixed(2)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.invoiceTd,
-                      { flex: 1.2, textAlign: "right", color: "#10B981" },
+                      { flex: 1.5, textAlign: "right", color: "#10B981", fontWeight: "900" },
                     ]}
                   >
                     ₵{vals.paid.toFixed(2)}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.invoiceTd,
-                      { flex: 1.2, textAlign: "right", fontWeight: "900" },
-                    ]}
-                  >
-                    ₵{(vals.billed - vals.paid).toFixed(2)}
                   </Text>
                 </View>
               ))}
@@ -832,7 +869,7 @@ export default function StudentFeeHistory() {
                         params: {
                           type: "payment",
                           studentId: selectedChildId,
-                          paymentId: payment.id,
+                          paymentId: payment.receiptNo || payment.id,
                           year: payment.academicYear || selectedYear,
                           term: payment.term || selectedTerm,
                         },
@@ -844,12 +881,42 @@ export default function StudentFeeHistory() {
                         <SVGIcon name="receipt" size={20} color={primary} />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.paymentLabel}>
-                          {payment._title}
-                          {payment._installmentLabel
-                            ? ` • ${payment._installmentLabel}`
-                            : ""}
-                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <Text style={styles.paymentLabel}>
+                            {payment._title}
+                            {payment._installmentLabel
+                              ? ` • ${payment._installmentLabel}`
+                              : ""}
+                          </Text>
+                          <View
+                            style={{
+                              backgroundColor: payment._isPayment
+                                ? "#ECFDF5"
+                                : "#FEF2F2",
+                              paddingHorizontal: 6,
+                              paddingVertical: 2,
+                              borderRadius: 6,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 8,
+                                fontWeight: "900",
+                                color: payment._isPayment
+                                  ? "#10B981"
+                                  : "#EF4444",
+                              }}
+                            >
+                              {payment._isPayment ? "PAYMENT" : "BILL"}
+                            </Text>
+                          </View>
+                        </View>
                         <View
                           style={{
                             flexDirection: "row",
@@ -877,10 +944,19 @@ export default function StudentFeeHistory() {
                       </View>
                     </View>
                     <View style={styles.paymentTail}>
-                      <Text style={styles.paymentValue}>
+                      <Text
+                        style={[
+                          styles.paymentValue,
+                          !payment._isPayment && { color: "#EF4444" },
+                        ]}
+                      >
                         ₵{Number(payment.amount || 0).toFixed(2)}
                       </Text>
-                      <SVGIcon name="chevron-forward" size={16} color="#94A3B8" />
+                      <SVGIcon
+                        name="chevron-forward"
+                        size={16}
+                        color="#94A3B8"
+                      />
                     </View>
                   </TouchableOpacity>
                 ))}

@@ -947,17 +947,59 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   const clearServiceArrears = async (user: User) => {
     const performClear = async () => {
       try {
-        await updateDoc(doc(db, "users", user.uid), { dailyArrears: 0 });
-        if (viewingUser?.uid === user.uid) setViewingUser({ ...viewingUser, dailyArrears: 0 });
-        showToast?.({ message: "Service arrears cleared.", type: "success" });
+        await updateDoc(doc(db, "users", user.uid), {
+          dailyArrears: 0,
+          termArrears: {}
+        });
+        if (viewingUser?.uid === user.uid) setViewingUser({
+          ...viewingUser,
+          dailyArrears: 0,
+          termArrears: {}
+        });
+        showToast?.({ message: "All service arrears cleared.", type: "success" });
       } catch (err) {
         showToast?.({ message: "Failed to clear arrears.", type: "error" });
       }
     };
     if (Platform.OS === "web") {
-      if (window.confirm("Reset service arrears to 0?")) performClear();
+      if (window.confirm("Reset ALL service arrears (including all terms) to 0?")) performClear();
     } else {
-      Alert.alert("Clear Arrears", "Reset service arrears to 0?", [
+      Alert.alert("Clear All Arrears", "Reset ALL service arrears (including all terms) to 0?", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Clear All", style: "destructive", onPress: performClear }
+      ]);
+    }
+  };
+
+  const clearTermArrears = async (termKey: string, user: User) => {
+    const performClear = async () => {
+      try {
+        const amount = user.termArrears?.[termKey] || 0;
+        await updateDoc(doc(db, "users", user.uid), {
+          dailyArrears: increment(-amount),
+          [`termArrears.${termKey}`]: 0
+        });
+
+        if (viewingUser?.uid === user.uid) {
+           const newTermArrears = { ...(viewingUser.termArrears || {}) };
+           newTermArrears[termKey] = 0;
+           setViewingUser({
+             ...viewingUser,
+             dailyArrears: (viewingUser.dailyArrears || 0) - amount,
+             termArrears: newTermArrears
+           });
+        }
+        showToast?.({ message: `Arrears for ${termKey.replace(/_/g, ' ')} cleared.`, type: "success" });
+      } catch (err) {
+        showToast?.({ message: "Failed to clear term arrears.", type: "error" });
+      }
+    };
+
+    const displayTerm = termKey.replace(/_/g, ' ');
+    if (Platform.OS === "web") {
+      if (window.confirm(`Reset arrears for ${displayTerm} to 0?`)) performClear();
+    } else {
+      Alert.alert("Clear Term Arrears", `Reset arrears for ${displayTerm} to 0?`, [
         { text: "Cancel", style: "cancel" },
         { text: "Clear", style: "destructive", onPress: performClear }
       ]);
@@ -1091,6 +1133,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     openPermissionModal, openEditProfile,
     handleUploadProfileImage,
     handleCopyAllCodes, clearServiceArrears,
+    clearTermArrears,
     isSuperAdmin, hasManageUsersAccess,
     handlePromoteRepeat,
     openPromoteRepeat: (target: User | null = null) => setAssignmentModal({ type: "promote_repeat", target }),

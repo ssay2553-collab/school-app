@@ -109,6 +109,7 @@ export default function ManageUsers() {
     handleUploadProfileImage,
     handleCopyAllCodes,
     clearServiceArrears,
+    clearTermArrears,
     isSuperAdmin,
     hasManageUsersAccess,
     handlePromoteRepeat,
@@ -420,6 +421,7 @@ export default function ManageUsers() {
           onShareCode={handleShareCode}
           onRegenerateCode={handleRegenerateSignupCode}
           onClearArrears={clearServiceArrears}
+          onClearTermArrears={clearTermArrears}
           onRemoveAssignedRole={handleRemoveAssignedRole}
           onPromoteRepeat={openPromoteRepeat}
           onToggleArchive={handleToggleArchiveStatus}

@@ -176,11 +176,19 @@ export const useManageFees = ({
     ).length;
   }, [students]);
 
-  const fetchDailyPayments = async (date: Date) => {
+  const fetchDailyPayments = async (date: Date, year?: string, termStr?: string) => {
     setLoadingDaily(true);
     try {
       const dateString = moment(date).format("YYYY-MM-DD");
-      const q = query(collection(db, "feePayments"), where("date", "==", dateString));
+      let q = query(collection(db, "feePayments"), where("date", "==", dateString));
+
+      if (year && year !== "all") {
+        q = query(q, where("academicYear", "==", year));
+      }
+      if (termStr && termStr !== "all") {
+        q = query(q, where("term", "==", termStr));
+      }
+
       const snap = await getDocsFromServer(q as any);
       const payments = snap.docs.map((d) => ({
         id: d.id,
@@ -202,9 +210,11 @@ export const useManageFees = ({
 
   useEffect(() => {
     if (dailyModalVisible) {
-      fetchDailyPayments(selectedDailyDate);
+      // By default, we fetch payments for the current academic context to keep it term-aligned,
+      // but the UI could allow clearing these to see all payments for that date.
+      fetchDailyPayments(selectedDailyDate, academicYear, term);
     }
-  }, [dailyModalVisible, selectedDailyDate]);
+  }, [dailyModalVisible, selectedDailyDate, academicYear, term]);
 
   const handleLogPayment = async (
     selectedStudent: StudentDraft | null,
@@ -235,34 +245,39 @@ export const useManageFees = ({
       const recordId = `${selectedStudent.uid}_${cleanYear}_${cleanTerm}`;
       const receiptNo = `REC-${Date.now().toString().slice(-6)}`;
       const paymentDateStr = moment(paymentDate).format("YYYY-MM-DD");
+      const batch = writeBatch(db);
+      const globalPaymentRef = doc(collection(db, "feePayments"), receiptNo);
 
       const paymentObj = {
         amount,
         method: paymentMethod,
-        receivedFrom: receivedFrom || "Guardian",
-        date: paymentDateStr,
+        receivedFrom: receivedFrom.trim(),
+        updatedBy: appUser?.adminRole || "Admin",
+        adminUid: appUser?.uid || "unknown",
         createdAt: new Date().toISOString(),
         receiptNo,
+        date: paymentDateStr,
         academicYear,
         term,
         type: "tuition",
       };
 
-      const batch = writeBatch(db);
-      const globalPaymentRef = doc(collection(db, "feePayments"));
-      batch.set(globalPaymentRef, {
-        ...paymentObj,
-        studentUid: selectedStudent.uid,
-        studentName: selectedStudent.fullName,
-        classId: selectedStudent.classId,
-        className: selectedStudent.className,
-      });
+      // --- WATERFALL CALCULATION ---
+      let remainingPayment = amount;
+      const allocations: Record<string, number> = {};
 
-      const recordRef = doc(db, "studentFeeRecords", recordId);
-      // In the new model, amountPaid and balance on the record represent global totals.
-      // However, for immediate UI responsiveness before a full cleanup, we update them based on the current state.
-      const newPaid = (selectedStudent.amountPaid || 0) + amount;
-      const newBalance = (selectedStudent.currentBalance || 0) - amount;
+      // 1. Settle Tuition first
+      const currentTuitionDebt = Math.max(0, (selectedStudent.currentBalance || 0) -
+        (selectedStudent.ptaBalance || 0) -
+        (selectedStudent.admissionBalance || 0) -
+        (selectedStudent.maintenanceBalance || 0) -
+        (selectedStudent.booksBalance || 0) -
+        (selectedStudent.uniformBalance || 0) -
+        (selectedStudent.otherBalance || 0));
+
+      const tuitionToPay = Math.min(remainingPayment, currentTuitionDebt);
+      remainingPayment -= tuitionToPay;
+      allocations.tuition = tuitionToPay;
 
       const feeRecordUpdate: any = {
         studentUid: selectedStudent.uid,
@@ -271,31 +286,43 @@ export const useManageFees = ({
         className: selectedStudent.className,
         academicYear,
         term,
-        amountPaid: newPaid,
-        balance: newBalance,
-        payments: arrayUnion(paymentObj),
+        amountPaid: increment(tuitionToPay),
+        balance: increment(-amount),
         lastUpdated: serverTimestamp(),
-        // Initialize all category fields to 0 for schema consistency
-        ptaPaid: selectedStudent.ptaPaid || 0,
-        ptaBalance: selectedStudent.ptaBalance || 0,
-        ptaBill: selectedStudent.ptaBill || 0,
-        maintenancePaid: selectedStudent.maintenancePaid || 0,
-        maintenanceBalance: selectedStudent.maintenanceBalance || 0,
-        maintenanceBill: selectedStudent.maintenanceBill || 0,
-        admissionPaid: selectedStudent.admissionPaid || 0,
-        admissionBalance: selectedStudent.admissionBalance || 0,
-        admissionBill: selectedStudent.admissionBill || 0,
-        booksPaid: selectedStudent.booksPaid || 0,
-        booksBalance: selectedStudent.booksBalance || 0,
-        booksBill: selectedStudent.booksBill || 0,
-        uniformPaid: selectedStudent.uniformPaid || 0,
-        uniformBalance: selectedStudent.uniformBalance || 0,
-        uniformBill: selectedStudent.uniformBill || 0,
-        otherPaid: selectedStudent.otherPaid || 0,
-        otherBalance: selectedStudent.otherBalance || 0,
-        otherBill: selectedStudent.otherBill || 0,
-        totalPayable: selectedStudent.totalPayable || 0,
       };
+
+      const userUpdate: any = {
+        walletBalance: increment(-amount),
+      };
+
+      // 2. Waterfall through categories with remaining payment
+      const categories = [
+        { key: "admission", field: "admission" },
+        { key: "pta", field: "pta" },
+        { key: "maintenance", field: "maintenance" },
+        { key: "books", field: "books" },
+        { key: "uniform", field: "uniform" },
+        { key: "other", field: "other" }
+      ];
+
+      for (const cat of categories) {
+        const balanceKey = `${cat.key}Balance` as keyof StudentDraft;
+        const catBalance = (selectedStudent[balanceKey] as number) || 0;
+        if (remainingPayment > 0 && catBalance > 0) {
+          const settlement = Math.min(remainingPayment, catBalance);
+          remainingPayment -= settlement;
+          allocations[cat.key] = settlement;
+
+          feeRecordUpdate[`${cat.key}Paid`] = increment(settlement);
+          feeRecordUpdate[`${cat.key}Balance`] = increment(-settlement);
+          userUpdate[`${cat.key}Balance`] = increment(-settlement);
+          userUpdate[`${cat.key}Paid`] = increment(settlement);
+        }
+      }
+
+      // Add allocations to payment record for reversal logic
+      const paymentObjWithAlloc = { ...paymentObj, allocations };
+      feeRecordUpdate.payments = arrayUnion(paymentObjWithAlloc);
 
       // If it's a new record (no bill yet), set arrears to current wallet balance (before payment)
       if (!selectedStudent.hasRecordInTerm) {
@@ -304,10 +331,16 @@ export const useManageFees = ({
         feeRecordUpdate.createdAt = serverTimestamp();
       }
 
-      batch.set(recordRef, feeRecordUpdate, { merge: true });
+      batch.set(doc(db, "studentFeeRecords", recordId), feeRecordUpdate, { merge: true });
+      batch.update(doc(db, "users", selectedStudent.uid), userUpdate);
 
-      batch.update(doc(db, "users", selectedStudent.uid), {
-        walletBalance: increment(-amount),
+      // Update global payment doc with allocations too
+      batch.set(globalPaymentRef, {
+        ...paymentObjWithAlloc,
+        studentUid: selectedStudent.uid,
+        studentName: selectedStudent.fullName,
+        classId: selectedStudent.classId,
+        className: selectedStudent.className,
       });
 
       await batch.commit();
@@ -363,34 +396,56 @@ export const useManageFees = ({
           feeRecordUpdate.balance = increment(amount);
           userUpdate.walletBalance = increment(amount);
 
-          if (type === "tuition" || type === "tuition_credit") {
-            feeRecordUpdate.amountPaid = increment(-amount);
-          } else if (type === "pta_payment") {
-            feeRecordUpdate.ptaPaid = increment(-amount);
-            feeRecordUpdate.ptaBalance = increment(amount);
-            userUpdate.ptaBalance = increment(amount);
-          } else if (type === "maintenance_payment") {
-            feeRecordUpdate.maintenancePaid = increment(-amount);
-            feeRecordUpdate.maintenanceBalance = increment(amount);
-            userUpdate.maintenanceBalance = increment(amount);
-          } else if (type === "admission_payment") {
-            feeRecordUpdate.admissionPaid = increment(-amount);
-            feeRecordUpdate.admissionBalance = increment(amount);
-            userUpdate.admissionBalance = increment(amount);
-          } else if (type === "books_payment") {
-            feeRecordUpdate.booksPaid = increment(-amount);
-            feeRecordUpdate.booksBalance = increment(amount);
-            userUpdate.booksBalance = increment(amount);
-          } else if (type === "uniform_payment") {
-            feeRecordUpdate.uniformPaid = increment(-amount);
-            feeRecordUpdate.uniformBalance = increment(amount);
-            userUpdate.uniformBalance = increment(amount);
-          } else if (type === "other_payment") {
-            feeRecordUpdate.otherPaid = increment(-amount);
-            feeRecordUpdate.otherBalance = increment(amount);
-            userUpdate.otherBalance = increment(amount);
+          if (payment.allocations) {
+            // Precise reversal using stored allocations
+            Object.entries(payment.allocations).forEach(([cat, val]) => {
+              const v = Number(val);
+              if (cat === "tuition") {
+                feeRecordUpdate.amountPaid = increment(-v);
+              } else {
+                feeRecordUpdate[`${cat}Paid`] = increment(-v);
+                feeRecordUpdate[`${cat}Balance`] = increment(v);
+                userUpdate[`${cat}Balance`] = increment(v);
+                userUpdate[`${cat}Paid`] = increment(-v);
+              }
+            });
           } else {
-            feeRecordUpdate.amountPaid = increment(-amount);
+            // Fallback for older records or external payments
+            if (type === "tuition" || type === "tuition_credit") {
+              feeRecordUpdate.amountPaid = increment(-amount);
+            } else if (type === "pta_payment") {
+              feeRecordUpdate.ptaPaid = increment(-amount);
+              feeRecordUpdate.ptaBalance = increment(amount);
+              userUpdate.ptaBalance = increment(amount);
+              userUpdate.ptaPaid = increment(-amount);
+            } else if (type === "maintenance_payment") {
+              feeRecordUpdate.maintenancePaid = increment(-amount);
+              feeRecordUpdate.maintenanceBalance = increment(amount);
+              userUpdate.maintenanceBalance = increment(amount);
+              userUpdate.maintenancePaid = increment(-amount);
+            } else if (type === "admission_payment") {
+              feeRecordUpdate.admissionPaid = increment(-amount);
+              feeRecordUpdate.admissionBalance = increment(amount);
+              userUpdate.admissionBalance = increment(amount);
+              userUpdate.admissionPaid = increment(-amount);
+            } else if (type === "books_payment") {
+              feeRecordUpdate.booksPaid = increment(-amount);
+              feeRecordUpdate.booksBalance = increment(amount);
+              userUpdate.booksBalance = increment(amount);
+              userUpdate.booksPaid = increment(-amount);
+            } else if (type === "uniform_payment") {
+              feeRecordUpdate.uniformPaid = increment(-amount);
+              feeRecordUpdate.uniformBalance = increment(amount);
+              userUpdate.uniformBalance = increment(amount);
+              userUpdate.uniformPaid = increment(-amount);
+            } else if (type === "other_payment") {
+              feeRecordUpdate.otherPaid = increment(-amount);
+              feeRecordUpdate.otherBalance = increment(amount);
+              userUpdate.otherBalance = increment(amount);
+              userUpdate.otherPaid = increment(-amount);
+            } else {
+              feeRecordUpdate.amountPaid = increment(-amount);
+            }
           }
         } else {
           // Reversing a charge (bill)

@@ -39,7 +39,7 @@ const LedgerReceipt: React.FC<LedgerReceiptProps> = ({
         >
             <View style={styles.divider} />
             <View style={styles.receiptHeaderRow}>
-                <Text style={styles.receiptTitle}>TERM BILL & PAYMENT BREAKDOWN</Text>
+                <Text style={styles.receiptTitle}>TERM PAYMENT LEDGER</Text>
                 <TouchableOpacity
                     onPress={() => {
                         router.push({
@@ -85,20 +85,18 @@ const LedgerReceipt: React.FC<LedgerReceiptProps> = ({
                 </View>
             </View>
 
-            {/* Category Summary as Invoice Table */}
+            {/* Category Summary as Payment Table */}
             <View style={styles.invoiceTable}>
                 <View style={styles.invoiceHeader}>
-                    <Text style={[styles.invoiceTh, { flex: 2 }]}>DESCRIPTION</Text>
-                    <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>BILLED</Text>
-                    <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>PAID</Text>
-                    <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>BALANCE</Text>
+                    <Text style={[styles.invoiceTh, { flex: 2 }]}>PAYMENT DESCRIPTION</Text>
+                    <Text style={[styles.invoiceTh, { flex: 1.5, textAlign: 'right' }]}>AMOUNT PAID</Text>
                 </View>
-                {Object.entries(categorySummary).map(([cat, vals]: any) => (
+                {Object.entries(categorySummary)
+                    .filter(([_, vals]: any) => (vals.paid || 0) > 0)
+                    .map(([cat, vals]: any) => (
                     <View key={cat} style={styles.invoiceRow}>
                         <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '800' }]}>{cat.toUpperCase()}</Text>
-                        <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right' }]}>₵{vals.billed.toFixed(2)}</Text>
-                        <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: "#10B981" }]}>₵{vals.paid.toFixed(2)}</Text>
-                        <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', fontWeight: '900' }]}>₵{(vals.billed - vals.paid).toFixed(2)}</Text>
+                        <Text style={[styles.invoiceTd, { flex: 1.5, textAlign: 'right', color: "#10B981", fontWeight: '900' }]}>₵{vals.paid.toFixed(2)}</Text>
                     </View>
                 ))}
             </View>

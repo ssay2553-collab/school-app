@@ -37,6 +37,7 @@ interface UserDetailModalProps {
   onShareCode: (user: User) => void;
   onRegenerateCode: (user: User) => void;
   onClearArrears: (user: User) => void;
+  onClearTermArrears?: (termKey: string, user: User) => void;
   onRemoveAssignedRole: (role: string, user: User) => void;
   onPromoteRepeat: (user: User) => void;
   onViewAttendance?: (user: User) => void;
@@ -62,6 +63,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onShareCode,
   onRegenerateCode,
   onClearArrears,
+  onClearTermArrears,
   onRemoveAssignedRole,
   onPromoteRepeat,
   onViewAttendance,
@@ -234,6 +236,32 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                         </TouchableOpacity>
                       )}
                     </View>
+                  </View>
+                </View>
+              )}
+
+              {user.role === "student" && user.termArrears && Object.keys(user.termArrears).length > 0 && (
+                <View style={styles.infoSection}>
+                  <Text style={styles.infoLabel}>Arrears Breakdown (by Term)</Text>
+                  <View style={styles.infoGrid}>
+                    {Object.entries(user.termArrears).map(([termKey, amount]) => {
+                      if (amount <= 0) return null;
+                      return (
+                        <View key={termKey} style={styles.infoRow}>
+                          <Text style={styles.infoKey}>{termKey.replace(/_/g, ' ')}:</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                             <Text style={[styles.infoValue, { color: "#f59e0b" }]}>
+                              ₵{amount.toLocaleString()}
+                            </Text>
+                            {onClearTermArrears && (
+                              <TouchableOpacity onPress={() => onClearTermArrears(termKey, user)}>
+                                <SVGIcon name="refresh-circle" size={18} color="#f59e0b" />
+                              </TouchableOpacity>
+                            )}
+                          </View>
+                        </View>
+                      );
+                    })}
                   </View>
                 </View>
               )}

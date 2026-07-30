@@ -129,7 +129,7 @@ export default function EditStudentScores() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
   const masterDataRef = useRef<Record<string, any>>({});
-  const initialDataRef = useRef<string>("");
+  const initialDataRef = useRef<string>("[]");
   const initialDataMapRef = useRef<Map<string, string>>(new Map());
 
   const hasUnsavedChanges = useMemo(() => {
@@ -284,6 +284,8 @@ export default function EditStudentScores() {
         });
         setRecordId(null);
         setAllStudents([]);
+        initialDataRef.current = "[]";
+        initialDataMapRef.current.clear();
         setVisibleStudents([]);
       }
     } catch (err) {
@@ -474,6 +476,7 @@ export default function EditStudentScores() {
           {
             overallPosition: `${rankInfo.rank}/${rankInfo.total}`,
             totalScore: item.total,
+            status: "approved",
             studentId: item.id,
             studentName: studentNames[item.id],
             classId: selectedClassId,
@@ -501,6 +504,8 @@ export default function EditStudentScores() {
         await deleteDoc(doc(db, "academicRecords", recordId));
         setRecordId(null);
         setAllStudents([]);
+        initialDataRef.current = "[]";
+        initialDataMapRef.current.clear();
         setVisibleStudents([]);
         showToast({
           message: "The records have been removed successfully.",

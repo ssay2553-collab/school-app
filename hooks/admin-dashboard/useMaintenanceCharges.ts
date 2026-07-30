@@ -361,6 +361,8 @@ export const useMaintenanceCharges = ({
             maintenanceBalance: increment(diff),
             balance: increment(diff),
             lastUpdated: serverTimestamp(),
+            // Append to payments list so reconciler sees the latest charge amount
+            payments: arrayUnion(billData)
           });
         } else {
           batch.set(
@@ -375,6 +377,7 @@ export const useMaintenanceCharges = ({
               maintenanceBill: increment(amount),
               maintenanceBalance: increment(amount),
               balance: increment(amount),
+              maintenancePaid: 0,
               payments: arrayUnion(billData),
               lastUpdated: serverTimestamp(),
             },

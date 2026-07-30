@@ -72,6 +72,18 @@ service firebase.storage {
       allow read, write: if isAdmin();
     }
 
+    // Project Assets (Project receipts, infrastructure photos, etc.)
+    match /projectAssets/{fileName} {
+      allow read: if isStaff();
+      allow write: if isAdmin();
+    }
+
+    // General Site Assets (Logos, branding materials)
+    match /assets/{fileName} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
     // Staff Payroll Documents
     match /payroll/{fileName} {
       allow read: if isSignedIn() && (request.auth.uid == fileName.split('_')[0] || isAdmin());

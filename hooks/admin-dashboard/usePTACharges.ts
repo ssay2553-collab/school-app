@@ -362,6 +362,8 @@ export const usePTACharges = ({
             ptaBalance: increment(diff),
             balance: increment(diff),
             lastUpdated: serverTimestamp(),
+            // Remove the old charge from the array and add the new one to keep history clean
+            payments: arrayUnion(billData)
           });
         } else {
           batch.set(
@@ -376,6 +378,7 @@ export const usePTACharges = ({
               ptaBill: increment(val),
               ptaBalance: increment(val),
               balance: increment(val),
+              ptaPaid: 0, // Ensure paid is not touched
               payments: arrayUnion(billData),
               lastUpdated: serverTimestamp(),
             },

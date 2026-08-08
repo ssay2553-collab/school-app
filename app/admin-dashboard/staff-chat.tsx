@@ -220,8 +220,9 @@ export default function StaffChat() {
   }, [chatId]);
 
   const handleSelectStaff = (member: StaffMember) => {
+    if (!appUser?.uid) return;
     setSelectedStaff(member);
-    setChatId(generateChatId(appUser!.uid, member.uid));
+    setChatId(generateChatId(appUser.uid, member.uid));
     setStage("chat");
     isFirstLoad.current = true;
   };
@@ -286,6 +287,7 @@ export default function StaffChat() {
           `chats/staff/${chatId}/${Date.now()}.webm`,
         );
         await uploadBytes(audioRef, blob);
+        if ((blob as any).close) (blob as any).close();
         const audioUrl = await getDownloadURL(audioRef);
         await addDoc(collection(db, "directMessages", chatId!, "messages"), {
           type: "audio",
@@ -312,6 +314,7 @@ export default function StaffChat() {
       const blob = await (await fetch(uri)).blob();
       const audioRef = ref(storage, `chats/staff/${chatId}/${Date.now()}.m4a`);
       await uploadBytes(audioRef, blob);
+      if ((blob as any).close) (blob as any).close();
       const audioUrl = await getDownloadURL(audioRef);
 
       await addDoc(collection(db, "directMessages", chatId!, "messages"), {

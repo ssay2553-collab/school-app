@@ -1,5 +1,6 @@
 // app/teacher-dashboard/note.tsx
 import { useRouter } from "expo-router";
+import moment from "moment";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -240,9 +241,7 @@ export default function TeacherNoteScreen() {
 
                 <View style={styles.cardFooter}>
                   <Text style={styles.dateText}>
-                    {new Date(
-                      item.updatedAt || item.createdAt,
-                    ).toLocaleDateString()}
+                    {moment(item.updatedAt || item.createdAt).format("MMM DD, YYYY")}
                   </Text>
                   <View style={styles.footerActions}>
                      <TouchableOpacity

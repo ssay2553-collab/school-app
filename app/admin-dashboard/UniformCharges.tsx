@@ -56,6 +56,14 @@ export default function UniformCharges() {
   const router = useRouter();
   const acadConfig = useAcademicConfig();
 
+  if (acadConfig.loading || !appUser) {
+    return (
+      <View style={[sharedStyles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={VIBE.primary} />
+      </View>
+    );
+  }
+
   const [selectedClassId, setSelectedClassId] = useState("all");
   const [classModalVisible, setClassModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

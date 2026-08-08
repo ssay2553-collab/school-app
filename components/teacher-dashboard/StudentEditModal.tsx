@@ -1,4 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
+import moment from "moment";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -150,7 +151,7 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                       onPress={() => setShowDatePicker(true)}
                     >
                       <Text style={{ color: dob ? "#1E293B" : "#94A3B8" }}>
-                        {dob ? dob.toLocaleDateString() : "Select Date"}
+                        {dob ? moment(dob).format("MMM DD, YYYY") : "Select Date"}
                       </Text>
                     </TouchableOpacity>
                     {showDatePicker && (

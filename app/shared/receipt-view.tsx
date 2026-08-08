@@ -269,10 +269,13 @@ export default function ReceiptViewScreen() {
 
     const totalBilled = categorySummary.reduce((acc, curr) => acc + curr.billed, 0);
     const totalPaid = categorySummary.reduce((acc, curr) => acc + curr.paid, 0);
-    const netBalance = (record?.balance !== undefined) ? record.balance : (totalBilled - totalPaid);
+
+    // UI/UX Consistency: Ensure the total reflects the sum of displayed line items.
+    // This prevents "₵0.00" appearing when individual items show balances.
+    const netBalance = totalBilled - totalPaid;
 
     return { billed: totalBilled, paid: totalPaid, balance: netBalance };
-  }, [categorySummary, type, record]);
+  }, [categorySummary, type]);
 
 
   const handleDelete = async () => {
@@ -411,9 +414,9 @@ export default function ReceiptViewScreen() {
                     <thead>
                         <tr>
                             <th style="text-align: left">DESCRIPTION</th>
-                            <th style="text-align: right">BILLED (₵)</th>
-                            <th style="text-align: right">PAID (₵)</th>
-                            <th style="text-align: right">BALANCE (₵)</th>
+                            <th style="text-align: right">BILLED (${SCHOOL_CONFIG.currencySymbol})</th>
+                            <th style="text-align: right">PAID (${SCHOOL_CONFIG.currencySymbol})</th>
+                            <th style="text-align: right">BALANCE (${SCHOOL_CONFIG.currencySymbol})</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -429,20 +432,28 @@ export default function ReceiptViewScreen() {
                         `,
                           )
                           .join("")}
+                        ${record?.discount > 0 ? `
+                            <tr style="background-color: #f0fdfa;">
+                                <td style="color: #0d9488;"><strong>TERM DISCOUNT</strong></td>
+                                <td style="text-align: right; color: #0d9488;">(${Number(record.discount).toFixed(2)})</td>
+                                <td style="text-align: right; color: #0d9488;">-</td>
+                                <td style="text-align: right; color: #0d9488;"><strong>CREDIT</strong></td>
+                            </tr>
+                        ` : ""}
                     </tbody>
                 </table>
                 <div class="totals">
                     <div class="total-row">
                         <span>SUBTOTAL BILLED:</span>
-                        <span>₵ ${totals.billed.toFixed(2)}</span>
+                        <span>${SCHOOL_CONFIG.currencySymbol} ${totals.billed.toFixed(2)}</span>
                     </div>
                     <div class="total-row">
                         <span>TOTAL PAID:</span>
-                        <span style="color: #10b981;">₵ ${totals.paid.toFixed(2)}</span>
+                        <span style="color: #10b981;">${SCHOOL_CONFIG.currencySymbol} ${totals.paid.toFixed(2)}</span>
                     </div>
                     <div class="total-row grand">
                         <span>NET BALANCE DUE:</span>
-                        <span style="color: ${totals.balance > 0 ? "#ef4444" : "#10b981"};">₵ ${totals.balance.toFixed(2)}</span>
+                        <span style="color: ${totals.balance > 0 ? "#ef4444" : "#10b981"};">${SCHOOL_CONFIG.currencySymbol} ${totals.balance.toFixed(2)}</span>
                     </div>
                 </div>
                 <div style="margin-top: 60px; color: #64748b; font-size: 11px; clear: both;">
@@ -467,7 +478,7 @@ export default function ReceiptViewScreen() {
                     </div>
                     <div class="payment-row highlight">
                         <span class="label">AMOUNT PAID:</span>
-                        <span class="value">₵ ${Number(payment.amount).toFixed(2)}</span>
+                        <span class="value">${SCHOOL_CONFIG.currencySymbol} ${Number(payment.amount).toFixed(2)}</span>
                     </div>
                     <div class="payment-row">
                         <span class="label">PAYMENT METHOD:</span>
@@ -729,24 +740,46 @@ export default function ReceiptViewScreen() {
             {type === "bill" ? (
               <>
                 <View style={styles.tableHeader}>
-                  <Text style={[styles.th, { flex: 3 }]}>DESCRIPTION</Text>
-                  <Text style={[styles.th, { flex: 1, textAlign: "right" }]}>
-                    AMOUNT DUE
+                  <Text style={[styles.th, { flex: 2.2 }]}>DESCRIPTION</Text>
+                  <Text style={[styles.th, { flex: 1.2, textAlign: "right" }]}>
+                    BILLED
+                  </Text>
+                  <Text style={[styles.th, { flex: 1.2, textAlign: "right" }]}>
+                    PAID
+                  </Text>
+                  <Text style={[styles.th, { flex: 1.2, textAlign: "right" }]}>
+                    BALANCE
                   </Text>
                 </View>
                 {categorySummary.length > 0 ? (
                   categorySummary.map((item, idx) => (
                     <View key={idx} style={styles.itemRow}>
-                      <Text style={[styles.itemName, { flex: 3 }]}>
+                      <Text style={[styles.itemName, { flex: 2.2 }]}>
                         {item.name.toUpperCase()}
                       </Text>
                       <Text
                         style={[
                           styles.itemVal,
-                          { flex: 1, textAlign: "right", fontWeight: "900" },
+                          { flex: 1.2, textAlign: "right" },
                         ]}
                       >
-                        ₵{item.balance.toFixed(2)}
+                        {SCHOOL_CONFIG.currencySymbol}{item.billed.toFixed(2)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.itemVal,
+                          { flex: 1.2, textAlign: "right", color: "#10B981" },
+                        ]}
+                      >
+                        {SCHOOL_CONFIG.currencySymbol}{item.paid.toFixed(2)}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.itemVal,
+                          { flex: 1.2, textAlign: "right", fontWeight: "900", color: item.balance > 0 ? "#EF4444" : "#10B981" },
+                        ]}
+                      >
+                        {SCHOOL_CONFIG.currencySymbol}{item.balance.toFixed(2)}
                       </Text>
                     </View>
                   ))
@@ -763,11 +796,55 @@ export default function ReceiptViewScreen() {
                     </Text>
                   </View>
                 )}
+
+                {record?.discount > 0 && (
+                  <View style={[styles.itemRow, { backgroundColor: '#F0FDFA', borderBottomColor: '#CCFBF1' }]}>
+                    <Text style={[styles.itemName, { flex: 2.2, color: '#0D9488' }]}>
+                      TERM DISCOUNT
+                    </Text>
+                    <Text
+                      style={[
+                        styles.itemVal,
+                        { flex: 1.2, textAlign: "right", color: '#0D9488' },
+                      ]}
+                    >
+                      ({SCHOOL_CONFIG.currencySymbol}{Number(record.discount).toFixed(2)})
+                    </Text>
+                    <Text
+                      style={[
+                        styles.itemVal,
+                        { flex: 1.2, textAlign: "right", color: '#0D9488' },
+                      ]}
+                    >
+                      -
+                    </Text>
+                    <Text
+                      style={[
+                        styles.itemVal,
+                        { flex: 1.2, textAlign: "right", fontWeight: "900", color: '#0D9488' },
+                      ]}
+                    >
+                      CREDIT
+                    </Text>
+                  </View>
+                )}
                 <View style={styles.totalSection}>
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>TOTAL BILLED</Text>
+                    <Text style={styles.totalValue}>
+                      {SCHOOL_CONFIG.currencySymbol}{totals.billed.toFixed(2)}
+                    </Text>
+                  </View>
+                  <View style={styles.totalRow}>
+                    <Text style={styles.totalLabel}>TOTAL PAID</Text>
+                    <Text style={[styles.totalValue, { color: "#10B981" }]}>
+                      {SCHOOL_CONFIG.currencySymbol}{totals.paid.toFixed(2)}
+                    </Text>
+                  </View>
                   <View style={[styles.totalRow, styles.grandTotal]}>
-                    <Text style={styles.grandLabel}>TOTAL PAYABLE</Text>
-                    <Text style={styles.grandValue}>
-                      ₵{totals.balance.toFixed(2)}
+                    <Text style={styles.grandLabel}>NET BALANCE DUE</Text>
+                    <Text style={[styles.grandValue, { color: totals.balance > 0 ? "#EF4444" : "#10B981" }]}>
+                      {SCHOOL_CONFIG.currencySymbol}{totals.balance.toFixed(2)}
                     </Text>
                   </View>
                 </View>
@@ -789,7 +866,7 @@ export default function ReceiptViewScreen() {
                       { color: "#10B981", fontSize: 20, fontWeight: "900" },
                     ]}
                   >
-                    ₵{Number(payment?.amount || 0).toFixed(2)}
+                    {SCHOOL_CONFIG.currencySymbol}{Number(payment?.amount || 0).toFixed(2)}
                   </Text>
                 </View>
                 <View style={styles.receiptDetailRow}>

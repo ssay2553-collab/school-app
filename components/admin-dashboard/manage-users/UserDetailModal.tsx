@@ -1,4 +1,5 @@
 import React from "react";
+import moment from "moment";
 import {
   ActivityIndicator,
   Alert,
@@ -42,6 +43,11 @@ interface UserDetailModalProps {
   onPromoteRepeat: (user: User) => void;
   onViewAttendance?: (user: User) => void;
   onToggleArchive?: (user: User) => void;
+  onRunFinanceCleanup?: (user: User) => void;
+  onRunAcademicCleanup?: (user: User) => void;
+  onRunFinanceMigration?: (user: User) => void;
+  isFinanceCleaning?: boolean;
+  isAcademicCleaning?: boolean;
 }
 
 export const UserDetailModal: React.FC<UserDetailModalProps> = ({
@@ -68,23 +74,19 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onPromoteRepeat,
   onViewAttendance,
   onToggleArchive,
+  onRunFinanceCleanup,
+  onRunAcademicCleanup,
+  onRunFinanceMigration,
+  isFinanceCleaning,
+  isAcademicCleaning,
 }) => {
   if (!user) return null;
 
   const formatDate = (date: any) => {
     if (!date) return "N/A";
     try {
-      if (date.toDate)
-        return date.toDate().toLocaleDateString("en-GB", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        });
-      return new Date(date).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
+      const d = date.toDate ? date.toDate() : new Date(date);
+      return moment(d).format("DD MMM, YYYY");
     } catch {
       return "Invalid Date";
     }
@@ -420,7 +422,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                   <View style={styles.infoRow}>
                     <Text style={styles.infoKey}>Email:</Text>
                     <Text style={styles.infoValue}>
-                      {user.profile?.email || "N/A"}
+                      {user.email || user.profile?.email || "N/A"}
                     </Text>
                   </View>
                   {user.role !== "student" && (
@@ -664,6 +666,65 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                       </Text>
                     </View>
                   </TouchableOpacity>
+                )}
+
+                {user.role === "student" && (
+                  <>
+                    <Text style={[styles.infoLabel, { paddingHorizontal: 20, marginTop: 10 }]}>Maintenance & Integrity</Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        {
+                          backgroundColor: "#f59e0b",
+                          marginBottom: 12,
+                        },
+                      ]}
+                      onPress={() => onRunFinanceCleanup?.(user)}
+                      disabled={isFinanceCleaning}
+                    >
+                      {isFinanceCleaning ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.actionButtonText}>Reconcile Student Balance</Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        {
+                          backgroundColor: "#3b82f6",
+                          marginBottom: 12,
+                        },
+                      ]}
+                      onPress={() => onRunFinanceMigration?.(user)}
+                      disabled={isFinanceCleaning}
+                    >
+                      {isFinanceCleaning ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.actionButtonText}>Fix Identity / Legacy Links</Text>
+                      )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        {
+                          backgroundColor: "#a855f7",
+                          marginBottom: 12,
+                        },
+                      ]}
+                      onPress={() => onRunAcademicCleanup?.(user)}
+                      disabled={isAcademicCleaning}
+                    >
+                      {isAcademicCleaning ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.actionButtonText}>Academic Integrity Scan</Text>
+                      )}
+                    </TouchableOpacity>
+                  </>
                 )}
 
                 <TouchableOpacity

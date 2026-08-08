@@ -8,6 +8,7 @@ import {
     KeyboardAvoidingView,
     Modal,
     Platform,
+    RefreshControl,
     SafeAreaView,
     ScrollView,
     StatusBar,
@@ -56,6 +57,9 @@ export default function StudentFeeHistoryScreen() {
     availableYears,
     showFullHistory,
     setShowFullHistory,
+    refreshing,
+    refresh,
+    selectedStudentWalletBalance,
   } = useFeeLedger(
     (params.studentId as string) || "",
     (params.academicYear as string) || "",
@@ -178,6 +182,14 @@ export default function StudentFeeHistoryScreen() {
     }
   };
 
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/admin-dashboard/ManageFees");
+    }
+  };
+
   const onRevertPayment = (payment: any) => {
     if (Platform.OS === "web") {
       const confirmed = window.confirm(
@@ -219,8 +231,9 @@ export default function StudentFeeHistoryScreen() {
         ])}
       >
         <TouchableOpacity
-          onPress={() => router.push("/admin-dashboard/ManageFees")}
+          onPress={handleBack}
           style={styles.backIcon}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <SVGIcon name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
@@ -241,6 +254,14 @@ export default function StudentFeeHistoryScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            colors={[primary]}
+            tintColor={primary}
+          />
+        }
       >
         <LedgerFilters
           availableYears={availableYears}
@@ -275,7 +296,7 @@ export default function StudentFeeHistoryScreen() {
               categorySummary={categorySummary}
               totalBilled={totals.totalBilled}
               totalPaid={totals.totalPaid}
-              totalBalance={totals.totalBalance}
+              totalBalance={selectedStudentWalletBalance}
               selectedStudentUid={selectedStudentUid}
               selectedYear={selectedYear}
               selectedTerm={selectedTerm}
@@ -290,6 +311,12 @@ export default function StudentFeeHistoryScreen() {
                 <Text style={styles.emptySub}>
                   No financial data for the selected period.
                 </Text>
+                <TouchableOpacity
+                  style={[styles.saveBtn, { marginTop: 20, height: 48, paddingHorizontal: 30 }]}
+                  onPress={refresh}
+                >
+                  <Text style={styles.saveBtnText}>RELOAD DATA</Text>
+                </TouchableOpacity>
               </View>
             )
           )}
@@ -334,7 +361,7 @@ export default function StudentFeeHistoryScreen() {
                         {showFullHistory ? "LIFETIME PAID" : "TOTAL PAID"}
                       </Text>
                       <Text style={styles.ledgerSummaryValue}>
-                        ₵{ledgerSummary.totalPaid.toFixed(2)}
+                        {SCHOOL_CONFIG.currencySymbol}{ledgerSummary.totalPaid.toFixed(2)}
                       </Text>
                     </View>
                     <View style={styles.ledgerSummaryItem}>
@@ -429,7 +456,7 @@ export default function StudentFeeHistoryScreen() {
                             !payment._isPayment && { color: "#EF4444" },
                           ]}
                         >
-                          ₵{Number(payment.amount || 0).toFixed(2)}
+                          {SCHOOL_CONFIG.currencySymbol}{Number(payment.amount || 0).toFixed(2)}
                         </Text>
                         <SVGIcon
                           name="chevron-forward"
@@ -475,7 +502,7 @@ export default function StudentFeeHistoryScreen() {
               <View style={styles.modalInputs}>
                 <TextInput
                   style={styles.pillInput}
-                  placeholder="Amount (₵)"
+                  placeholder={`Amount (${SCHOOL_CONFIG.currencySymbol})`}
                   keyboardType="numeric"
                   value={paymentAmount}
                   onChangeText={setPaymentAmount}

@@ -659,27 +659,23 @@ export default function TeacherStudentGroups() {
             />
 
             {view === "CREATE" && (
-              <>
-                <Text style={[styles.label, { marginTop: 20 }]}>
-                  SELECT CLASS
-                </Text>
-                <View style={styles.modalPickerWrapper}>
-                  <Picker
-                    selectedValue={selectedClassId}
-                    onValueChange={setSelectedClassId}
-                    style={styles.picker}
-                  >
-                    <Picker.Item
-                      label="Select Class..."
-                      value=""
-                      color="#94A3B8"
-                    />
-                    {teacherClasses.map((c) => (
-                      <Picker.Item key={c.id} label={c.name} value={c.id} />
-                    ))}
-                  </Picker>
-                </View>
-              </>
+              <View style={[styles.modalPickerWrapper, { marginTop: 20 }]}>
+                <Text style={styles.miniLabel}>SELECT CLASS</Text>
+                <Picker
+                  selectedValue={selectedClassId}
+                  onValueChange={setSelectedClassId}
+                  style={styles.picker}
+                >
+                  <Picker.Item
+                    label="Select Class..."
+                    value=""
+                    color="#94A3B8"
+                  />
+                  {teacherClasses.map((c) => (
+                    <Picker.Item key={c.id} label={c.name} value={c.id} />
+                  ))}
+                </Picker>
+              </View>
             )}
 
             {selectedClassId ? (
@@ -988,8 +984,21 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderWidth: 1,
     borderColor: "#E2E8F0",
+    minHeight: 65,
+    justifyContent: "center",
+    paddingTop: 12,
   },
-  picker: { height: 50 },
+  picker: { height: 50, marginLeft: -10 },
+  miniLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#94A3B8",
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    zIndex: 1,
+    textTransform: 'uppercase'
+  },
   studentList: {
     flexDirection: "row",
     flexWrap: "wrap",

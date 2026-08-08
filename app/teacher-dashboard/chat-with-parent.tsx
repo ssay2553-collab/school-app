@@ -214,8 +214,9 @@ export default function TeacherChatWithParent() {
   };
 
   const handleSelectParent = (parent: Parent) => {
+    if (!appUser?.uid) return;
     setSelectedParent(parent);
-    setChatId(generateChatId(appUser!.uid, parent.uid));
+    setChatId(generateChatId(appUser.uid, parent.uid));
     setStage("chat");
     isFirstLoad.current = true;
   };
@@ -318,6 +319,7 @@ export default function TeacherChatWithParent() {
           `chats/parents/${chatId}/${Date.now()}.webm`,
         );
         await uploadBytes(audioRef, blob);
+        if ((blob as any).close) (blob as any).close();
         const audioUrl = await getDownloadURL(audioRef);
 
         await addDoc(collection(db, "directMessages", chatId!, "messages"), {
@@ -351,6 +353,7 @@ export default function TeacherChatWithParent() {
         `chats/parents/${chatId}/${Date.now()}.m4a`,
       );
       await uploadBytes(audioRef, blob);
+      if ((blob as any).close) (blob as any).close();
       const audioUrl = await getDownloadURL(audioRef);
 
       await addDoc(collection(db, "directMessages", chatId!, "messages"), {

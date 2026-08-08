@@ -115,7 +115,7 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
                       color: VIBE.success,
                     }}
                   >
-                    Applied: ₵{item.discount.toFixed(2)}
+                    Applied: ₵{(item.discount || 0).toFixed(2)}
                   </Text>
                 </View>
               )}
@@ -151,7 +151,7 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
                         <Text
                           style={[styles.breakdownValue, { color: VIBE.success }]}
                         >
-                          -₵{item.discount.toFixed(2)}
+                          -₵{(item.discount || 0).toFixed(2)}
                         </Text>
                       </View>
                     )}
@@ -173,10 +173,7 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
                       ]}
                     >
                       ₵
-                      {Math.max(0, item.currentBalance || 0).toLocaleString(
-                        undefined,
-                        { minimumFractionDigits: 2 },
-                      )}
+                      {Math.max(0, item.currentBalance || 0).toFixed(2)}
                     </Text>
                   </View>
                 </>

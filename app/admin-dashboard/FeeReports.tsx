@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
+import moment from "moment";
 import {
   collection,
   getDocsFromServer,
@@ -379,7 +380,7 @@ export default function FeeReports() {
                 <div class="report-title">Student Fee Status Report</div>
                 <div class="report-meta">
                   Academic Year: ${academicYear} | Term: ${term}<br/>
-                  Generated on: ${new Date().toLocaleDateString()} | Page ${idx + 1} of ${pages.length}
+                  Generated on: ${moment().format("DD/MM/YYYY")} | Page ${idx + 1} of ${pages.length}
                 </div>
               </div>
 
@@ -482,7 +483,7 @@ export default function FeeReports() {
                 <div class="report-title">School Financial Summary</div>
                 <div class="report-meta">
                   Academic Year: ${academicYear} | Term: ${term}<br/>
-                  Generated on: ${new Date().toLocaleDateString()}
+                  Generated on: ${moment().format("DD/MM/YYYY")}
                 </div>
               </div>
 

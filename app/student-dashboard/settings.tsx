@@ -4,6 +4,7 @@ import * as ImagePicker from "expo-image-picker";
 import { doc, updateDoc, Timestamp } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import React, { useState } from "react";
+import moment from "moment";
 import {
   ActivityIndicator,
   Alert,
@@ -282,7 +283,7 @@ export default function StudentSettings() {
                     />
                   ) : (
                     <Text style={[styles.settingValue, !dob && { color: '#94A3B8' }]}>
-                      {dob ? dob.toLocaleDateString() : "Click to set birth date"}
+                      {dob ? moment(dob).format("DD MMM, YYYY") : "Click to set birth date"}
                     </Text>
                   )}
                 </View>

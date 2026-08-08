@@ -335,6 +335,7 @@ export default function ChatWithParent() {
         `chats/${selected.uid}/${Date.now()}.${ext}`,
       );
       await uploadBytes(audioRef, blob);
+      if ((blob as any).close) (blob as any).close();
       const audioUrl = await getDownloadURL(audioRef);
       await sendMessage({ type: "audio", fileUrl: audioUrl });
       setPreviewUri(null);
@@ -378,6 +379,7 @@ export default function ChatWithParent() {
     if (type === "text") setInput("");
 
     try {
+      if (!appUser) return;
       const chatRef = doc(db, "chats", selected.uid);
       await setDoc(
         chatRef,
@@ -491,7 +493,9 @@ export default function ChatWithParent() {
                     </Text>
                   </View>
                 </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <SVGIcon name="chevron-forward" size={20} color="#CBD5E1" />
+              </View>
               </TouchableOpacity>
             </Animatable.View>
           )}
@@ -686,25 +690,27 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     backgroundColor: "rgba(255,255,255,0.1)",
     borderRadius: 15,
-    height: 55,
+    minHeight: 65,
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.2)",
     overflow: "hidden",
+    paddingTop: 12,
   },
   pickerLabel: {
     fontSize: 9,
     fontWeight: "900",
     color: "#fff",
     position: "absolute",
-    top: 6,
+    top: 12,
     left: 12,
     zIndex: 1,
   },
-  pickerInner: { marginTop: 10 },
+  pickerInner: { marginTop: 0 },
   picker: {
     color: "#fff",
     backgroundColor: "transparent",
+    marginLeft: Platform.OS === "android" ? -10 : 0,
     ...Platform.select({
       web: {
         outlineWidth: 0,

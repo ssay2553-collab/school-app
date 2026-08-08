@@ -12,6 +12,7 @@ import {
     startAfter,
     where,
 } from "firebase/firestore";
+import moment from "moment";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
@@ -189,7 +190,7 @@ export default function AssignmentScores() {
               <Text style={[styles.subjectText, { color: COLORS.primary }]}>{item.subjectId}</Text>
             </View>
             <View style={styles.headerRight}>
-              <Text style={styles.dateText}>{item.markedAt?.toDate().toLocaleDateString()}</Text>
+              <Text style={styles.dateText}>{moment(item.markedAt?.toDate()).format("DD MMM, YYYY")}</Text>
               <SVGIcon name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color="#94A3B8" style={{ marginLeft: 5 }} />
             </View>
           </View>

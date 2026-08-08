@@ -64,6 +64,7 @@ export const PromoteRepeatModal: React.FC<PromoteRepeatModalProps> = ({
           </Text>
 
           <View style={styles.pickerWrapper}>
+            <Text style={styles.miniLabel}>TARGET CLASS</Text>
             <Picker
               selectedValue={targetClassId}
               onValueChange={(val) => onTargetClassChange(val)}
@@ -150,10 +151,22 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     backgroundColor: "#F8FAFC",
     overflow: "hidden",
+    minHeight: 65,
+    justifyContent: "center",
+    paddingTop: 12,
+  },
+  miniLabel: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#64748B",
+    zIndex: 1,
   },
   picker: {
-    height: 50,
     color: "#000",
+    marginLeft: -10,
   },
   buttonRow: {
     flexDirection: "row",

@@ -462,7 +462,7 @@ export default function TeacherProfileEdit() {
                 <View style={styles.settingTextContent}>
                   <Text style={styles.settingLabel}>Contact & Identity</Text>
                   <Text style={styles.settingValue}>
-                    {appUser?.profile?.phone || "No Phone"} • {appUser?.profile?.gender || "Not specified"} • {appUser?.profile?.dob ? new Date(appUser.profile.dob).toLocaleDateString() : "No DOB"}
+                    {appUser?.profile?.phone || "No Phone"} • {appUser?.profile?.gender || "Not specified"} • {appUser?.profile?.dob ? moment(appUser.profile.dob).format("MM/DD/YYYY") : "No DOB"}
                   </Text>
                 </View>
                 <SVGIcon name="create-outline" size={16} color={COLORS.primary} />
@@ -631,6 +631,7 @@ export default function TeacherProfileEdit() {
 
               <Text style={styles.modalLabel}>GENDER</Text>
               <View style={styles.pickerWrapper}>
+                <Text style={styles.miniLabel}>GENDER</Text>
                 <Picker
                   selectedValue={gender}
                   onValueChange={(itemValue) => setGender(itemValue)}
@@ -673,7 +674,7 @@ export default function TeacherProfileEdit() {
                     onPress={() => setShowDatePicker(true)}
                   >
                     <Text style={{ marginTop: 15, fontSize: 16, fontWeight: '600' }}>
-                      {dob.toLocaleDateString()}
+                      {moment(dob).format("MM/DD/YYYY")}
                     </Text>
                   </TouchableOpacity>
 
@@ -731,6 +732,7 @@ export default function TeacherProfileEdit() {
 
               <Text style={styles.modalLabel}>CURRICULUM</Text>
               <View style={styles.pickerWrapper}>
+                <Text style={styles.miniLabel}>CURRICULUM</Text>
                 <Picker
                   selectedValue={curriculum}
                   onValueChange={(v) => {
@@ -1064,13 +1066,23 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     backgroundColor: '#F1F5F9',
     borderRadius: 15,
-    height: 55,
+    minHeight: 65,
     justifyContent: 'center',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    paddingTop: 12,
+  },
+  miniLabel: {
+    position: "absolute",
+    top: 12,
+    left: 12,
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#94A3B8",
+    zIndex: 1,
   },
   picker: {
     width: '100%',
-    height: 55,
+    marginLeft: -10,
   },
   modalBtn: { height: 55, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
   modalBtnText: { color: '#fff', fontSize: 15, fontWeight: '900' }

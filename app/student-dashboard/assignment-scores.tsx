@@ -36,6 +36,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
 import * as Animatable from "react-native-animatable";
+import moment from "moment";
 
 interface ScoreRecord {
   id: string;
@@ -178,7 +179,7 @@ export default function AssignmentScores() {
     const isExpanded = expandedId === item.id;
     const details = assignmentMeta[item.assignmentId];
     const displayDate = item.markedAt
-      ? item.markedAt.toDate().toLocaleDateString()
+      ? moment(item.markedAt.toDate()).format("MM/DD/YYYY")
       : "N/A";
 
     return (

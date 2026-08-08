@@ -114,10 +114,11 @@ export const reconcileStudentBalances = (
        .filter(c => !isolatedKeys.includes(c._category || normalizeCategory(c)))
        .reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
 
-    const termGrossTuition = safeNum(data.termBill);
+    const termGrossTuition = Math.max(safeNum(data.termBill), extraTuitionCharges);
     const termNetTuition = termGrossTuition - safeNum(data.discount);
 
     // Arrears = What was owed before this term - What was paid before this term
+    // IMPORTANT: Arrears calculation must distinguish between previous term debt and current term bill
     const currentTuitionArrears = Math.max(0, cumulativeTuitionBill - cumulativeTuitionPaid);
 
     // Apply unallocated money to existing tuition arrears
@@ -209,6 +210,7 @@ export const reconcileStudentBalances = (
     });
 
     // --- SUMMARY ---
+    // Correct Arrears: Amount owed from PREVIOUS terms only
     const recordTuitionArrears = Math.max(0, (cumulativeTuitionBill - termNetTuition) - (cumulativeTuitionPaid - termTuitionPayment));
     const totalRecordArrears = recordTuitionArrears + currentTotalCategoryArrears;
 

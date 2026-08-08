@@ -2,6 +2,7 @@ import React from "react";
 import {
     ActivityIndicator,
     Image,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -38,9 +39,11 @@ interface AcademicReportPreviewProps {
     adminRemarks: string;
     nextTermBegins: string;
     promotedTo: string;
-    adminSig: string;
+    adminSig: any;
     generating: boolean;
     generatePDF: () => void;
+    refreshing?: boolean;
+    refresh?: () => void;
 }
 
 export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
@@ -71,9 +74,23 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
     adminSig,
     generating,
     generatePDF,
+    refreshing,
+    refresh,
 }) => {
     return (
-        <ScrollView contentContainerStyle={{ padding: 15 }}>
+        <ScrollView
+            contentContainerStyle={{ padding: 15 }}
+            refreshControl={
+                refresh && (
+                    <RefreshControl
+                        refreshing={refreshing || false}
+                        onRefresh={refresh}
+                        colors={[primary]}
+                        tintColor={primary}
+                    />
+                )
+            }
+        >
             <Animatable.View animation="fadeInUp" duration={600} style={styles.paper}>
                 {/* Letterhead */}
                 <View style={styles.paperLetterhead}>
@@ -170,19 +187,6 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
                         </>
                     )}
 
-                    {isFullReport && isPreschool && (
-                        <>
-                            <Text style={styles.paperSectionTitle}>PHYSICAL DEVELOPMENT & ASSESSMENTS</Text>
-                            <Text style={styles.paperRemarkLine}>
-                                {physicalDev.date ? `Date: ${physicalDev.date} | ` : ""}
-                                Height: <Text style={{ fontWeight: "700" }}>{physicalDev.height || "N/A"}m</Text> |
-                                Weight: <Text style={{ fontWeight: "700" }}>{physicalDev.weight || "N/A"}kg</Text>
-                            </Text>
-                            <Text style={[styles.paperRemarkText, { marginTop: 5, fontSize: 9 }]}>
-                                {Object.keys(preschoolAssessments).length} key developmental milestones recorded.
-                            </Text>
-                        </>
-                    )}
 
                     <Text style={[styles.paperSectionTitle, { marginTop: 10 }]}>TEACHER'S REMARKS</Text>
                     <Text style={styles.paperRemarkText}>{teacherRemarks || "Satisfactory performance."}</Text>
@@ -202,11 +206,17 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
                         </View>
                     ) : null}
 
-                    {/* Signature Preview */}
                     <View style={styles.paperSigRow}>
                         <View style={{ flex: 1 }} />
                         <View style={styles.paperSigItem}>
-                            {adminSig ? <Image source={{ uri: adminSig }} style={styles.paperSigImg} /> : <View style={styles.paperSigSpace} />}
+                            {adminSig ? (
+                                <Image
+                                    source={typeof adminSig === 'string' ? { uri: adminSig } : adminSig}
+                                    style={styles.paperSigImg}
+                                />
+                            ) : (
+                                <View style={styles.paperSigSpace} />
+                            )}
                             <View style={styles.paperSigLine} />
                             <Text style={styles.paperSigLabel}>Head of Institution</Text>
                         </View>
@@ -262,8 +272,8 @@ const styles = StyleSheet.create({
     paperNextTermVal: { fontSize: 10, fontWeight: "700", color: "#2e86de" },
     paperSigRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 20, gap: 20 },
     paperSigItem: { flex: 1, alignItems: "center" },
-    paperSigImg: { width: "100%", height: 40, resizeMode: "contain" },
-    paperSigSpace: { height: 40 },
+    paperSigImg: { width: "100%", height: 80, resizeMode: "contain" },
+    paperSigSpace: { height: 80 },
     paperSigLine: { width: "100%", height: 1, backgroundColor: "#1E293B", marginVertical: 4 },
     paperSigLabel: { fontSize: 8, fontWeight: "800", color: "#64748B" },
     downloadBtn: { flexDirection: "row", padding: 16, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },

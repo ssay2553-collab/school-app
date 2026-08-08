@@ -321,79 +321,86 @@ export const usePTACharges = ({
         return false;
       }
 
-      const batch = writeBatch(db);
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
 
-      snap.docs.forEach((sDoc) => {
-        const s = sDoc.data();
-        const existing = existingBillsMap.get(sDoc.id);
-        const oldAmount = existing ? existing.amount : 0;
-        const diff = val - oldAmount;
+      const CHUNK_SIZE = 150; // 3 operations per student, 150*3 = 450 < 500
+      const docs = snap.docs;
 
-        if (diff === 0) return;
+      for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+        const chunk = docs.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
 
-        const serial = existing ? existing.id : `PTA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-        const recordId = `${sDoc.id}_${year}_${term}`;
+        chunk.forEach((sDoc) => {
+          const s = sDoc.data();
+          const existing = existingBillsMap.get(sDoc.id);
+          const oldAmount = existing ? existing.amount : 0;
+          const diff = val - oldAmount;
 
-        const billData = {
-          amount: val,
-          method: "Bulk Charge",
-          receivedFrom: "PTA Dues",
-          updatedBy: appUser?.adminRole || "Admin",
-          adminUid: appUser?.uid || "unknown",
-          createdAt: new Date().toISOString(),
-          receiptNo: serial,
-          date: moment().format("YYYY-MM-DD"),
-          studentUid: sDoc.id,
-          studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-          classId: selectedClassId,
-          className: s.className,
-          type: "pta",
-          academicYear: acadConfig.academicYear,
-          term: acadConfig.currentTerm,
-        };
+          if (diff === 0) return;
 
-        batch.set(doc(db, "feePayments", serial), billData);
+          const serial = existing ? existing.id : `PTA-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+          const recordId = `${sDoc.id}_${year}_${term}`;
 
-        if (existing) {
-          batch.update(doc(db, "studentFeeRecords", recordId), {
-            ptaBill: increment(diff),
-            ptaBalance: increment(diff),
-            balance: increment(diff),
-            lastUpdated: serverTimestamp(),
-            // Remove the old charge from the array and add the new one to keep history clean
-            payments: arrayUnion(billData)
-          });
-        } else {
-          batch.set(
-            doc(db, "studentFeeRecords", recordId),
-            {
-              studentUid: sDoc.id,
-              studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-              classId: selectedClassId,
-              className: s.className,
-              academicYear: acadConfig.academicYear,
-              term: acadConfig.currentTerm,
-              ptaBill: increment(val),
-              ptaBalance: increment(val),
-              balance: increment(val),
-              ptaPaid: 0, // Ensure paid is not touched
-              payments: arrayUnion(billData),
+          const billData = {
+            amount: val,
+            method: "Bulk Charge",
+            receivedFrom: "PTA Dues",
+            updatedBy: appUser?.adminRole || "Admin",
+            adminUid: appUser?.uid || "unknown",
+            createdAt: new Date().toISOString(),
+            receiptNo: serial,
+            date: moment().format("YYYY-MM-DD"),
+            studentUid: sDoc.id,
+            studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+            classId: selectedClassId,
+            className: s.className,
+            type: "pta",
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
+          };
+
+          batch.set(doc(db, "feePayments", serial), billData);
+
+          if (existing) {
+            batch.update(doc(db, "studentFeeRecords", recordId), {
+              ptaBill: increment(diff),
+              ptaBalance: increment(diff),
+              balance: increment(diff),
               lastUpdated: serverTimestamp(),
-            },
-            { merge: true }
-          );
-        }
+              // Remove the old charge from the array and add the new one to keep history clean
+              payments: arrayUnion(billData)
+            });
+          } else {
+            batch.set(
+              doc(db, "studentFeeRecords", recordId),
+              {
+                studentUid: sDoc.id,
+                studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+                classId: selectedClassId,
+                className: s.className,
+                academicYear: acadConfig.academicYear,
+                term: acadConfig.currentTerm,
+                ptaBill: increment(val),
+                ptaBalance: increment(val),
+                balance: increment(val),
+                ptaPaid: 0, // Ensure paid is not touched
+                payments: arrayUnion(billData),
+                lastUpdated: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          }
 
-        batch.update(sDoc.ref, {
-          ptaBalance: increment(diff),
-          ptaBill: increment(diff),
-          walletBalance: increment(diff),
+          batch.update(sDoc.ref, {
+            ptaBalance: increment(diff),
+            ptaBill: increment(diff),
+            walletBalance: increment(diff),
+          });
         });
-      });
 
-      await batch.commit();
+        await batch.commit();
+      }
 
       showToast({ message: `PTA charges applied to ${snap.size} students`, type: "success" });
 

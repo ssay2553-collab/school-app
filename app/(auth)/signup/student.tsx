@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import React, { useEffect, useState } from "react";
+import moment from "moment";
 import {
     ActivityIndicator,
     Alert,
@@ -418,6 +419,7 @@ export default function StudentSignupScreen() {
 
       const userData: any = {
         uid: userId,
+        authUid: userId, // Added to ensure cleanup hooks recognize this as a valid Auth document
         email: finalEmail,
         role: "student",
         status: "active",
@@ -426,6 +428,7 @@ export default function StudentSignupScreen() {
           firstName: form.firstName || preRegisteredData?.profile?.firstName,
           lastName: form.lastName || preRegisteredData?.profile?.lastName,
           fullName: `${form.firstName || preRegisteredData?.profile?.firstName} ${form.lastName || preRegisteredData?.profile?.lastName}`,
+          email: finalEmail,
           gender: form.gender || preRegisteredData?.profile?.gender || "",
           profileImage: profileImageUrl || preRegisteredData?.profile?.profileImage || null,
           dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : (preRegisteredData?.dateOfBirth || null),
@@ -498,7 +501,7 @@ export default function StudentSignupScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           
-          <Animatable.View animation="fadeInDown" useNativeDriver={useNativeDriver} style={styles.header}>
+          <Animatable.View animation="fadeInDown" useNativeDriver={Platform.OS !== 'web'} style={styles.header}>
             <View style={styles.iconCircle}>
               <SVGIcon name="school" size={40} color={primary} />
             </View>
@@ -508,7 +511,7 @@ export default function StudentSignupScreen() {
           </Animatable.View>
 
           {step === 1 && (
-            <Animatable.View animation="fadeInRight" useNativeDriver={useNativeDriver} style={styles.stepContainer}>
+            <Animatable.View animation="fadeInRight" useNativeDriver={Platform.OS !== 'web'} style={styles.stepContainer}>
               <View style={styles.codeCard}>
                 <View style={[styles.iconBadge, { backgroundColor: primary + '15' }]}>
                   <SVGIcon name="key" size={32} color={primary} />
@@ -554,7 +557,7 @@ export default function StudentSignupScreen() {
           )}
 
           {step === 2 && (
-            <Animatable.View animation="fadeInRight" useNativeDriver={useNativeDriver} style={styles.stepContainer}>
+            <Animatable.View animation="fadeInRight" useNativeDriver={Platform.OS !== 'web'} style={styles.stepContainer}>
               <View style={styles.card}>
                 <Text style={[styles.themedDefault, styles.cardHeader]}>Account Details</Text>
                 
@@ -595,12 +598,12 @@ export default function StudentSignupScreen() {
           )}
 
           {step === 3 && (
-            <Animatable.View animation="fadeInRight" useNativeDriver={useNativeDriver} style={styles.stepContainer}>
+            <Animatable.View animation="fadeInRight" useNativeDriver={Platform.OS !== 'web'} style={styles.stepContainer}>
                <View style={styles.card}>
                  <Text style={[styles.themedDefault, styles.cardHeader]}>Student Profile</Text>
                  
                  <View style={styles.inputGroup}>
-                   <Text style={[styles.themedDefault, styles.inputLabel]}>GENDER</Text>
+                   <Text style={[styles.themedDefault, styles.inputLabel, { position: 'absolute', top: 12, left: 12, zIndex: 1 }]}>GENDER</Text>
                    <View style={styles.pickerWrapper}>
                      <Picker
                        selectedValue={form.gender}
@@ -608,7 +611,7 @@ export default function StudentSignupScreen() {
                        style={styles.picker}
                        enabled={!loading}
                      >
-                       <Picker.Item label="Select Gender" value="" />
+                       <Picker.Item label="" value="" />
                        <Picker.Item label="Male" value="Male" />
                        <Picker.Item label="Female" value="Female" />
                      </Picker>
@@ -648,7 +651,7 @@ export default function StudentSignupScreen() {
                          activeOpacity={0.7}
                         >
                           <Text style={[styles.themedDefault, styles.dateText, !form.dateOfBirth && { color: "#94A3B8" }]}>
-                            {form.dateOfBirth ? form.dateOfBirth.toLocaleDateString() : "Select Date of Birth"}
+                            {form.dateOfBirth ? moment(form.dateOfBirth).format("MMM DD, YYYY") : "Select Date of Birth"}
                           </Text>
                           <SVGIcon name="calendar" size={20} color={primary} />
                        </TouchableOpacity>
@@ -670,7 +673,7 @@ export default function StudentSignupScreen() {
                  </View>
 
                  <View style={styles.inputGroup}>
-                   <Text style={[styles.themedDefault, styles.inputLabel]}>YOUR CLASS</Text>
+                   <Text style={[styles.themedDefault, styles.inputLabel, { position: 'absolute', top: 12, left: 12, zIndex: 1 }]}>YOUR CLASS</Text>
                    <View style={styles.pickerWrapper}>
                      <Picker
                        selectedValue={form.selectedClassId}
@@ -678,7 +681,7 @@ export default function StudentSignupScreen() {
                        style={styles.picker}
                        enabled={!loading}
                      >
-                       <Picker.Item label="Which class are you in?" value="" />
+                       <Picker.Item label="" value="" />
                        {classes.map((c) => (
                          <Picker.Item key={c.id} label={c.name} value={c.id} />
                        ))}
@@ -814,8 +817,15 @@ const styles = StyleSheet.create({
   },
   input: { flex: 1, height: 55, paddingHorizontal: 15, fontSize: 14, color: "#1E293B" },
   eyeIcon: { paddingHorizontal: 12, height: '100%', justifyContent: 'center' },
-  pickerWrapper: { backgroundColor: "#F1F5F9", borderRadius: 12, height: 55, justifyContent: 'center', overflow: 'hidden' },
-  picker: { width: '100%', height: 55, color: '#1E293B' },
+  pickerWrapper: {
+    backgroundColor: "#F1F5F9",
+    borderRadius: 12,
+    minHeight: 65,
+    justifyContent: 'center',
+    paddingTop: 12,
+    position: 'relative'
+  },
+  picker: { width: '100%', height: 45, color: '#1E293B', marginLeft: -10 },
   datePickerBtn: { 
     backgroundColor: "#F1F5F9", 
     borderRadius: 12, 

@@ -1,5 +1,6 @@
-import { serverTimestamp, doc } from "firebase/firestore";
+import { serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "../../../firebaseConfig";
+import { mergeFinancialData } from "./utils";
 
 export const migrateStudentIdentity = async (
   recordsSnap: any,
@@ -12,7 +13,7 @@ export const migrateStudentIdentity = async (
   commitBatch: () => Promise<void>,
   currentBatch: {
     update: (ref: any, data: any) => void;
-    set: (ref: any, data: any) => void;
+    set: (ref: any, data: any, options?: any) => void;
     delete: (ref: any) => void;
   },
   getOpCount: () => number,
@@ -23,46 +24,83 @@ export const migrateStudentIdentity = async (
   let orphanedPaymentsCount = 0;
   let dailyFinancialsFixedCount = 0;
 
-  // 1. Metadata Cleanup Phase (studentFeeRecords)
-  recordsSnap.docs.forEach((d: any) => {
+  // Track the final merged state of every record key (UID_AY_TERM)
+  const consolidatedRecords = new Map<string, any>();
+  const recordsToDelete = new Set<any>();
+
+  // 1. PHASE 1: Consolidation and Strongest-Value Resolution
+  for (const d of recordsSnap.docs) {
     const data = d.data();
     const id = d.id;
-    const currentUid = data.studentUid || id.split("_")[0];
-    const resolvedUid = resolveUid(currentUid, data.studentName, id);
+    const parts = id.split("_");
+    const currentUidInId = parts[0];
+    const resolvedUid = resolveUid(data.studentUid || currentUidInId, data.studentName, id);
 
-    if (
-      !data.academicYear ||
-      !data.term ||
-      !data.studentUid ||
-      (resolvedUid && resolvedUid !== data.studentUid)
-    ) {
+    if (!resolvedUid) {
       orphanedRecordsCount++;
-      const parts = id.split("_");
-      if (parts.length >= 3) {
-        const academicYearStr = parts[1].replace(/-/g, "/");
-        const termStr = parts[2];
-        if (
-          resolvedUid &&
-          academicYearStr.includes("/") &&
-          termStr.toLowerCase().includes("term")
-        ) {
-          recordUpdates.set(id, {
-            academicYear: academicYearStr,
-            term: termStr,
-            studentUid: resolvedUid,
-            lastUpdated: serverTimestamp(),
-          });
-          fixedRecordsCount++;
-        }
-      } else if (resolvedUid) {
-        recordUpdates.set(id, {
+      continue;
+    }
+
+    const academicYear = data.academicYear || (parts.length >= 2 ? parts[1].replace(/-/g, "/") : null);
+    const term = data.term || (parts.length >= 3 ? parts[2] : null);
+
+    if (academicYear && term) {
+      const cleanYear = academicYear.replace(/\//g, "-");
+      const cleanTerm = term.replace(/\s/g, "");
+      const newDocId = `${resolvedUid}_${cleanYear}_${cleanTerm}`;
+
+      // If we already have a version of this record in our consolidation map, merge them
+      const existing = consolidatedRecords.get(newDocId);
+      if (existing) {
+        consolidatedRecords.set(newDocId, mergeFinancialData(existing, data));
+      } else {
+        consolidatedRecords.set(newDocId, {
+          ...data,
           studentUid: resolvedUid,
-          lastUpdated: serverTimestamp(),
+          academicYear,
+          term
         });
-        fixedRecordsCount++;
+      }
+
+      // If the current document ID isn't the canonical ID or uses the wrong UID, mark it for deletion
+      if (id !== newDocId) {
+        recordsToDelete.add(d.ref);
       }
     }
-  });
+  }
+
+  // 2. PHASE 2: Execution (Write Consolidated, then Delete)
+  const writtenKeys = new Set<string>();
+  for (const [newId, mergedData] of consolidatedRecords.entries()) {
+    if (getOpCount() >= 450) await commitBatch();
+    currentBatch.set(doc(db, "studentFeeRecords", newId), {
+      ...mergedData,
+      lastUpdated: serverTimestamp(),
+    }, { merge: true });
+    incrementOpCount(1);
+    writtenKeys.add(newId);
+    fixedRecordsCount++;
+  }
+
+  // PHASE 3: VERIFICATION - Only delete if a canonical record exists
+  for (const ref of recordsToDelete) {
+    const id = ref.id;
+    const parts = id.split("_");
+    const resolvedUid = resolveUid(parts[0], undefined, id);
+
+    if (resolvedUid) {
+      const year = (parts.length >= 2 ? parts[1].replace(/\//g, "-") : "");
+      const term = (parts.length >= 3 ? parts[2].replace(/\s/g, "") : "");
+      const canonicalId = `${resolvedUid}_${year}_${term}`;
+
+      // Check if we just wrote it in this batch or if it already exists in the map
+      if (writtenKeys.has(canonicalId) || consolidatedRecords.has(canonicalId)) {
+        if (getOpCount() >= 450) await commitBatch();
+        currentBatch.delete(ref);
+        incrementOpCount(1);
+      }
+    }
+  }
 
   // 2. Payment Integrity Phase
   paymentsSnap.docs.forEach((d: any) => {

@@ -7,6 +7,7 @@ import {
   where,
   updateDoc,
   doc,
+  or,
 } from "firebase/firestore";
 import React, { useState } from "react";
 import {
@@ -66,7 +67,13 @@ export default function TokenResetScreen() {
 
       // Find user by email
       const usersRef = collection(db, "users");
-      const q = query(usersRef, where("profile.email", "==", cleanEmail));
+      const q = query(
+        usersRef,
+        or(
+          where("profile.email", "==", cleanEmail),
+          where("email", "==", cleanEmail)
+        )
+      );
       const snap = await getDocs(q);
 
       if (snap.empty) {

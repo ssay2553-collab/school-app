@@ -33,6 +33,7 @@ import {
     TouchableOpacity,
     View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -62,6 +63,7 @@ export default function EditStudentScores() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
+  const insets = useSafeAreaInsets();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -264,7 +266,8 @@ export default function EditStudentScores() {
       const snap = await getDoc(doc(db, "academicRecords", docId));
       if (snap.exists()) {
         setRecordId(snap.id);
-        const students = (snap.data() as any).students || [];
+        const data = snap.data() as any;
+        const students = Array.isArray(data.students) ? data.students : [];
         masterDataRef.current = {};
         setAllStudents(students);
         initialDataRef.current = JSON.stringify(students);
@@ -272,7 +275,9 @@ export default function EditStudentScores() {
         // Populate initial data map for per-student modification tracking
         initialDataMapRef.current.clear();
         students.forEach((s: any) => {
-          initialDataMapRef.current.set(s.studentId, JSON.stringify(s));
+          if (s && s.studentId) {
+            initialDataMapRef.current.set(s.studentId, JSON.stringify(s));
+          }
         });
 
         setVisibleStudents(students.slice(0, PAGE_SIZE));
@@ -454,10 +459,13 @@ export default function EditStudentScores() {
 
       allSnap.docs.forEach((d) => {
         const data = d.data();
-        (data.students || []).forEach((s: any) => {
-          studentTotals[s.studentId] =
-            (studentTotals[s.studentId] || 0) + (parseFloat(s.finalScore) || 0);
-          if (!studentNames[s.studentId]) studentNames[s.studentId] = s.fullName;
+        const studentsArr = Array.isArray(data.students) ? data.students : [];
+        studentsArr.forEach((s: any) => {
+          if (s && s.studentId) {
+            studentTotals[s.studentId] =
+              (studentTotals[s.studentId] || 0) + (parseFloat(s.finalScore) || 0);
+            if (!studentNames[s.studentId]) studentNames[s.studentId] = s.fullName;
+          }
         });
       });
 
@@ -565,7 +573,7 @@ export default function EditStudentScores() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <>
-            <LinearGradient colors={[primary, secondary]} style={styles.header}>
+            <LinearGradient colors={[primary, secondary]} style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 10 }]}>
               <View style={styles.headerTop}>
                 <TouchableOpacity
                   onPress={handleBack}
@@ -742,7 +750,14 @@ export default function EditStudentScores() {
       />
 
       {recordId && allStudents.length > 0 ? (
-        <Animatable.View animation="slideInUp" duration={400} style={styles.footer}>
+        <Animatable.View
+          animation="slideInUp"
+          duration={400}
+          style={[
+            styles.footer,
+            { paddingBottom: Math.max(insets.bottom, 16) }
+          ]}
+        >
           <TouchableOpacity
             style={styles.deleteBtn}
             onPress={handleDeleteRecord}
@@ -783,7 +798,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: {
-    paddingTop: Platform.OS === "android" ? 40 : 50,
     paddingHorizontal: 20,
     paddingBottom: 25,
     borderBottomLeftRadius: 30,
@@ -972,7 +986,6 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: "#fff",
     padding: 16,
-    paddingBottom: Platform.OS === "ios" ? 34 : 16,
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
     flexDirection: "row",

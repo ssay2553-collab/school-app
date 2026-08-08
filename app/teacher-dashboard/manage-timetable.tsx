@@ -29,6 +29,7 @@ import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, MONTESSORI_SUBJECTS, COMMON_ACTIVITIE
 import SVGIcon from "../../components/SVGIcon";
 import { useManageTimetable, Period } from "../../hooks/teacher-dashboard/useManageTimetable";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import moment from "moment";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -136,7 +137,7 @@ export default function CreateLessonTimetable() {
   const handleTimeChange = (event: any, date?: Date) => {
     if (Platform.OS === 'android') setTimeModal(null);
     if (date && timeModal) {
-      const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+      const timeString = moment(date).format("hh:mm A");
       updateColumnPeriod(timeModal.col, timeModal.type === "start" ? { startTime: timeString } : { endTime: timeString });
     }
   };
@@ -147,7 +148,7 @@ export default function CreateLessonTimetable() {
     const [h, m] = val.split(':').map(Number);
     const date = new Date();
     date.setHours(h, m, 0, 0);
-    const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    const timeString = moment(date).format("hh:mm A");
     updateColumnPeriod(col, type === "start" ? { startTime: timeString } : { endTime: timeString });
   };
 
@@ -192,8 +193,8 @@ export default function CreateLessonTimetable() {
       <View style={styles.controls}>
         <View style={styles.controlRow}>
           <View style={{ flex: 1, marginRight: 10 }}>
-            <Text style={styles.label}>SELECT CLASS</Text>
             <View style={styles.pickerContainer}>
+              <Text style={styles.label}>SELECT CLASS</Text>
               <Picker
                 selectedValue={selectedClass}
                 onValueChange={(val) => setSelectedClass(val)}
@@ -204,8 +205,8 @@ export default function CreateLessonTimetable() {
             </View>
           </View>
           <View style={{ width: 120 }}>
-            <Text style={styles.label}>PERIODS</Text>
             <View style={styles.pickerContainer}>
+              <Text style={styles.label}>PERIODS</Text>
               <Picker
                 selectedValue={numColumns}
                 onValueChange={(v) => setNumColumns(v)}
@@ -395,15 +396,18 @@ const styles = StyleSheet.create({
   backBtn: { padding: 5 },
   controls: { padding: 15, backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
   controlRow: { flexDirection: "row", alignItems: "center" },
-  label: { fontSize: 10, fontWeight: "900", color: "#64748B", marginBottom: 5 },
+  label: { fontSize: 10, fontWeight: "900", color: "#64748B", position: 'absolute', top: 12, left: 12, zIndex: 1 },
   pickerContainer: {
     backgroundColor: "#fff",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#CBD5E1",
-    overflow: "hidden",
+    minHeight: 65,
+    justifyContent: 'center',
+    paddingTop: 12,
+    position: 'relative'
   },
-  picker: { height: 45, width: "100%" },
+  picker: { height: 45, width: "100%", marginLeft: -10 },
   gridHeader: { flexDirection: "row" },
   gridRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
   gridCell: {

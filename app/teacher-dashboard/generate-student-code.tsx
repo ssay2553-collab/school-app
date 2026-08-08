@@ -162,10 +162,10 @@ export default function GenerateStudentCode() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>TARGET CLASSROOM</Text>
             <View style={styles.pickerContainer}>
+              <Text style={styles.label}>TARGET CLASSROOM</Text>
               {fetchingClasses ? (
-                <ActivityIndicator size="small" color={primary} />
+                <ActivityIndicator size="small" color={primary} style={{ alignSelf: 'flex-start', marginLeft: 15 }} />
               ) : (
                 <Picker
                   selectedValue={selectedClassId}
@@ -279,16 +279,18 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 11, fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5 },
   sectionSubtitle: { fontSize: 14, fontWeight: '700', color: '#1E293B', marginTop: 2 },
   inputGroup: { marginBottom: 20 },
-  label: { fontSize: 9, fontWeight: '900', color: '#64748B', marginBottom: 10, letterSpacing: 1 },
+  label: { fontSize: 9, fontWeight: '900', color: '#64748B', letterSpacing: 1, position: 'absolute', top: 12, left: 14, zIndex: 1 },
   pickerContainer: { 
     backgroundColor: '#F8FAFC', 
     borderRadius: 16, 
     borderWidth: 1, 
     borderColor: '#E2E8F0',
-    height: 56,
-    justifyContent: 'center'
+    minHeight: 65,
+    justifyContent: 'center',
+    paddingTop: 12,
+    position: 'relative'
   },
-  picker: { width: '100%', height: 56 },
+  picker: { width: '100%', marginLeft: -10 },
   generateBtn: { borderRadius: 18, overflow: 'hidden', ...SHADOWS.small },
   btnGradient: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   generateBtnText: { color: '#fff', fontWeight: '900', fontSize: 16, letterSpacing: 0.5 },

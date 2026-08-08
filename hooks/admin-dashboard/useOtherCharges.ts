@@ -350,88 +350,94 @@ export const useOtherCharges = ({
       );
       const snap = await getDocsFromServer(q);
 
-      const batch = writeBatch(db);
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
+      const docs = snap.docs;
+      const CHUNK_SIZE = 150;
 
-      snap.docs.forEach((sDoc) => {
-        const s = sDoc.data();
-        const existing = existingBillsMap.get(sDoc.id);
-        const oldAmount = existing ? existing.amount : 0;
-        const diff = val - oldAmount;
+      for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+        const chunk = docs.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
 
-        if (diff === 0 && existing) return;
+        chunk.forEach((sDoc) => {
+          const s = sDoc.data();
+          const existing = existingBillsMap.get(sDoc.id);
+          const oldAmount = existing ? existing.amount : 0;
+          const diff = val - oldAmount;
 
-        const serial = existing ? existing.id : `BILL-OTH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-        const recordId = `${sDoc.id}_${year}_${term}`;
+          if (diff === 0 && existing) return;
 
-        const billData = {
-          amount: val,
-          method: "Bulk Charge",
-          receivedFrom: chargeType.trim(),
-          updatedBy: appUser?.adminRole || "Admin",
-          adminUid: appUser?.uid || "unknown",
-          createdAt: new Date().toISOString(),
-          receiptNo: serial,
-          date: moment().format("YYYY-MM-DD"),
-          studentUid: sDoc.id,
-          studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-          classId: selectedClassId,
-          className: s.className,
-          type: "other",
-          otherCategory: chargeType.trim(),
-          academicYear: acadConfig.academicYear,
-          term: acadConfig.currentTerm,
-        };
+          const serial = existing ? existing.id : `BILL-OTH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+          const recordId = `${sDoc.id}_${year}_${term}`;
 
-        batch.set(doc(db, "feePayments", serial), billData);
+          const billData = {
+            amount: val,
+            method: "Bulk Charge",
+            receivedFrom: chargeType.trim(),
+            updatedBy: appUser?.adminRole || "Admin",
+            adminUid: appUser?.uid || "unknown",
+            createdAt: new Date().toISOString(),
+            receiptNo: serial,
+            date: moment().format("YYYY-MM-DD"),
+            studentUid: sDoc.id,
+            studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+            classId: selectedClassId,
+            className: s.className,
+            type: "other",
+            otherCategory: chargeType.trim(),
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
+          };
 
-        batch.update(sDoc.ref, {
-          otherBill: increment(diff),
-          otherBalance: increment(diff),
-          walletBalance: increment(diff),
-        });
+          batch.set(doc(db, "feePayments", serial), billData);
 
-        if (existing) {
-          batch.update(doc(db, "studentFeeRecords", recordId), {
+          batch.update(sDoc.ref, {
             otherBill: increment(diff),
             otherBalance: increment(diff),
-            balance: increment(diff),
-            lastUpdated: serverTimestamp(),
+            walletBalance: increment(diff),
           });
-        } else {
-          batch.set(
-            doc(db, "studentFeeRecords", recordId),
-            {
-              studentUid: sDoc.id,
-              studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-              classId: selectedClassId,
-              className: s.className,
-              academicYear: acadConfig.academicYear,
-              term: acadConfig.currentTerm,
-              otherBill: increment(val),
-              otherBalance: increment(val),
-              balance: increment(val),
-              payments: arrayUnion(billData),
+
+          if (existing) {
+            batch.update(doc(db, "studentFeeRecords", recordId), {
+              otherBill: increment(diff),
+              otherBalance: increment(diff),
+              balance: increment(diff),
               lastUpdated: serverTimestamp(),
-            },
-            { merge: true }
-          );
-        }
+            });
+          } else {
+            batch.set(
+              doc(db, "studentFeeRecords", recordId),
+              {
+                studentUid: sDoc.id,
+                studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+                classId: selectedClassId,
+                className: s.className,
+                academicYear: acadConfig.academicYear,
+                term: acadConfig.currentTerm,
+                otherBill: increment(val),
+                otherBalance: increment(val),
+                balance: increment(val),
+                payments: arrayUnion(billData),
+                lastUpdated: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          }
 
-        if (!existing) {
-          sendNotification({
-            recipientId: sDoc.id,
-            senderId: appUser?.uid || "admin",
-            senderName: appUser?.displayName || "Administrator",
-            title: "New Fee Item Billed",
-            body: `An amount of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} for '${chargeType}' has been added to the bill.`,
-            type: "payment",
-          }).catch((err) => console.error("Bulk notification error:", err));
-        }
-      });
+          if (!existing) {
+            sendNotification({
+              recipientId: sDoc.id,
+              senderId: appUser?.uid || "admin",
+              senderName: appUser?.displayName || "Administrator",
+              title: "New Fee Item Billed",
+              body: `An amount of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} for '${chargeType}' has been added to the bill.`,
+              type: "payment",
+            }).catch((err) => console.error("Bulk notification error:", err));
+          }
+        });
 
-      await batch.commit();
+        await batch.commit();
+      }
 
       // Propagate changes to future terms for each student
       snap.docs.forEach((sDoc) => {
@@ -469,37 +475,43 @@ export const useOtherCharges = ({
       );
       const snap = await getDocsFromServer(q);
 
-      const batch = writeBatch(db);
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
+      const docs = snap.docs;
+      const CHUNK_SIZE = 150;
 
-      for (const d of snap.docs) {
-        const data = d.data();
-        const studentUid = data.studentUid;
-        const amount = data.amount;
-        const recordId = `${studentUid}_${year}_${term}`;
+      for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+        const chunk = docs.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
 
-        batch.update(doc(db, "users", studentUid), {
-          otherBill: increment(-amount),
-          otherBalance: increment(-amount),
-          walletBalance: increment(-amount),
-        });
+        for (const d of chunk) {
+          const data = d.data();
+          const studentUid = data.studentUid;
+          const amount = data.amount;
+          const recordId = `${studentUid}_${year}_${term}`;
 
-        batch.set(
-          doc(db, "studentFeeRecords", recordId),
-          {
+          batch.update(doc(db, "users", studentUid), {
             otherBill: increment(-amount),
             otherBalance: increment(-amount),
-            balance: increment(-amount),
-            payments: arrayRemove(data),
-          },
-          { merge: true }
-        );
+            walletBalance: increment(-amount),
+          });
 
-        batch.delete(d.ref);
+          batch.set(
+            doc(db, "studentFeeRecords", recordId),
+            {
+              otherBill: increment(-amount),
+              otherBalance: increment(-amount),
+              balance: increment(-amount),
+              payments: arrayRemove(data),
+            },
+            { merge: true }
+          );
+
+          batch.delete(d.ref);
+        }
+
+        await batch.commit();
       }
-
-      await batch.commit();
 
       // Propagate changes to future terms for each affected student
       snap.docs.forEach((d) => {

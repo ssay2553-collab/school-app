@@ -71,7 +71,7 @@ export const useFeeStudents = (
           snap = await getDocsFromCache(q as any);
         }
 
-        if (myRequestId !== requestIdRef.current) return;
+        if (!snap || myRequestId !== requestIdRef.current) return;
 
         if (snap.empty) {
           hasMoreRef.current = false;
@@ -130,6 +130,8 @@ export const useFeeStudents = (
             className:
               classes.find((c) => c.id === userData.classId)?.name || "Class",
             // Arrears now represents accumulated tuition debt from previous terms
+            // FALLBACK: If no term record exists, we must rely on the user's global walletBalance
+            // which stores the lifetime debt until it's "consumed" by a new term bill.
             previousBalance: feeData ? (feeData.arrears || 0) : (userData.walletBalance || 0),
             // Global total paid (tuition)
             amountPaid: feeData ? (feeData.amountPaid || 0) : 0,
@@ -152,18 +154,18 @@ export const useFeeStudents = (
             booksPaid: feeData?.booksPaid || 0,
             uniformPaid: feeData?.uniformPaid || 0,
             otherPaid: feeData?.otherPaid || 0,
-            totalPayable: feeData?.totalPayable || 0,
+            totalPayable: feeData ? (feeData.totalPayable || 0) : (userData.walletBalance || 0),
             editCount: feeData?.editCount || 0,
             onDiscount: userData.onDiscount,
             discountAmount: userData.discountAmount,
             onScholarship: userData.onScholarship,
-            // Wallet-level category fields
-            ptaBalance: userData.ptaBalance || 0,
-            admissionBalance: userData.admissionBalance || 0,
-            maintenanceBalance: userData.maintenanceBalance || 0,
-            booksBalance: userData.booksBalance || 0,
-            uniformBalance: userData.uniformBalance || 0,
-            otherBalance: userData.otherBalance || 0,
+            // Wallet-level category fields fallback to global balances if term record is missing
+            ptaBalance: feeData ? (feeData.ptaBalance || 0) : (userData.ptaBalance || 0),
+            admissionBalance: feeData ? (feeData.admissionBalance || 0) : (userData.admissionBalance || 0),
+            maintenanceBalance: feeData ? (feeData.maintenanceBalance || 0) : (userData.maintenanceBalance || 0),
+            booksBalance: feeData ? (feeData.booksBalance || 0) : (userData.booksBalance || 0),
+            uniformBalance: feeData ? (feeData.uniformBalance || 0) : (userData.uniformBalance || 0),
+            otherBalance: feeData ? (feeData.otherBalance || 0) : (userData.otherBalance || 0),
           };
         });
 

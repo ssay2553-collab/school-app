@@ -3,7 +3,7 @@ import { Alert, Platform, Share } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
-import { initializeApp } from "firebase/app";
+import { initializeApp, deleteApp } from "firebase/app";
 import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import {
   arrayRemove,
@@ -29,6 +29,8 @@ import { httpsCallable } from "firebase/functions";
 import { db, functions, storage } from "../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
+import { useFinanceCleanup } from "./useFinanceCleanup";
+import { useAcademicCleanup } from "./useAcademicCleanup";
 import { User, UserRole, PermissionLevel, AssignmentModalState, PERMISSION_KEYS } from "./manage-users-types";
 
 interface UseManageUsersProps {
@@ -252,69 +254,164 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       const response = await fetch(fileUri);
       const csvText = await response.text();
 
-      const rows = csvText.split(/\r?\n/).filter((line) => line.trim() !== "");
+      const rows = csvText.split(/\r?\n|\r/).filter((line) => line.trim() !== "");
       if (rows.length < 2) throw new Error("CSV file is empty or missing data.");
 
       const userData = rows.slice(1);
-      const batch = writeBatch(db);
+
       let count = 0;
+      let activatedCount = 0;
+      let pendingCount = 0;
       let studentIncrement = 0;
       let staffIncrement = 0;
+      let importErrors: string[] = [];
 
-      for (const row of userData) {
-        const values = row.split(",").map((v) => v.trim());
-        if (values.length < 2) continue;
-
-        const firstName = values[0];
-        const lastName = values[1];
-        const gender = values[2] || "";
-        const extraInput = values[3];
-        const emergencyPhone = values[4] || "";
-        const parentPhone = values[5] || "";
-
-        if (!firstName || !lastName) continue;
-
-        const signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const tempId = doc(collection(db, "users")).id;
-
-        const newUserDoc: any = {
-          uid: tempId,
-          role: selectedRole,
-          status: "pending_activation",
-          signupCode: signupCode,
-          profile: { firstName, lastName, gender, emergencyPhone, parentPhone },
-          createdAt: Timestamp.now(),
-        };
-
-        if (selectedRole === "student") {
-          let targetClassId = "";
-          if (extraInput) {
-            const matchedClass = allClasses.find(
-              (c) => c.name.toLowerCase() === extraInput.toLowerCase() || c.id === extraInput,
-            );
-            targetClassId = matchedClass ? matchedClass.id : "";
-          } else {
-            targetClassId = selectedClassId === "all" ? "" : selectedClassId;
-          }
-          newUserDoc.classId = targetClassId;
-          studentIncrement++;
-        } else if (["admin", "staff", "teacher"].includes(selectedRole || "")) {
-          if (extraInput) newUserDoc.adminRole = extraInput;
-          staffIncrement++;
-        }
-
-        batch.set(doc(db, "users", tempId), newUserDoc);
-        count++;
+      // Initialize secondary auth for bulk creation if needed
+      const firebaseConfig = (SCHOOL_CONFIG as any).firebase;
+      if (!firebaseConfig || !firebaseConfig.apiKey) {
+        throw new Error("Invalid school configuration: Firebase credentials missing for bulk activation.");
       }
 
-      if (count > 0) {
-        const statsRef = doc(db, "stats", "global");
-        const statsUpdate: any = {};
-        if (studentIncrement > 0) statsUpdate.totalStudents = increment(studentIncrement);
-        if (staffIncrement > 0) statsUpdate.totalStaff = increment(staffIncrement);
-        if (Object.keys(statsUpdate).length > 0) batch.set(statsRef, statsUpdate, { merge: true });
-        await batch.commit();
-        showToast?.({ message: `Created ${count} pending ${selectedRole} profiles.`, type: "success" });
+      // Reuse or initialize the secondary app more efficiently
+      const secondaryAppName = `bulk-import-${Date.now()}`;
+      const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+      const secondaryAuth = getAuth(secondaryApp);
+
+      try {
+        // Firestore batch limit is 500. Each user has 1 set.
+        const CHUNK_SIZE = 450;
+        for (let i = 0; i < userData.length; i += CHUNK_SIZE) {
+          const chunk = userData.slice(i, i + CHUNK_SIZE);
+          const batch = writeBatch(db);
+          let chunkStudentIncrement = 0;
+          let chunkStaffIncrement = 0;
+
+          for (const row of chunk) {
+            const values = row.split(/[,;\t]/).map(v => v.trim().replace(/^"|"$/g, ''));
+
+            if (values.length < 2) continue;
+
+            const firstName = values[0];
+            const lastName = values[1];
+            const gender = values[2] || "";
+            const extraInput = values[3];
+
+            const cleanString = (val: string) => {
+              if (!val) return "";
+              const cleaned = val.trim().replace(/^"|"$/g, '');
+              if (cleaned.toUpperCase().includes("E+")) {
+                const num = Number(cleaned);
+                return isNaN(num) ? cleaned : num.toLocaleString("fullwide", { useGrouping: false });
+              }
+              return cleaned;
+            };
+
+            const emergencyPhone = cleanString(values[4] || "");
+            const parentPhone = cleanString(values[5] || "");
+            const email = cleanString(values[6] || "");
+            const password = values[7] || "";
+
+            if (!firstName || !lastName || firstName.toLowerCase() === "firstname") continue;
+
+            let authUid = "";
+            let signupCode = "";
+            let status = "pending_activation";
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (email && password && password.length >= 6) {
+              if (!emailRegex.test(email)) {
+                importErrors.push(`${firstName} ${lastName}: Invalid email "${email}"`);
+                signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                pendingCount++;
+              } else {
+                try {
+                  const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+                  authUid = userCred.user.uid;
+                  status = "active";
+                  activatedCount++;
+                } catch (authError: any) {
+                  const errorCode = (authError as any).code || 'auth-error';
+                  console.warn(`Auth Error for ${email}: ${errorCode}`);
+                  importErrors.push(`${firstName} ${lastName} (${email}): ${errorCode}`);
+                  signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                  pendingCount++;
+                }
+              }
+            } else {
+              signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+              pendingCount++;
+            }
+
+            const tempId = authUid || doc(collection(db, "users")).id;
+
+            const newUserDoc: any = {
+              uid: tempId,
+              role: selectedRole,
+              status: status,
+              profile: { firstName, lastName, gender, emergencyPhone, parentPhone },
+              createdAt: Timestamp.now(),
+            };
+
+            if (signupCode) newUserDoc.signupCode = signupCode;
+            if (email) {
+              newUserDoc.email = email.toLowerCase();
+              newUserDoc.profile.email = email.toLowerCase();
+            }
+            if (authUid) {
+              newUserDoc.authUid = authUid;
+              newUserDoc.hasLoginEnabled = true;
+            }
+
+            if (selectedRole === "student") {
+              let targetClassId = "";
+              if (extraInput) {
+                const matchedClass = allClasses.find(
+                  (c) => c.name.toLowerCase() === extraInput.toLowerCase() || c.id === extraInput,
+                );
+                targetClassId = matchedClass ? matchedClass.id : "";
+              } else {
+                targetClassId = selectedClassId === "all" ? "" : selectedClassId;
+              }
+              newUserDoc.classId = targetClassId;
+              chunkStudentIncrement++;
+            } else if (["admin", "staff", "teacher"].includes(selectedRole || "")) {
+              if (extraInput) newUserDoc.adminRole = extraInput;
+              chunkStaffIncrement++;
+            }
+
+            batch.set(doc(db, "users", tempId), newUserDoc);
+            count++;
+          }
+
+          if (chunkStudentIncrement > 0 || chunkStaffIncrement > 0) {
+            const statsRef = doc(db, "stats", "global");
+            const statsUpdate: any = {};
+            if (chunkStudentIncrement > 0) statsUpdate.totalStudents = increment(chunkStudentIncrement);
+            if (chunkStaffIncrement > 0) statsUpdate.totalStaff = increment(chunkStaffIncrement);
+            batch.set(statsRef, statsUpdate, { merge: true });
+            studentIncrement += chunkStudentIncrement;
+            staffIncrement += chunkStaffIncrement;
+          }
+          await batch.commit();
+        }
+
+        if (count > 0) {
+          let summaryMsg = `Successfully imported ${count} ${selectedRole}(s).`;
+          if (activatedCount > 0) summaryMsg += `\n- ${activatedCount} Active (Login enabled)`;
+          if (pendingCount > 0) summaryMsg += `\n- ${pendingCount} Pending Activation`;
+
+          if (importErrors.length > 0) {
+            Alert.alert(
+              "Import Completed with Warnings",
+              `${summaryMsg}\n\nSome accounts could not be activated:\n${importErrors.slice(0, 5).join("\n")}${importErrors.length > 5 ? "\n..." : ""}`,
+              [{ text: "OK" }]
+            );
+          } else {
+            showToast?.({ message: summaryMsg, type: "success" });
+          }
+        }
+      } finally {
+        await deleteApp(secondaryApp);
       }
     } catch (error: any) {
       console.error(error);
@@ -329,10 +426,18 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     setUpdating(true);
     try {
       const batch = writeBatch(db);
-      selectedUserUids.forEach((uid) => {
-        batch.update(doc(db, "users", uid), { [field]: value });
-      });
-      await batch.commit();
+
+      // Firestore batch limit is 500. Each user has 1 update.
+      const CHUNK_SIZE = 450;
+      for (let i = 0; i < selectedUserUids.length; i += CHUNK_SIZE) {
+        const chunk = selectedUserUids.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach((uid) => {
+          batch.update(doc(db, "users", uid), { [field]: value });
+        });
+        await batch.commit();
+      }
+
       setSelectedUserUids([]);
       showToast?.({ message: `Updated ${selectedUserUids.length} students`, type: "success" });
     } catch (error) {
@@ -532,10 +637,11 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       }
     };
 
+    const displayName = `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() || user.uid;
     if (Platform.OS === "web") {
-      if (window.confirm(`Confirm\n\nRemove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`)) performRemove();
+      if (window.confirm(`Confirm\n\nRemove role '${roleName}' from ${displayName}?`)) performRemove();
     } else {
-      Alert.alert("Confirm", `Remove role '${roleName}' from ${user.profile.firstName} ${user.profile.lastName}?`, [
+      Alert.alert("Confirm", `Remove role '${roleName}' from ${displayName}?`, [
         { text: "Cancel", style: "cancel" },
         { text: "Remove", style: "destructive", onPress: performRemove },
       ]);
@@ -584,10 +690,11 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       showToast?.({ message: "Denied: Only super admins can archive students.", type: "error" });
       return;
     }
+    const displayName = `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() || "Student";
     const isArchived = user.status === "archived";
     const msg = isArchived
-      ? `Restore ${user.profile.firstName} to active status?`
-      : `Set ${user.profile.firstName} as 'Stopped'? This will move them to the archive.`;
+      ? `Restore ${displayName} to active status?`
+      : `Set ${displayName} as 'Stopped'? This will move them to the archive.`;
 
     const performToggle = async () => {
       setUpdating(true);
@@ -739,10 +846,12 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         setViewingUser(null);
       }
     };
+
+    const displayName = `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() || user.uid;
     if (Platform.OS === "web") {
-      if (window.confirm(`Permanently delete ${user.profile.firstName} (${user.role})?`)) performDelete();
+      if (window.confirm(`Permanently delete ${displayName} (${user.role})?`)) performDelete();
     } else {
-      Alert.alert("Critical Action", `Permanently delete ${user.profile.firstName} (${user.role})?`, [
+      Alert.alert("Critical Action", `Permanently delete ${displayName} (${user.role})?`, [
         { text: "Cancel", style: "cancel" },
         { text: "Delete", style: "destructive", onPress: performDelete },
       ]);
@@ -760,8 +869,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       const batch = writeBatch(db);
       const userRef = doc(db, "users", assignmentModal.target.uid);
       const updates: any = {
+        email: editForm.email.trim().toLowerCase(),
         "profile.firstName": editForm.firstName.trim(),
         "profile.lastName": editForm.lastName.trim(),
+        "profile.email": editForm.email.trim().toLowerCase(),
         "profile.phone": editForm.phone.trim(),
         "profile.gender": editForm.gender,
         "profile.emergencyPhone": editForm.emergencyPhone.trim(),
@@ -815,8 +926,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       return;
     }
     setUpdating(true);
+    const secondaryAppName = `upgrade-staff-${Date.now()}`;
+    const secondaryApp = initializeApp((SCHOOL_CONFIG as any).firebase || {}, secondaryAppName);
     try {
-      const secondaryApp = initializeApp((SCHOOL_CONFIG as any).firebase || {}, `upgrade-staff-${Date.now()}`);
       const userCredential = await createUserWithEmailAndPassword(getAuth(secondaryApp), upgradeForm.email.trim(), upgradeForm.password);
       const updates = {
         authUid: userCredential.user.uid,
@@ -834,6 +946,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     } catch (e: any) {
       showToast?.({ message: `Error: ${e.message}`, type: "error" });
     } finally {
+      await deleteApp(secondaryApp);
       setUpdating(false);
     }
   };
@@ -856,8 +969,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   const handleShareCode = async (user: User) => {
     const code = user.signupCode || user.secretCode;
     if (!code) return;
+    const firstName = user.profile?.firstName || "there";
     try {
-      await Share.share({ message: `Hello ${user.profile.firstName}, your ${acadConfig.schoolName || "school"} token is: ${code}` });
+      await Share.share({ message: `Hello ${firstName}, your ${acadConfig.schoolName || "school"} token is: ${code}` });
     } catch (error) {
       console.error(error);
     }
@@ -914,13 +1028,13 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
   const openEditProfile = (user: User) => {
     setEditForm({
-      firstName: user.profile.firstName,
-      lastName: user.profile.lastName,
-      email: user.profile.email || "",
-      phone: user.profile.phone || "",
-      gender: user.profile.gender || "",
-      emergencyPhone: user.profile.emergencyPhone || "",
-      parentPhone: user.profile.parentPhone || "",
+      firstName: user.profile?.firstName || "",
+      lastName: user.profile?.lastName || "",
+      email: user.profile?.email || "",
+      phone: user.profile?.phone || "",
+      gender: user.profile?.gender || "",
+      emergencyPhone: user.profile?.emergencyPhone || "",
+      parentPhone: user.profile?.parentPhone || "",
       busLocation: user.busLocation || "",
       takesBus: !!user.takesBus,
       onScholarship: !!user.onScholarship,
@@ -1072,9 +1186,14 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     try {
       const batch = writeBatch(db);
       targetUids.forEach((uid) => {
+        const user = users.find(u => u.uid === uid);
+        const currentStatus = user?.status || "active";
+        // Preserve pending_activation status so they can still sign up after being moved
+        const newStatus = currentStatus === "pending_activation" ? "pending_activation" : "active";
+
         batch.update(doc(db, "users", uid), {
           classId: targetClassId,
-          status: "active", // Ensure they are active when promoted/repeated
+          status: newStatus,
         });
       });
       await batch.commit();
@@ -1093,6 +1212,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       setUpdating(false);
     }
   };
+
+  const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, runMigration: runFinanceMigration } = useFinanceCleanup(showToast);
+  const { cleaning: isAcademicCleaning, runCleanup: runAcademicCleanup } = useAcademicCleanup(showToast);
 
   return {
     selectedRole, setSelectedRole,
@@ -1137,5 +1259,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     isSuperAdmin, hasManageUsersAccess,
     handlePromoteRepeat,
     openPromoteRepeat: (target: User | null = null) => setAssignmentModal({ type: "promote_repeat", target }),
+    runFinanceCleanup,
+    runFinanceMigration,
+    runAcademicCleanup,
+    isFinanceCleaning,
+    isAcademicCleaning
   };
 }

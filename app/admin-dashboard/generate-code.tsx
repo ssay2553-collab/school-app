@@ -186,9 +186,9 @@ const GenerateCodeScreen = () => {
 
           {role === 'student' && (
             <Animatable.View
-              animation={isWeb ? undefined : "fadeIn"}
+              animation={Platform.OS === 'web' ? undefined : "fadeIn"}
               duration={400}
-              useNativeDriver={useNativeDriver}
+              useNativeDriver={Platform.OS !== 'web'}
               style={styles.inputGroup}
             >
               <View style={[styles.pickerBox, { borderColor: "#E2E8F0" }]}>
@@ -230,8 +230,8 @@ const GenerateCodeScreen = () => {
 
         {generatedCode && (
           <Animatable.View
-            animation={isWeb ? undefined : "bounceIn"}
-            useNativeDriver={useNativeDriver}
+            animation={Platform.OS === 'web' ? undefined : "bounceIn"}
+            useNativeDriver={Platform.OS !== 'web'}
             style={[styles.resultCard, { backgroundColor: "#fff", borderColor: brandPrimary, borderWidth: 2 }]}
           >
             <View style={styles.resultHeader}>
@@ -287,9 +287,9 @@ const styles = StyleSheet.create({
   roleBtnActive: { ...SHADOWS.small },
   roleBtnText: { fontWeight: '700', fontSize: 14 },
   inputGroup: { marginBottom: 20 },
-  pickerBox: { backgroundColor: "#fff", borderRadius: 12, height: 60, justifyContent: "center", borderWidth: 1 },
-  picker: { height: 50, marginLeft: -8 },
-  miniLabel: { fontSize: 9, fontWeight: "900", position: 'absolute', top: 6, left: 12, zIndex: 1, letterSpacing: 0.8 },
+  pickerBox: { backgroundColor: "#fff", borderRadius: 12, minHeight: 65, justifyContent: "center", borderWidth: 1, paddingTop: 12 },
+  picker: { height: 45, marginLeft: -10 },
+  miniLabel: { fontSize: 9, fontWeight: "900", position: 'absolute', top: 12, left: 12, zIndex: 1, letterSpacing: 0.8 },
   generateBtn: { height: 56, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', ...SHADOWS.small },
   generateBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   resultCard: { padding: 24, borderRadius: 28, alignItems: 'center', ...SHADOWS.large, marginBottom: 25 },

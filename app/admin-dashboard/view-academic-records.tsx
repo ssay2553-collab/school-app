@@ -31,8 +31,6 @@ export default function ViewAcademicRecords() {
     fetchingSubjects,
     refreshing,
     savingMetadata,
-    uploadingSig,
-    signatureUrl,
     classes,
     availableSubjects,
     selectedClassId,
@@ -71,7 +69,6 @@ export default function ViewAcademicRecords() {
     onRefresh,
     handleEditMetadata,
     saveMetadata,
-    handleUploadSignature,
     handleBulkUpdate,
     recalculateRankings,
     recalculating,
@@ -149,13 +146,6 @@ export default function ViewAcademicRecords() {
             <View style={{ width: 44 }} />
           </View>
         </LinearGradient>
-
-        <AcademicSignatureCard
-          signatureUrl={signatureUrl}
-          uploadingSig={uploadingSig}
-          handleUploadSignature={handleUploadSignature}
-          primary={primary}
-        />
 
         <AcademicFilterCard
           selectedYear={selectedYear}
@@ -238,11 +228,8 @@ export default function ViewAcademicRecords() {
       stats,
       studentScores,
       acadConfig,
-      signatureUrl,
-      uploadingSig,
       availableYears,
       handleBulkUpdate,
-      handleUploadSignature,
       loadData,
       router,
       setSelectedClassId,

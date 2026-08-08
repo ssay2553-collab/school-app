@@ -85,36 +85,54 @@ const LedgerReceipt: React.FC<LedgerReceiptProps> = ({
                 </View>
             </View>
 
-            {/* Category Summary as Payment Table */}
+            {/* Category Summary as Financial Statement Table */}
             <View style={styles.invoiceTable}>
                 <View style={styles.invoiceHeader}>
-                    <Text style={[styles.invoiceTh, { flex: 2 }]}>PAYMENT DESCRIPTION</Text>
-                    <Text style={[styles.invoiceTh, { flex: 1.5, textAlign: 'right' }]}>AMOUNT PAID</Text>
+                    <Text style={[styles.invoiceTh, { flex: 2 }]}>DESCRIPTION</Text>
+                    <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>BILLED</Text>
+                    <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>PAID</Text>
+                    <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>BALANCE</Text>
                 </View>
                 {Object.entries(categorySummary)
-                    .filter(([_, vals]: any) => (vals.paid || 0) > 0)
-                    .map(([cat, vals]: any) => (
-                    <View key={cat} style={styles.invoiceRow}>
-                        <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '800' }]}>{cat.toUpperCase()}</Text>
-                        <Text style={[styles.invoiceTd, { flex: 1.5, textAlign: 'right', color: "#10B981", fontWeight: '900' }]}>₵{vals.paid.toFixed(2)}</Text>
+                    .map(([cat, vals]: any) => {
+                        const balance = (vals.billed || 0) - (vals.paid || 0);
+                        return (
+                            <View key={cat} style={styles.invoiceRow}>
+                                <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10 }]}>{cat.toUpperCase()}</Text>
+                                <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right' }]}>{SCHOOL_CONFIG.currencySymbol}{vals.billed.toFixed(2)}</Text>
+                                <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: "#10B981" }]}>{SCHOOL_CONFIG.currencySymbol}{vals.paid.toFixed(2)}</Text>
+                                <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: balance > 0 ? "#EF4444" : "#10B981", fontWeight: '700' }]}>
+                                    {SCHOOL_CONFIG.currencySymbol}{balance.toFixed(2)}
+                                </Text>
+                            </View>
+                        );
+                    })}
+
+                {/* Added Discount Row */}
+                {record.discount > 0 && (
+                    <View style={[styles.invoiceRow, { backgroundColor: '#F0FDFA' }]}>
+                        <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10, color: '#0D9488' }]}>TERM DISCOUNT</Text>
+                        <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: '#0D9488' }]}>({SCHOOL_CONFIG.currencySymbol}{record.discount.toFixed(2)})</Text>
+                        <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right' }]}>-</Text>
+                        <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: '#0D9488', fontWeight: '700' }]}>CREDIT</Text>
                     </View>
-                ))}
+                )}
             </View>
 
             {/* Totals Section */}
             <View style={styles.totalsSection}>
                 <View style={styles.totalsRow}>
                     <Text style={styles.totalsLabel}>TOTAL BILLED:</Text>
-                    <Text style={styles.totalsValue}>₵ {totalBilled.toFixed(2)}</Text>
+                    <Text style={styles.totalsValue}>{SCHOOL_CONFIG.currencySymbol}{totalBilled.toFixed(2)}</Text>
                 </View>
                 <View style={styles.totalsRow}>
                     <Text style={styles.totalsLabel}>TOTAL PAID:</Text>
-                    <Text style={[styles.totalsValue, { color: "#10B981" }]}>₵ {totalPaid.toFixed(2)}</Text>
+                    <Text style={[styles.totalsValue, { color: "#10B981" }]}>{SCHOOL_CONFIG.currencySymbol}{totalPaid.toFixed(2)}</Text>
                 </View>
                 <View style={styles.grandTotalRow}>
                     <Text style={styles.grandTotalLabel}>NET BALANCE:</Text>
                     <Text style={[styles.grandTotalValue, { color: totalBalance > 0 ? "#EF4444" : "#10B981" }]}>
-                        ₵ {totalBalance.toFixed(2)}
+                        {SCHOOL_CONFIG.currencySymbol}{totalBalance.toFixed(2)}
                     </Text>
                 </View>
             </View>

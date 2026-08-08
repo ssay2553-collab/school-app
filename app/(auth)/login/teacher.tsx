@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { doc, getDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, limit, getDocs, or } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useState } from "react";
 import {
@@ -68,7 +68,10 @@ export default function TeacherLoginScreen() {
         const usersRef = collection(db, "users");
         const q = query(
           usersRef,
-          where("profile.email", "==", finalEmail),
+          or(
+            where("profile.email", "==", finalEmail),
+            where("email", "==", finalEmail)
+          ),
           limit(1)
         );
         const snap = await getDocs(q);

@@ -261,14 +261,11 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
                         </Text>
                         <Text style={styles.tileDate}>
                           {p.createdAt
-                            ? new Date(p.createdAt).toLocaleDateString()
+                            ? moment(p.createdAt).format("DD MMM, YYYY")
                             : "N/A"}{" "}
                           at{" "}
                           {p.createdAt
-                            ? new Date(p.createdAt).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
+                            ? moment(p.createdAt).format("hh:mm A")
                             : ""}
                         </Text>
                       </View>

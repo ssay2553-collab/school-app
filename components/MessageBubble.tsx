@@ -1,6 +1,7 @@
 import Constants from "expo-constants";
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
+import moment from "moment";
 import { COLORS, SHADOWS } from "../constants/theme";
 import SVGIcon from "./SVGIcon";
 
@@ -33,7 +34,7 @@ const formatTimestamp = (timestamp: any) => {
   } else {
     return "";
   }
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return moment(date).format("hh:mm A");
 };
 
 export default function MessageBubble({

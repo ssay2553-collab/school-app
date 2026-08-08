@@ -55,13 +55,6 @@ export default function LoginSelectionScreen() {
       color: secondary === "#000000" ? brandPrimary : secondary,
     },
     {
-      title: "Non-Teaching Staff",
-      role: "Operations",
-      route: "/(auth)/login/staff",
-      icon: "briefcase",
-      color: primary,
-    },
-    {
       title: "Parent Access",
       role: "Guardian",
       route: "/(auth)/login/parent",

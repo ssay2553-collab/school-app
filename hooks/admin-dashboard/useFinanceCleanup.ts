@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   serverTimestamp,
@@ -21,7 +22,7 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
   const [cleaning, setCleaning] = useState(false);
   const [report, setReport] = useState<CleanupReport | null>(null);
 
-  const runMigration = useCallback(async () => {
+  const runMigration = useCallback(async (targetStudentId?: string) => {
     setCleaning(true);
     let currentBatch = writeBatch(db);
     let opCount = 0;
@@ -35,14 +36,33 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
     };
 
     try {
-      console.log("Starting identity migration...");
+      console.log(targetStudentId ? `Starting identity migration for student: ${targetStudentId}` : "Starting identity migration...");
 
-      const [recordsSnap, paymentsSnap, usersSnap, dailySnap] = await Promise.all([
-        getDocs(collection(db, "studentFeeRecords")),
-        getDocs(collection(db, "feePayments")),
-        getDocs(query(collection(db, "users"), where("role", "==", "student"))),
-        getDocs(collection(db, "dailyFinancials")),
-      ]);
+      let recordsSnap, paymentsSnap, usersSnap, dailySnap;
+
+      if (targetStudentId) {
+        const userDoc = await getDoc(doc(db, "users", targetStudentId));
+        if (!userDoc.exists()) throw new Error("Student not found");
+        const userData = userDoc.data();
+        const aliases = [targetStudentId];
+        if (userData?.migratedFrom) aliases.push(userData.migratedFrom);
+        const sID = userData?.profile?.studentID || userData?.studentID || userData?.studentId;
+        if (sID) aliases.push(String(sID));
+
+        [recordsSnap, paymentsSnap, usersSnap, dailySnap] = await Promise.all([
+          getDocs(query(collection(db, "studentFeeRecords"), where("studentUid", "in", aliases))),
+          getDocs(query(collection(db, "feePayments"), where("studentUid", "in", aliases))),
+          getDocs(query(collection(db, "users"), where("__name__", "in", aliases))),
+          getDocs(query(collection(db, "dailyFinancials"), where("studentUid", "in", aliases))),
+        ]);
+      } else {
+        [recordsSnap, paymentsSnap, usersSnap, dailySnap] = await Promise.all([
+          getDocs(collection(db, "studentFeeRecords")),
+          getDocs(collection(db, "feePayments")),
+          getDocs(query(collection(db, "users"), where("role", "==", "student"))),
+          getDocs(collection(db, "dailyFinancials")),
+        ]);
+      }
 
       const validStudentIds = new Set(usersSnap.docs.map((d) => d.id));
       const claimedMapping = new Map<string, string>();
@@ -53,6 +73,8 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
         const data = d.data();
         if (data.status === "claimed" && data.claimedBy) {
           claimedMapping.set(d.id, data.claimedBy);
+        } else if (data.migratedFrom && data.role === "student") {
+          claimedMapping.set(data.migratedFrom, d.id);
         }
         const firstName = (data.profile?.firstName || "").trim().toLowerCase();
         const lastName = (data.profile?.lastName || "").trim().toLowerCase();
@@ -115,7 +137,7 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
     }
   }, [showToast, acadConfig]);
 
-  const runCleanup = useCallback(async () => {
+  const runCleanup = useCallback(async (targetStudentId?: string) => {
     setCleaning(true);
     setReport(null);
     let currentBatch = writeBatch(db);
@@ -130,13 +152,32 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
     };
 
     try {
-      console.log("Starting financial data integrity scan...");
+      console.log(targetStudentId ? `Starting financial data integrity scan for student: ${targetStudentId}` : "Starting financial data integrity scan...");
 
-      const [recordsSnap, paymentsSnap, usersSnap] = await Promise.all([
-        getDocs(collection(db, "studentFeeRecords")),
-        getDocs(collection(db, "feePayments")),
-        getDocs(query(collection(db, "users"), where("role", "==", "student"))),
-      ]);
+      let recordsSnap, paymentsSnap, usersSnap;
+      let aliases: string[] = [];
+
+      if (targetStudentId) {
+        const userDoc = await getDoc(doc(db, "users", targetStudentId));
+        if (!userDoc.exists()) throw new Error("Student not found");
+        const userData = userDoc.data();
+        aliases = [targetStudentId];
+        if (userData?.migratedFrom) aliases.push(userData.migratedFrom);
+        const sID = userData?.profile?.studentID || userData?.studentID || userData?.studentId;
+        if (sID) aliases.push(String(sID));
+
+        [recordsSnap, paymentsSnap, usersSnap] = await Promise.all([
+          getDocs(query(collection(db, "studentFeeRecords"), where("studentUid", "in", aliases))),
+          getDocs(query(collection(db, "feePayments"), where("studentUid", "in", aliases))),
+          getDocs(query(collection(db, "users"), where("__name__", "in", aliases))),
+        ]);
+      } else {
+        [recordsSnap, paymentsSnap, usersSnap] = await Promise.all([
+          getDocs(collection(db, "studentFeeRecords")),
+          getDocs(collection(db, "feePayments")),
+          getDocs(query(collection(db, "users"), where("role", "==", "student"))),
+        ]);
+      }
 
       const validStudentIds = new Set(usersSnap.docs.map((d) => d.id));
       const claimedMapping = new Map<string, string>();
@@ -147,6 +188,8 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
         const data = d.data();
         if (data.status === "claimed" && data.claimedBy) {
           claimedMapping.set(d.id, data.claimedBy);
+        } else if (data.migratedFrom && data.role === "student") {
+          claimedMapping.set(data.migratedFrom, d.id);
         }
         const firstName = (data.profile?.firstName || "").trim().toLowerCase();
         const lastName = (data.profile?.lastName || "").trim().toLowerCase();
@@ -171,7 +214,10 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
       const userUpdates = new Map<string, any>();
 
       // 1. Identification Phase (Internal only for harvesting)
-      const dailySnap = await getDocs(collection(db, "dailyFinancials"));
+      const dailySnap = targetStudentId
+        ? await getDocs(query(collection(db, "dailyFinancials"), where("studentUid", "in", aliases)))
+        : await getDocs(collection(db, "dailyFinancials"));
+
       const migrationResult = await migrateStudentIdentity(
         recordsSnap,
         paymentsSnap,

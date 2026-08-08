@@ -265,20 +265,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    paddingTop: 20,
-    overflow: 'hidden'
+    paddingTop: 12,
+    minHeight: 65,
+    justifyContent: 'center',
   },
   pickerContainer: {
-    height: 40,
-    justifyContent: 'center'
+    height: 50,
+    justifyContent: 'center',
   },
   miniLabel: {
     fontSize: 9,
     fontWeight: "800",
     color: "#94A3B8",
     position: "absolute",
-    top: 8,
-    left: 15,
+    top: 12,
+    left: 12,
     zIndex: 10,
     letterSpacing: 0.5,
   },
@@ -295,7 +296,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10
       },
       android: {
-        height: 40,
+        height: 50,
+        width: '100%',
+        marginLeft: -10
       }
     }),
   } as any,

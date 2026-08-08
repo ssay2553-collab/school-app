@@ -13,6 +13,7 @@ import {
   where,
 } from "firebase/firestore";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import moment from "moment";
 import {
   ActivityIndicator,
   Alert,
@@ -430,9 +431,7 @@ export default function StudentNoteScreen() {
 
                 <View style={styles.cardFooter}>
                   <Text style={styles.dateText}>
-                    {new Date(
-                      item.updatedAt || item.createdAt,
-                    ).toLocaleDateString()}
+                    {moment(item.updatedAt || item.createdAt).format("MMM DD, YYYY")}
                   </Text>
                   <View style={styles.footerActions}>
                      <TouchableOpacity

@@ -1,5 +1,5 @@
 import { StudentPayment, StudentRecord } from "./types";
-import { normalizeCategory, isolatedKeys } from "./utils";
+import { normalizeCategory, isolatedKeys, mergeFinancialData } from "./utils";
 
 export const harvestStudentData = (
   recordsSnap: any,
@@ -17,7 +17,28 @@ export const harvestStudentData = (
     const uid = fixed?.studentUid || resolveUid(data.studentUid, data.studentName, d.id);
     if (uid) {
       if (!recordsByStudent[uid]) recordsByStudent[uid] = [];
-      recordsByStudent[uid].push({ id: d.id, ref: d.ref, data: { ...data, ...fixed } });
+
+      const ay = (data.academicYear || fixed?.academicYear || "").replace(/\//g, "-");
+      const term = (data.term || fixed?.term || "").replace(/\s/g, "");
+
+      const existingIdx = recordsByStudent[uid].findIndex(r => {
+        const rAy = (r.data.academicYear || "").replace(/\//g, "-");
+        const rTerm = (r.data.term || "").replace(/\s/g, "");
+        return rAy === ay && rTerm === term;
+      });
+
+      const entry = { id: d.id, ref: d.ref, data: { ...data, ...fixed } };
+
+      if (existingIdx === -1) {
+        recordsByStudent[uid].push(entry);
+      } else {
+        // Instead of picking one, MERGE the financial data from both records.
+        // This ensures that if payments were recorded on both accounts, they are summed.
+        recordsByStudent[uid][existingIdx].data = mergeFinancialData(
+          recordsByStudent[uid][existingIdx].data,
+          entry.data
+        );
+      }
     }
   });
 
@@ -30,15 +51,41 @@ export const harvestStudentData = (
     if (!knownPaymentIdsByStudent[uid]) knownPaymentIdsByStudent[uid] = new Set();
 
     // Prioritize receiptNo or explicit ID for deduplication
-    const pId = String(
-      p.receiptNo ||
-        p.id ||
-        sourceId ||
-        `legacy-${uid}-${p.amount ?? p.amountPaid ?? p.value ?? ""}-${p.date || p.createdAt || ""}-${paymentsByStudent[uid].length}`
-    );
+    const pCategory = p._category || normalizeCategory(p);
+    const pAmount = Number(p.amount ?? p.amountPaid ?? p.value ?? 0);
 
-    if (!knownPaymentIdsByStudent[uid].has(pId)) {
-      const cloned = { ...p, id: pId, _category: p._category || normalizeCategory(p) };
+    // Normalize dates to prevent duplicates from different formats (Timestamp vs String)
+    const getSafeDate = (dateVal: any) => {
+      if (!dateVal) return "";
+      if (typeof dateVal === 'string') return dateVal;
+      if (dateVal && typeof dateVal.toDate === 'function') return dateVal.toDate().toISOString();
+      if (dateVal && dateVal.seconds) return new Date(dateVal.seconds * 1000).toISOString();
+      return String(dateVal);
+    };
+    const pDate = getSafeDate(p.date || p.createdAt);
+
+    // Enhanced Deduplication check: receiptNo/id or (amount + date + category)
+    const isDuplicate = paymentsByStudent[uid].some(existing => {
+      if (p.receiptNo && existing.receiptNo === p.receiptNo) return true;
+      if (p.id && existing.id === p.id) return true;
+
+      const existingAmount = Number(existing.amount ?? existing.amountPaid ?? existing.value ?? 0);
+      const existingDate = getSafeDate(existing.date || existing.createdAt);
+      const existingCategory = existing._category || normalizeCategory(existing);
+
+      return Math.abs(existingAmount - pAmount) < 0.01 &&
+             existingDate === pDate &&
+             existingCategory === pCategory;
+    });
+
+    if (!isDuplicate) {
+      const pId = String(
+        p.receiptNo ||
+          p.id ||
+          sourceId ||
+          `legacy-${uid}-${pAmount}-${pDate}-${paymentsByStudent[uid].length}`
+      );
+      const cloned = { ...p, id: pId, _category: pCategory };
       paymentsByStudent[uid].push(cloned);
       knownPaymentIdsByStudent[uid].add(pId);
     }

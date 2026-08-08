@@ -123,7 +123,7 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
 
         .footer { display:flex; justify-content:space-between; align-items:flex-end; margin-top:30px; }
         .sig-section { width: 40%; text-align: center; }
-        .sig-image { height: 45pt; object-fit: contain; margin-bottom: -5pt; max-width: 90%; }
+        .sig-image { height: 80pt; object-fit: contain; margin-bottom: -5pt; max-width: 90%; }
         .sig-line { border-top: 1pt solid #1E293B; width: 85%; margin: 5pt auto; }
         .sig-label { font-size: 8.5pt; font-weight: 800; text-transform: uppercase; color: #64748B; }
 
@@ -212,16 +212,6 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
 
         <div class="remarks-box">
           ${isFullReport && !isPreschool ? `<div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>` : ""}
-          ${isFullReport && isPreschool ? `
-            <div class="remark-line"><span class="remark-header">PHYSICAL DEV:</span>
-              ${physicalDev.date ? `Date: ${physicalDev.date} | ` : ""}
-              HT: ${physicalDev.height || "-"}m |
-              WT: ${physicalDev.weight || "-"}kg
-            </div>
-            <div style="font-size: 8pt; margin-bottom: 10pt; color: #475569;">
-                <b>Assessments:</b> ${Object.entries(preschoolAssessments).filter(([_, v]) => v !== 'N/A').map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(', ') || 'None recorded'}
-            </div>
-          ` : ""}
           <div class="remark-line"><span class="remark-header">CLASS TEACHER:</span> ${teacherRemarks || "Satisfactory performance."}</div>
           <div class="remark-line"><span class="remark-header">ADMINISTRATIVE:</span> ${adminRemarks || "Keep up the hard work."}</div>
           <div class="remark-line"><span class="remark-header">NEXT TERM BEGINS:</span> <b>${nextTermBegins || "TBA"}</b></div>
@@ -230,7 +220,7 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
 
         <div class="footer">
           <div class="sig-section" style="width: 60%; text-align: left;">
-            ${sigDataUri ? `<img src="${sigDataUri}" class="sig-image" style="margin-left: 20px;" />` : '<div style="height:45pt;"></div>'}
+            ${sigDataUri ? `<img src="${sigDataUri}" class="sig-image" style="margin-left: 20px;" />` : '<div style="height:80pt;"></div>'}
             <div class="sig-line" style="width: 80%; margin-left: 0;"></div>
             <div class="sig-label" style="margin-left: 20px;">Head of Institution</div>
           </div>

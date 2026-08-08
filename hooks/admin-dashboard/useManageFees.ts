@@ -240,18 +240,27 @@ export const useManageFees = ({
     setSaving(true);
     try {
       const amount = parseFloat(paymentAmount);
+      if (isNaN(amount) || amount <= 0) {
+        throw new Error("Invalid payment amount");
+      }
+
       const cleanYear = academicYear.replace(/\//g, "-");
       const cleanTerm = term.replace(/\s/g, "");
       const recordId = `${selectedStudent.uid}_${cleanYear}_${cleanTerm}`;
       const receiptNo = `REC-${Date.now().toString().slice(-6)}`;
-      const paymentDateStr = moment(paymentDate).format("YYYY-MM-DD");
+
+      const safePaymentDate = paymentDate instanceof Date && !isNaN(paymentDate.getTime())
+        ? paymentDate
+        : new Date();
+      const paymentDateStr = moment(safePaymentDate).format("YYYY-MM-DD");
+
       const batch = writeBatch(db);
       const globalPaymentRef = doc(collection(db, "feePayments"), receiptNo);
 
       const paymentObj = {
         amount,
-        method: paymentMethod,
-        receivedFrom: receivedFrom.trim(),
+        method: paymentMethod || "Cash",
+        receivedFrom: (receivedFrom || "Unknown").trim(),
         updatedBy: appUser?.adminRole || "Admin",
         adminUid: appUser?.uid || "unknown",
         createdAt: new Date().toISOString(),
@@ -267,13 +276,13 @@ export const useManageFees = ({
       const allocations: Record<string, number> = {};
 
       // 1. Settle Tuition first
-      const currentTuitionDebt = Math.max(0, (selectedStudent.currentBalance || 0) -
-        (selectedStudent.ptaBalance || 0) -
-        (selectedStudent.admissionBalance || 0) -
-        (selectedStudent.maintenanceBalance || 0) -
-        (selectedStudent.booksBalance || 0) -
-        (selectedStudent.uniformBalance || 0) -
-        (selectedStudent.otherBalance || 0));
+      const currentTuitionDebt = Math.max(0, (Number(selectedStudent.currentBalance) || 0) -
+        (Number(selectedStudent.ptaBalance) || 0) -
+        (Number(selectedStudent.admissionBalance) || 0) -
+        (Number(selectedStudent.maintenanceBalance) || 0) -
+        (Number(selectedStudent.booksBalance) || 0) -
+        (Number(selectedStudent.uniformBalance) || 0) -
+        (Number(selectedStudent.otherBalance) || 0));
 
       const tuitionToPay = Math.min(remainingPayment, currentTuitionDebt);
       remainingPayment -= tuitionToPay;
@@ -281,9 +290,9 @@ export const useManageFees = ({
 
       const feeRecordUpdate: any = {
         studentUid: selectedStudent.uid,
-        studentName: selectedStudent.fullName,
-        classId: selectedStudent.classId,
-        className: selectedStudent.className,
+        studentName: selectedStudent.fullName || "Student",
+        classId: selectedStudent.classId || "unknown",
+        className: selectedStudent.className || "Class",
         academicYear,
         term,
         amountPaid: increment(tuitionToPay),
@@ -307,7 +316,7 @@ export const useManageFees = ({
 
       for (const cat of categories) {
         const balanceKey = `${cat.key}Balance` as keyof StudentDraft;
-        const catBalance = (selectedStudent[balanceKey] as number) || 0;
+        const catBalance = Number(selectedStudent[balanceKey]) || 0;
         if (remainingPayment > 0 && catBalance > 0) {
           const settlement = Math.min(remainingPayment, catBalance);
           remainingPayment -= settlement;
@@ -326,7 +335,7 @@ export const useManageFees = ({
 
       // If it's a new record (no bill yet), set arrears to current wallet balance (before payment)
       if (!selectedStudent.hasRecordInTerm) {
-        feeRecordUpdate.arrears = selectedStudent.previousBalance || 0;
+        feeRecordUpdate.arrears = Number(selectedStudent.previousBalance) || 0;
         feeRecordUpdate.termBill = 0;
         feeRecordUpdate.createdAt = serverTimestamp();
       }
@@ -338,29 +347,35 @@ export const useManageFees = ({
       batch.set(globalPaymentRef, {
         ...paymentObjWithAlloc,
         studentUid: selectedStudent.uid,
-        studentName: selectedStudent.fullName,
-        classId: selectedStudent.classId,
-        className: selectedStudent.className,
+        studentName: selectedStudent.fullName || "Student",
+        classId: selectedStudent.classId || "unknown",
+        className: selectedStudent.className || "Class",
       });
 
       await batch.commit();
-      showToast({ message: `Payment of ₵${amount} logged successfully`, type: "success" });
 
-      // Propagate arrears to subsequent terms if they exist
-      propagateArrears(selectedStudent.uid, academicYear, term, -amount, 'payment').catch(console.error);
-
-      if (selectedStudent.uid) {
-        sendNotification({
-          recipientId: selectedStudent.uid,
-          senderId: appUser?.uid || "admin",
-          senderName: appUser?.displayName || "Administrator",
-          title: "Fee Payment Received - Thank You!",
-          body: `Thank you! We've received a payment of ₵${amount.toLocaleString()} for ${selectedStudent.fullName}. We appreciate your promptness! Receipt: ${receiptNo}`,
-          type: "payment",
-        });
-      }
+      // Call onSuccess first to close modal and reset state
       onSuccess();
-      fetchStudents(true);
+
+      showToast({ message: `Payment of ₵${amount.toFixed(2)} logged successfully`, type: "success" });
+
+      // Non-critical background tasks
+      setTimeout(() => {
+        propagateArrears(selectedStudent.uid, academicYear, term, -amount, 'payment').catch(e => console.error("Propagation error:", e));
+
+        if (selectedStudent.uid) {
+          sendNotification({
+            recipientId: selectedStudent.uid,
+            senderId: appUser?.uid || "admin",
+            senderName: appUser?.displayName || "Administrator",
+            title: "Fee Payment Received - Thank You!",
+            body: `Thank you! We've received a payment of ₵${amount.toLocaleString()} for ${selectedStudent.fullName}. We appreciate your promptness! Receipt: ${receiptNo}`,
+            type: "payment",
+          }).catch(e => console.error("Notification error:", e));
+        }
+        fetchStudents(true);
+      }, 500);
+
     } catch (error) {
       console.error("Log Payment Error:", error);
       showToast({ message: "Failed to log payment", type: "error" });
@@ -565,16 +580,23 @@ export const useManageFees = ({
         onPress: async () => {
           setSaving(true);
           try {
-            const batch = writeBatch(db);
             const cleanYear = academicYear.replace(/\//g, "-");
             const cleanTerm = term.replace(/\s/g, "");
-            for (const s of targets) {
-              const disc = s.discount || 0;
-              const recordId = `${s.uid}_${cleanYear}_${cleanTerm}`;
-              batch.update(doc(db, "studentFeeRecords", recordId), { discount: 0, balance: increment(disc) });
-              batch.update(doc(db, "users", s.uid), { walletBalance: increment(disc) });
+
+            // Firestore batch limit is 500. Each student has 2 operations.
+            const CHUNK_SIZE = 200;
+            for (let i = 0; i < targets.length; i += CHUNK_SIZE) {
+              const chunk = targets.slice(i, i + CHUNK_SIZE);
+              const batch = writeBatch(db);
+              for (const s of chunk) {
+                const disc = s.discount || 0;
+                const recordId = `${s.uid}_${cleanYear}_${cleanTerm}`;
+                batch.update(doc(db, "studentFeeRecords", recordId), { discount: 0, balance: increment(disc) });
+                batch.update(doc(db, "users", s.uid), { walletBalance: increment(disc) });
+              }
+              await batch.commit();
             }
-            await batch.commit();
+
             fetchStudents(true);
             showToast({ message: "Records normalized.", type: "success" });
           } catch (e) {
@@ -599,90 +621,87 @@ export const useManageFees = ({
     }
     setSaving(true);
     try {
-      const batch = writeBatch(db);
       const selectedUids = Array.from(selectedStudentUids);
       const latestOverrides = individualBillOverridesRef.current;
+      const cleanYear = academicYear.replace(/\//g, "-");
+      const cleanTerm = term.replace(/\s/g, "");
 
-      for (const uid of selectedUids) {
-        const s = students.find((stud) => stud.uid === uid);
-        if (!s || s.onScholarship) continue;
+      // Firestore batch limit is 500. Each student has 2 operations.
+      const CHUNK_SIZE = 200;
+      for (let i = 0; i < selectedUids.length; i += CHUNK_SIZE) {
+        const chunk = selectedUids.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
 
-        const adjustmentStr = latestOverrides[uid] || termBillAmount;
-        const adjustment = parseFloat(adjustmentStr);
-        if (isNaN(adjustment) || adjustment === 0) continue;
+        for (const uid of chunk) {
+          const s = students.find((stud) => stud.uid === uid);
+          if (!s || s.onScholarship) continue;
 
-        const cleanYear = academicYear.replace(/\//g, "-");
-        const cleanTerm = term.replace(/\s/g, "");
-        const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
-        const totalPaid = s.hasRecordInTerm ? s.amountPaid || 0 : 0;
-        const arrears = s.previousBalance || 0;
+          const adjustmentStr = latestOverrides[uid] || termBillAmount;
+          const adjustment = parseFloat(adjustmentStr);
+          if (isNaN(adjustment) || adjustment === 0) continue;
 
-        let discount = s.discount || 0;
-        if (s.onDiscount && s.discountAmount && !s.hasRecordInTerm) {
-          discount = s.discountAmount;
+          const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
+          let discount = s.discount || 0;
+          if (s.onDiscount && s.discountAmount && !s.hasRecordInTerm) {
+            discount = s.discountAmount;
+          }
+
+          const currentBill = s.hasRecordInTerm ? s.termBill || 0 : 0;
+          const newBill = currentBill + adjustment;
+
+          const profileDiscount = (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) ? s.discountAmount : 0;
+          const newBalance = (s.currentBalance || 0) + adjustment - profileDiscount;
+          const totalPayable = (s.hasRecordInTerm ? (s.totalPayable || 0) : (s.previousBalance || 0)) + adjustment;
+
+          if (isNaN(newBalance)) continue;
+
+          const feeRecordData: any = {
+            studentUid: uid,
+            studentName: s.fullName,
+            classId: s.classId,
+            className: s.className,
+            academicYear,
+            term,
+            termBill: newBill,
+            arrears: s.previousBalance || 0,
+            discount: (s.discount || 0) + profileDiscount,
+            amountPaid: s.amountPaid || 0,
+            balance: newBalance,
+            totalPayable: totalPayable,
+            editCount: (s.editCount || 0) + 1,
+            lastUpdated: serverTimestamp(),
+            ptaPaid: s.ptaPaid || 0,
+            ptaBalance: s.ptaBalance || 0,
+            ptaBill: s.ptaBill || 0,
+            maintenancePaid: s.maintenancePaid || 0,
+            maintenanceBalance: s.maintenanceBalance || 0,
+            maintenanceBill: s.maintenanceBill || 0,
+            admissionPaid: s.admissionPaid || 0,
+            admissionBalance: s.admissionBalance || 0,
+            admissionBill: s.admissionBill || 0,
+            booksPaid: s.booksPaid || 0,
+            booksBalance: s.booksBalance || 0,
+            booksBill: s.booksBill || 0,
+            uniformPaid: s.uniformPaid || 0,
+            uniformBalance: s.uniformBalance || 0,
+            uniformBill: s.uniformBill || 0,
+            otherPaid: s.otherPaid || 0,
+            otherBalance: s.otherBalance || 0,
+            otherBill: s.otherBill || 0,
+          };
+
+          if (!s.hasRecordInTerm) {
+            feeRecordData.payments = [];
+            feeRecordData.createdAt = serverTimestamp();
+          }
+
+          batch.set(doc(db, "studentFeeRecords", recordId), feeRecordData, { merge: true });
+          const walletAdjustment = adjustment - (s.hasRecordInTerm ? 0 : discount);
+          batch.update(doc(db, "users", uid), { walletBalance: increment(walletAdjustment) });
         }
-
-        const currentBill = s.hasRecordInTerm ? s.termBill || 0 : 0;
-        const newBill = currentBill + adjustment;
-
-        // Apply profile discount ONLY if this is the first time we're creating a record for this term.
-        const profileDiscount = (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) ? s.discountAmount : 0;
-
-        // In the global balance model:
-        // New Record Balance = (Current Wallet Balance) + (Adjustment) - (New Discount if applicable)
-        const newBalance = (s.currentBalance || 0) + adjustment - profileDiscount;
-
-        // Total Payable should be the running total of all bills (including arrears)
-        const totalPayable = (s.hasRecordInTerm ? (s.totalPayable || 0) : (s.previousBalance || 0)) + adjustment;
-
-        if (isNaN(newBalance)) continue;
-
-        const feeRecordData: any = {
-          studentUid: uid,
-          studentName: s.fullName,
-          classId: s.classId,
-          className: s.className,
-          academicYear,
-          term,
-          termBill: newBill,
-          arrears: s.previousBalance || 0,
-          discount: (s.discount || 0) + profileDiscount,
-          amountPaid: s.amountPaid || 0,
-          balance: newBalance,
-          totalPayable: totalPayable,
-          editCount: (s.editCount || 0) + 1,
-          lastUpdated: serverTimestamp(),
-          // Ensure full schema is present
-          ptaPaid: s.ptaPaid || 0,
-          ptaBalance: s.ptaBalance || 0,
-          ptaBill: s.ptaBill || 0,
-          maintenancePaid: s.maintenancePaid || 0,
-          maintenanceBalance: s.maintenanceBalance || 0,
-          maintenanceBill: s.maintenanceBill || 0,
-          admissionPaid: s.admissionPaid || 0,
-          admissionBalance: s.admissionBalance || 0,
-          admissionBill: s.admissionBill || 0,
-          booksPaid: s.booksPaid || 0,
-          booksBalance: s.booksBalance || 0,
-          booksBill: s.booksBill || 0,
-          uniformPaid: s.uniformPaid || 0,
-          uniformBalance: s.uniformBalance || 0,
-          uniformBill: s.uniformBill || 0,
-          otherPaid: s.otherPaid || 0,
-          otherBalance: s.otherBalance || 0,
-          otherBill: s.otherBill || 0,
-        };
-
-        if (!s.hasRecordInTerm) {
-          feeRecordData.payments = [];
-          feeRecordData.createdAt = serverTimestamp();
-        }
-
-        batch.set(doc(db, "studentFeeRecords", recordId), feeRecordData, { merge: true });
-        const walletAdjustment = adjustment - (s.hasRecordInTerm ? 0 : discount);
-        batch.update(doc(db, "users", uid), { walletBalance: increment(walletAdjustment) });
+        await batch.commit();
       }
-      await batch.commit();
+
       onSuccess();
       setSelectedStudentUids(new Set());
       setIndividualBillOverrides({});
@@ -720,52 +739,60 @@ export const useManageFees = ({
     if (!canEdit) return;
     setSaving(true);
     try {
-      const batch = writeBatch(db);
       const selectedUids = Array.from(selectedStudentUids);
-      for (const uid of selectedUids) {
-        const s = students.find((stud) => stud.uid === uid);
-        if (!s) continue;
-        const discStr = individualDiscountOverrides[uid] || discountAmount;
-        const disc = parseFloat(discStr);
-        if (isNaN(disc) || disc === 0) continue;
+      const cleanYear = academicYear.replace(/\//g, "-");
+      const cleanTerm = term.replace(/\s/g, "");
 
-        const cleanYear = academicYear.replace(/\//g, "-");
-        const cleanTerm = term.replace(/\s/g, "");
-        const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
+      // Firestore batch limit is 500. Each student has up to 2 operations.
+      const CHUNK_SIZE = 200;
+      for (let i = 0; i < selectedUids.length; i += CHUNK_SIZE) {
+        const chunk = selectedUids.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
 
-        // Apply profile discount ONLY if this is the first time we're creating a record for this term.
-        const profileDiscount = (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) ? s.discountAmount : 0;
-        const totalDiscountToApply = disc + profileDiscount;
+        for (const uid of chunk) {
+          const s = students.find((stud) => stud.uid === uid);
+          if (!s) continue;
+          const discStr = individualDiscountOverrides[uid] || discountAmount;
+          const disc = parseFloat(discStr);
+          if (isNaN(disc) || disc === 0) continue;
 
-        if (!s.hasRecordInTerm) {
-          batch.set(doc(db, "studentFeeRecords", recordId), {
-            studentUid: uid,
-            studentName: s.fullName,
-            classId: s.classId,
-            className: s.className,
-            academicYear,
-            term,
-            termBill: 0,
-            arrears: s.previousBalance || 0,
-            discount: totalDiscountToApply,
-            amountPaid: 0,
-            balance: (s.previousBalance || 0) - totalDiscountToApply,
-            totalPayable: s.previousBalance || 0,
-            editCount: 1,
-            createdAt: serverTimestamp(),
-            lastUpdated: serverTimestamp(),
-            payments: [],
-          });
-        } else {
-          batch.update(doc(db, "studentFeeRecords", recordId), {
-            discount: increment(disc),
-            balance: increment(-disc),
-            lastUpdated: serverTimestamp(),
-          });
+          const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
+
+          // Apply profile discount ONLY if this is the first time we're creating a record for this term.
+          const profileDiscount = (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) ? s.discountAmount : 0;
+          const totalDiscountToApply = disc + profileDiscount;
+
+          if (!s.hasRecordInTerm) {
+            batch.set(doc(db, "studentFeeRecords", recordId), {
+              studentUid: uid,
+              studentName: s.fullName,
+              classId: s.classId,
+              className: s.className,
+              academicYear,
+              term,
+              termBill: 0,
+              arrears: s.previousBalance || 0,
+              discount: totalDiscountToApply,
+              amountPaid: 0,
+              balance: (s.previousBalance || 0) - totalDiscountToApply,
+              totalPayable: s.previousBalance || 0,
+              editCount: 1,
+              createdAt: serverTimestamp(),
+              lastUpdated: serverTimestamp(),
+              payments: [],
+            });
+          } else {
+            batch.update(doc(db, "studentFeeRecords", recordId), {
+              discount: increment(disc),
+              balance: increment(-disc),
+              lastUpdated: serverTimestamp(),
+            });
+          }
+          batch.update(doc(db, "users", uid), { walletBalance: increment(-totalDiscountToApply) });
         }
-        batch.update(doc(db, "users", uid), { walletBalance: increment(-totalDiscountToApply) });
+        await batch.commit();
       }
-      await batch.commit();
+
       onSuccess();
       setSelectedStudentUids(new Set());
       setIndividualDiscountOverrides({});

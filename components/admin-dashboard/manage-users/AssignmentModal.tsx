@@ -186,10 +186,11 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                 <Text style={styles.sectionHeader}>Delegated Permissions</Text>
                 {PERMISSION_KEYS.map((pk) => (
                   <View key={pk.key} style={styles.permItem}>
-                    <Text style={styles.permTitle}>{pk.label}</Text>
                     <View style={styles.permPickerBox}>
+                      <Text style={styles.pickerLabel}>{pk.label}</Text>
                       <Picker
                         selectedValue={(tempPermissions[pk.key] || "deny") as any}
+                        style={{ marginLeft: -10 }}
                         onValueChange={(v) => {
                           const safe =
                             v === "full" || v === "view" || v === "edit" || v === "deny"
@@ -442,146 +443,212 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   </View>
                 </View>
 
-                <Text style={styles.pickerLabel}>First Name</Text>
-                <TextInput
-                  style={[styles.textInput, { marginBottom: 15 }]}
-                  value={editForm.firstName}
-                  onChangeText={(t) => setEditForm((p: any) => ({ ...p, firstName: t }))}
-                />
-                <Text style={styles.pickerLabel}>Last Name</Text>
-                <TextInput
-                  style={[styles.textInput, { marginBottom: 15 }]}
-                  value={editForm.lastName}
-                  onChangeText={(t) => setEditForm((p: any) => ({ ...p, lastName: t }))}
-                />
-                <Text style={styles.pickerLabel}>Phone Number</Text>
-                <TextInput
-                  style={[styles.textInput, { marginBottom: 15 }]}
-                  value={editForm.phone}
-                  onChangeText={(t) => setEditForm((p: any) => ({ ...p, phone: t }))}
-                  keyboardType="phone-pad"
-                />
+                {/* Personal Information */}
+                <View style={styles.formSection}>
+                  <Text style={styles.sectionHeader}>Personal Information</Text>
 
-                {state.target?.role === "student" && (
-                  <>
-                    <Text style={styles.pickerLabel}>Emergency Number</Text>
-                    <TextInput
-                      style={[styles.textInput, { marginBottom: 15 }]}
-                      value={editForm.emergencyPhone}
-                      onChangeText={(t) => setEditForm((p: any) => ({ ...p, emergencyPhone: t }))}
-                      keyboardType="phone-pad"
-                      placeholder="Emergency contact number"
-                    />
-                    <Text style={styles.pickerLabel}>Parent Number</Text>
-                    <TextInput
-                      style={[styles.textInput, { marginBottom: 15 }]}
-                      value={editForm.parentPhone}
-                      onChangeText={(t) => setEditForm((p: any) => ({ ...p, parentPhone: t }))}
-                      keyboardType="phone-pad"
-                      placeholder="Parent contact number"
-                    />
-                  </>
-                )}
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.pickerLabel}>First Name</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={editForm.firstName}
+                        onChangeText={(t) => setEditForm((p: any) => ({ ...p, firstName: t }))}
+                        placeholder="Enter first name"
+                      />
+                    </View>
+                  </View>
 
-                <Text style={styles.pickerLabel}>Gender</Text>
-                <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
-                  <Picker
-                    selectedValue={editForm.gender}
-                    onValueChange={(t) => setEditForm((p: any) => ({ ...p, gender: t }))}
-                  >
-                    <Picker.Item label="Not Specified" value="" />
-                    <Picker.Item label="Male" value="Male" />
-                    <Picker.Item label="Female" value="Female" />
-                  </Picker>
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.pickerLabel}>Last Name</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={editForm.lastName}
+                        onChangeText={(t) => setEditForm((p: any) => ({ ...p, lastName: t }))}
+                        placeholder="Enter last name"
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <View style={styles.permPickerBox}>
+                      <Text style={[styles.pickerLabel, { position: 'absolute', top: 8, left: 12 }]}>Gender</Text>
+                      <Picker
+                        selectedValue={editForm.gender}
+                        style={{ marginLeft: -10 }}
+                        onValueChange={(t) => setEditForm((p: any) => ({ ...p, gender: t }))}
+                      >
+                        <Picker.Item label="Select Gender" value="" />
+                        <Picker.Item label="Male" value="Male" />
+                        <Picker.Item label="Female" value="Female" />
+                      </Picker>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Contact Information */}
+                <View style={styles.formSection}>
+                  <Text style={styles.sectionHeader}>Contact Information</Text>
+
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.pickerLabel}>Phone Number</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={editForm.phone}
+                        onChangeText={(t) => setEditForm((p: any) => ({ ...p, phone: t }))}
+                        keyboardType="phone-pad"
+                        placeholder="User's phone number"
+                      />
+                    </View>
+                  </View>
+
+                  {state.target?.role === "student" && (
+                    <>
+                      <View style={styles.inputGroup}>
+                        <View style={styles.inputWrapper}>
+                          <Text style={styles.pickerLabel}>Emergency Number</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={editForm.emergencyPhone}
+                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, emergencyPhone: t }))}
+                            keyboardType="phone-pad"
+                            placeholder="Emergency contact number"
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.inputGroup}>
+                        <View style={styles.inputWrapper}>
+                          <Text style={styles.pickerLabel}>Parent Number</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={editForm.parentPhone}
+                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, parentPhone: t }))}
+                            keyboardType="phone-pad"
+                            placeholder="Parent contact number"
+                          />
+                        </View>
+                      </View>
+                    </>
+                  )}
                 </View>
 
                 {state.target?.role === "student" && (
                   <>
-                    <View style={styles.switchRowSmall}>
-                      <Text style={styles.pickerLabel}>Uses School Bus</Text>
-                      <Switch
-                        value={editForm.takesBus}
-                        onValueChange={(v) => setEditForm((p: any) => ({ ...p, takesBus: v }))}
-                        trackColor={{ false: "#767577", true: COLORS.primary }}
-                      />
-                    </View>
+                    {/* Logistics & Services */}
+                    <View style={styles.formSection}>
+                      <Text style={styles.sectionHeader}>Logistics & Services</Text>
 
-                    {editForm.takesBus && (
-                      <>
-                        <View style={styles.labelRow}>
-                          <Text style={styles.pickerLabel}>Bus Location / Stop</Text>
-                          <TouchableOpacity onPress={() => setIsAddingNewBusLoc(!isAddingNewBusLoc)}>
-                            <Text style={styles.linkText}>
-                              {isAddingNewBusLoc ? "Cancel" : "+ Add New"}
-                            </Text>
-                          </TouchableOpacity>
+                      <View style={styles.switchRowContainer}>
+                        <View style={styles.switchInfo}>
+                          <Text style={styles.switchTitle}>School Bus</Text>
+                          <Text style={styles.switchSubtext}>Uses school transportation</Text>
                         </View>
+                        <Switch
+                          value={editForm.takesBus}
+                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, takesBus: v }))}
+                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                        />
+                      </View>
 
-                        {isAddingNewBusLoc ? (
-                          <View style={styles.inputActionRow}>
-                            <TextInput
-                              style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
-                              placeholder="New Location Name"
-                              value={newBusLocInput}
-                              onChangeText={setNewBusLocInput}
-                            />
-                            <TouchableOpacity
-                              style={styles.actionBtnSmall}
-                              onPress={() => handleSaveNewBusLocation(state.target)}
-                            >
-                              <Text style={{ color: "#fff", fontWeight: "700" }}>Save</Text>
+                      {editForm.takesBus && (
+                        <View style={[styles.inputGroup, { marginTop: 10 }]}>
+                          <View style={styles.labelRow}>
+                            <Text style={styles.pickerLabel}>Bus Location / Stop</Text>
+                            <TouchableOpacity onPress={() => setIsAddingNewBusLoc(!isAddingNewBusLoc)}>
+                              <Text style={styles.linkText}>
+                                {isAddingNewBusLoc ? "Cancel" : "+ Add New"}
+                              </Text>
                             </TouchableOpacity>
                           </View>
-                        ) : (
-                          <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
-                            <Picker
-                              selectedValue={editForm.busLocation}
-                              onValueChange={(v) => setEditForm((p: any) => ({ ...p, busLocation: v }))}
-                            >
-                              <Picker.Item label="Select Location" value="" />
-                              {busLocations.map((loc) => (
-                                <Picker.Item key={loc} label={loc} value={loc} />
-                              ))}
-                            </Picker>
-                          </View>
-                        )}
-                      </>
-                    )}
 
-                    <View style={styles.switchRowSmall}>
-                      <Text style={styles.pickerLabel}>On Scholarship</Text>
-                      <Switch
-                        value={editForm.onScholarship}
-                        onValueChange={(v) => setEditForm((p: any) => ({ ...p, onScholarship: v }))}
-                        trackColor={{ false: "#767577", true: COLORS.primary }}
-                      />
+                          {isAddingNewBusLoc ? (
+                            <View style={styles.inputActionRow}>
+                              <TextInput
+                                style={[styles.textInput, { flex: 1 }]}
+                                placeholder="New Location Name"
+                                value={newBusLocInput}
+                                onChangeText={setNewBusLocInput}
+                              />
+                              <TouchableOpacity
+                                style={styles.actionBtnSmall}
+                                onPress={() => handleSaveNewBusLocation(state.target)}
+                              >
+                                <Text style={{ color: "#fff", fontWeight: "700" }}>Save</Text>
+                              </TouchableOpacity>
+                            </View>
+                          ) : (
+                            <View style={styles.permPickerBox}>
+                              <Text style={styles.pickerLabel}>Current Stop</Text>
+                              <Picker
+                                selectedValue={editForm.busLocation}
+                                style={{ marginLeft: -10 }}
+                                onValueChange={(v) => setEditForm((p: any) => ({ ...p, busLocation: v }))}
+                              >
+                                <Picker.Item label="Select Location" value="" />
+                                {busLocations.map((loc) => (
+                                  <Picker.Item key={loc} label={loc} value={loc} />
+                                ))}
+                              </Picker>
+                            </View>
+                          )}
+                        </View>
+                      )}
+
+                      <View style={styles.switchRowContainer}>
+                        <View style={styles.switchInfo}>
+                          <Text style={styles.switchTitle}>Feeding Program</Text>
+                          <Text style={styles.switchSubtext}>Enrolled in school meals</Text>
+                        </View>
+                        <Switch
+                          value={editForm.isFeeding}
+                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, isFeeding: v }))}
+                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                        />
+                      </View>
+
+                      <View style={styles.switchRowContainer}>
+                        <View style={styles.switchInfo}>
+                          <Text style={styles.switchTitle}>Extra Classes</Text>
+                          <Text style={styles.switchSubtext}>Enrolled in after-school classes</Text>
+                        </View>
+                        <Switch
+                          value={editForm.takesExtraClasses}
+                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, takesExtraClasses: v }))}
+                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                        />
+                      </View>
                     </View>
 
-                    <View style={styles.switchRowSmall}>
-                      <Text style={styles.pickerLabel}>On Discount</Text>
-                      <Switch
-                        value={editForm.onDiscount}
-                        onValueChange={(v) => setEditForm((p: any) => ({ ...p, onDiscount: v }))}
-                        trackColor={{ false: "#767577", true: COLORS.primary }}
-                      />
-                    </View>
+                    {/* Financial Status */}
+                    <View style={styles.formSection}>
+                      <Text style={styles.sectionHeader}>Financial Status</Text>
 
-                    <View style={styles.switchRowSmall}>
-                      <Text style={styles.pickerLabel}>Enrolled in Feeding</Text>
-                      <Switch
-                        value={editForm.isFeeding}
-                        onValueChange={(v) => setEditForm((p: any) => ({ ...p, isFeeding: v }))}
-                        trackColor={{ false: "#767577", true: COLORS.primary }}
-                      />
-                    </View>
+                      <View style={styles.switchRowContainer}>
+                        <View style={styles.switchInfo}>
+                          <Text style={styles.switchTitle}>Scholarship</Text>
+                          <Text style={styles.switchSubtext}>Under scholarship program</Text>
+                        </View>
+                        <Switch
+                          value={editForm.onScholarship}
+                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, onScholarship: v }))}
+                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                        />
+                      </View>
 
-                    <View style={styles.switchRowSmall}>
-                      <Text style={styles.pickerLabel}>Extra Classes</Text>
-                      <Switch
-                        value={editForm.takesExtraClasses}
-                        onValueChange={(v) => setEditForm((p: any) => ({ ...p, takesExtraClasses: v }))}
-                        trackColor={{ false: "#767577", true: COLORS.primary }}
-                      />
+                      <View style={styles.switchRowContainer}>
+                        <View style={styles.switchInfo}>
+                          <Text style={styles.switchTitle}>Fee Discount</Text>
+                          <Text style={styles.switchSubtext}>Eligible for fee reduction</Text>
+                        </View>
+                        <Switch
+                          value={editForm.onDiscount}
+                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, onDiscount: v }))}
+                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                        />
+                      </View>
                     </View>
                   </>
                 )}
@@ -594,35 +661,46 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   {updating ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.saveBtnText}>Save Profile</Text>
+                    <Text style={styles.saveBtnText}>Update Profile</Text>
                   )}
                 </TouchableOpacity>
 
-                <View style={{ height: 30 }} />
-                <Text style={[styles.pickerLabel, { color: COLORS.secondary }]}>
-                  Security - Update Email
-                </Text>
-                <TextInput
-                  style={[styles.textInput, { marginBottom: 15 }]}
-                  value={editForm.email}
-                  onChangeText={(t) => setEditForm((p: any) => ({ ...p, email: t }))}
-                  placeholder="New Email Address"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                <TouchableOpacity
-                  style={[styles.saveBtn, { backgroundColor: COLORS.secondary }]}
-                  onPress={handleUpdateEmail}
-                  disabled={updating}
-                >
-                  {updating ? (
-                    <ActivityIndicator color="#fff" />
-                  ) : (
-                    <Text style={styles.saveBtnText}>Update Auth Email</Text>
-                  )}
-                </TouchableOpacity>
+                {/* Security Section */}
+                <View style={[styles.formSection, { marginTop: 40, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 20 }]}>
+                  <Text style={[styles.sectionHeader, { color: COLORS.secondary }]}>Security & Authentication</Text>
+
+                  <View style={styles.inputGroup}>
+                    <View style={styles.inputWrapper}>
+                      <Text style={styles.pickerLabel}>Account Email</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={editForm.email}
+                        onChangeText={(t) => setEditForm((p: any) => ({ ...p, email: t }))}
+                        placeholder="Enter new email address"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                    </View>
+                    <Text style={[styles.switchSubtext, { marginTop: 8 }]}>
+                      Changing this will update the user's login credentials.
+                    </Text>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: COLORS.secondary, marginTop: 10 }]}
+                    onPress={handleUpdateEmail}
+                    disabled={updating}
+                  >
+                    {updating ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.saveBtnText}>Update Login Email</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
+
 
             {state.type === "upgrade_staff" && (
               <View>
@@ -677,13 +755,14 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
             {state.type === "promote_repeat" && (
               <View>
-                <Text style={styles.pickerLabel}>Move student(s) to:</Text>
                 <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
+                  <Text style={styles.pickerLabel}>Move student(s) to:</Text>
                   <Picker
                     selectedValue={targetClassId}
+                    style={{ marginLeft: -10 }}
                     onValueChange={(val) => setTargetClassId(val)}
                   >
-                    <Picker.Item label="Select Target Class" value="" />
+                    <Picker.Item label="" value="" />
                     {allClasses.map((c) => (
                       <Picker.Item key={c.id} label={c.name} value={c.id} />
                     ))}
@@ -816,22 +895,34 @@ const styles = StyleSheet.create({
   permPickerBox: {
     backgroundColor: "#f8fafc",
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     overflow: "hidden",
+    minHeight: 65,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 15
   },
   pickerLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: "900",
-    color: "#475569",
-    marginBottom: 6,
+    color: "#64748B",
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5
   },
   textInput: {
     backgroundColor: "#f8fafc",
     borderRadius: 12,
-    padding: 12,
+    paddingHorizontal: 15,
+    paddingTop: 20,
+    paddingBottom: 8,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    fontSize: 14,
+    fontSize: 15,
     color: "#1E293B",
+    fontWeight: "600",
+    minHeight: 55,
   },
   saveBtn: {
     height: 60,
@@ -941,4 +1032,41 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#1E293B",
   },
+  // Form Enhancement Styles
+  formSection: {
+    marginBottom: 25,
+  },
+  inputWrapper: {
+    position: 'relative',
+  },
+  switchRowContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  switchInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  switchTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginBottom: 2,
+  },
+  switchSubtext: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "500",
+  },
+  inputGroup: {
+    marginBottom: 15,
+  },
 });
+

@@ -50,6 +50,14 @@ export default function MaintenanceCharges() {
   const router = useRouter();
   const acadConfig = useAcademicConfig();
 
+  if (acadConfig.loading || !appUser) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={THEME.primary} />
+      </View>
+    );
+  }
+
   const [selectedClassId, setSelectedClassId] = useState("all");
   const [classModalVisible, setClassModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -235,7 +243,7 @@ export default function MaintenanceCharges() {
             </TouchableOpacity>
             <View style={styles.glassPill}>
               <Text style={styles.glassLabel}>TERM / YEAR</Text>
-              <Text style={styles.glassValue}>{acadConfig.currentTerm || "---"}</Text>
+              <Text style={styles.glassValue}>{acadConfig?.currentTerm || "---"}</Text>
             </View>
           </View>
         </LinearGradient>

@@ -19,8 +19,8 @@ const schools = {
   },
   IBS: {
     appId: "com.saysmanage.jeiriver",
-    productName: "IBS App",
-    icon: "assets/icon-sincere.png",
+    productName: "A R I App",
+    icon: "assets/icon-advent.png",
   },
   perfect: {
     appId: "com.saysmanage.peiapp",

@@ -167,16 +167,16 @@ export default function ParentDashboard() {
         {
           title: "Fee Ledger",
           subtitle: "Balance breakdown",
-          icon: "receipt",
+          icon: "wallet",
           color: "#f59e0b",
           path: "/parent-dashboard/student-fee-history",
         },
         {
           title: "Payment Receipts",
           subtitle: "Transaction history",
-          icon: "document-attach-outline",
+          icon: "receipt",
           color: "#10b981",
-          path: "/parent-dashboard/student-fee-history",
+          path: "/parent-dashboard/payment-receipts",
         },
         {
           title: "School News",
@@ -407,7 +407,7 @@ export default function ParentDashboard() {
                 </View>
                 <View style={styles.grid}>
                   {section.items.map((item, index) =>
-                    renderCard(item, index + sIndex * 3),
+                    renderCard(item, index + sIndex * 3)
                   )}
                 </View>
               </View>

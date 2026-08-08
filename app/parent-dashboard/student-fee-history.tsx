@@ -3,11 +3,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     collection,
-    doc,
     documentId,
-    getDoc,
     getDocs,
-    onSnapshot,
     query,
     where,
 } from "firebase/firestore";
@@ -17,6 +14,7 @@ import {
     ActivityIndicator,
     Dimensions,
     Platform,
+    RefreshControl,
     SafeAreaView,
     ScrollView,
     StatusBar,
@@ -30,250 +28,84 @@ import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
-import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { useFeeLedger } from "../../hooks/admin-dashboard/useFeeLedger";
 
 const { width } = Dimensions.get("window");
 
 export default function StudentFeeHistory() {
-  const { studentId: paramStudentId } = useLocalSearchParams();
+  const params = useLocalSearchParams();
   const router = useRouter();
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
-  const { showToast } = useToast();
 
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
   const secondary = SCHOOL_CONFIG.secondaryColor || COLORS.secondary;
 
-  const availableYears = useMemo(() => {
-    const start = 2024;
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let y = start; y <= currentYear + 3; y++) {
-      years.push(`${y}/${y + 1}`);
-    }
-    if (acadConfig.academicYear && !years.includes(acadConfig.academicYear)) {
-      years.push(acadConfig.academicYear);
-    }
-    return Array.from(new Set(years)).sort().reverse();
-  }, [acadConfig.academicYear]);
-
-  const [selectedYear, setSelectedYear] = useState("");
-  const [selectedTerm, setSelectedTerm] = useState("Term 1");
-  const [loading, setLoading] = useState(true);
-  const [fetchingRecord, setFetchingRecord] = useState(false);
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string>(
-    (paramStudentId as string) || "",
+    (params.studentId as string) || "",
   );
-  const [studentData, setStudentData] = useState<any>(null);
-  const [record, setRecord] = useState<any>(null);
-  const [allTransactions, setAllTransactions] = useState<any[]>([]);
-  const [showFullHistory, setShowFullHistory] = useState(false);
 
-  // Reset history toggle when filters change to ensure term-specific focus
-  useEffect(() => {
-    setShowFullHistory(false);
-  }, [selectedYear, selectedTerm, selectedChildId]);
+  const {
+    selectedYear,
+    setSelectedYear,
+    selectedTerm,
+    setSelectedTerm,
+    record,
+    allTransactions,
+    loading,
+    fetchingRecord,
+    categorySummary,
+    totals,
+    availableYears,
+    showFullHistory,
+    setShowFullHistory,
+    refreshing,
+    refresh,
+  } = useFeeLedger(
+    selectedChildId,
+    (params.academicYear as string) || "",
+    (params.term as string) || "",
+  );
 
-  // Sync with global academic config
-  useEffect(() => {
-    if (!acadConfig.loading) {
-      setSelectedYear(acadConfig.academicYear);
-      setSelectedTerm(acadConfig.currentTerm);
-    }
-  }, [acadConfig]);
+  const { totalBilled, totalPaid, totalBalance } = totals;
+  const handleBack = () => router.back();
 
-  useEffect(() => {
+  const fetchChildren = async () => {
     if (!appUser || appUser.role !== "parent") return;
-    const fetchChildren = async () => {
-      const ids = appUser.childrenIds || [];
-      if (ids.length === 0) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const q = query(
-          collection(db, "users"),
-          where(documentId(), "in", ids.slice(0, 30)),
-        );
-        const snap = await getDocs(q);
-        const list = snap.docs.map((d) => ({
-          id: d.id,
-          name: `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
-        }));
-        setChildren(list);
-        if (list.length > 0)
-          setSelectedChildId((prev: string) => prev || list[0].id);
-      } catch (e) {
-        console.error(e);
-      }
-      setLoading(false);
-    };
+    const ids = appUser.childrenIds || [];
+    if (ids.length === 0) return;
+    try {
+      const q = query(
+        collection(db, "users"),
+        where(documentId(), "in", ids.slice(0, 30)),
+      );
+      const snap = await getDocs(q);
+      const list = snap.docs.map((d) => ({
+        id: d.id,
+        name: `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
+      }));
+      setChildren(list);
+      if (!selectedChildId && list.length > 0)
+        setSelectedChildId(list[0].id);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
     fetchChildren();
   }, [appUser]);
 
-  useEffect(() => {
-    if (!selectedChildId) return;
-    const loadStudentData = async () => {
-      const studentDoc = await getDoc(doc(db, "users", selectedChildId));
-      if (studentDoc.exists()) setStudentData(studentDoc.data() as any);
-    };
-    loadStudentData();
-  }, [selectedChildId]);
-
-  useEffect(() => {
-    if (!selectedChildId) return;
-    if (!showFullHistory && (!selectedYear || !selectedTerm)) return;
-
-    setFetchingRecord(true);
-    // Clear previous state to avoid leakage
-    setRecord(null);
-    setAllTransactions([]);
-
-    const cleanYear = selectedYear.replace(/\//g, "-");
-    const cleanTerm = selectedTerm.replace(/\s/g, "");
-    const recordId = `${selectedChildId}_${cleanYear}_${cleanTerm}`;
-
-    const unsubRecord = onSnapshot(
-      doc(db, "studentFeeRecords", recordId),
-      (snap) => {
-        setRecord(snap.exists() ? (snap.data() as any) : null);
-      },
-      (err) => {
-        console.warn("Fee record listener failed:", err);
-        setRecord(null);
-      },
-    );
-
-    let q;
-    if (showFullHistory) {
-      q = query(
-        collection(db, "feePayments"),
-        where("studentUid", "==", selectedChildId)
-      );
-    } else {
-      q = query(
-        collection(db, "feePayments"),
-        where("studentUid", "==", selectedChildId),
-        where("academicYear", "==", selectedYear),
-        where("term", "==", selectedTerm),
-      );
-    }
-
-    const unsubTransactions = onSnapshot(
-      q,
-      (snap) => {
-        const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setAllTransactions(list);
-        setFetchingRecord(false);
-      },
-      (err) => {
-        console.warn("Transactions listener failed:", err);
-        setFetchingRecord(false);
-      },
-    );
-
-    return () => {
-      unsubRecord();
-      unsubTransactions();
-    };
-  }, [selectedChildId, selectedYear, selectedTerm, showFullHistory]);
-
-  const ledgerTransactions = useMemo(() => {
-    const collectionList = allTransactions;
-    const recordList = record?.payments || [];
-    const merged = [...collectionList];
-    const existingIds = new Set<string>(
-      collectionList.map((t: any) => String(t.receiptNo || t.id)),
-    );
-
-    recordList.forEach((p: any) => {
-      const id = String(p.receiptNo || p.id);
-      if (id && id !== "undefined" && !existingIds.has(id)) {
-        merged.push({ ...p, id: id });
-      }
-    });
-
-    // If not in full history mode, ensure the ledger list matches the record summary
-    if (!showFullHistory) {
-      // STRICT FILTERING: Only transactions belonging to THIS specific term/year
-      // Normalize comparison by using the same logic as the ledger
-      const termTransactions = merged.filter((t: any) => {
-        const tYear = t.academicYear;
-        const tTerm = t.term;
-
-        // Ensure we match the selected values exactly
-        return tYear === selectedYear && tTerm === selectedTerm;
-      });
-
-      if (record) {
-        const categories = [
-          { key: "tuition", paid: record.amountPaid || 0 },
-          { key: "pta", paid: record.ptaPaid || 0 },
-          { key: "maintenance", paid: record.maintenancePaid || 0 },
-          { key: "admission", paid: record.admissionPaid || 0 },
-          { key: "books", paid: record.booksPaid || 0 },
-          { key: "uniform", paid: record.uniformPaid || 0 },
-          { key: "other", paid: record.otherPaid || 0 },
-        ];
-
-        categories.forEach((cat) => {
-          const currentCatSum = termTransactions.reduce((sum: number, t: any) => {
-            const type = (t.type || "tuition").toLowerCase();
-            const method = (t.method || "").toLowerCase();
-            const receivedFrom = (t.receivedFrom || "").toLowerCase();
-
-            const isPayment = (
-              !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
-              (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
-            );
-
-            const category = type.replace("_payment", "").replace("_credit", "");
-            return category === cat.key && isPayment
-              ? sum + (Number(t.amount) || 0)
-              : sum;
-          }, 0);
-
-          if (cat.paid > currentCatSum + 0.01) {
-            termTransactions.push({
-              id: `adjustment-${cat.key}`,
-              amount: cat.paid - currentCatSum,
-              type: cat.key === "tuition" ? "tuition" : `${cat.key}_payment`,
-              receiptNo: `ADJ-${cat.key.toUpperCase()}`,
-              date: record.createdAt || moment().format("YYYY-MM-DD"),
-              academicYear: selectedYear,
-              term: selectedTerm,
-              receivedFrom: "Historical Record",
-              method: "Migration",
-              isAdjustment: true,
-            });
-          }
-        });
-      }
-
-      return termTransactions.sort((a: any, b: any) => {
-        const dateA = a.createdAt || a.timestamp?.toDate?.() || a.date || 0;
-        const dateB = b.createdAt || b.timestamp?.toDate?.() || b.date || 0;
-        return new Date(dateB).getTime() - new Date(dateA).getTime();
-      });
-    }
-
-    return merged.sort((a: any, b: any) => {
-      const dateA = a.createdAt || a.timestamp?.toDate?.() || a.date || 0;
-      const dateB = b.createdAt || b.timestamp?.toDate?.() || b.date || 0;
-      return new Date(dateB).getTime() - new Date(dateA).getTime();
-    });
-  }, [allTransactions, record, showFullHistory, selectedYear, selectedTerm]);
-
   const paymentLedgerEntries = useMemo(() => {
-    return ledgerTransactions
+    return allTransactions
       .map((payment: any, index: number) => {
         const timestampValue =
+          payment.date ||
           payment.createdAt ||
           payment.timestamp?.toDate?.() ||
-          payment.date ||
           payment.paymentDate ||
           payment.timestamp;
         const parsedDate = moment(timestampValue);
@@ -308,7 +140,7 @@ export default function StudentFeeHistory() {
               ?.replace("_payment", "")
               .replace("_", " ")
               .toUpperCase() ||
-            "FEE PAYMENT",
+            "PAYMENT",
           _installmentLabel: installmentLabel,
           _displayDate: parsedDate.isValid()
             ? parsedDate.format("MMM DD, YYYY")
@@ -325,197 +157,27 @@ export default function StudentFeeHistory() {
       .filter((entry: any) => entry._isPayment)
       .sort((a: any, b: any) => {
         const aTime = new Date(
-          a.createdAt || a.timestamp?.toDate?.() || a.date || 0,
+          a.date || a.createdAt || a.timestamp?.toDate?.() || 0,
         ).getTime();
         const bTime = new Date(
-          b.createdAt || b.timestamp?.toDate?.() || b.date || 0,
+          b.date || b.createdAt || b.timestamp?.toDate?.() || 0,
         ).getTime();
         return bTime - aTime;
       });
-  }, [ledgerTransactions]);
-
-  const rawSummary = useMemo(() => {
-    // 1. Initialize with tuition (term bill - discount) and arrears
-    const summary: Record<string, { billed: number; paid: number }> = {
-      tuition: {
-        billed: Math.max(0, (record?.termBill || 0) - (record?.discount || 0)),
-        paid: 0,
-      },
-    };
-
-    if (record?.arrears > 0) {
-      summary["arrears"] = { billed: record.arrears, paid: 0 };
-    }
-
-    // 2. Aggregate Transactions for all categories - Filtered by current selection
-    // We only want to count payments that belong to THIS specific bill period in the summary table
-    const relevantTransactions = allTransactions.filter((t: any) =>
-      t.academicYear === selectedYear && t.term === selectedTerm
-    );
-
-    relevantTransactions.forEach((t: any) => {
-      const type = (t.type || "tuition").toLowerCase();
-      const method = (t.method || "").toLowerCase();
-      const receivedFrom = (t.receivedFrom || "").toLowerCase();
-
-      const isPayment = (
-        !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
-        (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
-      );
-
-      let category = type.replace("_payment", "").replace("_credit", "");
-
-      // Handle specific "Other" categories
-      if (type === "other") {
-        category = (t.otherCategory || "other").toLowerCase();
-      }
-
-      if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
-
-      // Only sum payments from transactions - bills come from record or transactions
-      if (isPayment) {
-        if (category === "tuition" && summary["arrears"]) {
-          // If there are arrears, apply tuition payment to arrears first for display logic
-          let amt = t.amount || 0;
-          const toArrears = Math.min(amt, summary["arrears"].billed - summary["arrears"].paid);
-          summary["arrears"].paid += toArrears;
-          summary["tuition"].paid += (amt - toArrears);
-        } else {
-          summary[category].paid += t.amount || 0;
-        }
-      } else if (type === "other") {
-        // For 'other' type, we sum the billed amount from transactions to get specific names
-        summary[category].billed += t.amount || 0;
-      }
-    });
-
-    // 3. Reflect Record "Base" Totals for isolated categories
-    if (record) {
-      const isolated = [
-        { key: "pta", bill: record.ptaBill || 0, paid: record.ptaPaid || 0 },
-        {
-          key: "maintenance",
-          bill: record.maintenanceBill || 0,
-          paid: record.maintenancePaid || 0,
-        },
-        {
-          key: "admission",
-          bill: record.admissionBill || 0,
-          paid: record.admissionPaid || 0,
-        },
-        {
-          key: "books",
-          bill: record.booksBill || 0, paid: record.booksPaid || 0 },
-        {
-          key: "uniform",
-          bill: record.uniformBill || 0,
-          paid: record.uniformPaid || 0,
-        },
-      ];
-
-      isolated.forEach((cat) => {
-        if (!summary[cat.key]) summary[cat.key] = { billed: 0, paid: 0 };
-        summary[cat.key].billed = Math.max(summary[cat.key].billed, cat.bill);
-        summary[cat.key].paid = Math.max(summary[cat.key].paid, cat.paid);
-      });
-
-      // Special handling for tuition/arrears match with record.amountPaid
-      // record.amountPaid is total tuition paid (incl arrears)
-      const totalTuitionPaidInSummary = summary.tuition.paid + (summary.arrears?.paid || 0);
-      if (record.amountPaid > totalTuitionPaidInSummary) {
-        let diff = record.amountPaid - totalTuitionPaidInSummary;
-        if (summary.arrears) {
-           const extraToArrears = Math.min(diff, summary.arrears.billed - summary.arrears.paid);
-           summary.arrears.paid += extraToArrears;
-           diff -= extraToArrears;
-        }
-        summary.tuition.paid += diff;
-      }
-
-      // Special handling for 'other' to ensure it matches record.otherBill and avoids double counting
-      const specificOtherBilled = Object.entries(summary)
-        .filter(
-          ([k]) =>
-            ![
-              "tuition",
-              "pta",
-              "maintenance",
-              "admission",
-              "books",
-              "uniform",
-              "other",
-              "arrears"
-            ].includes(k),
-        )
-        .reduce((sum, [_, v]) => sum + v.billed, 0);
-
-      const unnamedOtherBill = Math.max(
-        0,
-        (record.otherBill || 0) - specificOtherBilled,
-      );
-
-      if (unnamedOtherBill > 0 || record.otherPaid > 0) {
-        if (!summary["other"]) summary["other"] = { billed: 0, paid: 0 };
-        summary["other"].billed = Math.max(
-          summary["other"].billed,
-          unnamedOtherBill,
-        );
-        summary["other"].paid = Math.max(
-          summary["other"].paid,
-          record.otherPaid || 0,
-        );
-      }
-    }
-    return summary;
-  }, [allTransactions, record, selectedYear, selectedTerm]);
-
-  const categorySummary = useMemo(() => {
-    const filtered: Record<string, { billed: number; paid: number }> = {};
-    Object.entries(rawSummary).forEach(([cat, vals]) => {
-      if (vals.billed > 0 || vals.paid > 0) {
-        filtered[cat] = vals;
-      }
-    });
-    return filtered;
-  }, [rawSummary]);
-
-  const { totalBilled, totalPaid, totalBalance } = useMemo(() => {
-    const billed = Object.values(categorySummary).reduce(
-      (acc, curr: any) => acc + curr.billed,
-      0,
-    );
-    const paid = Object.values(categorySummary).reduce(
-      (acc, curr: any) => acc + curr.paid,
-      0,
-    );
-    return {
-      totalBilled: billed,
-      totalPaid: paid,
-      totalBalance: billed - paid,
-    };
-  }, [categorySummary]);
+  }, [allTransactions]);
 
   const ledgerSummary = useMemo(() => {
-    const totalPaidVal = showFullHistory
-      ? paymentLedgerEntries.reduce(
-          (sum, p: any) => sum + (Number(p.amount) || 0),
-          0,
-        )
-      : totalPaid;
-
+    const totalPaid = totals.totalPaid;
     const lastPayment = paymentLedgerEntries[0];
 
     return {
-      totalPaid: totalPaidVal,
-      installmentCount:
-        paymentLedgerEntries.filter((payment: any) => payment._installmentLabel)
-          .length || paymentLedgerEntries.length,
+      totalPaid,
       lastPaymentDate: lastPayment?._displayDate || "No payments yet",
     };
-  }, [paymentLedgerEntries, totalPaid, showFullHistory]);
+  }, [paymentLedgerEntries, totals.totalPaid]);
 
 
-  if (loading || acadConfig.loading)
+  if (loading || (selectedChildId && fetchingRecord && !record))
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={primary} />
@@ -528,8 +190,9 @@ export default function StudentFeeHistory() {
       <LinearGradient colors={[primary, secondary]} style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleBack}
             style={styles.backBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
@@ -611,6 +274,14 @@ export default function StudentFeeHistory() {
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={refresh}
+            colors={[primary]}
+            tintColor={primary}
+          />
+        }
       >
         {children.length > 1 && (
           <View style={styles.selectorWrapper}>
@@ -705,35 +376,38 @@ export default function StudentFeeHistory() {
               </View>
             </View>
 
-            {/* Payment Ledger Breakdown */}
+            {/* Financial Statement Table */}
             <View style={styles.invoiceTable}>
               <View style={styles.invoiceHeader}>
-                <Text style={[styles.invoiceTh, { flex: 2 }]}>PAYMENT DESCRIPTION</Text>
-                <Text
-                  style={[styles.invoiceTh, { flex: 1.5, textAlign: "right" }]}
-                >
-                  AMOUNT PAID
-                </Text>
+                <Text style={[styles.invoiceTh, { flex: 2 }]}>DESCRIPTION</Text>
+                <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>BILLED</Text>
+                <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>PAID</Text>
+                <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>BALANCE</Text>
               </View>
               {Object.entries(categorySummary)
-                .filter(([_, vals]: any) => (vals.paid || 0) > 0)
-                .map(([cat, vals]: any) => (
-                <View key={cat} style={styles.invoiceRow}>
-                  <Text
-                    style={[styles.invoiceTd, { flex: 2, fontWeight: "800" }]}
-                  >
-                    {cat.toUpperCase()}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.invoiceTd,
-                      { flex: 1.5, textAlign: "right", color: "#10B981", fontWeight: "900" },
-                    ]}
-                  >
-                    ₵{vals.paid.toFixed(2)}
-                  </Text>
+                .map(([cat, vals]: any) => {
+                  const balance = (vals.billed || 0) - (vals.paid || 0);
+                  return (
+                    <View key={cat} style={styles.invoiceRow}>
+                      <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10 }]}>{cat.toUpperCase()}</Text>
+                      <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right' }]}>{SCHOOL_CONFIG.currencySymbol}{vals.billed.toFixed(2)}</Text>
+                      <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: "#10B981" }]}>{SCHOOL_CONFIG.currencySymbol}{vals.paid.toFixed(2)}</Text>
+                      <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: balance > 0 ? "#EF4444" : "#10B981", fontWeight: '700' }]}>
+                        {SCHOOL_CONFIG.currencySymbol}{balance.toFixed(2)}
+                      </Text>
+                    </View>
+                  );
+                })}
+
+              {/* Added Discount Row */}
+              {record.discount > 0 && (
+                <View style={[styles.invoiceRow, { backgroundColor: '#F0FDFA' }]}>
+                  <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10, color: '#0D9488' }]}>TERM DISCOUNT</Text>
+                  <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: '#0D9488' }]}>({SCHOOL_CONFIG.currencySymbol}{record.discount.toFixed(2)})</Text>
+                  <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right' }]}>-</Text>
+                  <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: '#0D9488', fontWeight: '700' }]}>CREDIT</Text>
                 </View>
-              ))}
+              )}
             </View>
 
             {/* Summary */}
@@ -741,13 +415,13 @@ export default function StudentFeeHistory() {
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>TOTAL BILLED:</Text>
                 <Text style={styles.totalsValue}>
-                  ₵ {totalBilled.toFixed(2)}
+                  {SCHOOL_CONFIG.currencySymbol} {totalBilled.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.totalsRow}>
                 <Text style={styles.totalsLabel}>TOTAL PAID:</Text>
                 <Text style={[styles.totalsValue, { color: "#10B981" }]}>
-                  ₵ {totalPaid.toFixed(2)}
+                  {SCHOOL_CONFIG.currencySymbol} {totalPaid.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.grandTotalRow}>
@@ -758,7 +432,7 @@ export default function StudentFeeHistory() {
                     { color: totalBalance > 0 ? "#EF4444" : "#10B981" },
                   ]}
                 >
-                  ₵ {totalBalance.toFixed(2)}
+                  {SCHOOL_CONFIG.currencySymbol} {totalBalance.toFixed(2)}
                 </Text>
               </View>
             </View>
@@ -804,6 +478,12 @@ export default function StudentFeeHistory() {
                 No financial data exists for this student in {selectedTerm}{" "}
                 {selectedYear}.
               </Text>
+              <TouchableOpacity
+                style={[styles.childChip, { marginTop: 20, backgroundColor: primary, borderColor: primary }]}
+                onPress={refresh}
+              >
+                <Text style={[styles.childChipText, { color: '#fff' }]}>TRY REFRESHING</Text>
+              </TouchableOpacity>
             </View>
           )
         )}
@@ -848,7 +528,7 @@ export default function StudentFeeHistory() {
                       {showFullHistory ? "LIFETIME PAID" : "TOTAL PAID"}
                     </Text>
                     <Text style={styles.ledgerSummaryValue}>
-                      ₵{ledgerSummary.totalPaid.toFixed(2)}
+                      {SCHOOL_CONFIG.currencySymbol}{ledgerSummary.totalPaid.toFixed(2)}
                     </Text>
                   </View>
                   <View style={styles.ledgerSummaryItem}>
@@ -950,7 +630,7 @@ export default function StudentFeeHistory() {
                           !payment._isPayment && { color: "#EF4444" },
                         ]}
                       >
-                        ₵{Number(payment.amount || 0).toFixed(2)}
+                        {SCHOOL_CONFIG.currencySymbol}{Number(payment.amount || 0).toFixed(2)}
                       </Text>
                       <SVGIcon
                         name="chevron-forward"
@@ -1014,22 +694,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 14,
-    height: 60,
+    minHeight: 65,
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.25)",
-    paddingHorizontal: 5,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    position: "relative",
   },
-  picker: { height: 40, color: "#fff", marginLeft: -10, marginTop: 15 },
+  picker: { height: 45, color: "#fff", width: '100%', marginLeft: -10 },
   miniLabel: {
     fontSize: 9,
     fontWeight: "900",
     color: "rgba(255,255,255,0.8)",
     position: "absolute",
-    top: 8,
+    top: 12,
     left: 14,
     zIndex: 1,
     letterSpacing: 0.5,
+    textTransform: 'uppercase'
   },
   scrollContent: { padding: 20 },
   selectorWrapper: { marginBottom: 20 },

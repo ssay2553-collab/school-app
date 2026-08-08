@@ -1,3 +1,4 @@
+import { useIsFocused } from "@react-navigation/native";
 import { Picker } from "@react-native-picker/picker";
 import { useRouter } from "expo-router";
 import {
@@ -29,6 +30,7 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 export default function ManageUsers() {
   const router = useRouter();
+  const isFocused = useIsFocused();
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
@@ -114,6 +116,11 @@ export default function ManageUsers() {
     hasManageUsersAccess,
     handlePromoteRepeat,
     openPromoteRepeat,
+    runFinanceCleanup,
+    runFinanceMigration,
+    runAcademicCleanup,
+    isFinanceCleaning,
+    isAcademicCleaning,
   } = useManageUsers({ appUser, acadConfig, showToast, router });
 
   if (!hasManageUsersAccess && appUser) {
@@ -252,6 +259,7 @@ export default function ManageUsers() {
                   </TouchableOpacity>
 
                   <View style={[styles.pickerContainer, { width: 160 }]}>
+                    <Text style={styles.miniLabel}>FILTER BY CLASS</Text>
                     <Picker
                       selectedValue={selectedClassId}
                       onValueChange={setSelectedClassId}
@@ -400,7 +408,7 @@ export default function ManageUsers() {
 
         <UserDetailModal
           user={viewingUser}
-          isVisible={!!viewingUser}
+          isVisible={isFocused && !!viewingUser}
           onClose={() => setViewingUser(null)}
           linkedUsers={linkedUsers}
           isSuperAdmin={isSuperAdmin}
@@ -425,8 +433,12 @@ export default function ManageUsers() {
           onRemoveAssignedRole={handleRemoveAssignedRole}
           onPromoteRepeat={openPromoteRepeat}
           onToggleArchive={handleToggleArchiveStatus}
+          onRunFinanceCleanup={(u) => runFinanceCleanup(u.uid)}
+          onRunFinanceMigration={(u) => runFinanceMigration(u.uid)}
+          onRunAcademicCleanup={(u) => runAcademicCleanup(u.uid)}
+          isFinanceCleaning={isFinanceCleaning}
+          isAcademicCleaning={isAcademicCleaning}
           onViewAttendance={(u) => {
-            setViewingUser(null);
             router.push({
               pathname: "/admin-dashboard/student-attendance-details",
               params: {
@@ -561,12 +573,23 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     flex: 1,
-    height: 45,
+    minHeight: 65,
     backgroundColor: "#F1F5F9",
     borderRadius: 12,
     justifyContent: "center",
+    paddingTop: 12,
   },
-  picker: { height: 45 },
+  miniLabel: {
+    fontSize: 8,
+    fontWeight: "900",
+    color: "#94A3B8",
+    position: 'absolute',
+    top: 10,
+    left: 12,
+    zIndex: 1,
+    letterSpacing: 0.5
+  },
+  picker: { height: 45, marginLeft: -10 },
   graduateBtn: {
     backgroundColor: COLORS.secondary,
     paddingHorizontal: 15,

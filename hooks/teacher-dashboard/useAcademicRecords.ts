@@ -130,7 +130,8 @@ export const useAcademicRecords = () => {
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          const loadedStudents = (data.students || []).map((s: StudentScoreRecord) => calculateScores(s, reportType));
+          const students = Array.isArray(data.students) ? data.students : [];
+          const loadedStudents = students.map((s: StudentScoreRecord) => calculateScores(s, reportType));
           setAllStudents(loadedStudents);
           setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
           setRecordStatus(data.status || "pending");
@@ -216,6 +217,7 @@ export const useAcademicRecords = () => {
         reportType,
         students: allStudents,
         studentIds: allStudents.map(s => s.studentId),
+        status: "pending",
         timestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         status: "pending",

@@ -271,12 +271,13 @@ export default function AdminSignup() {
             </View>
 
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>GENDER</Text>
               <View style={styles.pickerContainer}>
+                <Text style={styles.miniLabel}>GENDER</Text>
                 <Picker
                   selectedValue={gender}
                   onValueChange={(val) => setGender(val)}
                   enabled={!loading}
+                  style={{ marginLeft: -10 }}
                 >
                   <Picker.Item label="Select Gender" value="" color="#94A3B8" />
                   <Picker.Item label="Male" value="Male" />
@@ -421,7 +422,20 @@ const styles = StyleSheet.create({
   pickerContainer: {
     backgroundColor: "#F1F5F9",
     borderRadius: 12,
-    overflow: "hidden",
+    minHeight: 65,
+    justifyContent: 'center',
+    paddingTop: 12,
+    position: 'relative'
+  },
+  miniLabel: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: "#64748B",
+    position: "absolute",
+    top: 12,
+    left: 12,
+    zIndex: 1,
+    letterSpacing: 1,
   },
   passwordWrapper: {
     flexDirection: "row",

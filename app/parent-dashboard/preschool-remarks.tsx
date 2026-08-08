@@ -114,7 +114,7 @@ export default function PreschoolRemarksParent() {
   const [remarksData, setRemarksData] = useState<any>(null);
 
   const academicYears = useMemo(() => {
-    const start = 2022;
+    const start = 2024;
     const currentYear = new Date().getFullYear();
     const years = [];
     for (let y = start; y <= currentYear + 1; y++) {
@@ -252,8 +252,8 @@ export default function PreschoolRemarksParent() {
 
       <ScrollView style={styles.mainScroll} contentContainerStyle={{ paddingBottom: 50 }}>
         <View style={styles.selectorCard}>
-          <Text style={styles.label}>Select Child</Text>
           <View style={styles.pickerBox}>
+            <Text style={styles.miniLabel}>Select Child</Text>
             <Picker
               selectedValue={selectedChildId}
               onValueChange={setSelectedChildId}
@@ -267,8 +267,8 @@ export default function PreschoolRemarksParent() {
 
           <View style={styles.pickerRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Academic Year</Text>
               <View style={styles.pickerBox}>
+                <Text style={styles.miniLabel}>Academic Year</Text>
                 <Picker
                   selectedValue={selectedYear}
                   onValueChange={setSelectedYear}
@@ -281,8 +281,8 @@ export default function PreschoolRemarksParent() {
               </View>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Term</Text>
               <View style={styles.pickerBox}>
+                <Text style={styles.miniLabel}>Term</Text>
                 <Picker
                   selectedValue={selectedTerm}
                   onValueChange={setSelectedTerm}
@@ -413,22 +413,26 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     ...SHADOWS.small,
   },
-  label: {
-    fontSize: 10,
+  miniLabel: {
+    fontSize: 9,
     fontWeight: "900",
     color: "#94A3B8",
-    marginBottom: 8,
+    position: "absolute",
+    top: 12,
+    left: 12,
+    zIndex: 1,
     textTransform: "uppercase",
-    letterSpacing: 1,
   },
   pickerBox: {
     backgroundColor: "#F1F5F9",
     borderRadius: 12,
-    height: 50,
+    minHeight: 65,
     justifyContent: "center",
     marginBottom: 15,
+    paddingTop: 12,
+    position: 'relative'
   },
-  picker: { height: 50 },
+  picker: { height: 50, marginLeft: -10 },
   pickerRow: { flexDirection: "row", gap: 15 },
   reportContainer: { margin: 15, marginTop: 0 },
   studentInfoBar: {

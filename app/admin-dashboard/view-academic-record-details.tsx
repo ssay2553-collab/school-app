@@ -2,6 +2,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React from "react";
 import {
     ActivityIndicator,
+    Modal,
+    Platform,
+    RefreshControl,
     SafeAreaView,
     StyleSheet,
     Text,
@@ -16,6 +19,14 @@ export default function ViewAcademicRecordDetails() {
     const params = useLocalSearchParams();
     const router = useRouter();
     const reportType = (params.reportType as ReportType) || "End of Term";
+
+    const handleBack = () => {
+        if (router.canGoBack()) {
+            router.back();
+        } else {
+            router.replace("/admin-dashboard/view-academic-records");
+        }
+    };
 
     const {
         loading,
@@ -44,14 +55,20 @@ export default function ViewAcademicRecordDetails() {
         AGGREGATE,
         generatePDF,
         classIdState,
-        academicYearState
+        academicYearState,
+        refreshing,
+        refresh
     } = useAcademicRecordDetails();
 
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.navBar}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                    <SVGIcon name="chevron-left" size={24} color="#1E293B" />
+                <TouchableOpacity
+                    onPress={handleBack}
+                    style={styles.backBtn}
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                >
+                    <SVGIcon name="arrow-back" size={24} color="#1E293B" />
                 </TouchableOpacity>
                 <Text style={styles.navTitle}>Academic Record Preview</Text>
                 <TouchableOpacity
@@ -120,8 +137,14 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         borderBottomWidth: 1,
         borderColor: "#E2E8F0",
+        zIndex: 10,
     },
-    backBtn: { padding: 8 },
+    backBtn: {
+        padding: 8,
+        justifyContent: "center",
+        alignItems: "center",
+        minWidth: 40,
+    },
     navTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
     downloadHeaderBtn: {
         flexDirection: "row",

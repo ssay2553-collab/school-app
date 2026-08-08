@@ -320,79 +320,85 @@ export const useMaintenanceCharges = ({
         return false;
       }
 
-      const batch = writeBatch(db);
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
+      const docs = snap.docs;
+      const CHUNK_SIZE = 150;
 
-      snap.docs.forEach((sDoc) => {
-        const s = sDoc.data();
-        const existing = existingBillsMap.get(sDoc.id);
-        const oldAmount = existing ? existing.amount : 0;
-        const diff = amount - oldAmount;
+      for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+        const chunk = docs.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
 
-        if (diff === 0) return;
+        chunk.forEach((sDoc) => {
+          const s = sDoc.data();
+          const existing = existingBillsMap.get(sDoc.id);
+          const oldAmount = existing ? existing.amount : 0;
+          const diff = amount - oldAmount;
 
-        const serial = existing ? existing.id : `MNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-        const recordId = `${sDoc.id}_${year}_${term}`;
+          if (diff === 0) return;
 
-        const billData = {
-          amount,
-          method: "Bulk Charge",
-          receivedFrom: "Maintenance Fee",
-          updatedBy: appUser?.adminRole || "Admin",
-          adminUid: appUser?.uid || "unknown",
-          createdAt: new Date().toISOString(),
-          receiptNo: serial,
-          date: moment().format("YYYY-MM-DD"),
-          studentUid: sDoc.id,
-          studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-          classId: selectedClassId,
-          className: s.className,
-          type: "maintenance",
-          academicYear: acadConfig.academicYear,
-          term: acadConfig.currentTerm,
-        };
+          const serial = existing ? existing.id : `MNT-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+          const recordId = `${sDoc.id}_${year}_${term}`;
 
-        batch.set(doc(db, "feePayments", serial), billData);
+          const billData = {
+            amount,
+            method: "Bulk Charge",
+            receivedFrom: "Maintenance Fee",
+            updatedBy: appUser?.adminRole || "Admin",
+            adminUid: appUser?.uid || "unknown",
+            createdAt: new Date().toISOString(),
+            receiptNo: serial,
+            date: moment().format("YYYY-MM-DD"),
+            studentUid: sDoc.id,
+            studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+            classId: selectedClassId,
+            className: s.className,
+            type: "maintenance",
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
+          };
 
-        if (existing) {
-          batch.update(doc(db, "studentFeeRecords", recordId), {
-            maintenanceBill: increment(diff),
-            maintenanceBalance: increment(diff),
-            balance: increment(diff),
-            lastUpdated: serverTimestamp(),
-            // Append to payments list so reconciler sees the latest charge amount
-            payments: arrayUnion(billData)
-          });
-        } else {
-          batch.set(
-            doc(db, "studentFeeRecords", recordId),
-            {
-              studentUid: sDoc.id,
-              studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
-              classId: selectedClassId,
-              className: s.className,
-              academicYear: acadConfig.academicYear,
-              term: acadConfig.currentTerm,
-              maintenanceBill: increment(amount),
-              maintenanceBalance: increment(amount),
-              balance: increment(amount),
-              maintenancePaid: 0,
-              payments: arrayUnion(billData),
+          batch.set(doc(db, "feePayments", serial), billData);
+
+          if (existing) {
+            batch.update(doc(db, "studentFeeRecords", recordId), {
+              maintenanceBill: increment(diff),
+              maintenanceBalance: increment(diff),
+              balance: increment(diff),
               lastUpdated: serverTimestamp(),
-            },
-            { merge: true }
-          );
-        }
+              // Append to payments list so reconciler sees the latest charge amount
+              payments: arrayUnion(billData)
+            });
+          } else {
+            batch.set(
+              doc(db, "studentFeeRecords", recordId),
+              {
+                studentUid: sDoc.id,
+                studentName: `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim(),
+                classId: selectedClassId,
+                className: s.className,
+                academicYear: acadConfig.academicYear,
+                term: acadConfig.currentTerm,
+                maintenanceBill: increment(amount),
+                maintenanceBalance: increment(amount),
+                balance: increment(amount),
+                maintenancePaid: 0,
+                payments: arrayUnion(billData),
+                lastUpdated: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          }
 
-        batch.update(sDoc.ref, {
-          maintenanceBalance: increment(diff),
-          maintenanceBill: increment(diff),
-          walletBalance: increment(diff),
+          batch.update(sDoc.ref, {
+            maintenanceBalance: increment(diff),
+            maintenanceBill: increment(diff),
+            walletBalance: increment(diff),
+          });
         });
-      });
 
-      await batch.commit();
+        await batch.commit();
+      }
 
       showToast({ message: `Maintenance charges applied to ${snap.size} students`, type: "success" });
 

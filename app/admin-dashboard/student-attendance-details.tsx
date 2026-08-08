@@ -113,7 +113,7 @@ export default function StudentAttendanceDetails() {
               <Picker
                 selectedValue={selectedYear}
                 onValueChange={setSelectedYear}
-                style={styles.picker}
+                style={[styles.picker, { marginLeft: -10 }]}
               >
                 {availableYears.map((y) => (
                   <Picker.Item key={y} label={y} value={y} />
@@ -125,7 +125,7 @@ export default function StudentAttendanceDetails() {
               <Picker
                 selectedValue={selectedTerm}
                 onValueChange={(v) => setSelectedTerm(v as any)}
-                style={styles.picker}
+                style={[styles.picker, { marginLeft: -10 }]}
               >
                 <Picker.Item label="Term 1" value="Term 1" />
                 <Picker.Item label="Term 2" value="Term 2" />
@@ -210,18 +210,19 @@ const styles = StyleSheet.create({
   pickerBox: {
     backgroundColor: "#F8FAFC",
     borderRadius: 12,
-    height: 55,
+    minHeight: 65,
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
+    paddingTop: 12,
   },
-  picker: { height: 50, marginLeft: -8 },
+  picker: { height: 50, width: '100%' },
   miniLabel: {
     fontSize: 9,
     fontWeight: "900",
     color: "#64748B",
     position: "absolute",
-    top: 6,
+    top: 12,
     left: 12,
     zIndex: 1,
     textTransform: "uppercase",

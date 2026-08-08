@@ -1,6 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Timestamp } from "firebase/firestore";
+import moment from "moment";
 import React, { useCallback, useEffect } from "react";
 import {
   ActivityIndicator,
@@ -29,13 +30,13 @@ const formatDate = (ts: any) => {
   if (!ts) return "date unknown";
   try {
     if (typeof ts.toDate === "function") {
-      return ts.toDate().toLocaleDateString();
+      return moment(ts.toDate()).format("DD MMM, YYYY");
     }
     if (ts instanceof Date) {
-      return ts.toLocaleDateString();
+      return moment(ts).format("DD MMM, YYYY");
     }
     if (ts.seconds !== undefined) {
-      return new Date(ts.seconds * 1000).toLocaleDateString();
+      return moment(ts.seconds * 1000).format("DD MMM, YYYY");
     }
   } catch (e) {
     return "invalid date";

@@ -208,7 +208,51 @@ export default function DailyFinancials() {
       }
 
       const studentSnap = await getDocsFromServer(studentQuery as any);
-      const students = studentSnap.docs.map((d) => d.data() as any);
+      let students = studentSnap.docs.map((d) => ({
+        uid: d.id,
+        ...(d.data() as any),
+      }));
+
+      // Fetch attendance to exclude absent students from counts
+      try {
+        let attendanceQuery = query(
+          collection(db, "attendance"),
+          where("date", "==", dateStr),
+        );
+
+        if (effectiveClassIds.length > 0) {
+          if (effectiveClassIds.length === 1) {
+            attendanceQuery = query(
+              attendanceQuery,
+              where("classId", "==", effectiveClassIds[0]),
+            );
+          } else {
+            attendanceQuery = query(
+              attendanceQuery,
+              where("classId", "in", effectiveClassIds),
+            );
+          }
+        }
+
+        const attendanceSnap = await getDocsFromServer(attendanceQuery);
+        const absentUids = new Set<string>();
+        attendanceSnap.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.students) {
+            Object.entries(data.students).forEach(([uid, att]: [string, any]) => {
+              if (att.status === "absent") {
+                absentUids.add(uid);
+              }
+            });
+          }
+        });
+
+        if (absentUids.size > 0) {
+          students = students.filter((s) => !absentUids.has(s.uid));
+        }
+      } catch (attError) {
+        console.error("Error fetching attendance for stats:", attError);
+      }
 
       // Count students by category
       const feedingCount = students.filter((s) => s.isFeeding).length;

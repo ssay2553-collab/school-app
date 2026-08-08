@@ -241,7 +241,7 @@ function hasScreenPermission(screen, level) {
   =============================== */
 allow create: if
     isSignedIn() &&
-    uid() == userId &&
+    (uid() == userId || isSuperAdmin() || hasPermission('manage-users', 'full')) &&
     (
 
       // ==========================================================
@@ -1118,12 +1118,10 @@ match /academicRecordsSummary/{id} {
       allow delete: if isAdmin();
     }
     /* ===============================
-           FALLBACK & CATCH-ALL
-        =============================== */
-        match /{path=**} {
-          allow read: if isSignedIn();
-          allow write: if isSignedIn();
-
-        }
+       FALLBACK & CATCH-ALL
+    =============================== */
+    match /{path=**} {
+      allow read, write: if false;
+    }
   }
 }

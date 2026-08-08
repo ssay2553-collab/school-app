@@ -276,7 +276,8 @@ export default function AdminGalleryUpload() {
           : "image";
       const mainPath = `gallery/${timestamp}.${ext}`;
       const mainRef = sRef(storage, mainPath);
-      const mainBlob = await uriToBlob(selectedFile.uri);
+      const response = await fetch(selectedFile.uri);
+      const mainBlob = await response.blob();
 
       const uploadTask = uploadBytesResumable(mainRef, mainBlob);
 
@@ -286,7 +287,10 @@ export default function AdminGalleryUpload() {
           setUploadProgress(
             (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
           ),
-        () => setIsUploading(false),
+        () => {
+          setIsUploading(false);
+          if (typeof mainBlob.close === 'function') (mainBlob as any).close();
+        },
         async () => {
           const mainUrl = await getDownloadURL(mainRef);
 
@@ -300,6 +304,7 @@ export default function AdminGalleryUpload() {
 
           setSelectedFile(null);
           setIsUploading(false);
+          if (typeof mainBlob.close === 'function') (mainBlob as any).close();
         },
       );
     } catch (e) {

@@ -122,7 +122,7 @@ const NewsCard: React.FC<NewsCardProps> = ({ item }) => {
              <View style={[styles.expiryBox, isExpired && styles.expiredBox]}>
                 <SVGIcon name="time" size={12} color={isExpired ? COLORS.danger : COLORS.gray} />
                 <Text style={[styles.expiryText, isExpired && { color: COLORS.danger }]}>
-                   {isExpired ? "EXPIRED" : `Valid until: ${expiryDate.toLocaleDateString()}`}
+                   {isExpired ? "EXPIRED" : `Valid until: ${moment(expiryDate).format("MM/DD/YYYY")}`}
                 </Text>
              </View>
           )}

@@ -40,7 +40,7 @@ export const FeeStatsDashboard: React.FC<FeeStatsDashboardProps> = ({
           >
             <Text style={styles.statLabel}>EXPECTED</Text>
             <Text style={styles.statValue}>
-              ₵{stats.expected.toLocaleString()}
+              ₵{(stats?.expected || 0).toLocaleString()}
             </Text>
             <View style={styles.statIcon}>
               <SVGIcon
@@ -57,7 +57,7 @@ export const FeeStatsDashboard: React.FC<FeeStatsDashboardProps> = ({
           >
             <Text style={styles.statLabel}>RECEIVED</Text>
             <Text style={styles.statValue}>
-              ₵{stats.received.toLocaleString()}
+              ₵{(stats?.received || 0).toLocaleString()}
             </Text>
             <View style={styles.statIcon}>
               <SVGIcon
@@ -74,7 +74,7 @@ export const FeeStatsDashboard: React.FC<FeeStatsDashboardProps> = ({
           >
             <Text style={styles.statLabel}>DISCOUNTS</Text>
             <Text style={styles.statValue}>
-              ₵{stats.totalDiscount.toLocaleString()}
+              ₵{(stats?.totalDiscount || 0).toLocaleString()}
             </Text>
             <View style={styles.statIcon}>
               <SVGIcon
@@ -91,7 +91,7 @@ export const FeeStatsDashboard: React.FC<FeeStatsDashboardProps> = ({
           >
             <Text style={styles.statLabel}>OUTSTANDING</Text>
             <Text style={styles.statValue}>
-              ₵{stats.balance.toLocaleString()}
+              ₵{(stats?.balance || 0).toLocaleString()}
             </Text>
             <View style={styles.statIcon}>
               <SVGIcon

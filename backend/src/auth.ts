@@ -249,6 +249,7 @@ export const completeStudentSignup = onCall({
 
     const userData = {
       uid: uid,
+      authUid: uid, // Explicitly set authUid to ensure discovery by all cleanup hooks
       role: "student",
       status: "active",
       classId: preRegisteredData?.classId || form.selectedClassId,

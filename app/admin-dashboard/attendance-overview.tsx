@@ -69,116 +69,119 @@ export default function AttendanceOverview() {
   const brandPrimary = SCHOOL_CONFIG.brandPrimary;
   const brandSecondary = SCHOOL_CONFIG.brandSecondary;
 
+  const [classes, setClasses] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
+  const [attendance, setAttendance] = useState<any[]>([]);
+
   useEffect(() => {
     if (!appUser) return;
+    const q = collection(db, "classes");
+    return onSnapshot(q, (snap) => {
+      setClasses(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+    });
+  }, [appUser]);
 
-    setLoading(true);
+  useEffect(() => {
+    if (!appUser) return;
+    const q = query(
+      collection(db, "users"),
+      where("role", "==", "student"),
+      where("status", "in", ["active", "pending_activation"])
+    );
+    return onSnapshot(q, (snap) => {
+      setStudents(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+    });
+  }, [appUser]);
 
-    // 1. Listen to Classes
-    const classesQuery = collection(db, "classes");
-    const unsubscribeClasses = onSnapshot(classesQuery, (classesSnap) => {
-      const classList = classesSnap.docs
-        .map(d => ({ id: d.id, ...(d.data() as any) }))
-        .map(d => ({
-          id: d.id,
-          name: d.name || d.id,
-          totalStudents: 0,
-          present: 0,
-          absent: 0,
-          marked: false
-        }));
+  useEffect(() => {
+    if (!appUser) return;
+    const q = query(
+      collection(db, "attendance"),
+      where("date", "==", selectedDate)
+    );
+    return onSnapshot(q, (snap) => {
+      setAttendance(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+    });
+  }, [appUser, selectedDate]);
 
-      // 2. Listen to Students
-      const studentsQuery = query(
-        collection(db, "users"),
-        where("role", "==", "student"),
-        where("status", "in", ["active", "pending_activation"])
-      );
+  useEffect(() => {
+    if (classes.length === 0 && students.length === 0 && loading) return;
 
-      const unsubscribeStudents = onSnapshot(studentsQuery, (studentsSnap) => {
-        const validClassIds = new Set(classList.map(c => c.id));
-        const studentCounts: Record<string, number> = {};
-        const studentMap: Record<string, string[]> = {};
-        let globalStudentTotal = 0;
+    const classList = classes.map(d => ({
+      id: d.id,
+      name: d.name || d.id,
+      totalStudents: 0,
+      present: 0,
+      absent: 0,
+      marked: false
+    }));
 
-        studentsSnap.forEach(doc => {
-          const data = doc.data() as any;
-          if (data.classId && validClassIds.has(data.classId)) {
-            studentCounts[data.classId] = (studentCounts[data.classId] || 0) + 1;
-            if (!studentMap[data.classId]) studentMap[data.classId] = [];
-            studentMap[data.classId].push(doc.id);
-            globalStudentTotal++;
-          }
-        });
+    const validClassIds = new Set(classList.map(c => c.id));
+    const studentCounts: Record<string, number> = {};
+    const studentMap: Record<string, string[]> = {};
+    let globalStudentTotal = 0;
 
-        // 3. Listen to Attendance for the selected date
-        const attendanceQuery = query(
-          collection(db, "attendance"),
-          where("date", "==", selectedDate)
-        );
-
-        const unsubscribeAttendance = onSnapshot(attendanceQuery, (attendanceSnap) => {
-          const attendanceMap: Record<string, { present: number, absent: number, academicYear: string, term: string }> = {};
-
-          attendanceSnap.forEach(doc => {
-            const data = doc.data() as any;
-            const cid = data.classId;
-            if (!validClassIds.has(cid)) return;
-
-            const attStudents = data.students || {};
-            const currentClassStudentIds = studentMap[cid] || [];
-            let p = 0, a = 0;
-
-            currentClassStudentIds.forEach(sid => {
-              const s = attStudents[sid];
-              if (s?.status === "present") p++;
-              else if (s?.status === "absent") a++;
-            });
-
-            attendanceMap[cid] = {
-              present: p,
-              absent: a,
-              academicYear: data.academicYear,
-              term: data.term
-            };
-          });
-
-          let globalPresent = 0;
-          let globalAbsent = 0;
-
-          const sortedStats = sortClasses(classList).map(cls => {
-            const att = attendanceMap[cls.id];
-            const totalInClass = studentCounts[cls.id] || 0;
-            if (att) {
-              globalPresent += att.present;
-              globalAbsent += att.absent;
-            }
-
-            return {
-              ...cls,
-              totalStudents: totalInClass,
-              present: att ? att.present : 0,
-              absent: att ? att.absent : 0,
-              marked: !!att,
-              academicYear: att?.academicYear,
-              term: att?.term
-            };
-          });
-
-          setClassStats(sortedStats);
-          setTotals({ schoolTotal: globalStudentTotal, schoolPresent: globalPresent, schoolAbsent: globalAbsent });
-          setLoading(false);
-          setRefreshing(false);
-        });
-
-        return () => unsubscribeAttendance();
-      });
-
-      return () => unsubscribeStudents();
+    students.forEach(data => {
+      if (data.classId && validClassIds.has(data.classId)) {
+        studentCounts[data.classId] = (studentCounts[data.classId] || 0) + 1;
+        if (!studentMap[data.classId]) studentMap[data.classId] = [];
+        studentMap[data.classId].push(data.id);
+        globalStudentTotal++;
+      }
     });
 
-    return () => unsubscribeClasses();
-  }, [selectedDate, appUser]);
+    const attendanceMap: Record<string, { present: number, absent: number, academicYear: string, term: string }> = {};
+
+    attendance.forEach(data => {
+      const cid = data.classId;
+      if (!validClassIds.has(cid)) return;
+
+      const attStudents = data.students || {};
+      const currentClassStudentIds = studentMap[cid] || [];
+      let p = 0, a = 0;
+
+      currentClassStudentIds.forEach(sid => {
+        const s = attStudents[sid];
+        if (s?.status === "present") p++;
+        else if (s?.status === "absent") a++;
+      });
+
+      attendanceMap[cid] = {
+        present: p,
+        absent: a,
+        academicYear: data.academicYear,
+        term: data.term
+      };
+    });
+
+    let globalPresent = 0;
+    let globalAbsent = 0;
+
+    const sortedStats = sortClasses(classList).map(cls => {
+      const att = attendanceMap[cls.id];
+      const totalInClass = studentCounts[cls.id] || 0;
+      if (att) {
+        globalPresent += att.present;
+        globalAbsent += att.absent;
+      }
+
+      return {
+        ...cls,
+        totalStudents: totalInClass,
+        present: att ? att.present : 0,
+        absent: att ? att.absent : 0,
+        marked: !!att,
+        academicYear: att?.academicYear,
+        term: att?.term
+      };
+    });
+
+    setClassStats(sortedStats);
+    setTotals({ schoolTotal: globalStudentTotal, schoolPresent: globalPresent, schoolAbsent: globalAbsent });
+    setLoading(false);
+    setRefreshing(false);
+  }, [classes, students, attendance, selectedDate]);
+
 
   useEffect(() => {
     // Fetch teachers to know who to notify for missing attendance

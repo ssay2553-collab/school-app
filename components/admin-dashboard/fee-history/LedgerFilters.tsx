@@ -179,17 +179,27 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(255,255,255,0.15)",
         borderRadius: 12,
         paddingHorizontal: 8,
-        paddingVertical: 5,
+        paddingTop: 12,
+        paddingBottom: 2,
+        minHeight: 65,
         borderWidth: 1,
         borderColor: "rgba(255,255,255,0.2)",
+        justifyContent: 'center'
     },
     pickerLabel: {
         fontSize: 8,
         fontWeight: "900",
         color: "rgba(255,255,255,0.8)",
-        marginLeft: 5,
+        marginLeft: 8,
+        position: 'absolute',
+        top: 12,
     },
-    picker: { color: "#fff", height: 40 },
+    picker: {
+        color: "#fff",
+        height: Platform.OS === 'android' ? 50 : 40,
+        backgroundColor: 'transparent',
+        marginLeft: -10
+    },
     searchContainer: {
         flexDirection: "row",
         alignItems: "center",

@@ -227,7 +227,7 @@ export default function UploadAssignment() {
                     style={[styles.datePickerBtn, { flex: 1.2 }]}
                   >
                     <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
-                    <Text style={styles.datePickerText}>{dueDate.toLocaleDateString()}</Text>
+                    <Text style={styles.datePickerText}>{moment(dueDate).format("DD MMM, YYYY")}</Text>
                   </TouchableOpacity>
                   
                   <TouchableOpacity 
@@ -236,7 +236,7 @@ export default function UploadAssignment() {
                   >
                     <SVGIcon name="time-outline" size={18} color={COLORS.primary} />
                     <Text style={styles.datePickerText}>
-                      {dueDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      {moment(dueDate).format("hh:mm A")}
                     </Text>
                   </TouchableOpacity>
                 </>

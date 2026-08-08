@@ -5,6 +5,7 @@ export interface User {
   uid: string;
   username?: string;
   pin?: string;
+  email?: string;
   profile: {
     firstName: string;
     lastName: string;

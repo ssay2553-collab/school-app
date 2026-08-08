@@ -8,6 +8,7 @@ import {
     where,
 } from "firebase/firestore";
 import React, { useCallback, useEffect, useState, memo } from "react";
+import moment from "moment";
 import {
     ActivityIndicator,
     Alert,
@@ -187,7 +188,7 @@ export default function Assignments() {
   const formatDate = (ts?: Timestamp) => {
     if (!ts) return "Soon";
     try {
-      return ts.toDate().toLocaleDateString();
+      return moment(ts.toDate()).format("MMM DD, YYYY");
     } catch (e) {
       return "Soon";
     }

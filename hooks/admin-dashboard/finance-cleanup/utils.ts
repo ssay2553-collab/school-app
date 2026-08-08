@@ -78,3 +78,76 @@ export const getTermIndex = (t: string) => {
   if (lower.includes("3")) return 2;
   return termOrder.indexOf(t);
 };
+
+/**
+ * Merges two financial data objects, preserving the strongest (highest) values
+ * for bills and payments, and deduplicating embedded payment arrays.
+ */
+export const mergeFinancialData = (target: any, source: any) => {
+  const merged = { ...target };
+  const financialKeys = [
+    "termBill",
+    "amountPaid",
+    "discount",
+    "arrears",
+    "balance",
+    "totalPayable",
+  ];
+
+  // Fields that represent cumulative totals should be summed when merging two separate accounts
+  const sumKeys = [
+    "amountPaid",
+    "discount",
+    ...isolatedKeys.map(k => `${k}Paid`)
+  ];
+
+  isolatedKeys.forEach((k) => {
+    financialKeys.push(`${k}Bill`);
+    financialKeys.push(`${k}Paid`);
+    financialKeys.push(`${k}Balance`);
+  });
+
+  financialKeys.forEach((key) => {
+    const v1 = Number(target[key] || 0);
+    const v2 = Number(source[key] || 0);
+
+    if (sumKeys.includes(key)) {
+      // Sum the totals (e.g., if one account had 100 paid and other had 50, total is 150)
+      merged[key] = v1 + v2;
+    } else if (key.endsWith("Bill")) {
+      // Bills are usually constant for a term, take the highest (max) to avoid doubling
+      merged[key] = Math.max(v1, v2);
+    } else {
+      // For balances and other fields, take the most significant value
+      if (v2 > v1) merged[key] = v2;
+    }
+  });
+
+  if (Array.isArray(source.payments)) {
+    if (!Array.isArray(merged.payments)) merged.payments = [];
+    source.payments.forEach((p: any) => {
+      const isDup = merged.payments.some((ep: any) => {
+        const pAmount = Number(p.amount ?? p.amountPaid ?? 0);
+        const epAmount = Number(ep.amount ?? ep.amountPaid ?? 0);
+
+        const getSafeDate = (d: any) => {
+          if (!d) return "";
+          if (typeof d === "string") return d;
+          if (d.toDate && typeof d.toDate === "function")
+            return d.toDate().toISOString();
+          if (d.seconds) return new Date(d.seconds * 1000).toISOString();
+          return String(d);
+        };
+
+        return (
+          Math.abs(pAmount - epAmount) < 0.01 &&
+          getSafeDate(p.date || p.createdAt) ===
+            getSafeDate(ep.date || ep.createdAt) &&
+          (p.type || p.category) === (ep.type || ep.category)
+        );
+      });
+      if (!isDup) merged.payments.push(p);
+    });
+  }
+  return merged;
+};

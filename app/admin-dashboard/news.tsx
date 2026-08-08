@@ -37,6 +37,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebaseConfig";
 import { Audience, NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
+import moment from "moment";
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
@@ -197,7 +198,8 @@ export default function NewsCenter() {
 
       // Only upload if it's a local URI (starts with 'file' or 'content' or 'ph')
       if (media && (media.uri.startsWith('file') || media.uri.startsWith('content') || media.uri.startsWith('ph'))) {
-        const blob = await uriToBlob(media.uri);
+        const response = await fetch(media.uri);
+        const blob = await response.blob();
         const fileName = `${Date.now()}_${media.type}`;
         const storageRef = ref(storage, `newsMedia/${fileName}`);
 
@@ -207,6 +209,11 @@ export default function NewsCenter() {
 
         await uploadBytes(storageRef, blob, metadata);
         mediaUrl = await getDownloadURL(storageRef);
+
+        // Dispose of the blob to free memory
+        if (typeof blob.close === 'function') {
+          (blob as any).close();
+        }
       }
 
       const newsData: any = {
@@ -411,7 +418,7 @@ export default function NewsCenter() {
                     >
                       <SVGIcon name="calendar" size={18} color={primary} />
                       <Text style={styles.actionBtnText} numberOfLines={1}>
-                        {expiryDate ? expiryDate.toLocaleDateString() : "Optional"}
+                        {expiryDate ? moment(expiryDate).format("DD MMM, YYYY") : "Optional"}
                       </Text>
                     </TouchableOpacity>
                   )}

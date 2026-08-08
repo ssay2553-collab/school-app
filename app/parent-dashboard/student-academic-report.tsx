@@ -51,7 +51,7 @@ export default function StudentAcademicReport() {
   const schoolLogo = getSchoolLogo(schoolId);
 
   const academicYears = useMemo(() => {
-    const start = 2022; // Extended history start
+    const start = 2024; // Extended history start
     const currentYear = new Date().getFullYear();
     const years = [];
     for (let y = start; y <= currentYear + 1; y++) {
@@ -145,11 +145,14 @@ export default function StudentAcademicReport() {
             where(documentId(), "in", ids),
           );
           const snap = await getDocsFromServer(q as any);
-          const list = snap.docs.map((d) => ({
-            id: d.id,
-            name: `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
-            classId: (d.data() as any).classId || (d.data() as any).profile?.classId || "",
-          }));
+          const list = snap.docs.map((d) => {
+            const data = d.data() as any;
+            return {
+              id: d.id,
+              name: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
+              classId: data.classId || data.profile?.classId || "",
+            };
+          });
           setChildren(list);
           if (list.length > 0) setSelectedChildId(list[0].id);
         } catch (e) {
@@ -269,33 +272,29 @@ export default function StudentAcademicReport() {
           </ScrollView>
 
           <View style={styles.pickerRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Year</Text>
-              <View style={styles.pickerBox}>
-                <Picker
-                  selectedValue={selectedYear}
-                  onValueChange={setSelectedYear}
-                  style={styles.picker}
-                >
-                  {academicYears.map((y) => (
-                    <Picker.Item key={y} label={y} value={y} />
-                  ))}
-                </Picker>
-              </View>
+            <View style={[styles.pickerBox, { flex: 1 }]}>
+              <Text style={styles.miniLabel}>Year</Text>
+              <Picker
+                selectedValue={selectedYear}
+                onValueChange={setSelectedYear}
+                style={[styles.picker, { marginLeft: -10 }]}
+              >
+                {academicYears.map((y) => (
+                  <Picker.Item key={y} label={y} value={y} />
+                ))}
+              </Picker>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.label}>Term</Text>
-              <View style={styles.pickerBox}>
-                <Picker
-                  selectedValue={selectedTerm}
-                  onValueChange={setSelectedTerm}
-                  style={styles.picker}
-                >
-                  {TERMS.map((t) => (
-                    <Picker.Item key={t} label={t} value={t} />
-                  ))}
-                </Picker>
-              </View>
+            <View style={[styles.pickerBox, { flex: 1 }]}>
+              <Text style={styles.miniLabel}>Term</Text>
+              <Picker
+                selectedValue={selectedTerm}
+                onValueChange={setSelectedTerm}
+                style={[styles.picker, { marginLeft: -10 }]}
+              >
+                {TERMS.map((t) => (
+                  <Picker.Item key={t} label={t} value={t} />
+                ))}
+              </Picker>
             </View>
           </View>
         </View>
@@ -452,10 +451,22 @@ const styles = StyleSheet.create({
   pickerBox: {
     backgroundColor: "#F1F5F9",
     borderRadius: 12,
-    height: 50,
+    minHeight: 65,
     justifyContent: "center",
+    paddingTop: 12,
+    position: "relative",
   },
   picker: { height: 50 },
+  miniLabel: {
+    fontSize: 9,
+    fontWeight: "900",
+    color: "#94A3B8",
+    position: "absolute",
+    top: 12,
+    left: 12,
+    zIndex: 1,
+    textTransform: "uppercase",
+  },
   historyBtn: {
     flexDirection: "row",
     alignItems: "center",

@@ -292,7 +292,7 @@ export const ExpenditureModal: React.FC<ExpenditureModalProps> = ({
                         color: "#1E293B",
                       }}
                     >
-                      {itemDate.toLocaleDateString()}
+                      {moment(itemDate).format("MM/DD/YYYY")}
                     </Text>
                   </TouchableOpacity>
 

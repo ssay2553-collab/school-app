@@ -103,6 +103,14 @@ export default function BooksCharges() {
   const router = useRouter();
   const acadConfig = useAcademicConfig();
 
+  if (acadConfig.loading || !appUser) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color={THEME.primary} />
+      </View>
+    );
+  }
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [classModalVisible, setClassModalVisible] = useState(false);
@@ -264,7 +272,7 @@ export default function BooksCharges() {
             </TouchableOpacity>
             <View style={styles.glassPill}>
               <Text style={styles.glassLabel}>ACADEMIC YEAR</Text>
-              <Text style={styles.glassValue}>{acadConfig.academicYear || "---"}</Text>
+              <Text style={styles.glassValue}>{acadConfig?.academicYear || "---"}</Text>
             </View>
           </View>
         </LinearGradient>

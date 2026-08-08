@@ -150,17 +150,28 @@ export const getAutoRemarks = (aggregate: number, isTeacher: boolean = false) =>
  * and Aggregate (Sum of grades - Core + Best Electives) based on standard education metrics.
  *
  * @param subjects Array of subject objects with 'subject', 'total' (score), and 'grade' (string/number)
+ * @param isPreschool Whether to skip the "Best 6" penalty logic
  */
-export const calculatePerformanceFromList = (subjects: any[]) => {
+export const calculatePerformanceFromList = (subjects: any[], isPreschool: boolean = false) => {
   if (!subjects || subjects.length === 0) {
-    return { trs: "0.00", tas: "0.00", aggregate: 54 }; // Default for 6 subjects * Grade 9
+    return { trs: "0.00", tas: "0.00", aggregate: isPreschool ? 0 : 54 };
+  }
+
+  // 1. TRS: Sum of ALL scores
+  const trsValue = subjects.reduce((acc, curr) => acc + (parseFloat(curr.total) || 0), 0);
+
+  if (isPreschool) {
+    // For Preschool: No "Best 6" logic. Sum everything they have.
+    const aggregate = subjects.reduce((acc, curr) => acc + (parseInt(curr.aggregate || curr.grade) || 9), 0);
+    return {
+      trs: trsValue.toFixed(2),
+      tas: trsValue.toFixed(2),
+      aggregate
+    };
   }
 
   // Define potential core subjects
   const targetCores = ["mathematics", "science", "english", "social studies"];
-
-  // 1. TRS: Sum of ALL scores
-  const trsValue = subjects.reduce((acc, curr) => acc + (parseFloat(curr.total) || 0), 0);
 
   // Split into Core and Electives
   const cores = subjects.filter((s) =>

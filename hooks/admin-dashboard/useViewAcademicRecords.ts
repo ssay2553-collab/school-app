@@ -1,4 +1,3 @@
-import * as ImagePicker from "expo-image-picker";
 import {
   collection,
   doc,
@@ -8,11 +7,9 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc,
   where,
   writeBatch,
 } from "firebase/firestore";
-import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Platform } from "react-native";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -26,8 +23,6 @@ import {
   sortClasses,
 } from "../../lib/classHelpers";
 import { useAcademicConfig } from "../useAcademicConfig";
-
-const storage = getStorage();
 
 export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
 
@@ -62,10 +57,6 @@ export function useViewAcademicRecords() {
   const [fetchingSubjects, setFetchingSubjects] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [savingMetadata, setSavingMetadata] = useState(false);
-  const [uploadingSig, setUploadingSig] = useState(false);
-  const [signatureUrl, setSignatureUrl] = useState<string>(
-    (appUser?.profile as any)?.signatureUrl || "",
-  );
 
   const [classes, setClasses] = useState<any[]>([]);
   const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
@@ -200,7 +191,7 @@ export function useViewAcademicRecords() {
       allRecordsSnap.docs.forEach((doc) => {
         const data = doc.data() as any;
         const subName = (data.subject || "").toLowerCase();
-        const students = data.students || [];
+        const students = Array.isArray(data.students) ? data.students : [];
 
         students.forEach((s: any) => {
           if (!studentPerformanceMap[s.studentId]) {
@@ -356,7 +347,8 @@ export function useViewAcademicRecords() {
 
       if (behSnap.exists()) {
         const behData = behSnap.data();
-        const studentBeh = (behData.students || []).find(
+        const students = Array.isArray(behData.students) ? behData.students : [];
+        const studentBeh = students.find(
           (s: any) => s.studentId === student.studentId,
         );
         if (studentBeh) {
@@ -448,41 +440,6 @@ export function useViewAcademicRecords() {
       showToast({ message: "Failed to save metadata.", type: "error" });
     } finally {
       setSavingMetadata(false);
-    }
-  };
-
-  const handleUploadSignature = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ["images"],
-        allowsEditing: true,
-        aspect: [2, 1],
-        quality: 0.5,
-      });
-
-      if (!result.canceled && result.assets[0].uri) {
-        setUploadingSig(true);
-        const uri = result.assets[0].uri;
-        const response = await fetch(uri);
-        const blob = await response.blob();
-        const storageRef = ref(storage, `signatures/${appUser?.uid}`);
-        await uploadBytes(storageRef, blob);
-        const downloadURL = await getDownloadURL(storageRef);
-
-        await updateDoc(doc(db, "users", appUser!.uid), {
-          "profile.signatureUrl": downloadURL,
-        });
-        setSignatureUrl(downloadURL);
-        showToast({
-          message: "Institution signature updated successfully!",
-          type: "success",
-        });
-      }
-    } catch (error) {
-      console.error(error);
-      showToast({ message: "Failed to upload signature.", type: "error" });
-    } finally {
-      setUploadingSig(false);
     }
   };
 
@@ -593,19 +550,53 @@ export function useViewAcademicRecords() {
         const studentTotals: Record<string, number> = {};
         const studentNames: Record<string, string> = {};
 
+        // 0. Fetch all summaries for this class/year/term to allow score recovery
+        const summaryYearSlug = selectedYear.replace(/\//g, "_");
+        const termSlug = term.replace(/\s+/g, "");
+        const summarySnap = await getDocsFromServer(
+          query(
+            collection(db, "academicRecordsSummary"),
+            where("classId", "==", selectedClassId),
+            where("academicYear", "==", selectedYear),
+            where("term", "==", term),
+          ),
+        );
+        const summaryMap = new Map<string, any>();
+        summarySnap.docs.forEach((sd) => summaryMap.set(sd.data().studentId, sd.data().scores || {}));
+
         // 1. Process each subject record for subject-level ranking & summary
         allSnap.docs.forEach((subjectDoc) => {
           const data = subjectDoc.data();
-          const students = data.students || [];
-          const subjectName = data.subject;
-          const subjectKey = `${subjectName.replace(/\s+/g, "_")}_${selectedReportType.replace(/\s+/g, "")}`;
+          const students = Array.isArray(data.students) ? data.students : [];
+          const subjectName = data.subject || "Unknown";
+          const subSlug = subjectName.replace(/\s+/g, "_");
+          const subjectKey = `${subSlug}_${selectedReportType.replace(/\s+/g, "")}`;
 
-          const subjectScoresList = students.map((s: any) => ({
+          // Pre-process scores: if finalScore is 0, try to recover from summary
+          const recoveredStudents = students.map((s: any) => {
+            const currentTotal = parseFloat(s.finalScore) || 0;
+            if (currentTotal === 0) {
+              const studentSummary = summaryMap.get(s.studentId) || {};
+              const recovered = studentSummary[subjectKey] || studentSummary[subSlug] || studentSummary[subjectName];
+              if (recovered && (parseFloat(recovered.finalScore) || 0) > 0) {
+                return {
+                  ...s,
+                  finalScore: String(recovered.finalScore),
+                  classScore: String(recovered.classScore || s.classScore || "0"),
+                  exam50: String(recovered.exam50 || recovered.examsMark || s.exam50 || "0"),
+                  grade: String(recovered.grade || getGradeDetails(parseFloat(recovered.finalScore)).grade),
+                };
+              }
+            }
+            return s;
+          });
+
+          const subjectScoresList = recoveredStudents.map((s: any) => ({
             id: s.studentId,
             total: parseFloat(s.finalScore) || 0,
           }));
 
-          const updatedStudents = students.map((s: any) => {
+          const updatedStudents = recoveredStudents.map((s: any) => {
             const rankInfo = calculateCompetitionRanking(
               subjectScoresList,
               s.studentId,
@@ -620,9 +611,7 @@ export function useViewAcademicRecords() {
               studentNames[s.studentId] = s.fullName;
 
             // Update Summary doc too
-            const yearSlug = selectedYear.replace(/\//g, "_");
-            const termSlug = term.replace(/\s+/g, "");
-            const summaryId = `${s.studentId}_${yearSlug}_${termSlug}`;
+            const summaryId = `${s.studentId}_${summaryYearSlug}_${termSlug}`;
             const summaryRef = doc(db, "academicRecordsSummary", summaryId);
 
             batch.set(
@@ -724,8 +713,6 @@ export function useViewAcademicRecords() {
     fetchingSubjects,
     refreshing,
     savingMetadata,
-    uploadingSig,
-    signatureUrl,
     classes,
     availableSubjects,
     selectedClassId,
@@ -764,7 +751,6 @@ export function useViewAcademicRecords() {
     onRefresh,
     handleEditMetadata,
     saveMetadata,
-    handleUploadSignature,
     handleBulkUpdate,
     recalculateRankings,
     recalculating,

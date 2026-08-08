@@ -2,7 +2,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Print from "expo-print";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
-import { useEffect, useRef, useState } from "react";
+import moment from "moment";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -216,14 +217,32 @@ export default function ManageFees() {
   const exportPDF = async () => {
     const className =
       classes.find((c) => c.id === selectedClassId)?.name || "Class";
-    const ITEMS_PER_PAGE = 20;
-    const pages: any[] = [];
+    const CHUNK_SIZE = 50; // Increased chunk size for better grouping
+    const pages: StudentDraft[][] = [];
 
-    for (let i = 0; i < filteredStudents.length; i += ITEMS_PER_PAGE) {
-      pages.push(filteredStudents.slice(i, i + ITEMS_PER_PAGE));
+    for (let i = 0; i < filteredStudents.length; i += CHUNK_SIZE) {
+      pages.push(filteredStudents.slice(i, i + CHUNK_SIZE));
     }
 
-    const html = `
+    // Process large reports in chunks if necessary, but here we just ensure the HTML is structured for paging
+    const html = pdfTemplate(pages, className, academicYear, term, primaryBrand, stats);
+
+    try {
+      if (Platform.OS === "web") {
+        await Print.printAsync({ html });
+      } else {
+        // Use a more memory-efficient approach for large strings if needed,
+        // but structured HTML with page-break-after is usually sufficient for Print.printToFileAsync
+        const { uri } = await Print.printToFileAsync({ html, base64: false });
+        await Sharing.shareAsync(uri);
+      }
+    } catch (error) {
+      console.error("PDF Export Error:", error);
+      showToast({ message: "Failed to export PDF. The list might be too large.", type: "error" });
+    }
+  };
+
+  const pdfTemplate = (pages: StudentDraft[][], className: string, academicYear: string, term: string, primaryBrand: string, stats: any) => `
       <html>
         <head>
           <style>
@@ -312,16 +331,16 @@ export default function ManageFees() {
                 idx === pages.length - 1
                   ? `
                 <div class="summary">
-                  <p><strong>Total Expected:</strong> ₵${stats.expected.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                  <p><strong>Total Received:</strong> ₵${stats.received.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                  <p><strong>Total Discounts:</strong> ₵${stats.totalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                  <p><strong>Total Outstanding:</strong> ₵${stats.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p><strong>Total Expected:</strong> ₵${(stats.expected || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p><strong>Total Received:</strong> ₵${(stats.received || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p><strong>Total Discounts:</strong> ₵${(stats.totalDiscount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <p><strong>Total Outstanding:</strong> ₵${(stats.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                 </div>
               `
                   : ""
               }
               <div class="footer">
-                Printed on ${new Date().toLocaleString()}<br/>
+                Printed on ${moment().format("lll")}<br/>
                 Powered by EduEaz
               </div>
             </div>
@@ -331,19 +350,6 @@ export default function ManageFees() {
         </body>
       </html>
     `;
-
-    try {
-      if (Platform.OS === "web") {
-        await Print.printAsync({ html });
-      } else {
-        const { uri } = await Print.printToFileAsync({ html });
-        await Sharing.shareAsync(uri);
-      }
-    } catch (error) {
-      console.error(error);
-      showToast({ message: "Failed to export PDF", type: "error" });
-    }
-  };
 
   const renderStudentItem = ({ item }: { item: StudentDraft }) => {
     return (

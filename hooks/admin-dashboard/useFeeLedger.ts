@@ -47,12 +47,26 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
 
     const [record, setRecord] = useState<any>(null);
     const [collectionTransactions, setCollectionTransactions] = useState<any[]>([]);
+    const [selectedStudentWalletBalance, setSelectedStudentWalletBalance] = useState<number>(0);
     const [loading, setLoading] = useState(true);
     const [fetchingStudents, setFetchingStudents] = useState(false);
     const [fetchingRecord, setFetchingRecord] = useState(false);
     const [saving, setSaving] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [showFullHistory, setShowFullHistory] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const refresh = async () => {
+        setRefreshing(true);
+        try {
+            await Promise.all([
+                initClasses(),
+                loadStudents()
+            ]);
+        } finally {
+            setRefreshing(false);
+        }
+    };
 
     // Reset history toggle when filters change to ensure term-specific focus
     useEffect(() => {
@@ -67,58 +81,85 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
         }
     }, [acadConfig, initialYear, initialTerm]);
 
-    // Load classes
+    // Sync internal student state with prop updates
     useEffect(() => {
-        const initClasses = async () => {
-            try {
-                const snap = await getDocsFromServer(collection(db, "classes"));
-                let list = snap.docs.map((d) => ({
-                    id: d.id,
-                    name: (d.data() as any).name || d.id,
-                }));
-                list = sortClasses(list);
-                setClasses(list);
-                if (list.length > 0 && !selectedClassId) setSelectedClassId(list[0].id);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setLoading(false);
+        if (initialStudentUid) {
+            setSelectedStudentUid(initialStudentUid);
+        }
+    }, [initialStudentUid]);
+
+    // Listen to selected student wallet balance
+    useEffect(() => {
+        if (!selectedStudentUid) {
+            setSelectedStudentWalletBalance(0);
+            return;
+        }
+        const unsub = onSnapshot(doc(db, "users", selectedStudentUid), (snap) => {
+            if (snap.exists()) {
+                setSelectedStudentWalletBalance((snap.data() as any).walletBalance || 0);
             }
-        };
+        });
+        return () => unsub();
+    }, [selectedStudentUid]);
+
+    // Load classes
+    const initClasses = async () => {
+        try {
+            const snap = await getDocsFromServer(collection(db, "classes"));
+            let list = snap.docs.map((d) => ({
+                id: d.id,
+                name: (d.data() as any).name || d.id,
+            }));
+            list = sortClasses(list);
+            setClasses(list);
+            if (list.length > 0 && !selectedClassId) setSelectedClassId(list[0].id);
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         initClasses();
     }, []);
 
     // Load students when class changes
-    useEffect(() => {
+    const loadStudents = async () => {
         if (!selectedClassId) return;
-        const loadStudents = async () => {
-            setFetchingStudents(true);
-            try {
-                const q = query(
-                    collection(db, "users"),
-                    where("role", "==", "student"),
-                    where("classId", "==", selectedClassId),
-                    where("status", "in", ["active", "pending_activation"]),
-                    orderBy("__name__"),
-                );
-                const snap = await getDocsFromServer(q);
-                const list = snap.docs
-                    .map((d) => {
-                        const data = d.data() as any;
-                        return {
-                            uid: d.id,
-                            name: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Student",
-                        };
-                    })
-                    .sort((a, b) => a.name.localeCompare(b.name));
-                setStudents(list);
-                if (!selectedStudentUid && list.length > 0) setSelectedStudentUid(list[0].uid);
-            } catch (error) {
-                console.error(error);
-            } finally {
-                setFetchingStudents(false);
+        setFetchingStudents(true);
+        try {
+            const q = query(
+                collection(db, "users"),
+                where("role", "==", "student"),
+                where("classId", "==", selectedClassId),
+                where("status", "in", ["active", "pending_activation"]),
+                orderBy("__name__"),
+            );
+            const snap = await getDocsFromServer(q);
+            const list = snap.docs
+                .map((d) => {
+                    const data = d.data() as any;
+                    return {
+                        uid: d.id,
+                        name: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Student",
+                    };
+                })
+                .sort((a, b) => a.name.localeCompare(b.name));
+            setStudents(list);
+            // Auto-select first student only for admins to avoid race conditions for parents
+            const isAdmin = appUser?.role === 'admin' || isSuperAdmin || canManageFees;
+            if (!selectedStudentUid && list.length > 0 && isAdmin) {
+                setSelectedStudentUid(list[0].uid);
             }
-        };
+        } catch (error) {
+            console.error(error);
+        } finally {
+            setFetchingStudents(false);
+        }
+    };
+
+    useEffect(() => {
         loadStudents();
     }, [selectedClassId]);
 
@@ -308,6 +349,10 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             const booksBalance = record?.booksBalance !== undefined ? record.booksBalance : (userData.booksBalance || 0);
             const uniformBalance = record?.uniformBalance !== undefined ? record.uniformBalance : (userData.uniformBalance || 0);
             const otherBalance = record?.otherBalance !== undefined ? record.otherBalance : (userData.otherBalance || 0);
+
+            // UI/UX Fallback: If record doesn't exist, use userData's totalPayable or walletBalance
+            const totalPayable = record?.totalPayable !== undefined ? record.totalPayable :
+                                (userData.totalPayable || (effectiveArrears + ptaBalance + maintenanceBalance + admissionBalance + booksBalance + uniformBalance + otherBalance));
 
             if (remainingAmount > 0) {
                 tuitionContribution = Math.min(remainingAmount, Math.max(0, currentTuitionDue));
@@ -707,7 +752,9 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
         selectedClassId, setSelectedClassId, selectedStudentUid, setSelectedStudentUid,
         record, allTransactions, loading: loading || acadConfig.loading, fetchingStudents,
         fetchingRecord, saving, deleting, handleLogPayment, handleRevertPayment,
-        categorySummary, totals, canManageFees, showFullHistory, setShowFullHistory, availableYears: useMemo(() => {
+        categorySummary, totals, canManageFees, showFullHistory, setShowFullHistory, refreshing, refresh,
+        selectedStudentWalletBalance,
+        availableYears: useMemo(() => {
             const start = 2024;
             const currentYear = new Date().getFullYear();
             const years = [];

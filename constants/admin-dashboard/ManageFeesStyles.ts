@@ -346,6 +346,22 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: VIBE.bg,
   },
+  ledgerButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: VIBE.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    gap: 4,
+    ...SHADOWS.small,
+  },
+  ledgerButtonText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
   fabWrap: { position: "absolute", bottom: 30, left: 20, right: 20 },
   mainFab: {
     height: 64,

@@ -17,7 +17,7 @@ interface FeeStudentCardProps {
   individualDiscountOverrides: Record<string, string>;
   discountAmount: string;
   setIndividualDiscountOverrides: (update: any) => void;
-  onHistoryPress: () => void;
+  onViewLedger: () => void;
 }
 
 export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
@@ -32,9 +32,9 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
   individualDiscountOverrides,
   discountAmount,
   setIndividualDiscountOverrides,
-  onHistoryPress,
+  onViewLedger,
 }) => {
-  const hasDebt = (item.currentBalance || 0) > 0;
+  const hasDebt = Math.round((item.currentBalance || 0) * 100) / 100 > 0;
   const currentBillValue =
     individualBillOverrides[item.uid] ?? (isSelected ? termBillAmount : "");
   const hasActiveBill =
@@ -122,41 +122,6 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
 
               {!isDiscountMode && (
                 <>
-                  <View style={styles.tuitionBreakdown}>
-                    <View style={styles.breakdownItem}>
-                      <Text style={styles.breakdownLabel}>ARREARS</Text>
-                      <Text style={styles.breakdownValue}>
-                        ₵{(item.previousBalance || 0).toFixed(2)}
-                      </Text>
-                    </View>
-                    <View style={styles.breakdownItem}>
-                      <Text style={styles.breakdownLabel}>BILLED</Text>
-                      <Text style={styles.breakdownValue}>
-                        ₵{(item.termBill || 0).toFixed(2)}
-                      </Text>
-                    </View>
-                    <View style={styles.breakdownItem}>
-                      <Text style={styles.breakdownLabel}>PAID</Text>
-                      <Text style={styles.breakdownValue}>
-                        ₵{(item.amountPaid || 0).toFixed(2)}
-                      </Text>
-                    </View>
-                    {!!item.discount && item.discount > 0 && (
-                      <View style={styles.breakdownItem}>
-                        <Text
-                          style={[styles.breakdownLabel, { color: VIBE.success }]}
-                        >
-                          DISCOUNT
-                        </Text>
-                        <Text
-                          style={[styles.breakdownValue, { color: VIBE.success }]}
-                        >
-                          -₵{(item.discount || 0).toFixed(2)}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-
                     <View style={styles.debtBox}>
                     <Text
                       style={[
@@ -284,11 +249,12 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
                 <TouchableOpacity
                   onPress={(e) => {
                     e.stopPropagation();
-                    onHistoryPress();
+                    onViewLedger();
                   }}
-                  style={styles.historyCircle}
+                  style={styles.ledgerButton}
                 >
-                  <SVGIcon name="time" size={18} color={VIBE.primary} />
+                  <SVGIcon name="receipt" size={14} color="#fff" />
+                  <Text style={styles.ledgerButtonText}>LEDGER</Text>
                 </TouchableOpacity>
                 <SVGIcon name="chevron-forward" size={18} color="#CBD5E1" />
               </View>

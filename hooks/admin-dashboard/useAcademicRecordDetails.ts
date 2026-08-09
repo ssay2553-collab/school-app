@@ -67,24 +67,21 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
     const [nextTermBegins, setNextTermBegins] = useState("");
     const [attendance, setAttendance] = useState("");
 
-    const [adminSig, setAdminSig] = useState("");
-    const [overallPosition, setOverallPosition] = useState<string>("-");
-
-    const [isReportApproved, setIsReportApproved] = useState(false);
-    const [reportStatus, setReportStatus] = useState<string>("pending");
-    const [activeClassId, setActiveClassId] = useState(classIdState);
-
-    // Preschool states
     const [isPreschool, setIsPreschool] = useState(false);
     const [preschoolAssessments, setPreschoolAssessments] = useState<any>(null);
     const [physicalDev, setPhysicalDev] = useState<any>(null);
-
+    const [activeClassId, setActiveClassId] = useState(classIdState);
+    const [reportStatus, setReportStatus] = useState("pending");
+    const [isReportApproved, setIsReportApproved] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
     const schoolId = (Constants.expoConfig?.extra?.schoolId || "afahjoy").toLowerCase();
     const schoolLogo = getSchoolLogo(schoolId);
     const defaultSchoolSig = getSchoolSignature(schoolId);
+    const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
+
+    const [adminSig, setAdminSig] = useState(defaultSchoolSig);
+    const [overallPosition, setOverallPosition] = useState<string>("-");
 
     const acadConfig = useAcademicConfig();
 
@@ -229,25 +226,8 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
             // Local Aggregate calculation for remarks
             const { aggregate: localAggregate } = calculatePerformanceFromList(finalSubjects, currentIsPreschool);
 
-            // Fetch Admin Signature
-            const qAdmin = query(collection(db, "users"), where("role", "==", "admin"));
-            const adminSnap = await getDocsFromServer(qAdmin);
-            const headAdmin = adminSnap.docs.find((d) => {
-                const r = ((d.data() as any).adminRole || "").toLowerCase();
-                return ["proprietor", "proprietress", "headmaster", "headmistress", "principal", "director", "administrator", "manager"].some((title) => r.includes(title));
-            });
-
-            if (headAdmin && (headAdmin.data() as any).profile?.signatureUrl) {
-                setAdminSig((headAdmin.data() as any).profile?.signatureUrl);
-            } else {
-                const anySigAdmin = adminSnap.docs.find((d) => (d.data() as any).profile?.signatureUrl);
-                if (anySigAdmin) {
-                    setAdminSig((anySigAdmin.data() as any).profile?.signatureUrl);
-                } else {
-                    // Fallback to static school signature from config
-                    setAdminSig(defaultSchoolSig);
-                }
-            }
+            // Use bundled local school signature asset (Removed Firestore fetch to ensure reliability)
+            setAdminSig(defaultSchoolSig);
 
             if (isFullReport) {
                 const yearSlug = academicYearState.replace(/\//g, "-");
@@ -343,28 +323,66 @@ export const useAcademicRecordDetails = (props?: UseAcademicRecordDetailsProps) 
             let logoDataUri = "";
             let sigDataUri = "";
 
-            const getBase64FromUri = async (uri: string | number) => {
+            const getBase64FromUri = async (uri: any): Promise<string> => {
+                if (!uri) return "";
+                if (typeof uri === 'string' && uri.startsWith('data:')) return uri;
+
                 try {
                     let finalUri = "";
-                    if (typeof uri === 'number') {
+                    try {
                         const asset = Asset.fromModule(uri);
                         if (!asset.localUri && !asset.uri) await asset.downloadAsync();
                         finalUri = asset.localUri || asset.uri;
-                    } else {
-                        finalUri = uri;
+                    } catch (e) {
+                        finalUri = typeof uri === 'string' ? uri : (uri?.uri || String(uri));
                     }
 
+                    if (!finalUri) return "";
+
                     if (Platform.OS === "web") {
-                        return finalUri;
+                        const absoluteUri = (finalUri.startsWith('http') || finalUri.startsWith('data:'))
+                            ? finalUri
+                            : new URL(finalUri, window.location.origin).href;
+
+                        // Use Image preloading + Canvas for web to handle assets more reliably
+                        return new Promise((resolve) => {
+                            const img = new window.Image();
+                            img.crossOrigin = "anonymous";
+                            img.onload = () => {
+                                try {
+                                    const canvas = document.createElement("canvas");
+                                    canvas.width = img.width;
+                                    canvas.height = img.height;
+                                    const ctx = canvas.getContext("2d");
+                                    ctx?.drawImage(img, 0, 0);
+                                    resolve(canvas.toDataURL("image/png"));
+                                } catch (e) {
+                                    console.warn("Canvas conversion failed, using absolute URI:", absoluteUri);
+                                    resolve(absoluteUri);
+                                }
+                            };
+                            img.onerror = () => {
+                                console.warn("Image load failed for base64 conversion:", absoluteUri);
+                                resolve(absoluteUri);
+                            };
+                            img.src = absoluteUri;
+                            // Fail safe timeout
+                            setTimeout(() => resolve(absoluteUri), 3500);
+                        });
                     } else {
-                        const tempPath = `${FileSystem.cacheDirectory}temp_${Math.random().toString(36).substring(7)}.png`;
-                        const downloaded = await FileSystem.downloadAsync(finalUri, tempPath);
-                        const b64 = await FileSystem.readAsStringAsync(downloaded.uri, { encoding: FileSystem.EncodingType.Base64 });
+                        // Handle local assets and remote URLs for Native
+                        let localPath = finalUri;
+                        if (finalUri.startsWith('http')) {
+                            const tempPath = `${FileSystem.cacheDirectory}temp_${Math.random().toString(36).substring(7)}.png`;
+                            const downloaded = await FileSystem.downloadAsync(finalUri, tempPath);
+                            localPath = downloaded.uri;
+                        }
+                        const b64 = await FileSystem.readAsStringAsync(localPath, { encoding: FileSystem.EncodingType.Base64 });
                         return `data:image/png;base64,${b64}`;
                     }
                 } catch (e) {
                     console.error("Error converting to base64:", e);
-                    return typeof uri === 'string' ? uri : "";
+                    return typeof uri === 'string' ? uri : (uri?.uri || "");
                 }
             };
 

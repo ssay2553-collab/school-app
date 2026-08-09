@@ -1,13 +1,19 @@
 import * as admin from "firebase-admin";
-import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 
 /**
- * Scheduled task to automatically delete archived students after 3 years.
- * Runs once every day at midnight.
+ * Manually triggered task to delete archived students after 3 years.
+ * Moved from scheduled to callable to reduce background costs.
  */
-export const purgeOldArchivedUsers = onSchedule("0 0 * * *", async () => {
+export const purgeOldArchivedUsers = onCall({ invoker: "public" }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
+
   const db = admin.firestore();
-  const auth = admin.auth();
+  const callerDoc = await db.collection("users").doc(auth.uid).get();
+  if (callerDoc.data()?.role !== "admin") throw new HttpsError("permission-denied", "Admin only.");
+
+  const firebaseAuth = admin.auth();
 
   // Calculate the date 3 years ago
   const threeYearsAgo = new Date();
@@ -15,41 +21,30 @@ export const purgeOldArchivedUsers = onSchedule("0 0 * * *", async () => {
   const cutoff = admin.firestore.Timestamp.fromDate(threeYearsAgo);
 
   try {
-    console.log("Starting purge of archived users older than 3 years...");
-
-    // Find students who were archived more than 3 years ago
     const snapshot = await db
       .collection("users")
       .where("status", "==", "archived")
       .where("archivedAt", "<", cutoff)
-      .limit(500) // Process in chunks to avoid timeouts/memory issues
+      .limit(500)
       .get();
 
-    if (snapshot.empty) {
-      console.log("No old archived users found to purge.");
-      return;
-    }
+    if (snapshot.empty) return { success: true, count: 0 };
 
+    let count = 0;
     const deletePromises = snapshot.docs.map(async (doc) => {
       const uid = doc.id;
       try {
-        // 1. Delete from Firebase Auth
-        await auth.deleteUser(uid);
+        await firebaseAuth.deleteUser(uid);
       } catch (authErr: any) {
-        // If user already doesn't exist in Auth, just log it and continue to Firestore deletion
-        if (authErr.code !== "auth/user-not-found") {
-          console.error(`Error deleting Auth user ${uid}:`, authErr);
-        }
+        if (authErr.code !== "auth/user-not-found") console.error(`Error deleting Auth user ${uid}:`, authErr);
       }
-
-      // 2. Delete the Firestore document
       await doc.ref.delete();
-      console.log(`Purged archived user: ${uid}`);
+      count++;
     });
 
     await Promise.all(deletePromises);
-    console.log(`Successfully purged ${snapshot.size} users.`);
-  } catch (error) {
-    console.error("Error in purgeOldArchivedUsers:", error);
+    return { success: true, count };
+  } catch (error: any) {
+    throw new HttpsError("internal", error.message);
   }
 });

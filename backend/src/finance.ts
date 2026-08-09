@@ -7,13 +7,18 @@ if (admin.apps.length === 0) {
 }
 
 /**
- * Scheduled task to remind parents about outstanding fees.
- * Runs on the 26th and 27th of every month at 3 PM.
- * KEEPING THIS as it involves cross-referencing multiple collections and
- * mass messaging which is better handled in the background.
+ * Callable task to remind parents about outstanding fees.
+ * Moved from scheduled to callable to reduce background costs and give admin control.
  */
-export const sendFeeReminders = onSchedule("0 15 26,27 * *", async (event) => {
+export const triggerFeeReminders = onCall({ invoker: "public" }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
+
   const db = admin.firestore();
+  const callerDoc = await db.collection("users").doc(auth.uid).get();
+  if (callerDoc.data()?.role !== "admin") throw new HttpsError("permission-denied", "Admin only.");
+
+  let notificationCount = 0;
 
   try {
     const recordsSnap = await db.collection("studentFeeRecords").where("balance", ">", 0).get();
@@ -71,10 +76,13 @@ export const sendFeeReminders = onSchedule("0 15 26,27 * *", async (event) => {
           data: { type: "fee_reminder", studentUid },
           tokens: tokens,
         });
+        notificationCount++;
       }
     }
-  } catch (error) {
-    console.error("Error in sendFeeReminders function:", error);
+    return { success: true, notificationCount };
+  } catch (error: any) {
+    console.error("Error in triggerFeeReminders function:", error);
+    throw new HttpsError("internal", error.message);
   }
 });
 

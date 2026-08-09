@@ -78,11 +78,10 @@ export const useFeeStats = (
 
         const studentDiscount = data.discount || 0;
 
-        // EXPECTED = "Balance Due" = Net amount that should be collected
-        // To get Expected from the cumulative Balance and current Payments:
-        // Expected = Net Balance + Current Payments
-        // (This effectively equals: Arrears + Current Term Bills - Current Term Discounts)
-        const studentExpected = (data.balance || 0) + studentReceived;
+        // EXPECTED = Net amount that should be collected for this student (Arrears + Term Bills - Discounts)
+        // Since walletBalance is the definitive current net balance, and studentReceived is what we've
+        // already collected THIS TERM, then Expected = current walletBalance + what we already received.
+        const studentExpected = (user.walletBalance || 0) + studentReceived;
 
         totalExpected += studentExpected;
         totalReceived += studentReceived;

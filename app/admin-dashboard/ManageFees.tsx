@@ -376,7 +376,7 @@ export default function ManageFees() {
         individualDiscountOverrides={individualDiscountOverrides}
         discountAmount={discountAmount}
         setIndividualDiscountOverrides={setIndividualDiscountOverrides}
-        onHistoryPress={() => {
+        onViewLedger={() => {
           router.push({
             pathname: "/admin-dashboard/student-fee-history",
             params: { studentId: item.uid, academicYear, term },

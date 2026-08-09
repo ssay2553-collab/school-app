@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Platform, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../SVGIcon";
 import { getGradeDetails } from "../../lib/classHelpers";
@@ -81,7 +81,18 @@ export const StudentScoreCard = React.memo(
           </View>
           <View style={{ flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.studentName} numberOfLines={1}>{localItem.fullName}</Text>
+              <TouchableOpacity
+                onPress={() => handleUpdate("status", localItem.status === "approved" ? "pending" : "approved")}
+                style={{ flexDirection: 'row', alignItems: 'center' }}
+              >
+                <SVGIcon
+                  name={localItem.status === "approved" ? "checkmark-circle" : "ellipse-outline"}
+                  size={18}
+                  color={localItem.status === "approved" ? "#10B981" : "#94A3B8"}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.studentName} numberOfLines={1}>{localItem.fullName}</Text>
+              </TouchableOpacity>
               {isModified && (
                 <View style={[styles.modifiedBadge, { backgroundColor: primary }]}>
                   <Text style={styles.modifiedText}>EDITED</Text>

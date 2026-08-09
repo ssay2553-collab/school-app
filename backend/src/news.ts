@@ -1,29 +1,27 @@
 import * as admin from "firebase-admin";
-import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 
 /**
- * Triggered when new news is posted.
- * ... Disabled to reduce costs. Notifications should be handled by the app.
+ * Manually triggered cleanup for expired news.
+ * Moved from scheduled to callable to reduce background costs.
  */
-/*
-export const onNewNewsBroadcast = onDocumentCreated("news/{newsId}", async (event) => {
-  ...
-});
-*/
+export const runNewsMaintenance = onCall({ invoker: "public" }, async (req) => {
+  const auth = req.auth;
+  if (!auth) throw new HttpsError("unauthenticated", "Auth required.");
 
-/**
- * Scheduled function to handle recurring notifications and auto-deletion.
- */
-export const processNewsLifecycle = onSchedule("every day 00:00", async () => {
   const db = admin.firestore();
+  const callerDoc = await db.collection("users").doc(auth.uid).get();
+  if (callerDoc.data()?.role !== "admin") throw new HttpsError("permission-denied", "Admin only.");
+
   const today = new Date();
+  let count = 0;
 
   try {
     const newsSnapshot = await db.collection("news").get();
     
     for (const newsDoc of newsSnapshot.docs) {
       const newsData = newsDoc.data();
-      if (newsData.isBirthday) continue; // Birthdays handled by birthdays.ts cleanup
+      if (newsData.isBirthday) continue;
 
       const expiryDate = newsData.expiryDate?.toDate();
       if (expiryDate) {
@@ -32,11 +30,12 @@ export const processNewsLifecycle = onSchedule("every day 00:00", async () => {
 
         if (today > deleteThreshold) {
           await newsDoc.ref.delete();
-          continue;
+          count++;
         }
       }
     }
-  } catch (error) {
-    console.error("Error in processNewsLifecycle:", error);
+    return { success: true, deleted: count };
+  } catch (error: any) {
+    throw new HttpsError("internal", error.message);
   }
 });

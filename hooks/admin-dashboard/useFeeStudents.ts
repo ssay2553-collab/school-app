@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { collection, getDocsFromCache, getDocsFromServer, limit, query, startAfter, where } from "firebase/firestore";
+import { collection, getDocsFromCache, getDocsFromServer, limit, query, startAfter, where, onSnapshot } from "firebase/firestore";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { db } from "../../firebaseConfig";
 import { StudentDraft, FILTERS_PERSISTENCE_KEY, PAGE_SIZE } from "../../constants/admin-dashboard/ManageFeesTypes";
@@ -118,7 +118,29 @@ export const useFeeStudents = (
         let batch: StudentDraft[] = studentDocs.map((d) => {
           const feeData = feesMap.get(d.id) as any;
           const userData = d.data() as any;
-          const currentBalance = userData.walletBalance || 0;
+          const walletBalance = userData.walletBalance || 0;
+
+          // RECONCILED: We derive arrears from the current wallet balance and the term's impact
+          // to ensure the UI always adds up (Arrears + Billed - Paid - Discount = WalletBalance)
+          // We include all term-specific bills and payments in the impact calculation.
+          const termImpact = feeData ? (
+            (feeData.termBill || 0) +
+            (feeData.ptaBill || 0) +
+            (feeData.maintenanceBill || 0) +
+            (feeData.admissionBill || 0) +
+            (feeData.booksBill || 0) +
+            (feeData.uniformBill || 0) +
+            (feeData.otherBill || 0) -
+            (feeData.amountPaid || 0) -
+            (feeData.ptaPaid || 0) -
+            (feeData.maintenancePaid || 0) -
+            (feeData.admissionPaid || 0) -
+            (feeData.booksPaid || 0) -
+            (feeData.uniformPaid || 0) -
+            (feeData.otherPaid || 0) -
+            (feeData.discount || 0)
+          ) : 0;
+          const reconciledArrears = feeData ? (walletBalance - termImpact) : walletBalance;
 
           return {
             uid: d.id,
@@ -129,14 +151,11 @@ export const useFeeStudents = (
             classId: userData.classId || "unknown",
             className:
               classes.find((c) => c.id === userData.classId)?.name || "Class",
-            // Arrears now represents accumulated tuition debt from previous terms
-            // FALLBACK: If no term record exists, we must rely on the user's global walletBalance
-            // which stores the lifetime debt until it's "consumed" by a new term bill.
-            previousBalance: feeData ? (feeData.arrears || 0) : (userData.walletBalance || 0),
+            previousBalance: reconciledArrears,
             // Global total paid (tuition)
             amountPaid: feeData ? (feeData.amountPaid || 0) : 0,
-            // The record balance is now the definitive running total (Total Bills - Total Payments)
-            currentBalance: feeData ? (feeData.balance || 0) : (userData.walletBalance || 0),
+            // The walletBalance is the definitive source for total debt/credit
+            currentBalance: walletBalance,
             hasRecordInTerm: !!feeData,
             payments: feeData?.payments || [],
             termBill: feeData?.termBill || 0,
@@ -154,18 +173,18 @@ export const useFeeStudents = (
             booksPaid: feeData?.booksPaid || 0,
             uniformPaid: feeData?.uniformPaid || 0,
             otherPaid: feeData?.otherPaid || 0,
-            totalPayable: feeData ? (feeData.totalPayable || 0) : (userData.walletBalance || 0),
+            totalPayable: feeData ? (feeData.totalPayable || 0) : walletBalance,
             editCount: feeData?.editCount || 0,
             onDiscount: userData.onDiscount,
             discountAmount: userData.discountAmount,
             onScholarship: userData.onScholarship,
-            // Wallet-level category fields fallback to global balances if term record is missing
-            ptaBalance: feeData ? (feeData.ptaBalance || 0) : (userData.ptaBalance || 0),
-            admissionBalance: feeData ? (feeData.admissionBalance || 0) : (userData.admissionBalance || 0),
-            maintenanceBalance: feeData ? (feeData.maintenanceBalance || 0) : (userData.maintenanceBalance || 0),
-            booksBalance: feeData ? (feeData.booksBalance || 0) : (userData.booksBalance || 0),
-            uniformBalance: feeData ? (feeData.uniformBalance || 0) : (userData.uniformBalance || 0),
-            otherBalance: feeData ? (feeData.otherBalance || 0) : (userData.otherBalance || 0),
+            // Wallet-level category fields prioritized from global balances to match Ledger/Cleanup
+            ptaBalance: userData.ptaBalance ?? 0,
+            admissionBalance: userData.admissionBalance ?? 0,
+            maintenanceBalance: userData.maintenanceBalance ?? 0,
+            booksBalance: userData.booksBalance ?? 0,
+            uniformBalance: userData.uniformBalance ?? 0,
+            otherBalance: userData.otherBalance ?? 0,
           };
         });
 
@@ -206,6 +225,52 @@ export const useFeeStudents = (
       fetchStudents(true);
     }
   }, [selectedClassId, academicYear, term, showArchived]);
+
+  // Real-time listener for users in the current batch to ensure walletBalance and statuses are always fresh
+  useEffect(() => {
+    if (students.length === 0) return;
+
+    const studentIds = students.map(s => s.uid);
+    const chunks = [];
+    for (let i = 0; i < studentIds.length; i += 10) {
+      chunks.push(studentIds.slice(i, i + 10));
+    }
+
+    const unsubs = chunks.map(chunk => {
+      const q = query(collection(db, "users"), where("__name__", "in", chunk));
+      return onSnapshot(q, (snap) => {
+        setStudents(prev => {
+          let updated = false;
+          const next = prev.map(s => {
+            const doc = snap.docs.find(d => d.id === s.uid);
+            if (doc) {
+              const userData = doc.data();
+              if (s.currentBalance !== userData.walletBalance) {
+                updated = true;
+                // Re-calculate arrears based on new walletBalance
+                const termImpact = (s.termBill || 0) - (s.amountPaid || 0) - (s.discount || 0);
+                return {
+                  ...s,
+                  currentBalance: userData.walletBalance || 0,
+                  previousBalance: (userData.walletBalance || 0) - termImpact,
+                  ptaBalance: userData.ptaBalance || 0,
+                  admissionBalance: userData.admissionBalance || 0,
+                  maintenanceBalance: userData.maintenanceBalance || 0,
+                  booksBalance: userData.booksBalance || 0,
+                  uniformBalance: userData.uniformBalance || 0,
+                  otherBalance: userData.otherBalance || 0,
+                };
+              }
+            }
+            return s;
+          });
+          return updated ? next : prev;
+        });
+      });
+    });
+
+    return () => unsubs.forEach(unsub => unsub());
+  }, [students.map(s => s.uid).join(',')]);
 
   return {
     students,

@@ -656,12 +656,32 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
     };
 
     const rawSummary = useMemo(() => {
+        const termImpact = record ? (
+            (record.termBill || 0) +
+            (record.ptaBill || 0) +
+            (record.maintenanceBill || 0) +
+            (record.admissionBill || 0) +
+            (record.booksBill || 0) +
+            (record.uniformBill || 0) +
+            (record.otherBill || 0) -
+            (record.amountPaid || 0) -
+            (record.ptaPaid || 0) -
+            (record.maintenancePaid || 0) -
+            (record.admissionPaid || 0) -
+            (record.booksPaid || 0) -
+            (record.uniformPaid || 0) -
+            (record.otherPaid || 0) -
+            (record.discount || 0)
+        ) : 0;
+
+        const reconciledArrears = record ? (selectedStudentWalletBalance - termImpact) : selectedStudentWalletBalance;
+
         const summary: Record<string, { billed: number; paid: number }> = {
-            tuition: { billed: Math.max(0, (record?.termBill || 0) - (record?.discount || 0)), paid: 0 },
+            tuition: { billed: record?.termBill || 0, paid: 0 },
         };
 
-        if (record?.arrears > 0) {
-            summary["arrears"] = { billed: record.arrears, paid: 0 };
+        if (reconciledArrears !== 0) {
+            summary["arrears"] = { billed: reconciledArrears, paid: 0 };
         }
 
         allTransactions.forEach((t: any) => {
@@ -744,8 +764,9 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
     const totals = useMemo(() => {
         const billed = Object.values(categorySummary).reduce((acc, curr: any) => acc + curr.billed, 0);
         const paid = Object.values(categorySummary).reduce((acc, curr: any) => acc + curr.paid, 0);
-        return { totalBilled: billed, totalPaid: paid, totalBalance: billed - paid };
-    }, [categorySummary]);
+        const discount = record?.discount || 0;
+        return { totalBilled: billed, totalPaid: paid, totalBalance: billed - paid - discount };
+    }, [categorySummary, record]);
 
     return {
         classes, students, selectedYear, setSelectedYear, selectedTerm, setSelectedTerm,

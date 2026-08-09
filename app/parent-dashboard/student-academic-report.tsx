@@ -197,7 +197,7 @@ export default function StudentAcademicReport() {
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle}>Academic Reports</Text>
               <Text style={styles.headerSubtitle}>
-                View and download terminal progress sheets
+                View terminal progress sheets
               </Text>
             </View>
             <TouchableOpacity
@@ -343,6 +343,7 @@ export default function StudentAcademicReport() {
             adminSig={adminSig}
             generating={generating}
             generatePDF={generatePDF}
+            hideDownload={true}
           />
         )}
       </ScrollView>

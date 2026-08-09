@@ -219,7 +219,7 @@ function hasScreenPermission(screen, level) {
         isAdmin()
         || (isSignedIn() && uid() == userId)
         || (isTeacher() && resource.data.role == 'student')
-        || (isParent() && resource.data.role == 'teacher')
+        || (isParent() && resource.data.role in ['teacher', 'admin'])
         || (isParent() && userData() != null && (
              (userId in userData().childrenIds) ||
              (uid() in resource.data.get('parentUids', []))

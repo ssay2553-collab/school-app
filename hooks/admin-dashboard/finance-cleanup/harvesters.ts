@@ -110,6 +110,10 @@ export const harvestStudentData = (
 
     if (Array.isArray(merged.payments)) {
       merged.payments.forEach((p: any) => {
+        // Skip legacy-migration payments created by previous runs of this tool.
+        // This allows the harvester to re-calculate the gap accurately on every scan.
+        if (p.receiptNo?.toString().startsWith("LEGACY-")) return;
+
         const pUid = resolvePaymentUid(p, recordUid, d.id);
         if (pUid) {
           // If embedded payment lacks year/term, inherit from parent record

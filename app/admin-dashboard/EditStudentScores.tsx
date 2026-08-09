@@ -378,7 +378,7 @@ export default function EditStudentScores() {
             position: `${rankInfo.rank}/${rankInfo.total}`,
           };
         }),
-        status: "approved",
+        status: studentsToSave.every(s => s.status === "approved") ? "approved" : "partially_approved",
         approvedAt: serverTimestamp(),
         approvedBy: appUser?.uid,
       });
@@ -408,7 +408,7 @@ export default function EditStudentScores() {
                 grade: student.grade,
                 position: `${rankInfo.rank}/${rankInfo.total}`,
                 reportType: selectedReportType,
-                status: "approved",
+                status: student.status || "pending",
                 lastUpdated: serverTimestamp(),
               },
             },
@@ -475,16 +475,31 @@ export default function EditStudentScores() {
       }));
 
       const batch = writeBatch(db);
+
+      // Get current statuses of students to determine if overall report should be approved
+      const studentStatusMap = new Map<string, string>();
+      allSnap.docs.forEach((d) => {
+        const data = d.data();
+        (data.students || []).forEach((s: any) => {
+          if (s.studentId) studentStatusMap.set(s.studentId, s.status || "pending");
+        });
+      });
+
       rankedData.forEach((item) => {
         const rankInfo = calculateCompetitionRanking(rankedData, item.id);
         const reportId = `${item.id}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(/\//g, "-");
+
+        // The overall report is only "approved" if all its components are approved.
+        // For simplicity here, we'll mark the overall status based on the current subject's view
+        // OR let the specific student's status drive it.
+        const currentStudentStatus = studentStatusMap.get(item.id) || "pending";
 
         batch.set(
           doc(db, "student-reports", reportId),
           {
             overallPosition: `${rankInfo.rank}/${rankInfo.total}`,
             totalScore: item.total,
-            status: "approved",
+            status: currentStudentStatus === "approved" ? "approved" : "pending",
             studentId: item.id,
             studentName: studentNames[item.id],
             classId: selectedClassId,
@@ -769,6 +784,24 @@ export default function EditStudentScores() {
               <SVGIcon name="trash" size={22} color="#EF4444" />
             )}
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.approveAllBtn, { borderColor: primary }]}
+            onPress={() => {
+              const updated = allStudents.map(s => ({ ...s, status: "approved" }));
+              setAllStudents(updated);
+              // Update master ref as well
+              updated.forEach(s => {
+                masterDataRef.current[s.studentId] = s;
+              });
+              showToast({ message: "All students marked for approval. Click Save to commit.", type: "info" });
+            }}
+            disabled={saving || deleting}
+          >
+            <SVGIcon name="checkmark-done-circle" size={20} color={primary} />
+            <Text style={[styles.approveAllText, { color: primary }]}>Approve All</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={[styles.saveBtn, { backgroundColor: primary }]}
             onPress={approveAndSave}
@@ -778,9 +811,9 @@ export default function EditStudentScores() {
               <ActivityIndicator color="#fff" />
             ) : (
               <View style={styles.btnContent}>
-                <Text style={styles.saveBtnText}>Save & Approve</Text>
+                <Text style={styles.saveBtnText}>Save Changes</Text>
                 <SVGIcon
-                  name="checkmark-done"
+                  name="cloud-upload"
                   size={20}
                   color="#fff"
                   style={{ marginLeft: 8 }}
@@ -994,7 +1027,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.large,
   },
   deleteBtn: {
-    width: 52,
+    width: 48,
     height: 52,
     borderRadius: 14,
     backgroundColor: "#FEF2F2",
@@ -1002,6 +1035,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#FEE2E2",
+  },
+  approveAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    height: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    backgroundColor: '#fff',
+  },
+  approveAllText: {
+    fontSize: 13,
+    fontWeight: '800',
   },
   saveBtn: {
     flex: 1,

@@ -385,11 +385,20 @@ export default function StudentFeeHistory() {
                 <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>BALANCE</Text>
               </View>
               {Object.entries(categorySummary)
+                .sort(([a], [b]) => {
+                  if (a === 'arrears') return -1;
+                  if (b === 'arrears') return 1;
+                  if (a === 'tuition') return -1;
+                  if (b === 'tuition') return 1;
+                  return a.localeCompare(b);
+                })
                 .map(([cat, vals]: any) => {
                   const balance = (vals.billed || 0) - (vals.paid || 0);
                   return (
-                    <View key={cat} style={styles.invoiceRow}>
-                      <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10 }]}>{cat.toUpperCase()}</Text>
+                    <View key={cat} style={[styles.invoiceRow, cat === 'arrears' && { backgroundColor: '#FFF7ED' }]}>
+                      <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10, color: cat === 'arrears' ? '#C2410C' : '#1E293B' }]}>
+                        {cat === 'arrears' ? 'PREVIOUS ARREARS' : cat.toUpperCase()}
+                      </Text>
                       <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right' }]}>{SCHOOL_CONFIG.currencySymbol}{vals.billed.toFixed(2)}</Text>
                       <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: "#10B981" }]}>{SCHOOL_CONFIG.currencySymbol}{vals.paid.toFixed(2)}</Text>
                       <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: balance > 0 ? "#EF4444" : "#10B981", fontWeight: '700' }]}>

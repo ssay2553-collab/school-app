@@ -151,10 +151,50 @@ export default function NewsCenter() {
   const handleTriggerBirthdays = async () => {
     setBdayTriggerLoading(true);
     try {
-      const triggerFn = httpsCallable(functions, "triggerBirthdayCheckManually");
-      const result: any = await triggerFn();
+      // 1. Fetch all students with birthdays today
+      const today = moment().format("MM-DD");
+      const studentsQuery = query(collection(db, "users"), (q: any) =>
+        q.where("role", "==", "student")
+         .where("status", "==", "active")
+      );
+
+      // Note: Firestore doesn't support MM-DD queries directly on Timestamps without a dedicated string field.
+      // We'll fetch active students and filter locally since this is an admin-triggered manual action.
+      const snapshot = await getDocsFromServer(collection(db, "users") as any);
+      const birthdayStudents = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        if (!data.dateOfBirth) return false;
+        const dob = moment(data.dateOfBirth.toDate());
+        return dob.format("MM-DD") === today;
+      });
+
+      if (birthdayStudents.length === 0) {
+        showToast({ message: "No birthdays found for today.", type: "info" });
+        return;
+      }
+
+      let wishCount = 0;
+      for (const studentDoc of birthdayStudents) {
+        const student = studentDoc.data();
+        const fullName = `${student.profile?.firstName || ""} ${student.profile?.lastName || ""}`.trim();
+
+        // 2. Post a news announcement for each birthday
+        await addDoc(collection(db, "news"), {
+          title: `Happy Birthday, ${student.profile?.firstName || "Student"}! 🎂`,
+          content: `Today, we celebrate ${fullName}! Wishing you a day filled with joy, laughter, and wonderful surprises. Have a fantastic one!`,
+          audience: "all",
+          isBirthday: true,
+          studentUid: studentDoc.id,
+          author: "School System",
+          category: "Celebration",
+          createdAt: serverTimestamp(),
+          expiryDate: moment().endOf('day').toDate(),
+        });
+        wishCount++;
+      }
+
       showToast({
-        message: `Birthday Check: Processed ${result.data.count} new wishes!`,
+        message: `Birthday Check: Processed ${wishCount} new wishes!`,
         type: "success",
       });
       fetchNews();

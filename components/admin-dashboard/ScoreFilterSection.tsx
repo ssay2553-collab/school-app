@@ -82,41 +82,49 @@ export const ScoreFilterSection = ({
         <Animatable.View animation="fadeIn" duration={400} style={styles.expandedContent}>
           <View style={styles.lockedConfigRow}>
             <View style={styles.lockedConfigItem}>
-              <Text style={styles.miniLabel}>ACADEMIC YEAR</Text>
-              <View style={styles.lockedBadge}>
-                <Text style={[styles.lockedBadgeText, { color: primary }]}>
-                  {selectedYear || "---"}
-                </Text>
+              <View style={[styles.lockedIcon, { backgroundColor: primary + "10" }]}>
+                <SVGIcon name="calendar" size={16} color={primary} />
+              </View>
+              <View>
+                <Text style={styles.miniLabelStatic}>ACADEMIC YEAR</Text>
+                <Text style={[styles.lockedVal, { color: primary }]}>{selectedYear || "---"}</Text>
               </View>
             </View>
             <View style={styles.lockedConfigItem}>
-              <Text style={styles.miniLabel}>CURRENT TERM</Text>
-              <View style={styles.lockedBadge}>
-                <Text style={[styles.lockedBadgeText, { color: primary }]}>{term || "---"}</Text>
+              <View style={[styles.lockedIcon, { backgroundColor: "#F59E0B15" }]}>
+                <SVGIcon name="time" size={16} color="#F59E0B" />
+              </View>
+              <View>
+                <Text style={styles.miniLabelStatic}>CURRENT TERM</Text>
+                <Text style={[styles.lockedVal, { color: "#F59E0B" }]}>{term || "---"}</Text>
               </View>
             </View>
           </View>
 
+          <View style={styles.reportTypeRow}>
+            {(["Mid-Term", "End of Term", "Mock Exams"] as ReportType[]).map((type) => (
+              <TouchableOpacity
+                key={type}
+                style={[
+                  styles.typeChip,
+                  selectedReportType === type && { backgroundColor: primary, borderColor: primary }
+                ]}
+                onPress={() => setSelectedReportType(type)}
+              >
+                <Text style={[
+                  styles.typeChipText,
+                  selectedReportType === type && { color: "#fff" }
+                ]}>
+                  {type === "End of Term" ? "Final" : type === "Mid-Term" ? "Mid" : "Mock"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <View style={styles.pickerGrid}>
             <View style={styles.pickerBox}>
-              <Text style={styles.miniLabel}>REPORT TYPE</Text>
-              <View style={styles.pickerContainer}>
-                <Picker
-                  selectedValue={selectedReportType}
-                  onValueChange={(v) => setSelectedReportType(v as ReportType)}
-                  style={styles.picker}
-                  dropdownIconColor={primary}
-                >
-                  <Picker.Item label="End of Term" value="End of Term" />
-                  <Picker.Item label="Mid-Term" value="Mid-Term" />
-                  <Picker.Item label="Mock Exams" value="Mock Exams" />
-                </Picker>
-              </View>
-            </View>
-
-            <View style={styles.pickerBox}>
-              <Text style={styles.miniLabel}>TARGET CLASS</Text>
-              <View style={styles.pickerContainer}>
+              <Text style={styles.floatingLabel}>TARGET CLASS</Text>
+              <View style={styles.pickerWrapper}>
                 <Picker
                   selectedValue={selectedClassId}
                   onValueChange={setSelectedClassId}
@@ -129,29 +137,29 @@ export const ScoreFilterSection = ({
                 </Picker>
               </View>
             </View>
-          </View>
 
-          <View style={[styles.pickerBox, { width: "100%", marginTop: 12 }]}>
-            <Text style={styles.miniLabel}>SUBJECT SUBMISSION</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={selectedSubject}
-                onValueChange={setSelectedSubject}
-                style={styles.picker}
-                dropdownIconColor={primary}
-              >
-                {subjects.length > 0 ? (
-                  subjects.map((s) => (
-                    <Picker.Item
-                      key={s.name}
-                      label={`${s.name} (${s.status.toUpperCase()})`}
-                      value={s.name}
-                    />
-                  ))
-                ) : (
-                  <Picker.Item label="No Submissions Found" value="" />
-                )}
-              </Picker>
+            <View style={styles.pickerBox}>
+              <Text style={styles.floatingLabel}>SUBJECT</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={selectedSubject}
+                  onValueChange={setSelectedSubject}
+                  style={styles.picker}
+                  dropdownIconColor={primary}
+                >
+                  {subjects.length > 0 ? (
+                    subjects.map((s) => (
+                      <Picker.Item
+                        key={s.name}
+                        label={s.name}
+                        value={s.name}
+                      />
+                    ))
+                  ) : (
+                    <Picker.Item label="None" value="" />
+                  )}
+                </Picker>
+              </View>
             </View>
           </View>
 
@@ -242,74 +250,113 @@ const styles = StyleSheet.create({
   pickerGrid: {
     flexDirection: "row",
     gap: 12,
-    marginTop: 12,
+    marginTop: 16,
   },
-  lockedConfigRow: { flexDirection: "row", gap: 12, marginBottom: 0, marginTop: 12 },
-  lockedConfigItem: { flex: 1 },
-  lockedBadge: {
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: 16,
-    borderRadius: 12,
+  lockedConfigRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 16,
+    marginTop: 16,
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    height: 48,
-    justifyContent: "center",
+    borderColor: '#E2E8F0',
   },
-  lockedBadgeText: {
-    fontSize: 14,
-    fontWeight: "700",
+  lockedConfigItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  lockedIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  miniLabelStatic: {
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+  },
+  lockedVal: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  reportTypeRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  typeChip: {
+    flex: 1,
+    height: 38,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  typeChipText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+    textTransform: 'uppercase',
   },
   pickerBox: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    borderWidth: 1,
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    borderWidth: 1.5,
     borderColor: "#E2E8F0",
-    paddingTop: 12,
-    minHeight: 65,
+    paddingTop: 16,
+    height: 60,
+  },
+  pickerWrapper: {
+    height: 40,
+    marginTop: -4,
     justifyContent: 'center',
   },
-  pickerContainer: {
-    height: 50,
-    justifyContent: 'center',
-  },
-  miniLabel: {
-    fontSize: 9,
-    fontWeight: "800",
+  floatingLabel: {
+    fontSize: 8,
+    fontWeight: "900",
     color: "#94A3B8",
     position: "absolute",
-    top: 12,
+    top: 10,
     left: 12,
     zIndex: 10,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   picker: {
     color: "#1E293B",
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
     ...Platform.select({
       web: {
-        height: 40,
+        height: 35,
         backgroundColor: "transparent",
         borderWidth: 0,
         outlineStyle: "none",
-        paddingHorizontal: 10
+        paddingHorizontal: 12
       },
       android: {
-        height: 50,
+        height: 45,
         width: '100%',
-        marginLeft: -10
+        marginLeft: 0
       }
     }),
   } as any,
   loadBtn: {
     height: 52,
-    borderRadius: 14,
-    marginTop: 16,
+    borderRadius: 16,
+    marginTop: 20,
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    ...SHADOWS.small
+    ...SHADOWS.medium
   },
   btnContent: {
     flexDirection: "row",
@@ -318,8 +365,9 @@ const styles = StyleSheet.create({
   },
   loadBtnText: {
     color: "#fff",
-    fontWeight: "800",
+    fontWeight: "900",
     fontSize: 15,
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    textTransform: 'uppercase'
   },
 });

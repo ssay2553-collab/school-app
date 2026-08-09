@@ -94,8 +94,10 @@ export const mergeFinancialData = (target: any, source: any) => {
     "totalPayable",
   ];
 
-  // Fields that represent cumulative totals should be summed when merging two separate accounts
-  const sumKeys = [
+  // Fields that represent cumulative totals should NOT be summed when merging duplicate term records
+  // because the reconciler will re-calculate the true total from explicit payment documents.
+  // Using Math.max prevents doubling up when duplicate student identity records exist for the same term.
+  const maxKeys = [
     "amountPaid",
     "discount",
     ...isolatedKeys.map(k => `${k}Paid`)
@@ -111,11 +113,8 @@ export const mergeFinancialData = (target: any, source: any) => {
     const v1 = Number(target[key] || 0);
     const v2 = Number(source[key] || 0);
 
-    if (sumKeys.includes(key)) {
-      // Sum the totals (e.g., if one account had 100 paid and other had 50, total is 150)
-      merged[key] = v1 + v2;
-    } else if (key.endsWith("Bill")) {
-      // Bills are usually constant for a term, take the highest (max) to avoid doubling
+    if (maxKeys.includes(key) || key.endsWith("Bill")) {
+      // Use the maximum value to avoid doubling up when two records represent the same term/identity
       merged[key] = Math.max(v1, v2);
     } else {
       // For balances and other fields, take the most significant value

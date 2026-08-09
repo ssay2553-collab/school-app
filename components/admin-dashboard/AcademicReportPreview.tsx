@@ -44,6 +44,7 @@ interface AcademicReportPreviewProps {
     generatePDF: () => void;
     refreshing?: boolean;
     refresh?: () => void;
+    hideDownload?: boolean;
 }
 
 export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
@@ -76,6 +77,7 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
     generatePDF,
     refreshing,
     refresh,
+    hideDownload = false,
 }) => {
     return (
         <ScrollView
@@ -207,7 +209,6 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
                     ) : null}
 
                     <View style={styles.paperSigRow}>
-                        <View style={{ flex: 1 }} />
                         <View style={styles.paperSigItem}>
                             {adminSig ? (
                                 <Image
@@ -220,17 +221,20 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
                             <View style={styles.paperSigLine} />
                             <Text style={styles.paperSigLabel}>Head of Institution</Text>
                         </View>
+                        <View style={{ flex: 1.5 }} />
                     </View>
                 </View>
 
-                <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: primary }]} onPress={generatePDF} disabled={generating}>
-                    {generating ? <ActivityIndicator color="#fff" /> : (
-                        <>
-                            <SVGIcon name="download" size={20} color="#fff" />
-                            <Text style={styles.downloadBtnText}>Generate Official PDF</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
+                {!hideDownload && (
+                    <TouchableOpacity style={[styles.downloadBtn, { backgroundColor: primary }]} onPress={generatePDF} disabled={generating}>
+                        {generating ? <ActivityIndicator color="#fff" /> : (
+                            <>
+                                <SVGIcon name="download" size={20} color="#fff" />
+                                <Text style={styles.downloadBtnText}>Generate Official PDF</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                )}
             </Animatable.View>
         </ScrollView>
     );

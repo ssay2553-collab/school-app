@@ -1,13 +1,14 @@
 import { useRouter } from "expo-router";
-import React from "react";
+import React, { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity, View, StatusBar, Alert, Platform, ActivityIndicator, ScrollView } from "react-native";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { signOut } from "firebase/auth";
-import { auth, db } from "../../firebaseConfig";
+import { auth, db, functions } from "../../firebaseConfig";
 import SVGIcon from "../../components/SVGIcon";
 import { collection, query, where, getDocs, deleteDoc, doc, writeBatch } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import moment from "moment";
 import { useFinanceCleanup } from "../../hooks/admin-dashboard/useFinanceCleanup";
 import { useAcademicCleanup } from "../../hooks/admin-dashboard/useAcademicCleanup";
@@ -18,8 +19,37 @@ export default function AdminSettingsScreen() {
   const router = useRouter();
 
   const [isCleaning, setIsCleaning] = React.useState(false);
+  const [cfLoading, setCfLoading] = useState<Record<string, boolean>>({});
+
   const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, runMigration: runFinanceMigration, report: financeReport } = useFinanceCleanup(showToast);
   const { cleaning: isAcademicCleaning, runCleanup: runAcademicCleanup, report: academicReport } = useAcademicCleanup(showToast);
+
+  const handleCloudFunctionTrigger = async (fnName: string, confirmMessage: string) => {
+    const run = async () => {
+      setCfLoading(prev => ({ ...prev, [fnName]: true }));
+      try {
+        const callable = httpsCallable(functions, fnName);
+        const result: any = await callable();
+        showToast({
+          message: `Success: ${result.data.deletedMessages || result.data.count || result.data.deleted || result.data.notificationCount || 0} items processed.`,
+          type: "success"
+        });
+      } catch (err: any) {
+        showToast({ message: err.message || "Execution failed", type: "error" });
+      } finally {
+        setCfLoading(prev => ({ ...prev, [fnName]: false }));
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(confirmMessage)) run();
+    } else {
+      Alert.alert("System Task", confirmMessage, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Execute", style: "destructive", onPress: run }
+      ]);
+    }
+  };
 
   const performLogout = async () => {
     try {
@@ -149,6 +179,34 @@ export default function AdminSettingsScreen() {
       },
       color: "#A55EEA",
       loading: isAcademicCleaning,
+    },
+    {
+        title: "Chat & Token Maintenance",
+        icon: "chatbubble-ellipses-outline",
+        action: () => handleCloudFunctionTrigger("runChatMaintenance", "Clear old messages and inactive tokens to optimize Firestore performance?"),
+        color: "#10B981",
+        loading: cfLoading["runChatMaintenance"],
+    },
+    {
+        title: "News Expiry Cleanup",
+        icon: "megaphone-outline",
+        action: () => handleCloudFunctionTrigger("runNewsMaintenance", "Permanently delete announcements that expired over 7 days ago?"),
+        color: "#EC4899",
+        loading: cfLoading["runNewsMaintenance"],
+    },
+    {
+        title: "Archive Purge (3+ Years)",
+        icon: "shield-checkmark-outline",
+        action: () => handleCloudFunctionTrigger("purgeOldArchivedUsers", "Hard-delete users who have been archived for more than 3 years? This action is irreversible."),
+        color: "#6366F1",
+        loading: cfLoading["purgeOldArchivedUsers"],
+    },
+    {
+        title: "Broadcast Fee Reminders",
+        icon: "notifications-outline",
+        action: () => handleCloudFunctionTrigger("triggerFeeReminders", "Send push notification fee reminders to ALL parents with outstanding balances?"),
+        color: "#F59E0B",
+        loading: cfLoading["triggerFeeReminders"],
     },
     {
       title: "Logout",

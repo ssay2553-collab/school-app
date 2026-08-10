@@ -209,6 +209,7 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
                     ) : null}
 
                     <View style={styles.paperSigRow}>
+                        <View style={{ flex: 1.5 }} />
                         <View style={styles.paperSigItem}>
                             {adminSig ? (
                                 <Image
@@ -221,7 +222,6 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
                             <View style={styles.paperSigLine} />
                             <Text style={styles.paperSigLabel}>Head of Institution</Text>
                         </View>
-                        <View style={{ flex: 1.5 }} />
                     </View>
                 </View>
 
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
         borderColor: "#CBD5E1",
     },
     paperLetterhead: { flexDirection: "row", alignItems: "center", marginBottom: 15 },
-    paperLogo: { width: 50, height: 50, marginRight: 15 },
+    paperLogo: { width: 75, height: 75, marginRight: 15 },
     paperSchoolName: { fontSize: 16, fontWeight: "900", color: "#1E293B" },
     paperSchoolInfo: { fontSize: 8, fontWeight: "600", color: "#64748B", marginTop: 2 },
     paperReportType: { fontSize: 10, fontWeight: "800", color: "#64748B", marginTop: 2 },
@@ -276,9 +276,9 @@ const styles = StyleSheet.create({
     paperNextTermVal: { fontSize: 10, fontWeight: "700", color: "#2e86de" },
     paperSigRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 20, gap: 20 },
     paperSigItem: { flex: 1, alignItems: "center" },
-    paperSigImg: { width: "100%", height: 80, resizeMode: "contain" },
-    paperSigSpace: { height: 80 },
-    paperSigLine: { width: "100%", height: 1, backgroundColor: "#1E293B", marginVertical: 4 },
+    paperSigImg: { width: "100%", height: 120, resizeMode: "contain", marginBottom: -15 },
+    paperSigSpace: { height: 120 },
+    paperSigLine: { width: "100%", height: 1, backgroundColor: "#1E293B", marginTop: 2, marginBottom: 4 },
     paperSigLabel: { fontSize: 8, fontWeight: "800", color: "#64748B" },
     downloadBtn: { flexDirection: "row", padding: 16, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
     downloadBtnText: { color: "#fff", fontWeight: "900", marginLeft: 10, fontSize: 14 },

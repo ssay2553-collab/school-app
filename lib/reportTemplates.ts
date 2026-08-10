@@ -101,9 +101,12 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
           margin-bottom: 12px;
         }
         .header-logo-container {
-          width: 65px;
-          height: 65px;
-          margin-right: 15px;
+          width: 110px;
+          height: 110px;
+          margin-right: 25px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
         .header-logo-img {
           width: 100%;
@@ -175,12 +178,12 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
         .remark-header { font-weight: 900; color: #0f172a; margin-right: 6pt; font-size: 7.5pt; text-transform: uppercase; }
 
         .footer { display:flex; justify-content:space-between; align-items:flex-end; margin-top: auto; padding-top: 12px; }
-        .sig-section { width: 32%; text-align: center; }
-        .sig-image { height: 50pt; object-fit: contain; margin-bottom: -4pt; max-width: 90%; }
-        .sig-line { border-top: 1pt solid #0f172a; width: 100%; margin: 4pt auto; }
+        .sig-section { width: 45%; text-align: center; }
+        .sig-image { height: 120pt; object-fit: contain; margin-bottom: -25pt; max-width: 100%; display: block; margin-left: auto; margin-right: auto; }
+        .sig-line { border-top: 1.5pt solid #0f172a; width: 100%; margin: 2pt auto; }
         .sig-label { font-size: 7.5pt; font-weight: 800; text-transform: uppercase; color: #64748b; }
 
-        .qr-section { text-align: right; width: 20%; display: flex; flex-direction: column; align-items: flex-end; }
+        .qr-section { text-align: left; width: 20%; display: flex; flex-direction: column; align-items: flex-start; }
         .qr-img { width: 45pt; height: 45pt; opacity: 0.8; }
       </style>
     </head>
@@ -262,14 +265,14 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
         </div>
 
         <div class="footer">
+          <div class="qr-section">
+            <img src="${qrDataUri}" class="qr-img"/>
+            <div style="font-size:7pt; color:#64748B; margin-top:2pt;">Verify Report</div>
+          </div>
           <div class="sig-section">
             ${sigDataUri ? `<img src="${sigDataUri}" class="sig-image" />` : '<div style="height: 60pt;"></div>'}
             <div class="sig-line"></div>
             <div class="sig-label">Head of Institution</div>
-          </div>
-          <div class="qr-section">
-            <img src="${qrDataUri}" class="qr-img"/>
-            <div style="font-size:7pt; color:#64748B; margin-top:2pt;">Verify Report</div>
           </div>
         </div>
       </div>

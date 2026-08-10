@@ -24,8 +24,8 @@ export const SCHOOL_SIGNATURES: Record<string, any> = {
   abijah: require("../assets/signatures/abijah.png"),
   sincere: require("../assets/signatures/eagles.png"),
   spring: require("../assets/signatures/eagles.png"),
-  josepac: require("../assets/signatures/stone.png"),
-  advent: require("../assets/signatures/ibs.png"),
+  josepac: require("../assets/signatures/josepac.png"),
+  advent: require("../assets/signatures/advent.png"),
   bishop: require("../assets/signatures/bishops.png"),
   gilead: require("../assets/signatures/afahjoy.png"),
 };

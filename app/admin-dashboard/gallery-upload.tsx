@@ -289,7 +289,8 @@ export default function AdminGalleryUpload() {
           ),
         () => {
           setIsUploading(false);
-          if (typeof mainBlob.close === 'function') (mainBlob as any).close();
+          // @ts-ignore
+          if (typeof mainBlob.close === 'function') mainBlob.close();
         },
         async () => {
           const mainUrl = await getDownloadURL(mainRef);
@@ -304,7 +305,8 @@ export default function AdminGalleryUpload() {
 
           setSelectedFile(null);
           setIsUploading(false);
-          if (typeof mainBlob.close === 'function') (mainBlob as any).close();
+          // @ts-ignore
+          if (typeof mainBlob.close === 'function') mainBlob.close();
         },
       );
     } catch (e) {

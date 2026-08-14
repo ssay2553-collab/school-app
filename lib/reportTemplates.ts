@@ -1,8 +1,10 @@
-import { SCHOOL_CONFIG } from "../constants/Config";
-
 export interface ReportHtmlData {
-  logoDataUri: string;
-  sigDataUri: string;
+  backgroundDataUri?: string;
+  schoolLogoDataUri?: string;
+  adminSigDataUri?: string;
+  schoolName: string;
+  schoolHotline: string;
+  schoolEmail: string;
   studentName: string;
   className: string;
   academicYearState: string;
@@ -30,8 +32,12 @@ export interface ReportHtmlData {
 
 export const generateAcademicReportHtml = (data: ReportHtmlData) => {
   const {
-    logoDataUri,
-    sigDataUri,
+    backgroundDataUri,
+    schoolLogoDataUri,
+    adminSigDataUri,
+    schoolName,
+    schoolHotline,
+    schoolEmail,
     studentName,
     className,
     academicYearState,
@@ -44,12 +50,9 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
     TRS,
     TAS,
     AGGREGATE,
-    isPreschool,
     conduct,
     attitude,
     interest,
-    physicalDev,
-    preschoolAssessments,
     teacherRemarks,
     adminRemarks,
     nextTermBegins,
@@ -62,6 +65,7 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
     <html>
     <head>
       <meta charset="UTF-8" />
+      <title>Academic Report - ${studentName}</title>
       <style>
         @page {
           size: A4;
@@ -82,124 +86,94 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
         .paper {
           padding: 8mm 10mm;
           width: 210mm;
-          height: 297mm;
+          min-height: 297mm;
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
           overflow: hidden;
           position: relative;
           margin: 0 auto;
-          background-color: white;
+          ${backgroundDataUri ? `background-image: url("${backgroundDataUri}");` : "background-color: white;"}
+          background-size: cover;
+          background-repeat: no-repeat;
+          background-position: center;
         }
 
-        /* Header Redesign (Non-Table) */
-        .header-container {
-          display: flex;
-          align-items: center;
-          border-bottom: 2pt solid #0f172a;
-          padding-bottom: 8px;
-          margin-bottom: 12px;
-        }
-        .header-logo-container {
-          width: 110px;
-          height: 110px;
-          margin-right: 25px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .header-logo-img {
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        }
-        .header-text-container {
-          flex: 1;
-        }
-        .school-name { font-size: 18pt; font-weight: 900; margin: 0; text-transform: uppercase; color: #0f172a; }
-        .school-info { font-size: 8pt; margin: 1px 0; font-weight: 600; color: #475569; }
+        .letterhead { display: flex; flex-direction: row; align-items: center; margin-bottom: 15pt; }
+        .letterhead-logo { width: 60pt; height: 60pt; margin-right: 15pt; }
+        .letterhead-info { flex: 1; }
+        .letterhead-school-name { font-size: 16pt; font-weight: 900; color: #1E293B; }
+        .letterhead-report-type { font-size: 10pt; font-weight: 800; color: #64748B; margin-top: 2pt; }
+        .letterhead-contact { font-size: 8pt; font-weight: 600; color: #64748B; margin-top: 2pt; }
 
-        .title { text-align:center; font-weight:900; margin: 8px 0; font-size: 12pt; letter-spacing: 1pt; text-transform: uppercase; color: #0f172a; }
+        .title { text-align:center; font-weight:900; margin-top: 10pt; margin-bottom: 12px; font-size: 14pt; letter-spacing: 1pt; text-transform: uppercase; color: #0f172a; }
 
-        /* Student Info Redesign (Non-Table) */
         .info-container {
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 0;
           margin-bottom: 12px;
-          border: 1pt solid #E2E8F0;
+          border: 1.5pt solid #0f172a;
         }
-        .info-item {
-          display: flex;
-          border: 0.5pt solid #E2E8F0;
-        }
+        .info-item { display: flex; border: 0.5pt solid #cbd5e1; }
         .info-label {
-          background-color: #F8FAFC;
-          color: #64748B;
+          background-color: #f1f5f9;
+          color: #475569;
           font-weight: 800;
-          padding: 5pt 8pt;
-          width: 38%;
-          font-size: 7.5pt;
+          padding: 6pt 8pt;
+          width: 40%;
+          font-size: 8pt;
           text-transform: uppercase;
-          border-right: 0.5pt solid #E2E8F0;
+          border-right: 0.5pt solid #cbd5e1;
         }
-        .info-value {
-          padding: 5pt 8pt;
-          width: 62%;
-          font-weight: 700;
-          color: #0f172a;
-          font-size: 8.5pt;
-        }
+        .info-value { padding: 6pt 8pt; width: 60%; font-weight: 700; color: #0f172a; font-size: 9pt; }
 
-        /* Results Table (Keep as table) */
-        table.results { width: 100%; border-collapse: collapse; margin-bottom: 12px; table-layout: fixed; border: 1.5pt solid #0f172a; }
-        table.results th { background-color: #0f172a !important; -webkit-print-color-adjust: exact; color: #fff; padding: 6pt 4pt; font-size: 8pt; border: 1pt solid #0f172a; text-transform: uppercase; }
-        table.results td { padding: 5pt 4pt; font-size: 8.5pt; border: 1pt solid #e2e8f0; text-align: center; font-weight: 600; color: #0f172a; }
-        table.results tr:nth-child(even) { background-color: #f8fafc; }
-        .subj-name { text-align: left !important; padding-left: 8pt !important; font-weight: 800; text-transform: uppercase; color: #0f172a; }
+        table.results { width: 100%; border-collapse: collapse; margin-bottom: 12px; table-layout: fixed; border: 2pt solid #0f172a; }
+        table.results th { background-color: #0f172a !important; color: #fff; padding: 7pt 4pt; font-size: 8.5pt; border: 1pt solid #0f172a; text-transform: uppercase; }
+        table.results td { padding: 6pt 4pt; font-size: 9pt; border: 1pt solid #cbd5e1; text-align: center; font-weight: 600; color: #0f172a; }
+        table.results tr:nth-child(even) { background-color: rgba(241, 245, 249, 0.6); }
+        .subj-name { text-align: left !important; padding-left: 10pt !important; font-weight: 800; text-transform: uppercase; }
 
         .summary-box {
-          border: 1.5pt solid #0f172a;
-          padding: 6pt 10pt;
+          border: 2pt solid #0f172a;
+          padding: 8pt 12pt;
           margin-bottom: 12px;
-          background-color: #fff;
+          background-color: rgba(255, 255, 255, 0.75);
           display: flex;
           justify-content: space-between;
           align-items: center;
         }
-        .summary-left { font-size: 8pt; font-weight: 800; color: #64748b; }
-        .summary-right { display: flex; align-items: center; }
-        .summary-label { font-size: 8.5pt; font-weight: 900; color: #64748b; margin-right: 6pt; text-transform: uppercase; }
-        .summary-value { font-size: 14pt; font-weight: 900; color: #ef4444; }
+        .summary-left { font-size: 9pt; font-weight: 800; color: #475569; }
+        .summary-value { font-size: 16pt; font-weight: 900; color: #e11d48; }
 
-        .remarks-box { border: 1pt solid #e2e8f0; padding: 8pt 12pt; background-color: #fff; }
-        .remark-line { margin-bottom: 5pt; font-size: 8.5pt; line-height: 1.4; color: #334155; border-bottom: 0.5pt dashed #e2e8f0; padding-bottom: 3pt; }
+        .remarks-box { border: 1.5pt solid #0f172a; padding: 10pt 15pt; background-color: rgba(255, 255, 255, 0.75); }
+        .remark-line { margin-bottom: 7pt; font-size: 9pt; line-height: 1.5; color: #1e293b; border-bottom: 0.5pt dashed #cbd5e1; padding-bottom: 4pt; }
         .remark-line:last-child { border-bottom: none; margin-bottom: 0; }
-        .remark-header { font-weight: 900; color: #0f172a; margin-right: 6pt; font-size: 7.5pt; text-transform: uppercase; }
+        .remark-header { font-weight: 900; color: #0f172a; margin-right: 8pt; font-size: 8pt; text-transform: uppercase; }
 
-        .footer { display:flex; justify-content:space-between; align-items:flex-end; margin-top: auto; padding-top: 12px; }
-        .sig-section { width: 45%; text-align: center; }
-        .sig-image { height: 120pt; object-fit: contain; margin-bottom: -25pt; max-width: 100%; display: block; margin-left: auto; margin-right: auto; }
-        .sig-line { border-top: 1.5pt solid #0f172a; width: 100%; margin: 2pt auto; }
-        .sig-label { font-size: 7.5pt; font-weight: 800; text-transform: uppercase; color: #64748b; }
-
-        .qr-section { text-align: left; width: 20%; display: flex; flex-direction: column; align-items: flex-start; }
-        .qr-img { width: 45pt; height: 45pt; opacity: 0.8; }
+        .footer { display:flex; justify-content:space-between; align-items:flex-end; margin-top: auto; padding-bottom: 20pt; }
+        .qr-section { text-align: left; width: 25%; display: flex; flex-direction: column; align-items: flex-start; }
+        .qr-img { width: 50pt; height: 50pt; margin-bottom: 4pt; }
+        .signature-section { width: 45%; text-align: center; height: 80pt; }
+        .signature-img { width: 100%; height: 50pt; object-fit: contain; margin-bottom: 5pt; }
       </style>
     </head>
     <body>
       <div class="paper">
-        <div class="header-container">
-          <div class="header-logo-container">
-            ${logoDataUri ? `<img src="${logoDataUri}" class="header-logo-img" />` : ""}
-          </div>
-          <div class="header-text-container">
-            <h1 class="school-name">${SCHOOL_CONFIG.fullName}</h1>
-            <p class="school-info">${SCHOOL_CONFIG.address || ""}</p>
-            <p class="school-info">Contact: ${SCHOOL_CONFIG.hotline || ""} | Email: ${SCHOOL_CONFIG.email || ""}</p>
+        ${
+          schoolLogoDataUri
+            ? `
+        <div class="letterhead">
+          <img src="${schoolLogoDataUri}" class="letterhead-logo"/>
+          <div class="letterhead-info">
+            <div class="letterhead-school-name">${schoolName}</div>
+            <div class="letterhead-report-type">${reportType.toUpperCase()} PROGRESS REPORT</div>
+            <div class="letterhead-contact">${schoolHotline} | ${schoolEmail}</div>
           </div>
         </div>
-
+        `
+            : ""
+        }
         <div class="title">${reportType} Progress Report</div>
 
         <div class="info-container">
@@ -215,7 +189,7 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
           <thead>
             <tr>
               <th style="width: 32%;">Subject</th>
-              ${isFullReport ? '<th style="width: 10%;">Class</th><th style="width: 10%;">Exams</th><th style="width: 10%;">Total</th>' : '<th style="width: 10%;">Total</th>'}
+              ${isFullReport ? '<th style="width: 10%;">Class</th><th style="width: 10%;">Exams</th><th style="width: 10%;">Total</th>' : '<th style="width: 15%;">Total</th>'}
               <th style="width: 10%;">Grade</th>
               <th style="width: 28%;">Remark</th>
             </tr>
@@ -223,9 +197,15 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
           <tbody>
           ${subjectsData
             .map((s) => {
-              const classScoreDisplay = isNaN(Number(s.classScore)) ? s.classScore : Number(s.classScore).toFixed(0);
-              const examsScoreDisplay = isNaN(Number(s.examsScore)) ? s.examsScore : Number(s.examsScore).toFixed(0);
-              const totalDisplay = isNaN(Number(s.total)) ? s.total : Number(s.total).toFixed(1);
+              const classScoreDisplay = isNaN(Number(s.classScore))
+                ? s.classScore
+                : Number(s.classScore).toFixed(0);
+              const examsScoreDisplay = isNaN(Number(s.examsScore))
+                ? s.examsScore
+                : Number(s.examsScore).toFixed(0);
+              const totalDisplay = isNaN(Number(s.total))
+                ? s.total
+                : Number(s.total).toFixed(1);
               return `
             <tr>
               <td class="subj-name">${s.subject}</td>
@@ -248,16 +228,16 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
 
         <div class="summary-box">
           <div class="summary-left">
-            TRS: <span style="color: #1e293b;">${TRS}</span> | TAS: <span style="color: #1e293b;">${TAS}</span>
+            TRS: <span style="color: #0f172a;">${TRS}</span> | TAS: <span style="color: #0f172a;">${TAS}</span>
           </div>
           <div class="summary-right">
-            <span class="summary-label">AGGREGATE:</span>
+            <span style="font-weight:900; margin-right:10pt;">AGGREGATE:</span>
             <span class="summary-value">${AGGREGATE}</span>
           </div>
         </div>
 
         <div class="remarks-box">
-          ${isFullReport && !isPreschool ? `<div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>` : ""}
+          <div class="remark-line"><span class="remark-header">BEHAVIORAL:</span> Conduct: <b>${conduct}</b> | Attitude: <b>${attitude}</b> | Interest: <b>${interest}</b></div>
           <div class="remark-line"><span class="remark-header">CLASS TEACHER:</span> ${teacherRemarks || "Satisfactory performance."}</div>
           <div class="remark-line"><span class="remark-header">ADMINISTRATIVE:</span> ${adminRemarks || "Keep up the hard work."}</div>
           <div class="remark-line"><span class="remark-header">NEXT TERM BEGINS:</span> <b>${nextTermBegins || "TBA"}</b></div>
@@ -267,12 +247,12 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
         <div class="footer">
           <div class="qr-section">
             <img src="${qrDataUri}" class="qr-img"/>
-            <div style="font-size:7pt; color:#64748B; margin-top:2pt;">Verify Report</div>
+            <div style="font-size:7pt; color:#475569; font-weight:700;">VERIFY REPORT</div>
           </div>
-          <div class="sig-section">
-            ${sigDataUri ? `<img src="${sigDataUri}" class="sig-image" />` : '<div style="height: 60pt;"></div>'}
-            <div class="sig-line"></div>
-            <div class="sig-label">Head of Institution</div>
+          <div class="signature-section">
+            ${adminSigDataUri ? `<img src="${adminSigDataUri}" class="signature-img"/>` : ""}
+            <div style="width: 100%; height: 1pt; background-color: #1E293B; margin-top: 5pt; margin-bottom: 4pt;"></div>
+            <div style="font-size:8pt; font-weight:800; color:#64748B;">Head of Institution</div>
           </div>
         </div>
       </div>

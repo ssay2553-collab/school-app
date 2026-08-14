@@ -1,25 +1,26 @@
 import { Picker } from "@react-native-picker/picker";
 import Constants from "expo-constants";
 import {
-    collection,
-    documentId,
-    getDocsFromServer,
-    query,
-    where
+  collection,
+  documentId,
+  getDocsFromServer,
+  query,
+  where,
 } from "firebase/firestore";
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
+import { AcademicReportPreview } from "../../components/admin-dashboard/AcademicReportPreview";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
@@ -27,9 +28,11 @@ import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
+import {
+  ReportType,
+  useAcademicRecordDetails,
+} from "../../hooks/admin-dashboard/useAcademicRecordDetails";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { useAcademicRecordDetails, ReportType } from "../../hooks/admin-dashboard/useAcademicRecordDetails";
-import { AcademicReportPreview } from "../../components/admin-dashboard/AcademicReportPreview";
 
 const TERMS = ["Term 1", "Term 2", "Term 3"];
 
@@ -71,36 +74,36 @@ export default function StudentAcademicReport() {
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   const {
-      loading: fetchingReport,
-      generating,
-      studentName,
-      className,
-      subjectsData,
-      adminRemarks,
-      teacherRemarks,
-      conduct,
-      attitude,
-      interest,
-      promotedTo,
-      nextTermBegins,
-      attendance,
-      adminSig,
-      overallPosition,
-      isPreschool,
-      preschoolAssessments,
-      physicalDev,
-      isFullReport,
-      TRS,
-      TAS,
-      AGGREGATE,
-      generatePDF,
-      classIdState
+    loading: fetchingReport,
+    generating,
+    studentName,
+    className,
+    subjectsData,
+    adminRemarks,
+    teacherRemarks,
+    conduct,
+    attitude,
+    interest,
+    promotedTo,
+    nextTermBegins,
+    attendance,
+    adminSig,
+    overallPosition,
+    isPreschool,
+    preschoolAssessments,
+    physicalDev,
+    isFullReport,
+    TRS,
+    TAS,
+    AGGREGATE,
+    generatePDF,
+    classIdState,
   } = useAcademicRecordDetails({
-      studentId: selectedChildId,
-      term: selectedTerm,
-      classId: children.find(c => c.id === selectedChildId)?.classId,
-      academicYear: selectedYear,
-      reportType: selectedReportType
+    studentId: selectedChildId,
+    term: selectedTerm,
+    classId: children.find((c) => c.id === selectedChildId)?.classId,
+    academicYear: selectedYear,
+    reportType: selectedReportType,
   });
 
   const fetchHistory = async () => {
@@ -114,12 +117,13 @@ export default function StudentAcademicReport() {
       const q = query(
         collection(db, "student-reports"),
         where("studentId", "==", selectedChildId),
-        where("status", "==", "approved")
+        where("status", "==", "approved"),
       );
       const snap = await getDocsFromServer(q);
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       list.sort((a: any, b: any) => {
-        if (a.academicYear !== b.academicYear) return b.academicYear.localeCompare(a.academicYear);
+        if (a.academicYear !== b.academicYear)
+          return b.academicYear.localeCompare(a.academicYear);
         if (a.term !== b.term) return b.term.localeCompare(a.term);
         return (a.reportType || "").localeCompare(b.reportType || "");
       });
@@ -193,19 +197,24 @@ export default function StudentAcademicReport() {
         contentContainerStyle={{ paddingBottom: 50 }}
       >
         <View style={styles.header}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle}>Academic Reports</Text>
               <Text style={styles.headerSubtitle}>
                 View terminal progress sheets
               </Text>
             </View>
-            <TouchableOpacity
-              style={styles.historyBtn}
-              onPress={fetchHistory}
-            >
+            <TouchableOpacity style={styles.historyBtn} onPress={fetchHistory}>
               <SVGIcon name="calendar" size={18} color={primary} />
-              <Text style={[styles.historyBtnText, { color: primary }]}>History</Text>
+              <Text style={[styles.historyBtnText, { color: primary }]}>
+                History
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -302,13 +311,23 @@ export default function StudentAcademicReport() {
         {fetchingReport && (
           <View style={{ padding: 40, alignItems: "center" }}>
             <ActivityIndicator color={primary} size="large" />
-            <Text style={{ marginTop: 10, color: "#64748B", fontWeight: "600" }}>Fetching Report Data...</Text>
+            <Text
+              style={{ marginTop: 10, color: "#64748B", fontWeight: "600" }}
+            >
+              Fetching Report Data...
+            </Text>
           </View>
         )}
 
         {!fetchingReport && subjectsData.length === 0 && selectedChildId && (
           <View style={{ padding: 40, alignItems: "center" }}>
-            <Text style={{ color: "#64748B", textAlign: "center", fontWeight: "600" }}>
+            <Text
+              style={{
+                color: "#64748B",
+                textAlign: "center",
+                fontWeight: "600",
+              }}
+            >
               No approved academic records found for this period.
             </Text>
           </View>
@@ -364,10 +383,16 @@ export default function StudentAcademicReport() {
             </View>
 
             {loadingHistory ? (
-              <ActivityIndicator size="large" color={primary} style={{ margin: 40 }} />
+              <ActivityIndicator
+                size="large"
+                color={primary}
+                style={{ margin: 40 }}
+              />
             ) : reportHistory.length === 0 ? (
-              <View style={{ padding: 40, alignItems: 'center' }}>
-                <Text style={{ color: '#64748B', fontWeight: '600' }}>No previous reports found.</Text>
+              <View style={{ padding: 40, alignItems: "center" }}>
+                <Text style={{ color: "#64748B", fontWeight: "600" }}>
+                  No previous reports found.
+                </Text>
               </View>
             ) : (
               <FlatList
@@ -379,7 +404,11 @@ export default function StudentAcademicReport() {
                     onPress={() => {
                       setSelectedYear(item.academicYear);
                       setSelectedTerm(item.term);
-                      if (["End of Term", "Mid-Term", "Mock Exams"].includes(item.reportType)) {
+                      if (
+                        ["End of Term", "Mid-Term", "Mock Exams"].includes(
+                          item.reportType,
+                        )
+                      ) {
                         setSelectedReportType(item.reportType as ReportType);
                       }
                       setHistoryModalVisible(false);
@@ -389,7 +418,9 @@ export default function StudentAcademicReport() {
                       <SVGIcon name="document-text" size={20} color={primary} />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.historyItemTitle}>{item.reportType}</Text>
+                      <Text style={styles.historyItemTitle}>
+                        {item.reportType}
+                      </Text>
                       <Text style={styles.historyItemSubtitle}>
                         {item.academicYear} • {item.term}
                       </Text>

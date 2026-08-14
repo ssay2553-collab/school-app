@@ -220,7 +220,6 @@ export const useAcademicRecords = () => {
         status: "pending",
         timestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        status: "pending",
         containsBehavioralData: false,
       });
 

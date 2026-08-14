@@ -12,6 +12,9 @@ config.resolver.nodeModulesPaths = [
 // Add support for modern package formats often used in React 19 ecosystems
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs', 'cjs'];
 
+// Fix for pdf-lib resolution issues
+config.resolver.resolverMainFields = ['main', 'browser', 'module'];
+
 // Optimization for large bundles
 config.transformer.minifierConfig = {
   keep_classnames: true,

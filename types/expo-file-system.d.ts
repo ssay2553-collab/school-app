@@ -7,6 +7,7 @@ declare module "expo-file-system" {
 
   export enum EncodingType {
     Base64 = "base64",
+    UTF8 = "utf8",
   }
 
   // Optional newer Paths namespace used in some codepaths
@@ -31,6 +32,11 @@ declare module "expo-file-system" {
     uri: string,
     options?: { encoding?: string },
   ): Promise<string>;
+  export function writeAsStringAsync(
+    uri: string,
+    contents: string,
+    options?: { encoding?: string },
+  ): Promise<void>;
   export function copyAsync(options: {
     from: string;
     to: string;

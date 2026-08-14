@@ -97,6 +97,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         const role =
           typeof rawRole === "string" ? rawRole.toLowerCase() : rawRole;
 
+        const isAdmin =
+          (role && (role.includes("admin") || role.includes("super") || role === "manager" || role === "staff")) ||
+          !!data.adminRole ||
+          !!data.profile?.adminRole;
+
         const mapped: AppUser = {
           uid: snap.id, // Use document ID
           role: role as any,

@@ -1,8 +1,5 @@
-import { Asset } from "expo-asset";
 import Constants from "expo-constants";
-import * as FileSystem from "expo-file-system";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     collection,
@@ -39,7 +36,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
-import { shareFile } from "../../utils/shareUtils";
+import { generateFeeReceiptPDF, generateFeeStatementPDF } from "../../utils/pdfGenerator";
 
 const { width } = Dimensions.get("window");
 
@@ -369,245 +366,67 @@ export default function ReceiptViewScreen() {
   };
 
   const generatePDF = async () => {
-    let logoDataUrl = "";
-    try {
-      const getBase64FromUri = async (uri: string) => {
-        if (!uri) return "";
-        try {
-          if (Platform.OS === "web") {
-            const resp = await fetch(uri);
-            const blob = await resp.blob();
-            return new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-          } else {
-            const tempPath = `${FileSystem.cacheDirectory}temp_${Math.random().toString(36).substring(7)}.png`;
-            const downloaded = await FileSystem.downloadAsync(uri, tempPath);
-            const b64 = await FileSystem.readAsStringAsync(downloaded.uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            return `data:image/png;base64,${b64}`;
-          }
-        } catch (e) {
-          return uri;
-        }
-      };
-
-      const asset = Asset.fromModule(schoolLogo as any);
-      if (!asset.localUri && !asset.uri) await asset.downloadAsync();
-      logoDataUrl = await getBase64FromUri(asset.localUri || asset.uri);
-    } catch (e) {}
-
     const sName = studentData
       ? `${studentData.profile?.firstName || ""} ${studentData.profile?.lastName || ""}`.trim()
       : "Student";
-    const title =
-      type === "bill" ? "TERM FEE STATEMENT" : "OFFICIAL PAYMENT RECEIPT";
-
-    let contentHtml = "";
-    if (type === "bill") {
-      contentHtml = `
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th style="text-align: left">DESCRIPTION</th>
-                            <th style="text-align: right">BILLED (${SCHOOL_CONFIG.currencySymbol})</th>
-                            <th style="text-align: right">PAID (${SCHOOL_CONFIG.currencySymbol})</th>
-                            <th style="text-align: right">BALANCE (${SCHOOL_CONFIG.currencySymbol})</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${categorySummary
-                          .map(
-                            (i) => `
-                            <tr>
-                                <td>${i.name.toUpperCase()}</td>
-                                <td style="text-align: right">${i.billed.toFixed(2)}</td>
-                                <td style="text-align: right; color: #10b981;">${i.paid.toFixed(2)}</td>
-                                <td style="text-align: right"><strong>${i.balance.toFixed(2)}</strong></td>
-                            </tr>
-                        `,
-                          )
-                          .join("")}
-                        ${record?.discount > 0 ? `
-                            <tr style="background-color: #f0fdfa;">
-                                <td style="color: #0d9488;"><strong>TERM DISCOUNT</strong></td>
-                                <td style="text-align: right; color: #0d9488;">(${Number(record.discount).toFixed(2)})</td>
-                                <td style="text-align: right; color: #0d9488;">-</td>
-                                <td style="text-align: right; color: #0d9488;"><strong>CREDIT</strong></td>
-                            </tr>
-                        ` : ""}
-                    </tbody>
-                </table>
-                <div class="totals">
-                    <div class="total-row">
-                        <span>SUBTOTAL BILLED:</span>
-                        <span>${SCHOOL_CONFIG.currencySymbol} ${totals.billed.toFixed(2)}</span>
-                    </div>
-                    <div class="total-row">
-                        <span>TOTAL PAID:</span>
-                        <span style="color: #10b981;">${SCHOOL_CONFIG.currencySymbol} ${totals.paid.toFixed(2)}</span>
-                    </div>
-                    <div class="total-row grand">
-                        <span>NET BALANCE DUE:</span>
-                        <span style="color: ${totals.balance > 0 ? "#ef4444" : "#10b981"};">${SCHOOL_CONFIG.currencySymbol} ${totals.balance.toFixed(2)}</span>
-                    </div>
-                </div>
-                <div style="margin-top: 60px; color: #64748b; font-size: 11px; clear: both;">
-                    <p>* This statement provides a comprehensive breakdown of your financial standing for the selected term. All figures are calculated based on the official school ledger as of ${moment().format("MMMM Do, YYYY")}.</p>
-                </div>
-            `;
-
-    } else if (payment) {
-      contentHtml = `
-                <div class="payment-box">
-                    <div class="payment-row">
-                        <span class="label">RECEIPT NO:</span>
-                        <span class="value">#${payment.receiptNo}</span>
-                    </div>
-                    <div class="payment-row">
-                        <span class="label">DATE:</span>
-                        <span class="value">${moment(payment.createdAt).format("DD/MM/YYYY hh:mm A")}</span>
-                    </div>
-                    <div class="payment-row">
-                        <span class="label">CATEGORY:</span>
-                        <span class="value">${formatType(payment.type, payment.otherCategory).toUpperCase()}</span>
-                    </div>
-                    <div class="payment-row highlight">
-                        <span class="label">AMOUNT PAID:</span>
-                        <span class="value">${SCHOOL_CONFIG.currencySymbol} ${Number(payment.amount).toFixed(2)}</span>
-                    </div>
-                    <div class="payment-row">
-                        <span class="label">PAYMENT METHOD:</span>
-                        <span class="value">${payment.method || "CASH"}</span>
-                    </div>
-                    <div class="payment-row">
-                        <span class="label">RECEIVED FROM:</span>
-                        <span class="value">${payment.receivedFrom || "SELF"}</span>
-                    </div>
-                    <div class="payment-row">
-                        <span class="label">PROCESSED BY:</span>
-                        <span class="value">${payment.updatedBy || "ADMIN"}</span>
-                    </div>
-                </div>
-                <div style="margin-top: 30px; text-align: center; border: 1px dashed #ccc; padding: 15px; border-radius: 10px;">
-                    <p style="font-style: italic; color: #666; margin: 0;">Thank you for your prompt payment! We truly appreciate your support.</p>
-                </div>
-            `;
-    }
-
-    const html = `
-            <html>
-            <head>
-                <style>
-                    @page {
-                      size: A4;
-                      margin: 0;
-                    }
-                    html, body {
-                      margin: 0 !important;
-                      padding: 0 !important;
-                      height: auto !important;
-                      min-height: 100% !important;
-                      overflow: visible !important;
-                      display: block !important;
-                      background-color: white;
-                    }
-                    body {
-                      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                      color: #1e293b;
-                      -webkit-print-color-adjust: exact;
-                      print-color-adjust: exact;
-                      line-height: 1.5;
-                    }
-                    .page {
-                      padding: 15mm 18mm;
-                      width: 210mm;
-                      min-height: 297mm;
-                      box-sizing: border-box;
-                      display: block;
-                      page-break-after: always;
-                      overflow: visible !important;
-                      position: relative;
-                      margin: 0 auto;
-                      background-color: white;
-                    }
-                    .header { display: flex; align-items: center; border-bottom: 3px solid ${primary}; padding-bottom: 20px; margin-bottom: 30px; }
-                    .logo { width: 80px; height: 80px; margin-right: 20px; }
-                    .school-info { flex: 1; }
-                    .school-name { font-size: 24px; font-weight: 800; color: ${primary}; margin: 0; text-transform: uppercase; }
-                    .school-motto { font-size: 12px; font-style: italic; color: #64748b; margin-bottom: 4px; font-weight: 600; }
-                    .school-contact { font-size: 11px; color: #475569; line-height: 1.4; }
-                    .receipt-title { font-size: 20px; font-weight: 900; text-align: center; margin-bottom: 30px; letter-spacing: 2px; text-transform: uppercase; color: #334155; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; padding: 10px 0; }
-                    .meta-info { display: flex; justify-content: space-between; margin-bottom: 40px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; }
-                    .meta-col div { margin-bottom: 5px; font-size: 13px; }
-                    .meta-label { color: #94a3b8; font-weight: 700; font-size: 10px; text-transform: uppercase; margin-right: 8px; }
-                    .meta-value { color: #1e293b; font-weight: 700; }
-                    .table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-                    .table th { background: #f1f5f9; padding: 12px; font-size: 11px; font-weight: 900; color: #475569; border-bottom: 2px solid #cbd5e1; }
-                    .table td { padding: 12px; font-size: 13px; border-bottom: 1px solid #f1f5f9; color: #334155; }
-                    .totals { float: right; width: 300px; }
-                    .total-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 13px; font-weight: 600; color: #64748b; }
-                    .total-row.grand { border-top: 2px solid ${primary}; margin-top: 10px; padding-top: 12px; color: #1e293b; font-size: 16px; font-weight: 900; }
-                    .payment-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 15px; padding: 25px; }
-                    .payment-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
-                    .payment-row.highlight { background: #fff; margin: 10px -10px; padding: 15px 10px; border-radius: 10px; border: 1px solid #bbf7d0; }
-                    .payment-row .label { color: #166534; font-weight: 800; font-size: 11px; }
-                    .payment-row .value { color: #14532d; font-weight: 700; }
-                    .footer { margin-top: 80px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px; }
-                    .footer-note { font-size: 10px; color: #94a3b8; font-style: italic; }
-                    .stamp { margin-top: 20px; opacity: 0.1; }
-                </style>
-            </head>
-            <body>
-                <div class="page">
-                    <div class="header">
-                        ${logoDataUrl ? `<img src="${logoDataUrl}" class="logo"/>` : ""}
-                        <div class="school-info">
-                            <h1 class="school-name">${SCHOOL_CONFIG.fullName}</h1>
-                            <div class="school-motto">${SCHOOL_CONFIG.motto}</div>
-                            <div class="school-contact">
-                                ${SCHOOL_CONFIG.address}<br/>
-                                Tel: ${SCHOOL_CONFIG.hotline} ${SCHOOL_CONFIG.email ? `| Email: ${SCHOOL_CONFIG.email}` : ""}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="receipt-title">${title}</div>
-                    <div class="meta-info">
-                        <div class="meta-col">
-                            <div><span class="meta-label">STUDENT:</span><span class="meta-value">${sName}</span></div>
-                            <div><span class="meta-label">CLASS:</span><span class="meta-value">${studentData?.className || "N/A"}</span></div>
-                        </div>
-                        <div class="meta-col" style="text-align: right">
-                            <div><span class="meta-label">TERM:</span><span class="meta-value">${term || record?.term}</span></div>
-                            <div><span class="meta-label">ACADEMIC YEAR:</span><span class="meta-value">${year || record?.academicYear}</span></div>
-                        </div>
-                    </div>
-                    ${contentHtml}
-                    <div class="footer">
-                        <p class="footer-note">Computer generated official document. No physical signature required.</p>
-                        <p style="font-size: 11px; font-weight: 700; color: #cbd5e1;">&copy; ${moment().year()} ${SCHOOL_CONFIG.fullName}</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `;
 
     try {
-      if (Platform.OS === "web") {
-        await Print.printAsync({ html });
-      } else {
-        const { uri } = await Print.printToFileAsync({ html });
-        const fileName =
-          type === "bill"
-            ? `Statement_${studentId}_${term}_${year}.pdf`.replace(/\s+/g, "_")
-            : `Receipt_${payment?.receiptNo || paymentId}.pdf`;
-        await shareFile(uri, fileName);
+      if (type === "bill") {
+        await generateFeeStatementPDF(
+          {
+            studentName: sName,
+            studentClass: studentData?.className || "N/A",
+            academicYear: (year || record?.academicYear) as string,
+            term: (term || record?.term) as string,
+            categorySummary: categorySummary.map((i) => ({
+              name: i.name,
+              billed: i.billed,
+              paid: i.paid,
+              balance: i.balance,
+            })),
+            totals: {
+              billed: totals.billed,
+              paid: totals.paid,
+              balance: totals.balance,
+            },
+            discount: Number(record?.discount) || 0,
+            currencySymbol: SCHOOL_CONFIG.currencySymbol,
+          },
+          SCHOOL_CONFIG.fullName,
+          SCHOOL_CONFIG.hotline,
+          SCHOOL_CONFIG.email,
+          SCHOOL_CONFIG.address,
+          SCHOOL_CONFIG.motto,
+          getSchoolLogo(SCHOOL_CONFIG.schoolId),
+        );
+      } else if (payment) {
+        await generateFeeReceiptPDF(
+          {
+            studentName: sName,
+            studentClass: studentData?.className || "N/A",
+            academicYear: (year || record?.academicYear) as string,
+            term: (term || record?.term) as string,
+            receiptNo: payment.receiptNo || paymentId,
+            date: moment(payment.createdAt || payment.timestamp?.toDate()).format(
+              "DD/MM/YYYY hh:mm A",
+            ),
+            category: formatType(payment.type, payment.otherCategory),
+            amount: Number(payment.amount) || 0,
+            method: payment.method || "CASH",
+            receivedFrom: payment.receivedFrom || "SELF",
+            processedBy: payment.updatedBy || "ADMIN",
+            currencySymbol: SCHOOL_CONFIG.currencySymbol,
+          },
+          SCHOOL_CONFIG.fullName,
+          SCHOOL_CONFIG.hotline,
+          SCHOOL_CONFIG.email,
+          SCHOOL_CONFIG.address,
+          SCHOOL_CONFIG.motto,
+          getSchoolLogo(SCHOOL_CONFIG.schoolId),
+        );
       }
     } catch (e) {
+      console.error("PDF generation error:", e);
       showToast({ message: "Failed to generate PDF", type: "error" });
     }
   };
@@ -654,32 +473,32 @@ export default function ReceiptViewScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <Animatable.View animation="fadeInUp" style={styles.receiptCard}>
-          <View style={styles.cardHeader}>
+          <View style={[styles.cardHeader, { flexDirection: "row-reverse" }]}>
             <Image
               source={schoolLogo}
-              style={styles.logo}
+              style={[styles.logo, { marginRight: 0, marginLeft: 15 }]}
               resizeMode="contain"
             />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.schoolName, { color: primary }]}>
-                {SCHOOL_CONFIG.fullName}
+            <View style={{ flex: 1, alignItems: "flex-end" }}>
+              <Text style={[styles.schoolName, { color: primary, textAlign: "right" }]}>
+                {SCHOOL_CONFIG.fullName.toUpperCase()}
               </Text>
               {SCHOOL_CONFIG.motto ? (
-                <Text style={styles.schoolMotto}>{SCHOOL_CONFIG.motto}</Text>
+                <Text style={[styles.schoolMotto, { textAlign: "right" }]}>"{SCHOOL_CONFIG.motto}"</Text>
               ) : null}
-              <Text style={styles.schoolContactText}>
+              <Text style={[styles.schoolContactText, { textAlign: "right" }]}>
                 {SCHOOL_CONFIG.address}
               </Text>
-              <Text style={styles.schoolContactText}>
+              <Text style={[styles.schoolContactText, { textAlign: "right" }]}>
                 {SCHOOL_CONFIG.hotline}{" "}
-                {SCHOOL_CONFIG.email ? `• ${SCHOOL_CONFIG.email}` : ""}
+                {SCHOOL_CONFIG.email ? ` | ${SCHOOL_CONFIG.email}` : ""}
               </Text>
-              <View style={styles.typeBadge}>
-                <Text style={styles.receiptType}>
-                  {type === "bill" ? "FEE STATEMENT" : "PAYMENT RECEIPT"}
-                </Text>
-              </View>
             </View>
+          </View>
+          <View style={[styles.typeBadge, { alignSelf: "flex-end", backgroundColor: primary + "10" }]}>
+            <Text style={[styles.receiptType, { color: primary }]}>
+              {type === "bill" ? "OFFICIAL FEE STATEMENT" : "OFFICIAL PAYMENT RECEIPT"}
+            </Text>
           </View>
 
           <View style={styles.divider} />

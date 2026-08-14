@@ -9,6 +9,7 @@ import {
     getDocsFromServer,
     query,
     serverTimestamp,
+    where,
 } from "firebase/firestore";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
@@ -153,19 +154,22 @@ export default function NewsCenter() {
     try {
       // 1. Fetch all students with birthdays today
       const today = moment().format("MM-DD");
-      const studentsQuery = query(collection(db, "users"), (q: any) =>
-        q.where("role", "==", "student")
-         .where("status", "==", "active")
-      );
-
       // Note: Firestore doesn't support MM-DD queries directly on Timestamps without a dedicated string field.
       // We'll fetch active students and filter locally since this is an admin-triggered manual action.
-      const snapshot = await getDocsFromServer(collection(db, "users") as any);
-      const birthdayStudents = snapshot.docs.filter(doc => {
-        const data = doc.data();
+      const snapshot = await getDocsFromServer(query(
+        collection(db, "users"),
+        where("role", "==", "student"),
+        where("status", "==", "active")
+      ));
+      const birthdayStudents = snapshot.docs.filter(docSnap => {
+        const data = docSnap.data() as any;
         if (!data.dateOfBirth) return false;
-        const dob = moment(data.dateOfBirth.toDate());
-        return dob.format("MM-DD") === today;
+        try {
+          const dob = moment(data.dateOfBirth.toDate());
+          return dob.format("MM-DD") === today;
+        } catch (e) {
+          return false;
+        }
       });
 
       if (birthdayStudents.length === 0) {
@@ -250,8 +254,8 @@ export default function NewsCenter() {
         await uploadBytes(storageRef, blob, metadata);
         mediaUrl = await getDownloadURL(storageRef);
 
-        // Dispose of the blob to free memory
-        if (typeof blob.close === 'function') {
+        // Dispose of the blob to free memory (React Native specific)
+        if (blob && "close" in blob && typeof (blob as any).close === "function") {
           (blob as any).close();
         }
       }

@@ -1,33 +1,29 @@
 import Constants from "expo-constants";
-import { Asset } from "expo-asset";
-import * as FileSystem from "expo-file-system";
-import * as Print from "expo-print";
 import { useLocalSearchParams } from "expo-router";
-import * as Sharing from "expo-sharing";
 import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    getDocsFromServer,
-    query,
-    where,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  getDocsFromServer,
+  query,
+  where,
 } from "firebase/firestore";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Platform } from "react-native";
+import { Alert } from "react-native";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { getSchoolSignature } from "../../constants/Signatures";
 import { COLORS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import {
-    calculateCompetitionRanking,
-    calculatePerformanceFromList,
-    calculateStudentTotalScore,
-    getAutoRemarks,
-    getGradeDetails,
+  calculateCompetitionRanking,
+  calculatePerformanceFromList,
+  calculateStudentTotalScore,
+  getAutoRemarks,
+  getGradeDetails,
 } from "../../lib/classHelpers";
-import { generateAcademicReportHtml } from "../../lib/reportTemplates";
+import { generateAcademicReportPDF } from "../../utils/pdfGenerator";
 import { useAcademicConfig } from "../useAcademicConfig";
 
 export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
@@ -94,6 +90,20 @@ export const useAcademicRecordDetails = (
     if (!studentId || !termState || !academicYearState) return;
     if (isManualRefresh) setRefreshing(true);
     else setLoading(true);
+
+    // Reset states before fetching new data
+    setStudentName("");
+    setSubjectsData([]);
+    setAdminRemarks("");
+    setTeacherRemarks("");
+    setConduct("Excellent");
+    setAttitude("Very Positive");
+    setInterest("High");
+    setPromotedTo("");
+    setNextTermBegins("");
+    setAttendance("");
+    setOverallPosition("-");
+
     try {
       // 1. Fetch Academic Scores (Historical safe - query by studentId)
       const qScores = query(
@@ -151,11 +161,14 @@ export const useAcademicRecordDetails = (
 
       const resultsMap = new Map();
       let nameFound = "";
+      let allApproved = scoresSnap.docs.length > 0;
 
       scoresSnap.docs.forEach((d) => {
         const data = d.data() as any;
-        // Important: Parents can only see records that have been approved by the admin.
-        if (data.status !== "approved") return;
+        if (data.status !== "approved") allApproved = false;
+        // Records should be visible in the Admin Portal regardless of approval status.
+        // We only restrict this if we specifically want to enforce a "Parent-only" view,
+        // but this hook is inside the admin-dashboard folder.
         const subjectName = data.subject;
         if (!subjectName) return;
 
@@ -317,7 +330,7 @@ export const useAcademicRecordDetails = (
         if (r) {
           // Respect overrides from student-reports
           if (r.overallPosition) setOverallPosition(r.overallPosition);
-          if (r.promotedTo) setPromotedTo(r.promotedTo);
+          if (r.promotedTo && isFullReport) setPromotedTo(r.promotedTo);
 
           if (r.adminRemarks) {
             setAdminRemarks(r.adminRemarks);
@@ -337,6 +350,12 @@ export const useAcademicRecordDetails = (
             setNextTermBegins(acadConfig.nextTermBegins);
           }
         } else {
+          // If report record doesn't exist, check if all individual subject records are approved
+          if (allApproved && scoresSnap.docs.length > 0) {
+            setReportStatus("approved");
+            setIsReportApproved(true);
+          }
+
           // If report record doesn't exist, set auto remarks
           setAdminRemarks(getAutoRemarks(localAggregate, false));
           if (!teacherRemarks) {
@@ -385,111 +404,37 @@ export const useAcademicRecordDetails = (
     setGenerating(true);
 
     try {
-      let logoDataUri = "";
-      let sigDataUri = "";
-
-      const getBase64FromUri = async (uri: any): Promise<string> => {
-        if (!uri) return "";
-        if (typeof uri === "string") {
-          if (uri.startsWith("data:")) return uri;
-
-          if (Platform.OS === "web") {
-            const absoluteUri =
-              uri.startsWith("http") || uri.startsWith("data:")
-                ? uri
-                : new URL(uri, window.location.origin).href;
-            const response = await fetch(absoluteUri);
-            const blob = await response.blob();
-            return await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(blob);
-            });
-          }
-
-          if (uri.startsWith("http")) {
-            const tempPath = `${FileSystem.cacheDirectory}temp_${Math.random().toString(36).substring(7)}.png`;
-            const downloaded = await FileSystem.downloadAsync(uri, tempPath);
-            const b64 = await FileSystem.readAsStringAsync(downloaded.uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            return `data:image/png;base64,${b64}`;
-          }
-
-          const b64 = await FileSystem.readAsStringAsync(uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          return `data:image/png;base64,${b64}`;
-        }
-
-        try {
-          const asset = Asset.fromModule(uri as any);
-          if (!asset.localUri && !asset.uri) await asset.downloadAsync();
-          const finalUri = asset.localUri || asset.uri;
-          if (!finalUri) return "";
-          return await getBase64FromUri(finalUri);
-        } catch (e) {
-          console.warn("Asset conversion failed, falling back to source uri:", e, uri);
-          if (typeof uri === "object" && (uri?.uri || uri?.localUri)) {
-            return await getBase64FromUri(uri.uri || uri.localUri);
-          }
-          return "";
-        }
-      };
-
-      try {
-        logoDataUri = await getBase64FromUri(schoolLogo);
-      } catch (e) {
-        console.warn("Logo conversion failed:", e);
-      }
-
-      if (adminSig) {
-        try {
-          sigDataUri = await getBase64FromUri(adminSig);
-        } catch (e) {
-          console.warn("Signature conversion failed:", e);
-        }
-      }
-
-      const qrData = `VERIFY-${studentId}-${academicYearState.replace(/\//g, "-")}-${termState.replace(/\s+/g, "")}`;
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${qrData}`;
-      const qrDataUri = await getBase64FromUri(qrUrl);
-
-      const html = generateAcademicReportHtml({
-        logoDataUri,
-        sigDataUri,
-        studentName,
-        className,
-        academicYearState,
-        termState,
-        overallPosition,
-        attendance,
-        reportType,
-        isFullReport,
-        subjectsData,
-        TRS,
-        TAS,
-        AGGREGATE,
-        isPreschool,
-        conduct,
-        attitude,
-        interest,
-        physicalDev,
-        preschoolAssessments,
-        teacherRemarks,
-        adminRemarks,
-        nextTermBegins,
-        promotedTo,
-        qrDataUri,
-      });
-
-      if (Platform.OS !== "web") {
-        const { uri } = await Print.printToFileAsync({ html });
-        await Sharing.shareAsync(uri);
-      } else {
-        await Print.printAsync({ html });
-      }
+      // Generate PDF using the new native PDF generator
+      await generateAcademicReportPDF(
+        {
+          studentName,
+          className,
+          academicYear: academicYearState,
+          term: termState,
+          overallPosition,
+          attendance: attendance || "N/A",
+          reportType,
+          isFullReport,
+          subjectsData,
+          TRS,
+          TAS,
+          AGGREGATE,
+          conduct,
+          attitude,
+          interest,
+          teacherRemarks: teacherRemarks || "Satisfactory performance.",
+          adminRemarks: adminRemarks || "Keep up the hard work.",
+          nextTermBegins: nextTermBegins || "TBA",
+          promotedTo,
+          isPreschool,
+        },
+        SCHOOL_CONFIG.fullName,
+        SCHOOL_CONFIG.hotline,
+        SCHOOL_CONFIG.email,
+        SCHOOL_CONFIG.address,
+        SCHOOL_CONFIG.motto,
+        getSchoolLogo(SCHOOL_CONFIG.schoolId),
+      );
     } catch (err) {
       console.error("PDF generation error:", err);
       Alert.alert("Error", "PDF generation failed");

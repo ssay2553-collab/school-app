@@ -1,7 +1,5 @@
 import { LinearGradient } from "expo-linear-gradient";
-import * as Print from "expo-print";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Sharing from "expo-sharing";
 import moment from "moment";
 import {
   collection,
@@ -26,6 +24,8 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { VIBE } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import { generateFeeReportPDF } from "../../utils/pdfGenerator";
+import { getSchoolLogo } from "../../constants/Logos";
 
 export default function FeeReports() {
   const { appUser } = useAuth();
@@ -220,319 +220,24 @@ export default function FeeReports() {
   }, [studentsData]);
 
   const generatePDF = async () => {
-    const ITEMS_PER_PAGE = 35; // Increased to maximize page usage
-    const pages: any[] = [];
-
-    const schoolTotalPayable = studentsData.reduce((acc, s) => acc + s.totalPayable, 0);
-    const schoolTotalPaid = studentsData.reduce((acc, s) => acc + s.amountPaid, 0);
-    const schoolTotalBalance = studentsData.reduce((acc, s) => acc + s.balance, 0);
-    const schoolTotalDiscount = studentsData.reduce((acc, s) => acc + s.discount, 0);
-
-    Object.entries(groupedData).forEach(([className, students]) => {
-      const classTotalPayable = students.reduce(
-        (acc, s) => acc + s.totalPayable,
-        0,
-      );
-      const classTotalPaid = students.reduce((acc, s) => acc + s.amountPaid, 0);
-      const classTotalBalance = students.reduce((acc, s) => acc + s.balance, 0);
-      const classTotalDiscount = students.reduce(
-        (acc, s) => acc + s.discount,
-        0,
-      );
-
-      for (let i = 0; i < students.length; i += ITEMS_PER_PAGE) {
-        pages.push({
-          className,
-          students: students.slice(i, i + ITEMS_PER_PAGE),
-          isFirstChunk: i === 0,
-          isLastChunk: i + ITEMS_PER_PAGE >= students.length,
-          startIndex: i,
-          classTotals: {
-            payable: classTotalPayable,
-            paid: classTotalPaid,
-            balance: classTotalBalance,
-            discount: classTotalDiscount,
-          },
-        });
-      }
-    });
-
-    const html = `
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-          <style>
-            @page {
-              size: A4;
-              margin: 0;
-            }
-            html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              height: auto !important;
-              min-height: 100% !important;
-              overflow: visible !important;
-              display: block !important;
-              background-color: white;
-            }
-            body {
-              font-family: 'Helvetica', sans-serif;
-              color: #333;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-            }
-            .page {
-              padding: 20mm;
-              width: 210mm;
-              min-height: 297mm;
-              box-sizing: border-box;
-              display: block;
-              page-break-after: always;
-              page-break-inside: avoid;
-              overflow: visible !important;
-              position: relative;
-            }
-            /* Avoid empty page at the end */
-            .page:last-child {
-              page-break-after: avoid;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 20px;
-              border-bottom: 2px solid ${VIBE.primary};
-              padding-bottom: 10px;
-            }
-            .school-name {
-              margin: 0;
-              color: ${VIBE.primary};
-              font-size: 20pt;
-              font-weight: bold;
-            }
-            .report-title {
-              margin: 5px 0;
-              font-size: 14pt;
-              color: #666;
-              text-transform: uppercase;
-              letter-spacing: 1px;
-            }
-            .report-meta {
-              font-size: 10pt;
-              color: #888;
-              margin-bottom: 10px;
-            }
-
-            h3 {
-              margin-top: 10px;
-              background: #f0f4ff;
-              padding: 8pt;
-              border-left: 5px solid ${VIBE.primary};
-              font-size: 12pt;
-            }
-
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 10px;
-              font-size: 9pt;
-            }
-            th, td {
-              border: 1px solid #e2e8f0;
-              padding: 6pt;
-              text-align: left;
-            }
-            th {
-              background-color: #f8fafc;
-              font-weight: bold;
-              color: #475569;
-              text-transform: uppercase;
-            }
-
-            .currency { text-align: right; font-family: monospace; }
-            .total-row { font-weight: bold; background-color: #f1f5f9; }
-            .balance-debt { color: ${VIBE.danger}; font-weight: bold; }
-            .balance-cleared { color: ${VIBE.success}; }
-
-            .footer {
-              margin-top: 20mm;
-              padding-top: 10pt;
-              font-size: 9pt;
-              text-align: center;
-              color: #94a3b8;
-              border-top: 1px solid #e2e8f0;
-            }
-
-            @media print {
-              .page {
-                margin: 0;
-                border: none;
-                box-shadow: none;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          ${pages
-            .map(
-              (page, idx) => `
-            <div class="page">
-              <div class="header">
-                <div class="school-name">${SCHOOL_CONFIG.fullName}</div>
-                <div class="report-title">Student Fee Status Report</div>
-                <div class="report-meta">
-                  Academic Year: ${academicYear} | Term: ${term}<br/>
-                  Generated on: ${moment().format("DD/MM/YYYY")} | Page ${idx + 1} of ${pages.length}
-                </div>
-              </div>
-
-              <h3>Class: ${page.className} ${!page.isFirstChunk ? "(Cont.)" : ""}</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th style="width: 30px;">#</th>
-                    <th>Student Name</th>
-                    <th>ID</th>
-                    <th class="currency">Payable</th>
-                    <th class="currency">Discount</th>
-                    <th class="currency">Paid</th>
-                    <th class="currency">Balance</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${page.students
-                    .map(
-                      (s: any, sIdx: number) => `
-                    <tr>
-                      <td>${page.startIndex + sIdx + 1}</td>
-                      <td>${s.fullName}</td>
-                      <td>${s.studentID}</td>
-                      <td class="currency">₵${s.totalPayable.toLocaleString(
-                        undefined,
-                        {
-                          minimumFractionDigits: 2,
-                        },
-                      )}</td>
-                      <td class="currency">₵${s.discount.toLocaleString(
-                        undefined,
-                        {
-                          minimumFractionDigits: 2,
-                        },
-                      )}</td>
-                      <td class="currency">₵${s.amountPaid.toLocaleString(
-                        undefined,
-                        {
-                          minimumFractionDigits: 2,
-                        },
-                      )}</td>
-                      <td class="currency ${s.balance > 0 ? "balance-debt" : "balance-cleared"}">
-                        ₵${s.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  `,
-                    )
-                    .join("")}
-                </tbody>
-                ${
-                  page.isLastChunk
-                    ? `
-                <tfoot>
-                  <tr class="total-row">
-                    <td colspan="3">Class Totals (${page.className})</td>
-                    <td class="currency">₵${page.classTotals.payable.toLocaleString(
-                      undefined,
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}</td>
-                    <td class="currency">₵${page.classTotals.discount.toLocaleString(
-                      undefined,
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}</td>
-                    <td class="currency">₵${page.classTotals.paid.toLocaleString(
-                      undefined,
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}</td>
-                    <td class="currency">₵${page.classTotals.balance.toLocaleString(
-                      undefined,
-                      {
-                        minimumFractionDigits: 2,
-                      },
-                    )}</td>
-                  </tr>
-                </tfoot>
-                `
-                    : ""
-                }
-              </table>
-
-              <div class="footer">
-                <p>${SCHOOL_CONFIG.fullName} - Financial Services</p>
-                <p>This is a computer generated document.</p>
-              </div>
-            </div>
-          `,
-            )
-            .join("")}
-
-            <div class="page">
-              <div class="header">
-                <div class="school-name">${SCHOOL_CONFIG.fullName}</div>
-                <div class="report-title">School Financial Summary</div>
-                <div class="report-meta">
-                  Academic Year: ${academicYear} | Term: ${term}<br/>
-                  Generated on: ${moment().format("DD/MM/YYYY")}
-                </div>
-              </div>
-
-              <div style="margin-top: 40px;">
-                <h3 style="background: ${VIBE.primary}; color: white; border: none; padding: 12px;">OVERALL SCHOOL SUMMARY</h3>
-                <table style="font-size: 14px; margin-top: 20px;">
-                  <thead>
-                    <tr>
-                      <th style="background: #f1f5f9;">Financial Category</th>
-                      <th class="currency" style="background: #f1f5f9;">Total Amount (₵)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style="padding: 15px;">Total Fees Payable</td>
-                      <td class="currency" style="padding: 15px;">₵${schoolTotalPayable.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 15px;">Total Discounts Granted</td>
-                      <td class="currency" style="padding: 15px;">₵${schoolTotalDiscount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 15px;">Total Amount Paid</td>
-                      <td class="currency" style="padding: 15px; color: ${VIBE.success}; font-weight: bold;">₵${schoolTotalPaid.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                    <tr>
-                      <td style="padding: 15px;">Total Outstanding Balance</td>
-                      <td class="currency" style="padding: 15px; color: ${VIBE.danger}; font-weight: bold;">₵${schoolTotalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              <div class="footer">
-                <p>${SCHOOL_CONFIG.fullName} - Financial Services</p>
-                <p>This is a computer generated document.</p>
-              </div>
-            </div>
-        </body>
-      </html>
-    `;
+    if (studentsData.length === 0) return;
 
     try {
-      if (Platform.OS === "web") {
-        await Print.printAsync({ html });
-      } else {
-        const { uri } = await Print.printToFileAsync({ html });
-        await Sharing.shareAsync(uri);
-      }
+      await generateFeeReportPDF(
+        {
+          academicYear: academicYear || "",
+          term: term || "",
+          groupedData: groupedData,
+          schoolTotals: schoolTotals,
+          currencySymbol: SCHOOL_CONFIG.currencySymbol,
+        },
+        SCHOOL_CONFIG.fullName,
+        SCHOOL_CONFIG.hotline,
+        SCHOOL_CONFIG.email,
+        SCHOOL_CONFIG.address,
+        SCHOOL_CONFIG.motto,
+        getSchoolLogo(SCHOOL_CONFIG.schoolId),
+      );
     } catch (error) {
       console.error("PDF Generation Error:", error);
     }

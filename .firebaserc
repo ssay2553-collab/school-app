@@ -17,9 +17,17 @@
     "bms": "bms-app-f4572",
     "kent": "golden-rock-16bf8",
     "bishops": "thess-app",
-    "abijah": "abijah-93b3a"
+    "abijah": "abijah-93b3a",
+    "lilies": "bright-lilies"
   },
   "targets": {
+    "bright-lilies": {
+      "hosting": {
+        "lilies": [
+          "bright-lilies"
+        ]
+      }
+    },
     "afahjoy-7cc03": {
       "hosting": {
         "afahjoy": [

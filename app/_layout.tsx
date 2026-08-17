@@ -62,8 +62,9 @@ function RouteGuard() {
       segment === "" ||
       segment === "(index)";
     const inAuthGroup = segment === "(auth)";
+    const isAbout = segment === "about";
 
-    if (!appUser && !isLanding && !inAuthGroup) {
+    if (!appUser && !isLanding && !inAuthGroup && !isAbout) {
       router.replace("/");
     }
 
@@ -83,9 +84,6 @@ function RouteGuard() {
           break;
         case "staff":
           router.replace("/staff-dashboard");
-          break;
-        case "guest":
-          router.replace("/guest-dashboard");
           break;
         default:
           router.replace("/");
@@ -112,10 +110,6 @@ function RouteGuard() {
       <Stack.Screen
         name="parent-dashboard"
         options={{ title: "Parent Portal" }}
-      />
-      <Stack.Screen
-        name="guest-dashboard"
-        options={{ title: "Guest Portal" }}
       />
       <Stack.Screen
         name="staff-dashboard"

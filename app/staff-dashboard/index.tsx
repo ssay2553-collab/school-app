@@ -98,9 +98,9 @@ export default function StaffDashboard() {
       color: "#4ECDC4",
       items: [
         {
-          title: "Chat with Admin",
-          subtitle: appUser?.adminRole || "Staff Support",
-          route: "/guest-dashboard/chat-with-admin",
+          title: "Staff Support",
+          subtitle: appUser?.adminRole || "Support center",
+          route: "/admin-dashboard/staff-chat",
           icon: "chatbubbles",
           color: "#6366f1",
         },
@@ -124,14 +124,14 @@ export default function StaffDashboard() {
         {
           title: "School Gallery",
           subtitle: "Campus updates",
-          route: "/guest-dashboard/gallery",
+          route: "/parent-dashboard/gallery",
           icon: "images",
           color: "#ec4899",
         },
         {
           title: "FAQs",
           subtitle: "Staff guidelines",
-          route: "/guest-dashboard/FAQ",
+          route: "/parent-dashboard/FAQ",
           icon: "help-circle",
           color: "#f59e0b",
         },

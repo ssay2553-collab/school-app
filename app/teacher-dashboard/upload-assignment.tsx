@@ -22,6 +22,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useToast } from "../../contexts/ToastContext";
 import moment from "moment";
 import { useUploadAssignment, Question, AssignmentType } from "../../hooks/teacher-dashboard/useUploadAssignment";
+import PreschoolFields from "../../components/teacher-dashboard/upload-assignment/components/PreschoolFields";
 
 // Guarded import for native-only library
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
@@ -38,40 +39,212 @@ const webInputStyle = Platform.OS === 'web' ? {
   width: '100%'
 } : {};
 
+/* =========================================================
+   SUB-COMPONENT: HEADER
+   ========================================================= */
+const Header = memo(({ onBack }: { onBack: () => void }) => (
+  <LinearGradient colors={[COLORS.primary, "#1E293B"]} style={styles.headerGradient}>
+    <View style={styles.headerTitleRow}>
+      <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+        <SVGIcon name="arrow-back" size={24} color="#fff" />
+      </TouchableOpacity>
+      <Text style={styles.headerTitle}>Post Assignment</Text>
+      <SVGIcon name="cloud-upload" size={24} color={COLORS.secondary} />
+    </View>
+  </LinearGradient>
+));
+
+/* =========================================================
+   SUB-COMPONENT: ASSIGNMENT DETAILS CARD
+   ========================================================= */
+const AssignmentDetailsCard = memo(({
+  title, setTitle,
+  teacherClasses, selectedClassId, setSelectedClassId,
+  subjects, selectedSubject, setSelectedSubject,
+  type, setType,
+  dueDate, handleWebDateChange, handleWebTimeChange,
+  showDatePicker, setShowDatePicker, pickerMode, setPickerMode, onDateChange
+}: any) => {
+  const webDateValue = moment(dueDate).format("YYYY-MM-DD");
+  const webTimeValue = moment(dueDate).format("HH:mm");
+
+  return (
+    <Animatable.View animation="fadeInUp" style={styles.card}>
+      <Text style={styles.sectionLabel}>Assignment Details</Text>
+
+      <Text style={styles.inputLabel}>Title *</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="e.g. Algebra Homework 1"
+        value={title}
+        onChangeText={setTitle}
+      />
+
+      <Text style={styles.inputLabel}>Class *</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
+        {teacherClasses.map((cls: any) => (
+          <TouchableOpacity
+            key={cls.id}
+            onPress={() => setSelectedClassId(cls.id)}
+            style={[styles.bubble, selectedClassId === cls.id && styles.bubbleActive]}
+          >
+            <Text style={[styles.bubbleText, selectedClassId === cls.id && styles.bubbleTextActive]}>{cls.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <Text style={styles.inputLabel}>Subject *</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
+        {subjects.map((s: string) => (
+          <TouchableOpacity
+            key={s}
+            onPress={() => setSelectedSubject(s)}
+            style={[styles.bubble, selectedSubject === s && styles.bubbleActive]}
+          >
+            <Text style={[styles.bubbleText, selectedSubject === s && styles.bubbleTextActive]}>{s}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <Text style={styles.inputLabel}>Type</Text>
+      <View style={styles.typeRow}>
+        {(["mcq", "short_answer", "preschool"] as AssignmentType[]).map((t) => (
+          <TouchableOpacity
+            key={t}
+            onPress={() => setType(t)}
+            style={[styles.typeBtn, type === t && styles.typeBtnActive]}
+          >
+            <Text style={[styles.typeBtnText, type === t && styles.typeBtnTextActive]}>
+              {t.replace("_", " ").toUpperCase()}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={styles.inputLabel}>Due Date & Time *</Text>
+      <View style={styles.dateTimeRow}>
+        {Platform.OS === "web" ? (
+          <>
+            <View style={[styles.datePickerBtn, { flex: 1.2 }]}>
+              <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+              <input
+                type="date"
+                value={webDateValue}
+                onChange={(e) => handleWebDateChange(e.target.value)}
+                style={webInputStyle}
+              />
+            </View>
+            <View style={[styles.datePickerBtn, { flex: 1 }]}>
+              <SVGIcon name="time-outline" size={18} color={COLORS.primary} />
+              <input
+                type="time"
+                value={webTimeValue}
+                onChange={(e) => handleWebTimeChange(e.target.value)}
+                style={webInputStyle}
+              />
+            </View>
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              onPress={() => { setPickerMode("date"); setShowDatePicker(true); }}
+              style={[styles.datePickerBtn, { flex: 1.2 }]}
+            >
+              <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.datePickerText}>{moment(dueDate).format("DD MMM, YYYY")}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => { setPickerMode("time"); setShowDatePicker(true); }}
+              style={[styles.datePickerBtn, { flex: 1 }]}
+            >
+              <SVGIcon name="time-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.datePickerText}>
+                {moment(dueDate).format("hh:mm A")}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+
+      {showDatePicker && DateTimePicker && (
+        <DateTimePicker
+          value={dueDate}
+          mode={Platform.OS === "ios" ? "datetime" : pickerMode}
+          display="default"
+          onChange={onDateChange}
+        />
+      )}
+    </Animatable.View>
+  );
+});
+
+/* =========================================================
+   SUB-COMPONENT: QUESTION ITEM
+   ========================================================= */
+const QuestionItem = memo(({
+  q, qIndex, type, updateQuestion, removeQuestion, updateOption, addOption, updatePreschoolQuestion
+}: any) => {
+  return (
+    <View style={styles.questionCard}>
+      <View style={styles.qHeader}>
+        <Text style={styles.qIndex}>{type === 'preschool' ? 'Preschool' : 'Standard'} Q{qIndex + 1}</Text>
+        <TouchableOpacity onPress={() => removeQuestion(qIndex)}>
+          <SVGIcon name="trash-outline" size={20} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+
+      {type === "preschool" ? (
+        <PreschoolFields q={q} qIndex={qIndex} updatePreschoolQuestion={updatePreschoolQuestion} styles={styles} />
+      ) : (
+        <>
+          <Text style={styles.inputLabel}>Question Text / Instructions</Text>
+          <TextInput
+            style={styles.input}
+            placeholder={type === 'preschool' ? "e.g. A _ C" : "Type question..."}
+            value={q.text}
+            onChangeText={(t) => updateQuestion(qIndex, t)}
+          />
+
+          {(type === "mcq") && (
+            <View style={styles.optionsContainer}>
+              <Text style={styles.inputLabel}>Options (Choices)</Text>
+              {q.options?.map((opt: string, oIndex: number) => (
+                <View key={oIndex} style={styles.optionRow}>
+                  <View style={styles.bullet} />
+                  <TextInput
+                    style={styles.optionInput}
+                    placeholder={`Option ${oIndex + 1}`}
+                    value={opt}
+                    onChangeText={(t) => updateOption(qIndex, oIndex, t)}
+                  />
+                </View>
+              ))}
+              <TouchableOpacity onPress={() => addOption(qIndex)} style={styles.addOptionBtn}>
+                <Text style={styles.addOptionText}>+ Add Option</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
+      )}
+    </View>
+  );
+});
+
+/* =========================================================
+   MAIN COMPONENT: UPLOAD ASSIGNMENT
+   ========================================================= */
 export default function UploadAssignment() {
   const router = useRouter();
   const { showToast } = useToast();
 
   const {
-    loading,
-    fetchingMetadata,
-    teacherClasses,
-    selectedClassId,
-    setSelectedClassId,
-    selectedSubject,
-    setSelectedSubject,
-    title,
-    setTitle,
-    description,
-    setDescription,
-    type,
-    setType,
-    dueDate,
-    setDueDate,
-    file,
-    setFile,
-    uploadingFile,
-    questions,
-    hasUnsavedChanges,
-    addQuestion,
-    updateQuestion,
-    updateOption,
-    addOption,
-    removeQuestion,
-    handleUpload,
-    handleWebDateChange,
-    handleWebTimeChange,
-    subjects,
+    loading, fetchingMetadata, teacherClasses, selectedClassId, setSelectedClassId,
+    selectedSubject, setSelectedSubject, title, setTitle, description, setDescription,
+    type, setType, dueDate, setDueDate, file, setFile, uploadingFile, questions,
+    hasUnsavedChanges, addQuestion, updateQuestion, updateOption, addOption,
+    removeQuestion, handleUpload, handleWebDateChange, handleWebTimeChange,
+    subjects, updatePreschoolQuestion,
   } = useUploadAssignment();
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -81,19 +254,12 @@ export default function UploadAssignment() {
   const handleBack = useCallback(() => {
     if (hasUnsavedChanges && backPressCount === 0) {
       setBackPressCount(1);
-      showToast({
-        message: "Discard changes? Tap back again to confirm.",
-        type: "info",
-      });
+      showToast({ message: "Discard changes? Tap back again to confirm.", type: "info" });
       setTimeout(() => setBackPressCount(0), 3000);
       return true;
     }
-
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/teacher-dashboard");
-    }
+    if (router.canGoBack()) router.back();
+    else router.replace("/teacher-dashboard");
     return true;
   }, [hasUnsavedChanges, backPressCount, router, showToast]);
 
@@ -105,12 +271,10 @@ export default function UploadAssignment() {
   const onDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
     if (event.type === "dismissed") return;
-
     if (selectedDate) {
       const newDate = new Date(dueDate.getTime());
-      if (Platform.OS === "ios") {
-        setDueDate(selectedDate);
-      } else {
+      if (Platform.OS === "ios") setDueDate(selectedDate);
+      else {
         if (pickerMode === "date") {
           newDate.setFullYear(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
           setDueDate(newDate);
@@ -126,166 +290,63 @@ export default function UploadAssignment() {
 
   const pickDocument = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
-        copyToCacheDirectory: true,
-      });
-      if (!result.canceled) {
-        setFile(result);
-      }
-    } catch (err) {
-      console.error("PickDocument Error:", err);
-    }
+      const result = await DocumentPicker.getDocumentAsync({ type: "*/*", copyToCacheDirectory: true });
+      if (!result.canceled) setFile(result);
+    } catch (err) { console.error("PickDocument Error:", err); }
   };
 
   const onPost = async () => {
     const success = await handleUpload();
-    if (success) {
-      router.replace("/teacher-dashboard");
-    }
+    if (success) router.replace("/teacher-dashboard");
   };
 
   if (fetchingMetadata) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
-  const webDateValue = moment(dueDate).format("YYYY-MM-DD");
-  const webTimeValue = moment(dueDate).format("HH:mm");
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <LinearGradient colors={[COLORS.primary, "#1E293B"]} style={styles.headerGradient}>
-        <View style={styles.headerTitleRow}>
-          <TouchableOpacity onPress={handleBack} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color="#fff" /></TouchableOpacity>
-          <Text style={styles.headerTitle}>Post Assignment</Text>
-          <SVGIcon name="cloud-upload" size={24} color={COLORS.secondary} />
-        </View>
-      </LinearGradient>
+      <Header onBack={handleBack} />
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
           
+          <AssignmentDetailsCard
+            title={title} setTitle={setTitle}
+            teacherClasses={teacherClasses} selectedClassId={selectedClassId} setSelectedClassId={setSelectedClassId}
+            subjects={subjects} selectedSubject={selectedSubject} setSelectedSubject={setSelectedSubject}
+            type={type} setType={setType}
+            dueDate={dueDate} handleWebDateChange={handleWebDateChange} handleWebTimeChange={handleWebTimeChange}
+            showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker}
+            pickerMode={pickerMode} setPickerMode={setPickerMode} onDateChange={onDateChange}
+          />
+
           <Animatable.View animation="fadeInUp" style={styles.card}>
-            <Text style={styles.sectionLabel}>Assignment Details</Text>
-            
-            <Text style={styles.inputLabel}>Title *</Text>
-            <TextInput style={styles.input} placeholder="e.g. Algebra Homework 1" value={title} onChangeText={setTitle} />
-
-            <Text style={styles.inputLabel}>Class *</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-              {teacherClasses.map((cls) => (
-                <TouchableOpacity key={cls.id} onPress={() => setSelectedClassId(cls.id)} style={[styles.bubble, selectedClassId === cls.id && styles.bubbleActive]}>
-                  <Text style={[styles.bubbleText, selectedClassId === cls.id && styles.bubbleTextActive]}>{cls.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <Text style={styles.inputLabel}>Subject *</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.bubbleRow}>
-              {subjects.map((s: string) => (
-                <TouchableOpacity key={s} onPress={() => setSelectedSubject(s)} style={[styles.bubble, selectedSubject === s && styles.bubbleActive]}>
-                  <Text style={[styles.bubbleText, selectedSubject === s && styles.bubbleTextActive]}>{s}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <Text style={styles.inputLabel}>Type</Text>
-            <View style={styles.typeRow}>
-              {(["standard", "mcq", "short_answer"] as AssignmentType[]).map((t) => (
-                <TouchableOpacity key={t} onPress={() => setType(t)} style={[styles.typeBtn, type === t && styles.typeBtnActive]}>
-                  <Text style={[styles.typeBtnText, type === t && styles.typeBtnTextActive]}>{t.replace("_", " ").toUpperCase()}</Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionLabel}>Interactive Questions</Text>
+              <TouchableOpacity onPress={addQuestion} style={styles.addBtn}><SVGIcon name="add-circle" size={24} color={COLORS.primary} /></TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Due Date & Time *</Text>
-            <View style={styles.dateTimeRow}>
-              {Platform.OS === "web" ? (
-                <>
-                  <View style={[styles.datePickerBtn, { flex: 1.2 }]}>
-                    <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
-                    <input
-                      type="date"
-                      value={webDateValue}
-                      onChange={(e) => handleWebDateChange(e.target.value)}
-                      style={webInputStyle}
-                    />
-                  </View>
-                  <View style={[styles.datePickerBtn, { flex: 1 }]}>
-                    <SVGIcon name="time-outline" size={18} color={COLORS.primary} />
-                    <input
-                      type="time"
-                      value={webTimeValue}
-                      onChange={(e) => handleWebTimeChange(e.target.value)}
-                      style={webInputStyle}
-                    />
-                  </View>
-                </>
-              ) : (
-                <>
-                  <TouchableOpacity 
-                    onPress={() => { setPickerMode("date"); setShowDatePicker(true); }} 
-                    style={[styles.datePickerBtn, { flex: 1.2 }]}
-                  >
-                    <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
-                    <Text style={styles.datePickerText}>{moment(dueDate).format("DD MMM, YYYY")}</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    onPress={() => { setPickerMode("time"); setShowDatePicker(true); }} 
-                    style={[styles.datePickerBtn, { flex: 1 }]}
-                  >
-                    <SVGIcon name="time-outline" size={18} color={COLORS.primary} />
-                    <Text style={styles.datePickerText}>
-                      {moment(dueDate).format("hh:mm A")}
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
-
-            {showDatePicker && DateTimePicker && (
-              <DateTimePicker
-                value={dueDate}
-                mode={Platform.OS === "ios" ? "datetime" : pickerMode}
-                display="default"
-                onChange={onDateChange}
+            {questions.map((q: Question, qIndex: number) => (
+              <QuestionItem
+                key={q.id || qIndex}
+                q={q}
+                qIndex={qIndex}
+                type={type}
+                updateQuestion={updateQuestion}
+                removeQuestion={removeQuestion}
+                updateOption={updateOption}
+                addOption={addOption}
+                updatePreschoolQuestion={updatePreschoolQuestion}
               />
-            )}
+            ))}
+
+            <TouchableOpacity
+              onPress={addQuestion}
+              style={styles.addQuestionFooterBtn}
+            >
+              <SVGIcon name="add-circle" size={32} color={COLORS.primary} />
+            </TouchableOpacity>
           </Animatable.View>
-
-          {type === "standard" ? (
-            <Animatable.View animation="fadeInUp" style={styles.card}>
-              <Text style={styles.sectionLabel}>Content & Resources</Text>
-              <Text style={styles.inputLabel}>Instructions / Description</Text>
-              <TextInput style={[styles.input, { height: 100 }]} multiline placeholder="Provide instructions for the students..." value={description} onChangeText={setDescription} />
-              
-              <Text style={styles.inputLabel}>Attachment (Optional)</Text>
-              <TouchableOpacity style={styles.uploadBtn} onPress={pickDocument}>
-                <SVGIcon name="document-attach" size={24} color={COLORS.primary} />
-                <Text style={styles.uploadBtnText}>{file && !file.canceled ? file.assets?.[0]?.name : "Select Document"}</Text>
-              </TouchableOpacity>
-            </Animatable.View>
-          ) : (
-            <Animatable.View animation="fadeInUp" style={styles.card}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionLabel}>Interactive Questions</Text>
-                <TouchableOpacity onPress={addQuestion} style={styles.addBtn}><SVGIcon name="add-circle" size={24} color={COLORS.primary} /></TouchableOpacity>
-              </View>
-
-              {questions.map((q, qIndex) => (
-                <QuestionItem
-                  key={qIndex}
-                  q={q}
-                  qIndex={qIndex}
-                  type={type}
-                  updateQuestion={updateQuestion}
-                  removeQuestion={removeQuestion}
-                  updateOption={updateOption}
-                  addOption={addOption}
-                />
-              ))}
-            </Animatable.View>
-          )}
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -302,60 +363,6 @@ export default function UploadAssignment() {
     </SafeAreaView>
   );
 }
-
-const QuestionItem = memo(({
-  q,
-  qIndex,
-  type,
-  updateQuestion,
-  removeQuestion,
-  updateOption,
-  addOption
-}: {
-  q: Question;
-  qIndex: number;
-  type: AssignmentType;
-  updateQuestion: (index: number, text: string) => void;
-  removeQuestion: (index: number) => void;
-  updateOption: (qIndex: number, oIndex: number, text: string) => void;
-  addOption: (qIndex: number) => void;
-}) => {
-  return (
-    <View style={styles.questionCard}>
-      <View style={styles.qHeader}>
-        <Text style={styles.qIndex}>Question {qIndex + 1}</Text>
-        <TouchableOpacity onPress={() => removeQuestion(qIndex)}>
-          <SVGIcon name="trash-outline" size={20} color="#EF4444" />
-        </TouchableOpacity>
-      </View>
-      <TextInput
-        style={styles.input}
-        placeholder="Type question..."
-        value={q.text}
-        onChangeText={(t) => updateQuestion(qIndex, t)}
-      />
-
-      {type === "mcq" && (
-        <View style={styles.optionsContainer}>
-          {q.options.map((opt, oIndex) => (
-            <View key={oIndex} style={styles.optionRow}>
-              <View style={styles.bullet} />
-              <TextInput
-                style={styles.optionInput}
-                placeholder={`Option ${oIndex + 1}`}
-                value={opt}
-                onChangeText={(t) => updateOption(qIndex, oIndex, t)}
-              />
-            </View>
-          ))}
-          <TouchableOpacity onPress={() => addOption(qIndex)} style={styles.addOptionBtn}>
-            <Text style={styles.addOptionText}>+ Add Option</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
@@ -382,15 +389,6 @@ const styles = StyleSheet.create({
   dateTimeRow: { flexDirection: "row", gap: 10, marginTop: 5 },
   datePickerBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "#F1F5F9", borderRadius: 12, padding: 12, gap: 8, borderWidth: 1, borderColor: "#E2E8F0" },
   datePickerText: { fontSize: 14, color: "#1E293B", fontWeight: "700" },
-  webInput: { 
-    flex: 1, 
-    fontSize: 14, 
-    color: "#1E293B", 
-    fontWeight: "700", 
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    outlineStyle: 'none' as any
-  },
   uploadBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderStyle: "dashed", borderWidth: 2, borderColor: COLORS.primary, borderRadius: 12, padding: 20, marginTop: 10, gap: 10 },
   uploadBtnText: { color: COLORS.primary, fontWeight: "800", fontSize: 14 },
   questionCard: { backgroundColor: "#F8FAFC", borderRadius: 15, padding: 15, marginBottom: 15, borderWidth: 1, borderColor: "#E2E8F0" },
@@ -406,5 +404,23 @@ const styles = StyleSheet.create({
   submitBtn: { borderRadius: 16, overflow: "hidden" },
   submitBtnGradient: { padding: 18, flexDirection: "row", alignItems: "center", justifyContent: "center" },
   submitBtnText: { color: "#fff", fontWeight: "900", fontSize: 16 },
-  addBtn: { padding: 5 }
+  addBtn: { padding: 5 },
+  smallBubble: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: '#F1F5F9', marginRight: 8, gap: 6, borderWidth: 1, borderColor: '#E2E8F0' },
+  smallBubbleActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  smallBubbleText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
+  smallBubbleTextActive: { color: '#fff' },
+  groupLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+    marginBottom: 5,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  addQuestionFooterBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginTop: 5,
+  },
 });

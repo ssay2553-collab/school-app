@@ -1,4 +1,4 @@
-// /guest-dashboard/FAQ.tsx
+// /parent-dashboard/FAQ.tsx
 import SVGIcon from "../../components/SVGIcon";
 import { doc, getDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";

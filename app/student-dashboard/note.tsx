@@ -437,7 +437,7 @@ export default function StudentNoteScreen() {
                      <TouchableOpacity
                       onPress={() => {
                         router.push({
-                          pathname: "/student-dashboard/submit-assignment",
+                          pathname: "/student-dashboard/submit-note",
                           params: {
                             prefillNoteId: item.docId,
                             prefillTitle: item.title,

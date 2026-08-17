@@ -36,7 +36,6 @@ export default function TeacherDashboardLayout() {
         student: "/student-dashboard",
         parent: "/parent-dashboard",
         staff: "/staff-dashboard",
-        guest: "/guest-dashboard",
       };
 
       const targetRoute = redirectMap[appUser.role as string] || "/";

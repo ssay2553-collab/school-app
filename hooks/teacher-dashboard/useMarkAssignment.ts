@@ -28,7 +28,7 @@ export interface Assignment {
   id: string;
   title: string;
   deadline?: Timestamp;
-  type?: "standard" | "mcq" | "short_answer";
+  type?: "mcq" | "short_answer" | "preschool";
   questions?: Question[];
   subjectId: string;
 }
@@ -39,7 +39,7 @@ export interface Submission {
   studentName: string;
   fileUrl?: string;
   responses?: Record<number, string>;
-  type: "standard" | "mcq" | "short_answer" | "rich-text";
+  type: "mcq" | "short_answer" | "preschool" | "rich-text";
   marked: boolean;
   marks?: number;
   questionScores?: Record<number, number>;

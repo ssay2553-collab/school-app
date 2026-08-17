@@ -37,9 +37,24 @@ import * as Clipboard from "expo-clipboard";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
 
+interface VisualItem {
+  id: string;
+  type: 'icon' | 'text' | 'operator';
+  value: string;
+  count?: number;
+  size?: 'small' | 'medium' | 'large';
+  isNewLine?: boolean;
+}
+
 interface Question {
   text: string;
   options?: string[];
+  type?: string;
+  imageCategory?: string;
+  count?: number;
+  visualGroup?: VisualItem[];
+  answer?: string;
+  points?: number;
 }
 
 interface Assignment {
@@ -47,7 +62,7 @@ interface Assignment {
   title: string;
   subjectId: string;
   classId: string;
-  type: "standard" | "mcq" | "short_answer";
+  type: "mcq" | "short_answer" | "preschool";
   description?: string;
   fileUrl?: string;
   fileName?: string;
@@ -137,13 +152,16 @@ export default function Assignments() {
     if (!activeAssignment || !appUser) return;
 
     const questionCount = activeAssignment.questions?.length || 0;
+    const isPreschool = activeAssignment.type === "preschool";
+
     if (
+      !isPreschool &&
       activeAssignment.questions &&
       Object.keys(answers).length < questionCount
     ) {
       return showToast({
         message: "Please answer all questions before submitting.",
-        type: "warning"
+        type: "warning",
       });
     }
 
@@ -158,7 +176,7 @@ export default function Assignments() {
         assignmentCode: activeAssignment.code,
         studentId: appUser.uid,
         studentName,
-        type: activeAssignment.type || "standard",
+        type: activeAssignment.type,
         classId: activeAssignment.classId,
         subjectId: activeAssignment.subjectId,
         teacherId: activeAssignment.teacherId,
@@ -200,14 +218,15 @@ export default function Assignments() {
   };
 
   const renderAssignmentItem = ({ item, index }: { item: Assignment, index: number }) => {
-    const assignmentType = item.type || "standard";
+    const assignmentType = item.type;
+    const isPreschool = assignmentType === 'preschool';
 
     return (
       <Animatable.View animation="fadeInUp" delay={index * 100} style={styles.card}>
         <View style={styles.cardHeader}>
           <Text style={styles.title}>{item.title}</Text>
-          <View style={[styles.typeBadge, { backgroundColor: assignmentType === 'standard' ? '#EEF2FF' : '#F0FDF4' }]}>
-            <Text style={[styles.typeText, { color: assignmentType === 'standard' ? '#4F46E5' : '#10B981' }]}>
+          <View style={[styles.typeBadge, { backgroundColor: isPreschool ? '#FEF3C7' : '#F0FDF4' }]}>
+            <Text style={[styles.typeText, { color: isPreschool ? '#D97706' : '#10B981' }]}>
               {assignmentType.toUpperCase()}
             </Text>
           </View>
@@ -225,11 +244,11 @@ export default function Assignments() {
         </View>
 
         <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: assignmentType === "standard" ? COLORS.primary : COLORS.secondary }]}
-          onPress={() => assignmentType === "standard" ? setViewingDetails(item) : handleStartAssignment(item)}
+          style={[styles.actionButton, { backgroundColor: COLORS.secondary }]}
+          onPress={() => handleStartAssignment(item)}
         >
           <Text style={styles.actionButtonText}>
-            {assignmentType === "standard" ? "View & Download" : "Start Now"}
+            Start Now
           </Text>
           <SVGIcon name="arrow-forward" size={16} color="#fff" />
         </TouchableOpacity>
@@ -264,61 +283,18 @@ export default function Assignments() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <View style={styles.emptyIconCircle}>
-                <SVGIcon name="checkmark-done-circle" size={60} color="#CBD5E1" />
+                <SVGIcon name="checkmark-seal" size={60} color="#CBD5E1" />
               </View>
-              <Text style={styles.emptyText}>All caught up! No pending assignments.</Text>
+              <Text style={styles.emptyText}>
+                All caught up! No pending assignments.
+              </Text>
             </View>
           }
           contentContainerStyle={styles.listContent}
         />
       )}
 
-      {/* VIEW STANDARD ASSIGNMENT DETAILS MODAL */}
-      <Modal visible={!!viewingDetails} animationType="fade" transparent onRequestClose={() => setViewingDetails(null)}>
-        <View style={styles.overlay}>
-          <View style={styles.detailsModal}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>{viewingDetails?.title}</Text>
-              <TouchableOpacity onPress={() => setViewingDetails(null)}>
-                <SVGIcon name="close" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.sectionLabel}>Instructions:</Text>
-              <Text style={styles.detailsDescription}>
-                {viewingDetails?.description || "No description provided."}
-              </Text>
-
-              {viewingDetails?.fileUrl && (
-                <View style={styles.attachmentBox}>
-                  <Text style={styles.sectionLabel}>Resources:</Text>
-                  <TouchableOpacity
-                    style={styles.downloadBtn}
-                    onPress={() => Linking.openURL(viewingDetails.fileUrl!)}
-                  >
-                    <SVGIcon name="cloud-upload" size={18} color="#fff" />
-                    <Text style={styles.downloadBtnText}>Download Study File</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </ScrollView>
-
-            <View style={styles.detailsFooter}>
-              <TouchableOpacity
-                style={styles.tipBox}
-                onPress={() => copyToClipboard(viewingDetails?.code || "")}
-                activeOpacity={0.7}
-              >
-                <SVGIcon name="information-circle" size={16} color={COLORS.primary} />
-                <Text style={styles.tipText}>Use code <Text style={{fontWeight: '900'}}>{viewingDetails?.code}</Text> to submit (Tap to copy).</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.closeBtn} onPress={() => setViewingDetails(null)}>
-                <Text style={styles.closeBtnText}>I'll start now</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* VIEW STANDARD ASSIGNMENT DETAILS MODAL - REMOVED STANDARD TYPE */}
 
       {/* DO INTERACTIVE ASSIGNMENT MODAL */}
       <Modal visible={!!activeAssignment} animationType="slide" onRequestClose={() => setActiveAssignment(null)}>
@@ -335,6 +311,11 @@ export default function Assignments() {
             style={{ flex: 1 }}
           >
             <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+              {activeAssignment?.description ? (
+                <View style={styles.assignmentDescriptionBox}>
+                  <Text style={styles.assignmentDescriptionText}>{activeAssignment.description}</Text>
+                </View>
+              ) : null}
               {activeAssignment?.questions?.map((q, qIdx) => (
                 <QuestionResponseItem
                   key={qIdx}
@@ -381,28 +362,167 @@ const QuestionResponseItem = memo(({
   answer: string;
   setAnswer: (val: string) => void;
 }) => {
+  const isPreschoolOptions = type === "preschool" && ![
+    "simple_addition", "fill_missing"
+  ].includes(q.type || "");
+
+  const showOptions = type === "mcq" || isPreschoolOptions;
+
+  // Worksheet style layout for specific preschool types
+  const isWorksheetRow = type === "preschool" && [
+    "count_objects", "identify_shape", "simple_addition", "odd_one_out", "true_false"
+  ].includes(q.type || "");
+
+  if (isWorksheetRow) {
+    return (
+      <View style={styles.worksheetRow}>
+        <View style={styles.worksheetLeft}>
+          <View style={styles.worksheetVisualBox}>
+            {q.visualGroup && q.visualGroup.length > 0 ? (
+               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
+                  {q.visualGroup.map((group, gIdx) => {
+                    const iconSize = group.size === 'large' ? 45 : group.size === 'small' ? 20 : 30;
+                    return (
+                      <View key={gIdx} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
+                        {[...Array(group.count)].map((_, i) => (
+                          <SVGIcon key={`${gIdx}-${i}`} name={group.icon} size={iconSize} color={COLORS.secondary} />
+                        ))}
+                      </View>
+                    );
+                  })}
+               </View>
+            ) : (
+              <Text style={styles.questionText}>{qIdx + 1}. {q.text}</Text>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.worksheetRight}>
+          <View style={styles.worksheetOptionsRow}>
+            {q.options?.map((opt, oIdx) => {
+              const isSelected = answer === opt;
+              const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
+              const isVisual = emojiRegex.test(opt) || [
+                "square-outline", "circle-outline", "triangle-outline", "diamond-outline",
+                "star-outline", "heart-outline", "pentagon", "pentagon-outline",
+                "hexagon", "hexagon-outline", "octagon", "octagon-outline"
+              ].includes(opt.replace(/-outline$/, ''));
+
+              return (
+                <TouchableOpacity
+                  key={oIdx}
+                  style={[styles.worksheetOption, isSelected && styles.worksheetOptionSelected]}
+                  onPress={() => setAnswer(opt)}
+                >
+                  {isVisual ? (
+                    <SVGIcon name={opt} size={28} />
+                  ) : (
+                    <Text style={[styles.worksheetOptionText, isSelected && styles.worksheetOptionTextSelected]}>
+                      {opt}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.questionBox}>
+      {q.type && (
+        <View style={styles.preschoolBadge}>
+          <Text style={styles.preschoolBadgeText}>{q.type.replace('_', ' ').toUpperCase()}</Text>
+        </View>
+      )}
+
       <Text style={styles.questionText}>{qIdx + 1}. {q.text}</Text>
-      {type === "mcq" ? (
+
+      {q.visualGroup && q.visualGroup.length > 0 && (
+        <View style={styles.visualContainer}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 15 }}>
+            {q.visualGroup.map((item: any, gIdx: number) => {
+              const iconSize = item.size === 'large' ? 60 : item.size === 'small' ? 30 : 45;
+              const containerSize = iconSize + 10;
+
+              return (
+                <React.Fragment key={gIdx}>
+                  {item.isNewLine && <View style={{ width: '100%', height: 0 }} />}
+                  {item.type === 'icon' ? (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'center' }}>
+                      {[...Array(item.count || 1)].map((_, i) => (
+                        <View key={`${gIdx}-${i}`} style={{ width: containerSize, height: containerSize, alignItems: 'center', justifyContent: 'center' }}>
+                          <SVGIcon name={item.value} size={iconSize} color={COLORS.secondary} />
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={{
+                      fontSize: item.size === 'large' ? 32 : item.size === 'small' ? 16 : 24,
+                      fontWeight: '800',
+                      color: '#1E293B'
+                    }}>{item.value}</Text>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {q.imageCategory && !q.visualGroup && (
+        <View style={styles.visualContainer}>
+            {q.type === 'count_objects' && q.count ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }}>
+              {[...Array(q.count)].map((_, i) => (
+                <SVGIcon key={i} name={q.imageCategory!} size={40} color={COLORS.secondary} />
+              ))}
+            </View>
+          ) : (
+            <SVGIcon name={q.imageCategory} size={80} color={COLORS.secondary} />
+          )}
+          <Text style={styles.visualLabel}>
+            {q.type === 'count_objects' ? `How many ${q.imageCategory.replace('-', ' ')}s do you see?` : `Look at the ${q.imageCategory.replace('-', ' ')}`}
+          </Text>
+        </View>
+      )}
+
+      {showOptions ? (
         <View style={styles.optionsList}>
-          {q.options?.map((opt, oIdx) => (
-            <TouchableOpacity
-              key={oIdx}
-              style={[styles.optionBtn, answer === opt && styles.optionBtnSelected]}
-              onPress={() => setAnswer(opt)}
-            >
-              <View style={[styles.radio, answer === opt && styles.radioSelected]} />
-              <Text style={[styles.optionLabel, answer === opt && styles.optionLabelSelected]}>{opt}</Text>
-            </TouchableOpacity>
-          ))}
+          {q.options?.map((opt, oIdx) => {
+            const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
+            const isVisual = emojiRegex.test(opt) || [
+              "square-outline", "circle-outline", "triangle-outline", "diamond-outline",
+              "star-outline", "heart-outline", "pentagon", "pentagon-outline",
+              "hexagon", "hexagon-outline", "octagon", "octagon-outline"
+            ].includes(opt);
+
+            return (
+              <TouchableOpacity
+                key={oIdx}
+                style={[styles.optionBtn, answer === opt && styles.optionBtnSelected]}
+                onPress={() => setAnswer(opt)}
+              >
+                <View style={[styles.radio, answer === opt && styles.radioSelected]} />
+                {isVisual ? (
+                   <View style={{ padding: 5, backgroundColor: '#F8FAFC', borderRadius: 10 }}>
+                      <SVGIcon name={opt} size={40} />
+                   </View>
+                ) : (
+                  <Text style={[styles.optionLabel, answer === opt && styles.optionLabelSelected]}>{opt}</Text>
+                )}
+              </TouchableOpacity>
+            );
+          })}
         </View>
       ) : (
         <TextInput
           style={styles.answerInput}
           placeholder="Type your answer here..."
           placeholderTextColor="#94A3B8"
-          multiline
+          multiline={type !== "preschool"}
           value={answer || ""}
           onChangeText={setAnswer}
         />
@@ -451,6 +571,20 @@ const styles = StyleSheet.create({
   modalTitleInner: { fontSize: 18, fontWeight: '900', color: '#1E293B', flex: 1 },
   modalCloseBtn: { padding: 5 },
   modalScroll: { padding: 20 },
+  assignmentDescriptionBox: {
+    backgroundColor: '#EEF2FF',
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: COLORS.primary + '20',
+  },
+  assignmentDescriptionText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.primary,
+    lineHeight: 22,
+  },
   questionBox: { marginBottom: 25, backgroundColor: '#F8FAFC', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0' },
   questionText: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 15 },
   optionsList: { gap: 12 },
@@ -463,5 +597,93 @@ const styles = StyleSheet.create({
   answerInput: { backgroundColor: '#fff', borderRadius: 12, padding: 15, fontSize: 15, minHeight: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: '#E2E8F0' },
   modalFooterInner: { padding: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   submitBtn: { backgroundColor: COLORS.secondary, padding: 18, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
-  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' }
+  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  preschoolBadge: {
+    backgroundColor: COLORS.secondary + '20',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  preschoolBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: COLORS.secondary,
+    letterSpacing: 0.5,
+  },
+  visualContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  visualLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    marginTop: 8,
+    textTransform: 'capitalize',
+  },
+  worksheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    minHeight: 80,
+  },
+  worksheetLeft: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  worksheetVisualBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    minHeight: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  worksheetRight: {
+    flex: 1,
+    paddingLeft: 15,
+    justifyContent: 'center',
+  },
+  worksheetOptionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
+    gap: 8,
+  },
+  worksheetOption: {
+    minWidth: 40,
+    height: 40,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 8,
+  },
+  worksheetOptionSelected: {
+    borderColor: COLORS.secondary,
+    backgroundColor: COLORS.secondary + '10',
+  },
+  worksheetOptionText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  worksheetOptionTextSelected: {
+    color: COLORS.secondary,
+  }
 });

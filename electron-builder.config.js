@@ -22,6 +22,11 @@ const schools = {
     productName: "A R I App",
     icon: "assets/icon-advent.png",
   },
+  lilies: {
+    appId: "com.saysmanage.lilies",
+    productName: "PHEC App",
+    icon: "assets/icon-phec.png",
+  },
   perfect: {
     appId: "com.saysmanage.peiapp",
     productName: "PEI End",

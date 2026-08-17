@@ -367,7 +367,7 @@ export default function ParentDashboard() {
 
             <Animatable.View animation="fadeInUp" delay={400} style={styles.headerContactInfo}>
               <View style={styles.headerContactItem}>
-                <SVGIcon name="location-outline" size={14} color="#fff" />
+                <SVGIcon name="business-outline" size={14} color="#fff" />
                 <Text style={[styles.headerContactText, { flex: 1 }]} numberOfLines={1}>
                   {config.address}
                 </Text>

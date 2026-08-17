@@ -269,13 +269,6 @@ export default function AdminDashboard() {
           color: "#3b82f6",
         },
         {
-          title: "Guest Inquiry",
-          subtitle: "Public chats",
-          route: "/admin-dashboard/guest-chat",
-          icon: "chatbubbles",
-          color: "#14b8a6",
-        },
-        {
           title: "Media Library",
           subtitle: "Photo gallery",
           route: "/admin-dashboard/gallery-upload",

@@ -257,7 +257,7 @@ export default function AttendanceOverview() {
       
       <View style={styles.headerWrapper}>
         <LinearGradient 
-          colors={[brandPrimary, brandSecondary]} 
+          colors={[brandPrimary, brandSecondary]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} 
           style={styles.header}
         >
@@ -345,7 +345,7 @@ export default function AttendanceOverview() {
                 style={[styles.cardContainer, numColumns > 1 && { width: `${100 / numColumns - 2}%` }]}
               >
                 <TouchableOpacity 
-                  style={[styles.classCard, { backgroundColor: cardColor + '05' }]} 
+                  style={[styles.classCard, { backgroundColor: cardColor + '05' }]}
                   activeOpacity={0.9}
                   onPress={() => router.push({
                     pathname: "/admin-dashboard/attendance-details",

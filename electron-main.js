@@ -93,6 +93,11 @@ const schools = {
     backgroundColor: "#FDF7FF",
     authDomain: "bright-brains-ed4d7.firebaseapp.com",
   },
+  lilies: {
+    name: "PHEC App",
+    backgroundColor: "#FDF7FF",
+    authDomain: "bright-lilies.firebaseapp.com",
+  },
   cascom: {
     name: "CASCOM App",
     backgroundColor: "#8aa3f5ff",
@@ -139,10 +144,18 @@ function createWindow() {
   // FORCE CLEAR STORAGE ON STARTUP (Fixes IBS stickiness)
   win.webContents.session
     .clearStorageData({
-      storages: ["localstorage", "cookies", "cachestorage", "indexeddb", "websql"],
+      storages: [
+        "localstorage",
+        "cookies",
+        "cachestorage",
+        "indexeddb",
+        "websql",
+      ],
     })
     .then(() => {
-      console.log("[Electron] All storage (including IndexedDB) cleared to ensure fresh branding.");
+      console.log(
+        "[Electron] All storage (including IndexedDB) cleared to ensure fresh branding.",
+      );
     });
 
   session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {

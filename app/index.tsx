@@ -61,7 +61,6 @@ export default function WelcomeScreen() {
         (appUser.subjects || []).length > 0;
       const isParent = role === "parent";
       const isStudent = role === "student";
-      const isGuest = role === "guest";
 
       if (isAdmin) {
         return router.replace("/admin-dashboard");
@@ -71,8 +70,6 @@ export default function WelcomeScreen() {
         return router.replace("/student-dashboard");
       } else if (isParent) {
         return router.replace("/parent-dashboard");
-      } else if (isGuest) {
-        return router.replace("/guest-dashboard");
       } else {
         return router.replace("/(auth)/login");
       }

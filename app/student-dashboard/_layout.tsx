@@ -95,7 +95,7 @@ export default function StudentLayout() {
       <Tabs.Screen name="create-note" options={{ href: null }} />
       <Tabs.Screen name="StudentGroups" options={{ href: null }} />
       <Tabs.Screen name="StudentTimetable" options={{ href: null }} />
-      <Tabs.Screen name="submit-assignment" options={{ href: null }} />
+      <Tabs.Screen name="submit-note" options={{ href: null }} />
       <Tabs.Screen name="logout" options={{ href: null }} />
       <Tabs.Screen name="GroupChat" options={{ href: null }} />
     </Tabs>

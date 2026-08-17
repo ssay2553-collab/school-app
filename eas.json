@@ -9,23 +9,51 @@
       "distribution": "internal",
       "android": { "buildType": "apk" }
     },
-    "afahjoy-dev": { "extends": "development", "env": { "SCHOOL_ID": "afahjoy" } },
+    "afahjoy-dev": {
+      "extends": "development",
+      "env": { "SCHOOL_ID": "afahjoy" }
+    },
     "beano-dev": { "extends": "development", "env": { "SCHOOL_ID": "beano" } },
-    "bishops-dev": { "extends": "development", "env": { "SCHOOL_ID": "bishops" } },
+    "bishops-dev": {
+      "extends": "development",
+      "env": { "SCHOOL_ID": "bishops" }
+    },
     "bms-dev": { "extends": "development", "env": { "SCHOOL_ID": "bms" } },
     "brain-dev": { "extends": "development", "env": { "SCHOOL_ID": "brain" } },
-    "cascom-dev": { "extends": "development", "env": { "SCHOOL_ID": "cascom" } },
-    "creation-dev": { "extends": "development", "env": { "SCHOOL_ID": "creation" } },
-    "eagles-dev": { "extends": "development", "env": { "SCHOOL_ID": "eagles" } },
+    "cascom-dev": {
+      "extends": "development",
+      "env": { "SCHOOL_ID": "cascom" }
+    },
+    "creation-dev": {
+      "extends": "development",
+      "env": { "SCHOOL_ID": "creation" }
+    },
+    "eagles-dev": {
+      "extends": "development",
+      "env": { "SCHOOL_ID": "eagles" }
+    },
     "ibs-dev": { "extends": "development", "env": { "SCHOOL_ID": "IBS" } },
+    "lilies-dev": {
+      "extends": "development",
+      "env": { "SCHOOL_ID": "lilies" }
+    },
     "kent-dev": { "extends": "development", "env": { "SCHOOL_ID": "kent" } },
     "model-dev": { "extends": "development", "env": { "SCHOOL_ID": "model" } },
-    "morgis-dev": { "extends": "development", "env": { "SCHOOL_ID": "morgis" } },
-    "perfect-dev": { "extends": "development", "env": { "SCHOOL_ID": "perfect" } },
+    "morgis-dev": {
+      "extends": "development",
+      "env": { "SCHOOL_ID": "morgis" }
+    },
+    "perfect-dev": {
+      "extends": "development",
+      "env": { "SCHOOL_ID": "perfect" }
+    },
     "clis-dev": { "extends": "development", "env": { "SCHOOL_ID": "clis" } },
     "stone-dev": { "extends": "development", "env": { "SCHOOL_ID": "stone" } },
     "jewel-dev": { "extends": "development", "env": { "SCHOOL_ID": "jewel" } },
-    "abijah-dev": { "extends": "development", "env": { "SCHOOL_ID": "abijah" } },
+    "abijah-dev": {
+      "extends": "development",
+      "env": { "SCHOOL_ID": "abijah" }
+    },
 
     "afahjoy-prod": {
       "distribution": "internal",
@@ -71,6 +99,11 @@
       "distribution": "internal",
       "android": { "buildType": "apk" },
       "env": { "SCHOOL_ID": "IBS", "NODE_ENV": "production" }
+    },
+    "lilies-prod": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": { "SCHOOL_ID": "lilies", "NODE_ENV": "production" }
     },
     "kent-prod": {
       "distribution": "internal",

@@ -168,17 +168,13 @@ export default function LoginSelectionScreen() {
             delay={800}
             style={styles.footer}
           >
-            <Text style={styles.guestPrompt}>Visitor or Applicant?</Text>
-
             <TouchableOpacity
-              style={styles.guestButton}
-              onPress={() => router.push("/(auth)/login/guest")}
-              activeOpacity={0.8}
+              onPress={() => router.push("/about")}
+              style={styles.aboutButton}
+              activeOpacity={0.7}
             >
-              <SVGIcon name="help-circle" size={20} color={primary} />
-              <Text style={[styles.guestButtonText, { color: primary }]}>
-                Explore as Guest
-              </Text>
+              <SVGIcon name="information-circle-outline" size={18} color="#64748b" />
+              <Text style={styles.aboutText}>About EduEaz</Text>
             </TouchableOpacity>
 
             <View style={styles.brandFooter}>
@@ -357,11 +353,24 @@ const styles = StyleSheet.create({
   },
 
   brandFooter: {
-    marginTop: 20,
+    marginTop: 10,
     paddingVertical: 8,
     paddingHorizontal: 16,
     backgroundColor: "#f1f5f9",
     borderRadius: 10,
+  },
+
+  aboutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 6,
+    paddingVertical: 8,
+  },
+
+  aboutText: {
+    fontSize: 14,
+    color: "#64748b",
+    fontWeight: "600",
   },
 
   footerBrandText: {

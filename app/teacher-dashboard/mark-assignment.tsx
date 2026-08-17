@@ -69,12 +69,15 @@ const SubmissionItem = React.memo(({
 }) => {
   const { showToast } = useToast();
   const calculateTotal = () => {
-    if (item.type === "standard") return standardMarkValue || "0";
+    if (item.type === "preschool") return standardMarkValue || "0";
     return Object.values(qScoreValue || {}).reduce(
       (acc, curr) => acc + (Number(curr) || 0),
       0,
     );
   };
+
+  const isInteractive = item.type === "mcq" || item.type === "short_answer";
+  const isDirectGrade = item.type === "preschool";
 
   return (
     <View style={styles.subCard}>
@@ -88,7 +91,7 @@ const SubmissionItem = React.memo(({
           <View>
             <Text style={styles.student}>{item.studentName || "Student"}</Text>
             <Text style={styles.submissionDate}>
-              Submitted {formatDate(item.submittedAt)}
+              {item.type === 'preschool' ? 'Preschool Activity' : 'Assignment'} • Submitted {formatDate(item.submittedAt)}
             </Text>
           </View>
         </View>
@@ -99,41 +102,31 @@ const SubmissionItem = React.memo(({
         )}
       </View>
 
-      {item.type === "standard" ? (
-        <View>
-          <TouchableOpacity
-            style={styles.fileLink}
-            onPress={() => {
-              if (item.fileUrl) {
-                Linking.openURL(item.fileUrl).catch(() => {
-                  showToast({ message: "Could not open the submission file.", type: "error" });
-                });
-              }
-            }}
-          >
-            <View style={[styles.fileIconBox, { backgroundColor: COLORS.secondary + "15" }]}>
-              <SVGIcon name="document-text" size={20} color={COLORS.secondary} />
+      {item.type === "preschool" && (
+        <View style={[styles.responsesBox, { marginBottom: 20 }]}>
+          <Text style={styles.responseLabel}>PRESCHOOL PERFORMANCE</Text>
+          <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 15, lineHeight: 20 }}>
+            Review the child's interactive engagement below. Preschool activities are graded holistically.
+          </Text>
+          {assignment?.questions?.map((q, idx) => (
+            <View key={idx} style={[styles.responseItem, { backgroundColor: COLORS.primary + '05', borderColor: COLORS.primary + '10' }]}>
+               <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                  <SVGIcon name={q.type ? (q.type.includes('identify') ? 'eye' : 'star') : 'star'} size={14} color={COLORS.primary} />
+                  <Text style={[styles.qText, { marginBottom: 0 }]}>{q.text}</Text>
+                </View>
+                <View style={styles.answerRow}>
+                  <Text style={[styles.aText, { fontWeight: '700', color: COLORS.secondary }]}>
+                    Response: {item.responses?.[idx] || "Completed"}
+                  </Text>
+                </View>
+              </View>
             </View>
-            <Text style={styles.linkText}>View Submission File</Text>
-            <SVGIcon name="chevron-forward" size={16} color={COLORS.secondary} style={{ marginLeft: "auto" }} />
-          </TouchableOpacity>
-
-          <View style={styles.standardMarkRow}>
-            <View>
-              <Text style={styles.scoreLabelHeader}>Total Marks</Text>
-              <Text style={styles.scoreSubLabel}>Enter numeric value</Text>
-            </View>
-            <TextInput
-              style={styles.totalInput}
-              keyboardType="numeric"
-              placeholder="0"
-              placeholderTextColor="#94A3B8"
-              value={standardMarkValue}
-              onChangeText={(t) => onUpdateStandardMark(item.id, t)}
-            />
-          </View>
+          ))}
         </View>
-      ) : (
+      )}
+
+      {isInteractive && (
         <View style={styles.responsesBox}>
           <Text style={styles.responseLabel}>DETAILED REVIEW</Text>
           {assignment?.questions?.map((q, idx) => (
@@ -162,6 +155,23 @@ const SubmissionItem = React.memo(({
             <Text style={styles.totalSumText}>Total Calculated Score:</Text>
             <Text style={styles.totalSumValue}>{calculateTotal()}</Text>
           </View>
+        </View>
+      )}
+
+      {isDirectGrade && (
+        <View style={styles.standardMarkRow}>
+          <View>
+            <Text style={styles.scoreLabelHeader}>Overall Performance</Text>
+            <Text style={styles.scoreSubLabel}>Grade (0-100 or Points)</Text>
+          </View>
+          <TextInput
+            style={styles.totalInput}
+            keyboardType="numeric"
+            placeholder="0"
+            placeholderTextColor="#94A3B8"
+            value={standardMarkValue}
+            onChangeText={(t) => onUpdateStandardMark(item.id, t)}
+          />
         </View>
       )}
 

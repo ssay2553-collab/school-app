@@ -85,11 +85,11 @@ export default function StudentDashboard() {
           path: "/student-dashboard/assignments",
         },
         {
-          title: "Submit Work",
-          subtitle: "Magic upload",
-          icon: "cloud-upload",
+          title: "Submit Note",
+          subtitle: "Attach Magic Note",
+          icon: "journal",
           color: "#4D96FF",
-          path: "/student-dashboard/submit-assignment",
+          path: "/student-dashboard/submit-note",
         },
         {
           title: "My Stars",
@@ -128,7 +128,7 @@ export default function StudentDashboard() {
         },
         {
           title: "Coding Hub",
-          subtitle: "Robotics & AI",
+          subtitle: "Robotics & Projects",
           icon: "code-slash",
           color: "#6366F1",
           path: "/coding-robotics",

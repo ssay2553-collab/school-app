@@ -1,4 +1,3 @@
-import * as DocumentPicker from "expo-document-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   addDoc,
@@ -8,15 +7,9 @@ import {
   serverTimestamp,
   where,
 } from "firebase/firestore";
-import {
-  getDownloadURL,
-  ref,
-  uploadBytes,
-} from "firebase/storage";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -28,61 +21,33 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
-import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
-import { useAuth } from "../../contexts/AuthContext";
-import { useToast } from "../../contexts/ToastContext";
-import { auth, db, storage } from "../../firebaseConfig";
+import { COLORS, SHADOWS } from "../../constants/theme";
+import { auth, db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import * as Animatable from "react-native-animatable";
+import { useToast } from "../../contexts/ToastContext";
 
-export default function SubmitAssignment() {
+export default function SubmitNote() {
   const router = useRouter();
   const { showToast } = useToast();
   const { prefillNoteId, prefillTitle, prefillContent } = useLocalSearchParams();
 
   const [assignmentCode, setAssignmentCode] = useState("");
-  const [note, setNote] = useState(prefillTitle ? `Attached Note: ${prefillTitle}` : "");
-  const [file, setFile] = useState<any>(null);
+  const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
 
   const primary = SCHOOL_CONFIG.primaryColor;
-  const surface = SCHOOL_CONFIG.surfaceColor;
 
   const studentId = auth.currentUser?.uid;
-
-  const pickFile = async () => {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "application/pdf",
-          "application/msword",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-          "application/vnd.ms-excel",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "image/*",
-          "video/mp4",
-        ],
-      });
-
-      if (result.canceled) return;
-
-      const picked = result.assets[0];
-      setFile(picked);
-    } catch (error) {
-      console.log("Error picking file", error);
-      showToast({ message: "Error picking file", type: "error" });
-    }
-  };
 
   const goToNotes = () => {
     router.push("/student-dashboard/note");
   };
 
   const handleSubmit = async () => {
-    if (!assignmentCode.trim() || (!file && !prefillNoteId) || !studentId) {
-      showToast({ message: "Assignment code and a submission (file or note) are required.", type: "error" });
+    if (!assignmentCode.trim() || !prefillNoteId || !studentId) {
+      showToast({ message: "Assignment code and a note attachment are required.", type: "error" });
       return;
     }
 
@@ -106,40 +71,23 @@ export default function SubmitAssignment() {
       const assignmentId = assignmentDoc.id;
       const assignmentData = assignmentDoc.data() as any;
 
-      // 2. Handle Upload or Rich-Text submission
-      let submissionData: any = {
+      // 2. Prepare submission data
+      const submissionData: any = {
         assignmentId,
         studentId,
         studentName: auth.currentUser?.displayName || "Student",
         submittedAt: serverTimestamp(),
         status: "submitted",
-        note: note,
+        note: comment, // Using 'note' field for teacher comment to maintain compatibility with existing submission structure
         assignmentTitle: assignmentData.title,
+        type: "rich-text",
+        contentHtml: prefillContent,
+        noteId: prefillNoteId,
+        marked: false,
       };
 
-      if (prefillNoteId && prefillContent) {
-        // Rich Text Note submission
-        submissionData.type = "rich-text";
-        submissionData.contentHtml = prefillContent;
-        submissionData.noteId = prefillNoteId;
-      } else if (file) {
-        // File submission
-        const response = await fetch(file.uri);
-        const blob = await response.blob();
-        const fileRef = ref(storage, `submissions/${assignmentId}/${studentId}_${Date.now()}`);
-        await uploadBytes(fileRef, blob);
-        const fileUrl = await getDownloadURL(fileRef);
-
-        submissionData.type = "file";
-        submissionData.fileUrl = fileUrl;
-        submissionData.fileName = file.name;
-      }
-
       // 3. Save Submission
-      await addDoc(collection(db, "submissions"), {
-        ...submissionData,
-        marked: false, // Ensure marked is false for teacher query
-      });
+      await addDoc(collection(db, "submissions"), submissionData);
 
       // 4. Notify Teacher
       if (assignmentData.teacherId) {
@@ -148,22 +96,21 @@ export default function SubmitAssignment() {
           senderId: studentId,
           senderName: submissionData.studentName,
           type: "submission",
-          title: "New Assignment Submission",
-          body: `${submissionData.studentName} submitted ${assignmentData.title}`,
+          title: "New Note Submission",
+          body: `${submissionData.studentName} submitted a note for ${assignmentData.title}`,
           data: { assignmentId, studentId }
         });
       }
 
       setShowSuccess(true);
 
-      // Give the user a moment to see the success animation before redirecting
       setTimeout(() => {
         router.replace("/student-dashboard");
       }, 3000);
 
     } catch (error) {
       console.error("Submission error:", error);
-      showToast({ message: "Failed to submit assignment. Please check your connection.", type: "error" });
+      showToast({ message: "Failed to submit note. Please check your connection.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -175,7 +122,7 @@ export default function SubmitAssignment() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
-        <Text style={styles.title}>Submit Assignment</Text>
+        <Text style={styles.title}>Submit Note</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -189,7 +136,7 @@ export default function SubmitAssignment() {
             autoCapitalize="characters"
           />
 
-          <Text style={styles.label}>Submission Type</Text>
+          <Text style={styles.label}>Selected Note</Text>
 
           {prefillNoteId ? (
             <View style={styles.noteBox}>
@@ -197,23 +144,16 @@ export default function SubmitAssignment() {
                 <SVGIcon name="document-text" size={20} color={primary} />
                 <Text style={styles.noteTitle}>{prefillTitle || "Attached Note"}</Text>
               </View>
-              <Text style={styles.noteSubtitle}>Note content will be submitted as your assignment.</Text>
+              <Text style={styles.noteSubtitle}>This note will be submitted as your work.</Text>
               <TouchableOpacity onPress={() => router.setParams({ prefillNoteId: "", prefillTitle: "", prefillContent: "" })}>
-                <Text style={{color: COLORS.error, fontSize: 12, fontWeight: '700', marginTop: 10}}>Remove Note Attachment</Text>
+                <Text style={{color: COLORS.error, fontSize: 12, fontWeight: '700', marginTop: 10}}>Remove Attachment</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <View style={styles.uploadOptions}>
-              <TouchableOpacity style={styles.uploadBtn} onPress={pickFile}>
-                <SVGIcon name="cloud-upload-outline" size={32} color={primary} />
-                <Text style={styles.uploadText}>{file ? file.name : "Select File"}</Text>
-              </TouchableOpacity>
-
-              <Text style={styles.orText}>OR</Text>
-
               <TouchableOpacity style={[styles.noteBtn, {borderColor: primary}]} onPress={goToNotes}>
                 <SVGIcon name="journal-outline" size={24} color={primary} />
-                <Text style={[styles.noteBtnText, {color: primary}]}>Attach from Notes</Text>
+                <Text style={[styles.noteBtnText, {color: primary}]}>Attach from My Notes</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -221,11 +161,11 @@ export default function SubmitAssignment() {
           <Text style={[styles.label, { marginTop: 20 }]}>Comment (Optional)</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Add a comment to your teacher..."
+            placeholder="Add a comment for your teacher..."
             multiline
             numberOfLines={4}
-            value={note}
-            onChangeText={setNote}
+            value={comment}
+            onChangeText={setComment}
           />
 
           <TouchableOpacity
@@ -238,7 +178,7 @@ export default function SubmitAssignment() {
             ) : (
               <>
                 <SVGIcon name="send-outline" size={20} color="#fff" />
-                <Text style={styles.submitBtnText}>Submit Assignment</Text>
+                <Text style={styles.submitBtnText}>Submit Note</Text>
               </>
             )}
           </TouchableOpacity>
@@ -268,8 +208,8 @@ export default function SubmitAssignment() {
             delay={500}
             style={{ alignItems: 'center' }}
           >
-            <Text style={styles.successTitle}>Magic Upload Successful!</Text>
-            <Text style={styles.successSubtitle}>Your assignment has been teleported to your teacher.</Text>
+            <Text style={styles.successTitle}>Note Submitted!</Text>
+            <Text style={styles.successSubtitle}>Your note has been sent to your teacher.</Text>
 
             <View style={styles.xpBadge}>
               <Text style={styles.xpText}>+20 XP Collected</Text>
@@ -394,28 +334,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 15,
   },
-  uploadBtn: {
-    width: '100%',
-    height: 120,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#E2E8F0',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-  },
-  uploadText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '700',
-  },
-  orText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#94A3B8',
-  },
   noteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -464,30 +382,4 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium,
   },
   submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  messageBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 20,
-    gap: 12,
-    borderWidth: 1,
-  },
-  successBanner: {
-    backgroundColor: "#ecfdf5",
-    borderColor: "#10b981",
-  },
-  errorBanner: {
-    backgroundColor: "#fef2f2",
-    borderColor: "#ef4444",
-  },
-  infoBanner: {
-    backgroundColor: "#eff6ff",
-    borderColor: "#3b82f6",
-  },
-  messageText: {
-    fontSize: 14,
-    fontWeight: "700",
-    flex: 1,
-  },
 });

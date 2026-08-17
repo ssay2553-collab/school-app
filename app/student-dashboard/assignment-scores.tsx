@@ -48,7 +48,7 @@ interface ScoreRecord {
   studentName: string;
   responses?: Record<number, string>;
   questionScores?: Record<number, number>;
-  type: "standard" | "mcq" | "short_answer";
+  type: "mcq" | "short_answer";
 }
 
 interface AssignmentDetails {
@@ -150,7 +150,7 @@ export default function AssignmentScores() {
 
     setExpandedId(item.id);
 
-    if (!assignmentMeta[item.assignmentId] && item.type !== "standard") {
+    if (!assignmentMeta[item.assignmentId]) {
       setFetchingDetails(true);
       try {
         const docRef = doc(db, "assignments", item.assignmentId);
@@ -224,11 +224,7 @@ export default function AssignmentScores() {
 
         {isExpanded && (
           <Animatable.View animation="fadeIn" duration={300} style={styles.detailsContainer}>
-            {item.type === "standard" ? (
-              <Text style={styles.standardInfo}>
-                Teacher assigned a total score for this standard assignment.
-              </Text>
-            ) : fetchingDetails && !details ? (
+            {fetchingDetails && !details ? (
               <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 10 }} />
             ) : details ? (
               <View style={styles.reviewList}>

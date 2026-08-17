@@ -8,7 +8,7 @@ import { Platform } from "react-native";
 ----------------------------------------------------- */
 const primaryColor = Constants.expoConfig?.extra?.primaryColor || "#2e86de";
 const secondaryColor =
-  Constants.expoConfig?.extra?.secondaryColor || "#c53b59ff";
+  Constants.expoConfig?.extra?.secondaryColor || "#c53b59";
 const brandPrimary = Constants.expoConfig?.extra?.brandPrimary || primaryColor;
 const brandSecondary =
   Constants.expoConfig?.extra?.brandSecondary || secondaryColor;
@@ -124,7 +124,7 @@ export const Colors: Record<"light" | "dark", any> = {
     accent: "#c74a31",
     highlight: "#f1c40f",
     green: "#22c55e",
-    purple: "#611efcff",
+    purple: "#611efc",
     dark: "#000000",
     orange: "#ec9a29",
     blue: "#2a9df4",

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "732349796782",
+    "project_id": "bright-lilies",
+    "storage_bucket": "bright-lilies.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:732349796782:android:7edca385e7aeedf6d6b83f",
+        "android_client_info": {
+          "package_name": "com.saysmanage.lilies"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3qEUZxbRVforshtupCL_47TDSyxhCw54"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

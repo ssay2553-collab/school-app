@@ -213,10 +213,10 @@ export default function AttendanceOverview() {
             recipientId: teacher.uid,
             senderId: appUser?.uid || "admin",
             senderName: "School Administration",
-            type: "attendance",
+            type: "attendance_reminder",
             title: "Attendance Reminder 📝",
             body: `Please remember to mark attendance for ${cls.name} today.`,
-            data: { classId: cls.id, date: selectedDate }
+            data: { classId: cls.id, date: selectedDate, isReminder: "true" }
           });
           count++;
         }

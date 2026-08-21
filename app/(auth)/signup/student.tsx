@@ -1,25 +1,9 @@
 // /signup/student.tsx
 import { Picker } from "@react-native-picker/picker";
-import { useRouter } from "expo-router";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import {
-    collection,
-    doc,
-    getDocs,
-    getDocsFromServer,
-    limit,
-    query,
-    serverTimestamp,
-    Timestamp,
-    where,
-    writeBatch,
-} from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import moment from "moment";
 import {
     ActivityIndicator,
-    Alert,
     KeyboardAvoidingView,
     Platform,
     ScrollView,
@@ -29,454 +13,36 @@ import {
     View,
     SafeAreaView,
     StatusBar,
-    Dimensions,
     Image,
     Text,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
-import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
 import SVGIcon from "../../../components/SVGIcon";
 import { SHADOWS, COLORS as THEME_COLORS } from "../../../constants/theme";
-import { useToast } from "../../../contexts/ToastContext";
-import { httpsCallable } from "firebase/functions";
-import { auth, db, storage, functions } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
+import { useStudentSignup } from "../../../hooks/auth/useStudentSignup";
+
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 
-const { width } = Dimensions.get("window");
-
-interface ClassItem {
-  id: string;
-  name: string;
-}
-
-// Simple session cache to save data for bulk registrations
-let cachedClasses: ClassItem[] | null = null;
-
 export default function StudentSignupScreen() {
-  const router = useRouter();
-  const { showToast } = useToast();
   const primary = SCHOOL_CONFIG.primaryColor;
-  const secondary = SCHOOL_CONFIG.secondaryColor;
 
-  const webInputStyle = Platform.OS === 'web' ? {
-    padding: '10px',
-    borderRadius: '8px',
-    border: '1px solid #E2E8F0',
-    fontSize: '16px',
-    width: '100%',
-    marginBottom: '10px'
-  } : {};
-
-  const [step, setStep] = useState(1);
-  const [classes, setClasses] = useState<ClassItem[]>(cachedClasses || []);
-  const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    gender: "",
-    selectedClassId: "",
-    signupCode: "",
-    dateOfBirth: null as Date | null,
-    profileImage: null as string | null,
-  });
-
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [isCodeVerified, setIsCodeVerified] = useState(false);
-
-  // Disable native driver for web/electron to avoid warnings
-  const useNativeDriver = Platform.OS !== 'web';
-
-  const verifyCode = async () => {
-    if (!form.signupCode.trim()) {
-      showToast({ message: "Please enter your signup code.", type: "error" });
-      return;
-    }
-    setLoading(true);
-    try {
-      const cleanCode = form.signupCode.trim().toUpperCase();
-
-      // 1. Check for a Pre-registered Profile (Bulk Import)
-      const pendingQuery = query(
-        collection(db, "users"),
-        where("signupCode", "==", cleanCode),
-        where("role", "==", "student"),
-        where("status", "==", "pending_activation"),
-        limit(1)
-      );
-      const pendingSnapshot = await getDocs(pendingQuery);
-      const pendingDoc = pendingSnapshot.docs.find(d => d.data().status === "pending_activation");
-
-      if (pendingDoc) {
-        const data = pendingDoc.data();
-        setForm(prev => ({
-          ...prev,
-          firstName: data.profile?.firstName || prev.firstName,
-          lastName: data.profile?.lastName || prev.lastName,
-          gender: data.profile?.gender || data.gender || "",
-          selectedClassId: data.classId || prev.selectedClassId,
-          dateOfBirth: data.dateOfBirth?.toDate ? data.dateOfBirth.toDate() : (data.dateOfBirth ? new Date(data.dateOfBirth) : null),
-        }));
-        showToast({ message: `Welcome ${data.profile?.firstName}! Profile found.`, type: "success" });
-        setIsCodeVerified(true);
-        setStep(2);
-        return;
-      }
-
-      // 2. Check generic signupCodes
-      const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode), limit(1));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        throw new Error("Invalid signup code. Please check with your teacher.");
-      }
-
-      const codeData = querySnapshot.docs[0].data();
-      if (codeData.classId) {
-        setForm(prev => ({ ...prev, selectedClassId: codeData.classId }));
-      }
-
-      showToast({ message: "Code verified! Please complete your account details.", type: "success" });
-      setIsCodeVerified(true);
-      setStep(2);
-    } catch (err: any) {
-      showToast({ message: err.message || "Verification failed.", type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const fetchClasses = async () => {
-      if (cachedClasses && cachedClasses.length > 0) return;
-      try {
-        // Fetch classes and use "safe filter" to include legacy docs or school-specific ones
-        const q = query(collection(db, "classes"));
-        const snap = await getDocsFromServer(q as any);
-        const list = snap.docs
-          .map((d) => ({ id: d.id, ...(d.data() as any) } as any))
-          .map((d) => ({ id: d.id, name: d.name || d.id }));
-
-        const sorted = list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-        setClasses(sorted);
-        cachedClasses = sorted;
-      } catch (err) {
-        console.error("Failed to fetch classes:", err);
-      }
-    };
-    fetchClasses();
-  }, []);
-
-  const generateLinkCode = () => {
-    return Math.random().toString(36).substring(2, 8).toUpperCase();
-  };
-
-  const pickImage = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert("Permission Denied", "We need access to your gallery to upload a profile picture.");
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1, // Full quality for the initial crop
-      });
-
-      if (!result.canceled) {
-        // Resize to 300x300 - significantly reduces data regardless of quality setting
-        const manipResult = await ImageManipulator.manipulateAsync(
-          result.assets[0].uri,
-          [{ resize: { width: 300, height: 300 } }],
-          { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
-        );
-        setForm({ ...form, profileImage: manipResult.uri });
-      }
-    } catch (e) {
-      console.error("Image pick error:", e);
-      Alert.alert("Error", "Failed to open image gallery.");
-    }
-  };
-
-  const validateStep = () => {
-    if (step === 1) {
-      if (!form.signupCode.trim()) {
-        showToast({ message: "Please enter your signup code.", type: "error" });
-        return false;
-      }
-      if (!isCodeVerified) {
-        verifyCode();
-        return false;
-      }
-    } else if (step === 2) {
-      if (!form.firstName.trim() || !form.lastName.trim()) {
-        showToast({ message: "Please enter your full name.", type: "error" });
-        return false;
-      }
-      if (!form.email.trim()) {
-        showToast({ message: "Please enter an email address.", type: "error" });
-        return false;
-      }
-      if (form.email.trim().includes(" ")) {
-        showToast({ message: "Email or username cannot contain spaces.", type: "error" });
-        return false;
-      }
-      if (form.password.length < 6) {
-        showToast({ message: "Password must be at least 6 characters.", type: "error" });
-        return false;
-      }
-      if (form.password !== form.confirmPassword) {
-        showToast({ message: "Passwords do not match", type: "error" });
-        return false;
-      }
-    } else if (step === 3) {
-      if (!form.gender) {
-        showToast({ message: "Please select your gender.", type: "error" });
-        return false;
-      }
-      if (!form.selectedClassId) {
-        showToast({ message: "Please select your class.", type: "error" });
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const nextStep = () => {
-    if (validateStep()) setStep(s => s + 1);
-  };
-
-  const prevStep = () => setStep(s => s - 1);
-
-  // Robust way to get blob from local URI on Android
-  const uriToBlob = (uri: string): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.onload = function () {
-        resolve(xhr.response);
-      };
-      xhr.onerror = function (e) {
-        reject(new Error("Image upload failed at source. Please try another image."));
-      };
-      xhr.responseType = "blob";
-      xhr.open("GET", uri, true);
-      xhr.send(null);
-    });
-  };
-
-  const handleSignup = async () => {
-    if (!form.signupCode.trim()) {
-      return showToast({ message: "Please enter your signup code.", type: "error" });
-    }
-
-    setLoading(true);
-
-    try {
-      const cleanCode = form.signupCode.trim().toUpperCase();
-
-      // 1. Check for a Pre-registered Profile (Bulk Import)
-      const pendingQuery = query(
-        collection(db, "users"),
-        where("signupCode", "==", cleanCode),
-        where("role", "==", "student"),
-        where("status", "==", "pending_activation"),
-        limit(1)
-      );
-      const pendingSnapshot = await getDocs(pendingQuery);
-
-      const pendingDoc = pendingSnapshot.docs.find(d => d.data().status === "pending_activation");
-
-      let preRegisteredData: any = null;
-      let pendingDocId: string | null = null;
-
-      if (pendingDoc) {
-        pendingDocId = pendingDoc.id;
-        preRegisteredData = pendingDoc.data();
-      }
-
-      // 2. Validate Code (either from pending profile or standard signupCodes collection)
-      let codeDocId: string | null = null;
-
-      if (!preRegisteredData) {
-        const q = query(collection(db, "signupCodes"), where("code", "==", cleanCode), limit(1));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-          throw new Error("That signup code doesn't seem to fit. Check it again!");
-        }
-
-        const codeDoc = querySnapshot.docs[0];
-        const codeData = codeDoc.data();
-
-        if (codeData.expiresAt && Timestamp.now().toMillis() > codeData.expiresAt.toMillis()) {
-          throw new Error("This code has expired. Ask your teacher for a new one!");
-        }
-
-        if (codeData.intendedForRole !== "student" || codeData.used || codeData.classId !== form.selectedClassId) {
-          throw new Error("This code isn't for you or it's already been used! Check your class and code again.");
-        }
-
-        codeDocId = codeDoc.id;
-      }
-
-      // Auto-format "email" if they just entered a username
-      // Remove all spaces and invalid characters for a safe email format
-      let finalEmail = form.email.trim().toLowerCase().replace(/\s+/g, "");
-
-      if (finalEmail && !finalEmail.includes("@")) {
-        // Use a safe slug for the domain, defaulting to 'student'
-        const domainSlug = (SCHOOL_CONFIG.schoolId || 'student')
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, ''); // Ensure domain part is alphanumeric
-        finalEmail = `${finalEmail}@${domainSlug}.edueaz.com`;
-      }
-
-      // Final validation check before calling Firebase
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(finalEmail)) {
-        throw new Error("The email or username format is invalid. Please avoid special characters.");
-      }
-
-      console.log("[Signup] Attempting registration with email:", finalEmail);
-
-      // Create Authentication Entry
-      const cred = await createUserWithEmailAndPassword(auth, finalEmail, form.password);
-      const userId = cred.user.uid;
-
-      // Force token refresh to ensure custom claims or immediate visibility if needed
-      await cred.user.getIdToken(true);
-
-      // Safe Image Upload
-      let profileImageUrl = null;
-      if (form.profileImage) {
-        try {
-          const blob = await uriToBlob(form.profileImage);
-          const storageRef = ref(storage, `profiles/${userId}.jpg`);
-          await uploadBytes(storageRef, blob);
-          profileImageUrl = await getDownloadURL(storageRef);
-        } catch (imgErr) {
-          console.error("Profile image upload failed:", imgErr);
-        }
-      }
-
-      // Call the Cloud Function for pre-registered students to migrate data
-      // New students write directly to Firestore to avoid Cloud Function overhead/CORS issues
-      if (pendingDocId) {
-        try {
-          console.log("[Signup] Pre-registered student detected. Calling migration function...");
-          const completeSignupFn = httpsCallable(functions, 'completeStudentSignup');
-          await completeSignupFn({
-            form: {
-              ...form,
-              email: finalEmail,
-              dateOfBirth: form.dateOfBirth?.toISOString()
-            },
-            pendingDocId,
-            codeDocId,
-            profileImageUrl,
-            cleanCode,
-          });
-        } catch (fnErr: any) {
-          console.warn("[Signup] Cloud Function failed, falling back to client-side write for profile claiming:", fnErr);
-          await performClientSideSignup(userId, finalEmail, profileImageUrl, cleanCode, pendingDocId, codeDocId, preRegisteredData);
-        }
-      } else {
-        console.log("[Signup] New student detected. Performing direct Firestore registration...");
-        await performClientSideSignup(userId, finalEmail, profileImageUrl, cleanCode, null, codeDocId, null);
-      }
-
-      showToast({ message: "Account created successfully! Welcome to your school portal.", type: "success" });
-      router.replace("/(auth)/login/student");
-    } catch (err: any) {
-      console.error("Signup error details:", err);
-      let msg = err.message;
-      if (err.code === 'auth/email-already-in-use') msg = "This email or username is already taken.";
-      showToast({ message: msg || "An unexpected error occurred.", type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const performClientSideSignup = async (
-    userId: string,
-    finalEmail: string,
-    profileImageUrl: string | null,
-    cleanCode: string,
-    pendingDocId: string | null,
-    codeDocId: string | null,
-    preRegisteredData: any | null
-  ) => {
-    const batch = writeBatch(db);
-    const userRef = doc(db, "users", userId);
-
-      const userData: any = {
-        uid: userId,
-        authUid: userId, // Added to ensure cleanup hooks recognize this as a valid Auth document
-        email: finalEmail,
-        role: "student",
-        status: "active",
-        classId: preRegisteredData?.classId || form.selectedClassId,
-        profile: {
-          firstName: form.firstName || preRegisteredData?.profile?.firstName,
-          lastName: form.lastName || preRegisteredData?.profile?.lastName,
-          fullName: `${form.firstName || preRegisteredData?.profile?.firstName} ${form.lastName || preRegisteredData?.profile?.lastName}`,
-          email: finalEmail,
-          gender: form.gender || preRegisteredData?.profile?.gender || "",
-          profileImage: profileImageUrl || preRegisteredData?.profile?.profileImage || null,
-          dateOfBirth: form.dateOfBirth ? Timestamp.fromDate(form.dateOfBirth) : (preRegisteredData?.dateOfBirth || null),
-        },
-        signupCode: cleanCode,
-        parentLinkCode: preRegisteredData?.parentLinkCode || generateLinkCode(),
-        parentUids: preRegisteredData?.parentUids || [],
-        createdAt: preRegisteredData?.createdAt || serverTimestamp(),
-        claimedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      // Fallback Migration:
-      // Financial and Academic records are NOT copied here to maintain Firestore security rules
-      // (students cannot set their own balances).
-      // The `useFinanceCleanup` and `useAcademicCleanup` tools in the admin dashboard
-      // will automatically resolve these legacy records to the new Auth UID once they detect the 'claimed' status.
-      if (preRegisteredData) {
-        userData.previousClassId = preRegisteredData.classId;
-      }
-
-    // Always create/update the document at the Auth UID to ensure system helpers work
-    batch.set(userRef, userData);
-
-    if (pendingDocId) {
-      // Mark the pre-registered profile as claimed
-      batch.update(doc(db, "users", pendingDocId), {
-        status: 'claimed',
-        claimedBy: userId,
-        claimedAt: serverTimestamp()
-      });
-    }
-
-    // Mark code as used if it was a generic one
-    if (codeDocId) {
-      batch.update(doc(db, "signupCodes", codeDocId), {
-        used: true,
-        usedBy: userId,
-        usedAt: serverTimestamp()
-      });
-    }
-
-    await batch.commit();
-
-    if (pendingDocId) {
-      console.warn("[Signup] Migration of historical records might be incomplete if Cloud Function failed.");
-    }
-  };
+  const {
+    step,
+    classes,
+    form,
+    setForm,
+    showDatePicker,
+    setShowDatePicker,
+    showPassword,
+    setShowPassword,
+    loading,
+    verifyCode,
+    pickImage,
+    nextStep,
+    prevStep,
+    handleSignup,
+  } = useStudentSignup();
 
   const renderStepIndicator = () => (
     <View style={styles.indicatorContainer}>
@@ -526,7 +92,6 @@ export default function StudentSignupScreen() {
                   value={form.signupCode}
                   onChangeText={(v) => {
                     setForm({ ...form, signupCode: v });
-                    setIsCodeVerified(false);
                   }}
                   autoCapitalize="characters"
                 />
@@ -634,7 +199,7 @@ export default function StudentSignupScreen() {
                             fontFamily: 'inherit'
                           }}
                           value={form.dateOfBirth ? form.dateOfBirth.toISOString().split('T')[0] : ""}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                          onChange={(e: any) => {
                             const date = new Date(e.target.value);
                             if (!isNaN(date.getTime())) {
                               setForm({ ...form, dateOfBirth: date });
@@ -757,7 +322,7 @@ const styles = StyleSheet.create({
   themedDefault: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#1E293B', // Default text color if not specified
+    color: '#1E293B',
   },
   scrollContent: { padding: 24, flexGrow: 1 },
   header: { marginBottom: 30, alignItems: "center" },
@@ -804,7 +369,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
-  removeAvatar: { position: 'absolute', top: -5, right: width/2 - 50 - 24, backgroundColor: '#fff', borderRadius: 10 },
+  removeAvatar: { position: 'absolute', top: -5, right: '50%', marginRight: -60, backgroundColor: '#fff', borderRadius: 10 },
   inputGroup: { marginBottom: 16 },
   inputLabel: { fontSize: 10, fontWeight: "900", color: "#64748B", marginBottom: 6, letterSpacing: 1 },
   inputWrapper: { 

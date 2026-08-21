@@ -28,6 +28,7 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useOtherCharges, Student } from "../../hooks/admin-dashboard/useOtherCharges";
 
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
+import { SHADOWS } from "../../constants/theme";
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 
 const { width } = Dimensions.get("window");
@@ -108,6 +109,7 @@ export default function OtherCharges() {
   const [selectedClassId, setSelectedClassId] = useState("all");
   const [classModalVisible, setClassModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [modalMode, setModalMode] = useState<"payment" | "charge">("payment");
 
   const {
     loading,
@@ -120,12 +122,28 @@ export default function OtherCharges() {
     history,
     loadingHistory,
     fetchStudents,
-    fetchPaymentHistory,
     handleLogPayment,
     applyOtherCharge,
-    handleDeleteCharge,
-    handleDeletePayment,
+    applyStudentOtherCharge,
+    confirmDeleteCharge,
+    confirmDeletePayment,
     handleRefresh,
+
+    // UI States & Handlers
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    chargeType,
+    setChargeType,
+    chargeAmount,
+    setChargeAmount,
+    openPaymentModal,
   } = useOtherCharges({
     appUser,
     acadConfig,
@@ -134,101 +152,19 @@ export default function OtherCharges() {
     searchQuery,
   });
 
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [receivedFrom, setReceivedFrom] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
-
-  const [chargeType, setChargeType] = useState("");
-  const [chargeAmount, setChargeAmount] = useState("");
-
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase();
     return students.filter(s => s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
 
-  const handleStudentPress = useCallback((student: Student) => {
-    setPaymentAmount("");
-    setReceivedFrom("");
-    setPaymentMethod("Cash");
-    setSelectedStudent(student);
-    setPaymentModalVisible(true);
-    fetchPaymentHistory(student.uid);
-  }, [fetchPaymentHistory]);
+  const handleOpenModal = useCallback((student: Student) => {
+    setModalMode("payment");
+    openPaymentModal(student);
+  }, [openPaymentModal]);
 
   const renderStudentItem = useCallback(({ item }: { item: Student }) => (
-    <OtherStudentCard item={item} onPress={handleStudentPress} />
-  ), [handleStudentPress]);
-
-  const onConfirmPayment = async () => {
-    if (!selectedStudent) return;
-    const amount = parseFloat(paymentAmount);
-    const success = await handleLogPayment(selectedStudent, amount, receivedFrom, paymentMethod);
-    if (success) {
-      setPaymentModalVisible(false);
-      setPaymentAmount("");
-      setReceivedFrom("");
-    }
-  };
-
-  const onApplyOtherCharge = async () => {
-    const success = await applyOtherCharge(chargeType, chargeAmount);
-    if (success) {
-      setChargeType("");
-      setChargeAmount("");
-    }
-  };
-
-  const onConfirmDeleteCharge = (category: string) => {
-    const confirmDeletion = () => {
-      handleDeleteCharge(category);
-    };
-
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(
-        `Delete '${category}' and reverse balances for all students in this class?`
-      );
-      if (confirmed) {
-        confirmDeletion();
-      }
-    } else {
-      Alert.alert(
-        "Reverse Charge",
-        `Delete '${category}' and reverse balances for all students in this class?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Delete & Reverse", style: "destructive", onPress: confirmDeletion },
-        ]
-      );
-    }
-  };
-
-  const onRevertTransaction = (h: any) => {
-    if (!selectedStudent) return;
-
-    const confirmDeletion = () => {
-      handleDeletePayment(selectedStudent, h);
-    };
-
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(
-        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance."
-      );
-      if (confirmed) {
-        confirmDeletion();
-      }
-    } else {
-      Alert.alert(
-        "Confirm Deletion",
-        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Delete", style: "destructive", onPress: confirmDeletion },
-        ]
-      );
-    }
-  };
+    <OtherStudentCard item={item} onPress={handleOpenModal} />
+  ), [handleOpenModal]);
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -308,29 +244,49 @@ export default function OtherCharges() {
 
             <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
               <Text style={styles.listTitle}>BILL NEW ITEM (CLASS BULK)</Text>
-              <View style={[styles.bulkInputContainer, { marginTop: 10 }]}>
-                <TextInput
-                  style={[styles.bulkInput, { flex: 2 }]}
-                  placeholder="Description (e.g. Graduation)"
-                  value={chargeType}
-                  onChangeText={setChargeType}
-                  placeholderTextColor={VIBE.muted}
-                />
-                <View style={{ width: 1, height: 30, backgroundColor: VIBE.border, marginHorizontal: 10 }} />
-                <TextInput
-                  style={[styles.bulkInput, { flex: 1 }]}
-                  placeholder="Amt"
-                  keyboardType="numeric"
-                  value={chargeAmount}
-                  onChangeText={setChargeAmount}
-                  placeholderTextColor={VIBE.muted}
-                />
+              <View style={{ marginTop: 10 }}>
+                <View style={[styles.bulkInputContainer, { paddingHorizontal: 12, height: 54 }]}>
+                  <TextInput
+                    style={[styles.bulkInput, { flex: 2, fontSize: 14 }]}
+                    placeholder="Charge Item (e.g. Exam)"
+                    value={chargeType}
+                    onChangeText={setChargeType}
+                    placeholderTextColor={VIBE.muted}
+                  />
+                  <View style={{ width: 1, height: 25, backgroundColor: VIBE.border, marginHorizontal: 10 }} />
+                  <TextInput
+                    style={[styles.bulkInput, { flex: 1, fontSize: 14, textAlign: 'center' }]}
+                    placeholder="Amount"
+                    keyboardType="numeric"
+                    value={chargeAmount}
+                    onChangeText={setChargeAmount}
+                    placeholderTextColor={VIBE.muted}
+                  />
+                </View>
+
                 <TouchableOpacity
-                   onPress={onApplyOtherCharge}
-                   style={{ backgroundColor: THEME.primary, width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
+                   onPress={applyOtherCharge}
+                   style={{
+                     marginTop: 10,
+                     backgroundColor: THEME.primary,
+                     height: 50,
+                     borderRadius: 15,
+                     flexDirection: 'row',
+                     justifyContent: 'center',
+                     alignItems: 'center',
+                     gap: 8,
+                     ...SHADOWS.small,
+                   }}
                    disabled={saving}
                 >
-                  {saving ? <ActivityIndicator color="#fff" /> : <SVGIcon name="add" size={24} color="#fff" />}
+                  {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <SVGIcon name="add-circle-outline" size={20} color="#fff" />
+                      <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 }}>APPLY BULK CHARGE</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
               {selectedClassId === "all" && (
@@ -350,7 +306,7 @@ export default function OtherCharges() {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Text style={styles.summaryBreakdownLabel} numberOfLines={1}>{item.category}</Text>
                           {selectedClassId !== "all" && (
-                            <TouchableOpacity onPress={() => onConfirmDeleteCharge(item.category)}>
+                            <TouchableOpacity onPress={() => confirmDeleteCharge(item.category)}>
                               <SVGIcon name="close-circle" size={16} color={VIBE.danger} />
                             </TouchableOpacity>
                           )}
@@ -398,56 +354,118 @@ export default function OtherCharges() {
             <View style={styles.sheetHeader}>
               <View>
                 <Text style={styles.sheetTitle}>{selectedStudent?.fullName}</Text>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>OTHER FEES PAYMENT</Text>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>MANAGE OTHER FEES</Text>
               </View>
               <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeRound}>
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-              <View style={{ gap: 15, marginBottom: 25 }}>
-                <Text style={styles.breakdownLabel}>AMOUNT TO PAY (₵)</Text>
-                <TextInput
-                  style={styles.pillInput}
-                  placeholder="0.00"
-                  keyboardType="numeric"
-                  value={paymentAmount}
-                  onChangeText={setPaymentAmount}
-                />
-
-                <Text style={styles.breakdownLabel}>RECEIVED FROM</Text>
-                <TextInput
-                  style={[styles.pillInput, { fontSize: 16 }]}
-                  placeholder="Payer Name"
-                  value={receivedFrom}
-                  onChangeText={setReceivedFrom}
-                />
-              </View>
-
-              <Text style={styles.breakdownLabel}>PAYMENT METHOD</Text>
-              <View style={styles.methodGrid}>
-                {["Cash", "Cheque", "Momo", "E-cash"].map(m => (
-                  <TouchableOpacity
-                    key={m}
-                    style={[styles.methodBtn, paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary }]}
-                    onPress={() => setPaymentMethod(m as any)}
-                  >
-                    <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <TouchableOpacity onPress={onConfirmPayment} disabled={saving}>
-                <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
-                  {saving ? <ActivityIndicator color="#fff" /> : (
-                    <>
-                      <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
-                      <SVGIcon name="checkmark-circle" size={20} color="#fff" />
-                    </>
-                  )}
-                </LinearGradient>
+            <View style={[styles.modeTabs, { marginBottom: 20 }]}>
+              <TouchableOpacity
+                style={[styles.modeTab, modalMode === "payment" && styles.activeModeTab]}
+                onPress={() => setModalMode("payment")}
+              >
+                <SVGIcon name="cash-outline" size={18} color={modalMode === "payment" ? "#fff" : VIBE.muted} />
+                <Text style={[styles.modeTabText, modalMode === "payment" && { color: "#fff" }]}>PAYMENT</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeTab, modalMode === "charge" && styles.activeModeTab]}
+                onPress={() => setModalMode("charge")}
+              >
+                <SVGIcon name="add-circle-outline" size={18} color={modalMode === "charge" ? "#fff" : VIBE.muted} />
+                <Text style={[styles.modeTabText, modalMode === "charge" && { color: "#fff" }]}>BILL ITEM</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+              {modalMode === "payment" ? (
+                <>
+                  <View style={{ gap: 15, marginBottom: 25 }}>
+                    <Text style={styles.breakdownLabel}>AMOUNT TO PAY (₵)</Text>
+                    <TextInput
+                      style={styles.pillInput}
+                      placeholder="0.00"
+                      keyboardType="numeric"
+                      value={paymentAmount}
+                      onChangeText={setPaymentAmount}
+                    />
+
+                    <Text style={styles.breakdownLabel}>RECEIVED FROM</Text>
+                    <TextInput
+                      style={[styles.pillInput, { fontSize: 16 }]}
+                      placeholder="Payer Name"
+                      value={receivedFrom}
+                      onChangeText={setReceivedFrom}
+                    />
+                  </View>
+
+                  <Text style={styles.breakdownLabel}>PAYMENT METHOD</Text>
+                  <View style={styles.methodGrid}>
+                    {["Cash", "Cheque", "Momo", "E-cash"].map(m => (
+                      <TouchableOpacity
+                        key={m}
+                        style={[styles.methodBtn, paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary }]}
+                        onPress={() => setPaymentMethod(m as any)}
+                      >
+                        <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <TouchableOpacity onPress={handleLogPayment} disabled={saving}>
+                    <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
+                      {saving ? <ActivityIndicator color="#fff" /> : (
+                        <>
+                          <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
+                          <SVGIcon name="checkmark-circle" size={20} color="#fff" />
+                        </>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <View style={{ gap: 15, marginBottom: 25 }}>
+                    <Text style={styles.breakdownLabel}>ITEM DESCRIPTION (e.g. Graduation Fee)</Text>
+                    <TextInput
+                      style={[styles.pillInput, { fontSize: 16 }]}
+                      placeholder="Description"
+                      value={chargeType}
+                      onChangeText={setChargeType}
+                    />
+
+                    <Text style={styles.breakdownLabel}>CHARGE AMOUNT (₵)</Text>
+                    <TextInput
+                      style={styles.pillInput}
+                      placeholder="0.00"
+                      keyboardType="numeric"
+                      value={chargeAmount}
+                      onChangeText={setChargeAmount}
+                    />
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={() => selectedStudent && applyStudentOtherCharge(selectedStudent)}
+                    disabled={saving}
+                  >
+                    <LinearGradient colors={[VIBE.purple, "#6D28D9"]} style={styles.saveBtn}>
+                      {saving ? <ActivityIndicator color="#fff" /> : (
+                        <>
+                          <Text style={styles.saveBtnText}>ADD CHARGE TO BILL</Text>
+                          <SVGIcon name="add-circle" size={20} color="#fff" />
+                        </>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {chargeType.length > 0 && chargeAmount.length > 0 && (
+                    <Text style={{ fontSize: 10, color: VIBE.muted, textAlign: 'center', marginTop: 10, fontWeight: '700' }}>
+                      * This will add '{chargeType}' to {selectedStudent?.fullName}'s bill
+                    </Text>
+                  )}
+                </>
+              )}
 
               <View style={styles.historyBlock}>
                 <Text style={styles.blockTitle}>Transaction History</Text>
@@ -469,7 +487,7 @@ export default function OtherCharges() {
                           }
                         });
                       }}
-                      onLongPress={() => onRevertTransaction(h)}
+                      onLongPress={() => confirmDeletePayment(h)}
                     >
                       <View style={styles.tileHeader}>
                         <Text style={[styles.tileAmt, { color: h.type === 'other' ? VIBE.info : VIBE.success }]}>
@@ -488,7 +506,7 @@ export default function OtherCharges() {
                           <TouchableOpacity
                             onPress={(e) => {
                               e.stopPropagation();
-                              onRevertTransaction(h);
+                              confirmDeletePayment(h);
                             }}
                             style={{ padding: 4 }}
                           >

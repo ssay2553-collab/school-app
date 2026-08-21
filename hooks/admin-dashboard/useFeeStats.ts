@@ -61,12 +61,10 @@ export const useFeeStats = (
 
       records.forEach((data) => {
         const user = userMap.get(data.studentUid);
-        if (!user || user.onScholarship) return;
+        if (!user) return;
         processedUids.add(data.studentUid);
 
-        // In the new model:
-        // 'balance' on the record is the definitive running net total (Total Bills - Total Payments - Discounts)
-        // RECEIVED is the accumulation of all paid amounts for this term/view
+        // Sum all payments for this term record
         const studentReceived =
           (data.amountPaid || 0) +
           (data.ptaPaid || 0) +
@@ -78,21 +76,26 @@ export const useFeeStats = (
 
         const studentDiscount = data.discount || 0;
 
-        // EXPECTED = Net amount that should be collected for this student (Arrears + Term Bills - Discounts)
-        // Since walletBalance is the definitive current net balance, and studentReceived is what we've
-        // already collected THIS TERM, then Expected = current walletBalance + what we already received.
-        const studentExpected = (user.walletBalance || 0) + studentReceived;
+        // Calculate Gross Expected (Payable) to match FeeReports.tsx
+        const studentPayable =
+          (data.arrears || 0) +
+          (data.termBill || 0) +
+          (data.ptaBill || 0) +
+          (data.maintenanceBill || 0) +
+          (data.admissionBill || 0) +
+          (data.booksBill || 0) +
+          (data.uniformBill || 0) +
+          (data.otherBill || 0);
 
-        totalExpected += studentExpected;
+        totalExpected += studentPayable;
         totalReceived += studentReceived;
         totalDiscount += studentDiscount;
       });
 
       // Include students who don't have a record for this specific term yet
       users.forEach((user) => {
-        if (!processedUids.has(user.id) && !user.onScholarship) {
-          // For students without a term record, walletBalance is their net arrears.
-          // Since payments are 0, Expected = walletBalance.
+        if (!processedUids.has(user.id)) {
+          // For students without a term record, walletBalance represents their starting arrears (Gross)
           totalExpected += user.walletBalance || 0;
         }
       });
@@ -101,7 +104,7 @@ export const useFeeStats = (
         expected: totalExpected,
         received: totalReceived,
         totalDiscount,
-        balance: totalExpected - totalReceived,
+        balance: totalExpected - totalDiscount - totalReceived,
       });
       setTotalDiscountCommitted(totalDiscount);
     };

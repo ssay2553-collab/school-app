@@ -73,6 +73,17 @@ export const useAdmissionCharges = ({
     term3Revenue: 0,
   });
 
+  // UI State migrated from component
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [receivedFrom, setReceivedFrom] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [activeTab, setActiveTab] = useState<"payment" | "billing">("payment");
+  const [billAmount, setBillAmount] = useState("");
+
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
   const isFetchingRef = useRef(false);
@@ -320,6 +331,24 @@ export const useAdmissionCharges = ({
     fetchStats();
   }, [selectedTerm, fetchAdmittedStudents, fetchStudents, fetchStats]);
 
+  const fetchPaymentHistory = async (studentUid: string) => {
+    setLoadingHistory(true);
+    try {
+      const q = query(
+        collection(db, "feePayments"),
+        where("studentUid", "==", studentUid),
+        where("type", "in", ["admission", "admission_payment"])
+      );
+      const snap = await getDocsFromServer(q);
+      const list = snap.docs.map(d => d.data());
+      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const logPayment = async (
     student: Student,
     amount: number,
@@ -414,6 +443,21 @@ export const useAdmissionCharges = ({
       return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogPayment = async () => {
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0 || !selectedStudent || !receivedFrom.trim()) {
+      showToast({ message: "Please enter valid payment details", type: "error" });
+      return;
+    }
+
+    const success = await logPayment(selectedStudent, amount, receivedFrom, paymentMethod);
+    if (success) {
+      setPaymentModalVisible(false);
+      setPaymentAmount("");
+      setReceivedFrom("");
     }
   };
 
@@ -516,6 +560,20 @@ export const useAdmissionCharges = ({
     }
   };
 
+  const handleLogBill = async () => {
+    const amount = parseFloat(billAmount);
+    if (isNaN(amount) || amount <= 0 || !selectedStudent) {
+      showToast({ message: "Please enter a valid billing amount", type: "error" });
+      return;
+    }
+
+    const success = await logBill(selectedStudent, amount);
+    if (success) {
+      setPaymentModalVisible(false);
+      setBillAmount("");
+    }
+  };
+
   const deletePayment = async (student: Student, payment: any) => {
     const year = acadConfig.academicYear?.replace(/\//g, "-");
     const term = acadConfig.currentTerm?.replace(/\s/g, "");
@@ -587,6 +645,12 @@ export const useAdmissionCharges = ({
     }
   };
 
+  const openPaymentModal = (student: Student) => {
+    setSelectedStudent(student);
+    setPaymentModalVisible(true);
+    fetchPaymentHistory(student.uid);
+  };
+
   return {
     loading,
     refreshing,
@@ -599,5 +663,27 @@ export const useAdmissionCharges = ({
     logBill,
     deletePayment,
     fetchStudents,
+
+    // UI state & handlers
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    setSelectedStudent,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    history,
+    loadingHistory,
+    activeTab,
+    setActiveTab,
+    billAmount,
+    setBillAmount,
+    handleLogPayment,
+    handleLogBill,
+    openPaymentModal,
   };
 };
+

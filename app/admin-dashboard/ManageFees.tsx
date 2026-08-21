@@ -1,30 +1,35 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import moment from "moment";
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Animated,
   BackHandler,
   FlatList,
-  Modal,
   Platform,
   RefreshControl,
-  ScrollView,
   StatusBar,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// Components
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 import { FeeDailyTransactionsModal } from "../../components/admin-dashboard/FeeDailyTransactionsModal";
 import { FeePaymentModal } from "../../components/admin-dashboard/FeePaymentModal";
 import { FeeStatsDashboard } from "../../components/admin-dashboard/FeeStatsDashboard";
 import { FeeStudentCard } from "../../components/admin-dashboard/FeeStudentCard";
+import { FeeConfirmModal } from "../../components/admin-dashboard/FeeConfirmModal";
+import { FeeHeader } from "../../components/admin-dashboard/FeeHeader";
+import { FeeSearchStrip } from "../../components/admin-dashboard/FeeSearchStrip";
+import { FeeModeTabs } from "../../components/admin-dashboard/FeeModeTabs";
+import { FeeBulkActionStrip } from "../../components/admin-dashboard/FeeBulkActionStrip";
 import SVGIcon from "../../components/SVGIcon";
+
+// Constants & Hooks
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { StudentDraft } from "../../constants/admin-dashboard/ManageFeesTypes";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -41,52 +46,6 @@ export default function ManageFees() {
   const router = useRouter();
   const acadConfig = useAcademicConfig();
   const scrollY = useRef(new Animated.Value(0)).current;
-
-  // ACCESS CONTROL LOGIC
-  const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = [
-    "proprietor",
-    "proprietress",
-    "manager",
-    "headmaster",
-    "headmistress",
-    "administrator",
-    "director",
-    "accountant",
-    "bursar",
-    "admin",
-    "super admin",
-    "superadmin",
-  ].includes(currentUserRole);
-  const feePermission = appUser?.permissions?.["manage-fees"] || "deny";
-  const canView =
-    isSuperAdmin ||
-    feePermission === "full" ||
-    feePermission === "view" ||
-    feePermission === "edit";
-  const canEdit =
-    isSuperAdmin || feePermission === "full" || feePermission === "edit";
-
-  const primaryBrand =
-    SCHOOL_CONFIG.primaryColor || COLORS.primary || VIBE.primary;
-  const secondaryBrand = SCHOOL_CONFIG.secondaryColor || primaryBrand;
-
-  const [selectorModal, setSelectorModal] = useState<{
-    visible: boolean;
-    type: "class" | "year" | "term" | null;
-  }>({ visible: false, type: null });
-  const [billModalVisible, setBillModalVisible] = useState(false);
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [discountModalVisible, setDiscountModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<StudentDraft | null>(
-    null,
-  );
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [receivedFrom, setReceivedFrom] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<
-    "Cash" | "Cheque" | "E-cash" | "Momo"
-  >("Cash");
-  const [paymentDate, setPaymentDate] = useState(new Date());
 
   const {
     saving,
@@ -128,6 +87,7 @@ export default function ManageFees() {
     saveDiscounts,
     toggleSelectAll,
     toggleStudentSelection,
+    setSelectedStudentUids,
     isConfigMissing,
     students,
     loading,
@@ -135,15 +95,43 @@ export default function ManageFees() {
     fetchStudents,
     handleRefresh,
     fetchingMore,
+    selectorModal,
+    setSelectorModal,
+    billModalVisible,
+    setBillModalVisible,
+    paymentModalVisible,
+    setPaymentModalVisible,
+    discountModalVisible,
+    setDiscountModalVisible,
+    selectedStudent,
+    setSelectedStudent,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    paymentDate,
+    setPaymentDate,
+    canView,
+    canEdit,
+    isSuperAdmin,
   } = useManageFees({
     appUser,
     showToast,
     acadConfig,
-    canEdit,
-    isSuperAdmin,
   });
 
-  const { stats } = useFeeStats(academicYear, term, selectedClassId, showArchived);
+  const { stats } = useFeeStats(
+    academicYear,
+    term,
+    selectedClassId,
+    showArchived,
+  );
+
+  const primaryBrand =
+    SCHOOL_CONFIG.primaryColor || COLORS.primary || VIBE.primary;
+  const secondaryBrand = SCHOOL_CONFIG.secondaryColor || primaryBrand;
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 80],
@@ -212,8 +200,6 @@ export default function ManageFees() {
     dailyModalVisible,
   ]);
 
-
-
   const renderStudentItem = ({ item }: { item: StudentDraft }) => {
     return (
       <FeeStudentCard
@@ -277,59 +263,19 @@ export default function ManageFees() {
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
-      <Animated.View style={styles.header}>
-        <LinearGradient
-          colors={[primaryBrand, secondaryBrand]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.headerTop, { minHeight: headerHeight }]}
-        >
-          <View style={styles.navBar}>
-            <TouchableOpacity
-              onPress={() => router.replace("/admin-dashboard")}
-              style={styles.headerIconBtn}
-            >
-              <SVGIcon name="arrow-back" size={24} color="#fff" />
-            </TouchableOpacity>
-            <View style={styles.titleCenter}>
-              <Text style={styles.headerTitle}>Finance Central</Text>
-              <Text style={styles.headerSub}>ADMINISTRATION</Text>
-            </View>
-            <View style={{ width: 44 }} />
-          </View>
-          <Animated.View
-            style={[
-              styles.selectorGrid,
-              {
-                opacity: selectorGridOpacity,
-                height: selectorGridHeight,
-                overflow: "hidden",
-              },
-            ]}
-          >
-            <TouchableOpacity
-              style={styles.glassPill}
-              onPress={() => setSelectorModal({ visible: true, type: "class" })}
-            >
-              <Text style={styles.glassLabel}>TARGET CLASS</Text>
-              <Text style={styles.glassValue} numberOfLines={1}>
-                {selectedClassId === "all"
-                  ? "All Classes"
-                  : classes.find((c) => c.id === selectedClassId)?.name ||
-                    "Select Class"}
-              </Text>
-            </TouchableOpacity>
-            <View style={styles.glassPill}>
-              <Text style={styles.glassLabel}>ACADEMIC YEAR</Text>
-              <Text style={styles.glassValue}>{academicYear || "Not Set"}</Text>
-            </View>
-            <View style={styles.glassPill}>
-              <Text style={styles.glassLabel}>TERM</Text>
-              <Text style={styles.glassValue}>{term || "Not Set"}</Text>
-            </View>
-          </Animated.View>
-        </LinearGradient>
-      </Animated.View>
+      <FeeHeader
+        primaryBrand={primaryBrand}
+        secondaryBrand={secondaryBrand}
+        headerHeight={headerHeight}
+        selectorGridOpacity={selectorGridOpacity}
+        selectorGridHeight={selectorGridHeight}
+        onBack={() => router.replace("/admin-dashboard")}
+        onSelectClass={() => setSelectorModal({ visible: true, type: "class" })}
+        selectedClassId={selectedClassId}
+        classes={classes}
+        academicYear={academicYear}
+        term={term}
+      />
 
       <View style={styles.mainBody}>
         <FlatList
@@ -340,262 +286,63 @@ export default function ManageFees() {
           scrollEventThrottle={16}
           ListHeaderComponent={
             <>
-              <View style={styles.searchStrip}>
-                <TouchableOpacity
-                  activeOpacity={1}
-                  style={styles.searchBar}
-                  onPress={() => {}}
-                >
-                  <SVGIcon name="search" size={18} color={VIBE.muted} />
-                  <TextInput
-                    placeholder="Search..."
-                    style={styles.searchInput}
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    placeholderTextColor={VIBE.muted}
-                    underlineColorAndroid="transparent"
-                  />
-                </TouchableOpacity>
-
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.searchActionsScroll}
-                  contentContainerStyle={styles.searchActionsContainer}
-                >
-                  <TouchableOpacity
-                    onPress={() => setShowArchived(!showArchived)}
-                    style={[
-                      styles.archiveToggle,
-                      showArchived && { backgroundColor: COLORS.secondary },
-                    ]}
-                  >
-                    <SVGIcon
-                      name="archive"
-                      size={18}
-                      color={showArchived ? "#fff" : VIBE.muted}
-                    />
-                    <Text
-                      style={[
-                        styles.archiveToggleText,
-                        { color: showArchived ? "#fff" : VIBE.muted },
-                      ]}
-                    >
-                      {showArchived ? "ACTIVE" : "ARCHIVE"}
-                    </Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() =>
-                      router.push({
-                        pathname: "/admin-dashboard/FeeReports",
-                        params: {
-                          classId: selectedClassId,
-                          academicYear,
-                          term,
-                        },
-                      })
-                    }
-                    style={styles.refreshRound}
-                  >
-                    <SVGIcon name="print" size={18} color={VIBE.primary} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={handleRefresh}
-                    style={styles.refreshRound}
-                  >
-                    <SVGIcon name="refresh" size={18} color={VIBE.primary} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setDailyModalVisible(true)}
-                    style={styles.refreshRound}
-                  >
-                    <SVGIcon name="calendar" size={18} color={VIBE.secondary} />
-                  </TouchableOpacity>
-
-                  {isSuperAdmin && (
-                    <TouchableOpacity
-                      onPress={handleNormalizeDiscounts}
-                      style={[
-                        styles.refreshRound,
-                        { backgroundColor: VIBE.info + "10" },
-                      ]}
-                    >
-                      <SVGIcon name="sync" size={18} color={VIBE.info} />
-                      {inconsistentCount > 0 && (
-                        <View
-                          style={{
-                            position: "absolute",
-                            top: -2,
-                            right: -2,
-                            backgroundColor: VIBE.danger,
-                            borderRadius: 8,
-                            minWidth: 16,
-                            height: 16,
-                            justifyContent: "center",
-                            alignItems: "center",
-                            paddingHorizontal: 4,
-                          }}
-                        >
-                          <Text
-                            style={{ color: "#fff", fontSize: 8, fontWeight: "900" }}
-                          >
-                            {inconsistentCount}
-                          </Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                </ScrollView>
-              </View>
+              <FeeSearchStrip
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                showArchived={showArchived}
+                setShowArchived={setShowArchived}
+                onPrintReports={() =>
+                  router.push({
+                    pathname: "/admin-dashboard/FeeReports",
+                    params: { classId: selectedClassId, academicYear, term },
+                  })
+                }
+                onRefresh={handleRefresh}
+                onShowDaily={() => setDailyModalVisible(true)}
+                onNormalize={handleNormalizeDiscounts}
+                isSuperAdmin={isSuperAdmin}
+                inconsistentCount={inconsistentCount}
+              />
 
               {!isConfigMissing && (
-                <View style={styles.modeToggleArea}>
-                  <View style={styles.modeTabs}>
-                    <TouchableOpacity
-                      style={[
-                        styles.modeTab,
-                        activeMode === "payment" && styles.activeModeTab,
-                      ]}
-                      onPress={() => setActiveMode("payment")}
-                    >
-                      <SVGIcon
-                        name="cash"
-                        size={18}
-                        color={activeMode === "payment" ? "#fff" : VIBE.muted}
-                      />
-                      <Text
-                        style={[
-                          styles.modeTabText,
-                          activeMode === "payment" && { color: "#fff" },
-                        ]}
-                      >
-                        PAYMENTS
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.modeTab,
-                        activeMode === "billing" && styles.activeModeTab,
-                      ]}
-                      onPress={() => setActiveMode("billing")}
-                    >
-                      <SVGIcon
-                        name="document-text"
-                        size={18}
-                        color={activeMode === "billing" ? "#fff" : VIBE.muted}
-                      />
-                      <Text
-                        style={[
-                          styles.modeTabText,
-                          activeMode === "billing" && { color: "#fff" },
-                        ]}
-                      >
-                        BILLING
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.modeTab,
-                        activeMode === "discounts" && styles.activeModeTab,
-                      ]}
-                      onPress={() => setActiveMode("discounts")}
-                    >
-                      <SVGIcon
-                        name="pricetag"
-                        size={18}
-                        color={activeMode === "discounts" ? "#fff" : VIBE.muted}
-                      />
-                      <Text
-                        style={[
-                          styles.modeTabText,
-                          activeMode === "discounts" && { color: "#fff" },
-                        ]}
-                      >
-                        DISCOUNTS
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                <FeeModeTabs
+                  activeMode={activeMode}
+                  setActiveMode={setActiveMode}
+                />
               )}
 
               {isConfigMissing && (
                 <View style={styles.warningStrip}>
                   <SVGIcon name="alert-circle" size={18} color="#92400E" />
                   <Text style={styles.warningText}>
-                    Academic configuration is missing. Term-based billing is disabled.
+                    Academic configuration is missing. Term-based billing is
+                    disabled.
                   </Text>
-                  <TouchableOpacity onPress={() => router.push("/academic-calendar")}>
+                  <TouchableOpacity
+                    onPress={() => router.push("/academic-calendar")}
+                  >
                     <Text style={styles.warningLink}>Configure Now</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {!isConfigMissing && activeMode === "billing" ? (
-                <View style={styles.bulkActionStrip}>
-                  <View style={styles.bulkInputContainer}>
-                    <Text style={styles.bulkSym}>₵</Text>
-                    <TextInput
-                      placeholder="Bulk Bill (+/-)"
-                      placeholderTextColor={VIBE.muted}
-                      style={styles.bulkInput}
-                      keyboardType="numbers-and-punctuation"
-                      value={termBillAmount}
-                      onChangeText={setTermBillAmount}
-                      editable={canEdit}
-                    />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.checkAllBtn}
-                    onPress={toggleSelectAll}
-                  >
-                    <SVGIcon
-                      name={
-                        filteredStudents.length > 0 &&
-                        filteredStudents.every((s) => selectedStudentUids.has(s.uid))
-                          ? "checkbox"
-                          : "square"
-                      }
-                      size={28}
-                      color={VIBE.primary}
-                    />
-                    <Text style={styles.checkAllText}>SELECT ALL</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : activeMode === "discounts" ? (
-                <View style={styles.bulkActionStrip}>
-                  <View style={styles.bulkInputContainer}>
-                    <Text style={[styles.bulkSym, { color: VIBE.success }]}>-</Text>
-                    <TextInput
-                      placeholder="Bulk Discount (₵)"
-                      placeholderTextColor={VIBE.muted}
-                      style={styles.bulkInput}
-                      keyboardType="numbers-and-punctuation"
-                      value={discountAmount}
-                      onChangeText={setDiscountAmount}
-                      editable={canEdit}
-                    />
-                  </View>
-                  <TouchableOpacity
-                    style={styles.checkAllBtn}
-                    onPress={toggleSelectAll}
-                  >
-                    <SVGIcon
-                      name={
-                        filteredStudents.length > 0 &&
-                        filteredStudents.every((s) => selectedStudentUids.has(s.uid))
-                          ? "checkbox"
-                          : "square"
-                      }
-                      size={28}
-                      color={VIBE.success}
-                    />
-                    <Text style={styles.checkAllText}>SELECT ALL</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
+              {!isConfigMissing && activeMode !== "payment" && (
+                <FeeBulkActionStrip
+                  activeMode={activeMode}
+                  amount={
+                    activeMode === "billing" ? termBillAmount : discountAmount
+                  }
+                  setAmount={
+                    activeMode === "billing"
+                      ? setTermBillAmount
+                      : setDiscountAmount
+                  }
+                  canEdit={canEdit}
+                  onToggleSelectAll={toggleSelectAll}
+                  filteredStudents={filteredStudents}
+                  selectedStudentUids={selectedStudentUids}
+                />
+              )}
 
               <FeeStatsDashboard
                 stats={stats}
@@ -670,25 +417,39 @@ export default function ManageFees() {
           }
         />
 
-        {activeMode === "billing" &&
+        {activeMode !== "payment" &&
           selectedStudentUids.size > 0 &&
           canEdit && (
             <Animatable.View animation="bounceIn" style={styles.fabWrap}>
               <TouchableOpacity
                 style={styles.mainFab}
-                onPress={() => setBillModalVisible(true)}
+                onPress={() =>
+                  activeMode === "billing"
+                    ? setBillModalVisible(true)
+                    : setDiscountModalVisible(true)
+                }
               >
                 <LinearGradient
-                  colors={[VIBE.primary, VIBE.purple]}
+                  colors={
+                    activeMode === "billing"
+                      ? [VIBE.primary, VIBE.purple]
+                      : [VIBE.success, VIBE.info]
+                  }
                   style={styles.fabGrad}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
                   <Text style={styles.fabText}>
-                    APPLY BILLS ({selectedStudentUids.size})
+                    APPLY{" "}
+                    {activeMode === "billing" ? "BILLS" : "DISCOUNTS"} (
+                    {selectedStudentUids.size})
                   </Text>
                   <SVGIcon
-                    name="checkmark-done-circle"
+                    name={
+                      activeMode === "billing"
+                        ? "checkmark-done-circle"
+                        : "pricetag"
+                    }
                     size={22}
                     color="#fff"
                   />
@@ -696,32 +457,8 @@ export default function ManageFees() {
               </TouchableOpacity>
             </Animatable.View>
           )}
-
-        {activeMode === "discounts" &&
-          selectedStudentUids.size > 0 &&
-          canEdit && (
-            <Animatable.View animation="bounceIn" style={styles.fabWrap}>
-              <TouchableOpacity
-                style={styles.mainFab}
-                onPress={() => setDiscountModalVisible(true)}
-              >
-                <LinearGradient
-                  colors={[VIBE.success, VIBE.info]}
-                  style={styles.fabGrad}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <Text style={styles.fabText}>
-                    APPLY DISCOUNTS ({selectedStudentUids.size})
-                  </Text>
-                  <SVGIcon name="pricetag" size={22} color="#fff" />
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animatable.View>
-          )}
       </View>
 
-      {/* Selector Modal */}
       <ClassSelectorModal
         visible={selectorModal.visible && selectorModal.type === "class"}
         onClose={() => setSelectorModal({ visible: false, type: null })}
@@ -733,7 +470,6 @@ export default function ManageFees() {
         }}
       />
 
-      {/* Payment Modal */}
       <FeePaymentModal
         visible={paymentModalVisible}
         onClose={() => {
@@ -753,93 +489,32 @@ export default function ManageFees() {
         setPaymentDate={setPaymentDate}
         paymentMethod={paymentMethod}
         setPaymentMethod={setPaymentMethod}
-        onConfirm={() =>
-          handleLogPayment(
-            selectedStudent,
-            paymentAmount,
-            receivedFrom,
-            paymentMethod,
-            paymentDate,
-            () => {
-              setPaymentModalVisible(false);
-              setPaymentAmount("");
-              setReceivedFrom("");
-              setPaymentMethod("Cash");
-              setPaymentDate(new Date());
-              setSelectedStudent(null);
-            },
-          )
-        }
-        onDeletePayment={(p) =>
-          handleDeletePayment(selectedStudent, p, () => {
-            setPaymentModalVisible(false);
-            setPaymentAmount("");
-            setReceivedFrom("");
-            setPaymentMethod("Cash");
-            setPaymentDate(new Date());
-            setSelectedStudent(null);
-          })
+        onConfirm={handleLogPayment}
+        onDeletePayment={(payment) =>
+          handleDeletePayment(selectedStudent, payment)
         }
         saving={saving}
         canEdit={canEdit}
       />
 
-      {/* Confirmation Modal for Billing */}
-      <Modal visible={billModalVisible} transparent animationType="fade">
-        <View style={styles.overlayCenter}>
-          <View style={styles.alertCard}>
-            <Text style={styles.alertTitle}>Bulk Billing?</Text>
-            <Text style={styles.alertText}>
-              Apply these adjustments to {selectedStudentUids.size} accounts?
-            </Text>
-            <View style={styles.alertBtnRow}>
-              <TouchableOpacity
-                onPress={() => setBillModalVisible(false)}
-                style={styles.alertBtnSec}
-              >
-                <Text style={styles.alertBtnTextSec}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => saveFees(() => setBillModalVisible(false))}
-                style={[styles.alertBtnPri, { backgroundColor: VIBE.primary }]}
-              >
-                <Text style={styles.alertBtnTextPri}>Confirm</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <FeeConfirmModal
+        visible={billModalVisible}
+        title="Bulk Billing?"
+        message={`Apply these adjustments to ${selectedStudentUids.size} accounts?`}
+        onConfirm={() => saveFees(selectedStudentUids)}
+        onCancel={() => setBillModalVisible(false)}
+        confirmColor={VIBE.primary}
+      />
 
-      {/* Discount Modal */}
-      <Modal visible={discountModalVisible} transparent animationType="fade">
-        <View style={styles.overlayCenter}>
-          <View style={styles.alertCard}>
-            <Text style={styles.alertTitle}>Apply Discounts?</Text>
-            <Text style={styles.alertText}>
-              Apply discounts to {selectedStudentUids.size} selected students?
-              {"\n"}This will reduce their outstanding balance.
-            </Text>
-            <View style={styles.alertBtnRow}>
-              <TouchableOpacity
-                onPress={() => setDiscountModalVisible(false)}
-                style={styles.alertBtnSec}
-              >
-                <Text style={styles.alertBtnTextSec}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() =>
-                  saveDiscounts(() => setDiscountModalVisible(false))
-                }
-                style={[styles.alertBtnPri, { backgroundColor: VIBE.success }]}
-              >
-                <Text style={styles.alertBtnTextPri}>Confirm</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <FeeConfirmModal
+        visible={discountModalVisible}
+        title="Apply Discounts?"
+        message={`Apply discounts to ${selectedStudentUids.size} selected students?\nThis will reduce their outstanding balance.`}
+        onConfirm={() => saveDiscounts(selectedStudentUids)}
+        onCancel={() => setDiscountModalVisible(false)}
+        confirmColor={VIBE.success}
+      />
 
-      {/* Daily Transactions Modal */}
       <FeeDailyTransactionsModal
         visible={dailyModalVisible}
         onClose={() => setDailyModalVisible(false)}

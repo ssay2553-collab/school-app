@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
@@ -63,6 +64,15 @@ export const useOtherCharges = ({
   const [appliedCharges, setAppliedCharges] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // UI States
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [receivedFrom, setReceivedFrom] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
+  const [chargeType, setChargeType] = useState("");
+  const [chargeAmount, setChargeAmount] = useState("");
 
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
@@ -215,12 +225,11 @@ export const useOtherCharges = ({
     }
   }, []);
 
-  const handleLogPayment = async (
-    student: Student,
-    amount: number,
-    receivedFrom: string,
-    paymentMethod: string
-  ) => {
+  const handleLogPayment = async () => {
+    const student = selectedStudent;
+    if (!student) return false;
+    const amount = parseFloat(paymentAmount);
+
     if (!acadConfig.academicYear || !acadConfig.currentTerm) {
       showToast({ message: "Academic config missing. Cannot log payment.", type: "error" });
       return false;
@@ -300,6 +309,9 @@ export const useOtherCharges = ({
       showToast({ message: `Payment recorded: ${serial}`, type: "success" });
       fetchStats();
       fetchStudents(true);
+      setPaymentModalVisible(false);
+      setPaymentAmount("");
+      setReceivedFrom("");
       return true;
     } catch (e) {
       console.error(e);
@@ -310,7 +322,7 @@ export const useOtherCharges = ({
     }
   };
 
-  const applyOtherCharge = async (chargeType: string, chargeAmount: string) => {
+  const applyOtherCharge = async () => {
     if (!acadConfig.academicYear || !acadConfig.currentTerm) {
       showToast({ message: "Academic config missing. Cannot apply charge.", type: "error" });
       return false;
@@ -335,10 +347,10 @@ export const useOtherCharges = ({
       where("otherCategory", "==", chargeType.trim())
     );
     const existingSnap = await getDocsFromServer(qExisting);
-    const existingBillsMap = new Map<string, any>();
-    existingSnap.docs.forEach(d => {
-      existingBillsMap.set(d.data().studentUid, { id: d.id, ...d.data() });
-    });
+      const existingBillsMap = new Map<string, any>();
+      existingSnap.docs.forEach(d => {
+        existingBillsMap.set(d.data().studentUid, d.data());
+      });
 
     setSaving(true);
     try {
@@ -367,7 +379,7 @@ export const useOtherCharges = ({
 
           if (diff === 0 && existing) return;
 
-          const serial = existing ? existing.id : `BILL-OTH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+          const serial = existing ? existing.receiptNo : `BILL-OTH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
           const recordId = `${sDoc.id}_${year}_${term}`;
 
           const billData = {
@@ -402,7 +414,11 @@ export const useOtherCharges = ({
               otherBill: increment(diff),
               otherBalance: increment(diff),
               balance: increment(diff),
+              payments: arrayRemove(existing),
               lastUpdated: serverTimestamp(),
+            });
+            batch.update(doc(db, "studentFeeRecords", recordId), {
+              payments: arrayUnion(billData),
             });
           } else {
             batch.set(
@@ -453,6 +469,8 @@ export const useOtherCharges = ({
       showToast({ message: existingSnap.empty ? `Billed ${snap.size} students for ${chargeType}` : `Updated '${chargeType}' for ${snap.size} students`, type: "success" });
       fetchStats();
       fetchStudents(true);
+      setChargeType("");
+      setChargeAmount("");
       return true;
     } catch (e) {
       console.error(e);
@@ -463,146 +481,313 @@ export const useOtherCharges = ({
     }
   };
 
-  const handleDeleteCharge = async (category: string) => {
+  const applyStudentOtherCharge = async (student: Student) => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      showToast({ message: "Academic config missing. Cannot apply charge.", type: "error" });
+      return false;
+    }
+    const val = parseFloat(chargeAmount);
+    if (!chargeType.trim() || isNaN(val) || val <= 0) {
+      showToast({ message: "Invalid details", type: "error" });
+      return false;
+    }
+
     setSaving(true);
     try {
-      const q = query(
-        collection(db, "feePayments"),
-        where("classId", "==", selectedClassId),
-        where("type", "==", "other"),
-        where("otherCategory", "==", category),
-        where("academicYear", "==", acadConfig.academicYear)
-      );
-      const snap = await getDocsFromServer(q);
-
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
-      const docs = snap.docs;
-      const CHUNK_SIZE = 150;
+      const recordId = `${student.uid}_${year}_${term}`;
 
-      for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
-        const chunk = docs.slice(i, i + CHUNK_SIZE);
-        const batch = writeBatch(db);
+      const qExisting = query(
+        collection(db, "feePayments"),
+        where("type", "==", "other"),
+        where("studentUid", "==", student.uid),
+        where("academicYear", "==", acadConfig.academicYear),
+        where("term", "==", acadConfig.currentTerm),
+        where("otherCategory", "==", chargeType.trim())
+      );
+      const existingSnap = await getDocsFromServer(qExisting);
+      const existing = existingSnap.empty ? null : existingSnap.docs[0].data();
 
-        for (const d of chunk) {
-          const data = d.data();
-          const studentUid = data.studentUid;
-          const amount = data.amount;
-          const recordId = `${studentUid}_${year}_${term}`;
+      const oldAmount = existing ? (existing as any).amount : 0;
+      const diff = val - oldAmount;
 
-          batch.update(doc(db, "users", studentUid), {
-            otherBill: increment(-amount),
-            otherBalance: increment(-amount),
-            walletBalance: increment(-amount),
-          });
-
-          batch.set(
-            doc(db, "studentFeeRecords", recordId),
-            {
-              otherBill: increment(-amount),
-              otherBalance: increment(-amount),
-              balance: increment(-amount),
-              payments: arrayRemove(data),
-            },
-            { merge: true }
-          );
-
-          batch.delete(d.ref);
-        }
-
-        await batch.commit();
+      if (diff === 0 && existing) {
+        showToast({ message: "Charge already exists with same amount", type: "info" });
+        return true;
       }
 
-      // Propagate changes to future terms for each affected student
-      snap.docs.forEach((d) => {
-        const data = d.data();
-        propagateArrears(data.studentUid, acadConfig.academicYear, acadConfig.currentTerm, -data.amount, 'bill', 'other').catch(console.error);
+      const batch = writeBatch(db);
+      const serial = existing ? (existing as any).receiptNo : `BILL-OTH-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      const billData = {
+        amount: val,
+        method: "Individual Charge",
+        receivedFrom: chargeType.trim(),
+        updatedBy: appUser?.adminRole || "Admin",
+        adminUid: appUser?.uid || "unknown",
+        createdAt: new Date().toISOString(),
+        receiptNo: serial,
+        date: moment().format("YYYY-MM-DD"),
+        studentUid: student.uid,
+        studentName: student.fullName,
+        classId: student.classId,
+        className: student.className,
+        type: "other",
+        otherCategory: chargeType.trim(),
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
+      };
+
+      batch.set(doc(db, "feePayments", serial), billData, { merge: true });
+
+      batch.update(doc(db, "users", student.uid), {
+        otherBill: increment(diff),
+        otherBalance: increment(diff),
+        walletBalance: increment(diff),
       });
 
-      showToast({ message: `Charge '${category}' removed`, type: "success" });
+      if (existing) {
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          otherBill: increment(diff),
+          otherBalance: increment(diff),
+          balance: increment(diff),
+          payments: arrayRemove(existing),
+          lastUpdated: serverTimestamp(),
+        });
+        batch.update(doc(db, "studentFeeRecords", recordId), {
+          payments: arrayUnion(billData),
+        });
+      } else {
+        batch.set(
+          doc(db, "studentFeeRecords", recordId),
+          {
+            studentUid: student.uid,
+            studentName: student.fullName,
+            classId: student.classId,
+            className: student.className,
+            academicYear: acadConfig.academicYear,
+            term: acadConfig.currentTerm,
+            otherBill: increment(val),
+            otherBalance: increment(val),
+            balance: increment(val),
+            payments: arrayUnion(billData),
+            lastUpdated: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
+      await batch.commit();
+
+      if (diff !== 0) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'other').catch(console.error);
+      }
+
+      if (!existing) {
+        sendNotification({
+          recipientId: student.uid,
+          senderId: appUser?.uid || "admin",
+          senderName: appUser?.displayName || "Administrator",
+          title: "New Fee Item Billed",
+          body: `An amount of ${SCHOOL_CONFIG.currencySymbol}${val.toLocaleString()} for '${chargeType}' has been added to the bill.`,
+          type: "payment",
+        }).catch((err) => console.error("Notification error:", err));
+      }
+
+      showToast({ message: existing ? `Updated '${chargeType}'` : `Billed '${chargeType}'`, type: "success" });
       fetchStats();
       fetchStudents(true);
+      fetchPaymentHistory(student.uid);
+      setChargeType("");
+      setChargeAmount("");
       return true;
     } catch (e) {
       console.error(e);
-      showToast({ message: "Delete failed", type: "error" });
+      showToast({ message: "Failed to apply individual charge", type: "error" });
       return false;
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDeletePayment = async (student: Student, payment: any) => {
-    const year = acadConfig.academicYear?.replace(/\//g, "-");
-    const term = acadConfig.currentTerm?.replace(/\s/g, "");
+  const confirmDeleteCharge = (category: string) => {
+    const proceed = async () => {
+      setSaving(true);
+      try {
+        const q = query(
+          collection(db, "feePayments"),
+          where("classId", "==", selectedClassId),
+          where("type", "==", "other"),
+          where("otherCategory", "==", category),
+          where("academicYear", "==", acadConfig.academicYear)
+        );
+        const snap = await getDocsFromServer(q);
 
-    if (!year || !term) {
-      showToast({
-        message: "Action blocked: Academic year and term must be configured.",
-        type: "error",
-      });
-      return false;
+        const year = acadConfig.academicYear?.replace(/\//g, "-");
+        const term = acadConfig.currentTerm?.replace(/\s/g, "");
+        const docs = snap.docs;
+        const CHUNK_SIZE = 150;
+
+        for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+          const chunk = docs.slice(i, i + CHUNK_SIZE);
+          const batch = writeBatch(db);
+
+          for (const d of chunk) {
+            const data = d.data();
+            const studentUid = data.studentUid;
+            const amount = data.amount;
+            const recordId = `${studentUid}_${year}_${term}`;
+
+            batch.update(doc(db, "users", studentUid), {
+              otherBill: increment(-amount),
+              otherBalance: increment(-amount),
+              walletBalance: increment(-amount),
+            });
+
+            batch.set(
+              doc(db, "studentFeeRecords", recordId),
+              {
+                otherBill: increment(-amount),
+                otherBalance: increment(-amount),
+                balance: increment(-amount),
+                payments: arrayRemove(data),
+              },
+              { merge: true }
+            );
+
+            batch.delete(d.ref);
+          }
+
+          await batch.commit();
+        }
+
+        // Propagate changes to future terms for each affected student
+        snap.docs.forEach((d) => {
+          const data = d.data();
+          propagateArrears(data.studentUid, acadConfig.academicYear, acadConfig.currentTerm, -data.amount, 'bill', 'other').catch(console.error);
+        });
+
+        showToast({ message: `Charge '${category}' removed`, type: "success" });
+        fetchStats();
+        fetchStudents(true);
+        return true;
+      } catch (e) {
+        console.error(e);
+        showToast({ message: "Delete failed", type: "error" });
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Delete '${category}' and reverse balances for all students in this class?`)) {
+        proceed();
+      }
+    } else {
+      Alert.alert(
+        "Reverse Charge",
+        `Delete '${category}' and reverse balances for all students in this class?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete & Reverse", style: "destructive", onPress: proceed },
+        ]
+      );
     }
+  };
 
-    setSaving(true);
-    try {
-      const recordId = `${student.uid}_${year}_${term}`;
-      const batch = writeBatch(db);
-      const amount = Number(payment.amount) || 0;
-      const isPayment = (payment.type || "").toLowerCase() === "other_payment";
+  const confirmDeletePayment = (payment: any) => {
+    if (!selectedStudent) return;
+    const student = selectedStudent;
 
-      if (isPayment) {
+    const proceed = async () => {
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+
+      if (!year || !term) {
+        showToast({
+          message: "Action blocked: Academic year and term must be configured.",
+          type: "error",
+        });
+        return false;
+      }
+
+      setSaving(true);
+      try {
+        const recordId = `${student.uid}_${year}_${term}`;
+        const batch = writeBatch(db);
+        const amount = Number(payment.amount) || 0;
+        const isPayment = (payment.type || "").toLowerCase() === "other_payment";
+
+        if (isPayment) {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            otherPaid: increment(-amount),
+            otherBalance: increment(amount),
+            balance: increment(amount),
+          });
+          batch.update(doc(db, "users", student.uid), {
+            otherPaid: increment(-amount),
+            otherBalance: increment(amount),
+            walletBalance: increment(amount),
+          });
+        } else {
+          batch.update(doc(db, "studentFeeRecords", recordId), {
+            otherBill: increment(-amount),
+            otherBalance: increment(-amount),
+            balance: increment(-amount),
+          });
+          batch.update(doc(db, "users", student.uid), {
+            otherBill: increment(-amount),
+            otherBalance: increment(-amount),
+            walletBalance: increment(-amount),
+          });
+        }
+
         batch.update(doc(db, "studentFeeRecords", recordId), {
-          otherPaid: increment(-amount),
-          otherBalance: increment(amount),
-          balance: increment(amount),
+          payments: arrayRemove(payment),
+          lastUpdated: serverTimestamp(),
         });
-        batch.update(doc(db, "users", student.uid), {
-          otherPaid: increment(-amount),
-          otherBalance: increment(amount),
-          walletBalance: increment(amount),
-        });
-      } else {
-        batch.update(doc(db, "studentFeeRecords", recordId), {
-          otherBill: increment(-amount),
-          otherBalance: increment(-amount),
-          balance: increment(-amount),
-        });
-        batch.update(doc(db, "users", student.uid), {
-          otherBill: increment(-amount),
-          otherBalance: increment(-amount),
-          walletBalance: increment(-amount),
-        });
+
+        if (payment.receiptNo) {
+          batch.delete(doc(db, "feePayments", payment.receiptNo));
+        }
+
+        await batch.commit();
+
+        // Propagate changes to future terms
+        if (isPayment) {
+          propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'other').catch(console.error);
+        } else {
+          propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'other').catch(console.error);
+        }
+
+        showToast({ message: "Transaction reverted successfully", type: "success" });
+        fetchStats();
+        fetchStudents(true);
+        return true;
+      } catch (err) {
+        console.error("Delete transaction error:", err);
+        showToast({ message: "Failed to revert transaction", type: "error" });
+        return false;
+      } finally {
+        setSaving(false);
       }
+    };
 
-      batch.update(doc(db, "studentFeeRecords", recordId), {
-        payments: arrayRemove(payment),
-        lastUpdated: serverTimestamp(),
-      });
-
-      if (payment.receiptNo) {
-        batch.delete(doc(db, "feePayments", payment.receiptNo));
+    if (Platform.OS === "web") {
+      if (window.confirm("Are you sure you want to delete this transaction? This will automatically adjust the student's balance.")) {
+        proceed();
       }
-
-      await batch.commit();
-
-      // Propagate changes to future terms
-      if (isPayment) {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'other').catch(console.error);
-      } else {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'other').catch(console.error);
-      }
-
-      showToast({ message: "Transaction reverted successfully", type: "success" });
-      fetchStats();
-      fetchStudents(true);
-      return true;
-    } catch (err) {
-      console.error("Delete transaction error:", err);
-      showToast({ message: "Failed to revert transaction", type: "error" });
-      return false;
-    } finally {
-      setSaving(false);
+    } else {
+      Alert.alert(
+        "Confirm Deletion",
+        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete", style: "destructive", onPress: proceed },
+        ]
+      );
     }
   };
 
@@ -611,6 +796,15 @@ export const useOtherCharges = ({
     fetchStudents(true);
     fetchStats();
   }, [fetchStudents, fetchStats]);
+
+  const openPaymentModal = useCallback((student: Student) => {
+    setPaymentAmount("");
+    setReceivedFrom("");
+    setPaymentMethod("Cash");
+    setSelectedStudent(student);
+    setPaymentModalVisible(true);
+    fetchPaymentHistory(student.uid);
+  }, [fetchPaymentHistory]);
 
   useEffect(() => {
     const delay = setTimeout(() => {
@@ -637,8 +831,26 @@ export const useOtherCharges = ({
     fetchPaymentHistory,
     handleLogPayment,
     applyOtherCharge,
-    handleDeleteCharge,
-    handleDeletePayment,
+    applyStudentOtherCharge,
+    confirmDeleteCharge,
+    confirmDeletePayment,
     handleRefresh,
+
+    // UI States & Handlers
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    setSelectedStudent,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    chargeType,
+    setChargeType,
+    chargeAmount,
+    setChargeAmount,
+    openPaymentModal,
   };
 };

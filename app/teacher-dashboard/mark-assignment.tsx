@@ -53,6 +53,7 @@ const SubmissionItem = React.memo(({
   qScoreValue,
   standardMarkValue,
   feedbackValue,
+  answerKey,
   onUpdateQScore,
   onUpdateStandardMark,
   onUpdateFeedback
@@ -63,6 +64,7 @@ const SubmissionItem = React.memo(({
   qScoreValue: Record<number, string>;
   standardMarkValue: string;
   feedbackValue: string;
+  answerKey: any;
   onUpdateQScore: (subId: string, qIdx: number, text: string) => void;
   onUpdateStandardMark: (subId: string, text: string) => void;
   onUpdateFeedback: (subId: string, text: string) => void;
@@ -76,7 +78,7 @@ const SubmissionItem = React.memo(({
     );
   };
 
-  const isInteractive = item.type === "mcq" || item.type === "short_answer";
+  const isInteractive = item.type === "mcq" || item.type === "short_answer" || item.type === "mathematics";
   const isDirectGrade = item.type === "preschool";
 
   return (
@@ -108,48 +110,69 @@ const SubmissionItem = React.memo(({
           <Text style={{ fontSize: 13, color: '#64748B', marginBottom: 15, lineHeight: 20 }}>
             Review the child's interactive engagement below. Preschool activities are graded holistically.
           </Text>
-          {assignment?.questions?.map((q, idx) => (
-            <View key={idx} style={[styles.responseItem, { backgroundColor: COLORS.primary + '05', borderColor: COLORS.primary + '10' }]}>
-               <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-                  <SVGIcon name={q.type ? (q.type.includes('identify') ? 'eye' : 'star') : 'star'} size={14} color={COLORS.primary} />
-                  <Text style={[styles.qText, { marginBottom: 0 }]}>{q.text}</Text>
-                </View>
-                <View style={styles.answerRow}>
-                  <Text style={[styles.aText, { fontWeight: '700', color: COLORS.secondary }]}>
-                    Response: {item.responses?.[idx] || "Completed"}
-                  </Text>
+          {assignment?.questions?.map((q: any, idx) => {
+            const correctAnswer = answerKey?.answers?.find((a: any) => a.id === q.id || a.questionIndex === idx)?.answer;
+            return (
+              <View key={idx} style={[styles.responseItem, { backgroundColor: COLORS.primary + '05', borderColor: COLORS.primary + '10' }]}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
+                    <SVGIcon name={q.type ? (q.type.includes('identify') ? 'eye' : 'star') : 'star'} size={14} color={COLORS.primary} />
+                    <Text style={[styles.qText, { marginBottom: 0 }]}>{q.text}</Text>
+                  </View>
+                  <View style={styles.answerRow}>
+                    <Text style={[styles.aText, { fontWeight: '700', color: COLORS.secondary }]}>
+                      Student: {item.responses?.[idx] || "Completed"}
+                    </Text>
+                  </View>
+                  {correctAnswer && (
+                    <View style={[styles.answerRow, { marginTop: 4 }]}>
+                      <Text style={[styles.aText, { color: '#10b981', fontWeight: '600' }]}>
+                        Correct: {correctAnswer}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 
       {isInteractive && (
         <View style={styles.responsesBox}>
           <Text style={styles.responseLabel}>DETAILED REVIEW</Text>
-          {assignment?.questions?.map((q, idx) => (
-            <View key={idx} style={styles.responseItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.qText}>{idx + 1}. {q.text}</Text>
-                <View style={styles.answerRow}>
-                  <SVGIcon name="checkmark-circle" size={14} color="#10b981" />
-                  <Text style={styles.aText}>{item.responses?.[idx] || "No answer provided"}</Text>
+          {assignment?.questions?.map((q: any, idx) => {
+            const correctAnswer = answerKey?.answers?.find((a: any) => a.id === q.id || a.questionIndex === idx)?.answer;
+            return (
+              <View key={idx} style={styles.responseItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.qText}>{idx + 1}. {q.text}</Text>
+                  <View style={styles.answerRow}>
+                    <Text style={[styles.aText, { color: COLORS.secondary, fontWeight: '600' }]}>
+                      Student: {item.responses?.[idx] || "No answer"}
+                    </Text>
+                  </View>
+                  {correctAnswer && (
+                    <View style={[styles.answerRow, { marginTop: 4 }]}>
+                      <Text style={[styles.aText, { color: '#10b981', fontWeight: '600' }]}>
+                        Key: {correctAnswer}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.qScoreWrapper}>
+                  <Text style={styles.qScoreLabel}>SCORE</Text>
+                  <TextInput
+                    style={styles.qScoreInput}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    value={qScoreValue?.[idx] || ""}
+                    onChangeText={(t) => onUpdateQScore(item.id, idx, t)}
+                  />
                 </View>
               </View>
-              <View style={styles.qScoreWrapper}>
-                <Text style={styles.qScoreLabel}>SCORE</Text>
-                <TextInput
-                  style={styles.qScoreInput}
-                  keyboardType="numeric"
-                  placeholder="0"
-                  value={qScoreValue?.[idx] || ""}
-                  onChangeText={(t) => onUpdateQScore(item.id, idx, t)}
-                />
-              </View>
-            </View>
-          ))}
+            );
+          })}
 
           <View style={styles.totalSumRow}>
             <Text style={styles.totalSumText}>Total Calculated Score:</Text>
@@ -217,6 +240,7 @@ export default function MarkAssignment() {
     qScoreInputs,
     standardMarksInput,
     feedbackInputs,
+    answerKey,
     loading,
     refreshing,
     fetchingSubmissions,
@@ -291,12 +315,13 @@ export default function MarkAssignment() {
         qScoreValue={qScoreInputs[item.id]}
         standardMarkValue={standardMarksInput[item.id] || ""}
         feedbackValue={feedbackInputs[item.id] || ""}
+        answerKey={answerKey}
         onUpdateQScore={updateQScore}
         onUpdateStandardMark={updateStandardMark}
         onUpdateFeedback={updateFeedback}
       />
     );
-  }, [selectedAssignment, submitMark, qScoreInputs, standardMarksInput, feedbackInputs, updateQScore, updateStandardMark, updateFeedback, router]);
+  }, [selectedAssignment, submitMark, qScoreInputs, standardMarksInput, feedbackInputs, answerKey, updateQScore, updateStandardMark, updateFeedback, router]);
 
   return (
     <SafeAreaView style={styles.container}>

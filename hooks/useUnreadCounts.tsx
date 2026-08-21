@@ -218,26 +218,42 @@ export default function useUnreadCounts() {
   const [assignmentUnread, setAssignmentUnread] = useState<number>(0);
   const [submissionUnread, setSubmissionUnread] = useState<number>(0);
 
-  // Watch Assignments (for Students)
+  // Watch Assignments (for Students and Parents)
   useEffect(() => {
-    if (!appUser?.uid || appUser.role !== "student" || !appUser.classId) return;
+    if (!appUser?.uid) return;
 
-    // First, get all assignments for this class
-    const assignmentsQ = query(
-      collection(db, "assignments"),
-      where("classId", "==", appUser.classId)
-    );
+    let assignmentQuery;
+    let submissionQuery;
 
-    const unsubAssignments = onSnapshot(assignmentsQ, (assignmentSnap) => {
-      const allAssignmentIds = assignmentSnap.docs.map(d => d.id);
-
-      // Then, get all submissions by this student
-      const submissionsQ = query(
+    if (appUser.role === "student" && appUser.classId) {
+      assignmentQuery = query(
+        collection(db, "assignments"),
+        where("classId", "==", appUser.classId)
+      );
+      submissionQuery = query(
         collection(db, "submissions"),
         where("studentId", "==", appUser.uid)
       );
+    } else if (appUser.role === "parent" && appUser.childrenClassIds?.length) {
+      assignmentQuery = query(
+        collection(db, "assignments"),
+        where("classId", "in", appUser.childrenClassIds)
+      );
+      submissionQuery = query(
+        collection(db, "submissions"),
+        where("studentId", "in", appUser.childrenIds || [])
+      );
+    }
 
-      const unsubSubmissions = onSnapshot(submissionsQ, (subSnap) => {
+    if (!assignmentQuery || !submissionQuery) {
+      setAssignmentUnread(0);
+      return;
+    }
+
+    const unsubAssignments = onSnapshot(assignmentQuery, (assignmentSnap) => {
+      const allAssignmentIds = assignmentSnap.docs.map(d => d.id);
+
+      const unsubSubmissions = onSnapshot(submissionQuery!, (subSnap) => {
         const submittedIds = subSnap.docs.map(d => d.data().assignmentId);
         const unreadCount = allAssignmentIds.filter(id => !submittedIds.includes(id)).length;
         setAssignmentUnread(unreadCount);
@@ -247,7 +263,7 @@ export default function useUnreadCounts() {
     });
 
     return () => unsubAssignments();
-  }, [appUser?.uid, appUser?.role, appUser?.classId]);
+  }, [appUser?.uid, appUser?.role, appUser?.classId, appUser?.childrenClassIds, appUser?.childrenIds]);
 
   // Watch Submissions (for Teachers)
   useEffect(() => {
@@ -270,7 +286,29 @@ export default function useUnreadCounts() {
     Object.values(groupUnread).reduce((s, v) => s + (v || 0), 0) +
     Object.values(directUnread).reduce((s, v) => s + (v || 0), 0);
 
-  // Simple toast/notification for new unread messages (cross-device indicator)
+  // Assignment Notification Trigger
+  const prevAssignmentUnreadRef = useRef<number>(0);
+  useEffect(() => {
+    if (!appUser?.uid) return;
+
+    const prev = prevAssignmentUnreadRef.current || 0;
+    if (assignmentUnread > prev) {
+      const diff = assignmentUnread - prev;
+      const title = appUser.role === "parent" ? "New Child Assignment" : "New Homework!";
+      const message = appUser.role === "parent"
+        ? `Your children have ${diff} new assignment(s) to complete.`
+        : `You have ${diff} new assignment(s). Time to learn!`;
+
+      if (Platform.OS === "android") {
+        ToastAndroid.show(message, ToastAndroid.LONG);
+      } else {
+        Alert.alert(title, message);
+      }
+    }
+    prevAssignmentUnreadRef.current = assignmentUnread;
+  }, [assignmentUnread, appUser?.uid, appUser?.role]);
+
+  // Message Notification Trigger
   const prevTotalRef = useRef<number>(0);
   useEffect(() => {
     // Only notify if we have valid user and the total increased

@@ -19,7 +19,7 @@ import { useToast } from "../../contexts/ToastContext";
 export default function ComplaintScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const toast = useToast();
+  const { showToast } = useToast();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,7 +28,7 @@ export default function ComplaintScreen() {
 
   const handleSubmit = () => {
     if (!subject.trim() || !message.trim()) {
-      toast.show("Please fill in all fields", "error");
+      showToast({ message: "Please fill in all fields", type: "error" });
       return;
     }
 
@@ -36,7 +36,7 @@ export default function ComplaintScreen() {
     // Simulate API call
     setTimeout(() => {
       setLoading(false);
-      toast.show("Complaint submitted successfully", "success");
+      showToast({ message: "Complaint submitted successfully", type: "success" });
       router.back();
     }, 1500);
   };

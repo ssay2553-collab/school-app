@@ -96,8 +96,7 @@ export class FeeReportGenerator extends BasePDFGenerator {
     const finalCurrency = data.currencySymbol === "₵" ? "GHS" : (data.currencySymbol || "GHS");
 
     Object.entries(data.groupedData).forEach(([className, students]) => {
-      this.ensureSpace(100);
-
+      this.addPage();
       this.drawSectionHeader(`CLASS: ${className}`);
 
       const columns = [
@@ -153,11 +152,7 @@ export class FeeReportGenerator extends BasePDFGenerator {
     const isMultiClass = Object.keys(data.groupedData).length > 1;
 
     if (isMultiClass) {
-      this.ensureSpace(220);
-      if (this.currentY < A4_HEIGHT * 0.45) {
-        this.addPage();
-      }
-
+      this.addPage();
       this.drawSectionHeader("SCHOOL-WIDE FINANCIAL SUMMARY");
 
       this.drawText(`Consolidated Report for Academic Year: ${data.academicYear} | ${data.term}`, MARGIN + 12, {

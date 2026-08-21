@@ -41,8 +41,8 @@ interface AcademicReportPreviewProps {
   promotedTo: string;
   adminSig: any;
   isReportApproved?: boolean;
-  generating: boolean;
-  generatePDF: () => void;
+  generating?: boolean;
+  generatePDF?: () => void;
   refreshing?: boolean;
   refresh?: () => void;
   hideDownload?: boolean;
@@ -106,16 +106,13 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
         {/* Letterhead */}
         <View style={styles.paperLetterhead}>
           {schoolLogo && (
-            <>
-              <Image
-                source={schoolLogo}
-                style={styles.paperLogo}
-                resizeMode="contain"
-              />
-              <View style={styles.verticalDivider} />
-            </>
+            <Image
+              source={schoolLogo}
+              style={styles.paperLogo}
+              resizeMode="contain"
+            />
           )}
-          <View style={{ flex: 1 }}>
+          <View style={styles.paperSchoolInfoContainer}>
             <Text style={[styles.paperSchoolName, { color: primary }]}>
               {SCHOOL_CONFIG.fullName.toUpperCase()}
             </Text>
@@ -274,6 +271,34 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
           </View>
         </View>
 
+        {/* Grading System Legend */}
+        {!isPreschool && (
+          <View style={styles.gradingSystemContainer}>
+            <Text style={styles.gradingSystemTitle}>OFFICIAL GRADING KEY</Text>
+            <View style={styles.gradingGrid}>
+              {[
+                { g: "1", r: "80-100", d: "Highest" },
+                { g: "2", r: "70-79", d: "Higher" },
+                { g: "3", r: "60-69", d: "High" },
+                { g: "4", r: "55-59", d: "High Avg" },
+                { g: "5", r: "50-54", d: "Average" },
+                { g: "6", r: "45-49", d: "Low Avg" },
+                { g: "7", r: "40-44", d: "Low" },
+                { g: "8", r: "35-39", d: "Lower" },
+                { g: "9", r: "0-34", d: "Lowest" },
+              ].map((item, idx) => (
+                <View key={idx} style={styles.gradingItem}>
+                  <Text style={[styles.gradingGrade, { color: primary }]}>
+                    {item.g}
+                  </Text>
+                  <Text style={styles.gradingRange}>({item.r})</Text>
+                  <Text style={styles.gradingDesc}>{item.d.toUpperCase()}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
         {isPreschool && preschoolAssessments && (
           <View style={styles.paperRemarksSection}>
             <View style={styles.remarksBox}>
@@ -369,7 +394,6 @@ export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = ({
           </View>
 
           <View style={styles.paperSigRow}>
-            <View style={{ flex: 1 }} />
             <View style={styles.paperSigItem}>
               {adminSig ? (
                 <Image
@@ -439,33 +463,35 @@ const styles = StyleSheet.create({
     letterSpacing: 10,
   },
   paperLetterhead: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
-    marginBottom: 10,
+    justifyContent: "center",
+    marginBottom: 15,
   },
-  paperLogo: { width: 65, height: 65 },
-  verticalDivider: {
-    width: 1,
-    height: 45,
-    backgroundColor: "#E2E8F0",
-    marginHorizontal: 15,
+  paperLogo: { width: 80, height: 80, marginBottom: 8 },
+  paperSchoolInfoContainer: {
+    alignItems: "center",
+    justifyContent: "center",
   },
-  paperSchoolName: { fontSize: 16, fontWeight: "900" },
+  paperSchoolName: { fontSize: 18, fontWeight: "900", textAlign: "center" },
   paperSchoolMotto: {
-    fontSize: 9,
+    fontSize: 10,
     fontStyle: "italic",
     color: "#64748B",
     marginTop: 2,
+    textAlign: "center",
   },
   paperSchoolInfo: {
-    fontSize: 9,
+    fontSize: 10,
     color: "#475569",
     marginTop: 2,
+    textAlign: "center",
   },
   paperSchoolContact: {
-    fontSize: 9,
+    fontSize: 10,
     color: "#475569",
     marginTop: 2,
+    textAlign: "center",
   },
   headerSeparatorContainer: {
     marginBottom: 15,
@@ -684,17 +710,17 @@ const styles = StyleSheet.create({
   paperNextTermVal: { fontSize: 10, fontWeight: "700", color: "#2e86de" },
   paperSigRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     marginTop: 15,
   },
-  paperSigItem: { width: 150, alignItems: "center" },
+  paperSigItem: { width: 200, alignItems: "center" },
   paperSigImg: {
     width: "100%",
-    height: 60,
+    height: 80,
     resizeMode: "contain",
     marginBottom: -5,
   },
-  paperSigSpace: { height: 60 },
+  paperSigSpace: { height: 80 },
   paperSigLine: {
     width: "100%",
     height: 1,
@@ -716,5 +742,48 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     marginLeft: 10,
     fontSize: 14,
+  },
+  gradingSystemContainer: {
+    marginTop: 5,
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  gradingSystemTitle: {
+    fontSize: 8,
+    fontWeight: "900",
+    color: "#64748B",
+    marginBottom: 8,
+    textAlign: "center",
+    letterSpacing: 1,
+  },
+  gradingGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  gradingItem: {
+    width: "30%",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  gradingGrade: {
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  gradingRange: {
+    fontSize: 7,
+    color: "#94A3B8",
+    fontWeight: "600",
+  },
+  gradingDesc: {
+    fontSize: 6,
+    color: "#64748B",
+    fontWeight: "700",
+    marginTop: 1,
   },
 });

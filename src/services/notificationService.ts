@@ -14,6 +14,7 @@ export type NotificationType =
   | "score"
   | "news"
   | "attendance"
+  | "attendance_reminder"
   | "behavior"
   | "payment";
 

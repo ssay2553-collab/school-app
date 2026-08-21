@@ -77,101 +77,34 @@ export default function UniformCharges() {
     stats,
     handleRefresh,
     handleLogPayment,
-    handleDeletePayment,
+    confirmDeletePayment,
     fetchStudents,
+
+    // UI state & handlers
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    selectedType,
+    setSelectedType,
+    amount,
+    setAmount,
+    receivedFrom,
+    setReceivedFrom,
+    activeFilter,
+    purchases,
+    history,
+    loadingHistory,
+    loadingPurchases,
+    openPaymentModal,
+    handleToggleFilter,
   } = useUniformCharges({
     appUser,
     acadConfig,
     showToast,
     selectedClassId,
     searchQuery,
+    setSearchQuery,
   });
-
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [selectedType, setSelectedType] = useState("main");
-  const [amount, setAmount] = useState("");
-  const [receivedFrom, setReceivedFrom] = useState("");
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [purchases, setPurchases] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const [loadingPurchases, setLoadingPurchases] = useState(false);
-
-  const fetchPurchases = async (typeId: string) => {
-    setLoadingPurchases(true);
-    setPurchases([]);
-    try {
-      if (!acadConfig.academicYear || !acadConfig.currentTerm) return;
-      const q = query(
-        collection(db, "feePayments"),
-        where("type", "==", "uniform"),
-        where("subType", "==", typeId),
-        where("academicYear", "==", acadConfig.academicYear),
-        where("term", "==", acadConfig.currentTerm)
-      );
-      const snap = await getDocsFromServer(q);
-      const list = snap.docs.map(d => ({ id: d.id, createdAt: d.data().createdAt, ...d.data() }));
-      setPurchases(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    } catch (e) {
-      console.error("Error fetching purchases:", e);
-    } finally {
-      setLoadingPurchases(false);
-    }
-  };
-
-  const fetchPaymentHistory = async (studentUid: string) => {
-    setLoadingHistory(true);
-    try {
-      const q = query(
-        collection(db, "feePayments"),
-        where("studentUid", "==", studentUid),
-        where("type", "==", "uniform")
-      );
-      const snap = await getDocsFromServer(q);
-      const list = snap.docs.map(d => d.data());
-      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const onLogPayment = async () => {
-    const val = parseFloat(amount);
-    if (!selectedStudent) return;
-    const typeLabel = UNIFORM_TYPES.find(t => t.id === selectedType)?.label || "Uniform";
-    const success = await handleLogPayment(selectedStudent, val, receivedFrom, selectedType, typeLabel);
-    if (success) {
-      setPaymentModalVisible(false);
-      setAmount("");
-      setReceivedFrom("");
-    }
-  };
-
-  const onDeletePress = (payment: any) => {
-    if (!selectedStudent) return;
-    const msg = "Are you sure you want to delete this transaction? This will automatically adjust the student's records.";
-
-    if (Platform.OS === "web") {
-      if (window.confirm(`Confirm Deletion\n\n${msg}`)) {
-        handleDeletePayment(selectedStudent, payment).then(success => {
-          if (success) setPaymentModalVisible(false);
-        });
-      }
-    } else {
-      Alert.alert("Confirm Deletion", msg, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: async () => {
-          const success = await handleDeletePayment(selectedStudent, payment);
-          if (success) {
-            setPaymentModalVisible(false);
-          }
-        }},
-      ]);
-    }
-  };
 
   const filteredStudents = useMemo(() => {
     if (!students) return [];
@@ -225,11 +158,7 @@ export default function UniformCharges() {
     return (
       <TouchableOpacity
         style={sharedStyles.financeCard}
-        onPress={() => {
-          setSelectedStudent(item);
-          setPaymentModalVisible(true);
-          fetchPaymentHistory(item.uid);
-        }}
+        onPress={() => openPaymentModal(item)}
       >
         <View style={sharedStyles.cardContent}>
           <View style={sharedStyles.leftSection}>
@@ -339,16 +268,7 @@ export default function UniformCharges() {
             <TouchableOpacity
               key={type.id}
               style={[sharedStyles.breakdownCard, activeFilter === type.id && sharedStyles.activeBreakdownCard]}
-              onPress={() => {
-                if (activeFilter === type.id) {
-                  setActiveFilter(null);
-                  setPurchases([]);
-                } else {
-                  setActiveFilter(type.id);
-                  setSearchQuery("");
-                  fetchPurchases(type.id);
-                }
-              }}
+              onPress={() => handleToggleFilter(type.id)}
             >
               <View style={[sharedStyles.typeIconWrap, { backgroundColor: activeFilter === type.id ? "#fff" : VIBE.primary + "10" }]}>
                 <SVGIcon name={type.icon} size={16} color={activeFilter === type.id ? VIBE.primary : VIBE.primary} />
@@ -365,7 +285,7 @@ export default function UniformCharges() {
       {activeFilter && (
         <View style={sharedStyles.filterInfoBar}>
           <Text style={sharedStyles.filterInfoText}>Showing {UNIFORM_TYPES.find(t => t.id === activeFilter)?.label} purchases</Text>
-          <TouchableOpacity onPress={() => setActiveFilter(null)}>
+          <TouchableOpacity onPress={() => handleToggleFilter(null)}>
             <SVGIcon name="close-circle" size={20} color={VIBE.muted} />
           </TouchableOpacity>
         </View>
@@ -453,7 +373,7 @@ export default function UniformCharges() {
                 </View>
               </View>
 
-              <TouchableOpacity style={[sharedStyles.saveBtn, { backgroundColor: VIBE.primary }]} onPress={onLogPayment} disabled={saving}>
+              <TouchableOpacity style={[sharedStyles.saveBtn, { backgroundColor: VIBE.primary }]} onPress={handleLogPayment} disabled={saving}>
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={sharedStyles.saveBtnText}>RECORD PURCHASE</Text>}
               </TouchableOpacity>
 
@@ -479,7 +399,7 @@ export default function UniformCharges() {
                           }
                         });
                       }}
-                      onLongPress={() => onDeletePress(h)}
+                      onLongPress={() => confirmDeletePayment(h)}
                     >
                       <View style={sharedStyles.tileHeader}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>

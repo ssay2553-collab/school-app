@@ -75,7 +75,6 @@ export default function StudentAcademicReport() {
 
   const {
     loading: fetchingReport,
-    generating,
     studentName,
     className,
     subjectsData,
@@ -96,7 +95,6 @@ export default function StudentAcademicReport() {
     TRS,
     TAS,
     AGGREGATE,
-    generatePDF,
     classIdState,
   } = useAcademicRecordDetails({
     studentId: selectedChildId,
@@ -360,8 +358,6 @@ export default function StudentAcademicReport() {
             nextTermBegins={nextTermBegins}
             promotedTo={promotedTo}
             adminSig={adminSig}
-            generating={generating}
-            generatePDF={generatePDF}
             hideDownload={true}
           />
         )}

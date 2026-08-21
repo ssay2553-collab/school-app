@@ -125,10 +125,27 @@ export default function AdmissionCharges() {
     classes,
     stats,
     handleRefresh,
-    logPayment,
-    logBill,
-    deletePayment,
     fetchStudents,
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    setSelectedStudent,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    history,
+    loadingHistory,
+    activeTab,
+    setActiveTab,
+    billAmount,
+    setBillAmount,
+    handleLogPayment,
+    handleLogBill,
+    openPaymentModal,
+    deletePayment,
   } = useAdmissionCharges({
     appUser,
     acadConfig,
@@ -138,67 +155,11 @@ export default function AdmissionCharges() {
     selectedTerm,
   });
 
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [receivedFrom, setReceivedFrom] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
-  const [history, setHistory] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const [activeTab, setActiveTab] = useState<"payment" | "billing">("payment");
-  const [billAmount, setBillAmount] = useState("");
-
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase().trim();
     if (!lower) return students;
     return students.filter(s => s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
-
-  const fetchPaymentHistory = async (studentUid: string) => {
-    setLoadingHistory(true);
-    try {
-      const q = query(
-        collection(db, "feePayments"),
-        where("studentUid", "==", studentUid),
-        where("type", "in", ["admission", "admission_payment"])
-      );
-      const snap = await getDocsFromServer(q);
-      const list = snap.docs.map(d => d.data());
-      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const handleLogPayment = async () => {
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0 || !selectedStudent || !receivedFrom.trim()) {
-      return showToast({ message: "Please enter valid payment details", type: "error" });
-    }
-
-    const success = await logPayment(selectedStudent, amount, receivedFrom, paymentMethod);
-    if (success) {
-      setPaymentModalVisible(false);
-      setPaymentAmount("");
-      setReceivedFrom("");
-    }
-  };
-
-  const handleLogBill = async () => {
-    const amount = parseFloat(billAmount);
-    if (isNaN(amount) || amount <= 0 || !selectedStudent) {
-      return showToast({ message: "Please enter a valid billing amount", type: "error" });
-    }
-
-    const success = await logBill(selectedStudent, amount);
-    if (success) {
-      setPaymentModalVisible(false);
-      setBillAmount("");
-    }
-  };
 
   const handleDeletePayment = (payment: any) => {
     if (!selectedStudent) return;
@@ -232,12 +193,8 @@ export default function AdmissionCharges() {
   };
 
   const handleStudentPress = useCallback((student: Student) => {
-    setSelectedStudent(student);
-    setPaymentAmount("");
-    setReceivedFrom("");
-    setPaymentModalVisible(true);
-    fetchPaymentHistory(student.uid);
-  }, []);
+    openPaymentModal(student);
+  }, [openPaymentModal]);
 
   const renderStudentItem = useCallback(({ item }: { item: Student }) => (
     <AdmissionStudentCard item={item} onPress={handleStudentPress} />

@@ -84,6 +84,8 @@ export default function SubmitNote() {
         contentHtml: prefillContent,
         noteId: prefillNoteId,
         marked: false,
+        teacherId: assignmentData.teacherId,
+        classId: assignmentData.classId,
       };
 
       // 3. Save Submission

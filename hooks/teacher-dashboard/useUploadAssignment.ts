@@ -10,6 +10,7 @@ import {
   addDoc,
   setDoc,
   doc,
+  writeBatch,
   limit,
 } from "firebase/firestore";
 import {
@@ -30,60 +31,9 @@ import { sendNotification } from "../../src/services/notificationService";
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export type AssignmentType =
-  | "mcq"
-  | "short_answer"
-  | "preschool";
+import { AssignmentType, Question, VisualItem, PreschoolQuestionType, PublicQuestion } from "../../types/assignments";
 
-export type PreschoolQuestionType =
-  // Numeracy (Mathematics)
-  | "count_objects"
-  | "fill_missing"
-  | "simple_addition"
-  // Literacy (Language)
-  | "identify_letter"
-  | "beginning_letter"
-  | "match_case"
-  // Sensorial & Recognition
-  | "identify_object"
-  | "odd_one_out"
-  | "identify_shape"
-  // Cognitive Thinking
-  | "true_false"
-  | "ordering"
-  | "classification";
-
-export interface VisualItem {
-  id: string;
-  type: 'icon' | 'text' | 'operator';
-  value: string;
-  count?: number;
-  size?: 'small' | 'medium' | 'large';
-  isNewLine?: boolean;
-}
-
-export interface Question {
-  id: string;
-  text: string;
-  options: string[];
-  type?: PreschoolQuestionType;
-  imageCategory?: string;
-  count?: number;
-  visualGroup?: VisualItem[];
-  answer?: string;
-  points?: number;
-}
-
-export interface PublicQuestion {
-  id: string;
-  text: string;
-  options: string[];
-  type?: PreschoolQuestionType;
-  imageCategory?: string;
-  count?: number;
-  visualGroup?: VisualItem[];
-  points: number;
-}
+export type { AssignmentType, Question };
 
 export interface ClassData {
   id: string;
@@ -137,8 +87,72 @@ const getQuestionValidationError = (
   question: Question,
   type: AssignmentType
 ): string | null => {
-  if (!question.text.trim()) {
+  if (!question.text.trim() && type !== 'mathematics') {
     return "Question text or instructions are missing.";
+  }
+
+  if (type === "mathematics") {
+    const hasOptions = question.options && question.options.filter(opt => opt.trim() !== "").length > 0;
+
+    if (hasOptions) {
+      const validOptions = (question.options || []).filter(
+        (option) => option.trim().length > 0
+      );
+      if (validOptions.length < 2) {
+        return "Mathematics MCQ questions require at least 2 options.";
+      }
+    }
+
+    if (!question.visualGroup || question.visualGroup.length === 0) {
+      return "Mathematics questions require at least one expression or number.";
+    }
+
+    for (let j = 0; j < question.visualGroup.length; j++) {
+      const item = question.visualGroup[j];
+      const partName = `Part ${j + 1}`;
+
+      if (item.type === 'fraction' || item.type === 'mapping' || item.type === 'vector') {
+        const hasNum = item.numerator?.[0]?.value?.trim();
+        const hasDen = item.denominator?.[0]?.value?.trim();
+        if (!hasNum || !hasDen) {
+          const typeLabel = item.type === 'fraction' ? 'Fraction' : item.type === 'mapping' ? 'Mapping' : 'Vector';
+          return `${partName}: ${typeLabel} must have both top and bottom values.`;
+        }
+      }
+
+      if (item.type === 'mixed_fraction') {
+        const hasWhole = item.whole?.trim();
+        const hasNum = item.numerator?.[0]?.value?.trim();
+        const hasDen = item.denominator?.[0]?.value?.trim();
+        if (!hasWhole || !hasNum || !hasDen) {
+          return `${partName}: Mixed fraction must have a whole number, numerator, and denominator.`;
+        }
+      }
+
+      if (item.type === 'sqrt' || item.type === 'bar') {
+        const hasContent = item.content?.[0]?.value?.trim();
+        if (!hasContent) {
+          return `${partName}: ${item.type === 'sqrt' ? 'Square root' : 'Bar notation'} content cannot be empty.`;
+        }
+      }
+
+      if (item.type === 'matrix') {
+        const allFilled = item.cells?.every(cell => cell.value?.trim());
+        if (!allFilled) {
+          return `${partName}: All matrix cells must be filled.`;
+        }
+      }
+
+      if ((item.type === 'superscript' || item.type === 'subscript') && !item.value?.trim()) {
+        return `${partName}: The ${item.type === 'superscript' ? 'exponent' : 'index'} value is missing.`;
+      }
+
+      if ((item.type === 'text' || item.type === 'variable' || item.type === 'number') && !item.value?.trim()) {
+        return `${partName}: Content is missing.`;
+      }
+    }
+
+    return null;
   }
 
   if (type === "preschool") {
@@ -174,16 +188,6 @@ const getQuestionValidationError = (
       return "This activity requires at least one learning material selected from the library.";
     }
 
-    if (question.type === "identify_shape" || question.type === "count_objects" || question.type === "odd_one_out") {
-      if (!question.answer?.trim()) {
-        return "You must specify the correct answer for this activity.";
-      }
-    }
-
-    if (isTextBased && !question.answer?.trim()) {
-      return "Correct answer is required for text-based activities.";
-    }
-
     return null;
   }
 
@@ -201,12 +205,12 @@ const getQuestionValidationError = (
 
 const stripAnswers = (questions: Question[]): PublicQuestion[] => {
   return questions.map((question) => ({
-    id: question.id,
-    text: question.text.trim(),
+    id: question.id || createQuestionId(),
+    text: (question.text || "").trim(),
     options: (question.options || [])
-      .filter(Boolean)
+      .filter((opt): opt is string => Boolean(opt))
       .map((option) => option.trim()),
-    type: question.type,
+    type: question.type as PreschoolQuestionType,
     count: question.count,
     visualGroup: question.visualGroup,
     points: question.points ?? 1,
@@ -215,7 +219,7 @@ const stripAnswers = (questions: Question[]): PublicQuestion[] => {
 
 const extractAnswers = (questions: Question[]) => {
   return questions.map((question) => ({
-    id: question.id,
+    id: question.id || "",
     answer: question.answer?.trim() || "",
   }));
 };
@@ -255,6 +259,8 @@ export const useUploadAssignment = () => {
   const [shortAnswerQuestions, setShortAnswerQuestions] =
     useState<Question[]>([]);
   const [preschoolQuestions, setPreschoolQuestions] =
+    useState<Question[]>([]);
+  const [mathematicsQuestions, setMathematicsQuestions] =
     useState<Question[]>([]);
 
   /* ------------------------------------------------------------------------ */
@@ -400,6 +406,9 @@ export const useUploadAssignment = () => {
       case "preschool":
         return preschoolQuestions;
 
+      case "mathematics":
+        return mathematicsQuestions;
+
       default:
         return [];
     }
@@ -408,6 +417,7 @@ export const useUploadAssignment = () => {
     mcqQuestions,
     shortAnswerQuestions,
     preschoolQuestions,
+    mathematicsQuestions,
   ]);
 
   // Auto-initialize first question for interactive types
@@ -430,6 +440,10 @@ export const useUploadAssignment = () => {
 
         case "preschool":
           setPreschoolQuestions(value);
+          break;
+
+        case "mathematics":
+          setMathematicsQuestions(value);
           break;
       }
     },
@@ -540,6 +554,22 @@ export const useUploadAssignment = () => {
                 ...question,
                 ...updates,
                 options: updates.options ?? question.options ?? [],
+              }
+            : question
+        )
+      );
+    },
+    []
+  );
+
+  const updateMathematicsQuestion = useCallback(
+    (index: number, updates: Partial<Question>) => {
+      setMathematicsQuestions((previous) =>
+        previous.map((question, questionIndex) =>
+          questionIndex === index
+            ? {
+                ...question,
+                ...updates,
               }
             : question
         )
@@ -806,60 +836,44 @@ export const useUploadAssignment = () => {
       const answerKey = extractAnswers(questions);
 
       /* -------------------------------------------------------------------- */
-      /* Create assignment                                                    */
+      /* Create assignment and answer key atomically                          */
       /* -------------------------------------------------------------------- */
+
+      const batch = writeBatch(db);
+      const assignmentRef = doc(collection(db, "assignments"));
+      const answerKeyRef = doc(db, "assignmentAnswerKeys", assignmentRef.id);
 
       const assignmentData = {
         title: title.trim(),
         description: description.trim(),
-
         type,
-
         classId: selectedClassId,
         subjectId: selectedSubject,
-
         teacherId: appUser.uid,
-
         fileUrl,
         fileName,
         fileSize,
         fileType,
-
         questions: publicQuestions,
-
         dueDate,
-
         code,
-
         status: "published",
-
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
 
-      const assignmentRef = await addDoc(
-        collection(db, "assignments"),
-        assignmentData
-      );
+      const answerKeyData = {
+        assignmentId: assignmentRef.id,
+        teacherId: appUser.uid,
+        answers: answerKey,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
 
-      /* -------------------------------------------------------------------- */
-      /* Store answer key separately                                          */
-      /* -------------------------------------------------------------------- */
+      batch.set(assignmentRef, assignmentData);
+      batch.set(answerKeyRef, answerKeyData);
 
-      await setDoc(
-        doc(
-          db,
-          "assignmentAnswerKeys",
-          assignmentRef.id
-        ),
-        {
-          assignmentId: assignmentRef.id,
-          teacherId: appUser.uid,
-          answers: answerKey,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        }
-      );
+      await batch.commit();
 
       /* -------------------------------------------------------------------- */
       /* Notifications                                                        */
@@ -1048,6 +1062,7 @@ export const useUploadAssignment = () => {
       mcqQuestions.length > 0 ||
       shortAnswerQuestions.length > 0 ||
       preschoolQuestions.length > 0 ||
+      mathematicsQuestions.length > 0 ||
       file !== null
     );
   }, [
@@ -1058,6 +1073,7 @@ export const useUploadAssignment = () => {
     mcqQuestions,
     shortAnswerQuestions,
     preschoolQuestions,
+    mathematicsQuestions,
     file,
   ]);
 
@@ -1107,6 +1123,7 @@ export const useUploadAssignment = () => {
     removeQuestion,
 
     updatePreschoolQuestion,
+    updateMathematicsQuestion,
 
     handleUpload,
 

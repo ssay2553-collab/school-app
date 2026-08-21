@@ -46,6 +46,16 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
 
   const visualAssetLibrary = [
     {
+      category: "Letters (Upper)",
+      icon: "text",
+      items: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => ({ id: l, label: `Letter ${l}` }))
+    },
+    {
+      category: "Letters (Lower)",
+      icon: "text",
+      items: "abcdefghijklmnopqrstuvwxyz".split("").map(l => ({ id: l, label: `Letter ${l}` }))
+    },
+    {
       category: "Math & Symbols",
       icon: "calculator",
       items: [
@@ -55,6 +65,13 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
         { id: "÷", label: "Divide" },
         { id: "=", label: "Equals" },
         { id: "?", label: "Question Mark" },
+        { id: "√", label: "Square Root", type: "sqrt" },
+        { id: "/", label: "Fraction", type: "fraction" },
+        { id: "(", label: "Round Brackets", type: "bracket", bracketType: "round" },
+        { id: "[", label: "Square Brackets", type: "bracket", bracketType: "square" },
+        { id: "{", label: "Curly Brackets", type: "bracket", bracketType: "curly" },
+        { id: "^", label: "Superscript", type: "superscript" },
+        { id: "_", label: "Subscript", type: "subscript" },
         { id: "1", label: "Number 1" },
         { id: "2", label: "Number 2" },
         { id: "3", label: "Number 3" },
@@ -496,7 +513,7 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
   const showOptions = q.type && !["simple_addition", "fill_missing"].includes(q.type);
 
   const showVisualSelector = [
-    "count_objects", "identify_object", "odd_one_out", "identify_shape", "classification", "simple_addition", "beginning_letter", "true_false", "ordering"
+    "count_objects", "identify_object", "odd_one_out", "identify_shape", "classification", "simple_addition", "beginning_letter", "true_false", "ordering", "identify_letter", "match_case"
   ].includes(q.type || "");
 
   if (!q.type) {
@@ -630,6 +647,35 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
                           <SVGIcon key={i} name={item.value} size={item.size === 'large' ? 32 : item.size === 'small' ? 18 : 24} />
                         ))}
                       </View>
+                    ) : item.type === 'fraction' ? (
+                      <View style={{ alignItems: 'center', minWidth: 20 }}>
+                        <Text style={{ fontSize: 12 }}>{item.numerator?.map((n: any) => n.value).join('') || 'n'}</Text>
+                        <View style={{ height: 1, backgroundColor: '#000', width: '100%' }} />
+                        <Text style={{ fontSize: 12 }}>{item.denominator?.map((d: any) => d.value).join('') || 'd'}</Text>
+                      </View>
+                    ) : item.type === 'sqrt' ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <SVGIcon name="sqrt" size={20} />
+                        <View style={{ borderTopWidth: 1, borderTopColor: '#000', paddingTop: 2 }}>
+                          <Text style={{ fontSize: 14 }}>{item.content?.map((c: any) => c.value).join('') || 'x'}</Text>
+                        </View>
+                      </View>
+                    ) : item.type === 'bracket' ? (
+                      <Text style={{ fontSize: 18, fontWeight: '800' }}>
+                        {item.bracketType === 'round' ? '(' : item.bracketType === 'square' ? '[' : '{'}
+                        {item.content?.map((c: any) => c.value).join('') || 'x'}
+                        {item.bracketType === 'round' ? ')' : item.bracketType === 'square' ? ']' : '}'}
+                      </Text>
+                    ) : item.type === 'superscript' ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800' }}>x</Text>
+                        <Text style={{ fontSize: 10, fontWeight: '800', marginTop: -4 }}>{item.value || '2'}</Text>
+                      </View>
+                    ) : item.type === 'subscript' ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                        <Text style={{ fontSize: 18, fontWeight: '800' }}>x</Text>
+                        <Text style={{ fontSize: 10, fontWeight: '800', marginBottom: -2 }}>{item.value || '2'}</Text>
+                      </View>
                     ) : (
                       <Text style={{
                         fontSize: item.size === 'large' ? 24 : item.size === 'small' ? 14 : 18,
@@ -678,6 +724,71 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
                               }} style={{ padding: 4 }}><Text style={{ fontWeight: '900' }}>+</Text></TouchableOpacity>
                             </View>
                          </View>
+                      ) : ['fraction', 'sqrt', 'bracket', 'superscript', 'subscript'].includes(item.type) ? (
+                        <View style={{ flex: 1, gap: 5 }}>
+                          <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.secondary }}>{item.type.toUpperCase()}</Text>
+                          {item.type === 'fraction' && (
+                            <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}>
+                              <TextInput
+                                style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                                value={item.numerator?.[0]?.value}
+                                placeholder="Num"
+                                onChangeText={(t) => {
+                                  const newGroup = [...q.visualGroup];
+                                  newGroup[idx].numerator = [{ ...newGroup[idx].numerator[0], value: t }];
+                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                }}
+                              />
+                              <Text>/</Text>
+                              <TextInput
+                                style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                                value={item.denominator?.[0]?.value}
+                                placeholder="Den"
+                                onChangeText={(t) => {
+                                  const newGroup = [...q.visualGroup];
+                                  newGroup[idx].denominator = [{ ...newGroup[idx].denominator[0], value: t }];
+                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                }}
+                              />
+                            </View>
+                          )}
+                          {item.type === 'sqrt' && (
+                            <TextInput
+                              style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                              value={item.content?.[0]?.value}
+                              placeholder="Content"
+                              onChangeText={(t) => {
+                                const newGroup = [...q.visualGroup];
+                                newGroup[idx].content = [{ ...newGroup[idx].content[0], value: t }];
+                                updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                              }}
+                            />
+                          )}
+                          {item.type === 'bracket' && (
+                            <TextInput
+                              style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                              value={item.content?.[0]?.value}
+                              placeholder="Inside brackets"
+                              onChangeText={(t) => {
+                                const newGroup = [...q.visualGroup];
+                                newGroup[idx].content = [{ ...newGroup[idx].content[0], value: t }];
+                                updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                              }}
+                            />
+                          )}
+                          {(item.type === 'superscript' || item.type === 'subscript') && (
+                            <TextInput
+                              style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                              value={item.value}
+                              placeholder={item.type === 'superscript' ? "Power" : "Index"}
+                              onChangeText={(t) => {
+                                const newGroup = [...q.visualGroup];
+                                newGroup[idx].value = t;
+                                updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                              }}
+                            />
+                          )}
+                        </View>
                       ) : (
                         <TextInput
                           style={{ fontSize: 14, fontWeight: '700', color: '#1E293B', flex: 1, backgroundColor: '#F8FAFC', padding: 5, borderRadius: 6 }}
@@ -714,14 +825,14 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
                       </View>
                     </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                       <TouchableOpacity
                         onPress={() => {
                           const newGroup = [...q.visualGroup];
                           newGroup[idx].isNewLine = !newGroup[idx].isNewLine;
                           updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
                         }}
-                        style={{ padding: 6, backgroundColor: item.isNewLine ? COLORS.primary + '20' : '#F1F5F9', borderRadius: 8 }}
+                        style={{ padding: 6, backgroundColor: item.isNewLine ? COLORS.primary + '20' : '#F1F5F9', borderRadius: 8, width: 32, alignItems: 'center', justifyContent: 'center' }}
                       >
                         <SVGIcon name="return-down-back" size={16} color={item.isNewLine ? COLORS.primary : '#64748B'} />
                       </TouchableOpacity>
@@ -732,22 +843,22 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
                             const newGroup = [...q.visualGroup];
                             [newGroup[idx], newGroup[idx-1]] = [newGroup[idx-1], newGroup[idx]];
                             updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                          }}><SVGIcon name="chevron-up" size={16} color={COLORS.secondary} /></TouchableOpacity>
+                          }}><SVGIcon name="chevron-up" size={14} color={COLORS.secondary} /></TouchableOpacity>
                         )}
                         {idx < q.visualGroup.length - 1 && (
                           <TouchableOpacity onPress={() => {
                             const newGroup = [...q.visualGroup];
                             [newGroup[idx], newGroup[idx+1]] = [newGroup[idx+1], newGroup[idx]];
                             updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                          }}><SVGIcon name="chevron-down" size={16} color={COLORS.secondary} /></TouchableOpacity>
+                          }}><SVGIcon name="chevron-down" size={14} color={COLORS.secondary} /></TouchableOpacity>
                         )}
                       </View>
 
                       <TouchableOpacity onPress={() => {
                         const newGroup = q.visualGroup.filter((_: any, i: number) => i !== idx);
                         updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                      }}>
-                        <SVGIcon name="close-circle" size={20} color="#EF4444" />
+                      }} style={{ padding: 6, backgroundColor: '#FEF2F2', borderRadius: 8, width: 32, alignItems: 'center', justifyContent: 'center' }}>
+                        <SVGIcon name="close-circle" size={18} color="#EF4444" />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -835,7 +946,7 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
                   paddingBottom: 40
                 }}
               >
-                {visualAssetLibrary.find(c => c.category === activeCategory)?.items.map((item, idx) => {
+                {visualAssetLibrary.find(c => c.category === activeCategory)?.items.map((item: any, idx) => {
                   const iconName = item.id.split('_')[0];
 
                   return (
@@ -844,11 +955,15 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
                       onPress={() => {
                         const iconName = item.id.split('_')[0];
                         const newGroup = [...(q.visualGroup || []), {
-                          type: 'icon',
+                          type: item.type || (item.id.match(/(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/) ? 'icon' : 'text'),
                           value: iconName,
                           count: 1,
                           size: 'medium',
-                          id: Math.random().toString()
+                          id: Math.random().toString(),
+                          bracketType: item.bracketType,
+                          numerator: item.type === 'fraction' ? [{ id: Math.random().toString(), type: 'text', value: '1' }] : undefined,
+                          denominator: item.type === 'fraction' ? [{ id: Math.random().toString(), type: 'text', value: '2' }] : undefined,
+                          content: item.type === 'sqrt' ? [{ id: Math.random().toString(), type: 'text', value: 'x' }] : undefined,
                         }];
                         updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
                       }}
@@ -888,80 +1003,21 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
         onChangeText={(t) => updatePreschoolQuestion(qIndex, { text: t })}
       />
 
-      {["simple_addition", "fill_missing"].includes(q.type) && (
-        <View style={{ marginTop: 15 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <Text style={styles.inputLabel}>Correct Answer (Number or Text) *</Text>
-            <View style={{ flexDirection: 'row', gap: 5 }}>
-              {["+", "-", "×", "÷", "=", "?"].map(op => (
-                <TouchableOpacity
-                  key={op}
-                  onPress={() => {
-                    const currentVal = q.answer || "";
-                    updatePreschoolQuestion(qIndex, { answer: currentVal + op });
-                  }}
-                  style={{
-                    backgroundColor: COLORS.secondary + '15',
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderWidth: 1,
-                    borderColor: COLORS.secondary + '30'
-                  }}
-                >
-                  <Text style={{ fontWeight: '900', color: COLORS.secondary, fontSize: 14 }}>{op}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-          <TextInput
-            style={styles.input}
-            placeholder="e.g. 3 or B"
-            value={q.answer}
-            onChangeText={(t) => updatePreschoolQuestion(qIndex, { answer: t })}
-          />
-        </View>
-      )}
-
       {showOptions && (
         <View style={styles.optionsContainer}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <Text style={styles.inputLabel}>Options (Choices for the child)</Text>
-            {["count_objects", "identify_shape", "odd_one_out", "identify_object", "beginning_letter", "classification"].includes(q.type) && (
-              <View style={{ backgroundColor: COLORS.primary + '10', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.primary }}>Required: Select correct answer below</Text>
-              </View>
-            )}
           </View>
           {q.options?.map((opt: string, oIndex: number) => (
             <View key={oIndex} style={styles.optionRow}>
-              <TouchableOpacity
-                onPress={() => {
-                  if (opt.trim()) {
-                    updatePreschoolQuestion(qIndex, { answer: opt });
-                  }
-                }}
-                style={[
-                  { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#CBD5E1', marginRight: 10 },
-                  q.answer === opt && opt.trim() !== "" && { borderColor: COLORS.secondary, backgroundColor: COLORS.secondary }
-                ]}
-              />
               <TextInput
                 style={styles.optionInput}
                 placeholder={`Option ${oIndex + 1}`}
                 value={opt}
                 onChangeText={(text) => {
                   const newOptions = [...(q.options || [])];
-                  const oldVal = newOptions[oIndex];
                   newOptions[oIndex] = text;
-
-                  const updates: any = { options: newOptions };
-                  if (q.answer === oldVal && oldVal !== "") {
-                    updates.answer = text;
-                  }
-                  updatePreschoolQuestion(qIndex, updates);
+                  updatePreschoolQuestion(qIndex, { options: newOptions });
                 }}
               />
               <TouchableOpacity
@@ -997,6 +1053,7 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
           )}
         </View>
       )}
+
 
       {isLibraryVisible && emojiTarget.type === 'option' && (
         <Animatable.View animation="fadeInUp" duration={300} style={{

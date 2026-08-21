@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
@@ -60,6 +61,16 @@ export const useMaintenanceCharges = ({
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalBilled: 0, totalCollected: 0 });
+
+  // UI state migrated from component
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [receivedFrom, setReceivedFrom] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [chargeAmount, setChargeAmount] = useState("");
 
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
@@ -192,7 +203,25 @@ export const useMaintenanceCharges = ({
     fetchStats();
   }, [fetchStudents, fetchStats]);
 
-  const handleLogPayment = async (
+  const fetchPaymentHistory = async (studentUid: string) => {
+    setLoadingHistory(true);
+    try {
+      const q = query(
+        collection(db, "feePayments"),
+        where("studentUid", "==", studentUid),
+        where("type", "in", ["maintenance", "maintenance_payment"])
+      );
+      const snap = await getDocsFromServer(q);
+      const list = snap.docs.map(d => d.data());
+      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const logPayment = async (
     student: Student,
     amount: number,
     receivedFrom: string,
@@ -277,6 +306,21 @@ export const useMaintenanceCharges = ({
       return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogPayment = async () => {
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0 || !selectedStudent || !receivedFrom.trim()) {
+      showToast({ message: "Please enter valid payment details", type: "error" });
+      return;
+    }
+
+    const success = await logPayment(selectedStudent, amount, receivedFrom, paymentMethod);
+    if (success) {
+      setPaymentModalVisible(false);
+      setPaymentAmount("");
+      setReceivedFrom("");
     }
   };
 
@@ -423,6 +467,32 @@ export const useMaintenanceCharges = ({
     }
   };
 
+  const handleApplyBulkCharge = async () => {
+    const amount = parseFloat(chargeAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showToast({ message: "Please enter a valid amount", type: "error" });
+      return;
+    }
+
+    const confirmMsg = `Apply ₵${amount} Maintenance Charge to all students in ${
+      classes.find(c => c.id === selectedClassId)?.name || "this class"
+    }?`;
+
+    const proceed = async () => {
+      const success = await applyBulkCharge(amount);
+      if (success) setChargeAmount("");
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(confirmMsg)) proceed();
+    } else {
+      Alert.alert("Confirm Bulk Charge", confirmMsg, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Apply", onPress: proceed },
+      ]);
+    }
+  };
+
   const handleDeletePayment = async (student: Student, payment: any) => {
     const year = acadConfig.academicYear?.replace(/\//g, "-");
     const term = acadConfig.currentTerm?.replace(/\s/g, "");
@@ -494,6 +564,33 @@ export const useMaintenanceCharges = ({
     }
   };
 
+  const confirmDeletePayment = (payment: any) => {
+    if (!selectedStudent) return;
+    const msg = "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.";
+
+    const proceed = async () => {
+      const success = await handleDeletePayment(selectedStudent, payment);
+      if (success) setPaymentModalVisible(false);
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Confirm Deletion\n\n${msg}`)) proceed();
+    } else {
+      Alert.alert("Confirm Deletion", msg, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: proceed },
+      ]);
+    }
+  };
+
+  const openPaymentModal = (student: Student) => {
+    setSelectedStudent(student);
+    setPaymentAmount("");
+    setReceivedFrom("");
+    setPaymentModalVisible(true);
+    fetchPaymentHistory(student.uid);
+  };
+
   return {
     loading,
     refreshing,
@@ -505,6 +602,25 @@ export const useMaintenanceCharges = ({
     handleLogPayment,
     applyBulkCharge,
     handleDeletePayment,
+    confirmDeletePayment,
     fetchStudents,
+
+    // UI state & handlers
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    setSelectedStudent,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    history,
+    loadingHistory,
+    chargeAmount,
+    setChargeAmount,
+    handleApplyBulkCharge,
+    openPaymentModal,
   };
 };

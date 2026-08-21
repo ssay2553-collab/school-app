@@ -23,6 +23,7 @@ import { useToast } from "../../contexts/ToastContext";
 import moment from "moment";
 import { useUploadAssignment, Question, AssignmentType } from "../../hooks/teacher-dashboard/useUploadAssignment";
 import PreschoolFields from "../../components/teacher-dashboard/upload-assignment/components/PreschoolFields";
+import MathematicsFields from "../../components/teacher-dashboard/upload-assignment/components/MathematicsFields";
 
 // Guarded import for native-only library
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
@@ -108,7 +109,7 @@ const AssignmentDetailsCard = memo(({
 
       <Text style={styles.inputLabel}>Type</Text>
       <View style={styles.typeRow}>
-        {(["mcq", "short_answer", "preschool"] as AssignmentType[]).map((t) => (
+        {(["mcq", "short_answer", "preschool", "mathematics"] as AssignmentType[]).map((t) => (
           <TouchableOpacity
             key={t}
             onPress={() => setType(t)}
@@ -183,12 +184,12 @@ const AssignmentDetailsCard = memo(({
    SUB-COMPONENT: QUESTION ITEM
    ========================================================= */
 const QuestionItem = memo(({
-  q, qIndex, type, updateQuestion, removeQuestion, updateOption, addOption, updatePreschoolQuestion
+  q, qIndex, type, updateQuestion, removeQuestion, updateOption, addOption, updatePreschoolQuestion, updateMathematicsQuestion
 }: any) => {
   return (
     <View style={styles.questionCard}>
       <View style={styles.qHeader}>
-        <Text style={styles.qIndex}>{type === 'preschool' ? 'Preschool' : 'Standard'} Q{qIndex + 1}</Text>
+        <Text style={styles.qIndex}>{type === 'preschool' ? 'Preschool' : type === 'mathematics' ? 'Mathematics' : 'Standard'} Q{qIndex + 1}</Text>
         <TouchableOpacity onPress={() => removeQuestion(qIndex)}>
           <SVGIcon name="trash-outline" size={20} color="#EF4444" />
         </TouchableOpacity>
@@ -196,6 +197,15 @@ const QuestionItem = memo(({
 
       {type === "preschool" ? (
         <PreschoolFields q={q} qIndex={qIndex} updatePreschoolQuestion={updatePreschoolQuestion} styles={styles} />
+      ) : type === "mathematics" ? (
+        <MathematicsFields
+          q={q}
+          qIndex={qIndex}
+          updateMathematicsQuestion={updateMathematicsQuestion}
+          updateOption={updateOption}
+          addOption={addOption}
+          styles={styles}
+        />
       ) : (
         <>
           <Text style={styles.inputLabel}>Question Text / Instructions</Text>
@@ -244,7 +254,7 @@ export default function UploadAssignment() {
     type, setType, dueDate, setDueDate, file, setFile, uploadingFile, questions,
     hasUnsavedChanges, addQuestion, updateQuestion, updateOption, addOption,
     removeQuestion, handleUpload, handleWebDateChange, handleWebTimeChange,
-    subjects, updatePreschoolQuestion,
+    subjects, updatePreschoolQuestion, updateMathematicsQuestion
   } = useUploadAssignment();
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -308,7 +318,7 @@ export default function UploadAssignment() {
       <Header onBack={handleBack} />
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 12, paddingBottom: 100 }}>
           
           <AssignmentDetailsCard
             title={title} setTitle={setTitle}
@@ -337,6 +347,7 @@ export default function UploadAssignment() {
                 updateOption={updateOption}
                 addOption={addOption}
                 updatePreschoolQuestion={updatePreschoolQuestion}
+                updateMathematicsQuestion={updateMathematicsQuestion}
               />
             ))}
 
@@ -371,7 +382,7 @@ const styles = StyleSheet.create({
   headerTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   backBtn: { padding: 5 },
   headerTitle: { fontSize: 24, fontWeight: "900", color: "#fff" },
-  card: { backgroundColor: "#fff", borderRadius: 20, padding: 20, marginBottom: 20, ...SHADOWS.small },
+  card: { backgroundColor: "#fff", borderRadius: 20, padding: 12, marginBottom: 20, ...SHADOWS.small },
   sectionLabel: { fontSize: 14, fontWeight: "900", color: COLORS.primary, marginBottom: 15, letterSpacing: 0.5 },
   sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15 },
   inputLabel: { fontSize: 12, fontWeight: "700", color: "#64748B", marginBottom: 8, marginTop: 10 },
@@ -391,7 +402,7 @@ const styles = StyleSheet.create({
   datePickerText: { fontSize: 14, color: "#1E293B", fontWeight: "700" },
   uploadBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", borderStyle: "dashed", borderWidth: 2, borderColor: COLORS.primary, borderRadius: 12, padding: 20, marginTop: 10, gap: 10 },
   uploadBtnText: { color: COLORS.primary, fontWeight: "800", fontSize: 14 },
-  questionCard: { backgroundColor: "#F8FAFC", borderRadius: 15, padding: 15, marginBottom: 15, borderWidth: 1, borderColor: "#E2E8F0" },
+  questionCard: { backgroundColor: "#F8FAFC", borderRadius: 15, padding: 8, marginBottom: 15, borderWidth: 1, borderColor: "#E2E8F0" },
   qHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   qIndex: { fontSize: 12, fontWeight: "900", color: COLORS.primary },
   optionsContainer: { marginTop: 15, gap: 10 },

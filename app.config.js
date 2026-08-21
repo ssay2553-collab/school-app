@@ -315,7 +315,7 @@ module.exports = ({ config }) => {
       package: "com.saysmanage.stone",
       scheme: "stone",
       logo: "./assets/icon-josepac.png",
-      hotline: "0257976605",
+      hotline: "+233 24 686 3601 / 0257976605",
       fullName: "Josepac Preparatory School",
       motto: "Perseverance and Faith",
       address: "",

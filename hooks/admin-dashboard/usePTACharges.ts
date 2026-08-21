@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
@@ -60,6 +61,14 @@ export const usePTACharges = ({
   const [stats, setStats] = useState({ totalBilled: 0, totalCollected: 0 });
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // UI state migrated from component
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [receivedFrom, setReceivedFrom] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
+  const [chargeAmount, setChargeAmount] = useState("");
 
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
@@ -504,6 +513,52 @@ export const usePTACharges = ({
     fetchStats();
   }, [fetchStudents, fetchStats]);
 
+  const handleConfirmPayment = async () => {
+    if (!selectedStudent) return;
+    const amount = parseFloat(paymentAmount);
+    const success = await handleLogPayment(selectedStudent, amount, receivedFrom, paymentMethod);
+    if (success) {
+      setPaymentModalVisible(false);
+      setPaymentAmount("");
+      setReceivedFrom("");
+    }
+  };
+
+  const handleApplyBulkCharge = async () => {
+    const success = await applyBulkCharge(chargeAmount);
+    if (success) {
+      setChargeAmount("");
+    }
+  };
+
+  const confirmDeletePayment = (payment: any) => {
+    if (!selectedStudent) return;
+    const msg = "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.";
+
+    const proceed = async () => {
+      const success = await handleDeletePayment(selectedStudent, payment);
+      if (success) setPaymentModalVisible(false);
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Confirm Deletion\n\n${msg}`)) proceed();
+    } else {
+      Alert.alert("Confirm Deletion", msg, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: proceed },
+      ]);
+    }
+  };
+
+  const openPaymentModal = (student: Student) => {
+    setPaymentAmount("");
+    setReceivedFrom("");
+    setPaymentMethod("Cash");
+    setSelectedStudent(student);
+    setPaymentModalVisible(true);
+    fetchPaymentHistory(student.uid);
+  };
+
   useEffect(() => {
     fetchStudents(true);
     fetchStats();
@@ -524,5 +579,23 @@ export const usePTACharges = ({
     applyBulkCharge,
     handleDeletePayment,
     handleRefresh,
+
+    // UI state & handlers
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    setSelectedStudent,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    chargeAmount,
+    setChargeAmount,
+    handleConfirmPayment,
+    handleApplyBulkCharge,
+    confirmDeletePayment,
+    openPaymentModal,
   };
 };

@@ -36,42 +36,9 @@ import * as Animatable from "react-native-animatable";
 import * as Clipboard from "expo-clipboard";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
-
-interface VisualItem {
-  id: string;
-  type: 'icon' | 'text' | 'operator';
-  value: string;
-  count?: number;
-  size?: 'small' | 'medium' | 'large';
-  isNewLine?: boolean;
-}
-
-interface Question {
-  text: string;
-  options?: string[];
-  type?: string;
-  imageCategory?: string;
-  count?: number;
-  visualGroup?: VisualItem[];
-  answer?: string;
-  points?: number;
-}
-
-interface Assignment {
-  id: string;
-  title: string;
-  subjectId: string;
-  classId: string;
-  type: "mcq" | "short_answer" | "preschool";
-  description?: string;
-  fileUrl?: string;
-  fileName?: string;
-  teacherId: string;
-  code: string;
-  createdAt: Timestamp;
-  dueDate?: Timestamp;
-  questions?: Question[];
-}
+import { Assignment, Question, VisualItem } from "../../types/assignments";
+import QuestionResponseItem from "../../components/student-dashboard/assignments/QuestionResponseItem";
+import AssignmentCard from "../../components/student-dashboard/assignments/AssignmentCard";
 
 export default function Assignments() {
   const { appUser } = useAuth();
@@ -217,44 +184,9 @@ export default function Assignments() {
     showToast({ message: "Assignment code copied to clipboard!", type: "success" });
   };
 
-  const renderAssignmentItem = ({ item, index }: { item: Assignment, index: number }) => {
-    const assignmentType = item.type;
-    const isPreschool = assignmentType === 'preschool';
-
-    return (
-      <Animatable.View animation="fadeInUp" delay={index * 100} style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.title}>{item.title}</Text>
-          <View style={[styles.typeBadge, { backgroundColor: isPreschool ? '#FEF3C7' : '#F0FDF4' }]}>
-            <Text style={[styles.typeText, { color: isPreschool ? '#D97706' : '#10B981' }]}>
-              {assignmentType.toUpperCase()}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.detailsRow}>
-          <View style={styles.infoRow}>
-            <SVGIcon name="library" size={14} color={COLORS.primary} />
-            <Text style={styles.infoText}>{item.subjectId}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <SVGIcon name="calendar" size={14} color="#94A3B8" />
-            <Text style={styles.infoText}>Due: {formatDate(item.dueDate)}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: COLORS.secondary }]}
-          onPress={() => handleStartAssignment(item)}
-        >
-          <Text style={styles.actionButtonText}>
-            Start Now
-          </Text>
-          <SVGIcon name="arrow-forward" size={16} color="#fff" />
-        </TouchableOpacity>
-      </Animatable.View>
-    );
-  };
+  const renderAssignmentItem = ({ item, index }: { item: Assignment, index: number }) => (
+    <AssignmentCard item={item} index={index} onStart={handleStartAssignment} />
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -300,9 +232,9 @@ export default function Assignments() {
       <Modal visible={!!activeAssignment} animationType="slide" onRequestClose={() => setActiveAssignment(null)}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeaderInner}>
-            <Text style={styles.modalTitleInner}>{activeAssignment?.title}</Text>
+            <Text style={[styles.modalTitleInner, activeAssignment?.type === 'preschool' && { fontSize: 24 }]}>{activeAssignment?.title}</Text>
             <TouchableOpacity onPress={() => setActiveAssignment(null)} style={styles.modalCloseBtn}>
-              <SVGIcon name="close" size={24} color="#1E293B" />
+              <SVGIcon name="close" size={activeAssignment?.type === 'preschool' ? 32 : 24} color="#1E293B" />
             </TouchableOpacity>
           </View>
 
@@ -312,8 +244,14 @@ export default function Assignments() {
           >
             <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               {activeAssignment?.description ? (
-                <View style={styles.assignmentDescriptionBox}>
-                  <Text style={styles.assignmentDescriptionText}>{activeAssignment.description}</Text>
+                <View style={[
+                  styles.assignmentDescriptionBox,
+                  activeAssignment?.type === 'preschool' ? { padding: 20 } : { padding: 12, backgroundColor: '#F8FAFC' }
+                ]}>
+                  <Text style={[
+                    styles.assignmentDescriptionText,
+                    activeAssignment?.type === 'preschool' ? { fontSize: 20, fontWeight: '800', color: COLORS.primary, lineHeight: 28 } : { fontSize: 14, color: '#475569', fontWeight: '600' }
+                  ]}>{activeAssignment.description}</Text>
                 </View>
               ) : null}
               {activeAssignment?.questions?.map((q, qIdx) => (
@@ -331,14 +269,14 @@ export default function Assignments() {
 
           <View style={styles.modalFooterInner}>
             <TouchableOpacity
-              style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
+              style={[styles.submitBtn, submitting && { opacity: 0.7 }, activeAssignment?.type === 'preschool' && { padding: 22 }]}
               onPress={handleSubmitResponses}
               disabled={submitting}
             >
               {submitting ? <ActivityIndicator color="#fff" /> : (
                 <>
-                  <Text style={styles.submitBtnText}>Submit Assignment</Text>
-                  <SVGIcon name="checkmark-done-circle" size={20} color="#fff" />
+                  <Text style={[styles.submitBtnText, activeAssignment?.type === 'preschool' && { fontSize: 20 }]}>Submit Assignment</Text>
+                  <SVGIcon name="checkmark-done-circle" size={activeAssignment?.type === 'preschool' ? 28 : 20} color="#fff" />
                 </>
               )}
             </TouchableOpacity>
@@ -348,188 +286,6 @@ export default function Assignments() {
     </SafeAreaView>
   );
 }
-
-const QuestionResponseItem = memo(({
-  q,
-  qIdx,
-  type,
-  answer,
-  setAnswer
-}: {
-  q: Question;
-  qIdx: number;
-  type: string;
-  answer: string;
-  setAnswer: (val: string) => void;
-}) => {
-  const isPreschoolOptions = type === "preschool" && ![
-    "simple_addition", "fill_missing"
-  ].includes(q.type || "");
-
-  const showOptions = type === "mcq" || isPreschoolOptions;
-
-  // Worksheet style layout for specific preschool types
-  const isWorksheetRow = type === "preschool" && [
-    "count_objects", "identify_shape", "simple_addition", "odd_one_out", "true_false"
-  ].includes(q.type || "");
-
-  if (isWorksheetRow) {
-    return (
-      <View style={styles.worksheetRow}>
-        <View style={styles.worksheetLeft}>
-          <View style={styles.worksheetVisualBox}>
-            {q.visualGroup && q.visualGroup.length > 0 ? (
-               <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
-                  {q.visualGroup.map((group, gIdx) => {
-                    const iconSize = group.size === 'large' ? 45 : group.size === 'small' ? 20 : 30;
-                    return (
-                      <View key={gIdx} style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
-                        {[...Array(group.count)].map((_, i) => (
-                          <SVGIcon key={`${gIdx}-${i}`} name={group.icon} size={iconSize} color={COLORS.secondary} />
-                        ))}
-                      </View>
-                    );
-                  })}
-               </View>
-            ) : (
-              <Text style={styles.questionText}>{qIdx + 1}. {q.text}</Text>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.worksheetRight}>
-          <View style={styles.worksheetOptionsRow}>
-            {q.options?.map((opt, oIdx) => {
-              const isSelected = answer === opt;
-              const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
-              const isVisual = emojiRegex.test(opt) || [
-                "square-outline", "circle-outline", "triangle-outline", "diamond-outline",
-                "star-outline", "heart-outline", "pentagon", "pentagon-outline",
-                "hexagon", "hexagon-outline", "octagon", "octagon-outline"
-              ].includes(opt.replace(/-outline$/, ''));
-
-              return (
-                <TouchableOpacity
-                  key={oIdx}
-                  style={[styles.worksheetOption, isSelected && styles.worksheetOptionSelected]}
-                  onPress={() => setAnswer(opt)}
-                >
-                  {isVisual ? (
-                    <SVGIcon name={opt} size={28} />
-                  ) : (
-                    <Text style={[styles.worksheetOptionText, isSelected && styles.worksheetOptionTextSelected]}>
-                      {opt}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.questionBox}>
-      {q.type && (
-        <View style={styles.preschoolBadge}>
-          <Text style={styles.preschoolBadgeText}>{q.type.replace('_', ' ').toUpperCase()}</Text>
-        </View>
-      )}
-
-      <Text style={styles.questionText}>{qIdx + 1}. {q.text}</Text>
-
-      {q.visualGroup && q.visualGroup.length > 0 && (
-        <View style={styles.visualContainer}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 15 }}>
-            {q.visualGroup.map((item: any, gIdx: number) => {
-              const iconSize = item.size === 'large' ? 60 : item.size === 'small' ? 30 : 45;
-              const containerSize = iconSize + 10;
-
-              return (
-                <React.Fragment key={gIdx}>
-                  {item.isNewLine && <View style={{ width: '100%', height: 0 }} />}
-                  {item.type === 'icon' ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'center' }}>
-                      {[...Array(item.count || 1)].map((_, i) => (
-                        <View key={`${gIdx}-${i}`} style={{ width: containerSize, height: containerSize, alignItems: 'center', justifyContent: 'center' }}>
-                          <SVGIcon name={item.value} size={iconSize} color={COLORS.secondary} />
-                        </View>
-                      ))}
-                    </View>
-                  ) : (
-                    <Text style={{
-                      fontSize: item.size === 'large' ? 32 : item.size === 'small' ? 16 : 24,
-                      fontWeight: '800',
-                      color: '#1E293B'
-                    }}>{item.value}</Text>
-                  )}
-                </React.Fragment>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {q.imageCategory && !q.visualGroup && (
-        <View style={styles.visualContainer}>
-            {q.type === 'count_objects' && q.count ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 }}>
-              {[...Array(q.count)].map((_, i) => (
-                <SVGIcon key={i} name={q.imageCategory!} size={40} color={COLORS.secondary} />
-              ))}
-            </View>
-          ) : (
-            <SVGIcon name={q.imageCategory} size={80} color={COLORS.secondary} />
-          )}
-          <Text style={styles.visualLabel}>
-            {q.type === 'count_objects' ? `How many ${q.imageCategory.replace('-', ' ')}s do you see?` : `Look at the ${q.imageCategory.replace('-', ' ')}`}
-          </Text>
-        </View>
-      )}
-
-      {showOptions ? (
-        <View style={styles.optionsList}>
-          {q.options?.map((opt, oIdx) => {
-            const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
-            const isVisual = emojiRegex.test(opt) || [
-              "square-outline", "circle-outline", "triangle-outline", "diamond-outline",
-              "star-outline", "heart-outline", "pentagon", "pentagon-outline",
-              "hexagon", "hexagon-outline", "octagon", "octagon-outline"
-            ].includes(opt);
-
-            return (
-              <TouchableOpacity
-                key={oIdx}
-                style={[styles.optionBtn, answer === opt && styles.optionBtnSelected]}
-                onPress={() => setAnswer(opt)}
-              >
-                <View style={[styles.radio, answer === opt && styles.radioSelected]} />
-                {isVisual ? (
-                   <View style={{ padding: 5, backgroundColor: '#F8FAFC', borderRadius: 10 }}>
-                      <SVGIcon name={opt} size={40} />
-                   </View>
-                ) : (
-                  <Text style={[styles.optionLabel, answer === opt && styles.optionLabelSelected]}>{opt}</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ) : (
-        <TextInput
-          style={styles.answerInput}
-          placeholder="Type your answer here..."
-          placeholderTextColor="#94A3B8"
-          multiline={type !== "preschool"}
-          value={answer || ""}
-          onChangeText={setAnswer}
-        />
-      )}
-    </View>
-  );
-});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
@@ -580,110 +336,12 @@ const styles = StyleSheet.create({
     borderColor: COLORS.primary + '20',
   },
   assignmentDescriptionText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#475569',
     lineHeight: 22,
   },
-  questionBox: { marginBottom: 25, backgroundColor: '#F8FAFC', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0' },
-  questionText: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 15 },
-  optionsList: { gap: 12 },
-  optionBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  optionBtnSelected: { borderColor: COLORS.secondary, backgroundColor: COLORS.secondary + '05' },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#CBD5E1' },
-  radioSelected: { borderColor: COLORS.secondary, backgroundColor: COLORS.secondary },
-  optionLabel: { fontSize: 14, color: '#475569', fontWeight: '600' },
-  optionLabelSelected: { color: COLORS.secondary, fontWeight: '800' },
-  answerInput: { backgroundColor: '#fff', borderRadius: 12, padding: 15, fontSize: 15, minHeight: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: '#E2E8F0' },
   modalFooterInner: { padding: 20, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
   submitBtn: { backgroundColor: COLORS.secondary, padding: 18, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10 },
-  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' },
-  preschoolBadge: {
-    backgroundColor: COLORS.secondary + '20',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  preschoolBadgeText: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: COLORS.secondary,
-    letterSpacing: 0.5,
-  },
-  visualContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 15,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  visualLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-    marginTop: 8,
-    textTransform: 'capitalize',
-  },
-  worksheetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    minHeight: 80,
-  },
-  worksheetLeft: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  worksheetVisualBox: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 10,
-    padding: 10,
-    minHeight: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  worksheetRight: {
-    flex: 1,
-    paddingLeft: 15,
-    justifyContent: 'center',
-  },
-  worksheetOptionsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
-    gap: 8,
-  },
-  worksheetOption: {
-    minWidth: 40,
-    height: 40,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    paddingHorizontal: 8,
-  },
-  worksheetOptionSelected: {
-    borderColor: COLORS.secondary,
-    backgroundColor: COLORS.secondary + '10',
-  },
-  worksheetOptionText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  worksheetOptionTextSelected: {
-    color: COLORS.secondary,
-  }
+  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '900' }
 });

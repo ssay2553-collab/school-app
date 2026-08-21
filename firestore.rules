@@ -781,9 +781,30 @@ match /feePayments/{paymentId} {
        ASSIGNMENTS COLLECTION
     =============================== */
    match /assignments/{id} {
-      allow read: if canViewAssignments() || isAdmin() || (isTeacher() && resource.data.teacherId == uid()) || (isStudent() && resource.data.classId == userData().classId) || isParent();
-      allow create, update: if canManageAssignments() || (isTeacher() && request.resource.data.teacherId == uid());
+      allow read: if canViewAssignments() || isAdmin() ||
+        (isTeacher() && resource.data.teacherId == uid()) ||
+        (isStudent() && resource.data.classId == userData().classId) ||
+        (isParent() && resource.data.classId in userData().get('childrenClassIds', []));
+
+      allow create: if (canManageAssignments() || isTeacher()) &&
+        request.resource.data.teacherId == uid() &&
+        request.resource.data.title is string &&
+        request.resource.data.type in ['mcq', 'short_answer', 'preschool', 'mathematics'] &&
+        request.resource.data.classId is string &&
+        request.resource.data.createdAt == request.time;
+
+      allow update: if canManageAssignments() || (isTeacher() && resource.data.teacherId == uid());
       allow delete: if canManageAssignments() || isAdmin();
+    }
+
+    match /assignmentAnswerKeys/{assignmentId} {
+      allow read, write: if isSignedIn() && (
+        isAdmin() ||
+        (isTeacher() && (
+          (resource == null || resource.data.teacherId == uid()) &&
+          (request.resource == null || request.resource.data.teacherId == uid())
+        ))
+      );
     }
 
      /* ===============================
@@ -792,22 +813,31 @@ match /feePayments/{paymentId} {
          match /submissions/{submissionId} {
            allow read: if isSignedIn() && (
              isAdmin() ||
-             isTeacher() ||
-             (isStudent() && resource.data.studentId == uid())
+             (isTeacher() && (
+               // Fast path: Teacher ID or Class ID stored on the submission
+               resource.data.get('teacherId', '') == uid() ||
+               resource.data.get('classId', '') in userData().get('classes', []) ||
+               resource.data.get('classId', '') == userData().get('classTeacherOf', '')
+             )) ||
+             (isStudent() && resource.data.studentId == uid()) ||
+             (isParent() && resource.data.studentId in userData().get('childrenIds', []))
            );
 
            allow create: if isSignedIn() &&
              isStudent() &&
              request.resource.data.studentId == uid() &&
-             // Validate that the timestamp is actually the server time
+             // Enforce presence of denormalized fields for security rules & performance
+             request.resource.data.teacherId is string &&
+             request.resource.data.classId is string &&
+             request.resource.data.assignmentId is string &&
              request.resource.data.submittedAt == request.time;
 
            allow update: if isSignedIn() && (
              isAdmin() ||
              (isTeacher() && (
-               resource.data.assignmentId in (get(/databases/$(database)/documents/users/$(uid())).data.assignedAssignments) ||
-               // Fallback: check if they are the teacher of the student
-               isClassTeacher(get(/databases/$(database)/documents/users/$(resource.data.studentId)).data.classId)
+               resource.data.get('teacherId', '') == uid() ||
+               resource.data.get('classId', '') in userData().get('classes', []) ||
+               resource.data.get('classId', '') == userData().get('classTeacherOf', '')
              ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores']))
            );
 

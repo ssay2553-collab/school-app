@@ -7,50 +7,47 @@ export class AcademicReportGenerator extends BasePDFGenerator {
 
   protected drawHeader() {
     const startY = this.currentY;
-    const headerHeight = 75;
+    let headerHeight = 85;
 
-    // Logo (Left Aligned)
-    let textStartX = MARGIN;
+    // Logo (Centered)
     if (this.logoImage) {
       const logoDims = this.logoImage.scale(0.4);
-      const targetHeight = 55;
+      const targetHeight = 60;
       const targetWidth = (logoDims.width / logoDims.height) * targetHeight;
 
       this.currentPage.drawImage(this.logoImage, {
-        x: MARGIN,
+        x: MARGIN + (PAGE_WIDTH - targetWidth) / 2,
         y: startY - targetHeight,
         width: targetWidth,
         height: targetHeight,
       });
-      textStartX = MARGIN + targetWidth + 20;
-
-      // Vertical Divider
-      this.drawLine(
-        textStartX - 10,
-        startY,
-        textStartX - 10,
-        startY - targetHeight - 5,
-        0.5,
-        rgb(0.8, 0.8, 0.8)
-      );
+      headerHeight = targetHeight + 70; // Adjust header height based on logo
     }
 
-    // School Details (Right of Logo)
-    this.currentPage.drawText(this.options.schoolName.toUpperCase(), {
-      x: textStartX,
-      y: startY - 18,
-      size: 16,
+    let infoY = startY - (this.logoImage ? 70 : 18);
+
+    // School Details (Centered)
+    const schoolName = this.options.schoolName.toUpperCase();
+    const nameSize = 18;
+    const nameWidth = this.boldFont.widthOfTextAtSize(schoolName, nameSize);
+    this.currentPage.drawText(schoolName, {
+      x: MARGIN + (PAGE_WIDTH - nameWidth) / 2,
+      y: infoY,
+      size: nameSize,
       font: this.boldFont,
       color: this.primaryColor,
     });
 
-    let infoY = startY - 32;
+    infoY -= 15;
 
     if (this.options.schoolMotto) {
-      this.currentPage.drawText(`"${this.options.schoolMotto}"`, {
-        x: textStartX,
+      const motto = `"${this.options.schoolMotto}"`;
+      const mottoSize = 9;
+      const mottoWidth = this.font.widthOfTextAtSize(motto, mottoSize);
+      this.currentPage.drawText(motto, {
+        x: MARGIN + (PAGE_WIDTH - mottoWidth) / 2,
         y: infoY,
-        size: 8,
+        size: mottoSize,
         font: this.font,
         color: rgb(0.4, 0.4, 0.4),
       });
@@ -58,10 +55,12 @@ export class AcademicReportGenerator extends BasePDFGenerator {
     }
 
     if (this.options.schoolAddress) {
+      const addrSize = 9;
+      const addrWidth = this.font.widthOfTextAtSize(this.options.schoolAddress, addrSize);
       this.currentPage.drawText(this.options.schoolAddress, {
-        x: textStartX,
+        x: MARGIN + (PAGE_WIDTH - addrWidth) / 2,
         y: infoY,
-        size: 8.5,
+        size: addrSize,
         color: rgb(0.3, 0.3, 0.3),
         font: this.font,
       });
@@ -76,16 +75,18 @@ export class AcademicReportGenerator extends BasePDFGenerator {
       .join("  |  ");
 
     if (contactText) {
+      const contactSize = 9;
+      const contactWidth = this.font.widthOfTextAtSize(contactText, contactSize);
       this.currentPage.drawText(contactText, {
-        x: textStartX,
+        x: MARGIN + (PAGE_WIDTH - contactWidth) / 2,
         y: infoY,
-        size: 8.5,
+        size: contactSize,
         color: rgb(0.3, 0.3, 0.3),
         font: this.font,
       });
     }
 
-    this.currentY = startY - headerHeight;
+    this.currentY = infoY - 15;
 
     // Elegant double line separator
     this.drawLine(MARGIN, this.currentY, MARGIN + PAGE_WIDTH, this.currentY, 1.5, this.primaryColor);
@@ -538,17 +539,17 @@ export class AcademicReportGenerator extends BasePDFGenerator {
 
     // Signatures Section
     const sigBottomY = MARGIN + 10;
-    const sigColWidth = 140;
-    const lineX = MARGIN + PAGE_WIDTH - sigColWidth;
+    const sigColWidth = 160;
+    const lineX = MARGIN + (PAGE_WIDTH - sigColWidth) / 2; // Centered signature
 
-    // Admin Signature (Right End)
+    // Admin Signature (Centered)
     if (data.adminSig) {
       const sigImg = await this.embedImage(data.adminSig);
       if (sigImg) {
-        const sigWidth = 60;
-        const sigHeight = 30;
+        const sigWidth = 80;
+        const sigHeight = 40;
         this.currentPage.drawImage(sigImg, {
-          x: lineX + (sigColWidth - sigWidth) / 2,
+          x: MARGIN + (PAGE_WIDTH - sigWidth) / 2,
           y: sigBottomY + 12,
           width: sigWidth,
           height: sigHeight,
@@ -556,14 +557,15 @@ export class AcademicReportGenerator extends BasePDFGenerator {
       }
     }
 
-    this.drawLine(lineX, sigBottomY + 10, MARGIN + PAGE_WIDTH, sigBottomY + 10, 0.5, rgb(0.4, 0.4, 0.4));
+    this.drawLine(lineX, sigBottomY + 10, lineX + sigColWidth, sigBottomY + 10, 0.5, rgb(0.4, 0.4, 0.4));
 
-    const sigLabel = "Headteacher / Admin";
-    const sigLabelWidth = this.boldFont.widthOfTextAtSize(sigLabel, 7.5);
+    const sigLabel = "Head of Institution / Admin";
+    const sigLabelSize = 8.5;
+    const sigLabelWidth = this.boldFont.widthOfTextAtSize(sigLabel, sigLabelSize);
     this.currentPage.drawText(sigLabel, {
-      x: lineX + (sigColWidth - sigLabelWidth) / 2,
+      x: MARGIN + (PAGE_WIDTH - sigLabelWidth) / 2,
       y: sigBottomY - 2,
-      size: 7.5,
+      size: sigLabelSize,
       font: this.boldFont,
       color: rgb(0.2, 0.2, 0.2),
     });

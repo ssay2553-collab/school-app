@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, ViewStyle, Platform, Text } from "react-native";
+import { StyleSheet, ViewStyle, Platform, Text, ImageStyle } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { Image } from "expo-image";
 
@@ -59,6 +59,8 @@ const paths: Record<string, string> = {
   card: "M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z",
   library:
     "M4 10h3v7H4zm6.5 0h3v7h-3zM2 19h20v2H2zm15-9h3v7h-3zm-5-9L2 6v2h20V6z",
+  layers: "M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z",
+  "layers-outline": "M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z",
   create:
     "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z",
   calendar:
@@ -67,6 +69,10 @@ const paths: Record<string, string> = {
     "M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.89-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2z",
   receipt:
     "M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2l-1.5 1.5L3 2v20z",
+  "return-down-back": "M20 8v5a2 2 0 01-2 2H5.41l3.3 3.29-1.41 1.42-6-6a1 1 0 010-1.42l6-6 1.41 1.42L5.41 11H18V8h2z",
+  sync: "M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm-6.24 3.06L4.3 5.6C3.31 7.4 2.73 9.4 2.73 11.5c0 4.42 3.58 8 8 8v3l4-4-4-4v3c-3.31 0-6-2.69-6-6 0-1.8.8-3.41 2.03-4.44z",
+  archive: "M21 7H3V6c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v1zm-2 1v11c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V8h14zm-3 4H8v2h8v-2z",
+  pricetag: "M21.58 12.58l-9-9A2 2 0 0011.17 3H4a2 2 0 00-2 2v7.17a2 2 0 00.59 1.41l9 9a2 2 0 002.82 0l7.17-7.17a2 2 0 000-2.83zM6.5 8.5a1.5 1.5 0 111.5-1.5 1.5 1.5 0 01-1.5 1.5z",
   checkmark: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
   "checkmark-done-circle":
     "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z",
@@ -105,6 +111,7 @@ const paths: Record<string, string> = {
   "add-circle":
     "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v5h-2v-5H7v-2h4V7h2v4h4v2z",
   add: "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z",
+  "add-outline": "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z",
   sparkles:
     "M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z",
   "bookmark-outline":
@@ -177,6 +184,16 @@ const paths: Record<string, string> = {
     "M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM10 17l-4-4 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z",
   "trending-down":
     "M16 18l2.29-2.29-4.88-4.88-4 4L2 7.41 3.41 6l6 6 4-4 6.3 6.29L22 12v6h-6z",
+  "trending-up":
+    "M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z",
+  menu: "M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z",
+  notifications:
+    "M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z",
+  filter: "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
+  "funnel-outline": "M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z",
+  "eye-outline": "M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z",
+  "receipt-outline":
+    "M18 17H6v-2h12v2zm0-4H6v-2h12v2zm0-4H6V7h12v2zM3 22l1.5-1.5L6 22l1.5-1.5L9 22l1.5-1.5L12 22l1.5-1.5L15 22l1.5-1.5L18 22l1.5-1.5L21 22V2l-1.5 1.5L18 2l-1.5 1.5L15 2l-1.5 1.5L12 2l-1.5 1.5L9 2l-1.5 1.5L6 2l-1.5 1.5L3 2v20z",
   "settings-outline":
     "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47.41l.36 2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z",
   refresh:
@@ -206,6 +223,8 @@ const paths: Record<string, string> = {
   "hexagon-outline": "M12 4.1L5 8.1v7.8l7 4 7-4V8.1l-7-4m0-2.1l9 5.2v10.4l-9 5.2-9-5.2V7.2l9-5.2z",
   octagon: "M15.73 3H8.27L3 8.27v7.46L8.27 21h7.46L21 15.73V8.27L15.73 3z",
   "octagon-outline": "M15.31 5L19 8.69v5.62L15.31 19H8.69L5 15.31V8.69L8.69 5h6.62M15.73 3H8.27L3 8.27v7.46L8.27 21h7.46L21 15.73V8.27L15.73 3z",
+  "sqrt": "M3.5 11.5l1.5-1.5 2.5 7.5L12.5 5H21v2h-7.5L9.5 18.5l-2.5-7.5-1.5 1.5z",
+  "fraction": "M4 11h16v2H4z",
   "cash-outline": "M15 16h1c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1h-1M9 16H8c-.55 0-1-.45-1-1V9c0-.55.45-1 1-1h1m3 9c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-2c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm0-8V5m0 14v-2",
   "log-out-outline":
     "M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z",
@@ -315,9 +334,12 @@ export default React.memo(function SVGIcon({
     minHeight: size,
   } : {};
 
-  if (!paths[name] && name && name.length > 0) {
-    if (isEmoji(name)) {
-      const emojiUrl = getEmojiUrl(name);
+  const iconName = (name || "").trim().toLowerCase();
+  const iconPath = paths[iconName] || (iconName.endsWith("-outline") ? paths[iconName.replace("-outline", "")] : null);
+
+  if (!iconPath && iconName.length > 0) {
+    if (isEmoji(iconName)) {
+      const emojiUrl = getEmojiUrl(iconName);
       if (emojiUrl) {
         return (
           <Image
@@ -326,8 +348,8 @@ export default React.memo(function SVGIcon({
               {
                 width: size,
                 height: size,
-              },
-              flattenedStyle
+              } as ImageStyle,
+              flattenedStyle as ImageStyle
             ]}
             contentFit="contain"
           />
@@ -365,7 +387,7 @@ export default React.memo(function SVGIcon({
       pointerEvents="none"
     >
       <Path
-        d={paths[name] || ""}
+        d={iconPath || ""}
         fill={color}
       />
     </Svg>

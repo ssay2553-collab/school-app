@@ -1,43 +1,55 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   collection,
-  doc,
-  getDocsFromServer,
-  query,
-  where,
-  writeBatch,
-  serverTimestamp,
-  arrayUnion,
-  increment,
-  arrayRemove,
   onSnapshot
 } from "firebase/firestore";
-import moment from "moment";
 import { db } from "../../firebaseConfig";
 import { StudentDraft, FILTERS_PERSISTENCE_KEY } from "../../constants/admin-dashboard/ManageFeesTypes";
 import { sortClasses } from "../../lib/classHelpers";
-import { sendNotification } from "../../src/services/notificationService";
-import { Alert, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFeeStudents } from "./useFeeStudents";
-import { propagateArrears } from "../../utils/financeUtils";
+import { useFeeBilling } from "./useFeeBilling";
+import { useFeePayments } from "./useFeePayments";
+import { useFeeDiscounts } from "./useFeeDiscounts";
 
 interface UseManageFeesProps {
   appUser: any;
   showToast: (props: { message: string; type: "success" | "error" | "info" }) => void;
   acadConfig: any;
-  canEdit: boolean;
-  isSuperAdmin: boolean;
 }
 
 export const useManageFees = ({
   appUser,
   showToast,
   acadConfig,
-  canEdit,
-  isSuperAdmin,
 }: UseManageFeesProps) => {
-  const [saving, setSaving] = useState(false);
+  // ACCESS CONTROL LOGIC
+  const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
+  const isSuperAdmin = useMemo(() => [
+    "proprietor",
+    "proprietress",
+    "manager",
+    "headmaster",
+    "headmistress",
+    "administrator",
+    "director",
+    "accountant",
+    "bursar",
+    "admin",
+    "super admin",
+    "superadmin",
+  ].includes(currentUserRole), [currentUserRole]);
+
+  const feePermission = appUser?.permissions?.["manage-fees"] || "deny";
+  const canView = useMemo(() =>
+    isSuperAdmin ||
+    feePermission === "full" ||
+    feePermission === "view" ||
+    feePermission === "edit", [isSuperAdmin, feePermission]);
+
+  const canEdit = useMemo(() =>
+    isSuperAdmin || feePermission === "full" || feePermission === "edit", [isSuperAdmin, feePermission]);
+
   const [activeMode, setActiveMode] = useState<"billing" | "payment" | "discounts">("payment");
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
@@ -45,50 +57,19 @@ export const useManageFees = ({
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [selectedStudentUids, setSelectedStudentUids] = useState<Set<string>>(new Set());
 
-  const [termBillAmount, setTermBillAmount] = useState("");
-  const [discountAmount, setDiscountAmount] = useState("");
-  const [individualBillOverrides, setIndividualBillOverridesState] = useState<Record<string, string>>({});
-  const individualBillOverridesRef = useRef<Record<string, string>>({});
-  const [individualDiscountOverrides, setIndividualDiscountOverrides] = useState<Record<string, string>>({});
-
   const [classes, setClasses] = useState<{ id: string; name: string; department?: string | null }[]>([]);
   const academicYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
+  const isConfigMissing = !academicYear || !term;
 
-  const {
-    students,
-    loading,
-    refreshing,
-    fetchStudents,
-    handleRefresh,
-    fetchingMore,
-  } = useFeeStudents(
-    selectedClassId,
-    academicYear,
-    term,
-    classes,
-    showArchived
-  );
-
-  const [dailyModalVisible, setDailyModalVisible] = useState(false);
-  const [selectedDailyDate, setSelectedDailyDate] = useState(new Date());
-  const [dailyPayments, setDailyPayments] = useState<any[]>([]);
-  const [loadingDaily, setLoadingDaily] = useState(false);
-
-  const setIndividualBillOverrides = useCallback((update: any) => {
-    setIndividualBillOverridesState((prev) => {
-      const next = typeof update === "function" ? update(prev) : update;
-      individualBillOverridesRef.current = next;
-      return next;
-    });
-  }, []);
+  // MODAL STATES
+  const [selectorModal, setSelectorModal] = useState<{
+    visible: boolean;
+    type: "class" | "year" | "term" | null;
+  }>({ visible: false, type: null });
 
   useEffect(() => {
     setSelectedStudentUids(new Set());
-    setIndividualBillOverrides({});
-    setIndividualDiscountOverrides({});
-    setTermBillAmount("");
-    setDiscountAmount("");
   }, [activeMode]);
 
   useEffect(() => {
@@ -125,16 +106,47 @@ export const useManageFees = ({
     init();
   }, []);
 
-  const isConfigMissing = !academicYear || !term;
+  const {
+    students,
+    loading,
+    refreshing,
+    fetchStudents,
+    handleRefresh,
+    fetchingMore,
+  } = useFeeStudents(selectedClassId, academicYear, term, classes, showArchived);
+
+  const billing = useFeeBilling({
+    students,
+    academicYear,
+    term,
+    fetchStudents,
+    showToast,
+    canEdit,
+  });
+
+  const payments = useFeePayments({
+    appUser,
+    showToast,
+    academicYear,
+    term,
+    fetchStudents,
+    canEdit,
+  });
+
+  const discounts = useFeeDiscounts({
+    students,
+    academicYear,
+    term,
+    fetchStudents,
+    showToast,
+    canEdit,
+    isSuperAdmin,
+  });
 
   const filteredStudents = useMemo(() => {
     const searchLower = searchQuery.toLowerCase().trim();
 
-    return students.filter((s) => {
-      // 1. Scholarship exemption: Scholarship students are exempted from billing/payments list
-      if (s.onScholarship) return false;
-
-      // 2. Search filter
+    return students.filter((s: StudentDraft) => {
       const matchesSearch = !searchLower ||
         (s.fullName || "").toLowerCase().includes(searchLower) ||
         (s.studentID || "").toLowerCase().includes(searchLower) ||
@@ -146,14 +158,10 @@ export const useManageFees = ({
 
       if (!matchesSearch) return false;
 
-      // 3. Discount Mode filtering:
-      // If we are in discounts mode and NOT searching, show only those on the discount profile.
-      // If searching, show all matches (excluding scholarships).
       if (activeMode === "discounts") {
         return searchLower ? true : !!s.onDiscount;
       }
 
-      // 4. Status filter (only for non-discount modes)
       const matchesStatus =
         statusFilter === "all"
           ? true
@@ -176,649 +184,6 @@ export const useManageFees = ({
     ).length;
   }, [students]);
 
-  const fetchDailyPayments = async (date: Date, year?: string, termStr?: string) => {
-    setLoadingDaily(true);
-    try {
-      const dateString = moment(date).format("YYYY-MM-DD");
-      let q = query(collection(db, "feePayments"), where("date", "==", dateString));
-
-      if (year && year !== "all") {
-        q = query(q, where("academicYear", "==", year));
-      }
-      if (termStr && termStr !== "all") {
-        q = query(q, where("term", "==", termStr));
-      }
-
-      const snap = await getDocsFromServer(q as any);
-      const payments = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as any),
-      }));
-      payments.sort((a: any, b: any) => {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return timeB - timeA;
-      });
-      setDailyPayments(payments);
-    } catch (error) {
-      console.error("Error fetching daily payments:", error);
-      showToast({ message: "Failed to fetch daily payments", type: "error" });
-    } finally {
-      setLoadingDaily(false);
-    }
-  };
-
-  useEffect(() => {
-    if (dailyModalVisible) {
-      // By default, we fetch payments for the current academic context to keep it term-aligned,
-      // but the UI could allow clearing these to see all payments for that date.
-      fetchDailyPayments(selectedDailyDate, academicYear, term);
-    }
-  }, [dailyModalVisible, selectedDailyDate, academicYear, term]);
-
-  const handleLogPayment = async (
-    selectedStudent: StudentDraft | null,
-    paymentAmount: string,
-    receivedFrom: string,
-    paymentMethod: string,
-    paymentDate: Date,
-    onSuccess: () => void
-  ) => {
-    if (!canEdit) {
-      showToast({ message: "Access Denied: You don't have permission to log payments.", type: "error" });
-      return;
-    }
-    if (!selectedStudent || !paymentAmount || parseFloat(paymentAmount) <= 0) {
-      showToast({ message: "Invalid payment details", type: "error" });
-      return;
-    }
-    if (isConfigMissing) {
-      showToast({ message: "Academic config missing. Cannot log term payment.", type: "error" });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const amount = parseFloat(paymentAmount);
-      if (isNaN(amount) || amount <= 0) {
-        throw new Error("Invalid payment amount");
-      }
-
-      const cleanYear = academicYear.replace(/\//g, "-");
-      const cleanTerm = term.replace(/\s/g, "");
-      const recordId = `${selectedStudent.uid}_${cleanYear}_${cleanTerm}`;
-      const receiptNo = `REC-${Date.now().toString().slice(-6)}`;
-
-      const safePaymentDate = paymentDate instanceof Date && !isNaN(paymentDate.getTime())
-        ? paymentDate
-        : new Date();
-      const paymentDateStr = moment(safePaymentDate).format("YYYY-MM-DD");
-
-      const batch = writeBatch(db);
-      const globalPaymentRef = doc(collection(db, "feePayments"), receiptNo);
-
-      const paymentObj = {
-        amount,
-        method: paymentMethod || "Cash",
-        receivedFrom: (receivedFrom || "Unknown").trim(),
-        updatedBy: appUser?.adminRole || "Admin",
-        adminUid: appUser?.uid || "unknown",
-        createdAt: new Date().toISOString(),
-        receiptNo,
-        date: paymentDateStr,
-        academicYear,
-        term,
-        type: "tuition",
-      };
-
-      // --- WATERFALL CALCULATION ---
-      let remainingPayment = amount;
-      const allocations: Record<string, number> = {};
-
-      // 1. Settle Tuition first
-      const currentTuitionDebt = Math.max(0, (Number(selectedStudent.currentBalance) || 0) -
-        (Number(selectedStudent.ptaBalance) || 0) -
-        (Number(selectedStudent.admissionBalance) || 0) -
-        (Number(selectedStudent.maintenanceBalance) || 0) -
-        (Number(selectedStudent.booksBalance) || 0) -
-        (Number(selectedStudent.uniformBalance) || 0) -
-        (Number(selectedStudent.otherBalance) || 0));
-
-      const tuitionToPay = Math.min(remainingPayment, currentTuitionDebt);
-      remainingPayment -= tuitionToPay;
-      allocations.tuition = tuitionToPay;
-
-      const feeRecordUpdate: any = {
-        studentUid: selectedStudent.uid,
-        studentName: selectedStudent.fullName || "Student",
-        classId: selectedStudent.classId || "unknown",
-        className: selectedStudent.className || "Class",
-        academicYear,
-        term,
-        amountPaid: increment(tuitionToPay),
-        balance: increment(-amount),
-        lastUpdated: serverTimestamp(),
-      };
-
-      const userUpdate: any = {
-        walletBalance: increment(-amount),
-      };
-
-      // 2. Waterfall through categories with remaining payment
-      const categories = [
-        { key: "admission", field: "admission" },
-        { key: "pta", field: "pta" },
-        { key: "maintenance", field: "maintenance" },
-        { key: "books", field: "books" },
-        { key: "uniform", field: "uniform" },
-        { key: "other", field: "other" }
-      ];
-
-      for (const cat of categories) {
-        const balanceKey = `${cat.key}Balance` as keyof StudentDraft;
-        const catBalance = Number(selectedStudent[balanceKey]) || 0;
-        if (remainingPayment > 0 && catBalance > 0) {
-          const settlement = Math.min(remainingPayment, catBalance);
-          remainingPayment -= settlement;
-          allocations[cat.key] = settlement;
-
-          feeRecordUpdate[`${cat.key}Paid`] = increment(settlement);
-          feeRecordUpdate[`${cat.key}Balance`] = increment(-settlement);
-          userUpdate[`${cat.key}Balance`] = increment(-settlement);
-          userUpdate[`${cat.key}Paid`] = increment(settlement);
-        }
-      }
-
-      // Add allocations to payment record for reversal logic
-      const paymentObjWithAlloc = { ...paymentObj, allocations };
-      feeRecordUpdate.payments = arrayUnion(paymentObjWithAlloc);
-
-      // If it's a new record (no bill yet), set arrears to current wallet balance (before payment)
-      if (!selectedStudent.hasRecordInTerm) {
-        feeRecordUpdate.arrears = Number(selectedStudent.previousBalance) || 0;
-        feeRecordUpdate.termBill = 0;
-        feeRecordUpdate.createdAt = serverTimestamp();
-      }
-
-      batch.set(doc(db, "studentFeeRecords", recordId), feeRecordUpdate, { merge: true });
-      batch.update(doc(db, "users", selectedStudent.uid), userUpdate);
-
-      // Update global payment doc with allocations too
-      batch.set(globalPaymentRef, {
-        ...paymentObjWithAlloc,
-        studentUid: selectedStudent.uid,
-        studentName: selectedStudent.fullName || "Student",
-        classId: selectedStudent.classId || "unknown",
-        className: selectedStudent.className || "Class",
-      });
-
-      await batch.commit();
-
-      // Call onSuccess first to close modal and reset state
-      onSuccess();
-
-      showToast({ message: `Payment of ₵${amount.toFixed(2)} logged successfully`, type: "success" });
-
-      // Non-critical background tasks
-      setTimeout(() => {
-        propagateArrears(selectedStudent.uid, academicYear, term, -amount, 'payment').catch(e => console.error("Propagation error:", e));
-
-        if (selectedStudent.uid) {
-          sendNotification({
-            recipientId: selectedStudent.uid,
-            senderId: appUser?.uid || "admin",
-            senderName: appUser?.displayName || "Administrator",
-            title: "Fee Payment Received - Thank You!",
-            body: `Thank you! We've received a payment of ₵${amount.toLocaleString()} for ${selectedStudent.fullName}. We appreciate your promptness! Receipt: ${receiptNo}`,
-            type: "payment",
-          }).catch(e => console.error("Notification error:", e));
-        }
-        fetchStudents(true);
-      }, 500);
-
-    } catch (error) {
-      console.error("Log Payment Error:", error);
-      showToast({ message: "Failed to log payment", type: "error" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeletePayment = async (selectedStudent: StudentDraft | null, payment: any, onSuccess: () => void) => {
-    if (!canEdit || !selectedStudent) return;
-
-    const performDelete = async () => {
-      setSaving(true);
-      try {
-        const cleanYear = academicYear.replace(/\//g, "-");
-        const cleanTerm = term.replace(/\s/g, "");
-        const recordId = `${selectedStudent.uid}_${cleanYear}_${cleanTerm}`;
-        const batch = writeBatch(db);
-        const amount = Number(payment.amount) || 0;
-        const type = (payment.type || "tuition").toLowerCase();
-
-        // Determine if it's a payment or a charge
-        const isPayment = type.endsWith("_payment") || type === "tuition" || type === "tuition_credit";
-
-        const feeRecordUpdate: any = {
-          payments: arrayRemove(payment),
-          lastUpdated: serverTimestamp(),
-        };
-
-        const userUpdate: any = {};
-
-        if (isPayment) {
-          feeRecordUpdate.balance = increment(amount);
-          userUpdate.walletBalance = increment(amount);
-
-          if (payment.allocations) {
-            // Precise reversal using stored allocations
-            Object.entries(payment.allocations).forEach(([cat, val]) => {
-              const v = Number(val);
-              if (cat === "tuition") {
-                feeRecordUpdate.amountPaid = increment(-v);
-              } else {
-                feeRecordUpdate[`${cat}Paid`] = increment(-v);
-                feeRecordUpdate[`${cat}Balance`] = increment(v);
-                userUpdate[`${cat}Balance`] = increment(v);
-                userUpdate[`${cat}Paid`] = increment(-v);
-              }
-            });
-          } else {
-            // Fallback for older records or external payments
-            if (type === "tuition" || type === "tuition_credit") {
-              feeRecordUpdate.amountPaid = increment(-amount);
-            } else if (type === "pta_payment") {
-              feeRecordUpdate.ptaPaid = increment(-amount);
-              feeRecordUpdate.ptaBalance = increment(amount);
-              userUpdate.ptaBalance = increment(amount);
-              userUpdate.ptaPaid = increment(-amount);
-            } else if (type === "maintenance_payment") {
-              feeRecordUpdate.maintenancePaid = increment(-amount);
-              feeRecordUpdate.maintenanceBalance = increment(amount);
-              userUpdate.maintenanceBalance = increment(amount);
-              userUpdate.maintenancePaid = increment(-amount);
-            } else if (type === "admission_payment") {
-              feeRecordUpdate.admissionPaid = increment(-amount);
-              feeRecordUpdate.admissionBalance = increment(amount);
-              userUpdate.admissionBalance = increment(amount);
-              userUpdate.admissionPaid = increment(-amount);
-            } else if (type === "books_payment") {
-              feeRecordUpdate.booksPaid = increment(-amount);
-              feeRecordUpdate.booksBalance = increment(amount);
-              userUpdate.booksBalance = increment(amount);
-              userUpdate.booksPaid = increment(-amount);
-            } else if (type === "uniform_payment") {
-              feeRecordUpdate.uniformPaid = increment(-amount);
-              feeRecordUpdate.uniformBalance = increment(amount);
-              userUpdate.uniformBalance = increment(amount);
-              userUpdate.uniformPaid = increment(-amount);
-            } else if (type === "other_payment") {
-              feeRecordUpdate.otherPaid = increment(-amount);
-              feeRecordUpdate.otherBalance = increment(amount);
-              userUpdate.otherBalance = increment(amount);
-              userUpdate.otherPaid = increment(-amount);
-            } else {
-              feeRecordUpdate.amountPaid = increment(-amount);
-            }
-          }
-        } else {
-          // Reversing a charge (bill)
-          feeRecordUpdate.balance = increment(-amount);
-          userUpdate.walletBalance = increment(-amount);
-
-          if (type === "pta") {
-            feeRecordUpdate.ptaBill = increment(-amount);
-            feeRecordUpdate.ptaBalance = increment(-amount);
-            userUpdate.ptaBill = increment(-amount);
-            userUpdate.ptaBalance = increment(-amount);
-          } else if (type === "maintenance") {
-            feeRecordUpdate.maintenanceBill = increment(-amount);
-            feeRecordUpdate.maintenanceBalance = increment(-amount);
-            userUpdate.maintenanceBill = increment(-amount);
-            userUpdate.maintenanceBalance = increment(-amount);
-          } else if (type === "admission") {
-            feeRecordUpdate.admissionBill = increment(-amount);
-            feeRecordUpdate.admissionBalance = increment(-amount);
-            userUpdate.admissionFeeBill = increment(-amount);
-            userUpdate.admissionBalance = increment(-amount);
-          } else if (type === "books") {
-            feeRecordUpdate.booksBill = increment(-amount);
-            feeRecordUpdate.booksBalance = increment(-amount);
-            userUpdate.booksBill = increment(-amount);
-            userUpdate.booksBalance = increment(-amount);
-          } else if (type === "uniform") {
-            feeRecordUpdate.uniformBill = increment(-amount);
-            feeRecordUpdate.uniformBalance = increment(-amount);
-            userUpdate.uniformBill = increment(-amount);
-            userUpdate.uniformBalance = increment(-amount);
-          } else if (type === "other") {
-            feeRecordUpdate.otherBill = increment(-amount);
-            feeRecordUpdate.otherBalance = increment(-amount);
-            userUpdate.otherBill = increment(-amount);
-            userUpdate.otherBalance = increment(-amount);
-          }
-        }
-
-        // 1. Update the student fee record
-        batch.update(doc(db, "studentFeeRecords", recordId), feeRecordUpdate);
-
-        // 2. Update the user document
-        batch.update(doc(db, "users", selectedStudent.uid), userUpdate);
-
-        // 3. Delete the global payment document if receiptNo exists
-        if (payment.receiptNo) {
-          const q = query(
-            collection(db, "feePayments"),
-            where("receiptNo", "==", payment.receiptNo),
-            where("studentUid", "==", selectedStudent?.uid)
-          );
-          const snap = await getDocsFromServer(q);
-          snap.forEach((d) => {
-            batch.delete(d.ref);
-          });
-        }
-
-        await batch.commit();
-        fetchStudents(true);
-        onSuccess();
-        showToast({ message: isPayment ? "Payment reversed." : "Charge removed.", type: "success" });
-
-        // Propagate the reversal
-        const propagationAmount = isPayment ? amount : -amount;
-        const propType = isPayment ? 'payment' : 'bill';
-
-        // Handle category specific propagation for deletions
-        let category: string | undefined = undefined;
-        if (type === "pta_payment" || type === "pta") category = "pta";
-        else if (type === "maintenance_payment" || type === "maintenance") category = "maintenance";
-        else if (type === "admission_payment" || type === "admission") category = "admission";
-        else if (type === "books_payment" || type === "books") category = "books";
-        else if (type === "uniform_payment" || type === "uniform") category = "uniform";
-        else if (type === "other_payment" || type === "other") category = "other";
-
-        propagateArrears(selectedStudent.uid, academicYear, term, propagationAmount, propType, category).catch(console.error);
-      } catch (e) {
-        console.error("Delete Payment Error:", e);
-        showToast({ message: "Deletion failed", type: "error" });
-      } finally {
-        setSaving(false);
-      }
-    };
-
-    const msg = "Are you sure you want to delete this payment record? This will reverse the balance.";
-    const title = "Confirm Deletion";
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`${title}\n\n${msg}`)) {
-        await performDelete();
-      }
-    } else {
-      Alert.alert(title, msg, [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: performDelete,
-        },
-      ]);
-    }
-  };
-
-  const handleNormalizeDiscounts = async () => {
-    if (!isSuperAdmin) return;
-    const targets = students.filter((s) => !s.onDiscount && (s.discount || 0) > 0 && s.hasRecordInTerm);
-    if (targets.length === 0) {
-      showToast({ message: "No inconsistent records found.", type: "info" });
-      return;
-    }
-
-    Alert.alert("Fix Inconsistencies?", `Found ${targets.length} students with discounts despite having "Discount Profile" disabled. Remove these manual discounts and reverse balances?`, [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Fix All",
-        onPress: async () => {
-          setSaving(true);
-          try {
-            const cleanYear = academicYear.replace(/\//g, "-");
-            const cleanTerm = term.replace(/\s/g, "");
-
-            // Firestore batch limit is 500. Each student has 2 operations.
-            const CHUNK_SIZE = 200;
-            for (let i = 0; i < targets.length; i += CHUNK_SIZE) {
-              const chunk = targets.slice(i, i + CHUNK_SIZE);
-              const batch = writeBatch(db);
-              for (const s of chunk) {
-                const disc = s.discount || 0;
-                const recordId = `${s.uid}_${cleanYear}_${cleanTerm}`;
-                batch.update(doc(db, "studentFeeRecords", recordId), { discount: 0, balance: increment(disc) });
-                batch.update(doc(db, "users", s.uid), { walletBalance: increment(disc) });
-              }
-              await batch.commit();
-            }
-
-            fetchStudents(true);
-            showToast({ message: "Records normalized.", type: "success" });
-          } catch (e) {
-            console.error(e);
-            showToast({ message: "Fix failed", type: "error" });
-          } finally {
-            setSaving(false);
-          }
-        },
-      },
-    ]);
-  };
-
-  const saveFees = async (onSuccess: () => void) => {
-    if (!canEdit) {
-      showToast({ message: "Access Denied: You don't have permission to modify billing.", type: "error" });
-      return;
-    }
-    if (isConfigMissing) {
-      showToast({ message: "Action blocked: Academic year and term must be configured before billing.", type: "error" });
-      return;
-    }
-    setSaving(true);
-    try {
-      const selectedUids = Array.from(selectedStudentUids);
-      const latestOverrides = individualBillOverridesRef.current;
-      const cleanYear = academicYear.replace(/\//g, "-");
-      const cleanTerm = term.replace(/\s/g, "");
-
-      // Firestore batch limit is 500. Each student has 2 operations.
-      const CHUNK_SIZE = 200;
-      for (let i = 0; i < selectedUids.length; i += CHUNK_SIZE) {
-        const chunk = selectedUids.slice(i, i + CHUNK_SIZE);
-        const batch = writeBatch(db);
-
-        for (const uid of chunk) {
-          const s = students.find((stud) => stud.uid === uid);
-          if (!s || s.onScholarship) continue;
-
-          const adjustmentStr = latestOverrides[uid] || termBillAmount;
-          const adjustment = parseFloat(adjustmentStr);
-          if (isNaN(adjustment) || adjustment === 0) continue;
-
-          const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
-          let discount = s.discount || 0;
-          if (s.onDiscount && s.discountAmount && !s.hasRecordInTerm) {
-            discount = s.discountAmount;
-          }
-
-          const currentBill = s.hasRecordInTerm ? s.termBill || 0 : 0;
-          const newBill = currentBill + adjustment;
-
-          const profileDiscount = (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) ? s.discountAmount : 0;
-          const newBalance = (s.currentBalance || 0) + adjustment - profileDiscount;
-          const totalPayable = (s.hasRecordInTerm ? (s.totalPayable || 0) : (s.previousBalance || 0)) + adjustment;
-
-          if (isNaN(newBalance)) continue;
-
-          const feeRecordData: any = {
-            studentUid: uid,
-            studentName: s.fullName,
-            classId: s.classId,
-            className: s.className,
-            academicYear,
-            term,
-            termBill: newBill,
-            arrears: s.previousBalance || 0,
-            discount: (s.discount || 0) + profileDiscount,
-            amountPaid: s.amountPaid || 0,
-            balance: newBalance,
-            totalPayable: totalPayable,
-            editCount: (s.editCount || 0) + 1,
-            lastUpdated: serverTimestamp(),
-            ptaPaid: s.ptaPaid || 0,
-            ptaBalance: s.ptaBalance || 0,
-            ptaBill: s.ptaBill || 0,
-            maintenancePaid: s.maintenancePaid || 0,
-            maintenanceBalance: s.maintenanceBalance || 0,
-            maintenanceBill: s.maintenanceBill || 0,
-            admissionPaid: s.admissionPaid || 0,
-            admissionBalance: s.admissionBalance || 0,
-            admissionBill: s.admissionBill || 0,
-            booksPaid: s.booksPaid || 0,
-            booksBalance: s.booksBalance || 0,
-            booksBill: s.booksBill || 0,
-            uniformPaid: s.uniformPaid || 0,
-            uniformBalance: s.uniformBalance || 0,
-            uniformBill: s.uniformBill || 0,
-            otherPaid: s.otherPaid || 0,
-            otherBalance: s.otherBalance || 0,
-            otherBill: s.otherBill || 0,
-          };
-
-          if (!s.hasRecordInTerm) {
-            feeRecordData.payments = [];
-            feeRecordData.createdAt = serverTimestamp();
-          }
-
-          batch.set(doc(db, "studentFeeRecords", recordId), feeRecordData, { merge: true });
-          const walletAdjustment = adjustment - (s.hasRecordInTerm ? 0 : discount);
-          batch.update(doc(db, "users", uid), { walletBalance: increment(walletAdjustment) });
-        }
-        await batch.commit();
-      }
-
-      onSuccess();
-      setSelectedStudentUids(new Set());
-      setIndividualBillOverrides({});
-      fetchStudents(true);
-
-      // Propagate bill changes
-      selectedUids.forEach(uid => {
-        const s = students.find(stud => stud.uid === uid);
-        if (s) {
-          const adj = parseFloat(latestOverrides[uid] || termBillAmount);
-          if (!isNaN(adj) && Math.abs(adj) > 0.01) {
-            propagateArrears(uid, academicYear, term, adj, 'bill').catch(console.error);
-          }
-        }
-      });
-
-      if (showToast) {
-        showToast({ message: "Billing updated successfully.", type: "success" });
-      } else {
-        alert("Billing updated successfully.");
-      }
-    } catch (e) {
-      console.error("Save Fees Error:", e);
-      if (showToast) {
-        showToast({ message: "Save failed", type: "error" });
-      } else {
-        alert("Save failed");
-      }
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveDiscounts = async (onSuccess: () => void) => {
-    if (!canEdit) return;
-    setSaving(true);
-    try {
-      const selectedUids = Array.from(selectedStudentUids);
-      const cleanYear = academicYear.replace(/\//g, "-");
-      const cleanTerm = term.replace(/\s/g, "");
-
-      // Firestore batch limit is 500. Each student has up to 2 operations.
-      const CHUNK_SIZE = 200;
-      for (let i = 0; i < selectedUids.length; i += CHUNK_SIZE) {
-        const chunk = selectedUids.slice(i, i + CHUNK_SIZE);
-        const batch = writeBatch(db);
-
-        for (const uid of chunk) {
-          const s = students.find((stud) => stud.uid === uid);
-          if (!s) continue;
-          const discStr = individualDiscountOverrides[uid] || discountAmount;
-          const disc = parseFloat(discStr);
-          if (isNaN(disc) || disc === 0) continue;
-
-          const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
-
-          // Apply profile discount ONLY if this is the first time we're creating a record for this term.
-          const profileDiscount = (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) ? s.discountAmount : 0;
-          const totalDiscountToApply = disc + profileDiscount;
-
-          if (!s.hasRecordInTerm) {
-            batch.set(doc(db, "studentFeeRecords", recordId), {
-              studentUid: uid,
-              studentName: s.fullName,
-              classId: s.classId,
-              className: s.className,
-              academicYear,
-              term,
-              termBill: 0,
-              arrears: s.previousBalance || 0,
-              discount: totalDiscountToApply,
-              amountPaid: 0,
-              balance: (s.previousBalance || 0) - totalDiscountToApply,
-              totalPayable: s.previousBalance || 0,
-              editCount: 1,
-              createdAt: serverTimestamp(),
-              lastUpdated: serverTimestamp(),
-              payments: [],
-            });
-          } else {
-            batch.update(doc(db, "studentFeeRecords", recordId), {
-              discount: increment(disc),
-              balance: increment(-disc),
-              lastUpdated: serverTimestamp(),
-            });
-          }
-          batch.update(doc(db, "users", uid), { walletBalance: increment(-totalDiscountToApply) });
-        }
-        await batch.commit();
-      }
-
-      onSuccess();
-      setSelectedStudentUids(new Set());
-      setIndividualDiscountOverrides({});
-      fetchStudents(true);
-
-      // Propagate discount changes
-      selectedUids.forEach(uid => {
-        const s = students.find(stud => stud.uid === uid);
-        if (s) {
-          const disc = parseFloat(individualDiscountOverrides[uid] || discountAmount);
-          if (!isNaN(disc) && Math.abs(disc) > 0.01) {
-            // Discounts are treated like payments (negative change to balance)
-            propagateArrears(uid, academicYear, term, -disc, 'payment').catch(console.error);
-          }
-        }
-      });
-
-      showToast({ message: "Discounts applied.", type: "success" });
-    } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to apply discounts", type: "error" });
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const toggleSelectAll = () => {
     const allSelected = filteredStudents.length > 0 && filteredStudents.every((s) => selectedStudentUids.has(s.uid));
     setSelectedStudentUids(new Set(allSelected ? [] : filteredStudents.map((s) => s.uid)));
@@ -833,8 +198,9 @@ export const useManageFees = ({
     });
   };
 
+  const isSaving = billing.saving || payments.saving || discounts.saving;
+
   return {
-    saving,
     activeMode,
     setActiveMode,
     searchQuery,
@@ -846,31 +212,13 @@ export const useManageFees = ({
     selectedClassId,
     setSelectedClassId,
     selectedStudentUids,
-    termBillAmount,
-    setTermBillAmount,
-    discountAmount,
-    setDiscountAmount,
-    individualBillOverrides,
-    setIndividualBillOverrides,
-    individualDiscountOverrides,
-    setIndividualDiscountOverrides,
+    setSelectedStudentUids,
     classes,
     academicYear,
     term,
     filteredStudents,
     totalProfileDiscountsSum,
     inconsistentCount,
-    dailyModalVisible,
-    setDailyModalVisible,
-    selectedDailyDate,
-    setSelectedDailyDate,
-    dailyPayments,
-    loadingDaily,
-    handleLogPayment,
-    handleDeletePayment,
-    handleNormalizeDiscounts,
-    saveFees,
-    saveDiscounts,
     toggleSelectAll,
     toggleStudentSelection,
     isConfigMissing,
@@ -880,5 +228,14 @@ export const useManageFees = ({
     fetchStudents,
     handleRefresh,
     fetchingMore,
+    selectorModal,
+    setSelectorModal,
+    canView,
+    canEdit,
+    isSuperAdmin,
+    ...billing,
+    ...payments,
+    ...discounts,
+    saving: isSaving,
   };
 };

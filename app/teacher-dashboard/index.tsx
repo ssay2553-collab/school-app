@@ -3,10 +3,11 @@ import { useRouter } from "expo-router";
 import {
   collection,
   getCountFromServer,
+  onSnapshot,
   query,
   where,
 } from "firebase/firestore";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -19,6 +20,7 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  Alert as RNAlert,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -31,6 +33,7 @@ import { db } from "../../firebaseConfig";
 import { useDataFreshness } from "../../hooks/useDataFreshness";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { getTeacherClasses } from "../../lib/classHelpers";
+import moment from "moment";
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -41,6 +44,38 @@ export default function TeacherDashboard() {
   const [assignmentCount, setAssignmentCount] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const { totalUnread, submissionUnread } = useUnreadCounts();
+
+  // Attendance Alert Logic
+  const [missingAttendance, setMissingAttendance] = useState<string[]>([]);
+  const [isAlertVisible, setIsAlertVisible] = useState(false);
+
+  const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
+
+  useEffect(() => {
+    if (!appUser?.uid || teacherClasses.length === 0) return;
+
+    const today = moment().format("YYYY-MM-DD");
+    const q = query(
+      collection(db, "attendance"),
+      where("date", "==", today),
+      where("classId", "in", teacherClasses.slice(0, 30))
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const markedClassIds = snap.docs.map(d => d.data().classId);
+      const unmarked = teacherClasses.filter(id => !markedClassIds.includes(id));
+
+      // Check time window (6 AM - 10 AM)
+      const now = new Date();
+      const hour = now.getHours();
+      const inTimeWindow = hour >= 6 && hour < 10;
+
+      setMissingAttendance(unmarked);
+      setIsAlertVisible(unmarked.length > 0 && inTimeWindow);
+    });
+
+    return () => unsub();
+  }, [appUser?.uid, teacherClasses]);
 
   const brandPrimary = config.brandPrimary || COLORS.primary || "#6366F1";
   const brandSecondary =
@@ -390,6 +425,30 @@ export default function TeacherDashboard() {
           <View style={styles.blob2} />
 
           <SafeAreaView edges={["top"]}>
+            {isAlertVisible && (
+              <Animatable.View
+                animation="pulse"
+                iterationCount="infinite"
+                style={styles.attendanceAlertBanner}
+              >
+                <View style={styles.alertLeft}>
+                  <SVGIcon name="alert-circle" size={20} color="#fff" />
+                  <View>
+                    <Text style={styles.alertTitle}>Attendance Missing!</Text>
+                    <Text style={styles.alertSubtitle}>
+                      {missingAttendance.length} {missingAttendance.length === 1 ? 'class' : 'classes'} remaining for today.
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.alertActionBtn}
+                  onPress={() => router.push("/teacher-dashboard/daily-attendance")}
+                >
+                  <Text style={styles.alertActionText}>MARK NOW</Text>
+                </TouchableOpacity>
+              </Animatable.View>
+            )}
+
             <View style={styles.headerRow}>
               <View style={styles.teacherInfo}>
                 <TouchableOpacity
@@ -722,4 +781,42 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   badgePos: { position: "absolute", top: 15, right: 15 },
+  attendanceAlertBanner: {
+    backgroundColor: "rgba(255, 217, 61, 0.3)", // Soft yellow/gold semi-transparent
+    borderRadius: 18,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.4)",
+    ...SHADOWS.small,
+  },
+  alertLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  alertTitle: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  alertSubtitle: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  alertActionBtn: {
+    backgroundColor: "#FFD93D",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  alertActionText: {
+    color: "#4338ca",
+    fontSize: 10,
+    fontWeight: "900",
+  },
 });

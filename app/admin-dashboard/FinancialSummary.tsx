@@ -330,17 +330,19 @@ export default function FinancialSummary() {
             <Text style={styles.sectionTitle}>🧾 Detailed Ledger (Term)</Text>
             <View style={styles.healthCard}>
                 <View style={[styles.ledgerRow, { borderBottomWidth: 1, borderBottomColor: VIBE.bg, paddingBottom: 8, marginBottom: 8 }]}>
-                    <Text style={[styles.periodLabel, { flex: 2, textAlign: 'left' }]}>ITEM</Text>
-                    <Text style={[styles.periodLabel, { flex: 1.2, textAlign: 'right' }]}>BILLED</Text>
-                    <Text style={[styles.periodLabel, { flex: 1.2, textAlign: 'right' }]}>PAID</Text>
-                    <Text style={[styles.periodLabel, { flex: 1.2, textAlign: 'right' }]}>BAL.</Text>
+                    <Text style={[styles.periodLabel, { flex: 1.8, textAlign: 'left' }]}>ITEM</Text>
+                    <Text style={[styles.periodLabel, { flex: 1, textAlign: 'right' }]}>BILLED</Text>
+                    <Text style={[styles.periodLabel, { flex: 1, textAlign: 'right' }]}>DISC.</Text>
+                    <Text style={[styles.periodLabel, { flex: 1, textAlign: 'right' }]}>PAID</Text>
+                    <Text style={[styles.periodLabel, { flex: 1, textAlign: 'right' }]}>BAL.</Text>
                 </View>
                 {ledgerItems.map(item => (
                     <View key={item.name} style={[styles.ledgerRow, { marginVertical: 4 }]}>
-                        <Text style={[styles.ledgerValue, { flex: 2, fontSize: 13, textAlign: 'left' }]}>{item.name}</Text>
-                        <Text style={[styles.ledgerValue, { flex: 1.2, fontSize: 13, textAlign: 'right', fontWeight: '700' }]}>₵{item.billed.toLocaleString()}</Text>
-                        <Text style={[styles.ledgerValue, { flex: 1.2, fontSize: 13, textAlign: 'right', color: VIBE.success, fontWeight: '700' }]}>₵{item.paid.toLocaleString()}</Text>
-                        <Text style={[styles.ledgerValue, { flex: 1.2, fontSize: 13, textAlign: 'right', color: item.balance > 0 ? VIBE.danger : VIBE.success, fontWeight: '700' }]}>₵{item.balance.toLocaleString()}</Text>
+                        <Text style={[styles.ledgerValue, { flex: 1.8, fontSize: 12, textAlign: 'left' }]}>{item.name}</Text>
+                        <Text style={[styles.ledgerValue, { flex: 1, fontSize: 12, textAlign: 'right', fontWeight: '700' }]}>₵{item.billed.toLocaleString()}</Text>
+                        <Text style={[styles.ledgerValue, { flex: 1, fontSize: 12, textAlign: 'right', color: VIBE.purple, fontWeight: '700' }]}>₵{(item.discount || 0).toLocaleString()}</Text>
+                        <Text style={[styles.ledgerValue, { flex: 1, fontSize: 12, textAlign: 'right', color: VIBE.success, fontWeight: '700' }]}>₵{item.paid.toLocaleString()}</Text>
+                        <Text style={[styles.ledgerValue, { flex: 1, fontSize: 12, textAlign: 'right', color: item.balance > 0 ? VIBE.danger : VIBE.success, fontWeight: '700' }]}>₵{item.balance.toLocaleString()}</Text>
                     </View>
                 ))}
             </View>

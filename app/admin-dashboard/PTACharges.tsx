@@ -28,6 +28,7 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { usePTACharges, Student } from "../../hooks/admin-dashboard/usePTACharges";
 
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
+import { SHADOWS } from "../../constants/theme";
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 
 const { width } = Dimensions.get("window");
@@ -119,11 +120,24 @@ export default function PTACharges() {
     history,
     loadingHistory,
     fetchStudents,
-    fetchPaymentHistory,
-    handleLogPayment,
-    applyBulkCharge,
-    handleDeletePayment,
     handleRefresh,
+
+    // UI state & handlers
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    chargeAmount,
+    setChargeAmount,
+    handleConfirmPayment,
+    handleApplyBulkCharge,
+    confirmDeletePayment,
+    openPaymentModal,
   } = usePTACharges({
     appUser,
     acadConfig,
@@ -131,78 +145,15 @@ export default function PTACharges() {
     selectedClassId,
   });
 
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [receivedFrom, setReceivedFrom] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
-  const [chargeAmount, setChargeAmount] = useState("");
-
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase();
     return students.filter(s => s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
 
-  const handleStudentPress = useCallback((student: Student) => {
-    setPaymentAmount("");
-    setReceivedFrom("");
-    setPaymentMethod("Cash");
-    setSelectedStudent(student);
-    setPaymentModalVisible(true);
-    fetchPaymentHistory(student.uid);
-  }, [fetchPaymentHistory]);
-
   const renderStudentItem = useCallback(({ item }: { item: Student }) => (
-    <PTAStudentCard item={item} onPress={handleStudentPress} />
-  ), [handleStudentPress]);
+    <PTAStudentCard item={item} onPress={openPaymentModal} />
+  ), [openPaymentModal]);
 
-  const onConfirmPayment = async () => {
-    if (!selectedStudent) return;
-    const amount = parseFloat(paymentAmount);
-    const success = await handleLogPayment(selectedStudent, amount, receivedFrom, paymentMethod);
-    if (success) {
-      setPaymentModalVisible(false);
-      setPaymentAmount("");
-      setReceivedFrom("");
-    }
-  };
-
-  const onApplyBulkCharge = async () => {
-    const success = await applyBulkCharge(chargeAmount);
-    if (success) {
-      setChargeAmount("");
-    }
-  };
-
-  const onRevertTransaction = (h: any) => {
-    if (!selectedStudent) return;
-
-    const confirmDeletion = () => {
-      handleDeletePayment(selectedStudent, h);
-    };
-
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(
-        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance."
-      );
-      if (confirmed) {
-        confirmDeletion();
-      }
-    } else {
-      Alert.alert(
-        "Confirm Deletion",
-        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: confirmDeletion,
-          },
-        ]
-      );
-    }
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -282,21 +233,40 @@ export default function PTACharges() {
 
             <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
               <Text style={styles.listTitle}>APPLY PTA DUE (CLASS BULK)</Text>
-              <View style={[styles.bulkInputContainer, { marginTop: 10 }]}>
-                <TextInput
-                  style={styles.bulkInput}
-                  placeholder="Enter Amount (₵)"
-                  keyboardType="numeric"
-                  value={chargeAmount}
-                  onChangeText={setChargeAmount}
-                  placeholderTextColor={VIBE.muted}
-                />
+              <View style={{ marginTop: 10 }}>
+                <View style={[styles.bulkInputContainer, { paddingHorizontal: 12, height: 54 }]}>
+                  <TextInput
+                    style={[styles.bulkInput, { flex: 1, fontSize: 14 }]}
+                    placeholder="Enter Amount (₵)"
+                    keyboardType="numeric"
+                    value={chargeAmount}
+                    onChangeText={setChargeAmount}
+                    placeholderTextColor={VIBE.muted}
+                  />
+                </View>
                 <TouchableOpacity
-                   onPress={onApplyBulkCharge}
-                   style={{ backgroundColor: THEME.primary, height: 44, paddingHorizontal: 15, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
+                   onPress={handleApplyBulkCharge}
+                   style={{
+                     marginTop: 10,
+                     backgroundColor: THEME.primary,
+                     height: 50,
+                     borderRadius: 15,
+                     flexDirection: 'row',
+                     justifyContent: 'center',
+                     alignItems: 'center',
+                     gap: 8,
+                     ...SHADOWS.small,
+                   }}
                    disabled={saving}
                 >
-                  {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '900', fontSize: 12 }}>BILL CLASS</Text>}
+                  {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <SVGIcon name="add-circle-outline" size={20} color="#fff" />
+                      <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 }}>APPLY BULK PTA DUE</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
               {selectedClassId === "all" && (
@@ -374,7 +344,7 @@ export default function PTACharges() {
                 ))}
               </View>
 
-              <TouchableOpacity onPress={onConfirmPayment} disabled={saving}>
+              <TouchableOpacity onPress={handleConfirmPayment} disabled={saving}>
                 <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
                   {saving ? <ActivityIndicator color="#fff" /> : (
                     <>
@@ -405,7 +375,7 @@ export default function PTACharges() {
                           }
                         });
                       }}
-                      onLongPress={() => onRevertTransaction(h)}
+                      onLongPress={() => confirmDeletePayment(h)}
                     >
                       <View style={styles.tileHeader}>
                         <Text style={[styles.tileAmt, { color: h.type === 'pta' ? VIBE.info : VIBE.success }]}>
@@ -422,7 +392,7 @@ export default function PTACharges() {
                         <TouchableOpacity
                           onPress={(e) => {
                             e.stopPropagation();
-                            onRevertTransaction(h);
+                            confirmDeletePayment(h);
                           }}
                           style={{ padding: 4 }}
                         >

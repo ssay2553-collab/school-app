@@ -12,6 +12,7 @@ import {
   updateDoc,
   where,
   Timestamp,
+  documentId,
 } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,13 +23,15 @@ import { sendNotification } from '../../src/services/notificationService';
 export interface Question {
   text: string;
   options?: string[];
+  type?: string;
+  visualGroup?: any[];
 }
 
 export interface Assignment {
   id: string;
   title: string;
   deadline?: Timestamp;
-  type?: "mcq" | "short_answer" | "preschool";
+  type?: "mcq" | "short_answer" | "preschool" | "mathematics";
   questions?: Question[];
   subjectId: string;
 }
@@ -39,7 +42,7 @@ export interface Submission {
   studentName: string;
   fileUrl?: string;
   responses?: Record<number, string>;
-  type: "mcq" | "short_answer" | "preschool" | "rich-text";
+  type: "mcq" | "short_answer" | "preschool" | "rich-text" | "mathematics";
   marked: boolean;
   marks?: number;
   questionScores?: Record<number, number>;
@@ -64,6 +67,7 @@ export const useMarkAssignment = () => {
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [answerKey, setAnswerKey] = useState<any>(null);
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
 
@@ -95,20 +99,30 @@ export const useMarkAssignment = () => {
 
     const fetchNames = async () => {
       try {
-        const classInfos: ClassInfo[] = [];
-        for (const classId of classIds) {
-          const classSnap = await getDoc(doc(db, "classes", classId));
-          if (classSnap.exists()) {
-            classInfos.push({
-              id: classId,
-              name: (classSnap.data() as any).name || classId,
-            });
-          } else {
-            classInfos.push({ id: classId, name: classId });
-          }
+        const results: ClassInfo[] = [];
+
+        // Efficiently fetch all classes in chunks (max 30 for 'in' operator)
+        for (let i = 0; i < classIds.length; i += 30) {
+          const chunk = classIds.slice(i, i + 30);
+          const q = query(
+            collection(db, "classes"),
+            where(documentId(), "in", chunk)
+          );
+          const snap = await getDocs(q);
+
+          results.push(...snap.docs.map(item => ({
+            id: item.id,
+            name: (item.data() as any).name || item.id
+          })));
         }
-        setAvailableClasses(classInfos);
-        if (classInfos.length > 0 && !selectedClass) setSelectedClass(classInfos[0].id);
+
+        // Handle any IDs that might not have documents
+        const foundIds = results.map(r => r.id);
+        const missingIds = classIds.filter(id => !foundIds.includes(id));
+        missingIds.forEach(id => results.push({ id, name: id }));
+
+        setAvailableClasses(results);
+        if (results.length > 0 && !selectedClass) setSelectedClass(results[0].id);
       } catch (err) {
         console.error("Error fetching class names:", err);
       }
@@ -199,12 +213,18 @@ export const useMarkAssignment = () => {
   useEffect(() => {
     if (!selectedAssignment) {
       setSubmissions([]);
+      setAnswerKey(null);
       return;
     }
 
     const fetchSubs = async () => {
       setFetchingSubmissions(true);
       try {
+        // Fetch Answer Key
+        const akDoc = await getDoc(doc(db, "assignmentAnswerKeys", selectedAssignment.id));
+        const currentAnswerKey = akDoc.exists() ? akDoc.data() : null;
+        setAnswerKey(currentAnswerKey);
+
         const q = query(
           collection(db, "submissions"),
           where("assignmentId", "==", selectedAssignment.id),
@@ -232,6 +252,7 @@ export const useMarkAssignment = () => {
             });
           }
         });
+
         setQScoreInputs(initialQInputs);
       } catch (e: any) {
         console.error("Fetch submissions error:", e);
@@ -251,7 +272,7 @@ export const useMarkAssignment = () => {
     const currentQScores = qScoreInputsRef.current;
     const currentFeedback = feedbackInputsRef.current;
 
-    if (sub.type === "standard") {
+    if ((sub.type as string) === "standard" || (sub.type as string) === "preschool") {
       const val = currentStandardMarks[sub.id];
       if (!val || isNaN(Number(val))) {
         showToast({ message: "Please enter a numeric score.", type: "error" });
@@ -288,22 +309,23 @@ export const useMarkAssignment = () => {
       if (studentSnap.exists()) {
         const studentData = studentSnap.data() as any;
         const parentUids = studentData.parentUids || [];
+        const notifications = [];
 
-        if (parentUids.length > 0) {
-          for (const pUid of parentUids) {
-            await sendNotification({
-              recipientId: pUid,
-              senderId: appUser!.uid,
-              senderName: appUser!.displayName || "Teacher",
-              type: "score",
-              title: "New Assignment Grade",
-              body: `${sub.studentName} scored ${totalScore} in their ${selectedAssignment?.title || "assignment"}.`,
-              data: { studentId: sub.studentId, assignmentId: selectedAssignment?.id },
-            });
-          }
+        // Prepare parent notifications
+        for (const pUid of parentUids) {
+          notifications.push(sendNotification({
+            recipientId: pUid,
+            senderId: appUser!.uid,
+            senderName: appUser!.displayName || "Teacher",
+            type: "score",
+            title: "New Assignment Grade",
+            body: `${sub.studentName} scored ${totalScore} in their ${selectedAssignment?.title || "assignment"}.`,
+            data: { studentId: sub.studentId, assignmentId: selectedAssignment?.id },
+          }));
         }
 
-        await sendNotification({
+        // Student notification
+        notifications.push(sendNotification({
           recipientId: sub.studentId,
           senderId: appUser!.uid,
           senderName: appUser!.displayName || "Teacher",
@@ -311,7 +333,9 @@ export const useMarkAssignment = () => {
           title: "Assignment Marked",
           body: `You scored ${totalScore} in ${selectedAssignment?.title || "your assignment"}.`,
           data: { assignmentId: selectedAssignment?.id },
-        });
+        }));
+
+        await Promise.allSettled(notifications);
       }
 
       setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
@@ -356,6 +380,7 @@ export const useMarkAssignment = () => {
     qScoreInputs,
     standardMarksInput,
     feedbackInputs,
+    answerKey,
     loading,
     loadingMore,
     refreshing,

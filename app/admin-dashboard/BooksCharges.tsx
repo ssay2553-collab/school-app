@@ -123,10 +123,30 @@ export default function BooksCharges() {
     classes,
     stats,
     handleRefresh,
-    logPayment,
-    logBill,
-    deletePayment,
+    handleLogPayment,
+    handleLogBill,
+    confirmDeletePayment,
     fetchStudents,
+
+    // UI state & handlers
+    selectedStudent,
+    modalVisible,
+    setModalVisible,
+    activeTab,
+    setActiveTab,
+    bookTitle,
+    setBookTitle,
+    billAmount,
+    setBillAmount,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    history,
+    loadingHistory,
+    openStudentModal,
   } = useBooksCharges({
     appUser,
     acadConfig,
@@ -135,109 +155,15 @@ export default function BooksCharges() {
     searchQuery,
   });
 
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<"payment" | "billing">("payment");
-  const [bookTitle, setBookTitle] = useState("");
-  const [billAmount, setBillAmount] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [receivedFrom, setReceivedFrom] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Momo" | "Cheque" | "E-cash">("Cash");
-  const [history, setHistory] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase().trim();
     if (!lower) return students;
     return students.filter(s => s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
 
-  const fetchPaymentHistory = async (studentUid: string) => {
-    setLoadingHistory(true);
-    try {
-      const q = query(
-        collection(db, "feePayments"),
-        where("studentUid", "==", studentUid),
-        where("type", "in", ["books", "books_payment"])
-      );
-      const snap = await getDocsFromServer(q);
-      const list = snap.docs.map(d => d.data());
-      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const handleLogPayment = async () => {
-    const amount = parseFloat(paymentAmount);
-    if (isNaN(amount) || amount <= 0 || !selectedStudent || !receivedFrom.trim()) {
-      return showToast({ message: "Please enter valid payment details", type: "error" });
-    }
-    const success = await logPayment(selectedStudent, amount, receivedFrom, paymentMethod);
-    if (success) {
-      setModalVisible(false);
-      setPaymentAmount("");
-      setReceivedFrom("");
-    }
-  };
-
-  const handleLogBill = async () => {
-    const amount = parseFloat(billAmount);
-    if (isNaN(amount) || amount <= 0 || !selectedStudent) {
-      return showToast({ message: "Please enter a valid billing amount", type: "error" });
-    }
-    const success = await logBill(selectedStudent, amount, bookTitle);
-    if (success) {
-      setModalVisible(false);
-      setBillAmount("");
-      setBookTitle("");
-    }
-  };
-
-  const handleDeletePayment = (payment: any) => {
-    if (!selectedStudent) return;
-
-    const confirmDeletion = async () => {
-      const success = await deletePayment(selectedStudent, payment);
-      if (success) setModalVisible(false);
-    };
-
-    if (Platform.OS === "web") {
-      const confirmed = window.confirm(
-        "Are you sure you want to delete this transaction?"
-      );
-      if (confirmed) {
-        confirmDeletion();
-      }
-    } else {
-      Alert.alert(
-        "Confirm Deletion",
-        "Are you sure you want to delete this transaction?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Delete",
-            style: "destructive",
-            onPress: confirmDeletion,
-          },
-        ]
-      );
-    }
-  };
-
-  const handleStudentPress = useCallback((student: Student) => {
-    setSelectedStudent(student);
-    setPaymentAmount("");
-    setReceivedFrom("");
-    setModalVisible(true);
-    fetchPaymentHistory(student.uid);
-  }, []);
-
   const renderStudentItem = useCallback(({ item }: { item: Student }) => (
-    <BooksStudentCard item={item} onPress={handleStudentPress} />
-  ), [handleStudentPress]);
+    <BooksStudentCard item={item} onPress={openStudentModal} />
+  ), [openStudentModal]);
 
 
   return (
@@ -471,7 +397,7 @@ export default function BooksCharges() {
                           }
                         });
                       }}
-                      onLongPress={() => handleDeletePayment(h)}
+                      onLongPress={() => confirmDeletePayment(h)}
                     >
                       <View style={styles.tileHeader}>
                         <Text style={[styles.tileAmt, { color: h.type === 'books' ? VIBE.purple : VIBE.success }]}>

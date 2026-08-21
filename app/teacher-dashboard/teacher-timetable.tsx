@@ -3,20 +3,21 @@ import { useRouter } from "expo-router";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-    ActivityIndicator,
-    Platform,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-    Dimensions,
-    BackHandler,
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Dimensions,
+  BackHandler,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
+import { LessonCard } from "../../components/teacher-dashboard/LessonCard";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
@@ -44,100 +45,6 @@ const isLargeScreen = width > 768;
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-const SUBJECT_COLORS: Record<string, string> = {
-  Mathematics: "#E0F2FE",
-  English: "#FEE2E2",
-  Science: "#DCFCE7",
-  "Social Studies": "#FEF9C3",
-  Computing: "#F3E8FF",
-  RME: "#FFEDD5",
-  "Creative Arts": "#FAE8FF",
-  French: "#F1F5F9",
-  History: "#FEF3C7",
-  "Career Technology": "#E0E7FF",
-  "Practical Life": "#F1F5F9",
-  Sensorial: "#FAE8FF",
-  Language: "#FEE2E2",
-  Culture: "#FEF3C7",
-  Break: "#F1F5F9",
-  Lunch: "#F1F5F9",
-  "Physical Education": "#ECFDF5",
-  ICT: "#E0F2FE",
-  Biology: "#DCFCE7",
-  Chemistry: "#FEF9C3",
-  Physics: "#F3E8FF",
-  Economics: "#FFEDD5",
-  "Business Studies": "#E0E7FF",
-  Geography: "#ECFDF5",
-  DEFAULT: "#F8FAFC",
-};
-
-const getSubjectColor = (subject: string) =>
-  SUBJECT_COLORS[subject] || SUBJECT_COLORS.DEFAULT;
-
-const LessonCard = React.memo(
-  ({
-    lesson,
-    brandColor,
-    type = "lesson",
-  }: {
-    lesson: Lesson;
-    brandColor: string;
-    type?: "lesson" | "other";
-  }) => {
-    const bgColor = getSubjectColor(lesson.subject);
-    const isOther = type === "other";
-
-    return (
-      <View
-        style={[
-          styles.lessonCard,
-          {
-            backgroundColor: isOther
-              ? "#F1F5F9"
-              : bgColor === "#F8FAFC"
-                ? "#fff"
-                : bgColor,
-          },
-          isOther && { borderStyle: "dashed" },
-        ]}
-      >
-        <View
-          style={[styles.timeColumn, { borderRightColor: "rgba(0,0,0,0.05)" }]}
-        >
-          <Text style={styles.startTime}>
-            {lesson.startTime?.split(" ")[0] || "--"}
-          </Text>
-          <Text style={styles.amPm}>
-            {lesson.startTime?.split(" ")[1] || ""}
-          </Text>
-        </View>
-        <View style={styles.lessonInfo}>
-          <Text style={[styles.lessonSubject, isOther && { color: "#64748B" }]}>
-            {lesson.subject}
-          </Text>
-          <View style={styles.durationRow}>
-            <SVGIcon
-              name="time-outline"
-              size={12}
-              color={isOther ? "#94A3B8" : "#64748B"}
-            />
-            <Text style={styles.durationText}>
-              {lesson.startTime} – {lesson.endTime}
-            </Text>
-          </View>
-        </View>
-        <View
-          style={[
-            styles.statusIndicator,
-            { backgroundColor: isOther ? "#94A3B8" : brandColor },
-          ]}
-        />
-      </View>
-    );
-  },
-);
-
 export default function TeacherTimetable() {
   const router = useRouter();
   const { appUser } = useAuth();
@@ -158,7 +65,10 @@ export default function TeacherTimetable() {
   }, [router]);
 
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBack,
+    );
     return () => backHandler.remove();
   }, [handleBack]);
 
@@ -208,9 +118,16 @@ export default function TeacherTimetable() {
         const teacherCurriculum = appUser?.curriculum || "GES";
         const role = (appUser?.role || "").toLowerCase();
         const adminRole = (appUser?.adminRole || "").toLowerCase();
-        const isAdmin = ["admin", "headmaster", "headmistress", "proprietor", "proprietress", "secretary", "manager", "director"].some(r =>
-          role.includes(r) || adminRole.includes(r)
-        );
+        const isAdmin = [
+          "admin",
+          "headmaster",
+          "headmistress",
+          "proprietor",
+          "proprietress",
+          "secretary",
+          "manager",
+          "director",
+        ].some((r) => role.includes(r) || adminRole.includes(r));
 
         classSnaps.forEach((doc) => {
           const data = doc.data() as any;
@@ -333,9 +250,7 @@ export default function TeacherTimetable() {
         {isClassTeacher && (
           <TouchableOpacity
             style={[styles.manageBtn, { borderColor: brandColor }]}
-            onPress={() =>
-              router.push("/teacher-dashboard/manage-timetable")
-            }
+            onPress={() => router.push("/teacher-dashboard/manage-timetable")}
           >
             <SVGIcon name="create" size={20} color={brandColor} />
             <Text style={[styles.manageBtnText, { color: brandColor }]}>
@@ -371,54 +286,59 @@ export default function TeacherTimetable() {
                   animation="fadeInUp"
                   delay={index * 50}
                   key={classId}
-                  style={[styles.classSection, isLargeScreen && styles.gridItem]}
+                  style={[
+                    styles.classSection,
+                    isLargeScreen && styles.gridItem,
+                  ]}
                 >
-                <View style={styles.classHeader}>
-                  <View
-                    style={[
-                      styles.classIcon,
-                      { backgroundColor: brandColor + "10" },
-                    ]}
-                  >
-                    <SVGIcon name="people" size={18} color={brandColor} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.classTitle}>{classNames[classId]}</Text>
-                    {isAssignedClass && (
-                      <Text style={styles.myClassTag}>My Assigned Class</Text>
-                    )}
-                  </View>
-                </View>
-
-                {lessons.map((lesson, idx) => (
-                  <LessonCard
-                    key={`lesson-${idx}`}
-                    lesson={lesson}
-                    brandColor={brandColor}
-                  />
-                ))}
-
-                {otherActs.map((act, idx) => (
-                  <LessonCard
-                    key={`act-${idx}`}
-                    lesson={act}
-                    brandColor={brandColor}
-                    type="other"
-                  />
-                ))}
-
-                {lessons.length === 0 &&
-                  otherActs.length === 0 &&
-                  isAssignedClass && (
-                    <View style={styles.emptyDayBox}>
-                      <Text style={styles.emptyDayText}>
-                        No schedule for this day yet.
-                      </Text>
+                  <View style={styles.classHeader}>
+                    <View
+                      style={[
+                        styles.classIcon,
+                        { backgroundColor: brandColor + "10" },
+                      ]}
+                    >
+                      <SVGIcon name="people" size={18} color={brandColor} />
                     </View>
-                  )}
-              </Animatable.View>
-            );
-          })}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.classTitle}>
+                        {classNames[classId]}
+                      </Text>
+                      {isAssignedClass && (
+                        <Text style={styles.myClassTag}>My Assigned Class</Text>
+                      )}
+                    </View>
+                  </View>
+
+                  {lessons.map((lesson, idx) => (
+                    <LessonCard
+                      key={`lesson-${idx}`}
+                      lesson={lesson}
+                      brandColor={brandColor}
+                    />
+                  ))}
+
+                  {otherActs.map((act, idx) => (
+                    <LessonCard
+                      key={`act-${idx}`}
+                      lesson={act}
+                      brandColor={brandColor}
+                      type="other"
+                    />
+                  ))}
+
+                  {lessons.length === 0 &&
+                    otherActs.length === 0 &&
+                    isAssignedClass && (
+                      <View style={styles.emptyDayBox}>
+                        <Text style={styles.emptyDayText}>
+                          No schedule for this day yet.
+                        </Text>
+                      </View>
+                    )}
+                </Animatable.View>
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -507,41 +427,6 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginTop: 2,
   },
-  lessonCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: "#fff",
-    marginBottom: 12,
-    ...SHADOWS.small,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.03)",
-  },
-  timeColumn: {
-    width: 65,
-    borderRightWidth: 1,
-    alignItems: "center",
-    marginRight: 15,
-    paddingRight: 10,
-  },
-  startTime: { fontSize: 16, fontWeight: "900", color: "#1E293B" },
-  amPm: {
-    fontSize: 9,
-    fontWeight: "bold",
-    color: "#94A3B8",
-    textTransform: "uppercase",
-  },
-  lessonInfo: { flex: 1 },
-  lessonSubject: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
-  durationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 4,
-  },
-  durationText: { fontSize: 12, color: "#64748B", fontWeight: "500" },
-  statusIndicator: { width: 4, height: 30, borderRadius: 2, marginLeft: 10 },
   emptyState: { alignItems: "center", marginTop: 60 },
   emptyText: {
     fontSize: 14,

@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
@@ -24,6 +25,14 @@ import { propagateArrears } from "../../utils/financeUtils";
 
 const PAGE_SIZE = 50;
 
+const UNIFORM_TYPES = [
+  { id: "main", label: "Main Uniform", icon: "shirt" },
+  { id: "lacoste", label: "Lacoste/T-Shirt", icon: "ribbon" },
+  { id: "friday", label: "Friday Wear", icon: "color-palette" },
+  { id: "pe", label: "PE Kit", icon: "fitness" },
+  { id: "other", label: "Other", icon: "ellipsis-horizontal" },
+];
+
 export type Student = {
   uid: string;
   fullName: string;
@@ -46,6 +55,7 @@ interface UseUniformChargesProps {
   showToast: (props: { message: string; type: "success" | "error" | "info" }) => void;
   selectedClassId: string;
   searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
 export const useUniformCharges = ({
@@ -54,6 +64,7 @@ export const useUniformCharges = ({
   showToast,
   selectedClassId,
   searchQuery,
+  setSearchQuery,
 }: UseUniformChargesProps) => {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -71,6 +82,18 @@ export const useUniformCharges = ({
       other: 0,
     },
   });
+
+  // UI States
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedType, setSelectedType] = useState("main");
+  const [amount, setAmount] = useState("");
+  const [receivedFrom, setReceivedFrom] = useState("");
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [purchases, setPurchases] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingPurchases, setLoadingPurchases] = useState(false);
 
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
@@ -123,6 +146,46 @@ export const useUniformCharges = ({
       console.error("Error fetching uniform stats:", e);
     }
   }, [acadConfig.academicYear, acadConfig.currentTerm, selectedClassId]);
+
+  const fetchPurchases = useCallback(async (typeId: string) => {
+    setLoadingPurchases(true);
+    setPurchases([]);
+    try {
+      if (!acadConfig.academicYear || !acadConfig.currentTerm) return;
+      const q = query(
+        collection(db, "feePayments"),
+        where("type", "==", "uniform"),
+        where("subType", "==", typeId),
+        where("academicYear", "==", acadConfig.academicYear),
+        where("term", "==", acadConfig.currentTerm)
+      );
+      const snap = await getDocsFromServer(q);
+      const list = snap.docs.map(d => ({ id: d.id, createdAt: d.data().createdAt, ...d.data() }));
+      setPurchases(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (e) {
+      console.error("Error fetching purchases:", e);
+    } finally {
+      setLoadingPurchases(false);
+    }
+  }, [acadConfig.academicYear, acadConfig.currentTerm]);
+
+  const fetchPaymentHistory = useCallback(async (studentUid: string) => {
+    setLoadingHistory(true);
+    try {
+      const q = query(
+        collection(db, "feePayments"),
+        where("studentUid", "==", studentUid),
+        where("type", "==", "uniform")
+      );
+      const snap = await getDocsFromServer(q);
+      const list = snap.docs.map(d => d.data());
+      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
 
   const fetchUniformStudents = useCallback(async () => {
     setLoading(true);
@@ -276,18 +339,18 @@ export const useUniformCharges = ({
     fetchStats();
   }, [searchQuery, selectedClassId, fetchStudents, fetchUniformStudents, fetchStats]);
 
-  const handleLogPayment = async (
+  const logPayment = async (
     student: Student,
-    amount: number,
-    receivedFrom: string,
-    selectedType: string,
+    amountVal: number,
+    receivedFromVal: string,
+    selectedTypeVal: string,
     typeLabel: string
   ) => {
     if (!acadConfig.academicYear || !acadConfig.currentTerm) {
       showToast({ message: "Academic config missing. Cannot log payment.", type: "error" });
       return false;
     }
-    if (amount <= 0 || !receivedFrom.trim()) {
+    if (amountVal <= 0 || !receivedFromVal.trim()) {
       showToast({ message: "Incomplete details", type: "error" });
       return false;
     }
@@ -299,7 +362,7 @@ export const useUniformCharges = ({
         collection(db, "feePayments"),
         where("type", "==", "uniform"),
         where("studentUid", "==", student.uid),
-        where("subType", "==", selectedType),
+        where("subType", "==", selectedTypeVal),
         where("academicYear", "==", acadConfig.academicYear),
         where("term", "==", acadConfig.currentTerm)
       );
@@ -307,7 +370,7 @@ export const useUniformCharges = ({
       const existing = existingSnap.empty ? null : { id: existingSnap.docs[0].id, ...(existingSnap.docs[0].data() as any) };
 
       const oldAmount = existing ? (existing.amount || 0) : 0;
-      const diff = amount - oldAmount;
+      const diff = amountVal - oldAmount;
 
       if (diff === 0 && existing) {
         showToast({ message: "Amount is the same as existing record", type: "info" });
@@ -319,9 +382,9 @@ export const useUniformCharges = ({
       const serial = existing ? existing.id : `UNI-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const entry = {
-        amount,
+        amount: amountVal,
         method: "Cash",
-        receivedFrom: receivedFrom.trim(),
+        receivedFrom: receivedFromVal.trim(),
         updatedBy: appUser?.adminRole || "Admin",
         adminUid: appUser?.uid || "unknown",
         createdAt: new Date().toISOString(),
@@ -332,7 +395,7 @@ export const useUniformCharges = ({
         classId: student.classId,
         className: student.className,
         type: "uniform",
-        subType: selectedType,
+        subType: selectedTypeVal,
         subTypeLabel: typeLabel,
         academicYear: acadConfig.academicYear,
         term: acadConfig.currentTerm,
@@ -361,8 +424,8 @@ export const useUniformCharges = ({
             className: student.className,
             academicYear: acadConfig.academicYear,
             term: acadConfig.currentTerm,
-            uniformPaid: increment(amount),
-            uniformBill: increment(amount),
+            uniformPaid: increment(amountVal),
+            uniformBill: increment(amountVal),
             uniformBalance: increment(0),
             balance: increment(0),
             payments: arrayUnion(entry),
@@ -375,12 +438,10 @@ export const useUniformCharges = ({
       batch.update(doc(db, "users", student.uid), {
         uniformPaid: increment(diff),
         uniformBill: increment(diff),
-        // uniformBalance remains 0 if this is handled as a direct purchase (Paid == Bill)
       });
 
       await batch.commit();
 
-      // Propagate changes to future terms
       if (Math.abs(diff) >= 0.01) {
         propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'uniform').catch(console.error);
         propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -diff, 'payment', 'uniform').catch(console.error);
@@ -392,11 +453,11 @@ export const useUniformCharges = ({
           senderId: appUser?.uid || "admin",
           senderName: appUser?.displayName || "Administrator",
           title: "Uniform Payment Recorded",
-          body: `A payment for ${typeLabel} (${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()}) has been recorded for ${student.fullName}.`,
+          body: `A payment for ${typeLabel} (${SCHOOL_CONFIG.currencySymbol}${amountVal.toLocaleString()}) has been recorded for ${student.fullName}.`,
           type: "payment",
           data: {
             studentUid: student.uid,
-            amount: amount,
+            amount: amountVal,
             type: "uniform_payment",
             item: typeLabel,
           },
@@ -417,6 +478,18 @@ export const useUniformCharges = ({
     }
   };
 
+  const handleLogPayment = async () => {
+    if (!selectedStudent) return;
+    const val = parseFloat(amount);
+    const typeLabel = UNIFORM_TYPES.find(t => t.id === selectedType)?.label || "Uniform";
+    const success = await logPayment(selectedStudent, val, receivedFrom, selectedType, typeLabel);
+    if (success) {
+      setPaymentModalVisible(false);
+      setAmount("");
+      setReceivedFrom("");
+    }
+  };
+
   const handleDeletePayment = async (student: Student, payment: any) => {
     const year = acadConfig.academicYear?.replace(/\//g, "-");
     const term = acadConfig.currentTerm?.replace(/\s/g, "");
@@ -433,18 +506,18 @@ export const useUniformCharges = ({
     try {
       const recordId = `${student.uid}_${year}_${term}`;
       const batch = writeBatch(db);
-      const amount = Number(payment.amount) || 0;
+      const amountVal = Number(payment.amount) || 0;
 
       batch.update(doc(db, "studentFeeRecords", recordId), {
-        uniformPaid: increment(-amount),
-        uniformBill: increment(-amount),
+        uniformPaid: increment(-amountVal),
+        uniformBill: increment(-amountVal),
         uniformBalance: increment(0),
         payments: arrayRemove(payment),
         lastUpdated: serverTimestamp(),
       });
       batch.update(doc(db, "users", student.uid), {
-        uniformPaid: increment(-amount),
-        uniformBill: increment(-amount),
+        uniformPaid: increment(-amountVal),
+        uniformBill: increment(-amountVal),
       });
 
       if (payment.receiptNo) {
@@ -453,10 +526,9 @@ export const useUniformCharges = ({
 
       await batch.commit();
 
-      // Propagate changes to future terms
-      if (Math.abs(amount) >= 0.01) {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'uniform').catch(console.error);
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'uniform').catch(console.error);
+      if (Math.abs(amountVal) >= 0.01) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amountVal, 'bill', 'uniform').catch(console.error);
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amountVal, 'payment', 'uniform').catch(console.error);
       }
 
       showToast({ message: "Transaction reverted successfully", type: "success" });
@@ -471,6 +543,44 @@ export const useUniformCharges = ({
     }
   };
 
+  const confirmDeletePayment = (payment: any) => {
+    if (!selectedStudent) return;
+    const msg = "Are you sure you want to delete this transaction? This will automatically adjust the student's records.";
+
+    const proceed = async () => {
+      const success = await handleDeletePayment(selectedStudent, payment);
+      if (success) {
+        setPaymentModalVisible(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Confirm Deletion\n\n${msg}`)) proceed();
+    } else {
+      Alert.alert("Confirm Deletion", msg, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: proceed },
+      ]);
+    }
+  };
+
+  const openPaymentModal = (student: Student) => {
+    setSelectedStudent(student);
+    setPaymentModalVisible(true);
+    fetchPaymentHistory(student.uid);
+  };
+
+  const handleToggleFilter = (typeId: string | null) => {
+    if (!typeId || activeFilter === typeId) {
+      setActiveFilter(null);
+      setPurchases([]);
+    } else {
+      setActiveFilter(typeId);
+      setSearchQuery("");
+      fetchPurchases(typeId);
+    }
+  };
+
   return {
     loading,
     refreshing,
@@ -481,6 +591,28 @@ export const useUniformCharges = ({
     handleRefresh,
     handleLogPayment,
     handleDeletePayment,
+    confirmDeletePayment,
     fetchStudents,
+
+    // UI state & handlers
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    setSelectedStudent,
+    selectedType,
+    setSelectedType,
+    amount,
+    setAmount,
+    receivedFrom,
+    setReceivedFrom,
+    activeFilter,
+    setActiveFilter,
+    purchases,
+    history,
+    loadingHistory,
+    loadingPurchases,
+    openPaymentModal,
+    handleToggleFilter,
   };
 };
+

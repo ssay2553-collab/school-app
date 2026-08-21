@@ -35,6 +35,7 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useMaintenanceCharges, Student } from "../../hooks/admin-dashboard/useMaintenanceCharges";
 
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
+import { SHADOWS } from "../../constants/theme";
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 
 const { width } = Dimensions.get("window");
@@ -71,9 +72,25 @@ export default function MaintenanceCharges() {
     stats,
     handleRefresh,
     handleLogPayment,
-    applyBulkCharge,
-    handleDeletePayment,
+    handleApplyBulkCharge,
+    confirmDeletePayment,
     fetchStudents,
+
+    // UI state & handlers
+    paymentModalVisible,
+    setPaymentModalVisible,
+    selectedStudent,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    history,
+    loadingHistory,
+    chargeAmount,
+    setChargeAmount,
+    openPaymentModal,
   } = useMaintenanceCharges({
     appUser,
     acadConfig,
@@ -82,83 +99,10 @@ export default function MaintenanceCharges() {
     searchQuery,
   });
 
-  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [receivedFrom, setReceivedFrom] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
-  const [history, setHistory] = useState<any[]>([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  const [chargeAmount, setChargeAmount] = useState("");
-
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase();
     return students.filter(s => s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
-
-  const fetchPaymentHistory = async (studentUid: string) => {
-    setLoadingHistory(true);
-    try {
-      const q = query(
-        collection(db, "feePayments"),
-        where("studentUid", "==", studentUid),
-        where("type", "in", ["maintenance", "maintenance_payment"])
-      );
-      const snap = await getDocsFromServer(q);
-      const list = snap.docs.map(d => d.data());
-      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const onLogPayment = async () => {
-    const val = parseFloat(paymentAmount);
-    if (isNaN(val) || val <= 0 || !selectedStudent || !receivedFrom.trim()) {
-       return showToast({ message: "Invalid details", type: "error" });
-    }
-
-    const success = await handleLogPayment(selectedStudent, val, receivedFrom, paymentMethod);
-    if (success) {
-      setPaymentModalVisible(false);
-      setPaymentAmount("");
-      setReceivedFrom("");
-    }
-  };
-
-  const onBulkCharge = async () => {
-    const val = parseFloat(chargeAmount);
-    const success = await applyBulkCharge(val);
-    if (success) {
-      setChargeAmount("");
-    }
-  };
-
-  const onDeletePress = (payment: any) => {
-    if (!selectedStudent) return;
-    const msg = "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.";
-
-    if (Platform.OS === "web") {
-      if (window.confirm(`Confirm Deletion\n\n${msg}`)) {
-        handleDeletePayment(selectedStudent, payment).then(success => {
-          if (success) setPaymentModalVisible(false);
-        });
-      }
-    } else {
-      Alert.alert("Confirm Deletion", msg, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: async () => {
-          const success = await handleDeletePayment(selectedStudent, payment);
-          if (success) {
-              setPaymentModalVisible(false);
-          }
-        }},
-      ]);
-    }
-  };
 
   const renderStudentItem = useCallback(({ item }: { item: Student }) => {
     const isolatedTotal = (item.ptaBalance || 0) + (item.admissionBalance || 0) +
@@ -170,11 +114,7 @@ export default function MaintenanceCharges() {
       <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper}>
         <TouchableOpacity
           style={styles.financeCard}
-          onPress={() => {
-            setSelectedStudent(item);
-            setPaymentModalVisible(true);
-            fetchPaymentHistory(item.uid);
-          }}
+          onPress={() => openPaymentModal(item)}
         >
           <View style={styles.cardContent}>
             <View style={styles.leftSection}>
@@ -210,7 +150,7 @@ export default function MaintenanceCharges() {
         </TouchableOpacity>
       </Animatable.View>
     );
-  }, []);
+  }, [openPaymentModal]);
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -290,21 +230,40 @@ export default function MaintenanceCharges() {
 
             <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
               <Text style={styles.listTitle}>APPLY MAINTENANCE FEE (CLASS BULK)</Text>
-              <View style={[styles.bulkInputContainer, { marginTop: 10 }]}>
-                <TextInput
-                  style={styles.bulkInput}
-                  placeholder="Enter Amount (₵)"
-                  keyboardType="numeric"
-                  value={chargeAmount}
-                  onChangeText={setChargeAmount}
-                  placeholderTextColor={VIBE.muted}
-                />
+              <View style={{ marginTop: 10 }}>
+                <View style={[styles.bulkInputContainer, { paddingHorizontal: 12, height: 54 }]}>
+                  <TextInput
+                    style={[styles.bulkInput, { flex: 1, fontSize: 14 }]}
+                    placeholder="Enter Amount (₵)"
+                    keyboardType="numeric"
+                    value={chargeAmount}
+                    onChangeText={setChargeAmount}
+                    placeholderTextColor={VIBE.muted}
+                  />
+                </View>
                 <TouchableOpacity
-                   onPress={onBulkCharge}
-                   style={{ backgroundColor: THEME.primary, height: 44, paddingHorizontal: 15, borderRadius: 12, justifyContent: 'center', alignItems: 'center' }}
+                   onPress={handleApplyBulkCharge}
+                   style={{
+                     marginTop: 10,
+                     backgroundColor: THEME.primary,
+                     height: 50,
+                     borderRadius: 15,
+                     flexDirection: 'row',
+                     justifyContent: 'center',
+                     alignItems: 'center',
+                     gap: 8,
+                     ...SHADOWS.small,
+                   }}
                    disabled={saving}
                 >
-                  {saving ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '900', fontSize: 12 }}>BILL CLASS</Text>}
+                  {saving ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <SVGIcon name="add-circle-outline" size={20} color="#fff" />
+                      <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 }}>APPLY BULK MAINTENANCE</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
               {selectedClassId === "all" && (
@@ -388,7 +347,7 @@ export default function MaintenanceCharges() {
                 ))}
               </View>
 
-              <TouchableOpacity onPress={onLogPayment} disabled={saving}>
+              <TouchableOpacity onPress={handleLogPayment} disabled={saving}>
                 <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
                   {saving ? <ActivityIndicator color="#fff" /> : (
                     <>
@@ -419,7 +378,7 @@ export default function MaintenanceCharges() {
                           }
                         });
                       }}
-                      onLongPress={() => onDeletePress(h)}
+                      onLongPress={() => confirmDeletePayment(h)}
                     >
                       <View style={styles.tileHeader}>
                         <Text style={[styles.tileAmt, { color: h.type === 'maintenance' ? VIBE.info : VIBE.success }]}>
@@ -438,7 +397,7 @@ export default function MaintenanceCharges() {
                           <TouchableOpacity
                             onPress={(e) => {
                               e.stopPropagation();
-                              onDeletePress(h);
+                              confirmDeletePayment(h);
                             }}
                             style={{ padding: 4 }}
                           >

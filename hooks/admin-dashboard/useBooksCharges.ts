@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
@@ -60,6 +61,18 @@ export const useBooksCharges = ({
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalBilled: 0, totalCollected: 0 });
+
+  // UI state migrated from component
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<"payment" | "billing">("payment");
+  const [bookTitle, setBookTitle] = useState("");
+  const [billAmount, setBillAmount] = useState("");
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [receivedFrom, setReceivedFrom] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Momo" | "Cheque" | "E-cash">("Cash");
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
@@ -184,11 +197,29 @@ export const useBooksCharges = ({
     fetchStats();
   }, [fetchStudents, fetchStats]);
 
+  const fetchPaymentHistory = async (studentUid: string) => {
+    setLoadingHistory(true);
+    try {
+      const q = query(
+        collection(db, "feePayments"),
+        where("studentUid", "==", studentUid),
+        where("type", "in", ["books", "books_payment"])
+      );
+      const snap = await getDocsFromServer(q);
+      const list = snap.docs.map(d => d.data());
+      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   const logPayment = async (
     student: Student,
-    amount: number,
-    receivedFrom: string,
-    paymentMethod: string
+    amountVal: number,
+    receivedFromVal: string,
+    paymentMethodVal: string
   ) => {
     if (!acadConfig.academicYear || !acadConfig.currentTerm) {
       showToast({ message: "Academic config missing. Cannot log payment.", type: "error" });
@@ -200,9 +231,9 @@ export const useBooksCharges = ({
       const serial = `BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const paymentEntry = {
-        amount,
-        method: paymentMethod,
-        receivedFrom: receivedFrom.trim(),
+        amount: amountVal,
+        method: paymentMethodVal,
+        receivedFrom: receivedFromVal.trim(),
         updatedBy: appUser?.adminRole || "Admin",
         adminUid: appUser?.uid || "unknown",
         createdAt: new Date().toISOString(),
@@ -220,9 +251,9 @@ export const useBooksCharges = ({
       batch.set(doc(db, "feePayments", serial), paymentEntry);
 
       batch.update(doc(db, "users", student.uid), {
-        booksPaid: increment(amount),
-        booksBalance: increment(-amount),
-        walletBalance: increment(-amount),
+        booksPaid: increment(amountVal),
+        booksBalance: increment(-amountVal),
+        walletBalance: increment(-amountVal),
       });
 
       const year = acadConfig.academicYear?.replace(/\//g, "-");
@@ -236,17 +267,16 @@ export const useBooksCharges = ({
         className: student.className,
         academicYear: acadConfig.academicYear,
         term: acadConfig.currentTerm,
-        booksPaid: increment(amount),
-        booksBalance: increment(-amount),
-        balance: increment(-amount),
+        booksPaid: increment(amountVal),
+        booksBalance: increment(-amountVal),
+        balance: increment(-amountVal),
         payments: arrayUnion(paymentEntry),
         lastUpdated: serverTimestamp(),
       }, { merge: true });
 
       await batch.commit();
 
-      // Propagate changes to future terms
-      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'books');
+      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amountVal, 'payment', 'books');
 
       try {
         await sendNotification({
@@ -254,11 +284,11 @@ export const useBooksCharges = ({
           senderId: appUser?.uid || "admin",
           senderName: appUser?.displayName || "Administrator",
           title: "Books Payment Received",
-          body: `A books payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been recorded for ${student.fullName}.`,
+          body: `A books payment of ${SCHOOL_CONFIG.currencySymbol}${amountVal.toLocaleString()} has been recorded for ${student.fullName}.`,
           type: "payment",
           data: {
             studentUid: student.uid,
-            amount,
+            amount: amountVal,
             type: "books_payment"
           }
         });
@@ -278,27 +308,39 @@ export const useBooksCharges = ({
     }
   };
 
-  const logBill = async (student: Student, amount: number, bookTitle: string) => {
+  const handleLogPayment = async () => {
+    const amountVal = parseFloat(paymentAmount);
+    if (isNaN(amountVal) || amountVal <= 0 || !selectedStudent || !receivedFrom.trim()) {
+      return showToast({ message: "Please enter valid payment details", type: "error" });
+    }
+    const success = await logPayment(selectedStudent, amountVal, receivedFrom, paymentMethod);
+    if (success) {
+      setModalVisible(false);
+      setPaymentAmount("");
+      setReceivedFrom("");
+    }
+  };
+
+  const logBill = async (student: Student, amountVal: number, bookTitleVal: string) => {
     if (!acadConfig.academicYear || !acadConfig.currentTerm) {
       showToast({ message: "Academic config missing. Cannot log bill.", type: "error" });
       return false;
     }
     setSaving(true);
     try {
-      // Check for existing bill with same title for this student/term
       const qExisting = query(
         collection(db, "feePayments"),
         where("type", "==", "books"),
         where("studentUid", "==", student.uid),
         where("academicYear", "==", acadConfig.academicYear),
         where("term", "==", acadConfig.currentTerm),
-        where("method", "==", bookTitle || "Books Charge")
+        where("method", "==", bookTitleVal || "Books Charge")
       );
       const existingSnap = await getDocsFromServer(qExisting);
       const existing = existingSnap.empty ? null : { id: existingSnap.docs[0].id, ...(existingSnap.docs[0].data() as any) };
 
       const oldAmount = existing ? (existing.amount || 0) : 0;
-      const diff = amount - oldAmount;
+      const diff = amountVal - oldAmount;
 
       if (diff === 0 && existing) {
         showToast({ message: "Bill amount is the same", type: "info" });
@@ -309,8 +351,8 @@ export const useBooksCharges = ({
       const serial = existing ? existing.id : `BILL-BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       const billEntry = {
-        amount,
-        method: bookTitle || "Books Charge",
+        amount: amountVal,
+        method: bookTitleVal || "Books Charge",
         receivedFrom: "System Billing",
         updatedBy: appUser?.adminRole || "Admin",
         adminUid: appUser?.uid || "unknown",
@@ -353,9 +395,9 @@ export const useBooksCharges = ({
           className: student.className,
           academicYear: acadConfig.academicYear,
           term: acadConfig.currentTerm,
-          booksBill: increment(amount),
-          booksBalance: increment(amount),
-          balance: increment(amount),
+          booksBill: increment(amountVal),
+          booksBalance: increment(amountVal),
+          balance: increment(amountVal),
           payments: arrayUnion(billEntry),
           lastUpdated: serverTimestamp(),
         }, { merge: true });
@@ -363,7 +405,6 @@ export const useBooksCharges = ({
 
       await batch.commit();
 
-      // Propagate changes to future terms
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'books');
 
       showToast({ message: existing ? `Bill updated` : `Bill created: ${serial}`, type: "success" });
@@ -375,6 +416,19 @@ export const useBooksCharges = ({
       return false;
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleLogBill = async () => {
+    const amountVal = parseFloat(billAmount);
+    if (isNaN(amountVal) || amountVal <= 0 || !selectedStudent) {
+      return showToast({ message: "Please enter a valid billing amount", type: "error" });
+    }
+    const success = await logBill(selectedStudent, amountVal, bookTitle);
+    if (success) {
+      setModalVisible(false);
+      setBillAmount("");
+      setBookTitle("");
     }
   };
 
@@ -391,30 +445,30 @@ export const useBooksCharges = ({
     try {
       const recordId = `${student.uid}_${year}_${term}`;
       const batch = writeBatch(db);
-      const amount = Number(payment.amount) || 0;
+      const amountVal = Number(payment.amount) || 0;
       const isPayment = payment.type === "books_payment";
 
       if (isPayment) {
         batch.update(doc(db, "studentFeeRecords", recordId), {
-          booksPaid: increment(-amount),
-          booksBalance: increment(amount),
-          balance: increment(amount),
+          booksPaid: increment(-amountVal),
+          booksBalance: increment(amountVal),
+          balance: increment(amountVal),
         });
         batch.update(doc(db, "users", student.uid), {
-          booksPaid: increment(-amount),
-          booksBalance: increment(amount),
-          walletBalance: increment(amount),
+          booksPaid: increment(-amountVal),
+          booksBalance: increment(amountVal),
+          walletBalance: increment(amountVal),
         });
       } else {
         batch.update(doc(db, "studentFeeRecords", recordId), {
-          booksBill: increment(-amount),
-          booksBalance: increment(-amount),
-          balance: increment(-amount),
+          booksBill: increment(-amountVal),
+          booksBalance: increment(-amountVal),
+          balance: increment(-amountVal),
         });
         batch.update(doc(db, "users", student.uid), {
-          booksBill: increment(-amount),
-          booksBalance: increment(-amount),
-          walletBalance: increment(-amount),
+          booksBill: increment(-amountVal),
+          booksBalance: increment(-amountVal),
+          walletBalance: increment(-amountVal),
         });
       }
 
@@ -429,8 +483,7 @@ export const useBooksCharges = ({
 
       await batch.commit();
 
-      // Propagate changes to future terms
-      const propagationAmount = isPayment ? amount : -amount;
+      const propagationAmount = isPayment ? amountVal : -amountVal;
       const propType = isPayment ? 'payment' : 'bill';
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, propagationAmount, propType, 'books');
 
@@ -446,6 +499,33 @@ export const useBooksCharges = ({
     }
   };
 
+  const confirmDeletePayment = (payment: any) => {
+    if (!selectedStudent) return;
+    const msg = "Are you sure you want to delete this transaction?";
+
+    const proceed = async () => {
+      const success = await deletePayment(selectedStudent, payment);
+      if (success) setModalVisible(false);
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Confirm Deletion\n\n${msg}`)) proceed();
+    } else {
+      Alert.alert("Confirm Deletion", msg, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Delete", style: "destructive", onPress: proceed },
+      ]);
+    }
+  };
+
+  const openStudentModal = (student: Student) => {
+    setSelectedStudent(student);
+    setPaymentAmount("");
+    setReceivedFrom("");
+    setModalVisible(true);
+    fetchPaymentHistory(student.uid);
+  };
+
   return {
     loading,
     refreshing,
@@ -454,9 +534,29 @@ export const useBooksCharges = ({
     classes,
     stats,
     handleRefresh,
-    logPayment,
-    logBill,
-    deletePayment,
+    handleLogPayment,
+    handleLogBill,
+    confirmDeletePayment,
     fetchStudents,
+
+    // UI state & handlers
+    selectedStudent,
+    modalVisible,
+    setModalVisible,
+    activeTab,
+    setActiveTab,
+    bookTitle,
+    setBookTitle,
+    billAmount,
+    setBillAmount,
+    paymentAmount,
+    setPaymentAmount,
+    receivedFrom,
+    setReceivedFrom,
+    paymentMethod,
+    setPaymentMethod,
+    history,
+    loadingHistory,
+    openStudentModal,
   };
 };

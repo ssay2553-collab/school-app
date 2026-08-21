@@ -127,7 +127,7 @@ export default function StudentDashboard() {
           path: "/student-dashboard/gallery",
         },
         {
-          title: "Coding Hub",
+          title: "Coding & Robotics",
           subtitle: "Robotics & Projects",
           icon: "code-slash",
           color: "#6366F1",

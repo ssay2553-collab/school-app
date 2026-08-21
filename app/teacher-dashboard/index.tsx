@@ -251,7 +251,7 @@ export default function TeacherDashboard() {
           color: "#f59e0b",
         },
         {
-          title: "Coding Hub",
+          title: "Coding & Robotics",
           subtitle: "Robotics & Projects",
           route: "/coding-robotics",
           icon: "code-slash",

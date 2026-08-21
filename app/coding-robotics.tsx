@@ -70,6 +70,56 @@ const RESOURCES: ResourceItem[] = [
     color: '#6BCB77',
     tag: 'STEM',
   },
+  {
+    id: '4',
+    title: 'Code.org Studio',
+    description:
+      'Master the basics of computer science with Minecraft, Star Wars, and Hour of Code.',
+    url: 'https://code.org/learn',
+    icon: 'apps',
+    color: '#00B4D8',
+    tag: 'CODING',
+  },
+  {
+    id: '5',
+    title: 'Micro:bit Projects',
+    description:
+      'Write code for a tiny pocket-sized computer with sensors and LED displays.',
+    url: 'https://microbit.org/projects/make-it-code-it/',
+    icon: 'flash',
+    color: '#F97316',
+    tag: 'ROBOTICS',
+  },
+  {
+    id: '6',
+    title: 'CodeCombat',
+    description:
+      'Learn Python and JavaScript by playing a real RPG game with heroes and levels.',
+    url: 'https://codecombat.com/play',
+    icon: 'game-controller',
+    color: '#A855F7',
+    tag: 'GAME-DEV',
+  },
+  {
+    id: '7',
+    title: 'Blockly Games',
+    description:
+      'A series of educational games that teach programming through a puzzle-like interface.',
+    url: 'https://blockly.games/',
+    icon: 'extension-puzzle',
+    color: '#34A853',
+    tag: 'LOGIC',
+  },
+  {
+    id: '8',
+    title: 'Khan Academy Coding',
+    description:
+      'Learn how to program drawings, animations, and games using JavaScript and ProcessingJS.',
+    url: 'https://www.khanacademy.org/computing/computer-programming',
+    icon: 'school',
+    color: '#14BF96',
+    tag: 'JS-CODING',
+  },
 ];
 
 export default function CodingRobotics() {

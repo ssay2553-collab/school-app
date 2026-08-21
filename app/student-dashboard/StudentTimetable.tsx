@@ -29,7 +29,7 @@ interface TimetableDays {
 }
 
 interface ClassTimetable {
-  timetableDays?: TimetableDays;
+  days?: TimetableDays;
   otherActivities?: Lesson[];
 }
 
@@ -130,7 +130,7 @@ export default function StudentTimetable() {
   }, [fetchTimetable]);
 
   const currentLessons = useMemo(() => 
-    timetable?.timetableDays?.[selectedDay] || [], 
+    timetable?.days?.[selectedDay] || [],
   [timetable, selectedDay]);
   
   const otherActs = useMemo(() => 

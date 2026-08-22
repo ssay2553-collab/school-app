@@ -43,6 +43,7 @@ export interface Question {
   visualGroup?: VisualItem[];
   answer?: string;
   points?: number;
+  showWorking?: boolean;
 }
 
 export interface Assignment {

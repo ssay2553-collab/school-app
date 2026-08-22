@@ -23,6 +23,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useToast } from "../../contexts/ToastContext";
 import { useMarkAssignment, Submission, Assignment } from "../../hooks/teacher-dashboard/useMarkAssignment";
+import MathCanvas from "../../components/MathCanvas";
 
 /* ---------------- HELPERS ---------------- */
 
@@ -143,40 +144,132 @@ const SubmissionItem = React.memo(({
           <Text style={styles.responseLabel}>DETAILED REVIEW</Text>
           {assignment?.questions?.map((q: any, idx) => {
             const correctAnswer = answerKey?.answers?.find((a: any) => a.id === q.id || a.questionIndex === idx)?.answer;
+            const response = item.responses?.[idx] ?? item.responses?.[String(idx)];
+
+            // Logic for Mathematics
+            const isMath = item.type === 'mathematics';
+            const studentMathAnswer = isMath ? (Array.isArray(response)
+              ? response
+              : (response && typeof response === 'object' ? (response.answer || []) : [{ type: 'text', value: String(response || ''), id: 'ans' }])) : null;
+
+            const studentMathWorking = isMath && (response && typeof response === 'object' && !Array.isArray(response))
+              ? response.working
+              : null;
+
+            // Logic for MCQ
+            const isMCQ = item.type === 'mcq' || (item.type === 'mathematics' && q.options?.length > 0);
+            const studentSelection = isMCQ ? (typeof response === 'object' ? response?.answer : response) : null;
+
             return (
-              <View key={idx} style={styles.responseItem}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.qText}>{idx + 1}. {q.text}</Text>
-                  <View style={styles.answerRow}>
-                    <Text style={[styles.aText, { color: COLORS.secondary, fontWeight: '600' }]}>
-                      Student: {item.responses?.[idx] || "No answer"}
-                    </Text>
+              <View key={idx} style={styles.responseItemContainer}>
+                <View style={styles.questionMain}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.qText}>{`${idx + 1}. ${q.text}`}</Text>
+
+                    {/* Visual Group for Math Questions */}
+                    {(q.visualGroup && q.visualGroup.length > 0) ? (
+                      <View style={styles.visualGroupPreview}>
+                        <MathCanvas visualGroup={q.visualGroup} onChange={() => {}} readOnly={true} minHeight={40} />
+                      </View>
+                    ) : null}
+
+                    {/* MCQ Options Display */}
+                    {(isMCQ && q.options) ? (
+                      <View style={styles.optionsReviewList}>
+                        {q.options.map((opt: string, oIdx: number) => {
+                          const isSelected = studentSelection === opt;
+                          const isCorrect = correctAnswer === opt;
+                          return (
+                            <View
+                              key={oIdx}
+                              style={[
+                                styles.optionReviewItem,
+                                isSelected && styles.optionSelected,
+                                isCorrect && styles.optionCorrect,
+                                isSelected && isCorrect && styles.optionPerfect
+                              ]}
+                            >
+                              <View style={[styles.optionDot, isSelected && styles.dotSelected, isCorrect && styles.dotCorrect]} />
+                              <Text style={[styles.optionReviewText, (isSelected || isCorrect) && styles.textBold]}>{opt}</Text>
+                              {isSelected ? <Text style={styles.badgeSmall}>STUDENT</Text> : null}
+                              {isCorrect ? <Text style={[styles.badgeSmall, { backgroundColor: '#10b981' }]}>KEY</Text> : null}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    ) : null}
+
+                    {/* Short Answer / Standard Display */}
+                    {(!isMCQ && !isMath) ? (
+                      <View style={styles.textResponseBox}>
+                        <Text style={styles.responseLabelMini}>STUDENT RESPONSE:</Text>
+                        <Text style={styles.aTextLarge}>{response || "No answer provided"}</Text>
+                      </View>
+                    ) : null}
+
+                    {/* Math Specific Display */}
+                    {(isMath && !isMCQ) ? (
+                      <View style={styles.mathResponseContainer}>
+                         <Text style={styles.responseLabelMini}>STUDENT SOLUTION:</Text>
+                         <MathCanvas
+                            visualGroup={studentMathAnswer}
+                            onChange={() => {}}
+                            readOnly={true}
+                            minHeight={60}
+                            placeholder="No solution provided."
+                          />
+                      </View>
+                    ) : null}
+
+                    {/* Working Steps (Common for Math/Short Answer if enabled) */}
+                    {studentMathWorking ? (
+                      <View style={styles.workingReviewBox}>
+                        <Text style={styles.responseLabelMini}>WORKING STEPS:</Text>
+                        <MathCanvas
+                          visualGroup={Array.isArray(studentMathWorking) ? studentMathWorking : [{ type: 'text', value: String(studentMathWorking), id: 'work' }]}
+                          onChange={() => {}}
+                          readOnly={true}
+                          minHeight={80}
+                          placeholder="No working steps provided."
+                        />
+                      </View>
+                    ) : null}
+
+                    {/* Correct Key for Non-MCQ */}
+                    {(!isMCQ && correctAnswer) ? (
+                      <View style={styles.keyReviewBox}>
+                        <Text style={[styles.responseLabelMini, { color: '#059669' }]}>CORRECT / SAMPLE ANSWER:</Text>
+                        <Text style={styles.keyText}>{correctAnswer}</Text>
+                      </View>
+                    ) : null}
                   </View>
-                  {correctAnswer && (
-                    <View style={[styles.answerRow, { marginTop: 4 }]}>
-                      <Text style={[styles.aText, { color: '#10b981', fontWeight: '600' }]}>
-                        Key: {correctAnswer}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.qScoreWrapper}>
-                  <Text style={styles.qScoreLabel}>SCORE</Text>
-                  <TextInput
-                    style={styles.qScoreInput}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    value={qScoreValue?.[idx] || ""}
-                    onChangeText={(t) => onUpdateQScore(item.id, idx, t)}
-                  />
+
+                  <View style={styles.qScoreWrapper}>
+                    <Text style={styles.qScoreLabel}>SCORE</Text>
+                    <TextInput
+                      style={styles.qScoreInput}
+                      keyboardType="numeric"
+                      placeholder="0"
+                      value={String(qScoreValue?.[idx] || "")}
+                      onChangeText={(t) => onUpdateQScore(item.id, idx, t)}
+                    />
+                    <TouchableOpacity
+                      style={styles.quickFullScore}
+                      onPress={() => onUpdateQScore(item.id, idx, String(q.points || 1))}
+                    >
+                      <SVGIcon name="checkmark-circle" size={16} color={COLORS.primary} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
             );
           })}
 
           <View style={styles.totalSumRow}>
-            <Text style={styles.totalSumText}>Total Calculated Score:</Text>
-            <Text style={styles.totalSumValue}>{calculateTotal()}</Text>
+            <View style={styles.totalStats}>
+                <Text style={styles.totalSumText}>Total Points:</Text>
+                <Text style={styles.totalSumValue}>{String(calculateTotal())}</Text>
+            </View>
           </View>
         </View>
       )}
@@ -695,15 +788,150 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     alignItems: "center",
-    marginTop: 15,
-    paddingHorizontal: 10,
+    marginTop: 25,
+    paddingTop: 15,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
   totalSumText: { fontSize: 13, color: "#64748B", fontWeight: "700" },
   totalSumValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: "900",
     color: COLORS.primary,
-    marginLeft: 10,
+    marginLeft: 12,
+  },
+  responseItemContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    ...SHADOWS.small,
+  },
+  questionMain: {
+    padding: 20,
+    flexDirection: 'row',
+  },
+  optionsReviewList: {
+    marginTop: 15,
+    gap: 8,
+  },
+  optionReviewItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  optionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '05',
+  },
+  optionCorrect: {
+    borderColor: '#10b981',
+    backgroundColor: '#10b981' + '05',
+  },
+  optionPerfect: {
+    borderColor: '#10b981',
+    backgroundColor: '#10b981' + '15',
+  },
+  optionDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#CBD5E1',
+  },
+  dotSelected: { backgroundColor: COLORS.primary },
+  dotCorrect: { backgroundColor: '#10b981' },
+  optionReviewText: {
+    fontSize: 13,
+    color: '#475569',
+    flex: 1,
+  },
+  textBold: { fontWeight: '700', color: '#1E293B' },
+  badgeSmall: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: '#fff',
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  textResponseBox: {
+    marginTop: 15,
+    padding: 15,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  responseLabelMini: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#94A3B8',
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  aTextLarge: {
+    fontSize: 15,
+    color: '#1E293B',
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  mathResponseContainer: {
+    marginTop: 15,
+    gap: 8,
+  },
+  workingReviewBox: {
+    marginTop: 15,
+    padding: 15,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+  },
+  keyReviewBox: {
+    marginTop: 15,
+    padding: 12,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+  },
+  keyText: {
+    fontSize: 14,
+    color: '#065F46',
+    fontWeight: '700',
+  },
+  visualGroupPreview: {
+    marginTop: 10,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  quickFullScore: {
+    marginTop: 8,
+    padding: 6,
+    backgroundColor: COLORS.primary + '10',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  totalStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
   },
   feedbackSection: {
     marginTop: 20,

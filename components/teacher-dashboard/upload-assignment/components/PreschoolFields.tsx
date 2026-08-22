@@ -690,180 +690,189 @@ const PreschoolFields = memo(({ q, qIndex, updatePreschoolQuestion, styles }: an
 
             {/* List Management */}
             <View style={{ gap: 8 }}>
-              {q.visualGroup?.map((item: any, idx: number) => (
-                <View key={idx} style={{
-                  backgroundColor: '#fff',
-                  padding: 10,
-                  borderRadius: 12,
-                  borderWidth: 1,
-                  borderColor: COLORS.secondary + '15',
-                  ...SHADOWS.small
-                }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}>
-                      <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>{idx + 1}</Text>
+              <ScrollView
+                nestedScrollEnabled={true}
+                style={[
+                  { gap: 8 },
+                  (q.visualGroup?.length || 0) > 3 && { maxHeight: 200 }
+                ]}
+              >
+                {q.visualGroup?.map((item: any, idx: number) => (
+                  <View key={idx} style={{
+                    backgroundColor: '#fff',
+                    padding: 10,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: COLORS.secondary + '15',
+                    ...SHADOWS.small,
+                    marginBottom: 8
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 }}>
+                        <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ color: '#fff', fontSize: 10, fontWeight: '900' }}>{idx + 1}</Text>
+                        </View>
+
+                        {item.type === 'icon' ? (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                              <SVGIcon name={item.value} size={20} />
+                              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 4 }}>
+                                <TouchableOpacity onPress={() => {
+                                  const newGroup = [...q.visualGroup];
+                                  if (newGroup[idx].count > 1) {
+                                    newGroup[idx].count -= 1;
+                                    updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                  }
+                                }} style={{ padding: 4 }}><Text style={{ fontWeight: '900' }}>-</Text></TouchableOpacity>
+                                <Text style={{ fontSize: 12, fontWeight: '900', minWidth: 20, textAlign: 'center' }}>{item.count}</Text>
+                                <TouchableOpacity onPress={() => {
+                                  const newGroup = [...q.visualGroup];
+                                  newGroup[idx].count = (newGroup[idx].count || 1) + 1;
+                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                }} style={{ padding: 4 }}><Text style={{ fontWeight: '900' }}>+</Text></TouchableOpacity>
+                              </View>
+                          </View>
+                        ) : ['fraction', 'sqrt', 'bracket', 'superscript', 'subscript'].includes(item.type) ? (
+                          <View style={{ flex: 1, gap: 5 }}>
+                            <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.secondary }}>{item.type.toUpperCase()}</Text>
+                            {item.type === 'fraction' && (
+                              <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}>
+                                <TextInput
+                                  style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                                  value={item.numerator?.[0]?.value}
+                                  placeholder="Num"
+                                  onChangeText={(t) => {
+                                    const newGroup = [...q.visualGroup];
+                                    newGroup[idx].numerator = [{ ...newGroup[idx].numerator[0], value: t }];
+                                    updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                  }}
+                                />
+                                <Text>/</Text>
+                                <TextInput
+                                  style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                                  value={item.denominator?.[0]?.value}
+                                  placeholder="Den"
+                                  onChangeText={(t) => {
+                                    const newGroup = [...q.visualGroup];
+                                    newGroup[idx].denominator = [{ ...newGroup[idx].denominator[0], value: t }];
+                                    updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                  }}
+                                />
+                              </View>
+                            )}
+                            {item.type === 'sqrt' && (
+                              <TextInput
+                                style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                                value={item.content?.[0]?.value}
+                                placeholder="Content"
+                                onChangeText={(t) => {
+                                  const newGroup = [...q.visualGroup];
+                                  newGroup[idx].content = [{ ...newGroup[idx].content[0], value: t }];
+                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                }}
+                              />
+                            )}
+                            {item.type === 'bracket' && (
+                              <TextInput
+                                style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                                value={item.content?.[0]?.value}
+                                placeholder="Inside brackets"
+                                onChangeText={(t) => {
+                                  const newGroup = [...q.visualGroup];
+                                  newGroup[idx].content = [{ ...newGroup[idx].content[0], value: t }];
+                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                }}
+                              />
+                            )}
+                            {(item.type === 'superscript' || item.type === 'subscript') && (
+                              <TextInput
+                                style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
+                                value={item.value}
+                                placeholder={item.type === 'superscript' ? "Power" : "Index"}
+                                onChangeText={(t) => {
+                                  const newGroup = [...q.visualGroup];
+                                  newGroup[idx].value = t;
+                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                }}
+                              />
+                            )}
+                          </View>
+                        ) : (
+                          <TextInput
+                            style={{ fontSize: 14, fontWeight: '700', color: '#1E293B', flex: 1, backgroundColor: '#F8FAFC', padding: 5, borderRadius: 6 }}
+                            value={item.value}
+                            onChangeText={(t) => {
+                              const newGroup = [...q.visualGroup];
+                              newGroup[idx].value = t;
+                              updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                            }}
+                          />
+                        )}
+
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                          {['S', 'M', 'L'].map((s, i) => {
+                            const szMap = ['small', 'medium', 'large'];
+                            return (
+                              <TouchableOpacity
+                                key={s}
+                                onPress={() => {
+                                  const newGroup = [...q.visualGroup];
+                                  newGroup[idx].size = szMap[i] as any;
+                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                                }}
+                                style={{
+                                  width: 24, height: 24, borderRadius: 6,
+                                  backgroundColor: item.size === szMap[i] || (!item.size && i === 1) ? COLORS.secondary : '#F1F5F9',
+                                  alignItems: 'center', justifyContent: 'center'
+                                }}
+                              >
+                                <Text style={{ fontSize: 10, fontWeight: '900', color: item.size === szMap[i] || (!item.size && i === 1) ? '#fff' : '#64748B' }}>{s}</Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
                       </View>
 
-                      {item.type === 'icon' ? (
-                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <SVGIcon name={item.value} size={20} />
-                            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', borderRadius: 8, paddingHorizontal: 4 }}>
-                              <TouchableOpacity onPress={() => {
-                                const newGroup = [...q.visualGroup];
-                                if (newGroup[idx].count > 1) {
-                                  newGroup[idx].count -= 1;
-                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                                }
-                              }} style={{ padding: 4 }}><Text style={{ fontWeight: '900' }}>-</Text></TouchableOpacity>
-                              <Text style={{ fontSize: 12, fontWeight: '900', minWidth: 20, textAlign: 'center' }}>{item.count}</Text>
-                              <TouchableOpacity onPress={() => {
-                                const newGroup = [...q.visualGroup];
-                                newGroup[idx].count = (newGroup[idx].count || 1) + 1;
-                                updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                              }} style={{ padding: 4 }}><Text style={{ fontWeight: '900' }}>+</Text></TouchableOpacity>
-                            </View>
-                         </View>
-                      ) : ['fraction', 'sqrt', 'bracket', 'superscript', 'subscript'].includes(item.type) ? (
-                        <View style={{ flex: 1, gap: 5 }}>
-                          <Text style={{ fontSize: 10, fontWeight: '800', color: COLORS.secondary }}>{item.type.toUpperCase()}</Text>
-                          {item.type === 'fraction' && (
-                            <View style={{ flexDirection: 'row', gap: 5, alignItems: 'center' }}>
-                              <TextInput
-                                style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
-                                value={item.numerator?.[0]?.value}
-                                placeholder="Num"
-                                onChangeText={(t) => {
-                                  const newGroup = [...q.visualGroup];
-                                  newGroup[idx].numerator = [{ ...newGroup[idx].numerator[0], value: t }];
-                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                                }}
-                              />
-                              <Text>/</Text>
-                              <TextInput
-                                style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
-                                value={item.denominator?.[0]?.value}
-                                placeholder="Den"
-                                onChangeText={(t) => {
-                                  const newGroup = [...q.visualGroup];
-                                  newGroup[idx].denominator = [{ ...newGroup[idx].denominator[0], value: t }];
-                                  updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                                }}
-                              />
-                            </View>
-                          )}
-                          {item.type === 'sqrt' && (
-                            <TextInput
-                              style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
-                              value={item.content?.[0]?.value}
-                              placeholder="Content"
-                              onChangeText={(t) => {
-                                const newGroup = [...q.visualGroup];
-                                newGroup[idx].content = [{ ...newGroup[idx].content[0], value: t }];
-                                updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                              }}
-                            />
-                          )}
-                          {item.type === 'bracket' && (
-                            <TextInput
-                              style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
-                              value={item.content?.[0]?.value}
-                              placeholder="Inside brackets"
-                              onChangeText={(t) => {
-                                const newGroup = [...q.visualGroup];
-                                newGroup[idx].content = [{ ...newGroup[idx].content[0], value: t }];
-                                updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                              }}
-                            />
-                          )}
-                          {(item.type === 'superscript' || item.type === 'subscript') && (
-                            <TextInput
-                              style={{ fontSize: 12, fontWeight: '700', backgroundColor: '#F8FAFC', padding: 4, borderRadius: 4, flex: 1 }}
-                              value={item.value}
-                              placeholder={item.type === 'superscript' ? "Power" : "Index"}
-                              onChangeText={(t) => {
-                                const newGroup = [...q.visualGroup];
-                                newGroup[idx].value = t;
-                                updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                              }}
-                            />
-                          )}
-                        </View>
-                      ) : (
-                        <TextInput
-                          style={{ fontSize: 14, fontWeight: '700', color: '#1E293B', flex: 1, backgroundColor: '#F8FAFC', padding: 5, borderRadius: 6 }}
-                          value={item.value}
-                          onChangeText={(t) => {
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <TouchableOpacity
+                          onPress={() => {
                             const newGroup = [...q.visualGroup];
-                            newGroup[idx].value = t;
+                            newGroup[idx].isNewLine = !newGroup[idx].isNewLine;
                             updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
                           }}
-                        />
-                      )}
+                          style={{ padding: 6, backgroundColor: item.isNewLine ? COLORS.primary + '20' : '#F1F5F9', borderRadius: 8, width: 32, alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <SVGIcon name="return-down-back" size={16} color={item.isNewLine ? COLORS.primary : '#64748B'} />
+                        </TouchableOpacity>
 
-                      <View style={{ flexDirection: 'row', gap: 4 }}>
-                        {['S', 'M', 'L'].map((s, i) => {
-                          const szMap = ['small', 'medium', 'large'];
-                          return (
-                            <TouchableOpacity
-                              key={s}
-                              onPress={() => {
-                                const newGroup = [...q.visualGroup];
-                                newGroup[idx].size = szMap[i] as any;
-                                updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                              }}
-                              style={{
-                                width: 24, height: 24, borderRadius: 6,
-                                backgroundColor: item.size === szMap[i] || (!item.size && i === 1) ? COLORS.secondary : '#F1F5F9',
-                                alignItems: 'center', justifyContent: 'center'
-                              }}
-                            >
-                              <Text style={{ fontSize: 10, fontWeight: '900', color: item.size === szMap[i] || (!item.size && i === 1) ? '#fff' : '#64748B' }}>{s}</Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    </View>
+                        <View style={{ gap: 2 }}>
+                          {idx > 0 && (
+                            <TouchableOpacity onPress={() => {
+                              const newGroup = [...q.visualGroup];
+                              [newGroup[idx], newGroup[idx-1]] = [newGroup[idx-1], newGroup[idx]];
+                              updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                            }}><SVGIcon name="chevron-up" size={14} color={COLORS.secondary} /></TouchableOpacity>
+                          )}
+                          {idx < q.visualGroup.length - 1 && (
+                            <TouchableOpacity onPress={() => {
+                              const newGroup = [...q.visualGroup];
+                              [newGroup[idx], newGroup[idx+1]] = [newGroup[idx+1], newGroup[idx]];
+                              updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
+                            }}><SVGIcon name="chevron-down" size={14} color={COLORS.secondary} /></TouchableOpacity>
+                          )}
+                        </View>
 
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          const newGroup = [...q.visualGroup];
-                          newGroup[idx].isNewLine = !newGroup[idx].isNewLine;
+                        <TouchableOpacity onPress={() => {
+                          const newGroup = q.visualGroup.filter((_: any, i: number) => i !== idx);
                           updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                        }}
-                        style={{ padding: 6, backgroundColor: item.isNewLine ? COLORS.primary + '20' : '#F1F5F9', borderRadius: 8, width: 32, alignItems: 'center', justifyContent: 'center' }}
-                      >
-                        <SVGIcon name="return-down-back" size={16} color={item.isNewLine ? COLORS.primary : '#64748B'} />
-                      </TouchableOpacity>
-
-                      <View style={{ gap: 2 }}>
-                        {idx > 0 && (
-                          <TouchableOpacity onPress={() => {
-                            const newGroup = [...q.visualGroup];
-                            [newGroup[idx], newGroup[idx-1]] = [newGroup[idx-1], newGroup[idx]];
-                            updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                          }}><SVGIcon name="chevron-up" size={14} color={COLORS.secondary} /></TouchableOpacity>
-                        )}
-                        {idx < q.visualGroup.length - 1 && (
-                          <TouchableOpacity onPress={() => {
-                            const newGroup = [...q.visualGroup];
-                            [newGroup[idx], newGroup[idx+1]] = [newGroup[idx+1], newGroup[idx]];
-                            updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                          }}><SVGIcon name="chevron-down" size={14} color={COLORS.secondary} /></TouchableOpacity>
-                        )}
+                        }} style={{ padding: 6, backgroundColor: '#FEF2F2', borderRadius: 8, width: 32, alignItems: 'center', justifyContent: 'center' }}>
+                          <SVGIcon name="close-circle" size={18} color="#EF4444" />
+                        </TouchableOpacity>
                       </View>
-
-                      <TouchableOpacity onPress={() => {
-                        const newGroup = q.visualGroup.filter((_: any, i: number) => i !== idx);
-                        updatePreschoolQuestion(qIndex, { visualGroup: newGroup });
-                      }} style={{ padding: 6, backgroundColor: '#FEF2F2', borderRadius: 8, width: 32, alignItems: 'center', justifyContent: 'center' }}>
-                        <SVGIcon name="close-circle" size={18} color="#EF4444" />
-                      </TouchableOpacity>
                     </View>
                   </View>
-                </View>
-              ))}
+                ))}
+              </ScrollView>
             </View>
 
             <View style={{ flexDirection: 'row', gap: 10 }}>

@@ -41,7 +41,7 @@ export interface Submission {
   studentId: string;
   studentName: string;
   fileUrl?: string;
-  responses?: Record<number, string>;
+  responses?: Record<string | number, any>;
   type: "mcq" | "short_answer" | "preschool" | "rich-text" | "mathematics";
   marked: boolean;
   marks?: number;

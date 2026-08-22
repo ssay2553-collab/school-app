@@ -219,7 +219,7 @@ function hasScreenPermission(screen, level) {
         isAdmin()
         || (isSignedIn() && uid() == userId)
         || (isTeacher() && resource.data.role == 'student')
-        || (isParent() && resource.data.role in ['teacher', 'admin'])
+        || (isParent() && resource.data.role == 'teacher')
         || (isParent() && userData() != null && (
              (userId in userData().childrenIds) ||
              (uid() in resource.data.get('parentUids', []))
@@ -541,7 +541,7 @@ allow create: if
        ADMIN ROLES UNIQUENESS
     =============================== */
    match /adminRoles/{roleName} {
-     allow read: if true;
+     allow read: if isSignedIn();
 
      allow create: if isSignedIn()
        && request.resource.data.uid == uid()
@@ -781,30 +781,9 @@ match /feePayments/{paymentId} {
        ASSIGNMENTS COLLECTION
     =============================== */
    match /assignments/{id} {
-      allow read: if canViewAssignments() || isAdmin() ||
-        (isTeacher() && resource.data.teacherId == uid()) ||
-        (isStudent() && resource.data.classId == userData().classId) ||
-        (isParent() && resource.data.classId in userData().get('childrenClassIds', []));
-
-      allow create: if (canManageAssignments() || isTeacher()) &&
-        request.resource.data.teacherId == uid() &&
-        request.resource.data.title is string &&
-        request.resource.data.type in ['mcq', 'short_answer', 'preschool', 'mathematics'] &&
-        request.resource.data.classId is string &&
-        request.resource.data.createdAt == request.time;
-
-      allow update: if canManageAssignments() || (isTeacher() && resource.data.teacherId == uid());
+      allow read: if canViewAssignments() || isAdmin() || (isTeacher() && resource.data.teacherId == uid()) || (isStudent() && resource.data.classId == userData().classId) || isParent();
+      allow create, update: if canManageAssignments() || (isTeacher() && request.resource.data.teacherId == uid());
       allow delete: if canManageAssignments() || isAdmin();
-    }
-
-    match /assignmentAnswerKeys/{assignmentId} {
-      allow read, write: if isSignedIn() && (
-        isAdmin() ||
-        (isTeacher() && (
-          (resource == null || resource.data.teacherId == uid()) &&
-          (request.resource == null || request.resource.data.teacherId == uid())
-        ))
-      );
     }
 
      /* ===============================
@@ -813,31 +792,23 @@ match /feePayments/{paymentId} {
          match /submissions/{submissionId} {
            allow read: if isSignedIn() && (
              isAdmin() ||
-             (isTeacher() && (
-               // Fast path: Teacher ID or Class ID stored on the submission
-               resource.data.get('teacherId', '') == uid() ||
-               resource.data.get('classId', '') in userData().get('classes', []) ||
-               resource.data.get('classId', '') == userData().get('classTeacherOf', '')
-             )) ||
+             isTeacher() ||
              (isStudent() && resource.data.studentId == uid()) ||
-             (isParent() && resource.data.studentId in userData().get('childrenIds', []))
+             (isParent() && isParentOf(resource.data.studentId))
            );
 
            allow create: if isSignedIn() &&
              isStudent() &&
              request.resource.data.studentId == uid() &&
-             // Enforce presence of denormalized fields for security rules & performance
-             request.resource.data.teacherId is string &&
-             request.resource.data.classId is string &&
-             request.resource.data.assignmentId is string &&
+             // Validate that the timestamp is actually the server time
              request.resource.data.submittedAt == request.time;
 
            allow update: if isSignedIn() && (
              isAdmin() ||
              (isTeacher() && (
-               resource.data.get('teacherId', '') == uid() ||
-               resource.data.get('classId', '') in userData().get('classes', []) ||
-               resource.data.get('classId', '') == userData().get('classTeacherOf', '')
+               resource.data.assignmentId in (get(/databases/$(database)/documents/users/$(uid())).data.assignedAssignments) ||
+               // Fallback: check if they are the teacher of the student
+               isClassTeacher(get(/databases/$(database)/documents/users/$(resource.data.studentId)).data.classId)
              ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores']))
            );
 
@@ -1148,10 +1119,12 @@ match /academicRecordsSummary/{id} {
       allow delete: if isAdmin();
     }
     /* ===============================
-       FALLBACK & CATCH-ALL
-    =============================== */
-    match /{path=**} {
-      allow read, write: if false;
-    }
+           FALLBACK & CATCH-ALL
+        =============================== */
+        match /{path=**} {
+          allow read: if isSignedIn();
+          allow write: if isSignedIn();
+
+        }
   }
 }

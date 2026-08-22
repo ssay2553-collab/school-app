@@ -1,4 +1,4 @@
-import React, { memo, useState } from "react";
+import React, { memo } from "react";
 import {
   StyleSheet,
   Text,
@@ -6,18 +6,18 @@ import {
   TouchableOpacity,
   View,
   Platform,
-  ScrollView,
 } from "react-native";
 import { COLORS } from "../../../constants/theme";
 import SVGIcon from "../../SVGIcon";
-import { Question } from "../../../types/assignments";
+import { Question, VisualItem } from "../../../types/assignments";
+import MathCanvas from "../../MathCanvas";
 
 interface QuestionResponseItemProps {
   q: Question;
   qIdx: number;
   type: string;
-  answer: string;
-  setAnswer: (val: string) => void;
+  answer: any;
+  setAnswer: (val: any) => void;
 }
 
 const QuestionResponseItem = memo(({
@@ -35,31 +35,35 @@ const QuestionResponseItem = memo(({
 
   const hasOptions = q.options && q.options.filter(opt => opt.trim() !== "").length > 0;
   const showOptions = type === "mcq" || isPreschoolOptions || (isMathematics && hasOptions);
-  const isMathInput = isMathematics;
-  const [isFocused, setIsFocused] = useState(false);
 
-  const mathSymbols = [
-    { label: "√", value: "√(" },
-    { label: "π", value: "π" },
-    { label: "x²", value: "²" },
-    { label: "xⁿ", value: "^" },
-    { label: "±", value: "±" },
-    { label: "÷", value: "÷" },
-    { label: "×", value: "×" },
-    { label: "≠", value: "≠" },
-    { label: "≈", value: "≈" },
-    { label: "≤", value: "≤" },
-    { label: "≥", value: "≥" },
-    { label: "(", value: "(" },
-    { label: ")", value: ")" },
-    { label: "/", value: "/" },
-    { label: "θ", value: "θ" },
-    { label: "α", value: "α" },
-    { label: "β", value: "β" },
-  ];
+  // Handle rich math answers (VisualItem[]) vs standard strings
+  const mathValue = (typeof answer === 'object' && !Array.isArray(answer))
+    ? (answer?.answer || [])
+    : (Array.isArray(answer) ? answer : (answer ? [{ type: 'text', value: String(answer), id: 'init' }] : []));
 
-  const insertSymbol = (symbol: string) => {
-    setAnswer((answer || "") + symbol);
+  const workingValue = (typeof answer === 'object' && !Array.isArray(answer))
+    ? (answer?.working || [])
+    : [];
+
+  const handleAnswerChange = (val: any) => {
+    const newVal = typeof val === 'string' ? [{ type: 'text', value: val, id: 'opt_' + Math.random() }] : val;
+    if (q.showWorking && isMathematics) {
+      setAnswer({ answer: newVal, working: workingValue });
+    } else {
+      setAnswer(newVal);
+    }
+  };
+
+  const handleWorkingChange = (val: VisualItem[]) => {
+    setAnswer({ answer: mathValue, working: val });
+  };
+
+  // Helper to check if an option is selected for math (which uses VisualItem[])
+  const isOptionSelected = (opt: string) => {
+    if (isMathematics) {
+      return Array.isArray(mathValue) && mathValue.length === 1 && mathValue[0].type === 'text' && mathValue[0].value === opt;
+    }
+    return answer === opt;
   };
 
   // Worksheet style layout for specific preschool types
@@ -103,12 +107,12 @@ const QuestionResponseItem = memo(({
         <View style={styles.worksheetRight}>
           <View style={styles.worksheetOptionsRow}>
             {q.options?.map((opt, oIdx) => {
-              const isSelected = answer === opt;
+              const isSelected = isOptionSelected(opt);
               return (
                 <TouchableOpacity
                   key={oIdx}
                   style={[styles.worksheetOption, isSelected && styles.worksheetOptionSelected, isPreschool && { minWidth: 50, height: 50 }]}
-                  onPress={() => setAnswer(opt)}
+                  onPress={() => handleAnswerChange(opt)}
                 >
                   <SVGIcon name={opt} size={isPreschool ? 36 : 28} />
                 </TouchableOpacity>
@@ -162,113 +166,163 @@ const QuestionResponseItem = memo(({
                       ))}
                     </View>
                   ) : item.type === 'fraction' ? (
-                    <View style={{ alignItems: 'center', marginHorizontal: 5 }}>
-                      <Text style={{ fontSize: textFontSize * 0.75, fontWeight: mathFontWeight }}>
-                        {item.numerator?.map((n: any) => n.value).join('')}
+                    <View style={{ alignItems: 'center', minWidth: 20, marginHorizontal: 2 }}>
+                      <Text style={{ fontSize: textFontSize, fontWeight: mathFontWeight, color: '#000' }}>
+                        {item.numerator?.map((n: any) => n.value).join('') || '1'}
                       </Text>
-                      <View style={{ height: 2, backgroundColor: '#000', width: '120%' }} />
-                      <Text style={{ fontSize: textFontSize * 0.75, fontWeight: mathFontWeight }}>
-                        {item.denominator?.map((d: any) => d.value).join('')}
+                      <View style={{ height: 1.5, backgroundColor: '#000', width: '100%' }} />
+                      <Text style={{ fontSize: textFontSize, fontWeight: mathFontWeight, color: '#000' }}>
+                        {item.denominator?.map((d: any) => d.value).join('') || '2'}
                       </Text>
                     </View>
                   ) : item.type === 'mixed_fraction' ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 5 }}>
-                        <Text style={{ fontSize: textFontSize, fontWeight: mathFontWeight, color: '#1E293B' }}>{item.whole}</Text>
-                        <View style={{ alignItems: 'center', marginLeft: 2 }}>
-                            <Text style={{ fontSize: textFontSize * 0.7, fontWeight: mathFontWeight }}>
-                                {item.numerator?.map((n: any) => n.value).join('')}
-                            </Text>
-                            <View style={{ height: 1.5, backgroundColor: '#000', width: '120%' }} />
-                            <Text style={{ fontSize: textFontSize * 0.7, fontWeight: mathFontWeight }}>
-                                {item.denominator?.map((d: any) => d.value).join('')}
-                            </Text>
-                        </View>
-                    </View>
-                  ) : item.type === 'sqrt' ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 5 }}>
-                      <SVGIcon name="sqrt" size={iconSize} color="#000" />
-                      <View style={{ borderTopWidth: 2, borderTopColor: '#000', paddingTop: 2 }}>
-                        <Text style={{ fontSize: textFontSize * 0.75, fontWeight: mathFontWeight }}>
-                          {item.content?.map((c: any) => c.value).join('')}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginHorizontal: 2 }}>
+                      <Text style={{ fontSize: textFontSize * 1.1, fontWeight: mathFontWeight, color: '#000' }}>{item.whole || '2'}</Text>
+                      <View style={{ alignItems: 'center', minWidth: 18 }}>
+                        <Text style={{ fontSize: textFontSize * 0.8, fontWeight: mathFontWeight, color: '#000' }}>
+                          {item.numerator?.map((n: any) => n.value).join('') || '1'}
+                        </Text>
+                        <View style={{ height: 1.5, backgroundColor: '#000', width: '100%' }} />
+                        <Text style={{ fontSize: textFontSize * 0.8, fontWeight: mathFontWeight, color: '#000' }}>
+                          {item.denominator?.map((d: any) => d.value).join('') || '2'}
                         </Text>
                       </View>
                     </View>
+                  ) : item.type === 'sqrt' ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 2 }}>
+                      <SVGIcon name="sqrt" size={iconSize * 0.8} color="#000" />
+                      <View style={{ borderTopWidth: 1.5, borderTopColor: '#000', paddingTop: 2, minWidth: 16, marginLeft: -2 }}>
+                        <Text style={{
+                          fontSize: textFontSize,
+                          fontWeight: mathFontWeight,
+                          color: '#000',
+                          fontStyle: /[a-zA-Z]/.test(item.content?.map((c: any) => c.value).join('') || '') ? 'italic' : 'normal',
+                          fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                        }}>{item.content?.map((c: any) => c.value).join('') || 'x'}</Text>
+                      </View>
+                    </View>
                   ) : item.type === 'bracket' ? (
-                    <Text style={{ fontSize: textFontSize, fontWeight: mathFontWeight, color: '#1E293B', marginHorizontal: 2 }}>
-                      {item.bracketType === 'round' ? '(' : item.bracketType === 'square' ? '[' : '{'}
-                      {item.content?.map((c: any) => c.value).join('')}
-                      {item.bracketType === 'round' ? ')' : item.bracketType === 'square' ? ']' : '}'}
-                    </Text>
+                    <Text style={{
+                      fontSize: textFontSize * 1.5,
+                      fontWeight: isPreschool ? '800' : '300',
+                      color: '#000',
+                      marginHorizontal: 1,
+                      marginTop: -2
+                    }}>{item.value || (item.bracketType === 'round' ? '(' : item.bracketType === 'square' ? '[' : '{')}</Text>
                   ) : item.type === 'mapping' ? (
-                    <View style={{ alignItems: 'center', marginHorizontal: 8 }}>
-                        <Text style={{ fontSize: textFontSize * 0.8, fontWeight: mathFontWeight }}>
-                            {item.numerator?.map((n: any) => n.value).join('')}
-                        </Text>
-                        <SVGIcon name="arrow-down" size={textFontSize * 0.8} color="#000" />
-                        <Text style={{ fontSize: textFontSize * 0.8, fontWeight: mathFontWeight }}>
-                            {item.denominator?.map((d: any) => d.value).join('')}
-                        </Text>
+                    <View style={{ alignItems: 'center', minWidth: 20, marginHorizontal: 4 }}>
+                      <Text style={{
+                        fontSize: textFontSize,
+                        fontWeight: mathFontWeight,
+                        color: '#000',
+                        fontStyle: /[a-zA-Z]/.test(item.numerator?.map((n: any) => n.value).join('') || '') ? 'italic' : 'normal',
+                        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                      }}>{item.numerator?.map((n: any) => n.value).join('') || 'x'}</Text>
+                      <Text style={{ fontSize: textFontSize * 0.9, fontWeight: '900', color: '#000', marginTop: -2, marginBottom: -2 }}>↓</Text>
+                      <Text style={{
+                        fontSize: textFontSize,
+                        fontWeight: mathFontWeight,
+                        color: '#000',
+                        fontStyle: /[a-zA-Z]/.test(item.denominator?.map((d: any) => d.value).join('') || '') ? 'italic' : 'normal',
+                        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                      }}>{item.denominator?.map((d: any) => d.value).join('') || 'y'}</Text>
                     </View>
                   ) : item.type === 'vector' ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 5 }}>
-                        <Text style={{ fontSize: textFontSize * 1.5, fontWeight: '300', color: '#000' }}>(</Text>
-                        <View style={{ alignItems: 'center', paddingHorizontal: 4 }}>
-                            <Text style={{ fontSize: textFontSize * 0.8, fontWeight: mathFontWeight }}>
-                                {item.numerator?.map((n: any) => n.value).join('')}
-                            </Text>
-                            <View style={{ height: 8 }} />
-                            <Text style={{ fontSize: textFontSize * 0.8, fontWeight: mathFontWeight }}>
-                                {item.denominator?.map((d: any) => d.value).join('')}
-                            </Text>
-                        </View>
-                        <Text style={{ fontSize: textFontSize * 1.5, fontWeight: '300', color: '#000' }}>)</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 2 }}>
+                      <Text style={{ fontSize: textFontSize * 1.5, fontWeight: isPreschool ? '800' : '300', color: '#000', marginTop: -2 }}>(</Text>
+                      <View style={{ alignItems: 'center', minWidth: 16, marginHorizontal: 1 }}>
+                        <Text style={{
+                          fontSize: textFontSize * 0.9,
+                          fontWeight: mathFontWeight,
+                          color: '#000',
+                          fontStyle: /[a-zA-Z]/.test(item.numerator?.map((n: any) => n.value).join('') || '') ? 'italic' : 'normal',
+                          fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                        }}>{item.numerator?.map((n: any) => n.value).join('') || 'x'}</Text>
+                        <Text style={{
+                          fontSize: textFontSize * 0.9,
+                          fontWeight: mathFontWeight,
+                          color: '#000',
+                          fontStyle: /[a-zA-Z]/.test(item.denominator?.map((d: any) => d.value).join('') || '') ? 'italic' : 'normal',
+                          fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                        }}>{item.denominator?.map((d: any) => d.value).join('') || 'y'}</Text>
+                      </View>
+                      <Text style={{ fontSize: textFontSize * 1.5, fontWeight: isPreschool ? '800' : '300', color: '#000', marginTop: -2 }}>)</Text>
                     </View>
                   ) : item.type === 'matrix' ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 5 }}>
-                        <Text style={{ fontSize: textFontSize * 1.8, fontWeight: '200', color: '#000' }}>(</Text>
-                        <View style={{ paddingHorizontal: 5 }}>
-                            <View style={{ flexDirection: 'row', gap: 15, marginBottom: 5 }}>
-                                <Text style={{ fontSize: textFontSize * 0.7, fontWeight: mathFontWeight }}>{item.cells?.[0]?.value}</Text>
-                                <Text style={{ fontSize: textFontSize * 0.7, fontWeight: mathFontWeight }}>{item.cells?.[1]?.value}</Text>
-                            </View>
-                            <View style={{ flexDirection: 'row', gap: 15 }}>
-                                <Text style={{ fontSize: textFontSize * 0.7, fontWeight: mathFontWeight }}>{item.cells?.[2]?.value}</Text>
-                                <Text style={{ fontSize: textFontSize * 0.7, fontWeight: mathFontWeight }}>{item.cells?.[3]?.value}</Text>
-                            </View>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 2 }}>
+                      <Text style={{ fontSize: textFontSize * 1.8, fontWeight: isPreschool ? '800' : '300', color: '#000', marginTop: -4 }}>(</Text>
+                      <View style={{ paddingHorizontal: 2, alignItems: 'center' }}>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <Text style={{ fontSize: textFontSize * 0.9, fontWeight: mathFontWeight, color: '#000' }}>{item.cells?.[0]?.value || 'a'}</Text>
+                          <Text style={{ fontSize: textFontSize * 0.9, fontWeight: mathFontWeight, color: '#000' }}>{item.cells?.[1]?.value || 'b'}</Text>
                         </View>
-                        <Text style={{ fontSize: textFontSize * 1.8, fontWeight: '200', color: '#000' }}>)</Text>
+                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                          <Text style={{ fontSize: textFontSize * 0.9, fontWeight: mathFontWeight, color: '#000' }}>{item.cells?.[2]?.value || 'c'}</Text>
+                          <Text style={{ fontSize: textFontSize * 0.9, fontWeight: mathFontWeight, color: '#000' }}>{item.cells?.[3]?.value || 'd'}</Text>
+                        </View>
+                      </View>
+                      <Text style={{ fontSize: textFontSize * 1.8, fontWeight: isPreschool ? '800' : '300', color: '#000', marginTop: -4 }}>)</Text>
                     </View>
                   ) : item.type === 'bar' ? (
                     <View style={{ alignItems: 'center', marginHorizontal: 2 }}>
-                        <View style={{ height: 1.5, backgroundColor: '#000', width: '100%', marginBottom: -2 }} />
-                        <Text style={{ fontSize: textFontSize, fontWeight: mathFontWeight, color: '#1E293B' }}>
-                            {item.content?.map((c: any) => c.value).join('')}
-                        </Text>
+                      <View style={{ height: 1.5, backgroundColor: '#000', width: '100%', marginBottom: 1 }} />
+                      <Text style={{
+                        fontSize: textFontSize,
+                        fontWeight: mathFontWeight,
+                        color: '#000',
+                        fontStyle: /[a-zA-Z]/.test(item.content?.map((c: any) => c.value).join('') || '') ? 'italic' : 'normal',
+                        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                      }}>{item.content?.map((c: any) => c.value).join('') || 'x'}</Text>
                     </View>
                   ) : item.type === 'superscript' ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
-                      <Text style={{ fontSize: textFontSize, fontWeight: mathFontWeight, color: '#1E293B' }}>x</Text>
-                      <Text style={{ fontSize: textFontSize * 0.5, fontWeight: mathFontWeight, color: '#1E293B', marginTop: -5 }}>{item.value}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginHorizontal: 1 }}>
+                      <Text style={{
+                        fontSize: textFontSize,
+                        fontWeight: mathFontWeight,
+                        fontStyle: /[a-zA-Z]/.test(item.base || '') ? 'italic' : 'normal',
+                        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                        color: '#000'
+                      }}>{item.base || 'x'}</Text>
+                      <Text style={{ fontSize: textFontSize * 0.7, fontWeight: '700', color: '#000', marginTop: -4 }}>{item.value || '2'}</Text>
                     </View>
                   ) : item.type === 'subscript' ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-                      <Text style={{ fontSize: textFontSize, fontWeight: mathFontWeight, color: '#1E293B' }}>x</Text>
-                      <Text style={{ fontSize: textFontSize * 0.5, fontWeight: mathFontWeight, color: '#1E293B', marginBottom: -3 }}>{item.value}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-end', marginHorizontal: 1 }}>
+                      <Text style={{
+                        fontSize: textFontSize,
+                        fontWeight: mathFontWeight,
+                        fontStyle: /[a-zA-Z]/.test(item.base || '') ? 'italic' : 'normal',
+                        fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                        color: '#000'
+                      }}>{item.base || 'x'}</Text>
+                      <Text style={{ fontSize: textFontSize * 0.7, fontWeight: '700', color: '#000', marginBottom: -3 }}>{item.value || '2'}</Text>
                     </View>
                   ) : item.type === 'variable' ? (
-                    <Text style={[
-                      {
-                        fontSize: textFontSize,
-                        fontWeight: '600',
-                        color: '#1E293B'
-                      },
-                      { fontStyle: 'italic', fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif' }
-                    ]}>{item.value}</Text>
-                  ) : (
                     <Text style={{
                       fontSize: textFontSize,
                       fontWeight: mathFontWeight,
-                      color: '#1E293B'
+                      fontStyle: 'italic',
+                      fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+                      color: '#000'
+                    }}>{item.value}</Text>
+                  ) : item.type === 'operator' ? (
+                    <Text style={{
+                      fontSize: textFontSize,
+                      fontWeight: mathFontWeight,
+                      color: '#000',
+                      marginHorizontal: 4
+                    }}>{item.value}</Text>
+                  ) : item.type === 'number' ? (
+                    <Text style={{
+                      fontSize: textFontSize,
+                      fontWeight: mathFontWeight,
+                      color: '#000'
+                    }}>{item.value}</Text>
+                  ) : (
+                    <Text style={{
+                      fontSize: isPreschool ? textFontSize * 0.8 : textFontSize,
+                      fontWeight: isPreschool ? '800' : '600',
+                      color: isPreschool ? '#334155' : '#000',
+                      lineHeight: textFontSize * 1.2
                     }}>{item.value}</Text>
                   )}
                 </React.Fragment>
@@ -295,66 +349,77 @@ const QuestionResponseItem = memo(({
         </View>
       )}
 
-      {isMathInput && !showOptions && (
-        <View style={styles.mathToolbarContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.mathToolbar}>
-            {mathSymbols.map((sym, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.mathSymbolBtn}
-                onPress={() => insertSymbol(sym.value)}
-              >
-                <Text style={styles.mathSymbolText}>{sym.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+      {isMathematics && (q.showWorking || !showOptions) && (
+        <View style={styles.mathCanvasWrapper}>
+          {q.showWorking && (
+             <MathCanvas
+              visualGroup={workingValue}
+              onChange={handleWorkingChange}
+              label="Step-by-Step Working"
+              placeholder="Show your working steps here..."
+              minHeight={150}
+            />
+          )}
+
+          {!showOptions && (
+            <MathCanvas
+              visualGroup={mathValue}
+              onChange={handleAnswerChange}
+              label="Solution"
+              placeholder="Enter solution..."
+              minHeight={100}
+            />
+          )}
         </View>
       )}
 
-      {showOptions ? (
-        <View style={styles.optionsList}>
-          {q.options?.map((opt, oIdx) => {
-            const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
-            const isVisual = emojiRegex.test(opt) || [
-              "square-outline", "circle-outline", "triangle-outline", "diamond-outline",
-              "star-outline", "heart-outline", "pentagon", "pentagon-outline",
-              "hexagon", "hexagon-outline", "octagon", "octagon-outline"
-            ].includes(opt);
+      <View style={{ gap: 15 }}>
+        {showOptions ? (
+          <View style={styles.optionsList}>
+            {q.options?.map((opt, oIdx) => {
+              const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/;
+              const isVisual = emojiRegex.test(opt) || [
+                "square-outline", "circle-outline", "triangle-outline", "diamond-outline",
+                "star-outline", "heart-outline", "pentagon", "pentagon-outline",
+                "hexagon", "hexagon-outline", "octagon", "octagon-outline"
+              ].includes(opt);
 
-            return (
-              <TouchableOpacity
-                key={oIdx}
-                style={[styles.optionBtn, answer === opt && styles.optionBtnSelected, isPreschool && { padding: 20 }]}
-                onPress={() => setAnswer(opt)}
-              >
-                <View style={[styles.radio, answer === opt && styles.radioSelected, isPreschool && { width: 26, height: 26, borderRadius: 13 }]} />
-                {isVisual ? (
-                   <View style={{ padding: 10, backgroundColor: '#F8FAFC', borderRadius: 12 }}>
-                      <SVGIcon name={opt} size={isPreschool ? 60 : 40} />
-                   </View>
-                ) : (
-                  <Text style={[styles.optionLabel, isPreschool && { fontSize: 20, fontWeight: '800' }, answer === opt && styles.optionLabelSelected]}>{opt}</Text>
-                )}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      ) : (
-        <TextInput
-          style={[
-            styles.answerInput,
-            isMathInput && { minHeight: 60, fontSize: 18, fontWeight: '600', textAlign: 'center' },
-            isPreschool && { fontSize: 22, minHeight: 80, fontWeight: '800' }
-          ]}
-          placeholder={isMathInput ? "Enter final answer" : "Type your answer here..."}
-          placeholderTextColor="#94A3B8"
-          multiline={type !== "preschool" && !isMathInput}
-          value={answer || ""}
-          onChangeText={setAnswer}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-        />
-      )}
+              const isSelected = isOptionSelected(opt);
+
+              return (
+                <TouchableOpacity
+                  key={oIdx}
+                  style={[styles.optionBtn, isSelected && styles.optionBtnSelected, isPreschool && { padding: 20 }]}
+                  onPress={() => handleAnswerChange(opt)}
+                >
+                  <View style={[styles.radio, isSelected && styles.radioSelected, isPreschool && { width: 26, height: 26, borderRadius: 13 }]} />
+                  {isVisual ? (
+                    <View style={{ padding: 10, backgroundColor: '#F8FAFC', borderRadius: 12 }}>
+                        <SVGIcon name={opt} size={isPreschool ? 60 : 40} />
+                    </View>
+                  ) : (
+                    <Text style={[styles.optionLabel, isPreschool && { fontSize: 20, fontWeight: '800' }, isSelected && styles.optionLabelSelected]}>{opt}</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
+          !isMathematics && (
+            <TextInput
+              style={[
+                styles.answerInput,
+                isPreschool && { fontSize: 22, minHeight: 80, fontWeight: '800' }
+              ]}
+              placeholder="Type your answer here..."
+              placeholderTextColor="#94A3B8"
+              multiline={type !== "preschool"}
+              value={answer}
+              onChangeText={setAnswer}
+            />
+          )
+        )}
+      </View>
     </View>
   );
 });
@@ -366,39 +431,15 @@ const styles = StyleSheet.create({
   questionText: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 15 },
   optionsList: { gap: 12 },
   optionBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  optionBtnSelected: { borderColor: COLORS.secondary, backgroundColor: COLORS.secondary + '05' },
+  optionBtnSelected: { borderColor: COLORS.success, backgroundColor: COLORS.success + '05' },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#CBD5E1' },
-  radioSelected: { borderColor: COLORS.secondary, backgroundColor: COLORS.secondary },
+  radioSelected: { borderColor: COLORS.success, backgroundColor: COLORS.success },
   optionLabel: { fontSize: 14, color: '#475569', fontWeight: '600' },
-  optionLabelSelected: { color: COLORS.secondary, fontWeight: '800' },
+  optionLabelSelected: { color: COLORS.success, fontWeight: '800' },
   answerInput: { backgroundColor: '#fff', borderRadius: 12, padding: 15, fontSize: 15, minHeight: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: '#E2E8F0' },
-  mathToolbarContainer: {
-    marginBottom: 8,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    overflow: 'hidden'
-  },
-  mathToolbar: {
-    padding: 8,
-    gap: 8,
-  },
-  mathSymbolBtn: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    minWidth: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  mathSymbolText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.secondary,
+  mathCanvasWrapper: {
+    gap: 15,
+    marginBottom: 10
   },
   preschoolBadge: {
     backgroundColor: COLORS.secondary + '20',
@@ -477,8 +518,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   worksheetOptionSelected: {
-    borderColor: COLORS.secondary,
-    backgroundColor: COLORS.secondary + '10',
+    borderColor: COLORS.success,
+    backgroundColor: COLORS.success + '10',
   },
   worksheetOptionText: {
     fontSize: 16,
@@ -486,6 +527,13 @@ const styles = StyleSheet.create({
     color: '#1E293B',
   },
   worksheetOptionTextSelected: {
-    color: COLORS.secondary,
+    color: COLORS.success,
+  },
+  workingLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 8,
+    marginLeft: 4
   }
 });

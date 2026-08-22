@@ -51,7 +51,7 @@ export default function Assignments() {
 
   const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(null);
   const [viewingDetails, setViewingDetails] = useState<Assignment | null>(null);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<number, any>>({});
 
   const fetchAssignments = useCallback(async (isRefreshing = false) => {
     const studentClassId = appUser?.classId;
@@ -111,7 +111,7 @@ export default function Assignments() {
     setAnswers({});
   };
 
-  const handleUpdateAnswer = useCallback((qIdx: number, val: string) => {
+  const handleUpdateAnswer = useCallback((qIdx: number, val: any) => {
     setAnswers((prev) => ({ ...prev, [qIdx]: val }));
   }, []);
 
@@ -120,16 +120,31 @@ export default function Assignments() {
 
     const questionCount = activeAssignment.questions?.length || 0;
     const isPreschool = activeAssignment.type === "preschool";
+    const isMathematics = activeAssignment.type === "mathematics";
 
-    if (
-      !isPreschool &&
-      activeAssignment.questions &&
-      Object.keys(answers).length < questionCount
-    ) {
-      return showToast({
-        message: "Please answer all questions before submitting.",
-        type: "warning",
-      });
+    if (!isPreschool && activeAssignment.questions) {
+      const answeredCount = Object.keys(answers).length;
+
+      let allAnswered = answeredCount === questionCount;
+
+      // Deep check for math answers
+      if (allAnswered && isMathematics) {
+        for (let i = 0; i < questionCount; i++) {
+          const ans = answers[i];
+          const mathAns = typeof ans === 'object' && !Array.isArray(ans) ? ans.answer : ans;
+          if (!mathAns || (Array.isArray(mathAns) && mathAns.length === 0)) {
+            allAnswered = false;
+            break;
+          }
+        }
+      }
+
+      if (!allAnswered) {
+        return showToast({
+          message: "Please answer all questions before submitting.",
+          type: "warning",
+        });
+      }
     }
 
     setSubmitting(true);

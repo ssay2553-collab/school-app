@@ -116,7 +116,7 @@ export default function TLMHub() {
                   borderColor: primary,
                 },
               ]}
-              onPress={() => openUrl(item.url)}
+              onPress={() => openUrl(item.url, item.title)}
             >
               <SVGIcon name="play-circle-outline" size={16} color={primary} />
 

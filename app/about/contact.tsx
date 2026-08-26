@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
@@ -36,7 +37,17 @@ export default function ContactScreen() {
       value: "edueaz-c7db2.web.app",
       icon: "globe",
       color: "#8b5cf6",
-      action: () => Linking.openURL("https://edueaz-c7db2.web.app/"),
+      action: () => {
+        const url = "https://edueaz-c7db2.web.app/";
+        if (Platform.OS === 'web') {
+          window.open(url, '_blank');
+        } else {
+          router.push({
+            pathname: '/shared/web-view',
+            params: { url, title: 'EduEaz Website' },
+          });
+        }
+      },
     },
   ];
 

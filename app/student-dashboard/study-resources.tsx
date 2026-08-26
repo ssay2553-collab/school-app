@@ -10,9 +10,9 @@ import {
   StatusBar,
   Platform,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import SVGIcon from '../../components/SVGIcon';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useSchoolConfig } from '../../constants/Config';
@@ -29,7 +29,8 @@ const RESOURCES = [
     url: 'https://ghlearner.com/bece',
     icon: 'book',
     color: '#4D96FF',
-    tag: 'GHANA'
+    tag: 'GHANA',
+    image: 'https://ghlearner.com/wp-content/uploads/2021/04/gh-learner-logo.png'
   },
   {
     title: 'WASSCE Hub',
@@ -37,7 +38,8 @@ const RESOURCES = [
     url: 'https://www.waecgh.org/examiners-report',
     icon: 'school',
     color: '#FF6B6B',
-    tag: 'WAEC'
+    tag: 'WAEC',
+    image: 'https://www.waecgh.org/images/logo.png'
   },
   {
     title: 'Khan Academy',
@@ -45,7 +47,8 @@ const RESOURCES = [
     url: 'https://www.khanacademy.org',
     icon: 'library',
     color: '#6BCB77',
-    tag: 'GLOBAL'
+    tag: 'GLOBAL',
+    image: 'https://cdn.kastatic.org/images/khan-logo-vertical-transparent.png'
   },
   {
     title: 'Passco GH',
@@ -53,7 +56,8 @@ const RESOURCES = [
     url: 'https://passco.org',
     icon: 'cloud-download',
     color: '#FFD93D',
-    tag: 'PAST QUESTIONS'
+    tag: 'PAST QUESTIONS',
+    image: 'https://passco.org/img/logo.png'
   }
 ];
 
@@ -64,24 +68,19 @@ export default function StudyResources() {
   const primary = config.brandPrimary || COLORS.primary;
   const isNavigating = useRef(false);
 
-  const handleOpenLink = async (url: string) => {
+  const handleOpenLink = async (url: string, title?: string) => {
     try {
       if (Platform.OS === 'web') {
         window.open(url, '_blank');
       } else {
-        await WebBrowser.openBrowserAsync(url, {
-          toolbarColor: primary,
-          enableBarCollapsing: true,
-          showTitle: true,
+        router.push({
+          pathname: '/shared/web-view',
+          params: { url, title: title || 'Study Resource' },
         });
       }
     } catch (error) {
       console.error('Error opening browser:', error);
       showToast({ message: "Could not open the study resource.", type: "error" });
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      }
     }
   };
 
@@ -119,11 +118,19 @@ export default function StudyResources() {
               <TouchableOpacity
                 key={index}
                 style={styles.card}
-                onPress={() => handleOpenLink(item.url)}
+                onPress={() => handleOpenLink(item.url, item.title)}
                 activeOpacity={0.8}
               >
                 <View style={[styles.iconContainer, { backgroundColor: item.color + '15' }]}>
-                  <SVGIcon name={item.icon} size={32} color={item.color} />
+                  {item.image ? (
+                    <Image
+                      source={{ uri: item.image }}
+                      style={styles.cardImage}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <SVGIcon name={item.icon} size={32} color={item.color} />
+                  )}
                 </View>
 
                 <View style={styles.cardContent}>
@@ -202,6 +209,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+  },
+  cardImage: {
+    width: 35,
+    height: 35,
   },
   cardContent: { flex: 1 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },

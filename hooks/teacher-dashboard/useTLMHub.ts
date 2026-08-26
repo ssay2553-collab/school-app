@@ -16,8 +16,9 @@ import NetInfo from "@react-native-community/netinfo";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as VideoThumbnails from "expo-video-thumbnails";
-import { Alert, Linking } from "react-native";
+import { Alert, Linking, Platform } from "react-native";
 import debounce from "lodash.debounce";
+import { useRouter } from "expo-router";
 import { db, functions, storage } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -41,6 +42,7 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 export const useTLMHub = () => {
   const { appUser } = useAuth();
+  const router = useRouter();
 
   const isMounted = useRef(true);
   const latestSearchRef = useRef(0);
@@ -152,14 +154,27 @@ export const useTLMHub = () => {
     [subject, topic, savedTlms, searchCache],
   );
 
-  const openUrl = async (url: string) => {
+  const openUrl = async (url: string, title?: string) => {
     try {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank');
+        return;
+      }
+
       const supported = await Linking.canOpenURL(url);
       if (!supported) {
         Alert.alert("Invalid URL", "Cannot open this resource.");
         return;
       }
-      await Linking.openURL(url);
+
+      if (url.startsWith('http')) {
+        router.push({
+          pathname: '/shared/web-view',
+          params: { url, title: title || 'Teaching Material' },
+        });
+      } else {
+        await Linking.openURL(url);
+      }
     } catch (error) {
       Alert.alert("Error", "Failed to open resource.");
     }

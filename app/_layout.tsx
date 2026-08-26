@@ -115,6 +115,10 @@ function RouteGuard() {
         name="staff-dashboard"
         options={{ title: "Staff Portal" }}
       />
+      <Stack.Screen
+        name="shared/web-view"
+        options={{ title: "Web Content", presentation: "modal" }}
+      />
       <Stack.Screen name="modal" options={{ presentation: "modal" }} />
       <Stack.Screen name="+not-found" options={{ title: "Not Found" }} />
     </Stack>

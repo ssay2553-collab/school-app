@@ -10,12 +10,10 @@ import {
   Platform,
   useWindowDimensions,
   Image,
-  Linking,
   ActivityIndicator,
 } from 'react-native';
 
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import * as Animatable from 'react-native-animatable';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -45,8 +43,7 @@ const RESOURCES: ResourceItem[] = [
     icon: 'code-slash',
     color: '#4D96FF',
     tag: 'CODING',
-    image:
-      'https://scratch.mit.edu/images/scratch-logo-sm-white-retina.png',
+    image: 'https://scratch.mit.edu/images/logo_sm.png',
   },
   {
     id: '2',
@@ -57,8 +54,7 @@ const RESOURCES: ResourceItem[] = [
     icon: 'construct',
     color: '#FF6B6B',
     tag: 'ROBOTICS',
-    image:
-      'https://static.tinkercad.com/img/tinkercad-logo.png',
+    image: 'https://static.tinkercad.com/img/tinkercad-logo.png',
   },
   {
     id: '3',
@@ -69,6 +65,7 @@ const RESOURCES: ResourceItem[] = [
     icon: 'hardware-chip',
     color: '#6BCB77',
     tag: 'STEM',
+    image: 'https://www.vexrobotics.com/media/wysiwyg/VEX-Robotics-Logo.png',
   },
   {
     id: '4',
@@ -79,6 +76,7 @@ const RESOURCES: ResourceItem[] = [
     icon: 'apps',
     color: '#00B4D8',
     tag: 'CODING',
+    image: 'https://code.org/images/logo.png',
   },
   {
     id: '5',
@@ -89,6 +87,7 @@ const RESOURCES: ResourceItem[] = [
     icon: 'flash',
     color: '#F97316',
     tag: 'ROBOTICS',
+    image: 'https://microbit.org/static/logo-microbit.png',
   },
   {
     id: '6',
@@ -99,6 +98,7 @@ const RESOURCES: ResourceItem[] = [
     icon: 'game-controller',
     color: '#A855F7',
     tag: 'GAME-DEV',
+    image: 'https://codecombat.com/images/pages/base/logo_square_250.png',
   },
   {
     id: '7',
@@ -109,6 +109,7 @@ const RESOURCES: ResourceItem[] = [
     icon: 'extension-puzzle',
     color: '#34A853',
     tag: 'LOGIC',
+    image: 'https://blockly.games/common/logo_64.png',
   },
   {
     id: '8',
@@ -119,6 +120,7 @@ const RESOURCES: ResourceItem[] = [
     icon: 'school',
     color: '#14BF96',
     tag: 'JS-CODING',
+    image: 'https://cdn.kastatic.org/images/khan-logo-vertical-transparent.png',
   },
 ];
 
@@ -133,45 +135,24 @@ export default function CodingRobotics() {
   const isTablet = width >= 768;
 
   const openResource = useCallback(
-    async (url: string) => {
-      try {
-        const supported = await Linking.canOpenURL(url);
-
-        if (!supported) {
-          showToast({
-            message: 'Cannot open this resource.',
-            type: 'error',
-          });
-          return;
-        }
-
-        if (Platform.OS === 'web') {
-          window.open(url, '_blank', 'noopener,noreferrer');
-          return;
-        }
-
-        await WebBrowser.openBrowserAsync(url, {
-          toolbarColor: primary,
-          controlsColor: primary,
-          enableBarCollapsing: true,
-          showTitle: true,
-        });
-      } catch (error) {
-        console.log(error);
-
-        showToast({
-          message: 'Failed to open resource.',
-          type: 'error',
-        });
+    (url: string, title: string) => {
+      if (Platform.OS === 'web') {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
       }
+
+      router.push({
+        pathname: '/shared/web-view',
+        params: { url, title },
+      });
     },
-    [primary]
+    [router]
   );
 
   const renderItem = ({ item }: { item: ResourceItem }) => (
     <ResourceCard
       item={item}
-      onPress={() => openResource(item.url)}
+      onPress={() => openResource(item.url, item.title)}
       isTablet={isTablet}
       primary={primary}
     />

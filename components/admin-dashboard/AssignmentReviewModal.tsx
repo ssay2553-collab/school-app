@@ -13,6 +13,7 @@ import {
   Dimensions
 } from "react-native";
 import { doc, updateDoc, serverTimestamp, query, collection, where, getDocs } from "firebase/firestore";
+import import { useRouter } from "expo-router";
 import SVGIcon from "../SVGIcon";
 import QuestionResponseItem from "../student-dashboard/assignments/QuestionResponseItem";
 import { db } from "../../firebaseConfig";
@@ -35,6 +36,7 @@ export default function AssignmentReviewModal({
   onStatusUpdate
 }: AssignmentReviewModalProps) {
   const { appUser } = useAuth();
+  const router = useRouter();
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [rejectionFeedback, setRejectionFeedback] = useState("");
   const [showRejectionInput, setShowRejectionInput] = useState(false);
@@ -168,7 +170,16 @@ export default function AssignmentReviewModal({
               {assignment?.fileUrl && (
                 <TouchableOpacity
                   style={styles.attachmentLink}
-                  onPress={() => Alert.alert("Note", "Reviewing attachments is coming soon. Please check the interactive content below.")}
+                  onPress={() => {
+                    if (Platform.OS === 'web') {
+                      window.open(assignment.fileUrl, '_blank');
+                    } else {
+                      router.push({
+                        pathname: '/shared/web-view',
+                        params: { url: assignment.fileUrl, title: assignment.fileName || 'Attachment' },
+                      });
+                    }
+                  }}
                 >
                   <SVGIcon name="attach" size={18} color={primary} />
                   <Text style={[styles.attachmentLinkText, { color: primary }]}>View Attachment: {assignment.fileName}</Text>

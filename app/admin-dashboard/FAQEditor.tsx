@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  SafeAreaView,
-  StatusBar
 } from "react-native";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../../firebaseConfig";
@@ -48,29 +47,45 @@ export default function FAQEditor() {
   const [faqData, setFaqData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   useEffect(() => {
     const loadFAQs = async () => {
       try {
         const user = auth.currentUser;
         if (!user) {
-          showToast({ message: "Please log in again.", type: "error" });
-          setLoading(false);
+          if (isMounted.current) {
+            showToast({ message: "Please log in again.", type: "error" });
+            setLoading(false);
+          }
           return;
         }
 
         const loaded: Record<string, string> = {};
         for (const key of faqKeys) {
+          if (!isMounted.current) return;
           const ref = doc(db, "faqs", key);
           const snap = await getDoc(ref);
           loaded[key] = snap.exists() ? String(snap.data()?.answer ?? "") : "";
         }
-        setFaqData(loaded);
+        if (isMounted.current) {
+          setFaqData(loaded);
+        }
       } catch (error: any) {
-        console.error("FAQ load error:", error);
-        showToast({ message: "You do not have permission to view or edit FAQs.", type: "error" });
+        if (isMounted.current) {
+          console.error("FAQ load error:", error);
+          showToast({ message: "You do not have permission to view or edit FAQs.", type: "error" });
+        }
       } finally {
-        setLoading(false);
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     };
     loadFAQs();
@@ -80,12 +95,18 @@ export default function FAQEditor() {
     try {
       setSavingKey(key);
       await setDoc(doc(db, "faqs", key), { answer: faqData[key] || "" }, { merge: true });
-      showToast({ message: "FAQ updated successfully.", type: "success" });
+      if (isMounted.current) {
+        showToast({ message: "FAQ updated successfully.", type: "success" });
+      }
     } catch (error) {
-      console.error("Save FAQ error:", error);
-      showToast({ message: "Could not save FAQ.", type: "error" });
+      if (isMounted.current) {
+        console.error("Save FAQ error:", error);
+        showToast({ message: "Could not save FAQ.", type: "error" });
+      }
     } finally {
-      setSavingKey(null);
+      if (isMounted.current) {
+        setSavingKey(null);
+      }
     }
   };
 
@@ -102,7 +123,14 @@ export default function FAQEditor() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
         <View>
@@ -123,7 +151,7 @@ export default function FAQEditor() {
               style={styles.input}
               multiline
               value={faqData[key]}
-              onChangeText={(text) => setFaqData((prev) => ({ ...prev, [key]: text }))}
+              onChangeText={(text: string) => setFaqData((prev: Record<string, string>) => ({ ...prev, [key]: text }))}
               placeholder="Enter details here..."
               placeholderTextColor="#94A3B8"
             />

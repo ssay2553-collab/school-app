@@ -44,6 +44,7 @@ export default function TeacherNoteScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const editorRef = useRef<RichTextEditorRef>(null);
+  const isNavigating = useRef(false);
 
   const handleBack = useCallback(async () => {
     if (isAdding) {
@@ -76,6 +77,9 @@ export default function TeacherNoteScreen() {
       }
       return;
     }
+
+    if (isNavigating.current) return;
+    isNavigating.current = true;
 
     if (router.canGoBack()) {
       router.back();

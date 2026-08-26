@@ -17,6 +17,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
+import { useRef } from "react";
 
 type Group = {
   id: string;
@@ -32,6 +33,13 @@ export default function StudentGroups() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const { groupUnread, markChatRead } = useUnreadCounts();
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!appUser?.uid) return;
@@ -44,6 +52,7 @@ export default function StudentGroups() {
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
+        if (!isMounted.current) return;
         setGroups(
           snap.docs.map((d) => ({
             id: d.id,
@@ -53,8 +62,10 @@ export default function StudentGroups() {
         setLoading(false);
       },
       (err) => {
-        console.error("StudentGroups error:", err);
-        setLoading(false);
+        if (isMounted.current) {
+          console.error("StudentGroups error:", err);
+          setLoading(false);
+        }
       },
     );
 
@@ -73,7 +84,14 @@ export default function StudentGroups() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
         <View>
@@ -90,12 +108,15 @@ export default function StudentGroups() {
           <TouchableOpacity
             style={styles.groupCard}
             onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
               router.push({
                 pathname: "/student-dashboard/GroupChat",
                 params: { groupId: item.id, groupName: item.name },
               });
               // mark read when opened
               markChatRead("group", item.id);
+              setTimeout(() => { isNavigating.current = false; }, 500);
             }}
           >
             <View

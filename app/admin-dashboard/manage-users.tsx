@@ -27,6 +27,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useManageUsers } from "../../hooks/admin-dashboard/useManageUsers";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { useEffect, useRef } from "react";
 
 export default function ManageUsers() {
   const router = useRouter();
@@ -34,6 +35,13 @@ export default function ManageUsers() {
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
+  const isNavigating = useRef(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const {
     selectedRole,
@@ -439,6 +447,8 @@ export default function ManageUsers() {
           isFinanceCleaning={isFinanceCleaning}
           isAcademicCleaning={isAcademicCleaning}
           onViewAttendance={(u) => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
             router.push({
               pathname: "/admin-dashboard/student-attendance-details",
               params: {
@@ -447,6 +457,7 @@ export default function ManageUsers() {
                 classId: u.classId,
               },
             });
+            setTimeout(() => { isNavigating.current = false; }, 500);
           }}
         />
 

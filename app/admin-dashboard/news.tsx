@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -86,6 +86,13 @@ export default function NewsCenter() {
     type: "image" | "video";
   } | null>(null);
   const [bdayTriggerLoading, setBdayTriggerLoading] = useState(false);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const brandPrimary = SCHOOL_CONFIG.brandPrimary;
@@ -112,12 +119,16 @@ export default function NewsCenter() {
       filtered.sort(
         (a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0),
       );
-      setNews(filtered);
+      if (isMounted.current) {
+        setNews(filtered);
+      }
     } catch (err) {
-      console.error("Fetch news error:", err);
+      if (isMounted.current) console.error("Fetch news error:", err);
     } finally {
-      setScreenLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setScreenLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [appUser]);
 
@@ -173,12 +184,15 @@ export default function NewsCenter() {
       });
 
       if (birthdayStudents.length === 0) {
-        showToast({ message: "No birthdays found for today.", type: "info" });
+        if (isMounted.current) {
+          showToast({ message: "No birthdays found for today.", type: "info" });
+        }
         return;
       }
 
       let wishCount = 0;
       for (const studentDoc of birthdayStudents) {
+        if (!isMounted.current) break;
         const student = studentDoc.data();
         const fullName = `${student.profile?.firstName || ""} ${student.profile?.lastName || ""}`.trim();
 
@@ -197,18 +211,24 @@ export default function NewsCenter() {
         wishCount++;
       }
 
-      showToast({
-        message: `Birthday Check: Processed ${wishCount} new wishes!`,
-        type: "success",
-      });
-      fetchNews();
+      if (isMounted.current) {
+        showToast({
+          message: `Birthday Check: Processed ${wishCount} new wishes!`,
+          type: "success",
+        });
+        fetchNews();
+      }
     } catch (err: any) {
-      showToast({
-        message: err.message || "Failed to trigger birthday check.",
-        type: "error",
-      });
+      if (isMounted.current) {
+        showToast({
+          message: err.message || "Failed to trigger birthday check.",
+          type: "error",
+        });
+      }
     } finally {
-      setBdayTriggerLoading(false);
+      if (isMounted.current) {
+        setBdayTriggerLoading(false);
+      }
     }
   };
 
@@ -283,22 +303,28 @@ export default function NewsCenter() {
         });
       }
 
-      setTitle("");
-      setContent("");
-      setMedia(null);
-      setExpiryDate(null);
-      setMode("view");
-      setEditingId(null);
-      showToast({
-        message: mode === "edit" ? "Announcement updated." : "News broadcast published.",
-        type: "success"
-      });
-      fetchNews();
+      if (isMounted.current) {
+        setTitle("");
+        setContent("");
+        setMedia(null);
+        setExpiryDate(null);
+        setMode("view");
+        setEditingId(null);
+        showToast({
+          message: mode === "edit" ? "Announcement updated." : "News broadcast published.",
+          type: "success"
+        });
+        fetchNews();
+      }
     } catch (error: any) {
-      console.error("Post news error:", error);
-      showToast({ message: `Failed to save: ${error.message}`, type: "error" });
+      if (isMounted.current) {
+        console.error("Post news error:", error);
+        showToast({ message: `Failed to save: ${error.message}`, type: "error" });
+      }
     } finally {
-      setScreenLoading(false);
+      if (isMounted.current) {
+        setScreenLoading(false);
+      }
     }
   };
 
@@ -320,10 +346,14 @@ export default function NewsCenter() {
     const performDelete = async () => {
       try {
         await deleteDoc(doc(db, "news", id));
-        setNews((prev) => prev.filter((n) => n.id !== id));
-        showToast({ message: "Announcement deleted.", type: "success" });
+        if (isMounted.current) {
+          setNews((prev) => prev.filter((n) => n.id !== id));
+          showToast({ message: "Announcement deleted.", type: "success" });
+        }
       } catch (err) {
-        showToast({ message: "Could not delete news.", type: "error" });
+        if (isMounted.current) {
+          showToast({ message: "Could not delete news.", type: "error" });
+        }
       }
     };
 
@@ -355,7 +385,14 @@ export default function NewsCenter() {
       style={styles.headerArea}
     >
       <View style={styles.headerTop}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.miniBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.miniBtn}
+        >
           <SVGIcon name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View style={styles.titleCenter}>

@@ -24,6 +24,7 @@ import SVGIcon from "../../components/SVGIcon";
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 import { AppUser } from "../../types/users";
 import { useDailyAttendance } from "../../hooks/teacher-dashboard/useDailyAttendance";
+import { useRef } from "react";
 
 const CONTENT_MAX_WIDTH = 1200;
 
@@ -150,8 +151,17 @@ export default function DailyAttendanceScreen() {
   } = useDailyAttendance(params.classId || null, params.date || moment().format("YYYY-MM-DD"));
 
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const handleBack = useCallback(() => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     const isAdmin = appUser?.role?.toLowerCase() === "admin" ||
                     appUser?.role?.toLowerCase() === "superadmin" ||
                     !!(appUser as any)?.adminRole;
@@ -211,8 +221,11 @@ export default function DailyAttendanceScreen() {
   }, [hasUnsavedChanges, handleBack]);
 
   const changeDate = (days: number) => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     const newDate = moment(selectedDate).add(days, 'days').format("YYYY-MM-DD");
     setSelectedDate(newDate);
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   const isToday = useMemo(() => moment(selectedDate).isSame(moment(), 'day'), [selectedDate]);
@@ -256,7 +269,12 @@ export default function DailyAttendanceScreen() {
               type="date"
               value={selectedDate}
               max={moment().format("YYYY-MM-DD")}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              onChange={(e) => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                setSelectedDate(e.target.value);
+                setTimeout(() => { isNavigating.current = false; }, 500);
+              }}
               style={{
                 border: 'none',
                 background: 'none',
@@ -325,7 +343,16 @@ export default function DailyAttendanceScreen() {
           contentContainerStyle={[styles.classScroll, isLargeScreen && styles.classScrollWrap]}
         >
           {availableClasses.map(c => (
-            <TouchableOpacity key={c.id} onPress={() => setClassId(c.id)} style={[styles.classChip, classId === c.id && styles.classChipActive]}>
+            <TouchableOpacity
+              key={c.id}
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                setClassId(c.id);
+                setTimeout(() => { isNavigating.current = false; }, 500);
+              }}
+              style={[styles.classChip, classId === c.id && styles.classChipActive]}
+            >
               <Text style={[styles.classChipText, classId === c.id && styles.classChipTextActive]}>{c.name}</Text>
             </TouchableOpacity>
           ))}

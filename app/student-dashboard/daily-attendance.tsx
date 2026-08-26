@@ -19,6 +19,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { useRef } from "react";
 
 interface AttendanceDoc {
   students: {
@@ -38,6 +39,12 @@ export default function StudentAttendanceScreen() {
   const [absentCount, setAbsentCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedTerm, setSelectedTerm] = useState<
@@ -105,14 +112,20 @@ export default function StudentAttendanceScreen() {
           if (status === "absent") absent++;
         });
 
-        setPresentCount(present);
-        setAbsentCount(absent);
+        if (isMounted.current) {
+          setPresentCount(present);
+          setAbsentCount(absent);
+        }
       } catch (error) {
-        console.error("Error fetching attendance summary:", error);
-        showToast({ message: "Failed to load attendance data.", type: "error" });
+        if (isMounted.current) {
+          console.error("Error fetching attendance summary:", error);
+          showToast({ message: "Failed to load attendance data.", type: "error" });
+        }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (isMounted.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [appUser?.uid, appUser?.classId, selectedYear, selectedTerm],

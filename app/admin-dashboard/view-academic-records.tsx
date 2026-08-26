@@ -14,6 +14,7 @@ import {
   View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
+import { useRef, useEffect } from "react";
 import SVGIcon from "../../components/SVGIcon";
 import { AcademicFilterCard } from "../../components/admin-dashboard/AcademicFilterCard";
 import { AcademicSignatureCard } from "../../components/admin-dashboard/AcademicSignatureCard";
@@ -25,6 +26,14 @@ import { ScoreData, useViewAcademicRecords } from "../../hooks/admin-dashboard/u
 
 export default function ViewAcademicRecords() {
   const router = useRouter();
+  const isNavigating = useRef(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
   const {
     loading,
     listLoading,
@@ -86,6 +95,8 @@ export default function ViewAcademicRecords() {
   const secondary = SCHOOL_CONFIG.secondaryColor || "#c53b59";
 
   const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -99,7 +110,9 @@ export default function ViewAcademicRecords() {
         item={item}
         primary={primary}
         onEditMetadata={() => handleEditMetadata(item)}
-        onPress={() =>
+        onPress={() => {
+          if (isNavigating.current) return;
+          isNavigating.current = true;
           router.push({
             pathname: "/admin-dashboard/view-academic-record-details",
             params: {
@@ -110,8 +123,9 @@ export default function ViewAcademicRecords() {
               subject: selectedSubject,
               reportType: selectedReportType,
             },
-          })
-        }
+          });
+          setTimeout(() => { isNavigating.current = false; }, 500);
+        }}
       />
     ),
     [

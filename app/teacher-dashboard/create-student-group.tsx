@@ -38,6 +38,7 @@ import {
 import * as Animatable from "react-native-animatable";
 import { useRouter } from "expo-router";
 
+
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import moment from "moment";
@@ -275,6 +276,13 @@ export default function TeacherStudentGroups() {
   const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
   const [groupName, setGroupName] = useState("");
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const activeGroupRef = useRef<Group | null>(null);
   useEffect(() => {
@@ -285,9 +293,13 @@ export default function TeacherStudentGroups() {
     if (view === "CHAT") {
       setView("LIST");
       setActiveGroup(null);
+      return true;
     } else if (view === "CREATE" || view === "EDIT") {
       setView("LIST");
+      return true;
     } else {
+      if (isNavigating.current) return true;
+      isNavigating.current = true;
       if (router.canGoBack()) {
         router.back();
       } else {
@@ -299,7 +311,7 @@ export default function TeacherStudentGroups() {
       }
     }
     return true;
-  }, [view, router, setActiveGroup]);
+  }, [view, router, setActiveGroup, appUser]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener(
@@ -347,6 +359,7 @@ export default function TeacherStudentGroups() {
       )
     );
     const unsubscribe = onSnapshot(q, (snap) => {
+      if (!isMounted.current) return;
       let groupsData = snap.docs.map(
         (d) => ({ id: d.id, ...(d.data() as any) }) as Group,
       );

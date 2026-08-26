@@ -15,6 +15,7 @@ import {
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useBehavioralRecords, BehavioralRecord } from "../../hooks/teacher-dashboard/useBehavioralRecords";
+import { useRef, useEffect } from "react";
 
 const PRESCHOOL_ASSESSMENTS = [
   { id: "throw_catch_kick", label: "Can throw, catch and kick a ball", category: "PHYSICAL DEVELOPMENT" },
@@ -98,6 +99,13 @@ export default function PreschoolRemarks() {
   } = useBehavioralRecords();
 
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const currentStudent = allStudents.find(s => s.studentId === (selectedStudentId || allStudents[0]?.studentId));
   const selectedClass = myClasses.find(c => c.id === selectedClassId);
@@ -122,7 +130,16 @@ export default function PreschoolRemarks() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.headerCompact}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color="#1E293B" /></TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
+          <SVGIcon name="arrow-back" size={24} color="#1E293B" />
+        </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 15 }}>
           <Text style={styles.headerTitleDark}>Behavioral Remarks</Text>
           <Text style={styles.headerSubtitleDark}>{academicYear} • {term}</Text>
@@ -140,7 +157,16 @@ export default function PreschoolRemarks() {
         </ScrollView>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.studentScroll}>
           {allStudents.map(s => (
-            <TouchableOpacity key={s.studentId} onPress={() => setSelectedStudentId(s.studentId)} style={[styles.studentTab, (selectedStudentId || allStudents[0]?.studentId) === s.studentId && styles.studentTabActive]}>
+            <TouchableOpacity
+              key={s.studentId}
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                setSelectedStudentId(s.studentId);
+                setTimeout(() => { isNavigating.current = false; }, 500);
+              }}
+              style={[styles.studentTab, (selectedStudentId || allStudents[0]?.studentId) === s.studentId && styles.studentTabActive]}
+            >
               <Text style={[styles.studentTabText, (selectedStudentId || allStudents[0]?.studentId) === s.studentId && styles.studentTabTextActive]}>{s.fullName.split(' ')[0]}</Text>
             </TouchableOpacity>
           ))}

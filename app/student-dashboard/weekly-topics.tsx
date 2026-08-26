@@ -18,11 +18,13 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useStudentWeeklyTopics } from "../../hooks/student-dashboard/useStudentWeeklyTopics";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { useRef } from "react";
 
 export default function StudentWeeklyTopicsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isLargeScreen = width > 768;
+  const isNavigating = useRef(false);
 
   const {
     loading,
@@ -52,7 +54,14 @@ export default function StudentWeeklyTopicsScreen() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <View style={[styles.headerInner, isLargeScreen && styles.maxContent]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
+            style={styles.backBtn}
+          >
             <SVGIcon name="arrow-back" size={24} color="#1E293B" />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>

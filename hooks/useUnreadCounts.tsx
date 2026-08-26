@@ -217,55 +217,74 @@ export default function useUnreadCounts() {
 
   const [assignmentUnread, setAssignmentUnread] = useState<number>(0);
   const [submissionUnread, setSubmissionUnread] = useState<number>(0);
+  const [allAssignmentIds, setAllAssignmentIds] = useState<string[]>([]);
+  const [submittedIds, setSubmittedIds] = useState<string[]>([]);
 
-  // Watch Assignments (for Students and Parents)
+  // Watch Assignments
   useEffect(() => {
     if (!appUser?.uid) return;
 
     let assignmentQuery;
-    let submissionQuery;
-
     if (appUser.role === "student" && appUser.classId) {
       assignmentQuery = query(
         collection(db, "assignments"),
         where("classId", "==", appUser.classId)
-      );
-      submissionQuery = query(
-        collection(db, "submissions"),
-        where("studentId", "==", appUser.uid)
       );
     } else if (appUser.role === "parent" && appUser.childrenClassIds?.length) {
       assignmentQuery = query(
         collection(db, "assignments"),
         where("classId", "in", appUser.childrenClassIds)
       );
-      submissionQuery = query(
-        collection(db, "submissions"),
-        where("studentId", "in", appUser.childrenIds || [])
-      );
     }
 
-    if (!assignmentQuery || !submissionQuery) {
-      setAssignmentUnread(0);
+    if (!assignmentQuery) {
+      setAllAssignmentIds([]);
       return;
     }
 
-    const unsubAssignments = onSnapshot(assignmentQuery, (assignmentSnap) => {
-      const allAssignmentIds = assignmentSnap.docs.map(d => d.id);
-
-      const unsubSubmissions = onSnapshot(submissionQuery!, (subSnap) => {
-        const submittedIds = subSnap.docs.map(d => d.data().assignmentId);
-        const unreadCount = allAssignmentIds.filter(id => !submittedIds.includes(id)).length;
-        setAssignmentUnread(unreadCount);
-      });
-
-      return () => unsubSubmissions();
+    const unsub = onSnapshot(assignmentQuery, (snap) => {
+      setAllAssignmentIds(snap.docs.map(d => d.id));
     });
 
-    return () => unsubAssignments();
-  }, [appUser?.uid, appUser?.role, appUser?.classId, appUser?.childrenClassIds, appUser?.childrenIds]);
+    return () => unsub();
+  }, [appUser?.uid, appUser?.role, appUser?.classId, appUser?.childrenClassIds]);
 
-  // Watch Submissions (for Teachers)
+  // Watch Submissions
+  useEffect(() => {
+    if (!appUser?.uid) return;
+
+    let submissionQuery;
+    if (appUser.role === "student") {
+      submissionQuery = query(
+        collection(db, "submissions"),
+        where("studentId", "==", appUser.uid)
+      );
+    } else if (appUser.role === "parent" && appUser.childrenIds?.length) {
+      submissionQuery = query(
+        collection(db, "submissions"),
+        where("studentId", "in", appUser.childrenIds)
+      );
+    }
+
+    if (!submissionQuery) {
+      setSubmittedIds([]);
+      return;
+    }
+
+    const unsub = onSnapshot(submissionQuery, (snap) => {
+      setSubmittedIds(snap.docs.map(d => d.data().assignmentId));
+    });
+
+    return () => unsub();
+  }, [appUser?.uid, appUser?.role, appUser?.childrenIds]);
+
+  // Derived Unread Count
+  useEffect(() => {
+    const unreadCount = allAssignmentIds.filter(id => !submittedIds.includes(id)).length;
+    setAssignmentUnread(unreadCount);
+  }, [allAssignmentIds, submittedIds]);
+
+  // Watch Marked Submissions (for Teachers)
   useEffect(() => {
     if (!appUser?.uid || appUser.role !== "teacher") return;
 

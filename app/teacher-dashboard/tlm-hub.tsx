@@ -18,6 +18,8 @@ import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useTLMHub, TLM } from "../../hooks/teacher-dashboard/useTLMHub";
+import { useRef, useEffect } from "react";
+import { useRouter } from "expo-router";
 
 export default function TLMHub() {
   const primary = SCHOOL_CONFIG.primaryColor;
@@ -46,6 +48,9 @@ export default function TLMHub() {
     handleSaveTlm,
     handlePickFile,
   } = useTLMHub();
+  const router = useRouter();
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
 
   const getTypeColor = (type: TLM["type"]) => {
     switch (type) {
@@ -172,7 +177,18 @@ export default function TLMHub() {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>TLM Hub</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <TouchableOpacity
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
+          >
+            <SVGIcon name="arrow-back" size={24} color={primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>TLM Hub</Text>
+        </View>
 
         <TouchableOpacity onPress={() => setShowAddModal(true)}>
           <SVGIcon name="add-circle-outline" size={28} color={primary} />

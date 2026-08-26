@@ -17,6 +17,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useRouter } from "expo-router";
+import { useRef } from "react";
 
 interface Lesson {
   id: string;
@@ -72,6 +73,13 @@ export default function StudentTimetable() {
   const router = useRouter();
   const [timetable, setTimetable] = useState<ClassTimetable | null>(null);
   const [loading, setLoading] = useState(true);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const brandColor = COLORS.brandPrimary || COLORS.primary || "#2e86de";
   const surface = SCHOOL_CONFIG.surfaceColor || "#fff";
@@ -87,25 +95,27 @@ export default function StudentTimetable() {
     try {
       try {
         const cacheSnap = await getDocFromCache(timetableRef);
-        if (cacheSnap.exists()) {
+        if (isMounted.current && cacheSnap.exists()) {
           setTimetable(cacheSnap.data() as ClassTimetable);
           setLoading(false);
           getDocFromServer(timetableRef).then(snap => {
-            if (snap.exists()) setTimetable(snap.data() as ClassTimetable);
+            if (isMounted.current && snap.exists()) setTimetable(snap.data() as ClassTimetable);
           }).catch(() => null);
           return;
         }
       } catch { /* Cache miss */ }
 
       const serverSnap = await getDocFromServer(timetableRef);
-      if (serverSnap.exists()) {
+      if (isMounted.current && serverSnap.exists()) {
         setTimetable(serverSnap.data() as ClassTimetable);
       }
     } catch (error) {
-      console.error("Timetable fetch error:", error);
-      showToast({ message: "Failed to load timetable.", type: "error" });
+      if (isMounted.current) {
+        console.error("Timetable fetch error:", error);
+        showToast({ message: "Failed to load timetable.", type: "error" });
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   }, [appUser?.classId]);
 
@@ -130,7 +140,14 @@ export default function StudentTimetable() {
       <StatusBar barStyle="dark-content" />
 
       <View style={[styles.header, { borderLeftWidth: 5, borderLeftColor: brandColor }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color={brandColor} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Timetable</Text>

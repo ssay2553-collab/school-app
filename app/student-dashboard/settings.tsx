@@ -27,6 +27,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { auth, db, storage } from "../../firebaseConfig";
+import { useRef, useEffect } from "react";
 
 export default function StudentSettings() {
   const router = useRouter();
@@ -34,7 +35,14 @@ export default function StudentSettings() {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
-  
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
   const [dob, setDob] = useState<Date | null>(
     appUser?.dateOfBirth ? (appUser.dateOfBirth as any).toDate() : null
   );
@@ -93,13 +101,17 @@ export default function StudentSettings() {
         "profile.firstName": firstName.trim(),
         "profile.lastName": lastName.trim()
       });
-      showToast({ message: "Profile name updated!", type: "success" });
-      setNameModalVisible(false);
+      if (isMounted.current) {
+        showToast({ message: "Profile name updated!", type: "success" });
+        setNameModalVisible(false);
+      }
     } catch (err) {
-      console.error(err);
-      showToast({ message: "Failed to update name.", type: "error" });
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: "Failed to update name.", type: "error" });
+      }
     } finally {
-      setUpdating(false);
+      if (isMounted.current) setUpdating(false);
     }
   };
 
@@ -172,12 +184,16 @@ export default function StudentSettings() {
         "profile.profileImage": downloadURL
       });
       
-      showToast({ message: "Profile picture updated!", type: "success" });
+      if (isMounted.current) {
+        showToast({ message: "Profile picture updated!", type: "success" });
+      }
     } catch (err) {
-      console.error(err);
-      showToast({ message: "Could not save image.", type: "error" });
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: "Could not save image.", type: "error" });
+      }
     } finally {
-      setUpdating(false);
+      if (isMounted.current) setUpdating(false);
     }
   };
 
@@ -189,11 +205,11 @@ export default function StudentSettings() {
       await updateDoc(doc(db, "users", appUser.uid), {
         dateOfBirth: Timestamp.fromDate(selectedDate)
       });
-      showToast({ message: "Date of Birth updated!", type: "success" });
+      if (isMounted.current) showToast({ message: "Date of Birth updated!", type: "success" });
     } catch (e) {
-      showToast({ message: "Failed to update DOB.", type: "error" });
+      if (isMounted.current) showToast({ message: "Failed to update DOB.", type: "error" });
     } finally {
-      setUpdating(false);
+      if (isMounted.current) setUpdating(false);
     }
   };
 
@@ -202,7 +218,14 @@ export default function StudentSettings() {
       <StatusBar barStyle="dark-content" backgroundColor="#FDFDFD" />
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={20} color={COLORS.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Account & Profile</Text>

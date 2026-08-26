@@ -2,7 +2,7 @@ import { Picker } from '@react-native-picker/picker';
 import * as Clipboard from 'expo-clipboard';
 import { collection, doc, getDocs, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useRouter } from "expo-router";
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -42,6 +42,13 @@ const GenerateCodeScreen = () => {
   const [loading, setLoading] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [fetchingClasses, setFetchingClasses] = useState(true);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const schoolId = (Constants.expoConfig?.extra?.schoolId || 'school').toLowerCase();
   const schoolLogo = getSchoolLogo(schoolId);
@@ -66,11 +73,15 @@ const GenerateCodeScreen = () => {
         const list: ClassItem[] = [];
         snap.forEach((d: any) => list.push({ id: d.id, name: d.data().name || d.id }));
         const sorted = sortClasses(list);
-        setClasses(sorted);
+        if (isMounted.current) {
+          setClasses(sorted);
+        }
       } catch (err) {
         console.error("Error fetching classes:", err);
       } finally {
-        setFetchingClasses(false);
+        if (isMounted.current) {
+          setFetchingClasses(false);
+        }
       }
     };
     fetchClasses();
@@ -105,12 +116,18 @@ const GenerateCodeScreen = () => {
       }
 
       await setDoc(doc(db, "signupCodes", code), codeData);
-      setGeneratedCode(code);
+      if (isMounted.current) {
+        setGeneratedCode(code);
+      }
     } catch (error) {
-      console.error('Error generating code:', error);
-      showToast({ message: 'Could not generate code.', type: 'error' });
+      if (isMounted.current) {
+        console.error('Error generating code:', error);
+        showToast({ message: 'Could not generate code.', type: 'error' });
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -134,7 +151,14 @@ const GenerateCodeScreen = () => {
         <View style={styles.center}>
             <SVGIcon name="alert-circle" size={50} color={COLORS.danger} />
             <Text style={{ marginTop: 10, fontWeight: 'bold' }}>Permission Denied</Text>
-            <TouchableOpacity onPress={() => router.replace("/admin-dashboard")} style={{ marginTop: 20 }}>
+            <TouchableOpacity
+                onPress={() => {
+                  if (isNavigating.current) return;
+                  isNavigating.current = true;
+                  router.replace("/admin-dashboard");
+                }}
+                style={{ marginTop: 20 }}
+            >
                 <Text style={{ color: brandPrimary }}>Go Back</Text>
             </TouchableOpacity>
         </View>
@@ -149,7 +173,14 @@ const GenerateCodeScreen = () => {
       
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.schoolHeader, { backgroundColor: primary }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.miniBackBtn}>
+          <TouchableOpacity
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
+            style={styles.miniBackBtn}
+          >
             <SVGIcon name="arrow-back" size={20} color={headerTextColor} />
           </TouchableOpacity>
           <Image source={schoolLogo} style={styles.schoolLogoMini} resizeMode="contain" />

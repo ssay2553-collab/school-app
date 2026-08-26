@@ -7,6 +7,7 @@ import { db } from "../../firebaseConfig";
 import { StudentDraft, FILTERS_PERSISTENCE_KEY } from "../../constants/admin-dashboard/ManageFeesTypes";
 import { sortClasses } from "../../lib/classHelpers";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRef } from "react";
 import { useFeeStudents } from "./useFeeStudents";
 import { useFeeBilling } from "./useFeeBilling";
 import { useFeePayments } from "./useFeePayments";
@@ -23,6 +24,13 @@ export const useManageFees = ({
   showToast,
   acadConfig,
 }: UseManageFeesProps) => {
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
   // ACCESS CONTROL LOGIC
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
   const isSuperAdmin = useMemo(() => [
@@ -77,6 +85,7 @@ export const useManageFees = ({
     const unsub = onSnapshot(
       q,
       (snap) => {
+        if (!isMounted.current) return;
         const list = snap.docs.map((d) => ({
           id: d.id,
           name: (d.data() as any).name || d.id,
@@ -84,7 +93,9 @@ export const useManageFees = ({
         }));
         setClasses(sortClasses(list));
       },
-      (err) => console.error("Classes listener error:", err),
+      (err) => {
+        if (isMounted.current) console.error("Classes listener error:", err);
+      },
     );
     return () => unsub();
   }, []);
@@ -92,7 +103,7 @@ export const useManageFees = ({
   useEffect(() => {
     const init = async () => {
       const saved = await AsyncStorage.getItem(FILTERS_PERSISTENCE_KEY);
-      if (saved) {
+      if (saved && isMounted.current) {
         try {
           const { classId } = JSON.parse(saved);
           if (classId) {

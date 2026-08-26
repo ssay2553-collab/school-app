@@ -87,6 +87,8 @@ const getQuestionValidationError = (
   question: Question,
   type: AssignmentType
 ): string | null => {
+  if (type === "rich-text") return null; // Essays don't strictly require structured questions here
+
   if (!question.text.trim() && type !== 'mathematics') {
     return "Question text or instructions are missing.";
   }
@@ -262,6 +264,8 @@ export const useUploadAssignment = () => {
     useState<Question[]>([]);
   const [mathematicsQuestions, setMathematicsQuestions] =
     useState<Question[]>([]);
+  const [essayQuestions, setEssayQuestions] =
+    useState<Question[]>([]);
 
   /* ------------------------------------------------------------------------ */
   /* Teacher metadata                                                         */
@@ -409,6 +413,9 @@ export const useUploadAssignment = () => {
       case "mathematics":
         return mathematicsQuestions;
 
+      case "rich-text":
+        return essayQuestions;
+
       default:
         return [];
     }
@@ -418,6 +425,7 @@ export const useUploadAssignment = () => {
     shortAnswerQuestions,
     preschoolQuestions,
     mathematicsQuestions,
+    essayQuestions,
   ]);
 
   // Auto-initialize first question for interactive types
@@ -444,6 +452,10 @@ export const useUploadAssignment = () => {
 
         case "mathematics":
           setMathematicsQuestions(value);
+          break;
+
+        case "rich-text":
+          setEssayQuestions(value);
           break;
       }
     },
@@ -712,6 +724,8 @@ export const useUploadAssignment = () => {
   /* ------------------------------------------------------------------------ */
 
   const handleUpload = useCallback(async () => {
+    if (loading) return false;
+
     const validationError = validateAssignment();
 
     if (validationError) {
@@ -857,7 +871,7 @@ export const useUploadAssignment = () => {
         questions: publicQuestions,
         dueDate,
         code,
-        status: "published",
+        status: "pending",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -875,61 +889,9 @@ export const useUploadAssignment = () => {
 
       await batch.commit();
 
-      /* -------------------------------------------------------------------- */
-      /* Notifications                                                        */
-      /* -------------------------------------------------------------------- */
-
-      try {
-        const studentsQuery = query(
-          collection(db, "users"),
-          where("role", "==", "student"),
-          where(
-            "classId",
-            "==",
-            selectedClassId
-          )
-        );
-
-        const studentsSnap =
-          await getDocsFromServer(
-            studentsQuery
-          );
-
-        await Promise.allSettled(
-          studentsSnap.docs.map(
-            (studentDoc) =>
-              sendNotification({
-                recipientId: studentDoc.id,
-                senderId: appUser.uid,
-                senderName:
-                  appUser.displayName ||
-                  "Teacher",
-                type: "assignment",
-                title: "New Assignment",
-                body: `${selectedSubject}: ${title.trim()}`,
-                data: {
-                  assignmentId:
-                    assignmentRef.id,
-                  classId:
-                    selectedClassId,
-                },
-              })
-          )
-        );
-      } catch (notificationError) {
-        /*
-         * Do NOT fail the assignment because notification
-         * delivery failed.
-         */
-        console.warn(
-          "Assignment notification error:",
-          notificationError
-        );
-      }
-
       showToast({
         message:
-          "Assignment posted successfully!",
+          "Assignment submitted! It will be visible to students once approved by the admin.",
         type: "success",
       });
 
@@ -983,6 +945,8 @@ export const useUploadAssignment = () => {
     description,
     selectedClassId,
     selectedSubject,
+    loading,
+    uploadingFile,
   ]);
 
   /* ------------------------------------------------------------------------ */

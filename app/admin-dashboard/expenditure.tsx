@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRef } from "react";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -31,6 +32,13 @@ export default function ExpenditureScreen() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const insets = useSafeAreaInsets();
+  const isNavigating = useRef(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const {
     loading,
@@ -95,13 +103,16 @@ export default function ExpenditureScreen() {
   }, [expenditures, filterCategory]);
 
   useEffect(() => {
-    if (appUser && !canView) {
+    if (appUser && !canView && isMounted.current) {
       showToast({
         message:
           "Access Denied: You do not have permission to view expenditures.",
         type: "error",
       });
-      router.replace("/admin-dashboard");
+      if (!isNavigating.current) {
+        isNavigating.current = true;
+        router.replace("/admin-dashboard");
+      }
     }
   }, [appUser, canView]);
 
@@ -122,7 +133,7 @@ export default function ExpenditureScreen() {
   }, [modalVisible]);
 
   const handleDeleteExpenditure = (item: Expenditure) => {
-    if (!canEdit) return;
+    if (!canEdit || !isMounted.current) return;
 
     const performDelete = async () => {
       await deleteExpenditure(item);
@@ -189,7 +200,11 @@ export default function ExpenditureScreen() {
       >
         <View style={styles.headerTop}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
             style={styles.backBtn}
           >
             <SVGIcon name="arrow-back" size={20} color="#fff" />
@@ -298,7 +313,12 @@ export default function ExpenditureScreen() {
               styles.saveBtn,
               { backgroundColor: primaryBrand, width: 200, marginTop: 20 },
             ]}
-            onPress={() => router.push("/academic-calendar")}
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.push("/academic-calendar");
+              setTimeout(() => { isNavigating.current = false; }, 500);
+            }}
           >
             <Text style={styles.saveBtnText}>Go to Calendar</Text>
           </TouchableOpacity>

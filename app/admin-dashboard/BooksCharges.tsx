@@ -35,6 +35,7 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { useBooksCharges, Student } from "../../hooks/admin-dashboard/useBooksCharges";
+import { useRef, useEffect } from "react";
 
 const { width } = Dimensions.get("window");
 
@@ -102,6 +103,13 @@ export default function BooksCharges() {
   const { showToast } = useToast();
   const router = useRouter();
   const acadConfig = useAcademicConfig();
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   if (acadConfig.loading || !appUser) {
     return (
@@ -177,7 +185,14 @@ export default function BooksCharges() {
           style={styles.headerTop}
         >
           <View style={styles.navBar}>
-            <TouchableOpacity onPress={() => router.push("/admin-dashboard/StudentCharges")} style={styles.headerIconBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                router.push("/admin-dashboard/StudentCharges");
+              }}
+              style={styles.headerIconBtn}
+            >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={styles.titleCenter}>
@@ -386,6 +401,8 @@ export default function BooksCharges() {
                       style={styles.transactionTile}
                       onPress={() => {
                         setModalVisible(false);
+                        if (isNavigating.current) return;
+                        isNavigating.current = true;
                         router.push({
                           pathname: "/shared/receipt-view",
                           params: {
@@ -396,6 +413,7 @@ export default function BooksCharges() {
                             term: h.term
                           }
                         });
+                        setTimeout(() => { isNavigating.current = false; }, 500);
                       }}
                       onLongPress={() => confirmDeletePayment(h)}
                     >

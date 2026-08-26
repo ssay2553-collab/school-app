@@ -13,7 +13,7 @@ import {
     where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -21,7 +21,6 @@ import {
     Keyboard,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -30,6 +29,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
@@ -81,12 +81,20 @@ export default function StaffChat() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [stage, setStage] = useState<"list" | "chat">("list");
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [filteredStaff, setFilteredStaff] = useState<StaffMember[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
   const [loading, setLoading] = useState(true);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -131,8 +139,12 @@ export default function StaffChat() {
           ? require("../../assets/message_sent.mp3")
           : require("../../assets/message_received.mp3");
       const { sound } = await Audio.Sound.createAsync(soundFile);
-      soundRef.current = sound;
-      await sound.playAsync();
+      if (isMounted.current) {
+        soundRef.current = sound;
+        await sound.playAsync();
+      } else {
+        await sound.unloadAsync();
+      }
     } catch (e) {
       console.log("Audio error:", e);
     }
@@ -161,12 +173,14 @@ export default function StaffChat() {
             } as StaffMember;
           })
           .filter((s) => s.uid !== appUser?.uid);
-        setStaff(list);
-        setFilteredStaff(list);
+        if (isMounted.current) {
+          setStaff(list);
+          setFilteredStaff(list);
+        }
       } catch (e) {
-        console.error("Error fetching staff:", e);
+        if (isMounted.current) console.error("Error fetching staff:", e);
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
     fetchStaff();
@@ -196,6 +210,7 @@ export default function StaffChat() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
+      if (!isMounted.current) return;
       const msgs = snap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }) as Message)
         .reverse();
@@ -250,9 +265,13 @@ export default function StaffChat() {
           if (ev.data && ev.data.size > 0) webChunksRef.current.push(ev.data);
         };
         mediaRecorder.start();
-        setWebStream(stream);
-        setWebRecorder(mediaRecorder);
-        setRecording({ web: true });
+        if (isMounted.current) {
+          setWebStream(stream);
+          setWebRecorder(mediaRecorder);
+          setRecording({ web: true });
+        } else {
+          stream.getTracks().forEach((t) => t.stop());
+        }
         return;
       }
 
@@ -296,13 +315,15 @@ export default function StaffChat() {
           createdAt: serverTimestamp(),
         });
         playSound("sent");
-        setRecording(null);
-        if (webStream) {
-          webStream.getTracks().forEach((t) => t.stop());
-          setWebStream(null);
+        if (isMounted.current) {
+          setRecording(null);
+          if (webStream) {
+            webStream.getTracks().forEach((t) => t.stop());
+            setWebStream(null);
+          }
+          setWebRecorder(null);
+          setUploading(false);
         }
-        setWebRecorder(null);
-        setUploading(false);
         return;
       }
 
@@ -325,10 +346,14 @@ export default function StaffChat() {
       });
       playSound("sent");
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to send voice message", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to send voice message", type: "error" });
+      }
     } finally {
-      setUploading(false);
+      if (isMounted.current) {
+        setUploading(false);
+      }
     }
   };
 
@@ -359,8 +384,10 @@ export default function StaffChat() {
 
       playSound("sent");
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to send message", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to send message", type: "error" });
+      }
     }
   };
 
@@ -463,7 +490,7 @@ export default function StaffChat() {
             </Animatable.View>
           )}
 
-          <View style={styles.inputArea}>
+          <View style={[styles.inputArea, { paddingBottom: Math.max(insets.bottom, 15) }]}>
             {uploading && (
               <ActivityIndicator
                 size="small"
@@ -528,7 +555,11 @@ export default function StaffChat() {
       >
         <View style={styles.headerTitleRow}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
             style={styles.backBtnHeader}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
@@ -21,6 +21,12 @@ export const useTeacherProfile = () => {
   const [updating, setUpdating] = useState(false);
   const [classNames, setClassNames] = useState<string[]>([]);
   const [mainClassName, setMainClassName] = useState<string>("");
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   // Modals visibility
   const [nameModalVisible, setNameModalVisible] = useState(false);
@@ -117,10 +123,11 @@ export const useTeacherProfile = () => {
     const fetchAllClasses = async () => {
       try {
         const snap = await getDocs(collection(db, "classes"));
+        if (!isMounted.current) return;
         const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name || d.id }));
         setAllClasses(sortClasses(list));
       } catch (err) {
-        console.error("Error fetching all classes:", err);
+        if (isMounted.current) console.error("Error fetching all classes:", err);
       }
     };
     fetchAllClasses();
@@ -142,6 +149,7 @@ export const useTeacherProfile = () => {
       try {
         const q = query(collection(db, "classes"), where("__name__", "in", classIds));
         const snap = await getDocs(q);
+        if (!isMounted.current) return;
         const namesMap: Record<string, string> = {};
         snap.docs.forEach((doc) => {
           namesMap[doc.id] = doc.data().name;
@@ -155,7 +163,7 @@ export const useTeacherProfile = () => {
           setMainClassName(namesMap[appUser.classTeacherOf] || "Unknown");
         }
       } catch (err) {
-        console.error("Error fetching class names:", err);
+        if (isMounted.current) console.error("Error fetching class names:", err);
       }
     };
     fetchClassNames();
@@ -201,13 +209,17 @@ export const useTeacherProfile = () => {
         "profile.firstName": firstName.trim(),
         "profile.lastName": lastName.trim(),
       });
-      showToast({ message: "Profile name updated!", type: "success" });
-      setNameModalVisible(false);
+      if (isMounted.current) {
+        showToast({ message: "Profile name updated!", type: "success" });
+        setNameModalVisible(false);
+      }
     } catch (err) {
-      console.error(err);
-      showToast({ message: "Failed to update name.", type: "error" });
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: "Failed to update name.", type: "error" });
+      }
     } finally {
-      setUpdating(false);
+      if (isMounted.current) setUpdating(false);
     }
   };
 
@@ -220,13 +232,17 @@ export const useTeacherProfile = () => {
         "profile.gender": gender,
         "profile.dob": dob.toISOString(),
       });
-      showToast({ message: "Personal details updated!", type: "success" });
-      setPersonalModalVisible(false);
+      if (isMounted.current) {
+        showToast({ message: "Personal details updated!", type: "success" });
+        setPersonalModalVisible(false);
+      }
     } catch (err) {
-      console.error(err);
-      showToast({ message: "Failed to update personal details.", type: "error" });
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: "Failed to update personal details.", type: "error" });
+      }
     } finally {
-      setUpdating(false);
+      if (isMounted.current) setUpdating(false);
     }
   };
 

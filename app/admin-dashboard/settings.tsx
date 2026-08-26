@@ -12,6 +12,8 @@ import { httpsCallable } from "firebase/functions";
 import moment from "moment";
 import { useFinanceCleanup } from "../../hooks/admin-dashboard/useFinanceCleanup";
 import { useAcademicCleanup } from "../../hooks/admin-dashboard/useAcademicCleanup";
+import { repairMissingSignupCodes } from "../../scratch/repair_signup_codes";
+import { useRef, useEffect } from "react";
 
 export default function AdminSettingsScreen() {
   const { theme } = useTheme();
@@ -19,10 +21,37 @@ export default function AdminSettingsScreen() {
   const router = useRouter();
 
   const [isCleaning, setIsCleaning] = React.useState(false);
+  const [repairLoading, setRepairLoading] = useState(false);
   const [cfLoading, setCfLoading] = useState<Record<string, boolean>>({});
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, runMigration: runFinanceMigration, report: financeReport } = useFinanceCleanup(showToast);
   const { cleaning: isAcademicCleaning, runCleanup: runAcademicCleanup, report: academicReport } = useAcademicCleanup(showToast);
+
+  const handleRepairSignupCodes = async () => {
+    setRepairLoading(true);
+    try {
+      const count = await repairMissingSignupCodes();
+      if (isMounted.current) {
+        showToast({ message: `Successfully repaired ${count} signup codes.`, type: "success" });
+      }
+    } catch (err: any) {
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: "Repair failed. Check console.", type: "error" });
+      }
+    } finally {
+      if (isMounted.current) {
+        setRepairLoading(false);
+      }
+    }
+  };
 
   const handleCloudFunctionTrigger = async (fnName: string, confirmMessage: string) => {
     const run = async () => {
@@ -30,14 +59,20 @@ export default function AdminSettingsScreen() {
       try {
         const callable = httpsCallable(functions, fnName);
         const result: any = await callable();
-        showToast({
-          message: `Success: ${result.data.deletedMessages || result.data.count || result.data.deleted || result.data.notificationCount || 0} items processed.`,
-          type: "success"
-        });
+        if (isMounted.current) {
+          showToast({
+            message: `Success: ${result.data.deletedMessages || result.data.count || result.data.deleted || result.data.notificationCount || 0} items processed.`,
+            type: "success"
+          });
+        }
       } catch (err: any) {
-        showToast({ message: err.message || "Execution failed", type: "error" });
+        if (isMounted.current) {
+          showToast({ message: err.message || "Execution failed", type: "error" });
+        }
       } finally {
-        setCfLoading(prev => ({ ...prev, [fnName]: false }));
+        if (isMounted.current) {
+          setCfLoading(prev => ({ ...prev, [fnName]: false }));
+        }
       }
     };
 
@@ -55,10 +90,15 @@ export default function AdminSettingsScreen() {
     try {
       await signOut(auth);
       // This is the key change: always go to the root on logout.
-      router.replace("/");
+      if (!isNavigating.current) {
+        isNavigating.current = true;
+        router.replace("/");
+      }
     } catch (e) {
-      console.error("Logout error", e);
-      showToast({ message: "Failed to log out.", type: "error" });
+      if (isMounted.current) {
+        console.error("Logout error", e);
+        showToast({ message: "Failed to log out.", type: "error" });
+      }
     }
   };
 
@@ -98,12 +138,18 @@ export default function AdminSettingsScreen() {
       });
       await batch.commit();
 
-      showToast({ message: `Cleaned up ${snap.size} expired assignments.`, type: "success" });
+      if (isMounted.current) {
+        showToast({ message: `Cleaned up ${snap.size} expired assignments.`, type: "success" });
+      }
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Cleanup failed.", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Cleanup failed.", type: "error" });
+      }
     } finally {
-      setIsCleaning(false);
+      if (isMounted.current) {
+        setIsCleaning(false);
+      }
     }
   };
 
@@ -209,6 +255,24 @@ export default function AdminSettingsScreen() {
         loading: cfLoading["triggerFeeReminders"],
     },
     {
+      title: "Repair Missing Signup Codes",
+      icon: "key",
+      action: () => {
+        if (Platform.OS === "web") {
+          if (window.confirm("Scan for students with missing code entries in the global database and fix them?")) {
+            handleRepairSignupCodes();
+          }
+        } else {
+          Alert.alert("Repair Signup Codes", "Scan for students with missing code entries in the global database and fix them?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Repair Now", style: "default", onPress: handleRepairSignupCodes }
+          ]);
+        }
+      },
+      color: "#6366F1",
+      loading: repairLoading,
+    },
+    {
       title: "Logout",
       icon: "log-out-outline",
       action: handleLogout,
@@ -221,7 +285,14 @@ export default function AdminSettingsScreen() {
       <StatusBar barStyle="dark-content" />
       
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
            <SVGIcon name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={[styles.header, { color: theme.text }]}>Settings</Text>

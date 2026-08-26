@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -39,6 +39,13 @@ export default function EditStudentScores() {
   const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
   const insets = useSafeAreaInsets();
+  const isNavigating = useRef(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const {
     loading,
@@ -96,6 +103,8 @@ export default function EditStudentScores() {
 
   const handleBack = () => {
     confirmDiscard(() => {
+      if (isNavigating.current) return;
+      isNavigating.current = true;
       if (router.canGoBack()) {
         router.back();
       } else {

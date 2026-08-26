@@ -24,6 +24,7 @@ import moment from "moment";
 import { useUploadAssignment, Question, AssignmentType } from "../../hooks/teacher-dashboard/useUploadAssignment";
 import PreschoolFields from "../../components/teacher-dashboard/upload-assignment/components/PreschoolFields";
 import MathematicsFields from "../../components/teacher-dashboard/upload-assignment/components/MathematicsFields";
+import { useRef } from "react";
 
 // Guarded import for native-only library
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
@@ -109,14 +110,14 @@ const AssignmentDetailsCard = memo(({
 
       <Text style={styles.inputLabel}>Type</Text>
       <View style={styles.typeRow}>
-        {(["mcq", "short_answer", "preschool", "mathematics"] as AssignmentType[]).map((t) => (
+        {(["mcq", "short_answer", "preschool", "mathematics", "rich-text"] as AssignmentType[]).map((t) => (
           <TouchableOpacity
             key={t}
             onPress={() => setType(t)}
             style={[styles.typeBtn, type === t && styles.typeBtnActive]}
           >
             <Text style={[styles.typeBtnText, type === t && styles.typeBtnTextActive]}>
-              {t.replace("_", " ").toUpperCase()}
+              {t === 'rich-text' ? 'ESSAY' : t.replace("_", " ").toUpperCase()}
             </Text>
           </TouchableOpacity>
         ))}
@@ -189,7 +190,7 @@ const QuestionItem = memo(({
   return (
     <View style={styles.questionCard}>
       <View style={styles.qHeader}>
-        <Text style={styles.qIndex}>{type === 'preschool' ? 'Preschool' : type === 'mathematics' ? 'Mathematics' : 'Standard'} Q{qIndex + 1}</Text>
+        <Text style={styles.qIndex}>{type === 'preschool' ? 'Preschool' : type === 'mathematics' ? 'Mathematics' : type === 'rich-text' ? 'Essay Prompt' : 'Standard'} Q{qIndex + 1}</Text>
         <TouchableOpacity onPress={() => removeQuestion(qIndex)}>
           <SVGIcon name="trash-outline" size={20} color="#EF4444" />
         </TouchableOpacity>
@@ -260,14 +261,17 @@ export default function UploadAssignment() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
   const [backPressCount, setBackPressCount] = useState(0);
+  const isNavigating = useRef(false);
 
   const handleBack = useCallback(() => {
+    if (isNavigating.current) return true;
     if (hasUnsavedChanges && backPressCount === 0) {
       setBackPressCount(1);
       showToast({ message: "Discard changes? Tap back again to confirm.", type: "info" });
       setTimeout(() => setBackPressCount(0), 3000);
       return true;
     }
+    isNavigating.current = true;
     if (router.canGoBack()) router.back();
     else router.replace("/teacher-dashboard");
     return true;

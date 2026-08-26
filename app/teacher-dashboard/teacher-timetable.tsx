@@ -23,6 +23,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 import { scheduleTimetableReminders } from "../../src/services/timetableScheduler";
+import { useRef } from "react";
 
 interface Lesson {
   id: string;
@@ -54,8 +55,17 @@ export default function TeacherTimetable() {
   const [classNames, setClassNames] = useState<Record<string, string>>({});
   const [selectedDay, setSelectedDay] = useState("");
   const [loading, setLoading] = useState(true);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const handleBack = useCallback(() => {
+    if (isNavigating.current) return true;
+    isNavigating.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -148,26 +158,28 @@ export default function TeacherTimetable() {
         });
       }
 
-      setTimetables(ttResult);
-      setClassNames(nameResult);
+      if (isMounted.current) {
+        setTimetables(ttResult);
+        setClassNames(nameResult);
 
-      // Schedule reminders for all lessons in all assigned classes
-      const allLessons: any[] = [];
-      Object.keys(ttResult).forEach((classId) => {
-        const tt = ttResult[classId];
-        if (tt.timetableDays) {
-          Object.keys(tt.timetableDays).forEach((day) => {
-            tt.timetableDays![day].forEach((lesson) => {
-              allLessons.push({ ...lesson, day });
+        // Schedule reminders for all lessons in all assigned classes
+        const allLessons: any[] = [];
+        Object.keys(ttResult).forEach((classId) => {
+          const tt = ttResult[classId];
+          if (tt.timetableDays) {
+            Object.keys(tt.timetableDays).forEach((day) => {
+              tt.timetableDays![day].forEach((lesson) => {
+                allLessons.push({ ...lesson, day });
+              });
             });
-          });
-        }
-      });
-      scheduleTimetableReminders(allLessons);
+          }
+        });
+        scheduleTimetableReminders(allLessons);
+      }
     } catch (error) {
-      console.error("Teacher timetable fetch error:", error);
+      if (isMounted.current) console.error("Teacher timetable fetch error:", error);
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   }, [teacherClasses, appUser?.curriculum, appUser?.role, appUser?.adminRole]);
 
@@ -250,7 +262,12 @@ export default function TeacherTimetable() {
         {isClassTeacher && (
           <TouchableOpacity
             style={[styles.manageBtn, { borderColor: brandColor }]}
-            onPress={() => router.push("/teacher-dashboard/manage-timetable")}
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.push("/teacher-dashboard/manage-timetable");
+              setTimeout(() => { isNavigating.current = false; }, 500);
+            }}
           >
             <SVGIcon name="create" size={20} color={brandColor} />
             <Text style={[styles.manageBtnText, { color: brandColor }]}>

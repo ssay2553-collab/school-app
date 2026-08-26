@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   collection,
   doc,
@@ -44,6 +44,12 @@ export const useAcademicRecords = () => {
   const [allStudents, setAllStudents] = useState<StudentScoreRecord[]>([]);
   const [serverStudents, setServerStudents] = useState<StudentScoreRecord[]>([]);
   const [recordStatus, setRecordStatus] = useState<string>("pending");
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const academicYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
@@ -83,21 +89,23 @@ export const useAcademicRecords = () => {
             name: (d.data() as any).name || d.id,
             classTeacherId: (d.data() as any).classTeacherId,
           }));
-          const sorted = sortClasses(list);
-          setTeacherClasses(sorted);
-          if (sorted.length > 0 && !selectedClassId) setSelectedClassId(sorted[0].id);
+          if (isMounted.current) {
+            const sorted = sortClasses(list);
+            setTeacherClasses(sorted);
+            if (sorted.length > 0 && !selectedClassId) setSelectedClassId(sorted[0].id);
+          }
         }
 
         const availableSubjects = appUser.subjects || [];
-        if (availableSubjects.length > 0) {
+        if (availableSubjects.length > 0 && isMounted.current) {
           if (!selectedSubject || !availableSubjects.includes(selectedSubject)) {
              setSelectedSubject(availableSubjects[0]);
           }
         }
       } catch (err) {
-        console.error("fetchMetadata error:", err);
+        if (isMounted.current) console.error("fetchMetadata error:", err);
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
     fetchMetadata();
@@ -246,12 +254,16 @@ export const useAcademicRecords = () => {
       });
 
       await batch.commit();
-      setServerStudents(JSON.parse(JSON.stringify(allStudents)));
-      showToast({ message: "Saved successfully.", type: "success" });
+      if (isMounted.current) {
+        setServerStudents(JSON.parse(JSON.stringify(allStudents)));
+        showToast({ message: "Saved successfully.", type: "success" });
+      }
       return true;
     } catch (err) {
-      console.error("Save Record Error:", err);
-      showToast({ message: "Save failed.", type: "error" });
+      if (isMounted.current) {
+        console.error("Save Record Error:", err);
+        showToast({ message: "Save failed.", type: "error" });
+      }
       return false;
     }
   };

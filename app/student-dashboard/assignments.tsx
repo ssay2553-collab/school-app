@@ -1,9 +1,10 @@
 import {
-    addDoc,
     collection,
+    doc,
     getDocs,
     query,
     serverTimestamp,
+    setDoc,
     Timestamp,
     where,
 } from "firebase/firestore";
@@ -39,6 +40,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { Assignment, Question, VisualItem } from "../../types/assignments";
 import QuestionResponseItem from "../../components/student-dashboard/assignments/QuestionResponseItem";
 import AssignmentCard from "../../components/student-dashboard/assignments/AssignmentCard";
+import { useRef } from "react";
 
 export default function Assignments() {
   const { appUser } = useAuth();
@@ -48,6 +50,13 @@ export default function Assignments() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(null);
   const [viewingDetails, setViewingDetails] = useState<Assignment | null>(null);
@@ -66,6 +75,7 @@ export default function Assignments() {
       const q = query(
         collection(db, "assignments"),
         where("classId", "==", studentClassId),
+        where("status", "==", "approved"),
       );
       const snapshot = await getDocs(q);
       const allAssignments = snapshot.docs.map((docSnap) => ({
@@ -86,14 +96,20 @@ export default function Assignments() {
         (assignment) => !submittedAssignmentIds.includes(assignment.id),
       );
 
-      // Sort by newest first
-      setAssignments(pendingAssignments.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)));
+      if (isMounted.current) {
+        // Sort by newest first
+        setAssignments(pendingAssignments.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0)));
+      }
     } catch (error: any) {
-      console.error("Fetch Assignments Error:", error);
-      showToast({ message: "Failed to load assignments.", type: "error" });
+      if (isMounted.current) {
+        console.error("Fetch Assignments Error:", error);
+        showToast({ message: "Failed to load assignments.", type: "error" });
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [appUser?.classId, appUser?.uid]);
 
@@ -107,8 +123,22 @@ export default function Assignments() {
   };
 
   const handleStartAssignment = (item: Assignment) => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+    if (item.type === "rich-text") {
+      router.push({
+        pathname: "/student-dashboard/submit-note",
+        params: {
+          assignmentCode: item.code,
+          assignmentTitle: item.title
+        }
+      });
+      setTimeout(() => { isNavigating.current = false; }, 500);
+      return;
+    }
     setActiveAssignment(item);
     setAnswers({});
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   const handleUpdateAnswer = useCallback((qIdx: number, val: any) => {
@@ -151,8 +181,11 @@ export default function Assignments() {
     try {
       const studentName = `${appUser.profile?.firstName || 'Student'} ${appUser.profile?.lastName || ''}`.trim();
       
+      const submissionId = `${activeAssignment.id}_${appUser.uid}`;
+      const submissionRef = doc(db, "submissions", submissionId);
+
       const submissionData = {
-        submissionKey: `${activeAssignment.id}_${appUser.uid}`,
+        submissionKey: submissionId,
         assignmentId: activeAssignment.id,
         assignmentTitle: activeAssignment.title,
         assignmentCode: activeAssignment.code,
@@ -171,17 +204,23 @@ export default function Assignments() {
         submittedAt: serverTimestamp(),
       };
 
-      await addDoc(collection(db, "submissions"), submissionData);
-      showToast({
-        message: "Your assignment has been submitted successfully!",
-        type: "success"
-      });
-      setActiveAssignment(null);
-      fetchAssignments();
+      await setDoc(submissionRef, submissionData);
+      if (isMounted.current) {
+        showToast({
+          message: "Your assignment has been submitted successfully!",
+          type: "success"
+        });
+        setActiveAssignment(null);
+        fetchAssignments();
+      }
     } catch (error: any) {
-      showToast({ message: error.message || "Failed to submit assignment", type: "error" });
+      if (isMounted.current) {
+        showToast({ message: error.message || "Failed to submit assignment", type: "error" });
+      }
     } finally {
-      setSubmitting(false);
+      if (isMounted.current) {
+        setSubmitting(false);
+      }
     }
   };
 
@@ -208,7 +247,14 @@ export default function Assignments() {
       <StatusBar barStyle="dark-content" />
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <View>

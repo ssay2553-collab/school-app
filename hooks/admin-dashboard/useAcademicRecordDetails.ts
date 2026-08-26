@@ -9,7 +9,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Alert } from "react-native";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
@@ -56,6 +56,12 @@ export const useAcademicRecordDetails = (
   const [studentName, setStudentName] = useState("");
   const [className, setClassName] = useState("");
   const [subjectsData, setSubjectsData] = useState<any[]>([]);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [adminRemarks, setAdminRemarks] = useState("");
   const [teacherRemarks, setTeacherRemarks] = useState("");
@@ -137,11 +143,15 @@ export const useAcademicRecordDetails = (
         if (reportSnap.exists()) {
           r = reportSnap.data();
           if (r.classId) effectiveClassId = r.classId;
-          setReportStatus(r.status || "pending");
-          setIsReportApproved(r.status === "approved");
+          if (isMounted.current) {
+            setReportStatus(r.status || "pending");
+            setIsReportApproved(r.status === "approved");
+          }
         } else {
-          setReportStatus("pending");
-          setIsReportApproved(false);
+          if (isMounted.current) {
+            setReportStatus("pending");
+            setIsReportApproved(false);
+          }
           // Fallback to summary for classId if report doc doesn't exist
           const summaryId = `${studentId}_${academicYearState.replace(/\//g, "_")}_${termState.replace(/\s+/g, "")}`;
           const summarySnap = await getDoc(
@@ -153,11 +163,15 @@ export const useAcademicRecordDetails = (
         }
       } catch (e) {
         // If permission denied (common for parents on unapproved reports), continue with defaults
-        setReportStatus("pending");
-        setIsReportApproved(false);
+        if (isMounted.current) {
+          setReportStatus("pending");
+          setIsReportApproved(false);
+        }
       }
 
-      setActiveClassId(effectiveClassId);
+      if (isMounted.current) {
+        setActiveClassId(effectiveClassId);
+      }
 
       const resultsMap = new Map();
       let nameFound = "";
@@ -210,13 +224,15 @@ export const useAcademicRecordDetails = (
         }
       });
 
-      setStudentName(nameFound);
-      const finalSubjects = Array.from(resultsMap.values());
-      setSubjectsData(finalSubjects);
+      if (isMounted.current) {
+        setStudentName(nameFound);
+        const finalSubjects = Array.from(resultsMap.values());
+        setSubjectsData(finalSubjects);
 
-      // Local Aggregate calculation for remarks
-      const { aggregate: localAggregateInitial } =
-        calculatePerformanceFromList(finalSubjects);
+        // Local Aggregate calculation for remarks
+        const { aggregate: localAggregateInitial } =
+          calculatePerformanceFromList(finalSubjects);
+      }
 
       // Overall Position Calculation
       let computedPosition = "-";
@@ -247,7 +263,9 @@ export const useAcademicRecordDetails = (
       } catch (e) {
         console.error("Error calculating overall position:", e);
       }
-      setOverallPosition(computedPosition);
+      if (isMounted.current) {
+        setOverallPosition(computedPosition);
+      }
 
       // Fetch class details
       let currentIsPreschool = false;
@@ -255,7 +273,9 @@ export const useAcademicRecordDetails = (
         const classDoc = await getDoc(doc(db, "classes", effectiveClassId));
         if (classDoc.exists()) {
           const classData: any = classDoc.data();
-          setClassName(classData.className || classData.name || classIdState);
+          if (isMounted.current) {
+            setClassName(classData.className || classData.name || classIdState);
+          }
           const n = (classData.name || "").toUpperCase();
           currentIsPreschool =
             n.includes("CRECHE") ||
@@ -266,22 +286,30 @@ export const useAcademicRecordDetails = (
             n.includes("PLAYGROUND") ||
             ["CLASS A", "CLASS B", "LEVEL A", "LEVEL B"].includes(n) ||
             (classData.department || "").toLowerCase() === "pre-school";
-          setIsPreschool(currentIsPreschool);
+          if (isMounted.current) {
+            setIsPreschool(currentIsPreschool);
+          }
         } else {
-          setClassName(classIdState);
+          if (isMounted.current) {
+            setClassName(classIdState);
+          }
         }
       } catch (e) {
-        setClassName(classIdState);
+        if (isMounted.current) {
+          setClassName(classIdState);
+        }
       }
 
       // Local Aggregate calculation for remarks
       const { aggregate: localAggregate } = calculatePerformanceFromList(
-        finalSubjects,
+        Array.from(resultsMap.values()),
         currentIsPreschool,
       );
 
       // Use bundled local school signature asset (Removed Firestore fetch to ensure reliability)
-      setAdminSig(defaultSchoolSig);
+      if (isMounted.current) {
+        setAdminSig(defaultSchoolSig);
+      }
 
       if (isFullReport) {
         const yearSlug = academicYearState.replace(/\//g, "-");
@@ -294,7 +322,7 @@ export const useAcademicRecordDetails = (
           const studentBeh = (behData.students || []).find(
             (s: any) => s.studentId === studentId,
           );
-          if (studentBeh) {
+          if (studentBeh && isMounted.current) {
             setConduct(studentBeh.conduct || "Excellent");
             setAttitude(studentBeh.attitude || "Positive");
             setInterest(studentBeh.interest || "N/A");
@@ -323,11 +351,13 @@ export const useAcademicRecordDetails = (
               if (dayData.students?.[studentId]?.status === "present")
                 presentCount++;
             });
-            setAttendance(`${presentCount} / ${totalDays}`);
+            if (isMounted.current) {
+              setAttendance(`${presentCount} / ${totalDays}`);
+            }
           }
         } catch (e) {}
 
-        if (r) {
+        if (r && isMounted.current) {
           // Respect overrides from student-reports
           if (r.overallPosition) setOverallPosition(r.overallPosition);
           if (r.promotedTo && isFullReport) setPromotedTo(r.promotedTo);
@@ -349,7 +379,7 @@ export const useAcademicRecordDetails = (
           } else if (acadConfig.nextTermBegins) {
             setNextTermBegins(acadConfig.nextTermBegins);
           }
-        } else {
+        } else if (isMounted.current) {
           // If report record doesn't exist, check if all individual subject records are approved
           if (allApproved && scoresSnap.docs.length > 0) {
             setReportStatus("approved");
@@ -366,10 +396,12 @@ export const useAcademicRecordDetails = (
         }
       }
     } catch (err) {
-      console.error("Error in fetchAllData:", err);
+      if (isMounted.current) console.error("Error in fetchAllData:", err);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   };
 

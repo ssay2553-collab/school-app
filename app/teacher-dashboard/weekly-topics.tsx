@@ -23,6 +23,7 @@ import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useWeeklyTopics } from "../../hooks/teacher-dashboard/useWeeklyTopics";
+import { useRef } from "react";
 
 export default function WeeklyTopicsScreen() {
   const router = useRouter();
@@ -62,8 +63,17 @@ export default function WeeklyTopicsScreen() {
 
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const handleBack = useCallback(() => {
+    if (isNavigating.current) return true;
+    isNavigating.current = true;
     if (hasUnsavedChanges) {
       Alert.alert(
         "Discard Changes?",
@@ -73,7 +83,10 @@ export default function WeeklyTopicsScreen() {
           {
             text: "Discard",
             style: "destructive",
-            onPress: () => router.back(),
+            onPress: () => {
+              isNavigating.current = false;
+              router.back();
+            },
           },
         ]
       );
@@ -166,7 +179,12 @@ export default function WeeklyTopicsScreen() {
                 {teacherClasses.map((c) => (
                   <TouchableOpacity
                     key={c.id}
-                    onPress={() => setSelectedClassId(c.id)}
+                    onPress={() => {
+                      if (isNavigating.current) return;
+                      isNavigating.current = true;
+                      setSelectedClassId(c.id);
+                      setTimeout(() => { isNavigating.current = false; }, 500);
+                    }}
                     style={[styles.chip, selectedClassId === c.id && styles.chipActive]}
                   >
                     <Text style={[styles.chipText, selectedClassId === c.id && styles.chipTextActive]}>

@@ -79,6 +79,12 @@ export const useMarkAssignment = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchingSubmissions, setFetchingSubmissions] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const qScoreInputsRef = useRef(qScoreInputs);
   const standardMarksInputRef = useRef(standardMarksInput);
@@ -121,10 +127,12 @@ export const useMarkAssignment = () => {
         const missingIds = classIds.filter(id => !foundIds.includes(id));
         missingIds.forEach(id => results.push({ id, name: id }));
 
-        setAvailableClasses(results);
-        if (results.length > 0 && !selectedClass) setSelectedClass(results[0].id);
+        if (isMounted.current) {
+          setAvailableClasses(results);
+          if (results.length > 0 && !selectedClass) setSelectedClass(results[0].id);
+        }
       } catch (err) {
-        console.error("Error fetching class names:", err);
+        if (isMounted.current) console.error("Error fetching class names:", err);
       }
     };
 
@@ -148,25 +156,36 @@ export const useMarkAssignment = () => {
       return;
     }
 
-    if (isFetchingRef.current) return;
+    if (isFetchingRef.current && !isFirstLoad) return;
     if (!isFirstLoad && !hasMoreRef.current) return;
 
     isFetchingRef.current = true;
     if (isFirstLoad) {
       setLoading(true);
       lastVisibleRef.current = null;
+      hasMoreRef.current = true;
     } else {
       setLoadingMore(true);
     }
 
     try {
+      const userRole = appUser?.adminRole?.toLowerCase() || appUser?.role?.toLowerCase() || "";
+      const isManagerOrAdmin = ["manager", "headmaster", "headmistress", "administrator", "director", "admin", "super admin", "superadmin"].includes(userRole);
+
+      // Managers and Admins should see ALL assignments for the class/subject
+      // Teachers should only see assignments they created (teacherId filter)
       const queryConstraints: any[] = [
         where("classId", "==", selectedClass),
         where("subjectId", "==", selectedSubject),
-        where("teacherId", "==", teacherId),
-        orderBy("createdAt", "desc"),
-        limit(10),
       ];
+
+      // Only apply teacherId filter if NOT a manager/admin
+      if (!isManagerOrAdmin) {
+        queryConstraints.push(where("teacherId", "==", teacherId));
+      }
+
+      queryConstraints.push(orderBy("createdAt", "desc"));
+      queryConstraints.push(limit(50));
 
       if (!isFirstLoad && lastVisibleRef.current) {
         queryConstraints.push(startAfter(lastVisibleRef.current));
@@ -180,25 +199,36 @@ export const useMarkAssignment = () => {
         ...(d.data() as any),
       })) as Assignment[];
 
-      if (isFirstLoad) {
-        setAssignments(data);
-        if (data.length > 0) setSelectedAssignment(data[0]);
-        else setSelectedAssignment(null);
-      } else {
-        setAssignments((prev) => [...prev, ...data]);
-      }
+      if (isMounted.current) {
+        if (isFirstLoad) {
+          setAssignments(data);
+          if (data.length > 0) setSelectedAssignment(data[0]);
+          else setSelectedAssignment(null);
+        } else {
+          setAssignments((prev) => [...prev, ...data]);
+        }
 
-      lastVisibleRef.current = snap.docs[snap.docs.length - 1] || null;
-      hasMoreRef.current = snap.docs.length === 10;
+        lastVisibleRef.current = snap.docs[snap.docs.length - 1] || null;
+        hasMoreRef.current = snap.docs.length === 50;
+      }
     } catch (e: any) {
-      console.error("fetchAssignments Error:", e);
+      if (isMounted.current) {
+        console.error("fetchAssignments Error:", e);
+        if (e.message?.includes("index")) {
+          showToast({ message: "Database error: Missing query index. Please notify admin.", type: "error" });
+        } else {
+          showToast({ message: "Failed to load assignments. Check subject/class filter.", type: "error" });
+        }
+      }
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setLoading(false);
+        setLoadingMore(false);
+        setRefreshing(false);
+      }
       isFetchingRef.current = false;
     }
-  }, [selectedClass, selectedSubject, teacherId]);
+  }, [selectedClass, selectedSubject, teacherId, appUser?.adminRole, appUser?.role]);
 
   useEffect(() => {
     fetchAssignments(true);
@@ -223,6 +253,8 @@ export const useMarkAssignment = () => {
         // Fetch Answer Key
         const akDoc = await getDoc(doc(db, "assignmentAnswerKeys", selectedAssignment.id));
         const currentAnswerKey = akDoc.exists() ? akDoc.data() : null;
+
+        if (!isMounted.current) return;
         setAnswerKey(currentAnswerKey);
 
         const q = query(
@@ -232,6 +264,8 @@ export const useMarkAssignment = () => {
         );
 
         const snap = await getDocs(q);
+        if (!isMounted.current) return;
+
         const fetchedSubmissions = snap.docs.map((d) => ({
           id: d.id,
           ...(d.data() as any),
@@ -255,9 +289,9 @@ export const useMarkAssignment = () => {
 
         setQScoreInputs(initialQInputs);
       } catch (e: any) {
-        console.error("Fetch submissions error:", e);
+        if (isMounted.current) console.error("Fetch submissions error:", e);
       } finally {
-        setFetchingSubmissions(false);
+        if (isMounted.current) setFetchingSubmissions(false);
       }
     };
 
@@ -338,14 +372,18 @@ export const useMarkAssignment = () => {
         await Promise.allSettled(notifications);
       }
 
-      setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
-      showToast({
-        message: `Assignment marked! Total Score: ${totalScore}. Parent has been notified.`,
-        type: "success"
-      });
+      if (isMounted.current) {
+        setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
+        showToast({
+          message: `Assignment marked! Total Score: ${totalScore}. Parent has been notified.`,
+          type: "success"
+        });
+      }
     } catch (error) {
-      console.error("Marking Error:", error);
-      showToast({ message: "Failed to submit marks.", type: "error" });
+      if (isMounted.current) {
+        console.error("Marking Error:", error);
+        showToast({ message: "Failed to submit marks.", type: "error" });
+      }
     }
   }, [selectedAssignment, appUser, showToast]);
 

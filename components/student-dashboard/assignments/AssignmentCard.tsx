@@ -33,13 +33,13 @@ const AssignmentCard = ({ item, index, onStart }: AssignmentCardProps) => {
         <Text style={styles.title}>{item.title}</Text>
         <View style={[
           styles.typeBadge,
-          { backgroundColor: isPreschool ? '#FEF3C7' : isMathematics ? '#E0F2FE' : '#F0FDF4' }
+          { backgroundColor: isPreschool ? '#FEF3C7' : isMathematics ? '#E0F2FE' : assignmentType === 'rich-text' ? '#F3E8FF' : '#F0FDF4' }
         ]}>
           <Text style={[
             styles.typeText,
-            { color: isPreschool ? '#D97706' : isMathematics ? '#0284C7' : '#10B981' }
+            { color: isPreschool ? '#D97706' : isMathematics ? '#0284C7' : assignmentType === 'rich-text' ? '#9333EA' : '#10B981' }
           ]}>
-            {assignmentType.toUpperCase()}
+            {assignmentType === 'rich-text' ? 'ESSAY' : assignmentType.toUpperCase()}
           </Text>
         </View>
       </View>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   collection,
   doc,
@@ -37,6 +37,12 @@ export const useBehavioralRecords = () => {
   const [myClasses, setMyClasses] = useState<{ id: string; name: string; classTeacherId?: string; department?: string }[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [allStudents, setAllStudents] = useState<BehavioralRecord[]>([]);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const academicYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
@@ -64,13 +70,15 @@ export const useBehavioralRecords = () => {
           classTeacherId: (d.data() as any).classTeacherId,
           department: (d.data() as any).department,
         }));
-        const sorted = sortClasses(list);
-        setMyClasses(sorted);
-        if (sorted.length > 0) setSelectedClassId(sorted[0].id);
+        if (isMounted.current) {
+          const sorted = sortClasses(list);
+          setMyClasses(sorted);
+          if (sorted.length > 0) setSelectedClassId(sorted[0].id);
+        }
       } catch (err) {
-        console.error("fetchClasses error:", err);
+        if (isMounted.current) console.error("fetchClasses error:", err);
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
     fetchClasses();
@@ -84,6 +92,8 @@ export const useBehavioralRecords = () => {
         const yearSlug = academicYear.replace(/\//g, "-");
         const docId = `behavioral_${selectedClassId}_${yearSlug}_${term.replace(/\s+/g, "")}`;
         const docSnap = await getDoc(doc(db, "behavioralRecords", docId));
+
+        if (!isMounted.current) return;
 
         if (docSnap.exists()) {
           setAllStudents(docSnap.data().students || []);
@@ -107,12 +117,12 @@ export const useBehavioralRecords = () => {
               promotedTo: "",
             }));
           mapped.sort((a, b) => a.fullName.localeCompare(b.fullName));
-          setAllStudents(mapped);
+          if (isMounted.current) setAllStudents(mapped);
         }
       } catch (err) {
-        console.error("fetchRecords error:", err);
+        if (isMounted.current) console.error("fetchRecords error:", err);
       } finally {
-        setSyncing(false);
+        if (isMounted.current) setSyncing(false);
       }
     };
     fetchRecords();

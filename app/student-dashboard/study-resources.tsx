@@ -18,6 +18,7 @@ import { COLORS, SHADOWS } from '../../constants/theme';
 import { useSchoolConfig } from '../../constants/Config';
 import { useToast } from '../../contexts/ToastContext';
 import * as Animatable from 'react-native-animatable';
+import { useRef } from 'react';
 
 const { width } = Dimensions.get('window');
 
@@ -61,6 +62,7 @@ export default function StudyResources() {
   const { showToast } = useToast();
   const config = useSchoolConfig();
   const primary = config.brandPrimary || COLORS.primary;
+  const isNavigating = useRef(false);
 
   const handleOpenLink = async (url: string) => {
     try {
@@ -87,7 +89,14 @@ export default function StudyResources() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <View style={styles.headerText}>

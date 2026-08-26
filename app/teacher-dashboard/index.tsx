@@ -7,7 +7,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -48,8 +48,15 @@ export default function TeacherDashboard() {
   // Attendance Alert Logic
   const [missingAttendance, setMissingAttendance] = useState<string[]>([]);
   const [isAlertVisible, setIsAlertVisible] = useState(false);
+  const isNavigating = useRef(false);
+  const isMounted = useRef(true);
 
   const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!appUser?.uid || teacherClasses.length === 0) return;
@@ -113,7 +120,9 @@ export default function TeacherDashboard() {
         where("teacherId", "==", teacherUid),
       );
       const snap = await getCountFromServer(q);
-      setAssignmentCount(snap.data().count);
+      if (isMounted.current) {
+        setAssignmentCount(snap.data().count);
+      }
     } catch (e) {
       console.error("Error fetching teacher stats:", e);
     }
@@ -224,9 +233,9 @@ export default function TeacherDashboard() {
         },
         {
           title: "Assignments",
-          subtitle: "Upload tasks",
-          route: "/teacher-dashboard/upload-assignment",
-          icon: "cloud-upload",
+          subtitle: "Manage & Upload",
+          route: "/teacher-dashboard/manage-assignments",
+          icon: "document-text",
           color: "#a855f7",
         },
         {
@@ -339,7 +348,12 @@ export default function TeacherDashboard() {
       >
         <TouchableOpacity
           style={[styles.menuCard, { borderBottomColor: "rgba(0,0,0,0.1)" }]}
-          onPress={() => item.route && router.push(item.route as any)}
+          onPress={() => {
+            if (isNavigating.current || !item.route) return;
+            isNavigating.current = true;
+            router.push(item.route as any);
+            setTimeout(() => { isNavigating.current = false; }, 500);
+          }}
           activeOpacity={0.8}
         >
           <LinearGradient
@@ -532,7 +546,8 @@ export default function TeacherDashboard() {
             </View>
 
             <View style={styles.statsGrid}>
-              <View
+              <TouchableOpacity
+                onPress={() => router.push("/teacher-dashboard/manage-assignments")}
                 style={[
                   styles.statCard,
                   { backgroundColor: "rgba(255,255,255,0.15)" },
@@ -547,7 +562,7 @@ export default function TeacherDashboard() {
                   <Text style={styles.statLabel}>POSTED TASKS</Text>
                   <Text style={styles.statValue}>{assignmentCount ?? "0"}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => router.push({ pathname: "/teacher-dashboard/profile-edit", params: { focus: "work" } })}
                 style={[

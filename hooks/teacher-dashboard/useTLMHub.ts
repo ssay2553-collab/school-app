@@ -104,10 +104,14 @@ export const useTLMHub = () => {
         isSaved: true,
       })) as TLM[];
 
-      setSavedTlms(items);
+      if (isMounted.current) {
+        setSavedTlms(items);
+      }
     } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to load saved materials.");
+      if (isMounted.current) {
+        console.error(error);
+        Alert.alert("Error", "Failed to load saved materials.");
+      }
     } finally {
       if (isMounted.current) {
         setFetchingSaved(false);
@@ -189,24 +193,30 @@ export const useTLMHub = () => {
 
         await setDoc(docRef, tlmData);
 
-        const newSaved = {
-          ...item,
-          id: docId,
-          isSaved: true,
-        };
+        if (isMounted.current) {
+          const newSaved = {
+            ...item,
+            id: docId,
+            isSaved: true,
+          };
 
-        setSavedTlms((prev) => [newSaved, ...prev]);
-        setDiscoveryResults((prev) =>
-          prev.map((p) =>
-            p.url === item.url ? { ...p, isSaved: true } : p,
-          ),
-        );
+          setSavedTlms((prev) => [newSaved, ...prev]);
+          setDiscoveryResults((prev) =>
+            prev.map((p) =>
+              p.url === item.url ? { ...p, isSaved: true } : p,
+            ),
+          );
+        }
       }
     } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to update saved materials.");
+      if (isMounted.current) {
+        console.error(error);
+        Alert.alert("Error", "Failed to update saved materials.");
+      }
     } finally {
-      setSavingIds((prev) => prev.filter((id) => id !== item.id));
+      if (isMounted.current) {
+        setSavingIds((prev) => prev.filter((id) => id !== item.id));
+      }
     }
   };
 
@@ -234,29 +244,35 @@ export const useTLMHub = () => {
 
       await setDoc(docRef, tlmData);
 
-      const newSaved = {
-        ...tlmData,
-        id: docId,
-        isSaved: true,
-      } as TLM;
+      if (isMounted.current) {
+        const newSaved = {
+          ...tlmData,
+          id: docId,
+          isSaved: true,
+        } as TLM;
 
-      setSavedTlms((prev) => [newSaved, ...prev]);
-      setShowAddModal(false);
-      setNewTlm({
-        title: "",
-        subject: "",
-        topic: "",
-        type: "link",
-        url: "",
-        thumbnail: "",
-      });
+        setSavedTlms((prev) => [newSaved, ...prev]);
+        setShowAddModal(false);
+        setNewTlm({
+          title: "",
+          subject: "",
+          topic: "",
+          type: "link",
+          url: "",
+          thumbnail: "",
+        });
 
-      Alert.alert("Success", "Resource added to your hub.");
+        Alert.alert("Success", "Resource added to your hub.");
+      }
     } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to save resource.");
+      if (isMounted.current) {
+        console.error(error);
+        Alert.alert("Error", "Failed to save resource.");
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 

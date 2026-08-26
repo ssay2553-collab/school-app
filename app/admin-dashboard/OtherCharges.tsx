@@ -26,9 +26,9 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useOtherCharges, Student } from "../../hooks/admin-dashboard/useOtherCharges";
-
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { SHADOWS } from "../../constants/theme";
+import { useRef, useEffect } from "react";
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 
 const { width } = Dimensions.get("window");
@@ -97,6 +97,13 @@ export default function OtherCharges() {
   const { showToast } = useToast();
   const router = useRouter();
   const acadConfig = useAcademicConfig();
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   if (acadConfig.loading || !appUser) {
     return (
@@ -176,7 +183,14 @@ export default function OtherCharges() {
           style={styles.headerTop}
         >
           <View style={styles.navBar}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.headerIconBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                router.back();
+              }}
+              style={styles.headerIconBtn}
+            >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={styles.titleCenter}>
@@ -475,6 +489,8 @@ export default function OtherCharges() {
                       key={i}
                       style={styles.transactionTile}
                       onPress={() => {
+                        if (isNavigating.current) return;
+                        isNavigating.current = true;
                         setPaymentModalVisible(false);
                         router.push({
                           pathname: "/shared/receipt-view",
@@ -486,6 +502,7 @@ export default function OtherCharges() {
                             term: h.term
                           }
                         });
+                        setTimeout(() => { isNavigating.current = false; }, 500);
                       }}
                       onLongPress={() => confirmDeletePayment(h)}
                     >

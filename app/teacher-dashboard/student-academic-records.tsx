@@ -19,6 +19,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useAcademicRecords, StudentScoreRecord, ReportType } from "../../hooks/teacher-dashboard/useAcademicRecords";
+import { useRef } from "react";
 
 const SelectionGroup = React.memo(({ label, items, selectedId, onSelect, getLabel = (item) => item, getId = (item) => item }: { label: string; items: any[]; selectedId: string; onSelect: (id: any) => void; getLabel?: (item: any) => string; getId?: (item: any) => string; }) => (
   <View style={styles.selectionWrapper}>
@@ -77,8 +78,11 @@ export default function StudentAcademicRecords() {
   } = useAcademicRecords();
 
   const isApproved = recordStatus === "approved";
+  const isNavigating = useRef(false);
 
   const handleBack = useCallback(() => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     if (router.canGoBack()) router.back();
     else router.replace("/teacher-dashboard");
   }, [router]);

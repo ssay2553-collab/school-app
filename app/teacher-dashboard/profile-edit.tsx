@@ -21,6 +21,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, CurriculumType } from "../../constants/Curriculum";
 import moment from "moment";
 import { useTeacherProfile } from "../../hooks/teacher-dashboard/useTeacherProfile";
+import { useRef } from "react";
 
 export default function TeacherProfileEdit() {
   const {
@@ -84,13 +85,21 @@ export default function TeacherProfileEdit() {
     handleUpdatePassword,
     pickImage,
   } = useTeacherProfile();
+  const isNavigating = useRef(false);
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FDFDFD" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            handleBack();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={20} color={COLORS.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Teacher Profile</Text>

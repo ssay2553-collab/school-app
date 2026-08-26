@@ -9,7 +9,7 @@ import {
     updateDoc,
     where
 } from "firebase/firestore";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -69,6 +69,13 @@ export default function ClassManagementScreen() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newClassLevel, setNewClassLevel] = useState<string | number | null>(null);
   const [newClassNameInput, setNewClassNameInput] = useState("");
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const levels = ["A", "B", "C", "D", 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
@@ -111,12 +118,18 @@ export default function ClassManagementScreen() {
         stats: counts[c.id] || { total: 0, male: 0, female: 0 },
       }));
 
-      setClasses(merged.sort((a, b) => getLevelValue(a.level) - getLevelValue(b.level)));
+      if (isMounted.current) {
+        setClasses(merged.sort((a, b) => getLevelValue(a.level) - getLevelValue(b.level)));
+      }
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to load class data.", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to load class data.", type: "error" });
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, [isAuthorized]);
 
@@ -131,15 +144,19 @@ export default function ClassManagementScreen() {
   }, [authLoading, isAuthorized, fetchData]);
 
   const saveClassName = async () => {
-    if (!editingClass || !newClassName.trim()) return;
+    if (!editingClass || !newClassName.trim() || !isMounted.current) return;
     try {
       await updateDoc(doc(db, "classes", editingClass.id), { name: newClassName.trim() });
-      setClasses((p) => p.map((c) => c.id === editingClass.id ? { ...c, name: newClassName.trim() } : c));
-      setEditingClass(null);
-      setNewClassName("");
-      showToast({ message: "Class updated.", type: "success" });
+      if (isMounted.current) {
+        setClasses((p) => p.map((c) => c.id === editingClass.id ? { ...c, name: newClassName.trim() } : c));
+        setEditingClass(null);
+        setNewClassName("");
+        showToast({ message: "Class updated.", type: "success" });
+      }
     } catch {
-      showToast({ message: "Update failed.", type: "error" });
+      if (isMounted.current) {
+        showToast({ message: "Update failed.", type: "error" });
+      }
     }
   };
 
@@ -168,15 +185,21 @@ export default function ClassManagementScreen() {
         stats: { total: 0, male: 0, female: 0 },
       };
 
-      setClasses((p) => [...p, newClass].sort((a, b) => getLevelValue(a.level) - getLevelValue(b.level)));
-      setShowAddModal(false);
-      setNewClassLevel(null);
-      setNewClassNameInput("");
-      showToast({ message: "Class created.", type: "success" });
+      if (isMounted.current) {
+        setClasses((p) => [...p, newClass].sort((a, b) => getLevelValue(a.level) - getLevelValue(b.level)));
+        setShowAddModal(false);
+        setNewClassLevel(null);
+        setNewClassNameInput("");
+        showToast({ message: "Class created.", type: "success" });
+      }
     } catch {
-      showToast({ message: "Failed to create class.", type: "error" });
+      if (isMounted.current) {
+        showToast({ message: "Failed to create class.", type: "error" });
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -184,11 +207,15 @@ export default function ClassManagementScreen() {
     const performDelete = async () => {
       try {
         await deleteDoc(doc(db, "classes", cls.id));
-        setClasses((p) => p.filter((c) => c.id !== cls.id));
-        showToast({ message: `${cls.name} deleted successfully.`, type: "success" });
+        if (isMounted.current) {
+          setClasses((p) => p.filter((c) => c.id !== cls.id));
+          showToast({ message: `${cls.name} deleted successfully.`, type: "success" });
+        }
       } catch (e) {
-        console.error("Delete failed:", e);
-        showToast({ message: "Delete failed.", type: "error" });
+        if (isMounted.current) {
+          console.error("Delete failed:", e);
+          showToast({ message: "Delete failed.", type: "error" });
+        }
       }
     };
 

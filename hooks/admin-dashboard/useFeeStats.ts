@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
@@ -19,6 +19,12 @@ export const useFeeStats = (
     totalDiscount: 0,
   });
   const [totalDiscountCommitted, setTotalDiscountCommitted] = useState(0);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!academicYear || !term) return;
@@ -100,31 +106,39 @@ export const useFeeStats = (
         }
       });
 
-      setStats({
-        expected: totalExpected,
-        received: totalReceived,
-        totalDiscount,
-        balance: totalExpected - totalDiscount - totalReceived,
-      });
-      setTotalDiscountCommitted(totalDiscount);
+      if (isMounted.current) {
+        setStats({
+          expected: totalExpected,
+          received: totalReceived,
+          totalDiscount,
+          balance: totalExpected - totalDiscount - totalReceived,
+        });
+        setTotalDiscountCommitted(totalDiscount);
+      }
     };
 
     const unsubRecords = onSnapshot(
       qRecords,
       (snap) => {
+        if (!isMounted.current) return;
         records = snap.docs.map((d) => d.data());
         calculate();
       },
-      (err) => console.error("Records stats error:", err),
+      (err) => {
+        if (isMounted.current) console.error("Records stats error:", err);
+      },
     );
 
     const unsubUsers = onSnapshot(
       qUsers,
       (snap) => {
+        if (!isMounted.current) return;
         users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         calculate();
       },
-      (err) => console.error("Users stats error:", err),
+      (err) => {
+        if (isMounted.current) console.error("Users stats error:", err);
+      },
     );
 
     return () => {

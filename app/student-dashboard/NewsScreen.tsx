@@ -10,6 +10,7 @@ import { NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
 import { useToast } from "../../contexts/ToastContext";
+import { useRef } from "react";
 
 export default function StudentNewsScreen({ className }: { className?: string }) {
   const router = useRouter();
@@ -19,6 +20,13 @@ export default function StudentNewsScreen({ className }: { className?: string })
   const [category, setCategory] = useState<string>("All");
   const [search, setSearch] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   // Fetch news and categories
   useEffect(() => {
@@ -34,16 +42,22 @@ export default function StudentNewsScreen({ className }: { className?: string })
           ? items.filter((n) => n.category === className || n.category === "All")
           : items;
 
-        setNews(filteredByClass);
-        
-        const categoryNames = cats?.map((c: any) => c.name).filter(Boolean) || [];
-        const uniqueCategories = Array.from(new Set(["All", ...categoryNames]));
-        setCategories(uniqueCategories);
+        if (isMounted.current) {
+          setNews(filteredByClass);
+
+          const categoryNames = cats?.map((c: any) => c.name).filter(Boolean) || [];
+          const uniqueCategories = Array.from(new Set(["All", ...categoryNames]));
+          setCategories(uniqueCategories);
+        }
       } catch (err) {
-        console.error("Error fetching student news:", err);
-        showToast({ message: "Failed to load school news.", type: "error" });
+        if (isMounted.current) {
+          console.error("Error fetching student news:", err);
+          showToast({ message: "Failed to load school news.", type: "error" });
+        }
       } finally {
-        setLoading(false);
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     })();
   }, [className]);
@@ -74,7 +88,14 @@ export default function StudentNewsScreen({ className }: { className?: string })
       <StatusBar barStyle="dark-content" />
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
         <View>

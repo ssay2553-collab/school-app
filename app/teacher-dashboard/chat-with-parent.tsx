@@ -32,6 +32,7 @@ import {
     View,
     BackHandler,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
@@ -64,6 +65,7 @@ export default function TeacherChatWithParent() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [stage, setStage] = useState<
     "select_class" | "select_student" | "select_parent" | "chat"
   >("select_class");
@@ -90,6 +92,19 @@ export default function TeacherChatWithParent() {
   const isFirstLoad = useRef(true);
   const soundRef = useRef<Audio.Sound | null>(null);
   const messagesLenRef = useRef<number>(0);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (soundRef.current) soundRef.current.unloadAsync();
+      if (webStream) {
+        webStream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [webStream]);
 
   const handleBack = useCallback(() => {
     if (stage === "chat") {
@@ -102,6 +117,8 @@ export default function TeacherChatWithParent() {
       setStage("select_class");
       setSelectedStudent(null);
     } else {
+      if (isNavigating.current) return true;
+      isNavigating.current = true;
       if (router.canGoBack()) {
         router.back();
       } else {
@@ -155,10 +172,10 @@ export default function TeacherChatWithParent() {
             id: d.id,
             name: (d.data() as any).name || d.id,
           }));
-          setTeacherClasses(sortClasses(list));
+          if (isMounted.current) setTeacherClasses(sortClasses(list));
         }
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
     fetchTeacherClasses();
@@ -175,16 +192,18 @@ export default function TeacherChatWithParent() {
         where("status", "in", ["active", "pending_activation"]),
       );
       const snap = await getDocsFromServer(q);
-      setStudents(
-        snap.docs.map((d) => ({
-          uid: d.id,
-          fullName:
-            `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
-        })),
-      );
-      setStage("select_student");
+      if (isMounted.current) {
+        setStudents(
+          snap.docs.map((d) => ({
+            uid: d.id,
+            fullName:
+              `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
+          })),
+        );
+        setStage("select_student");
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   };
 
@@ -198,18 +217,20 @@ export default function TeacherChatWithParent() {
         where("childrenIds", "array-contains", student.uid),
       );
       const snap = await getDocsFromServer(q);
-      setParents(
-        snap.docs.map((d) => ({
-          uid: d.id,
-          fullName:
-            `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
-          email: (d.data() as any).profile?.email || "",
-          phone: (d.data() as any).profile?.phone || "",
-        })),
-      );
-      setStage("select_parent");
+      if (isMounted.current) {
+        setParents(
+          snap.docs.map((d) => ({
+            uid: d.id,
+            fullName:
+              `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
+            email: (d.data() as any).profile?.email || "",
+            phone: (d.data() as any).profile?.phone || "",
+          })),
+        );
+        setStage("select_parent");
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   };
 
@@ -229,6 +250,7 @@ export default function TeacherChatWithParent() {
       limit(50),
     );
     const unsubscribe = onSnapshot(q, (snap) => {
+      if (!isMounted.current) return;
       const msgs = snap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }) as Message)
         .reverse();
@@ -322,23 +344,25 @@ export default function TeacherChatWithParent() {
         if ((blob as any).close) (blob as any).close();
         const audioUrl = await getDownloadURL(audioRef);
 
-        await addDoc(collection(db, "directMessages", chatId!, "messages"), {
-          type: "audio",
-          fileUrl: audioUrl,
-          senderId: appUser!.uid,
-          createdAt: serverTimestamp(),
-        });
+        if (isMounted.current) {
+          await addDoc(collection(db, "directMessages", chatId!, "messages"), {
+            type: "audio",
+            fileUrl: audioUrl,
+            senderId: appUser!.uid,
+            createdAt: serverTimestamp(),
+          });
 
-        playSound("sent");
+          playSound("sent");
 
-        // cleanup
-        setRecording(null);
-        if (webStream) {
-          webStream.getTracks().forEach((t) => t.stop());
-          setWebStream(null);
+          // cleanup
+          setRecording(null);
+          if (webStream) {
+            webStream.getTracks().forEach((t) => t.stop());
+            setWebStream(null);
+          }
+          setWebRecorder(null);
+          setUploading(false);
         }
-        setWebRecorder(null);
-        setUploading(false);
         return;
       }
 
@@ -478,7 +502,7 @@ export default function TeacherChatWithParent() {
           <View
             style={[
               styles.inputArea,
-              { paddingBottom: Platform.OS === "android" ? 12 : 20 },
+              { paddingBottom: Math.max(insets.bottom, 12) },
             ]}
           >
             {uploading && (

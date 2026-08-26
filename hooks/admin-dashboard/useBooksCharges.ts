@@ -22,6 +22,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
 
+
 const PAGE_SIZE = 50;
 
 export type Student = {
@@ -61,6 +62,12 @@ export const useBooksCharges = ({
   const [students, setStudents] = useState<Student[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [stats, setStats] = useState({ totalBilled: 0, totalCollected: 0 });
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   // UI state migrated from component
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -80,6 +87,7 @@ export const useBooksCharges = ({
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "classes"), (snap) => {
+      if (!isMounted.current) return;
       const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name, ...d.data() }));
       setClasses(sortClasses(list));
     });
@@ -108,9 +116,11 @@ export const useBooksCharges = ({
         if (data.type === "books") billed += (data.amount || 0);
         if (data.type === "books_payment") collected += (data.amount || 0);
       });
-      setStats({ totalBilled: billed, totalCollected: collected });
+      if (isMounted.current) {
+        setStats({ totalBilled: billed, totalCollected: collected });
+      }
     } catch (e) {
-      console.error("Error fetching books stats:", e);
+      if (isMounted.current) console.error("Error fetching books stats:", e);
     }
   }, [acadConfig.academicYear, acadConfig.currentTerm, selectedClassId]);
 
@@ -170,16 +180,22 @@ export const useBooksCharges = ({
         };
       });
 
-      lastVisibleRef.current = snap.docs[snap.docs.length - 1];
-      hasMoreRef.current = snap.docs.length === PAGE_SIZE;
-      setStudents(prev => isFirstLoad ? batch : [...prev, ...batch]);
+      if (isMounted.current) {
+        lastVisibleRef.current = snap.docs[snap.docs.length - 1];
+        hasMoreRef.current = snap.docs.length === PAGE_SIZE;
+        setStudents(prev => isFirstLoad ? batch : [...prev, ...batch]);
+      }
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to fetch students", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to fetch students", type: "error" });
+      }
     } finally {
       isFetchingRef.current = false;
-      setLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [selectedClassId, searchQuery, showToast]);
 

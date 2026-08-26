@@ -24,6 +24,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useToast } from "../../contexts/ToastContext";
 import { useMarkAssignment, Submission, Assignment } from "../../hooks/teacher-dashboard/useMarkAssignment";
 import MathCanvas from "../../components/MathCanvas";
+import { useRef } from "react";
 
 /* ---------------- HELPERS ---------------- */
 
@@ -148,9 +149,16 @@ const SubmissionItem = React.memo(({
 
             // Logic for Mathematics
             const isMath = item.type === 'mathematics';
-            const studentMathAnswer = isMath ? (Array.isArray(response)
-              ? response
-              : (response && typeof response === 'object' ? (response.answer || []) : [{ type: 'text', value: String(response || ''), id: 'ans' }])) : null;
+            let studentMathAnswer = null;
+            if (isMath) {
+              if (Array.isArray(response)) {
+                studentMathAnswer = response;
+              } else if (response && typeof response === 'object') {
+                studentMathAnswer = response.answer || [];
+              } else {
+                studentMathAnswer = [{ type: 'text', value: String(response || ''), id: 'ans' }];
+              }
+            }
 
             const studentMathWorking = isMath && (response && typeof response === 'object' && !Array.isArray(response))
               ? response.working
@@ -344,8 +352,11 @@ export default function MarkAssignment() {
     updateFeedback,
     subjects,
   } = useMarkAssignment();
+  const isNavigating = useRef(false);
 
   const handleBack = useCallback(() => {
+    if (isNavigating.current) return true;
+    isNavigating.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -381,10 +392,15 @@ export default function MarkAssignment() {
 
           <TouchableOpacity
             style={[styles.fileLink, { backgroundColor: COLORS.primary + "05", borderColor: COLORS.primary + "20" }]}
-            onPress={() => router.push({
-              pathname: "/teacher-dashboard/review-document",
-              params: { submissionId: item.id }
-            })}
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.push({
+                pathname: "/teacher-dashboard/review-document",
+                params: { submissionId: item.id }
+              });
+              setTimeout(() => { isNavigating.current = false; }, 500);
+            }}
           >
             <View style={[styles.fileIconBox, { backgroundColor: COLORS.primary + "15" }]}>
               <SVGIcon name="document-text" size={20} color={COLORS.primary} />
@@ -546,7 +562,9 @@ export default function MarkAssignment() {
                   </TouchableOpacity>
                 ))
               ) : (
-                <Text style={styles.emptyHint}>No assignments found</Text>
+                <Text style={[styles.emptyHint, { color: COLORS.secondary, fontWeight: '700' }]}>
+                  {selectedSubject ? "No assignments found for this subject" : "Select a subject to view assignments"}
+                </Text>
               )}
             </ScrollView>
           </Animatable.View>

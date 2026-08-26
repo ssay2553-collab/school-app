@@ -18,10 +18,12 @@ import { ScrambleGame } from "../../components/student-dashboard/games/ScrambleG
 import { WritingGame } from "../../components/student-dashboard/games/WritingGame";
 import { MenuCard } from "../../components/student-dashboard/games/MenuCard";
 import { Scoreboard } from "../../components/student-dashboard/games/Scoreboard";
+import { useRef } from "react";
 
 export default function GamesScreen() {
   const router = useRouter();
   const [mode, setMode] = useState<GameMode>("menu");
+  const isNavigating = useRef(false);
 
   const renderGame = () => {
     switch (mode) {
@@ -63,7 +65,11 @@ export default function GamesScreen() {
         <ScrollView contentContainerStyle={styles.menuContainer}>
           <View style={styles.menuHeader}>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                router.back();
+              }}
               style={styles.menuBackBtn}
             >
               <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />

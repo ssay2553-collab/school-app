@@ -781,8 +781,10 @@ match /feePayments/{paymentId} {
        ASSIGNMENTS COLLECTION
     =============================== */
    match /assignments/{id} {
-      allow read: if canViewAssignments() || isAdmin() || (isTeacher() && resource.data.teacherId == uid()) || (isStudent() && resource.data.classId == userData().classId) || isParent();
-      allow create, update: if canManageAssignments() || (isTeacher() && request.resource.data.teacherId == uid());
+      allow read: if canViewAssignments() || isAdmin() || (isTeacher() && resource.data.teacherId == uid())
+        || (isStudent() && resource.data.classId == userData().classId && resource.data.status == 'approved')
+        || (isParent() && resource.data.status == 'approved');
+      allow create, update: if canManageAssignments() || (isTeacher() && (request.resource.data.teacherId == uid() || resource.data.teacherId == uid()));
       allow delete: if canManageAssignments() || isAdmin();
     }
 

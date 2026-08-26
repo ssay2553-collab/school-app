@@ -35,7 +35,7 @@ export const useTeacherNotes = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
-  const mountedRef = useRef(true);
+  const isMounted = useRef(true);
 
   const loadLocalNotes = useCallback(async () => {
     if (!appUser) return;
@@ -115,24 +115,26 @@ export const useTeacherNotes = () => {
           (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt - a.createdAt,
       );
 
-      await persistLocalNotes(merged);
+      if (isMounted.current) {
+        await persistLocalNotes(merged);
+      }
     } catch (e) {
-      console.warn("fetchFromFirestoreAndMerge", e);
+      if (isMounted.current) console.warn("fetchFromFirestoreAndMerge", e);
     }
   }, [appUser, persistLocalNotes]);
 
   useEffect(() => {
-    mountedRef.current = true;
+    isMounted.current = true;
     (async () => {
       await loadLocalNotes();
       await fetchFromFirestoreAndMerge();
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     })();
     const interval = setInterval(() => {
       fetchFromFirestoreAndMerge();
     }, 15000);
     return () => {
-      mountedRef.current = false;
+      isMounted.current = false;
       clearInterval(interval);
     };
   }, [loadLocalNotes, fetchFromFirestoreAndMerge]);
@@ -166,11 +168,13 @@ export const useTeacherNotes = () => {
       });
 
       const syncedNext = next.map(n => n.id === newNote.id ? { ...n, docId: docRef.id, synced: true } : n);
-      await persistLocalNotes(syncedNext);
+      if (isMounted.current) {
+        await persistLocalNotes(syncedNext);
+      }
     } catch (e) {
-      console.warn("Firestore sync failed:", e);
+      if (isMounted.current) console.warn("Firestore sync failed:", e);
     } finally {
-      setSaving(false);
+      if (isMounted.current) setSaving(false);
     }
   };
 
@@ -200,14 +204,16 @@ export const useTeacherNotes = () => {
         });
 
         const syncedNext = next.map(n => n.id === id ? { ...n, synced: true } : n);
-        await persistLocalNotes(syncedNext);
+        if (isMounted.current) {
+          await persistLocalNotes(syncedNext);
+        }
       } catch (e) {
-        console.warn("Firestore update sync failed:", e);
+        if (isMounted.current) console.warn("Firestore update sync failed:", e);
       } finally {
-        setSaving(false);
+        if (isMounted.current) setSaving(false);
       }
     } else {
-      setSaving(false);
+      if (isMounted.current) setSaving(false);
     }
   };
 

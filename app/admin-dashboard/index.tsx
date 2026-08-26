@@ -36,6 +36,7 @@ export default function AdminDashboard() {
   } = useAdminDashboard();
 
   const scrollRef = useRef<ScrollView>(null);
+  const isNavigating = useRef(false);
 
   useEffect(() => {
     if (lastDashboardScrollY > 0) {
@@ -301,7 +302,12 @@ export default function AdminDashboard() {
                       isSmallScreen={isSmallScreen}
                       numColumns={numColumns}
                       totalUnread={totalUnread}
-                      onPress={() => router.push(item.route as any)}
+                      onPress={() => {
+                        if (isNavigating.current) return;
+                        isNavigating.current = true;
+                        router.push(item.route as any);
+                        setTimeout(() => { isNavigating.current = false; }, 500);
+                      }}
                     />
                   ))}
                 </View>

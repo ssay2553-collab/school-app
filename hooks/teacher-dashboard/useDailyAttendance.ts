@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   collection,
   doc,
@@ -32,6 +32,12 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
   const [availableClasses, setAvailableClasses] = useState<{ id: string; name: string; classTeacherId?: string }[]>([]);
   const [localAttendance, setLocalAttendance] = useState<Record<string, any>>({});
   const [serverAttendance, setServerAttendance] = useState<Record<string, any>>({});
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const academicYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
@@ -75,6 +81,7 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
           q = query(collection(db, "classes"), where("__name__", "in", teacherClasses.slice(0, 30)));
         }
         const snap = await getDocsFromServer(q);
+        if (!isMounted.current) return;
         const list = snap.docs.map(d => ({
           id: d.id,
           name: (d.data() as any).name || d.id,
@@ -86,7 +93,7 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
           setClassId(sorted[0].id);
         }
       } catch (e) {
-        console.error("Load classes error:", e);
+        if (isMounted.current) console.error("Load classes error:", e);
       }
     };
     loadClasses();
@@ -105,15 +112,16 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
         where("classId", "==", classId)
       );
       const snap = await getDocsFromServer(q);
+      if (!isMounted.current) return;
       const data = snap.docs
         .map((d: any) => ({ uid: d.id, ...(d.data() as any) }))
         .filter((d: any) => ["active", "pending_activation"].includes(d.status))
         .sort((a: any, b: any) => (a.profile?.firstName || "").localeCompare(b.profile?.firstName || ""));
       setStudents(data);
     } catch (e) {
-      console.error("Fetch students error:", e);
+      if (isMounted.current) console.error("Fetch students error:", e);
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   }, [classId]);
 
@@ -135,6 +143,8 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
         const ref = doc(db, "attendance", attendanceId);
         const snap = await getDoc(ref);
 
+        if (!isMounted.current) return;
+
         if (snap.exists()) {
           const data = snap.data() as any;
           setServerAttendance(data.students || {});
@@ -147,6 +157,7 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
             where("date", "==", selectedDate)
           );
           const querySnap = await getDocsFromServer(q);
+          if (!isMounted.current) return;
           if (!querySnap.empty) {
             const data = querySnap.docs[0].data() as any;
             setServerAttendance(data.students || {});
@@ -157,7 +168,7 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
           }
         }
       } catch (e) {
-        console.error("Load attendance error:", e);
+        if (isMounted.current) console.error("Load attendance error:", e);
       }
     };
     loadAttendance();
@@ -249,39 +260,45 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
 
       await batch.commit();
 
-      const changedStudents = students.filter(s =>
-        attendanceToSave[s.uid]?.status !== serverAttendance[s.uid]?.status &&
-        (attendanceToSave[s.uid]?.status === "absent" || attendanceToSave[s.uid]?.status === "late")
-      );
+      if (isMounted.current) {
+        const changedStudents = students.filter(s =>
+          attendanceToSave[s.uid]?.status !== serverAttendance[s.uid]?.status &&
+          (attendanceToSave[s.uid]?.status === "absent" || attendanceToSave[s.uid]?.status === "late")
+        );
 
-      for (const student of changedStudents) {
-        if (student.parentUids && Array.isArray(student.parentUids)) {
-          const status = attendanceToSave[student.uid]?.status;
-          const studentName = `${student.profile?.firstName || ''} ${student.profile?.lastName || ''}`.trim();
-          const statusLabel = status?.toUpperCase();
+        for (const student of changedStudents) {
+          if (student.parentUids && Array.isArray(student.parentUids)) {
+            const status = attendanceToSave[student.uid]?.status;
+            const studentName = `${student.profile?.firstName || ''} ${student.profile?.lastName || ''}`.trim();
+            const statusLabel = status?.toUpperCase();
 
-          for (const parentId of student.parentUids) {
-            const extraBody = status === "absent" ? " Please tap to provide a reason for the absence." : "";
-            sendNotification({
-              recipientId: parentId,
-              senderId: appUser.uid,
-              senderName: staffName,
-              type: "attendance",
-              title: `Attendance Alert: ${statusLabel}`,
-              body: `${studentName} was marked ${statusLabel} today, ${moment(selectedDate).format("MMM Do")}.${extraBody}`,
-              data: { studentId: student.uid, date: selectedDate, status }
-            });
+            for (const parentId of student.parentUids) {
+              const extraBody = status === "absent" ? " Please tap to provide a reason for the absence." : "";
+              sendNotification({
+                recipientId: parentId,
+                senderId: appUser.uid,
+                senderName: staffName,
+                type: "attendance",
+                title: `Attendance Alert: ${statusLabel}`,
+                body: `${studentName} was marked ${statusLabel} today, ${moment(selectedDate).format("MMM Do")}.${extraBody}`,
+                data: { studentId: student.uid, date: selectedDate, status }
+              });
+            }
           }
         }
-      }
 
-      setServerAttendance(attendanceToSave);
-      showToast({ message: "Attendance saved successfully", type: "success" });
+        setServerAttendance(attendanceToSave);
+        showToast({ message: "Attendance saved successfully", type: "success" });
+      }
     } catch (e: any) {
-      console.error("Save error:", e);
-      showToast({ message: `Failed to save attendance: ${e.message || 'Please check your connection.'}`, type: "error" });
+      if (isMounted.current) {
+        console.error("Save error:", e);
+        showToast({ message: `Failed to save attendance: ${e.message || 'Please check your connection.'}`, type: "error" });
+      }
     } finally {
-      setSaving(false);
+      if (isMounted.current) {
+        setSaving(false);
+      }
     }
   }, [classId, appUser, academicYear, term, isOfficialClassTeacher, selectedDate, localAttendance, serverAttendance, students, showToast]);
 

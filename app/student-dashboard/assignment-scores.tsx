@@ -37,6 +37,7 @@ import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
 import * as Animatable from "react-native-animatable";
 import moment from "moment";
+import RichTextEditor from "../../components/RichTextEditor";
 
 interface ScoreRecord {
   id: string;
@@ -48,7 +49,10 @@ interface ScoreRecord {
   studentName: string;
   responses?: Record<number, string>;
   questionScores?: Record<number, number>;
-  type: "mcq" | "short_answer";
+  type: "mcq" | "short_answer" | "rich-text";
+  contentHtml?: string;
+  feedback?: string;
+  note?: string; // Student's original comment
 }
 
 interface AssignmentDetails {
@@ -69,6 +73,13 @@ export default function AssignmentScores() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [assignmentMeta, setAssignmentMeta] = useState<Record<string, AssignmentDetails>>({});
   const [fetchingDetails, setFetchingDetails] = useState(false);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const lastVisible = useRef<any>(null);
   const hasMore = useRef(true);
@@ -116,23 +127,29 @@ export default function AssignmentScores() {
           snap = await getDocsFromServer(q);
         }
 
-        const data = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        })) as ScoreRecord[];
+        if (isMounted.current) {
+          const data = snap.docs.map((d) => ({
+            id: d.id,
+            ...(d.data() as any),
+          })) as ScoreRecord[];
 
-        if (isNextPage) setScores((prev) => [...prev, ...data]);
-        else setScores(data);
+          if (isNextPage) setScores((prev) => [...prev, ...data]);
+          else setScores(data);
 
-        lastVisible.current = snap.docs[snap.docs.length - 1];
-        hasMore.current = snap.docs.length === PAGE_SIZE;
-      } catch (e) {
-        console.error("Fetch Scores Error:", e);
-        showToast({ message: "Failed to load assignment scores.", type: "error" });
+          lastVisible.current = snap.docs[snap.docs.length - 1];
+          hasMore.current = snap.docs.length === PAGE_SIZE;
+        }
+      } catch (error) {
+        if (isMounted.current) {
+          console.error("Fetch Scores Error:", error);
+          showToast({ message: "Failed to load assignment scores.", type: "error" });
+        }
       } finally {
-        setLoading(false);
-        setRefreshing(false);
-        setLoadingMore(false);
+        if (isMounted.current) {
+          setLoading(false);
+          setRefreshing(false);
+          setLoadingMore(false);
+        }
       }
     },
     [appUser?.uid, cutoff],
@@ -155,17 +172,19 @@ export default function AssignmentScores() {
       try {
         const docRef = doc(db, "assignments", item.assignmentId);
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
+        if (isMounted.current && docSnap.exists()) {
           setAssignmentMeta(prev => ({
             ...prev,
             [item.assignmentId]: docSnap.data() as AssignmentDetails
           }));
         }
-      } catch (e) {
-        console.error("Error fetching assignment meta:", e);
-        showToast({ message: "Could not load assignment details.", type: "error" });
+      } catch (error) {
+        if (isMounted.current) {
+          console.error("Error fetching assignment meta:", error);
+          showToast({ message: "Could not load assignment details.", type: "error" });
+        }
       } finally {
-        setFetchingDetails(false);
+        if (isMounted.current) setFetchingDetails(false);
       }
     }
   };
@@ -224,7 +243,41 @@ export default function AssignmentScores() {
 
         {isExpanded && (
           <Animatable.View animation="fadeIn" duration={300} style={styles.detailsContainer}>
-            {fetchingDetails && !details ? (
+            {item.type === "rich-text" ? (
+              <View style={styles.reviewList}>
+                 {item.note ? (
+                  <View style={{ marginBottom: 20 }}>
+                    <Text style={styles.reviewHeader}>YOUR COMMENT</Text>
+                    <View style={styles.docViewWrapper}>
+                      <RichTextEditor
+                        initialContent={item.note}
+                        readOnly={true}
+                      />
+                    </View>
+                  </View>
+                ) : null}
+
+                <Text style={styles.reviewHeader}>SUBMITTED DOCUMENT</Text>
+                <View style={[styles.docViewWrapper, { minHeight: 400 }]}>
+                  <RichTextEditor
+                    initialContent={item.contentHtml || ""}
+                    readOnly={true}
+                  />
+                </View>
+
+                {item.feedback ? (
+                  <View style={{ marginTop: 20 }}>
+                    <Text style={[styles.reviewHeader, { color: COLORS.primary }]}>TEACHER'S FEEDBACK</Text>
+                    <View style={[styles.docViewWrapper, { borderColor: COLORS.primary + "40" }]}>
+                      <RichTextEditor
+                        initialContent={item.feedback}
+                        readOnly={true}
+                      />
+                    </View>
+                  </View>
+                ) : null}
+              </View>
+            ) : fetchingDetails && !details ? (
               <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 10 }} />
             ) : details ? (
               <View style={styles.reviewList}>
@@ -259,7 +312,14 @@ export default function AssignmentScores() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <View style={styles.headerContainer}>
@@ -358,6 +418,15 @@ const styles = StyleSheet.create({
     borderTopColor: '#F1F5F9',
   },
   standardInfo: { fontSize: 13, color: '#64748B', fontStyle: 'italic' },
+  docViewWrapper: {
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    minHeight: 150,
+    overflow: "hidden",
+    ...SHADOWS.small,
+  },
   reviewList: { gap: 15 },
   reviewHeader: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1, marginBottom: 5 },
   reviewItem: { backgroundColor: '#F8FAFC', padding: 15, borderRadius: 15, borderWidth: 1, borderColor: '#F1F5F9' },

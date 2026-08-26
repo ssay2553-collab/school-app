@@ -11,7 +11,6 @@ import {
   doc,
   getDoc,
   getCountFromServer,
-  getDocs
 } from "firebase/firestore";
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
@@ -29,16 +28,20 @@ import {
   RefreshControl,
   Modal,
   AppState,
-  Platform
+  Platform,
+  Alert
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
+import QuestionResponseItem from "../../components/student-dashboard/assignments/QuestionResponseItem";
+import AssignmentReviewModal from "../../components/admin-dashboard/AssignmentReviewModal";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
 import { getTeacherClasses } from "../../lib/classHelpers";
+import { sendNotification } from "../../src/services/notificationService";
 import moment from "moment";
 
 const { width } = Dimensions.get("window");
@@ -49,12 +52,14 @@ interface TeacherStats {
   email: string;
   profileImage?: string;
   totalAssignments: number;
+  pendingAssignmentsCount: number;
   totalGroups: number;
   totalTopics: number;
   lastActive?: any;
   onlineTimeMinutes: number; // Simulated or calculated if available
   usageScore: number; // Percentage
   assignedClasses: string[];
+  assignments: any[];
   groups: { name: string, className: string, memberCount: number }[];
   assignmentBreakdown: {
     subject: string;
@@ -76,6 +81,15 @@ export default function TeacherStatistics() {
   const [teachers, setTeachers] = useState<TeacherStats[]>([]);
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherStats | null>(null);
   const lastFetchRef = useRef<number>(0);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  const [reviewingAssignment, setReviewingAssignment] = useState<any | null>(null);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const CACHE_KEY = `teacher_stats_${SCHOOL_CONFIG.schoolId}`;
   const CACHE_EXPIRY = 12 * 60 * 60 * 1000; // 12 hours cache
@@ -118,7 +132,7 @@ export default function TeacherStatistics() {
       allAssignmentsSnap.docs.forEach((d: any) => {
         const data = d.data();
         if (!assignmentMap[data.teacherId]) assignmentMap[data.teacherId] = [];
-        assignmentMap[data.teacherId].push(data);
+        assignmentMap[data.teacherId].push({ id: d.id, ...data });
       });
 
       const groupMap: Record<string, any[]> = {};
@@ -168,6 +182,7 @@ export default function TeacherStatistics() {
 
         const teacherClasses = getTeacherClasses(t);
         const usageScore = Math.min(100, (tAssignments.length * 8) + (tGroups.length * 12) + (tTopics.length * 15));
+        const pendingAssignmentsCount = tAssignments.filter(a => a.status === 'pending').length;
 
         return {
           uid: t.uid,
@@ -175,12 +190,14 @@ export default function TeacherStatistics() {
           email: t.profile?.email || "",
           profileImage: t.profile?.profileImage,
           totalAssignments: tAssignments.length,
+          pendingAssignmentsCount,
           totalGroups: tGroups.length,
           totalTopics: tTopics.length,
           lastActive: t.lastActive,
           onlineTimeMinutes: t.onlineTimeMinutes || 0,
           usageScore,
           assignedClasses: teacherClasses.map((cid: string) => classMap[cid] || cid),
+          assignments: tAssignments,
           groups: tGroups.map(g => ({
             name: g.name || "Unnamed Group",
             className: classMap[g.classId] || g.classId || "General",
@@ -191,19 +208,23 @@ export default function TeacherStatistics() {
         };
       });
 
-      teacherList.sort((a, b) => b.usageScore - a.usageScore);
-      setTeachers(teacherList);
-      lastFetchRef.current = Date.now();
+      if (isMounted.current) {
+        teacherList.sort((a, b) => b.usageScore - a.usageScore);
+        setTeachers(teacherList);
+        lastFetchRef.current = Date.now();
 
-      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
-        timestamp: Date.now(),
-        data: teacherList
-      }));
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
+          timestamp: Date.now(),
+          data: teacherList
+        }));
+      }
     } catch (error) {
-      console.error("Error fetching teacher stats:", error);
+      if (isMounted.current) console.error("Error fetching teacher stats:", error);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [appUser, CACHE_KEY]);
 
@@ -214,12 +235,14 @@ export default function TeacherStatistics() {
         const { timestamp, data } = JSON.parse(cached);
         const age = Date.now() - timestamp;
 
-        setTeachers(data);
-        lastFetchRef.current = timestamp;
+        if (isMounted.current) {
+          setTeachers(data);
+          lastFetchRef.current = timestamp;
 
-        if (age < CACHE_EXPIRY) {
-          setLoading(false);
-          return true;
+          if (age < CACHE_EXPIRY) {
+            setLoading(false);
+            return true;
+          }
         }
       }
     } catch (e) {
@@ -251,6 +274,27 @@ export default function TeacherStatistics() {
 
     return () => subscription.remove();
   }, [fetchStatistics, appUser]);
+
+  const handleStatusUpdate = (updatedAssignment: any) => {
+    // Update local state for the teachers list
+    setTeachers(prev => prev.map(t => {
+      if (t.uid === updatedAssignment.teacherId) {
+        return {
+          ...t,
+          assignments: t.assignments.map(a => a.id === updatedAssignment.id ? updatedAssignment : a)
+        };
+      }
+      return t;
+    }));
+
+    // Update local state for the selected teacher if applicable
+    if (selectedTeacher?.uid === updatedAssignment.teacherId) {
+      setSelectedTeacher(prev => prev ? ({
+        ...prev,
+        assignments: prev.assignments.map(a => a.id === updatedAssignment.id ? updatedAssignment : a)
+      }) : null);
+    }
+  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -284,12 +328,12 @@ export default function TeacherStatistics() {
           <Text style={styles.statLabel}>Tasks</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statValue}>{item.totalTopics}</Text>
-          <Text style={styles.statLabel}>Topics</Text>
+          <Text style={[styles.statValue, item.pendingAssignmentsCount > 0 && { color: '#F59E0B' }]}>{item.pendingAssignmentsCount}</Text>
+          <Text style={styles.statLabel}>Pending</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={styles.statValue}>{item.totalGroups}</Text>
-          <Text style={styles.statLabel}>Groups</Text>
+          <Text style={styles.statValue}>{item.totalTopics}</Text>
+          <Text style={styles.statLabel}>Topics</Text>
         </View>
       </View>
 
@@ -326,7 +370,14 @@ export default function TeacherStatistics() {
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[primary, "#1E293B"]} style={styles.headerGradient}>
         <View style={styles.headerTitleRow}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
+            style={styles.backBtn}
+          >
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Teacher Analytics</Text>
@@ -383,18 +434,26 @@ export default function TeacherStatistics() {
                 )}
               </View>
 
-              <Text style={styles.sectionTitle}>Assignment Distribution</Text>
+              <Text style={styles.sectionTitle}>Assignments & Approval</Text>
               <View style={styles.breakdownList}>
-                {selectedTeacher?.assignmentBreakdown && selectedTeacher.assignmentBreakdown.length > 0 ? (
-                  selectedTeacher.assignmentBreakdown.map((item, idx) => (
+                {selectedTeacher?.assignments && selectedTeacher.assignments.length > 0 ? (
+                  selectedTeacher.assignments.map((item, idx) => (
                     <View key={idx} style={styles.breakdownItem}>
                       <View style={styles.breakdownInfo}>
-                        <Text style={styles.breakdownClass}>{item.className}</Text>
-                        <Text style={styles.breakdownSubject}>{item.subject}</Text>
+                        <Text style={styles.breakdownClass}>{item.title}</Text>
+                        <Text style={styles.breakdownSubject}>{item.className || item.classId} • {item.subjectId || item.subject}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: item.status === 'approved' ? '#10B98120' : item.status === 'rejected' ? '#EF444420' : '#F59E0B20' }]}>
+                          <Text style={[styles.statusText, { color: item.status === 'approved' ? '#10B981' : item.status === 'rejected' ? '#EF4444' : '#F59E0B' }]}>
+                            {item.status ? item.status.toUpperCase() : 'PENDING'}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={[styles.countBadge, { backgroundColor: secondary + "20" }]}>
-                        <Text style={[styles.countText, { color: secondary }]}>{item.count} Tasks</Text>
-                      </View>
+                      <TouchableOpacity
+                        style={[styles.reviewBtn, { borderColor: primary }]}
+                        onPress={() => setReviewingAssignment(item)}
+                      >
+                        <Text style={[styles.reviewBtnText, { color: primary }]}>Review</Text>
+                      </TouchableOpacity>
                     </View>
                   ))
                 ) : (
@@ -456,6 +515,13 @@ export default function TeacherStatistics() {
           </View>
         </View>
       </Modal>
+
+      <AssignmentReviewModal
+        assignment={reviewingAssignment}
+        visible={!!reviewingAssignment}
+        onClose={() => setReviewingAssignment(null)}
+        onStatusUpdate={handleStatusUpdate}
+      />
     </SafeAreaView>
   );
 }
@@ -713,6 +779,28 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 12,
     fontWeight: "800",
+  },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 6,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  reviewBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginLeft: 10,
+  },
+  reviewBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   noDataBox: {
     padding: 20,

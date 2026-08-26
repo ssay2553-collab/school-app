@@ -1,6 +1,6 @@
 import { collection, query, where, onSnapshot, getDocsFromServer } from "firebase/firestore";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -61,6 +61,13 @@ export default function AttendanceOverview() {
   });
   const [teachers, setTeachers] = useState<Record<string, { uid: string, name: string }>>({});
   const [sendingReminders, setSendingReminders] = useState(false);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const isDesktop = windowWidth > 1000;
   const numColumns = isDesktop ? 4 : (windowWidth > 600 ? 2 : 1);
@@ -77,7 +84,9 @@ export default function AttendanceOverview() {
     if (!appUser) return;
     const q = collection(db, "classes");
     return onSnapshot(q, (snap) => {
-      setClasses(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+      if (isMounted.current) {
+        setClasses(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+      }
     });
   }, [appUser]);
 
@@ -89,7 +98,9 @@ export default function AttendanceOverview() {
       where("status", "in", ["active", "pending_activation"])
     );
     return onSnapshot(q, (snap) => {
-      setStudents(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+      if (isMounted.current) {
+        setStudents(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+      }
     });
   }, [appUser]);
 
@@ -100,7 +111,9 @@ export default function AttendanceOverview() {
       where("date", "==", selectedDate)
     );
     return onSnapshot(q, (snap) => {
-      setAttendance(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+      if (isMounted.current) {
+        setAttendance(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })));
+      }
     });
   }, [appUser, selectedDate]);
 
@@ -176,10 +189,12 @@ export default function AttendanceOverview() {
       };
     });
 
-    setClassStats(sortedStats);
-    setTotals({ schoolTotal: globalStudentTotal, schoolPresent: globalPresent, schoolAbsent: globalAbsent });
-    setLoading(false);
-    setRefreshing(false);
+    if (isMounted.current) {
+      setClassStats(sortedStats);
+      setTotals({ schoolTotal: globalStudentTotal, schoolPresent: globalPresent, schoolAbsent: globalAbsent });
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [classes, students, attendance, selectedDate]);
 
 
@@ -197,12 +212,15 @@ export default function AttendanceOverview() {
           tMap[classId] = { uid: doc.id, name: data.profile?.firstName || doc.id };
         });
       });
-      setTeachers(tMap);
+      if (isMounted.current) {
+        setTeachers(tMap);
+      }
     });
     return () => unsub();
   }, []);
 
   const sendReminders = async () => {
+    if (sendingReminders || !isMounted.current) return;
     setSendingReminders(true);
     let count = 0;
     try {
@@ -221,16 +239,23 @@ export default function AttendanceOverview() {
           count++;
         }
       }
-      alert(`Reminders sent to ${count} teachers.`);
+      if (isMounted.current) {
+        alert(`Reminders sent to ${count} teachers.`);
+      }
     } catch (e) {
-      console.error(e);
-      alert("Failed to send some reminders.");
+      if (isMounted.current) {
+        console.error(e);
+        alert("Failed to send some reminders.");
+      }
     } finally {
-      setSendingReminders(false);
+      if (isMounted.current) {
+        setSendingReminders(false);
+      }
     }
   };
 
   const onRefresh = async () => {
+    if (refreshing || !isMounted.current) return;
     setRefreshing(true);
     try {
       // Force fresh data from server for critical checks if needed,
@@ -238,9 +263,9 @@ export default function AttendanceOverview() {
       // To force immediate refresh from server:
       await getDocsFromServer(query(collection(db, "attendance"), where("date", "==", selectedDate)));
     } catch (e) {
-      console.error(e);
+      if (isMounted.current) console.error(e);
     } finally {
-      setRefreshing(false);
+      if (isMounted.current) setRefreshing(false);
     }
   };
 
@@ -263,7 +288,14 @@ export default function AttendanceOverview() {
         >
           <View style={[styles.headerContent, isDesktop && styles.maxContainer]}>
             <View style={styles.headerTop}>
-              <TouchableOpacity onPress={() => router.back()} style={styles.miniBtn}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (isNavigating.current) return;
+                  isNavigating.current = true;
+                  router.back();
+                }}
+                style={styles.miniBtn}
+              >
                 <SVGIcon name="arrow-back" size={20} color="#fff" />
               </TouchableOpacity>
               <View style={styles.titleCenter}>
@@ -347,16 +379,21 @@ export default function AttendanceOverview() {
                 <TouchableOpacity 
                   style={[styles.classCard, { backgroundColor: cardColor + '05' }]}
                   activeOpacity={0.9}
-                  onPress={() => router.push({
-                    pathname: "/admin-dashboard/attendance-details",
-                    params: {
-                      classId: item.id,
-                      className: item.name,
-                      date: selectedDate,
-                      academicYear: item.academicYear || acadConfig.academicYear,
-                      term: item.term || acadConfig.currentTerm
-                    }
-                  })}
+                  onPress={() => {
+                    if (isNavigating.current) return;
+                    isNavigating.current = true;
+                    router.push({
+                      pathname: "/admin-dashboard/attendance-details",
+                      params: {
+                        classId: item.id,
+                        className: item.name,
+                        date: selectedDate,
+                        academicYear: item.academicYear || acadConfig.academicYear,
+                        term: item.term || acadConfig.currentTerm
+                      }
+                    });
+                    setTimeout(() => { isNavigating.current = false; }, 500);
+                  }}
                 >
                   <View style={[styles.cardHeaderStrip, { backgroundColor: cardColor }]}>
                     <SVGIcon name="school" size={18} color="#fff" />

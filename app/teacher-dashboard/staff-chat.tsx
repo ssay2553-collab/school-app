@@ -21,7 +21,6 @@ import {
     Keyboard,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -32,6 +31,7 @@ import {
     Dimensions,
     BackHandler,
 } from "react-native";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
@@ -86,6 +86,7 @@ export default function StaffChat() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [stage, setStage] = useState<"list" | "chat">("list");
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [filteredStaff, setFilteredStaff] = useState<StaffMember[]>([]);
@@ -107,6 +108,19 @@ export default function StaffChat() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const isFirstLoad = useRef(true);
   const messagesLenRef = useRef(0);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (soundRef.current) soundRef.current.unloadAsync();
+      if (webStream) {
+        webStream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, [webStream]);
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
@@ -130,6 +144,8 @@ export default function StaffChat() {
       return;
     }
 
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -190,12 +206,14 @@ export default function StaffChat() {
             } as StaffMember;
           })
           .filter((s) => s.uid !== appUser?.uid);
-        setStaff(list);
-        setFilteredStaff(list);
+        if (isMounted.current) {
+          setStaff(list);
+          setFilteredStaff(list);
+        }
       } catch (e) {
-        console.error("Error fetching staff:", e);
+        if (isMounted.current) console.error("Error fetching staff:", e);
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
     fetchStaff();
@@ -225,6 +243,7 @@ export default function StaffChat() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
+      if (!isMounted.current) return;
       const msgs = snap.docs
         .map((d) => ({ id: d.id, ...(d.data() as any) }) as Message)
         .reverse();
@@ -321,6 +340,7 @@ export default function StaffChat() {
         await uploadBytes(audioRef, blob);
         if ((blob as any).close) (blob as any).close();
         const audioUrl = await getDownloadURL(audioRef);
+        if (!isMounted.current) return;
         await addDoc(collection(db, "directMessages", chatId!, "messages"), {
           type: "audio",
           fileUrl: audioUrl,
@@ -328,7 +348,7 @@ export default function StaffChat() {
           createdAt: serverTimestamp(),
         });
 
-        if (selectedStaff) {
+        if (selectedStaff && isMounted.current) {
           await sendNotification({
             recipientId: selectedStaff.uid,
             senderId: appUser!.uid,
@@ -340,14 +360,16 @@ export default function StaffChat() {
           });
         }
 
-        playSound("sent");
-        setRecording(null);
-        if (webStream) {
-          webStream.getTracks().forEach((t) => t.stop());
-          setWebStream(null);
+        if (isMounted.current) {
+          playSound("sent");
+          setRecording(null);
+          if (webStream) {
+            webStream.getTracks().forEach((t) => t.stop());
+            setWebStream(null);
+          }
+          setWebRecorder(null);
+          setUploading(false);
         }
-        setWebRecorder(null);
-        setUploading(false);
         return;
       }
 
@@ -362,6 +384,7 @@ export default function StaffChat() {
       if ((blob as any).close) (blob as any).close();
       const audioUrl = await getDownloadURL(audioRef);
 
+      if (!isMounted.current) return;
       await addDoc(collection(db, "directMessages", chatId!, "messages"), {
         type: "audio",
         fileUrl: audioUrl,
@@ -369,7 +392,7 @@ export default function StaffChat() {
         createdAt: serverTimestamp(),
       });
 
-      if (selectedStaff) {
+      if (selectedStaff && isMounted.current) {
         await sendNotification({
           recipientId: selectedStaff.uid,
           senderId: appUser!.uid,
@@ -381,12 +404,14 @@ export default function StaffChat() {
         });
       }
 
-      playSound("sent");
+      if (isMounted.current) playSound("sent");
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to send voice message", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to send voice message", type: "error" });
+      }
     } finally {
-      setUploading(false);
+      if (isMounted.current) setUploading(false);
     }
   };
 
@@ -521,7 +546,7 @@ export default function StaffChat() {
             </Animatable.View>
           )}
 
-          <View style={styles.inputArea}>
+          <View style={[styles.inputArea, { paddingBottom: Math.max(insets.bottom, 15) }]}>
             {uploading && (
               <ActivityIndicator
                 size="small"

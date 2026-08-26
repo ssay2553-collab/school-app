@@ -36,6 +36,7 @@ import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { useAdmissionCharges, Student } from "../../hooks/admin-dashboard/useAdmissionCharges";
+import { useRef, useEffect } from "react";
 
 const { width } = Dimensions.get("window");
 
@@ -103,6 +104,13 @@ export default function AdmissionCharges() {
   const { showToast } = useToast();
   const router = useRouter();
   const acadConfig = useAcademicConfig();
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   if (acadConfig.loading || !appUser) {
     return (
@@ -162,11 +170,11 @@ export default function AdmissionCharges() {
   }, [students, searchQuery]);
 
   const handleDeletePayment = (payment: any) => {
-    if (!selectedStudent) return;
+    if (!selectedStudent || !isMounted.current) return;
 
     const confirmDeletion = async () => {
       const success = await deletePayment(selectedStudent, payment);
-      if (success) setPaymentModalVisible(false);
+      if (success && isMounted.current) setPaymentModalVisible(false);
     };
 
     if (Platform.OS === "web") {
@@ -212,7 +220,14 @@ export default function AdmissionCharges() {
           style={styles.headerTop}
         >
           <View style={styles.navBar}>
-            <TouchableOpacity onPress={() => router.push("/admin-dashboard/StudentCharges")} style={styles.headerIconBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                router.push("/admin-dashboard/StudentCharges");
+              }}
+              style={styles.headerIconBtn}
+            >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={styles.titleCenter}>
@@ -474,6 +489,8 @@ export default function AdmissionCharges() {
                       key={i}
                       style={styles.transactionTile}
                       onPress={() => {
+                        if (isNavigating.current) return;
+                        isNavigating.current = true;
                         setPaymentModalVisible(false);
                         router.push({
                           pathname: "/shared/receipt-view",
@@ -485,6 +502,7 @@ export default function AdmissionCharges() {
                             term: h.term
                           }
                         });
+                        setTimeout(() => { isNavigating.current = false; }, 500);
                       }}
                       onLongPress={() => handleDeletePayment(h)}
                     >

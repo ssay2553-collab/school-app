@@ -22,11 +22,18 @@ import { sendNotification } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
+import { useRef } from "react";
 
 export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, initialTerm?: string) => {
     const { appUser } = useAuth();
     const { showToast } = useToast();
     const acadConfig = useAcademicConfig();
+    const isMounted = useRef(true);
+
+    useEffect(() => {
+        isMounted.current = true;
+        return () => { isMounted.current = false; };
+    }, []);
 
     const isSuperAdmin = [
         "admin", "proprietor", "proprietress", "manager", "headmaster",
@@ -95,7 +102,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             return;
         }
         const unsub = onSnapshot(doc(db, "users", selectedStudentUid), (snap) => {
-            if (snap.exists()) {
+            if (snap.exists() && isMounted.current) {
                 setSelectedStudentWalletBalance((snap.data() as any).walletBalance || 0);
             }
         });
@@ -111,12 +118,14 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                 name: (d.data() as any).name || d.id,
             }));
             list = sortClasses(list);
-            setClasses(list);
-            if (list.length > 0 && !selectedClassId) setSelectedClassId(list[0].id);
+            if (isMounted.current) {
+                setClasses(list);
+                if (list.length > 0 && !selectedClassId) setSelectedClassId(list[0].id);
+            }
         } catch (error) {
-            console.error(error);
+            if (isMounted.current) console.error(error);
         } finally {
-            setLoading(false);
+            if (isMounted.current) setLoading(false);
         }
     };
 
@@ -146,16 +155,18 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                     };
                 })
                 .sort((a, b) => a.name.localeCompare(b.name));
-            setStudents(list);
-            // Auto-select first student only for admins to avoid race conditions for parents
-            const isAdmin = appUser?.role === 'admin' || isSuperAdmin || canManageFees;
-            if (!selectedStudentUid && list.length > 0 && isAdmin) {
-                setSelectedStudentUid(list[0].uid);
+            if (isMounted.current) {
+                setStudents(list);
+                // Auto-select first student only for admins to avoid race conditions for parents
+                const isAdmin = appUser?.role === 'admin' || isSuperAdmin || canManageFees;
+                if (!selectedStudentUid && list.length > 0 && isAdmin) {
+                    setSelectedStudentUid(list[0].uid);
+                }
             }
         } catch (error) {
-            console.error(error);
+            if (isMounted.current) console.error(error);
         } finally {
-            setFetchingStudents(false);
+            if (isMounted.current) setFetchingStudents(false);
         }
     };
 
@@ -177,7 +188,9 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
         const recordId = `${selectedStudentUid}_${cleanYear}_${cleanTerm}`;
 
         const unsubRecord = onSnapshot(doc(db, "studentFeeRecords", recordId), (snap) => {
-            setRecord(snap.exists() ? snap.data() : null);
+            if (isMounted.current) {
+                setRecord(snap.exists() ? snap.data() : null);
+            }
         });
 
         let q;
@@ -188,8 +201,10 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             );
         } else {
             if (!selectedYear || !selectedTerm) {
-                setCollectionTransactions([]);
-                setFetchingRecord(false);
+                if (isMounted.current) {
+                    setCollectionTransactions([]);
+                    setFetchingRecord(false);
+                }
                 return;
             }
             q = query(
@@ -201,9 +216,11 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
         }
 
         const unsubTransactions = onSnapshot(q, (snap) => {
-            const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-            setCollectionTransactions(list);
-            setFetchingRecord(false);
+            if (isMounted.current) {
+                const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                setCollectionTransactions(list);
+                setFetchingRecord(false);
+            }
         });
 
         return () => {

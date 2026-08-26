@@ -198,6 +198,13 @@ export default function AdminGalleryUpload() {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sharingId, setSharingId] = useState<string | null>(null);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -228,6 +235,7 @@ export default function AdminGalleryUpload() {
       fLimit(100),
     );
     const unsubscribe = onSnapshot(q, (snap) => {
+      if (!isMounted.current) return;
       setGallery(
         snap.docs.map((d) => ({
           id: d.id,
@@ -283,12 +291,15 @@ export default function AdminGalleryUpload() {
 
       uploadTask.on(
         "state_changed",
-        (snapshot) =>
-          setUploadProgress(
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
-          ),
+        (snapshot) => {
+          if (isMounted.current) {
+            setUploadProgress(
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100,
+            );
+          }
+        },
         () => {
-          setIsUploading(false);
+          if (isMounted.current) setIsUploading(false);
           // @ts-ignore
           if (typeof mainBlob.close === 'function') mainBlob.close();
         },
@@ -303,15 +314,19 @@ export default function AdminGalleryUpload() {
             createdAt: serverTimestamp(),
           });
 
-          setSelectedFile(null);
-          setIsUploading(false);
+          if (isMounted.current) {
+            setSelectedFile(null);
+            setIsUploading(false);
+          }
           // @ts-ignore
           if (typeof mainBlob.close === 'function') mainBlob.close();
         },
       );
     } catch (e) {
-      showToast({ message: "Upload Error", type: "error" });
-      setIsUploading(false);
+      if (isMounted.current) {
+        showToast({ message: "Upload Error", type: "error" });
+        setIsUploading(false);
+      }
     }
   };
 

@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRef } from "react";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -20,6 +21,7 @@ import { VIBE } from "../../constants/admin-dashboard/ManageFeesStyles";
 export default function StudentCharges() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const isNavigating = useRef(false);
   const primaryBrand = SCHOOL_CONFIG.primaryColor || COLORS.primary || VIBE.primary;
   const secondaryBrand = SCHOOL_CONFIG.secondaryColor || primaryBrand;
 
@@ -83,7 +85,11 @@ export default function StudentCharges() {
         >
           <View style={styles.navBar}>
             <TouchableOpacity
-              onPress={() => router.push("/admin-dashboard/")}
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                router.push("/admin-dashboard/");
+              }}
               style={styles.headerIconBtn}
             >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
@@ -108,7 +114,12 @@ export default function StudentCharges() {
             >
               <TouchableOpacity
                 style={styles.card}
-                onPress={() => router.push(item.route as any)}
+                onPress={() => {
+                  if (isNavigating.current) return;
+                  isNavigating.current = true;
+                  router.push(item.route as any);
+                  setTimeout(() => { isNavigating.current = false; }, 500);
+                }}
               >
                 <View
                   style={[styles.iconBox, { backgroundColor: item.color + "15" }]}

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { collection, query, where, getDocsFromServer } from "firebase/firestore";
 import moment from "moment";
@@ -64,6 +64,12 @@ export const useFinancialData = (acadConfig: any, showToast: any) => {
     discountCount: 0,
   });
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const loadSummaries = useCallback(async (forceRefresh = false) => {
     try {
@@ -71,7 +77,7 @@ export const useFinancialData = (acadConfig: any, showToast: any) => {
 
       if (!forceRefresh) {
         const cached = await AsyncStorage.getItem(CACHE_KEY);
-        if (cached) {
+        if (cached && isMounted.current) {
           const { data, timestamp } = JSON.parse(cached);
           const isExpired = Date.now() - timestamp > CACHE_DURATION;
 
@@ -447,20 +453,26 @@ export const useFinancialData = (acadConfig: any, showToast: any) => {
       const finalResults = Object.values(catResults).map(cat => ({ ...cat, allPeriodsTotal: cat.term.total }));
       const finalDailyTotals = Object.values(dailyTotalsMap).sort((a, b) => b.date.localeCompare(a.date));
 
-      setCategories(finalResults);
-      setDailyTotals(finalDailyTotals);
-      setLedgerItems(finalLedger);
-      setFeeStats(finalStats);
+      if (isMounted.current) {
+        setCategories(finalResults);
+        setDailyTotals(finalDailyTotals);
+        setLedgerItems(finalLedger);
+        setFeeStats(finalStats);
 
-      const cacheData = { categories: finalResults, dailyTotals: finalDailyTotals, ledgerItems: finalLedger, feeStats: finalStats };
-      await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: cacheData, timestamp: Date.now() }));
-      setLastUpdated(Date.now());
+        const cacheData = { categories: finalResults, dailyTotals: finalDailyTotals, ledgerItems: finalLedger, feeStats: finalStats };
+        await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({ data: cacheData, timestamp: Date.now() }));
+        setLastUpdated(Date.now());
+      }
     } catch (e) {
-      console.error("Error loading summaries:", e);
-      showToast({ message: "Failed to load financial summaries.", type: "error" });
+      if (isMounted.current) {
+        console.error("Error loading summaries:", e);
+        showToast({ message: "Failed to load financial summaries.", type: "error" });
+      }
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [acadConfig, showToast]);
 

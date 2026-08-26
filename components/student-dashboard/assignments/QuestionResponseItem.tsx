@@ -18,6 +18,7 @@ interface QuestionResponseItemProps {
   type: string;
   answer: any;
   setAnswer: (val: any) => void;
+  readOnly?: boolean;
 }
 
 const QuestionResponseItem = memo(({
@@ -25,7 +26,8 @@ const QuestionResponseItem = memo(({
   qIdx,
   type,
   answer,
-  setAnswer
+  setAnswer,
+  readOnly = false
 }: QuestionResponseItemProps) => {
   const isPreschool = type === "preschool";
   const isMathematics = type === "mathematics";
@@ -46,11 +48,16 @@ const QuestionResponseItem = memo(({
     : [];
 
   const handleAnswerChange = (val: any) => {
-    const newVal = typeof val === 'string' ? [{ type: 'text', value: val, id: 'opt_' + Math.random() }] : val;
-    if (q.showWorking && isMathematics) {
-      setAnswer({ answer: newVal, working: workingValue });
+    if (isMathematics) {
+      const newVal = typeof val === 'string' ? [{ type: 'text', value: val, id: 'opt_' + Math.random() }] : val;
+      if (q.showWorking) {
+        setAnswer({ answer: newVal, working: workingValue });
+      } else {
+        setAnswer(newVal);
+      }
     } else {
-      setAnswer(newVal);
+      // Standard MCQ, Short Answer, or Preschool - keep as simple value (usually string)
+      setAnswer(val);
     }
   };
 
@@ -113,6 +120,7 @@ const QuestionResponseItem = memo(({
                   key={oIdx}
                   style={[styles.worksheetOption, isSelected && styles.worksheetOptionSelected, isPreschool && { minWidth: 50, height: 50 }]}
                   onPress={() => handleAnswerChange(opt)}
+                  disabled={readOnly}
                 >
                   <SVGIcon name={opt} size={isPreschool ? 36 : 28} />
                 </TouchableOpacity>
@@ -140,8 +148,8 @@ const QuestionResponseItem = memo(({
       ]}>{qIdx + 1}. {q.text}</Text>
 
       {q.visualGroup && q.visualGroup.length > 0 && (
-        <View style={styles.visualContainer}>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 15 }}>
+        <View style={[styles.visualContainer, isMathematics && { padding: 10 }]}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: isMathematics ? 0 : 15 }}>
             {q.visualGroup.map((item: any, gIdx: number) => {
               const baseSize = isPreschool ? 1.5 : 1;
               const iconSize = (item.size === 'large' ? 60 : item.size === 'small' ? 30 : 45) * baseSize;
@@ -358,6 +366,7 @@ const QuestionResponseItem = memo(({
               label="Step-by-Step Working"
               placeholder="Show your working steps here..."
               minHeight={150}
+              readOnly={readOnly}
             />
           )}
 
@@ -368,6 +377,7 @@ const QuestionResponseItem = memo(({
               label="Solution"
               placeholder="Enter solution..."
               minHeight={100}
+              readOnly={readOnly}
             />
           )}
         </View>
@@ -391,6 +401,7 @@ const QuestionResponseItem = memo(({
                   key={oIdx}
                   style={[styles.optionBtn, isSelected && styles.optionBtnSelected, isPreschool && { padding: 20 }]}
                   onPress={() => handleAnswerChange(opt)}
+                  disabled={readOnly}
                 >
                   <View style={[styles.radio, isSelected && styles.radioSelected, isPreschool && { width: 26, height: 26, borderRadius: 13 }]} />
                   {isVisual ? (
@@ -411,11 +422,12 @@ const QuestionResponseItem = memo(({
                 styles.answerInput,
                 isPreschool && { fontSize: 22, minHeight: 80, fontWeight: '800' }
               ]}
-              placeholder="Type your answer here..."
+              placeholder={readOnly ? "No answer provided" : "Type your answer here..."}
               placeholderTextColor="#94A3B8"
               multiline={type !== "preschool"}
               value={answer}
               onChangeText={setAnswer}
+              editable={!readOnly}
             />
           )
         )}

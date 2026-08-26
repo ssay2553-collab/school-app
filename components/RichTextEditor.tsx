@@ -21,7 +21,8 @@ interface Props {
   initialContent?: string;
   onChange?: (html: string) => void;
   readOnly?: boolean;
-  enableTeacherTools?: boolean; // 🔥 NEW
+  enableTeacherTools?: boolean;
+  placeholder?: string;
 }
 
 const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
@@ -31,6 +32,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
       onChange,
       readOnly = false,
       enableTeacherTools = false,
+      placeholder = "",
     },
     ref,
   ) => {
@@ -38,7 +40,13 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     const resolver = useRef<((html: string) => void) | null>(null);
     const lastHtml = useRef(initialContent);
     const isFirstMount = useRef(true);
+    const isMounted = useRef(true);
     const [webViewHeight, setWebViewHeight] = useState(initialContent ? 1800 : 1500);
+
+    useEffect(() => {
+      isMounted.current = true;
+      return () => { isMounted.current = false; };
+    }, []);
 
     const send = useCallback((script: string) => {
       if (Platform.OS === "web") {
@@ -121,12 +129,19 @@ button:active { background: #eee; }
   border-bottom: 2px dotted #2563eb;
   cursor: pointer;
 }
+#editor:empty:before {
+  content: attr(data-placeholder);
+  color: #94A3B8;
+  font-style: italic;
+}
 </style>
 </head>
 
 <body>
 
 <div class="toolbar">
+<button onclick="cmd('formatBlock', 'H1')">H1</button>
+<button onclick="cmd('formatBlock', 'H2')">H2</button>
 <button onclick="cmd('bold')"><b>B</b></button>
 <button onclick="cmd('italic')"><i>I</i></button>
 <button onclick="cmd('underline')"><u>U</u></button>
@@ -138,6 +153,9 @@ button:active { background: #eee; }
 <button onclick="cmd('justifyCenter')">C</button>
 <button onclick="cmd('justifyRight')">R</button>
 
+<button onclick="setTextColor()">🎨</button>
+<button onclick="cmd('removeFormat')">✕</button>
+
 ${
   enableTeacherTools
     ? `
@@ -148,7 +166,7 @@ ${
 }
 </div>
 
-<div id="editor" contenteditable="${!readOnly}"></div>
+<div id="editor" contenteditable="${!readOnly}" data-placeholder="${placeholder}"></div>
 
 <script>
 const editor = document.getElementById("editor");
@@ -156,10 +174,15 @@ const editor = document.getElementById("editor");
 // Initialize content ONCE from the variable captured at memoization time
 editor.innerHTML = ${JSON.stringify(initialContent)};
 
-function cmd(c){
-  document.execCommand(c,false,null);
+function cmd(c, v = null){
+  document.execCommand(c, false, v);
   sendUpdate();
   sendHeight();
+}
+
+function setTextColor() {
+  const color = prompt("Enter color (e.g. red, #00ff00):");
+  if (color) cmd('foreColor', color);
 }
 
 function highlightText() {
@@ -265,6 +288,7 @@ if(!window.ReactNativeWebView){
 `, [readOnly, enableTeacherTools]); // DO NOT include initialContent here, it causes reload on typing
 
     const onMsg = useCallback((data: any) => {
+      if (!isMounted.current) return;
       try {
         const msg = JSON.parse(typeof data === 'string' ? data : JSON.stringify(data));
 

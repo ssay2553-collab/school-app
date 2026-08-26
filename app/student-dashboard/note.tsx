@@ -26,6 +26,7 @@ import {
   TouchableOpacity,
   View,
   Dimensions,
+  BackHandler,
 } from "react-native";
 import { useRouter } from "expo-router";
 import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEditor";
@@ -34,6 +35,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useToast } from "../../contexts/ToastContext";
+
 
 const NOTES_KEY = "@student_notes_v1";
 
@@ -56,7 +58,7 @@ export default function StudentNoteScreen() {
   const router = useRouter();
   const { appUser, loading: authLoading } = useAuth();
   const { showToast } = useToast();
-  const mountedRef = useRef(true);
+  const isMounted = useRef(true);
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -67,6 +69,7 @@ export default function StudentNoteScreen() {
   const [search, setSearch] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const editorRef = useRef<RichTextEditorRef>(null);
+  const isNavigating = useRef(false);
 
   /* ---------------------------------------------
      Load & Persist Notes
@@ -152,24 +155,26 @@ export default function StudentNoteScreen() {
           (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt - a.createdAt,
       );
 
-      await persistLocalNotes(merged);
+      if (isMounted.current) {
+        await persistLocalNotes(merged);
+      }
     } catch (e) {
-      console.warn("fetchFromFirestoreAndMerge", e);
+      if (isMounted.current) console.warn("fetchFromFirestoreAndMerge", e);
     }
   }, [appUser, persistLocalNotes]);
 
   useEffect(() => {
-    mountedRef.current = true;
+    isMounted.current = true;
     (async () => {
       await loadLocalNotes();
       await fetchFromFirestoreAndMerge();
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     })();
     const interval = setInterval(() => {
       fetchFromFirestoreAndMerge();
     }, 15000);
     return () => {
-      mountedRef.current = false;
+      isMounted.current = false;
       clearInterval(interval);
     };
   }, [loadLocalNotes, fetchFromFirestoreAndMerge]);
@@ -220,17 +225,23 @@ export default function StudentNoteScreen() {
       });
 
       const syncedNext = next.map(n => n.id === newNote.id ? { ...n, docId: docRef.id, synced: true } : n);
-      await persistLocalNotes(syncedNext);
-      showToast({ message: "Note saved successfully!", type: "success" });
+      if (isMounted.current) {
+        await persistLocalNotes(syncedNext);
+        showToast({ message: "Note saved successfully!", type: "success" });
+      }
     } catch (e) {
-      console.warn("Firestore sync failed:", e);
-      showToast({ message: "Note saved locally, but sync failed.", type: "info" });
+      if (isMounted.current) {
+        console.warn("Firestore sync failed:", e);
+        showToast({ message: "Note saved locally, but sync failed.", type: "info" });
+      }
     }
 
-    setTitle("");
-    setContent("");
-    setEditingId(null);
-    setIsAdding(false);
+    if (isMounted.current) {
+      setTitle("");
+      setContent("");
+      setEditingId(null);
+      setIsAdding(false);
+    }
   };
 
   const updateLocalNote = async (id: string, htmlContent: string) => {
@@ -258,18 +269,24 @@ export default function StudentNoteScreen() {
         });
 
         const syncedNext = next.map(n => n.id === id ? { ...n, synced: true } : n);
-        await persistLocalNotes(syncedNext);
-        showToast({ message: "Note updated successfully!", type: "success" });
+        if (isMounted.current) {
+          await persistLocalNotes(syncedNext);
+          showToast({ message: "Note updated successfully!", type: "success" });
+        }
       } catch (e) {
-        console.warn("Firestore update sync failed:", e);
-        showToast({ message: "Note updated locally, but sync failed.", type: "info" });
+        if (isMounted.current) {
+          console.warn("Firestore update sync failed:", e);
+          showToast({ message: "Note updated locally, but sync failed.", type: "info" });
+        }
       }
     }
 
-    setEditingId(null);
-    setTitle("");
-    setContent("");
-    setIsAdding(false);
+    if (isMounted.current) {
+      setEditingId(null);
+      setTitle("");
+      setContent("");
+      setIsAdding(false);
+    }
   };
 
   const deleteLocalNote = async (id: string) => {
@@ -436,6 +453,8 @@ export default function StudentNoteScreen() {
                   <View style={styles.footerActions}>
                      <TouchableOpacity
                       onPress={() => {
+                        if (isNavigating.current) return;
+                        isNavigating.current = true;
                         router.push({
                           pathname: "/student-dashboard/submit-note",
                           params: {
@@ -444,6 +463,7 @@ export default function StudentNoteScreen() {
                             prefillContent: item.content
                           }
                         });
+                        setTimeout(() => { isNavigating.current = false; }, 500);
                       }}
                       style={{ marginRight: 15 }}
                     >

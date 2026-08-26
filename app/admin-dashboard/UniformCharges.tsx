@@ -35,6 +35,7 @@ import { useUniformCharges, Student } from "../../hooks/admin-dashboard/useUnifo
 
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 import { styles as sharedStyles, VIBE as sharedVibe } from "../../constants/admin-dashboard/ManageFeesStyles";
+import { useRef, useEffect } from "react";
 
 const VIBE = {
   ...sharedVibe,
@@ -55,6 +56,13 @@ export default function UniformCharges() {
   const { showToast } = useToast();
   const router = useRouter();
   const acadConfig = useAcademicConfig();
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   if (acadConfig.loading || !appUser) {
     return (
@@ -118,6 +126,8 @@ export default function UniformCharges() {
         <TouchableOpacity
           style={sharedStyles.financeCard}
           onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
             router.push({
               pathname: "/shared/receipt-view",
               params: {
@@ -128,6 +138,7 @@ export default function UniformCharges() {
                 term: item.term
               }
             });
+            setTimeout(() => { isNavigating.current = false; }, 500);
           }}
         >
           <View style={sharedStyles.cardContent}>
@@ -202,7 +213,14 @@ export default function UniformCharges() {
           style={sharedStyles.headerTop}
         >
           <View style={sharedStyles.navBar}>
-            <TouchableOpacity onPress={() => router.push("/admin-dashboard/StudentCharges")} style={sharedStyles.headerIconBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                router.push("/admin-dashboard/StudentCharges");
+              }}
+              style={sharedStyles.headerIconBtn}
+            >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={sharedStyles.titleCenter}>
@@ -387,6 +405,8 @@ export default function UniformCharges() {
                       key={i}
                       style={sharedStyles.transactionTile}
                       onPress={() => {
+                        if (isNavigating.current) return;
+                        isNavigating.current = true;
                         setPaymentModalVisible(false);
                         router.push({
                           pathname: "/shared/receipt-view",
@@ -398,6 +418,7 @@ export default function UniformCharges() {
                             term: h.term
                           }
                         });
+                        setTimeout(() => { isNavigating.current = false; }, 500);
                       }}
                       onLongPress={() => confirmDeletePayment(h)}
                     >

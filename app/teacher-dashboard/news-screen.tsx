@@ -30,6 +30,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
 import moment from "moment";
+import { useRef } from "react";
 
 import NewsCard from "../../components/news/NewsCard";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -82,6 +83,13 @@ export default function TeacherNewsScreen() {
     type: "image" | "video";
   } | null>(null);
   const [posting, setPosting] = useState(false);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const hasUnsavedChanges = useMemo(() => {
     return title.trim().length > 0 || content.trim().length > 0 || media !== null;
@@ -108,10 +116,12 @@ export default function TeacherNewsScreen() {
           ]
         );
       } else {
-        setMode("view");
-      }
+        setMode("view");      }
       return true;
     }
+
+    if (isNavigating.current) return true;
+    isNavigating.current = true;
 
     if (router.canGoBack()) {
       router.back();
@@ -145,14 +155,18 @@ export default function TeacherNewsScreen() {
         fetchNewsForAudience("teacher"),
         fetchCategories().catch(() => []),
       ]);
-      setNews(items);
-      const fetchedCats = cats?.map((c: any) => c.name).filter(Boolean) || [];
-      setCategories(Array.from(new Set(["All", ...fetchedCats])));
+      if (isMounted.current) {
+        setNews(items);
+        const fetchedCats = cats?.map((c: any) => c.name).filter(Boolean) || [];
+        setCategories(Array.from(new Set(["All", ...fetchedCats])));
+      }
     } catch (err) {
-      console.error("Error fetching teacher news:", err);
+      if (isMounted.current) console.error("Error fetching teacher news:", err);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 

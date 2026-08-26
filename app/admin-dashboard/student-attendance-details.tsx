@@ -16,6 +16,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { useRef } from "react";
 
 export default function StudentAttendanceDetails() {
   const router = useRouter();
@@ -34,6 +35,13 @@ export default function StudentAttendanceDetails() {
   const [presentCount, setPresentCount] = useState(0);
   const [absentCount, setAbsentCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
 
@@ -68,6 +76,7 @@ export default function StudentAttendanceDetails() {
     const summaryRef = doc(db, "attendanceSummary", summaryId);
 
     const unsubscribe = onSnapshot(summaryRef, (docSnap) => {
+      if (!isMounted.current) return;
       if (docSnap.exists()) {
         const data = docSnap.data();
         setPresentCount(data.present || 0);
@@ -78,8 +87,10 @@ export default function StudentAttendanceDetails() {
       }
       setLoading(false);
     }, (error) => {
-      console.error("Error listening to attendance summary:", error);
-      setLoading(false);
+      if (isMounted.current) {
+        console.error("Error listening to attendance summary:", error);
+        setLoading(false);
+      }
     });
 
     return () => unsubscribe();
@@ -94,7 +105,11 @@ export default function StudentAttendanceDetails() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
           style={styles.backBtn}
         >
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />

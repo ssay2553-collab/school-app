@@ -44,6 +44,7 @@ export default function ReviewDocument() {
   const [marks, setMarks] = useState("");
   const [feedback, setFeedback] = useState("");
   const editorRef = useRef<RichTextEditorRef>(null);
+  const feedbackEditorRef = useRef<RichTextEditorRef>(null);
 
   const hasUnsavedChanges = useMemo(() => {
     return marks !== (submission?.marks?.toString() || "") || feedback !== (submission?.feedback || "");
@@ -101,9 +102,10 @@ export default function ReviewDocument() {
     try {
       const docRef = doc(db, "submissions", submissionId as string);
       const updatedContent = await editorRef.current?.getHTML();
+      const updatedFeedback = await feedbackEditorRef.current?.getHTML();
 
       await updateDoc(docRef, {
-        feedback,
+        feedback: updatedFeedback || feedback,
         status: "rework",
         marked: false,
         contentHtml: updatedContent || submission.contentHtml,
@@ -167,10 +169,11 @@ export default function ReviewDocument() {
     try {
       const docRef = doc(db, "submissions", submissionId as string);
       const updatedContent = await editorRef.current?.getHTML();
+      const updatedFeedback = await feedbackEditorRef.current?.getHTML();
 
       await updateDoc(docRef, {
         marks: Number(marks),
-        feedback,
+        feedback: updatedFeedback || feedback,
         marked: true,
         status: "graded",
         markedAt: serverTimestamp(),
@@ -251,6 +254,16 @@ export default function ReviewDocument() {
         </View>
 
         <View style={styles.editorContainer}>
+          <Text style={styles.sectionLabel}>STUDENT'S COMMENT</Text>
+          <View style={[styles.editorInnerWrapper, { minHeight: 150, maxHeight: 300 }]}>
+            <RichTextEditor
+              initialContent={submission?.note || "<p style='color:#94A3B8; font-style:italic;'>No comment provided.</p>"}
+              readOnly={true}
+            />
+          </View>
+        </View>
+
+        <View style={styles.editorContainer}>
           <Text style={styles.sectionLabel}>DOCUMENT CONTENT</Text>
           <View style={styles.editorInnerWrapper}>
             <RichTextEditor
@@ -280,13 +293,12 @@ export default function ReviewDocument() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Teacher's Feedback</Text>
-            <TextInput
-              style={styles.feedbackInput}
-              value={feedback}
-              onChangeText={setFeedback}
-              multiline
-              placeholder="Write your comments here..."
-            />
+            <View style={styles.feedbackEditorWrapper}>
+              <RichTextEditor
+                ref={feedbackEditorRef}
+                initialContent={submission?.feedback || ""}
+              />
+            </View>
           </View>
 
           <TouchableOpacity
@@ -426,6 +438,15 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     borderWidth: 1,
     borderColor: "#E2E8F0",
+  },
+  feedbackEditorWrapper: {
+    minHeight: 400,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    overflow: "hidden",
+    ...SHADOWS.small,
   },
   feedbackInput: {
     backgroundColor: "#F1F5F9",

@@ -18,6 +18,7 @@ import {
   limit,
   onSnapshot,
   query,
+  serverTimestamp,
   setDoc,
   Timestamp,
   updateDoc,
@@ -32,6 +33,7 @@ import { sortClasses } from "../../lib/classHelpers";
 import { useFinanceCleanup } from "./useFinanceCleanup";
 import { useAcademicCleanup } from "./useAcademicCleanup";
 import { User, UserRole, PermissionLevel, AssignmentModalState, PERMISSION_KEYS } from "./manage-users-types";
+import { useRef } from "react";
 
 interface UseManageUsersProps {
   appUser: any;
@@ -41,6 +43,13 @@ interface UseManageUsersProps {
 }
 
 export function useManageUsers({ appUser, acadConfig, showToast, router }: UseManageUsersProps) {
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
   const isSuperAdmin = [
     "proprietor",
@@ -132,7 +141,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           id: d.id,
           name: d.data().name || d.id,
         }));
-        setAllClasses(sortClasses(list));
+        if (isMounted.current) {
+          setAllClasses(sortClasses(list));
+        }
       } catch (e) {
         console.error(e);
       }
@@ -145,7 +156,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       try {
         const docRef = doc(db, "school_settings", "bus_rates");
         const snap = await getDoc(docRef);
-        if (snap.exists()) {
+        if (snap.exists() && isMounted.current) {
           const rates = snap.data() as Record<string, number>;
           setBusLocations(Object.keys(rates).sort());
         }
@@ -182,6 +193,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     const unsub = onSnapshot(
       q,
       (snap) => {
+        if (!isMounted.current) return;
         const fetchedList = snap.docs.map((d: any) => ({ uid: d.id, ...(d.data() as any) }) as User);
         const uniqueList = Array.from(new Map(fetchedList.map((u) => [u.uid, u])).values());
 
@@ -199,6 +211,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         setLoading(false);
       },
       (err) => {
+        if (!isMounted.current) return;
         console.error("ManageUsers Snapshot Error:", err);
         setLoading(false);
       },
@@ -309,7 +322,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
             const emergencyPhone = cleanString(values[4] || "");
             const parentPhone = cleanString(values[5] || "");
             const email = cleanString(values[6] || "");
-            const password = values[7] || "";
+            const password = cleanString(values[7] || "");
 
             if (!firstName || !lastName || firstName.toLowerCase() === "firstname") continue;
 
@@ -318,26 +331,38 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
             let status = "pending_activation";
 
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            // LOGIC: Create Auth Account "On the Go" if Email & Password exist
             if (email && password && password.length >= 6) {
               if (!emailRegex.test(email)) {
                 importErrors.push(`${firstName} ${lastName}: Invalid email "${email}"`);
+                // Fallback to signup code if email is invalid
                 signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
                 pendingCount++;
               } else {
                 try {
+                  // Attempt to create Firebase Auth account
                   const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
                   authUid = userCred.user.uid;
-                  status = "active";
+                  status = "active"; // Account is live!
                   activatedCount++;
                 } catch (authError: any) {
                   const errorCode = (authError as any).code || 'auth-error';
                   console.warn(`Auth Error for ${email}: ${errorCode}`);
-                  importErrors.push(`${firstName} ${lastName} (${email}): ${errorCode}`);
+
+                  if (errorCode === 'auth/email-already-in-use') {
+                    importErrors.push(`${firstName} ${lastName}: Email "${email}" is already taken.`);
+                  } else {
+                    importErrors.push(`${firstName} ${lastName} (${email}): ${errorCode}`);
+                  }
+
+                  // Fallback to signup code so they aren't lost
                   signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
                   pendingCount++;
                 }
               }
             } else {
+              // Standard behavior: No email/pass provided, generate code for later
               signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
               pendingCount++;
             }
@@ -352,7 +377,6 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
               createdAt: Timestamp.now(),
             };
 
-            if (signupCode) newUserDoc.signupCode = signupCode;
             if (email) {
               newUserDoc.email = email.toLowerCase();
               newUserDoc.profile.email = email.toLowerCase();
@@ -362,21 +386,36 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
               newUserDoc.hasLoginEnabled = true;
             }
 
+            let importClassId = "";
             if (selectedRole === "student") {
-              let targetClassId = "";
               if (extraInput) {
                 const matchedClass = allClasses.find(
                   (c) => c.name.toLowerCase() === extraInput.toLowerCase() || c.id === extraInput,
                 );
-                targetClassId = matchedClass ? matchedClass.id : "";
+                importClassId = matchedClass ? matchedClass.id : "";
               } else {
-                targetClassId = selectedClassId === "all" ? "" : selectedClassId;
+                importClassId = selectedClassId === "all" ? "" : selectedClassId;
               }
-              newUserDoc.classId = targetClassId;
+              newUserDoc.classId = importClassId;
               chunkStudentIncrement++;
             } else if (["admin", "staff", "teacher"].includes(selectedRole || "")) {
               if (extraInput) newUserDoc.adminRole = extraInput;
               chunkStaffIncrement++;
+            }
+
+            if (signupCode) {
+              newUserDoc.signupCode = signupCode;
+              const codeData: any = {
+                code: signupCode,
+                intendedForRole: selectedRole,
+                used: false,
+                createdBy: appUser?.uid,
+                createdAt: serverTimestamp(),
+              };
+              if (selectedRole === "student") {
+                codeData.classId = importClassId;
+              }
+              batch.set(doc(db, "signupCodes", signupCode), codeData);
             }
 
             batch.set(doc(db, "users", tempId), newUserDoc);
@@ -956,10 +995,33 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     setUpdating(true);
     try {
       const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-      await updateDoc(doc(db, "users", user.uid), { signupCode: newCode });
+      const batch = writeBatch(db);
+
+      // Update user doc
+      batch.update(doc(db, "users", user.uid), { signupCode: newCode });
+
+      // Create new signup code doc
+      const codeData: any = {
+        code: newCode,
+        intendedForRole: user.role,
+        used: false,
+        createdBy: appUser?.uid,
+        createdAt: serverTimestamp(),
+      };
+      if (user.classId) codeData.classId = user.classId;
+      batch.set(doc(db, "signupCodes", newCode), codeData);
+
+      // Clean up old code if it existed
+      if (user.signupCode) {
+        batch.delete(doc(db, "signupCodes", user.signupCode));
+      }
+
+      await batch.commit();
+
       if (viewingUser?.uid === user.uid) setViewingUser({ ...user, signupCode: newCode });
       showToast?.({ message: `Code Regenerated: ${newCode}`, type: "success" });
     } catch (err) {
+      console.error(err);
       showToast?.({ message: "Failed to regenerate code.", type: "error" });
     } finally {
       setUpdating(false);

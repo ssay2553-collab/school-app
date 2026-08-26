@@ -34,6 +34,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useToast } from "../../contexts/ToastContext";
 import { sortClasses } from "../../lib/classHelpers";
+import { useRef } from "react";
 
 interface ClassItem {
   id: string;
@@ -49,8 +50,17 @@ export default function GenerateStudentCode() {
   const [loading, setLoading] = useState(false);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [fetchingClasses, setFetchingClasses] = useState(true);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const handleBack = useCallback(() => {
+    if (isNavigating.current) return true;
+    isNavigating.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {
@@ -78,11 +88,11 @@ export default function GenerateStudentCode() {
         snap.forEach((d) =>
           list.push({ id: d.id, name: (d.data() as any).name || d.id }),
         );
-        setClasses(sortClasses(list));
+        if (isMounted.current) setClasses(sortClasses(list));
       } catch (err) {
-        console.error("Error fetching classes:", err);
+        if (isMounted.current) console.error("Error fetching classes:", err);
       } finally {
-        setFetchingClasses(false);
+        if (isMounted.current) setFetchingClasses(false);
       }
     };
     fetchClasses();
@@ -114,12 +124,16 @@ export default function GenerateStudentCode() {
       };
 
       await setDoc(doc(db, "signupCodes", code), codeData);
-      setGeneratedCode(code);
+      if (isMounted.current) {
+        setGeneratedCode(code);
+      }
     } catch (error) {
-      console.error("Error generating code:", error);
-      showToast({ message: "Could not generate security token.", type: "error" });
+      if (isMounted.current) {
+        console.error("Error generating code:", error);
+        showToast({ message: "Could not generate security token.", type: "error" });
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   };
 

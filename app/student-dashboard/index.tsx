@@ -26,6 +26,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { auth } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { copyToClipboard } from "../../utils/copyToClipboard";
+import { useEffect, useRef } from "react";
 
 export default function StudentDashboard() {
   const { appUser, loading: authLoading } = useAuth();
@@ -40,10 +41,24 @@ export default function StudentDashboard() {
 
   const [refreshing, setRefreshing] = useState(false);
   const { totalUnread, assignmentUnread } = useUnreadCounts();
+  const refreshTimer = useRef<NodeJS.Timeout | null>(null);
+  const isNavigating = useRef(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    };
+  }, []);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => {
+      if (isMounted.current) setRefreshing(false);
+    }, 1000);
   }, []);
 
   const handleLogout = () => {
@@ -245,7 +260,12 @@ export default function StudentDashboard() {
       >
         <TouchableOpacity
           style={[styles.menuCard, { borderBottomColor: "rgba(0,0,0,0.1)" }]}
-          onPress={() => router.push(item.path as any)}
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.push(item.path as any);
+            setTimeout(() => { isNavigating.current = false; }, 500);
+          }}
           activeOpacity={0.8}
         >
           <LinearGradient

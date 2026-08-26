@@ -23,6 +23,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
 
+
 const PAGE_SIZE = 50;
 
 const UNIFORM_TYPES = [
@@ -82,6 +83,12 @@ export const useUniformCharges = ({
       other: 0,
     },
   });
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   // UI States
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
@@ -141,9 +148,11 @@ export const useUniformCharges = ({
           breakdown.other += amt;
         }
       });
-      setStats({ totalCollected: total, count: snap.docs.length, breakdown });
+      if (isMounted.current) {
+        setStats({ totalCollected: total, count: snap.docs.length, breakdown });
+      }
     } catch (e) {
-      console.error("Error fetching uniform stats:", e);
+      if (isMounted.current) console.error("Error fetching uniform stats:", e);
     }
   }, [acadConfig.academicYear, acadConfig.currentTerm, selectedClassId]);
 
@@ -161,11 +170,13 @@ export const useUniformCharges = ({
       );
       const snap = await getDocsFromServer(q);
       const list = snap.docs.map(d => ({ id: d.id, createdAt: d.data().createdAt, ...d.data() }));
-      setPurchases(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      if (isMounted.current) {
+        setPurchases(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }
     } catch (e) {
-      console.error("Error fetching purchases:", e);
+      if (isMounted.current) console.error("Error fetching purchases:", e);
     } finally {
-      setLoadingPurchases(false);
+      if (isMounted.current) setLoadingPurchases(false);
     }
   }, [acadConfig.academicYear, acadConfig.currentTerm]);
 
@@ -236,12 +247,16 @@ export const useUniformCharges = ({
           });
         });
       }
-      setStudents(list.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+      if (isMounted.current) {
+        setStudents(list.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+      }
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to fetch uniform students", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to fetch uniform students", type: "error" });
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   }, [acadConfig.academicYear, selectedClassId, showToast]);
 
@@ -301,15 +316,19 @@ export const useUniformCharges = ({
           };
         });
 
-        lastVisibleRef.current = snap.docs[snap.docs.length - 1];
-        hasMoreRef.current = snap.docs.length === PAGE_SIZE;
-        setStudents((prev) => (isFirstLoad ? batch : [...prev, ...batch]));
+        if (isMounted.current) {
+          lastVisibleRef.current = snap.docs[snap.docs.length - 1];
+          hasMoreRef.current = snap.docs.length === PAGE_SIZE;
+          setStudents((prev) => (isFirstLoad ? batch : [...prev, ...batch]));
+        }
       } catch (e) {
-        console.error(e);
+        if (isMounted.current) console.error(e);
       } finally {
         isFetchingRef.current = false;
-        setLoading(false);
-        setRefreshing(false);
+        if (isMounted.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [selectedClassId, searchQuery]

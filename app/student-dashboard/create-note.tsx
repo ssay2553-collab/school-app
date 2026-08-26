@@ -16,6 +16,7 @@ import { getAuth } from "firebase/auth";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import SVGIcon from "../../components/SVGIcon";
 import { useToast } from "../../contexts/ToastContext";
+import { useRef, useEffect } from "react";
 
 export default function CreateNote() {
   const router = useRouter();
@@ -29,6 +30,13 @@ export default function CreateNote() {
   const [topic, setTopic] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const saveNote = async () => {
     if (!topic.trim() || !content.trim()) {
@@ -48,13 +56,19 @@ export default function CreateNote() {
         synced: true,
       });
 
-      showToast({ message: "Knowledge entry successfully added to matrix.", type: "success" });
-      router.back();
+      if (isMounted.current) {
+        showToast({ message: "Knowledge entry successfully added to matrix.", type: "success" });
+        router.back();
+      }
     } catch (error) {
-      console.log(error);
-      showToast({ message: "Failed to commit data to central server.", type: "error" });
+      if (isMounted.current) {
+        console.log(error);
+        showToast({ message: "Failed to commit data to central server.", type: "error" });
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -64,7 +78,14 @@ export default function CreateNote() {
       <LinearGradient colors={["#0F172A", "#1E293B"]} style={StyleSheet.absoluteFill} />
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={20} color="#38BDF8" />
         </TouchableOpacity>
         <View>

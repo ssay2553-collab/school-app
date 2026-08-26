@@ -23,6 +23,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
 import { useToast } from "../../contexts/ToastContext";
+import { useRef } from "react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 const CACHE_KEY = "personal_timetable_cache";
@@ -47,6 +48,13 @@ const PersonalTimetable = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [selectedDay, setSelectedDay] = useState("Monday");
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState<"morning" | "evening">("morning");
@@ -121,6 +129,7 @@ const PersonalTimetable = () => {
 
       const timetableRef = doc(db, "personal_timetables", appUser.uid);
       const unsubscribe = onSnapshot(timetableRef, (docSnap) => {
+        if (!isMounted.current) return;
         if (docSnap.exists()) {
           const remoteData = docSnap.data() as PersonalTimetableData;
           setTimetable(remoteData);
@@ -133,12 +142,14 @@ const PersonalTimetable = () => {
         }
         setLoading(false);
       }, (err) => {
-        console.warn("Personal timetable listener failed:", err);
-        setLoading(false);
+        if (isMounted.current) {
+          console.warn("Personal timetable listener failed:", err);
+          setLoading(false);
+        }
       });
       return () => unsubscribe();
     } catch (error) {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   }, [appUser?.uid]);
 
@@ -151,13 +162,19 @@ const PersonalTimetable = () => {
       const timetableRef = doc(db, "personal_timetables", appUser.uid);
       await setDoc(timetableRef, updatedData);
       await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updatedData));
-      setTimetable(updatedData);
-      await scheduleAllNotifications(updatedData);
-      showToast({ message: "Your study plan is updated and reminders are set!", type: "success" });
+      if (isMounted.current) {
+        setTimetable(updatedData);
+        await scheduleAllNotifications(updatedData);
+        showToast({ message: "Your study plan is updated and reminders are set!", type: "success" });
+      }
     } catch (error) {
-      showToast({ message: "Could not save your plan right now.", type: "error" });
+      if (isMounted.current) {
+        showToast({ message: "Could not save your plan right now.", type: "error" });
+      }
     } finally {
-      setSaving(false);
+      if (isMounted.current) {
+        setSaving(false);
+      }
     }
   };
 
@@ -222,7 +239,14 @@ const PersonalTimetable = () => {
       <StatusBar barStyle="dark-content" />
       
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
         </TouchableOpacity>
         <View>

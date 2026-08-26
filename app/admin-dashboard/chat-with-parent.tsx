@@ -14,7 +14,7 @@ import {
     where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -22,7 +22,6 @@ import {
     Keyboard,
     KeyboardAvoidingView,
     Platform,
-    SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
@@ -31,6 +30,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
@@ -64,6 +64,7 @@ export default function ChatWithParent() {
   const router = useRouter();
   const { showToast } = useToast();
   const { appUser } = useAuth();
+  const insets = useSafeAreaInsets();
   const [parents, setParents] = useState<Parent[]>([]);
   const [filteredParents, setFilteredParents] = useState<Parent[]>([]);
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
@@ -81,6 +82,13 @@ export default function ChatWithParent() {
   const webBlobRef = React.useRef<Blob | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const scrollRef = useRef<ScrollView>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -110,8 +118,12 @@ export default function ChatWithParent() {
           : require("../../assets/message_received.mp3");
 
       const { sound } = await Audio.Sound.createAsync(soundFile);
-      soundRef.current = sound;
-      await sound.playAsync();
+      if (isMounted.current) {
+        soundRef.current = sound;
+        await sound.playAsync();
+      } else {
+        await sound.unloadAsync();
+      }
     } catch (error) {
       console.log("Audio error:", error);
     }
@@ -170,12 +182,14 @@ export default function ChatWithParent() {
             children: childrenData,
           };
         });
-        setParents(list);
-        setFilteredParents(list);
+        if (isMounted.current) {
+          setParents(list);
+          setFilteredParents(list);
+        }
       } catch (error) {
-        console.error("Error fetching chat data:", error);
+        if (isMounted.current) console.error("Error fetching chat data:", error);
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
     fetchData();
@@ -211,6 +225,7 @@ export default function ChatWithParent() {
     isFirstLoad.current = true;
     const chatRef = doc(db, "chats", selected.uid);
     const unsub = onSnapshot(chatRef, (snap) => {
+      if (!isMounted.current) return;
       if (snap.exists()) {
         const newMessages = snap.data().messages || [];
 
@@ -267,10 +282,14 @@ export default function ChatWithParent() {
           if (ev.data && ev.data.size > 0) webChunksRef.current.push(ev.data);
         };
         mediaRecorder.start();
-        setWebStream(stream);
-        setWebRecorder(mediaRecorder);
-        setRecording({ web: true });
-        setPreviewUri(null);
+        if (isMounted.current) {
+          setWebStream(stream);
+          setWebRecorder(mediaRecorder);
+          setRecording({ web: true });
+          setPreviewUri(null);
+        } else {
+          stream.getTracks().forEach((t) => t.stop());
+        }
         return;
       }
 
@@ -338,17 +357,23 @@ export default function ChatWithParent() {
       if ((blob as any).close) (blob as any).close();
       const audioUrl = await getDownloadURL(audioRef);
       await sendMessage({ type: "audio", fileUrl: audioUrl });
-      setPreviewUri(null);
-      if (webStream) {
-        webStream.getTracks().forEach((t) => t.stop());
-        setWebStream(null);
+      if (isMounted.current) {
+        setPreviewUri(null);
+        if (webStream) {
+          webStream.getTracks().forEach((t) => t.stop());
+          setWebStream(null);
+        }
+        webBlobRef.current = null;
       }
-      webBlobRef.current = null;
     } catch (err) {
-      console.error(err);
-      showToast({ message: "Failed to upload audio", type: "error" });
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: "Failed to upload audio", type: "error" });
+      }
     } finally {
-      setUploading(false);
+      if (isMounted.current) {
+        setUploading(false);
+      }
     }
   };
 
@@ -394,9 +419,11 @@ export default function ChatWithParent() {
       );
       playSound("sent");
     } catch (err) {
-      console.error("Send error", err);
-      if (type === "text") setInput(currentInput);
-      showToast({ message: "Failed to send message", type: "error" });
+      if (isMounted.current) {
+        console.error("Send error", err);
+        if (type === "text") setInput(currentInput);
+        showToast({ message: "Failed to send message", type: "error" });
+      }
     }
   };
 
@@ -417,7 +444,11 @@ export default function ChatWithParent() {
         >
           <View style={styles.headerTitleRow}>
             <TouchableOpacity
-              onPress={() => router.back()}
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                router.back();
+              }}
               style={styles.backBtnHeader}
             >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
@@ -511,7 +542,7 @@ export default function ChatWithParent() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }} edges={['bottom', 'left', 'right']}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -588,7 +619,7 @@ export default function ChatWithParent() {
           )}
         </ScrollView>
 
-        <View style={styles.inputArea}>
+        <View style={[styles.inputArea, { paddingBottom: Math.max(insets.bottom, 15) }]}>
           {uploading && (
             <ActivityIndicator
               size="small"

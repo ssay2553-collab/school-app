@@ -22,6 +22,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
 
+
 const PAGE_SIZE = 50;
 
 export type Student = {
@@ -64,6 +65,12 @@ export const useOtherCharges = ({
   const [appliedCharges, setAppliedCharges] = useState<any[]>([]);
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   // UI States
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -122,10 +129,12 @@ export const useOtherCharges = ({
         }
       });
 
-      setStats({ totalBilled: totalBilled, totalCollected: totalCollected });
-      setAppliedCharges(Object.values(groups).sort((a, b) => b.date.localeCompare(a.date)));
+      if (isMounted.current) {
+        setStats({ totalBilled: totalBilled, totalCollected: totalCollected });
+        setAppliedCharges(Object.values(groups).sort((a, b) => b.date.localeCompare(a.date)));
+      }
     } catch (e) {
-      console.error("Error fetching other charges stats:", e);
+      if (isMounted.current) console.error("Error fetching other charges stats:", e);
     }
   }, [acadConfig.academicYear, selectedClassId]);
 
@@ -192,16 +201,22 @@ export const useOtherCharges = ({
           };
         });
 
-        lastVisibleRef.current = snap.docs[snap.docs.length - 1];
-        hasMoreRef.current = snap.docs.length === PAGE_SIZE;
-        setStudents((prev) => (isFirstLoad ? batch : [...prev, ...batch]));
+        if (isMounted.current) {
+          lastVisibleRef.current = snap.docs[snap.docs.length - 1];
+          hasMoreRef.current = snap.docs.length === PAGE_SIZE;
+          setStudents((prev) => (isFirstLoad ? batch : [...prev, ...batch]));
+        }
       } catch (e) {
-        console.error(e);
-        showToast({ message: "Failed to fetch students", type: "error" });
+        if (isMounted.current) {
+          console.error(e);
+          showToast({ message: "Failed to fetch students", type: "error" });
+        }
       } finally {
         isFetchingRef.current = false;
-        setLoading(false);
-        setRefreshing(false);
+        if (isMounted.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [selectedClassId, searchQuery, showToast]

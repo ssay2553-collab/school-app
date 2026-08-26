@@ -19,14 +19,18 @@ import { SHADOWS } from "../../constants/theme";
 import { auth, db } from "../../firebaseConfig";
 import { doc, updateDoc, deleteField } from "firebase/firestore";
 import { useToast } from "../../contexts/ToastContext";
+import { useRef } from "react";
 
 export default function SettingsScreen() {
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const router = useRouter();
   const { showToast } = useToast();
+  const isNavigating = useRef(false);
 
   const handleBack = useCallback(() => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {

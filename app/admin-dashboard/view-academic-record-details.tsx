@@ -13,13 +13,23 @@ import {
   ReportType,
   useAcademicRecordDetails,
 } from "../../hooks/admin-dashboard/useAcademicRecordDetails";
+import { useRef, useEffect } from "react";
 
 export default function ViewAcademicRecordDetails() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const reportType = (params.reportType as ReportType) || "End of Term";
+  const isNavigating = useRef(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {

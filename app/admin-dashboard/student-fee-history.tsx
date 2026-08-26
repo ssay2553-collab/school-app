@@ -22,6 +22,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useStudentFeeHistory } from "../../hooks/admin-dashboard/useStudentFeeHistory";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { useRef, useEffect } from "react";
 
 export default function StudentFeeHistoryScreen() {
   const acadConfig = useAcademicConfig();
@@ -70,6 +71,13 @@ export default function StudentFeeHistoryScreen() {
     handleBack,
     onRevertPayment,
   } = useStudentFeeHistory();
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
   const secondary = SCHOOL_CONFIG.secondaryColor || COLORS.secondary;
@@ -91,7 +99,11 @@ export default function StudentFeeHistoryScreen() {
         ])}
       >
         <TouchableOpacity
-          onPress={handleBack}
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            handleBack();
+          }}
           style={styles.backIcon}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
@@ -238,6 +250,8 @@ export default function StudentFeeHistoryScreen() {
                       style={styles.paymentRow}
                       onLongPress={() => onRevertPayment(payment)}
                       onPress={() => {
+                        if (isNavigating.current) return;
+                        isNavigating.current = true;
                         router.push({
                           pathname: "/shared/receipt-view",
                           params: {
@@ -248,6 +262,7 @@ export default function StudentFeeHistoryScreen() {
                             term: payment.term || selectedTerm,
                           },
                         });
+                        setTimeout(() => { isNavigating.current = false; }, 500);
                       }}
                     >
                       <View style={styles.paymentInfo}>

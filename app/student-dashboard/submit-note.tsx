@@ -1,13 +1,14 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
-  addDoc,
   collection,
+  doc,
   getDocs,
   query,
   serverTimestamp,
+  setDoc,
   where,
 } from "firebase/firestore";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -26,28 +27,61 @@ import { auth, db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import * as Animatable from "react-native-animatable";
 import { useToast } from "../../contexts/ToastContext";
+import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEditor";
 
 export default function SubmitNote() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { prefillNoteId, prefillTitle, prefillContent } = useLocalSearchParams();
+  const { prefillNoteId, prefillTitle, prefillContent, assignmentCode: passedCode } = useLocalSearchParams();
 
-  const [assignmentCode, setAssignmentCode] = useState("");
+  const [assignmentCode, setAssignmentCode] = useState((passedCode as string) || "");
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const editorRef = useRef<RichTextEditorRef>(null);
+  const redirectTimer = useRef<NodeJS.Timeout | null>(null);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (redirectTimer.current) clearTimeout(redirectTimer.current);
+    };
+  }, []);
 
   const primary = SCHOOL_CONFIG.primaryColor;
 
   const studentId = auth.currentUser?.uid;
 
   const goToNotes = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     router.push("/student-dashboard/note");
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   const handleSubmit = async () => {
-    if (!assignmentCode.trim() || !prefillNoteId || !studentId) {
-      showToast({ message: "Assignment code and a note attachment are required.", type: "error" });
+    if (loading) return;
+
+    // Get current HTML from editor
+    const htmlComment = await editorRef.current?.getHTML();
+    const isEditorEmpty = !htmlComment || htmlComment === '<p></p>' || htmlComment.trim() === '';
+
+    // Split validation for better user feedback
+    if (!assignmentCode.trim()) {
+      showToast({ message: "Assignment code is required.", type: "error" });
+      return;
+    }
+
+    if (!prefillNoteId && isEditorEmpty) {
+      showToast({ message: "Please attach a note or write your content in the editor before submitting.", type: "error" });
+      return;
+    }
+
+    if (!studentId) {
+      showToast({ message: "Student session not found. Please log in again.", type: "error" });
       return;
     }
 
@@ -71,25 +105,31 @@ export default function SubmitNote() {
       const assignmentId = assignmentDoc.id;
       const assignmentData = assignmentDoc.data() as any;
 
+      const submissionId = `${assignmentId}_${studentId}`;
+      const submissionRef = doc(db, "submissions", submissionId);
+
       // 2. Prepare submission data
+      // If we have an attached note, use its content as contentHtml and editor as 'note' (comment).
+      // If no attached note, use editor as 'contentHtml'.
       const submissionData: any = {
         assignmentId,
         studentId,
         studentName: auth.currentUser?.displayName || "Student",
         submittedAt: serverTimestamp(),
         status: "submitted",
-        note: comment, // Using 'note' field for teacher comment to maintain compatibility with existing submission structure
+        note: prefillNoteId ? (htmlComment || "") : "",
         assignmentTitle: assignmentData.title,
+        assignmentCode: assignmentData.code,
         type: "rich-text",
-        contentHtml: prefillContent,
-        noteId: prefillNoteId,
+        contentHtml: prefillNoteId ? prefillContent : htmlComment,
+        noteId: prefillNoteId || null,
         marked: false,
         teacherId: assignmentData.teacherId,
         classId: assignmentData.classId,
       };
 
       // 3. Save Submission
-      await addDoc(collection(db, "submissions"), submissionData);
+      await setDoc(submissionRef, submissionData);
 
       // 4. Notify Teacher
       if (assignmentData.teacherId) {
@@ -106,8 +146,10 @@ export default function SubmitNote() {
 
       setShowSuccess(true);
 
-      setTimeout(() => {
-        router.replace("/student-dashboard");
+      redirectTimer.current = setTimeout(() => {
+        if (isMounted.current) {
+          router.replace("/student-dashboard");
+        }
       }, 3000);
 
     } catch (error) {
@@ -121,7 +163,14 @@ export default function SubmitNote() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.title}>Submit Note</Text>
@@ -160,15 +209,16 @@ export default function SubmitNote() {
             </View>
           )}
 
-          <Text style={[styles.label, { marginTop: 20 }]}>Comment (Optional)</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Add a comment for your teacher..."
-            multiline
-            numberOfLines={4}
-            value={comment}
-            onChangeText={setComment}
-          />
+          <Text style={[styles.label, { marginTop: 20 }]}>
+            {prefillNoteId ? "Comment (Optional)" : "Assignment Content / Essay"}
+          </Text>
+          <View style={styles.editorWrapper}>
+            <RichTextEditor
+              ref={editorRef}
+              initialContent={""}
+              placeholder={prefillNoteId ? "Add a comment for your teacher..." : "Type your essay or content here directly..."}
+            />
+          </View>
 
           <TouchableOpacity
             style={[styles.submitBtn, { backgroundColor: primary }]}
@@ -305,11 +355,11 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   title: { fontSize: 20, fontWeight: "900", color: "#1E293B" },
-  content: { padding: 20 },
+  content: { padding: 10 },
   card: {
     backgroundColor: "#fff",
-    borderRadius: 24,
-    padding: 24,
+    borderRadius: 16,
+    padding: 12,
     ...SHADOWS.medium,
   },
   label: {
@@ -320,17 +370,38 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   input: {
-    backgroundColor: "#F1F5F9",
-    borderRadius: 16,
+    backgroundColor: "#fff",
+    borderRadius: 12,
     padding: 15,
     fontSize: 16,
     color: "#1E293B",
     fontWeight: "600",
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  editorWrapper: {
+    minHeight: 500,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 8,
+    ...SHADOWS.small,
+    overflow: 'hidden',
+    marginBottom: 20,
   },
   textArea: {
-    height: 100,
+    minHeight: 500,
     textAlignVertical: "top",
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    fontSize: 16,
+    lineHeight: 24,
+    borderRadius: 8,
+    ...SHADOWS.small,
   },
   uploadOptions: {
     alignItems: 'center',

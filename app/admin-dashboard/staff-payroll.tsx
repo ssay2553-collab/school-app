@@ -32,6 +32,7 @@ import {
     View
 } from "react-native";
 import * as Animatable from "react-native-animatable";
+import { useRef } from "react";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -55,6 +56,13 @@ export default function StaffPayrollScreen() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   // Access Control
   const isTeacherRole = appUser?.role?.toLowerCase() === "teacher";
@@ -106,12 +114,15 @@ export default function StaffPayrollScreen() {
   const [addingStaff, setAddingStaff] = useState(false);
 
   useEffect(() => {
-    if (appUser && !canView) {
+    if (appUser && !canView && isMounted.current) {
       showToast({
         message: "Access Denied: You do not have permission to view payroll.",
         type: "error",
       });
-      router.replace("/admin-dashboard");
+      if (!isNavigating.current) {
+        isNavigating.current = true;
+        router.replace("/admin-dashboard");
+      }
     }
   }, [appUser, canView]);
 
@@ -133,7 +144,7 @@ export default function StaffPayrollScreen() {
 
   // Sync with global academic config
   useEffect(() => {
-    if (!acadConfig.loading) {
+    if (!acadConfig.loading && isMounted.current) {
       setSelectedYear(acadConfig.academicYear || "");
       setSelectedTerm(acadConfig.currentTerm || "");
     }
@@ -145,7 +156,7 @@ export default function StaffPayrollScreen() {
     // Load from cache first for instant UI
     const loadCache = async () => {
       const cached = await AsyncStorage.getItem(CACHE_KEY);
-      if (cached) {
+      if (cached && isMounted.current) {
         try {
           const parsed = JSON.parse(cached);
           setStaff(parsed);
@@ -208,37 +219,41 @@ export default function StaffPayrollScreen() {
           a.name.localeCompare(b.name),
         );
 
-        setStaff(combined);
+        if (isMounted.current) {
+          setStaff(combined);
 
-        // Calculate total commitment locally (FREE - no extra server hits)
-        const total = combined.reduce(
-          (acc, curr) => acc + (curr.salary || 0),
-          0,
-        );
-        setSchoolTotalPayroll(total);
+          // Calculate total commitment locally (FREE - no extra server hits)
+          const total = combined.reduce(
+            (acc, curr) => acc + (curr.salary || 0),
+            0,
+          );
+          setSchoolTotalPayroll(total);
 
-        // Update local state for editing
-        const salaries: Record<string, string> = {};
-        combined.forEach((s) => (salaries[s.id] = (s.salary || 0).toString()));
-        setEditingSalaries((prev) => {
-          const newSalaries = { ...salaries };
-          // Preserve current user input for items that still exist
-          Object.keys(prev).forEach((key) => {
-            if (newSalaries.hasOwnProperty(key)) {
-              newSalaries[key] = prev[key];
-            }
+          // Update local state for editing
+          const salaries: Record<string, string> = {};
+          combined.forEach((s) => (salaries[s.id] = (s.salary || 0).toString()));
+          setEditingSalaries((prev) => {
+            const newSalaries = { ...salaries };
+            // Preserve current user input for items that still exist
+            Object.keys(prev).forEach((key) => {
+              if (newSalaries.hasOwnProperty(key)) {
+                newSalaries[key] = prev[key];
+              }
+            });
+            return newSalaries;
           });
-          return newSalaries;
-        });
 
-        AsyncStorage.setItem(CACHE_KEY, JSON.stringify(combined));
-        setLoadingStaff(false);
-        setRefreshing(false);
+          AsyncStorage.setItem(CACHE_KEY, JSON.stringify(combined));
+          setLoadingStaff(false);
+          setRefreshing(false);
+        }
       },
       (err) => {
-        console.error("Staff snapshot error:", err);
-        setLoadingStaff(false);
-        setRefreshing(false);
+        if (isMounted.current) {
+          console.error("Staff snapshot error:", err);
+          setLoadingStaff(false);
+          setRefreshing(false);
+        }
       },
     );
 
@@ -261,12 +276,18 @@ export default function StaffPayrollScreen() {
     try {
       await updateDoc(doc(db, "users", item.id), { salary: newSalary });
       // Total will auto-update via onSnapshot listener
-      showToast({ message: "Salary updated.", type: "success" });
+      if (isMounted.current) {
+        showToast({ message: "Salary updated.", type: "success" });
+      }
     } catch (error) {
-      console.error("Update salary error:", error);
-      showToast({ message: "Update failed.", type: "error" });
+      if (isMounted.current) {
+        console.error("Update salary error:", error);
+        showToast({ message: "Update failed.", type: "error" });
+      }
     } finally {
-      setUpdatingId(null);
+      if (isMounted.current) {
+        setUpdatingId(null);
+      }
     }
   };
 
@@ -299,11 +320,17 @@ export default function StaffPayrollScreen() {
       setNewStaffName("");
       setNewStaffSalary("");
       // Fetch will happen automatically via onSnapshot
-      showToast({ message: "Staff registered.", type: "success" });
+      if (isMounted.current) {
+        showToast({ message: "Staff registered.", type: "success" });
+      }
     } catch {
-      showToast({ message: "Could not add staff.", type: "error" });
+      if (isMounted.current) {
+        showToast({ message: "Could not add staff.", type: "error" });
+      }
     } finally {
-      setAddingStaff(false);
+      if (isMounted.current) {
+        setAddingStaff(false);
+      }
     }
   };
 
@@ -349,12 +376,16 @@ export default function StaffPayrollScreen() {
         term: selectedTerm,
         createdAt: serverTimestamp(),
       });
-      showToast({
-        message: "Payroll posted to expenditures.",
-        type: "success",
-      });
+      if (isMounted.current) {
+        showToast({
+          message: "Payroll posted to expenditures.",
+          type: "success",
+        });
+      }
     } finally {
-      setIsFinalizing(false);
+      if (isMounted.current) {
+        setIsFinalizing(false);
+      }
     }
   };
 
@@ -392,7 +423,11 @@ export default function StaffPayrollScreen() {
       >
         <View style={styles.headerTop}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
             style={styles.backBtn}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />

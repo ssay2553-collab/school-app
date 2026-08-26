@@ -44,11 +44,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const lastSyncedUid = useRef<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     if (firebaseUser && firebaseUser.uid !== lastSyncedUid.current) {
       const syncToken = async () => {
         try {
           const token = await registerForPushNotificationsAsync();
-          if (token) {
+          if (token && isMounted) {
             const userRef = doc(db, "users", firebaseUser.uid);
             await setDoc(
               userRef,
@@ -66,9 +67,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       };
       syncToken();
     }
+    return () => { isMounted = false; };
   }, [firebaseUser]);
 
   useEffect(() => {
+    let isMounted = true;
     let unsubscribeProfile: (() => void) | null = null;
 
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
@@ -86,7 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       setLoading(true);
 
       const processSnap = (snap: any) => {
-        if (!snap.exists()) return false;
+        if (!isMounted || !snap.exists()) return false;
 
         const data = snap.data() || {};
         // Normalize role and infer 'staff' for upgraded accounts with adminRole
@@ -173,10 +176,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
                 limit(1),
               );
               const querySnap = await getDocs(q);
-              if (!querySnap.empty) {
+              if (!querySnap.empty && isMounted) {
                 // Document found by authUid field
                 const staffDoc = querySnap.docs[0];
-                if (unsubscribeProfile) unsubscribeProfile();
+                if (unsubscribeProfile) {
+                  unsubscribeProfile();
+                  unsubscribeProfile = null;
+                }
                 // Create a mapping from auth UID to the actual user document ID
                 try {
                   await setDoc(
@@ -210,8 +216,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     });
 
     return () => {
+      isMounted = false;
       if (unsubscribeAuth) unsubscribeAuth();
-      if (unsubscribeProfile) unsubscribeProfile();
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
     };
   }, []);
 

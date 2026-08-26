@@ -52,6 +52,12 @@ const TeacherDashboardGallery = () => {
   const [lastVisible, setLastVisible] = useState<any>(null);
   const [hasMore, setHasMore] = useState(true);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const loadingRef = useRef(loading);
   const lastVisibleRef = useRef(lastVisible);
@@ -99,20 +105,24 @@ const TeacherDashboardGallery = () => {
 
       const items = snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as any) }));
 
-      if (isInitial) setGallery(items);
-      else setGallery((prev) => [...prev, ...items]);
+      if (isMounted.current) {
+        if (isInitial) setGallery(items);
+        else setGallery((prev) => [...prev, ...items]);
 
-      const last = snapshot.docs[snapshot.docs.length - 1];
-      setLastVisible(last);
-      lastVisibleRef.current = last;
-      const more = snapshot.docs.length === PAGE_SIZE;
-      setHasMore(more);
-      hasMoreRef.current = more;
+        const last = snapshot.docs[snapshot.docs.length - 1];
+        setLastVisible(last);
+        lastVisibleRef.current = last;
+        const more = snapshot.docs.length === PAGE_SIZE;
+        setHasMore(more);
+        hasMoreRef.current = more;
+      }
     } catch (err) {
-      console.error("Gallery Load Error:", err);
+      if (isMounted.current) console.error("Gallery Load Error:", err);
     } finally {
-      setLoading(false);
-      loadingRef.current = false;
+      if (isMounted.current) {
+        setLoading(false);
+        loadingRef.current = false;
+      }
     }
   }, []);
 

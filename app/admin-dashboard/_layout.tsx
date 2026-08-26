@@ -12,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRef } from "react";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -22,6 +23,7 @@ export default function DashboardLayout() {
   const { appUser, loading } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const isNavigating = useRef(false);
 
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#2e86de";
   const secondary = SCHOOL_CONFIG.secondaryColor || primary;
@@ -78,15 +80,20 @@ export default function DashboardLayout() {
   };
 
   const switchToTeacher = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     router.replace("/teacher-dashboard");
   };
 
   const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/admin-dashboard");
     }
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   // 🔵 LOADING SCREEN

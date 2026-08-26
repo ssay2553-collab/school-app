@@ -30,6 +30,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { useManageTimetable, Period } from "../../hooks/teacher-dashboard/useManageTimetable";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import moment from "moment";
+import { useRef } from "react";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -73,6 +74,7 @@ export default function CreateLessonTimetable() {
   const [pickerModal, setPickerModal] = useState<{ day: string; col: number } | null>(null);
   const [timeModal, setTimeModal] = useState<{ col: number; type: "start" | "end" } | null>(null);
   const [tempTime, setTempTime] = useState(new Date());
+  const isNavigating = useRef(false);
 
   const brandColor = COLORS.brandPrimary || COLORS.primary || "#2e86de";
   const neutralDark = "#1E293B";
@@ -86,6 +88,8 @@ export default function CreateLessonTimetable() {
   }, [curriculum, customSubjects]);
 
   const handleBack = useCallback(() => {
+    if (isNavigating.current) return true;
+    isNavigating.current = true;
     if (router.canGoBack()) router.back();
     else router.replace("/teacher-dashboard");
     return true;

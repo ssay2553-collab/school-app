@@ -29,6 +29,7 @@ interface UseEditScoresLogicProps {
 
 export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditScoresLogicProps) => {
   const [loading, setLoading] = useState(true);
+  const [fetchingSubjects, setFetchingSubjects] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [listLoading, setListLoading] = useState(false);
@@ -45,6 +46,12 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
   const [visibleStudents, setVisibleStudents] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const masterDataRef = useRef<Record<string, any>>({});
   const initialDataRef = useRef<string>("[]");
@@ -89,21 +96,24 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
 
   useEffect(() => {
     if (!appUser) return;
+    let isMounted = true;
     const init = async () => {
       try {
         const list = await loadClasses();
-        if (list.length > 0) setSelectedClassId(list[0].id);
+        if (list.length > 0 && isMounted) setSelectedClassId(list[0].id);
       } catch (err) {
-        console.error(err);
+        if (isMounted) console.error(err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     init();
+    return () => { isMounted = false; };
   }, [appUser]);
 
   const fetchSubjects = useCallback(async () => {
     if (!selectedClassId || !selectedYear || !term) return;
+    setFetchingSubjects(true);
     try {
       const q = query(
         collection(db, "academicRecords"),
@@ -124,16 +134,23 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
           };
         })
         .sort((a, b) => a.name.localeCompare(b.name));
-      setSubjects(subsList);
-      if (subsList.length > 0) {
-        if (!selectedSubject || !subsList.find((s) => s.name === selectedSubject)) {
-          setSelectedSubject(subsList[0].name);
+
+      if (isMounted.current) {
+        setSubjects(subsList);
+        if (subsList.length > 0) {
+          if (!selectedSubject || !subsList.find((s) => s.name === selectedSubject)) {
+            setSelectedSubject(subsList[0].name);
+          }
+        } else {
+          setSelectedSubject("");
         }
-      } else {
-        setSelectedSubject("");
+        setFetchingSubjects(false);
       }
     } catch (err) {
-      console.error("fetchSubjects Error:", err);
+      if (isMounted.current) {
+        console.error("fetchSubjects Error:", err);
+        setFetchingSubjects(false);
+      }
     }
   }, [selectedClassId, selectedYear, term, selectedReportType, selectedSubject]);
 
@@ -171,23 +188,31 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
           }
         });
         setVisibleStudents(students.slice(0, PAGE_SIZE));
-        setPage(1);
+        if (isMounted.current) {
+          setPage(1);
+        }
       } else {
-        showToast({
-          message: `No submissions found for ${selectedSubject} in the selected period.`,
-          type: "info",
-        });
-        setRecordId(null);
-        setAllStudents([]);
-        initialDataRef.current = "[]";
-        initialDataMapRef.current.clear();
-        setVisibleStudents([]);
+        if (isMounted.current) {
+          showToast({
+            message: `No submissions found for ${selectedSubject} in the selected period.`,
+            type: "info",
+          });
+          setRecordId(null);
+          setAllStudents([]);
+          initialDataRef.current = "[]";
+          initialDataMapRef.current.clear();
+          setVisibleStudents([]);
+        }
       }
     } catch (err) {
-      console.error(err);
-      showToast({ message: "Failed to load records.", type: "error" });
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: "Failed to load records.", type: "error" });
+      }
     } finally {
-      setListLoading(false);
+      if (isMounted.current) {
+        setListLoading(false);
+      }
     }
   };
 
@@ -295,23 +320,29 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
 
       await batch.commit();
 
-      initialDataRef.current = JSON.stringify(studentsToSave);
-      initialDataMapRef.current.clear();
-      studentsToSave.forEach((s: any) => {
-        initialDataMapRef.current.set(s.studentId, JSON.stringify(s));
-      });
+      if (isMounted.current) {
+        initialDataRef.current = JSON.stringify(studentsToSave);
+        initialDataMapRef.current.clear();
+        studentsToSave.forEach((s: any) => {
+          initialDataMapRef.current.set(s.studentId, JSON.stringify(s));
+        });
 
-      setAllStudents(studentsToSave);
-      showToast({
-        message: "Scores updated and records marked as approved.",
-        type: "success",
-      });
-      fetchSubjects();
+        setAllStudents(studentsToSave);
+        showToast({
+          message: "Scores updated and records marked as approved.",
+          type: "success",
+        });
+        fetchSubjects();
+      }
     } catch (err) {
-      console.error(err);
-      showToast({ message: "Update failed.", type: "error" });
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: "Update failed.", type: "error" });
+      }
     } finally {
-      setSaving(false);
+      if (isMounted.current) {
+        setSaving(false);
+      }
     }
   };
 

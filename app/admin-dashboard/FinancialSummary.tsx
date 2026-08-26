@@ -20,12 +20,20 @@ import { useToast } from "../../contexts/ToastContext";
 import { generateFinancialSummaryPDF } from "../../utils/pdfGenerator";
 import { useFinancialData, CategorySummary } from "../../hooks/useFinancialData";
 import styles, { VIBE } from "./FinancialSummary.styles";
+import { useRef } from "react";
 
 export default function FinancialSummary() {
   const router = useRouter();
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
+  const isNavigating = useRef(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const {
     loading,
@@ -47,10 +55,14 @@ export default function FinancialSummary() {
 
   const [viewMode, setViewMode] = useState<"categories" | "daily">("categories");
 
-  const handleBack = () => router.replace("/admin-dashboard");
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+    router.replace("/admin-dashboard");
+  };
 
   useEffect(() => {
-    if (appUser && !isSuperAdmin) {
+    if (appUser && !isSuperAdmin && isMounted.current) {
       showToast({ message: "Access Denied", type: "error" });
       handleBack();
     }
@@ -96,7 +108,9 @@ export default function FinancialSummary() {
         SCHOOL_CONFIG.address,
       );
     } catch (error) {
-      showToast({ message: "Failed to generate PDF.", type: "error" });
+      if (isMounted.current) {
+        showToast({ message: "Failed to generate PDF.", type: "error" });
+      }
     }
   };
 
@@ -352,7 +366,15 @@ export default function FinancialSummary() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>⚡ Quick Actions</Text>
             <View style={styles.quickActionsRow}>
-              <TouchableOpacity style={styles.quickActionBtn} onPress={() => router.push("/shared/daily-financials" as any)}>
+              <TouchableOpacity
+                style={styles.quickActionBtn}
+                onPress={() => {
+                  if (isNavigating.current) return;
+                  isNavigating.current = true;
+                  router.push("/shared/daily-financials" as any);
+                  setTimeout(() => { isNavigating.current = false; }, 500);
+                }}
+              >
                 <SVGIcon name="receipt" size={20} color={VIBE.primary} />
                 <Text style={[styles.quickActionText, { color: VIBE.primary }]}>Record Fees</Text>
               </TouchableOpacity>

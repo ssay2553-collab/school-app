@@ -26,6 +26,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
@@ -40,6 +41,7 @@ export default function GroupChat() {
   const { groupId, groupName } = useLocalSearchParams();
   const { appUser } = useAuth();
   const { showToast } = useToast();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
   const [messages, setMessages] = useState<any[]>([]);
   const [input, setInput] = useState("");
@@ -52,14 +54,21 @@ export default function GroupChat() {
   const scrollRef = useRef<ScrollView>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
   const messagesLenRef = useRef(0);
-
-  const primary = SCHOOL_CONFIG.primaryColor;
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
 
   useEffect(() => {
+    isMounted.current = true;
     return () => {
+      isMounted.current = false;
       if (soundRef.current) soundRef.current.unloadAsync();
+      if (webStream) {
+        webStream.getTracks().forEach((t) => t.stop());
+      }
     };
-  }, []);
+  }, [webStream]);
+
+  const primary = SCHOOL_CONFIG.primaryColor;
 
   const playSound = async (type: "sent" | "received") => {
     try {
@@ -85,6 +94,7 @@ export default function GroupChat() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
+      if (!isMounted.current) return;
       const newMsgs = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
 
       if (
@@ -100,7 +110,9 @@ export default function GroupChat() {
       setMessages(newMsgs);
       messagesLenRef.current = newMsgs.length;
       setLoading(false);
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      setTimeout(() => {
+        if (isMounted.current) scrollRef.current?.scrollToEnd({ animated: true });
+      }, 100);
     });
     return unsub;
   }, [groupId]);
@@ -174,6 +186,7 @@ export default function GroupChat() {
         );
         await uploadBytes(audioRef, blob);
         const audioUrl = await getDownloadURL(audioRef);
+        if (!isMounted.current) return;
         await addDoc(
           collection(db, "studentGroups", groupId as string, "messages"),
           {
@@ -184,14 +197,16 @@ export default function GroupChat() {
             timestamp: serverTimestamp(),
           },
         );
-        playSound("sent");
-        setRecording(null);
-        if (webStream) {
-          webStream.getTracks().forEach((t) => t.stop());
-          setWebStream(null);
+        if (isMounted.current) {
+          playSound("sent");
+          setRecording(null);
+          if (webStream) {
+            webStream.getTracks().forEach((t) => t.stop());
+            setWebStream(null);
+          }
+          setWebRecorder(null);
+          setUploading(false);
         }
-        setWebRecorder(null);
-        setUploading(false);
         return;
       }
 
@@ -208,6 +223,7 @@ export default function GroupChat() {
       await uploadBytes(audioRef, blob);
       const audioUrl = await getDownloadURL(audioRef);
 
+      if (!isMounted.current) return;
       await addDoc(
         collection(db, "studentGroups", groupId as string, "messages"),
         {
@@ -218,12 +234,14 @@ export default function GroupChat() {
           timestamp: serverTimestamp(),
         },
       );
-      playSound("sent");
+      if (isMounted.current) playSound("sent");
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to send voice message", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to send voice message", type: "error" });
+      }
     } finally {
-      setUploading(false);
+      if (isMounted.current) setUploading(false);
     }
   };
 
@@ -267,7 +285,11 @@ export default function GroupChat() {
       >
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
             style={styles.backBtn}
           >
             <SVGIcon name="arrow-back" size={24} color={primary} />
@@ -323,7 +345,7 @@ export default function GroupChat() {
           ))}
         </ScrollView>
 
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           {uploading && (
             <ActivityIndicator
               size="small"

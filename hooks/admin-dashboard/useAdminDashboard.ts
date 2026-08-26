@@ -33,6 +33,7 @@ export const useAdminDashboard = () => {
   const surface = config.surfaceColor || "#F8FAFC";
 
   useEffect(() => {
+    let isMounted = true;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const q = query(
@@ -45,16 +46,18 @@ export const useAdminDashboard = () => {
     const unsub = onSnapshot(
       q,
       (snap) => {
+        if (!isMounted) return;
         const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
         setUpcomingEvents(list);
         setEventsLoading(false);
       },
       (err) => {
+        if (!isMounted) return;
         console.error("Error fetching upcoming events:", err);
         setEventsLoading(false);
       }
     );
-    return () => unsub();
+    return () => { isMounted = false; unsub(); };
   }, []);
 
   const { refresh } = useDataFreshness(

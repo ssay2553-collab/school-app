@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   collection,
   doc,
@@ -55,6 +55,12 @@ export const useWeeklyTopics = () => {
     objectives: '',
   });
   const [serverTopicData, setServerTopicData] = useState<Partial<WeeklyTopic>>({});
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const academicYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
@@ -75,18 +81,20 @@ export const useWeeklyTopics = () => {
             id: d.id,
             name: (d.data() as any).name || d.id,
           }));
-          const sorted = sortClasses(list);
-          setTeacherClasses(sorted);
-          if (sorted.length > 0 && !selectedClassId) setSelectedClassId(sorted[0].id);
+          if (isMounted.current) {
+            const sorted = sortClasses(list);
+            setTeacherClasses(sorted);
+            if (sorted.length > 0 && !selectedClassId) setSelectedClassId(sorted[0].id);
+          }
         }
 
-        if (availableSubjects.length > 0 && !selectedSubject) {
+        if (isMounted.current && availableSubjects.length > 0 && !selectedSubject) {
           setSelectedSubject(availableSubjects[0]);
         }
       } catch (err) {
-        console.error("fetchMetadata error:", err);
+        if (isMounted.current) console.error("fetchMetadata error:", err);
       } finally {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     };
     fetchMetadata();
@@ -103,6 +111,8 @@ export const useWeeklyTopics = () => {
       try {
         const docRef = doc(db, "weeklyTopics", weekId);
         const docSnap = await getDoc(docRef);
+
+        if (!isMounted.current) return;
 
         if (docSnap.exists()) {
           const data = docSnap.data() as WeeklyTopic;
@@ -127,7 +137,7 @@ export const useWeeklyTopics = () => {
           // Only update end date if it's a new week selection, not just a clear
         }
       } catch (err) {
-        console.error("fetchTopic error:", err);
+        if (isMounted.current) console.error("fetchTopic error:", err);
       }
     };
 
@@ -163,13 +173,19 @@ export const useWeeklyTopics = () => {
       };
 
       await setDoc(docRef, dataToSave, { merge: true });
-      setServerTopicData({ ...topicData, endDate, weekNumber });
-      showToast({ message: "Lesson plan saved successfully!", type: "success" });
+      if (isMounted.current) {
+        setServerTopicData({ ...topicData, endDate, weekNumber });
+        showToast({ message: "Lesson plan saved successfully!", type: "success" });
+      }
     } catch (err) {
-      console.error("saveTopic error:", err);
-      showToast({ message: "Failed to save lesson plan", type: "error" });
+      if (isMounted.current) {
+        console.error("saveTopic error:", err);
+        showToast({ message: "Failed to save lesson plan", type: "error" });
+      }
     } finally {
-      setSaving(false);
+      if (isMounted.current) {
+        setSaving(false);
+      }
     }
   };
 

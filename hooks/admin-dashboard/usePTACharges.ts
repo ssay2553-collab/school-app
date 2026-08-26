@@ -22,6 +22,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
 
+
 const PAGE_SIZE = 50;
 
 export type Student = {
@@ -61,6 +62,12 @@ export const usePTACharges = ({
   const [stats, setStats] = useState({ totalBilled: 0, totalCollected: 0 });
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   // UI state migrated from component
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -99,9 +106,11 @@ export const usePTACharges = ({
         if (data.type === "pta_payment") collected += data.amount || 0;
         if (data.type === "pta") billed += data.amount || 0;
       });
-      setStats({ totalCollected: collected, totalBilled: billed });
+      if (isMounted.current) {
+        setStats({ totalCollected: collected, totalBilled: billed });
+      }
     } catch (e) {
-      console.error("Error fetching PTA stats:", e);
+      if (isMounted.current) console.error("Error fetching PTA stats:", e);
     }
   }, [acadConfig.academicYear, acadConfig.currentTerm]);
 
@@ -159,16 +168,22 @@ export const usePTACharges = ({
           };
         });
 
-        lastVisibleRef.current = snap.docs[snap.docs.length - 1];
-        hasMoreRef.current = snap.docs.length === PAGE_SIZE;
-        setStudents((prev) => (isFirstLoad ? batch : [...prev, ...batch]));
+        if (isMounted.current) {
+          lastVisibleRef.current = snap.docs[snap.docs.length - 1];
+          hasMoreRef.current = snap.docs.length === PAGE_SIZE;
+          setStudents((prev) => (isFirstLoad ? batch : [...prev, ...batch]));
+        }
       } catch (e) {
-        console.error(e);
-        showToast({ message: "Failed to fetch students", type: "error" });
+        if (isMounted.current) {
+          console.error(e);
+          showToast({ message: "Failed to fetch students", type: "error" });
+        }
       } finally {
         isFetchingRef.current = false;
-        setLoading(false);
-        setRefreshing(false);
+        if (isMounted.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [selectedClassId, showToast]

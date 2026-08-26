@@ -26,6 +26,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { generateFeeReportPDF } from "../../utils/pdfGenerator";
 import { getSchoolLogo } from "../../constants/Logos";
+import { useRef } from "react";
 
 export default function FeeReports() {
   const { appUser } = useAuth();
@@ -62,10 +63,20 @@ export default function FeeReports() {
   const [loading, setLoading] = useState(true);
   const [studentsData, setStudentsData] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
 
   useEffect(() => {
-    if (appUser && !canView) {
-      router.replace("/admin-dashboard");
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (appUser && !canView && isMounted.current) {
+      if (!isNavigating.current) {
+        isNavigating.current = true;
+        router.replace("/admin-dashboard");
+      }
     }
   }, [appUser, canView]);
 
@@ -179,11 +190,13 @@ export default function FeeReports() {
         };
       });
 
-      setStudentsData(merged);
+      if (isMounted.current) {
+        setStudentsData(merged);
+      }
     } catch (error) {
-      console.error("Error fetching report data:", error);
+      if (isMounted.current) console.error("Error fetching report data:", error);
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   };
 
@@ -249,7 +262,11 @@ export default function FeeReports() {
       <LinearGradient colors={[VIBE.primary, "#4F46E5"]} style={styles.header}>
         <View style={styles.navBar}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
             style={styles.backBtn}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />

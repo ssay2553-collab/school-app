@@ -46,6 +46,13 @@ export default function ManageFees() {
   const router = useRouter();
   const acadConfig = useAcademicConfig();
   const scrollY = useRef(new Animated.Value(0)).current;
+  const isNavigating = useRef(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const {
     saving,
@@ -152,13 +159,16 @@ export default function ManageFees() {
   });
 
   useEffect(() => {
-    if (appUser && !canView) {
+    if (appUser && !canView && isMounted.current) {
       showToast({
         message:
           "Access Denied: You do not have permission to view fees management.",
         type: "error",
       });
-      router.replace("/admin-dashboard");
+      if (!isNavigating.current) {
+        isNavigating.current = true;
+        router.replace("/admin-dashboard");
+      }
     }
   }, [appUser, canView]);
 
@@ -226,10 +236,13 @@ export default function ManageFees() {
         discountAmount={discountAmount}
         setIndividualDiscountOverrides={setIndividualDiscountOverrides}
         onViewLedger={() => {
+          if (isNavigating.current) return;
+          isNavigating.current = true;
           router.push({
             pathname: "/admin-dashboard/student-fee-history",
             params: { studentId: item.uid, academicYear, term },
           });
+          setTimeout(() => { isNavigating.current = false; }, 500);
         }}
       />
     );
@@ -269,7 +282,11 @@ export default function ManageFees() {
         headerHeight={headerHeight}
         selectorGridOpacity={selectorGridOpacity}
         selectorGridHeight={selectorGridHeight}
-        onBack={() => router.replace("/admin-dashboard")}
+        onBack={() => {
+          if (isNavigating.current) return;
+          isNavigating.current = true;
+          router.replace("/admin-dashboard");
+        }}
         onSelectClass={() => setSelectorModal({ visible: true, type: "class" })}
         selectedClassId={selectedClassId}
         classes={classes}
@@ -291,12 +308,15 @@ export default function ManageFees() {
                 setSearchQuery={setSearchQuery}
                 showArchived={showArchived}
                 setShowArchived={setShowArchived}
-                onPrintReports={() =>
+                onPrintReports={() => {
+                  if (isNavigating.current) return;
+                  isNavigating.current = true;
                   router.push({
                     pathname: "/admin-dashboard/FeeReports",
                     params: { classId: selectedClassId, academicYear, term },
-                  })
-                }
+                  });
+                  setTimeout(() => { isNavigating.current = false; }, 500);
+                }}
                 onRefresh={handleRefresh}
                 onShowDaily={() => setDailyModalVisible(true)}
                 onNormalize={handleNormalizeDiscounts}
@@ -319,7 +339,12 @@ export default function ManageFees() {
                     disabled.
                   </Text>
                   <TouchableOpacity
-                    onPress={() => router.push("/academic-calendar")}
+                    onPress={() => {
+                      if (isNavigating.current) return;
+                      isNavigating.current = true;
+                      router.push("/academic-calendar");
+                      setTimeout(() => { isNavigating.current = false; }, 500);
+                    }}
                   >
                     <Text style={styles.warningLink}>Configure Now</Text>
                   </TouchableOpacity>

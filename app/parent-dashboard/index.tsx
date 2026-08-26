@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { collection, doc, documentId, getDoc, getDocsFromServer, query, where } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -36,6 +36,7 @@ export default function ParentDashboard() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(true);
   const [hasPreschoolChild, setHasPreschoolChild] = useState(false);
+  const isNavigating = useRef(false);
 
   const {
     brandPrimary,
@@ -49,11 +50,12 @@ export default function ParentDashboard() {
   const PRESCHOOL_KEYWORDS = ["CRECHE", "NURSERY", "KG", "KINDERGARTEN", "TODDLER", "PLAYGROUND", "LEVEL A", "LEVEL B", "LEVEL C", "LEVEL D", "CLASS A", "CLASS B", "CLASS C", "CLASS D"];
 
   useEffect(() => {
+    let isMounted = true;
     if (!appUser) return;
     const fetchProfile = async () => {
       try {
         const snap = await getDoc(doc(db, "users", appUser.uid));
-        if (snap.exists()) {
+        if (snap.exists() && isMounted) {
           const userData = snap.data() as any;
           const p = userData.profile;
           if (p) setFullName(`${p.firstName || ""} ${p.lastName || ""}`);
@@ -81,17 +83,18 @@ export default function ParentDashboard() {
                 const keywords = ["CRECHE", "NURSERY", "KG", "KINDERGARTEN", "TODDLER", "PLAYGROUND"];
                 return keywords.some(kw => className.includes(kw));
               });
-              setHasPreschoolChild(hasPreschool);
+              if (isMounted) setHasPreschoolChild(hasPreschool);
             }
           }
         }
       } catch (err) {
         console.error(err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchProfile();
+    return () => { isMounted = false; };
   }, [appUser]);
 
   const handleCall = async (number: string) => {
@@ -261,7 +264,12 @@ export default function ParentDashboard() {
     >
       <TouchableOpacity
         style={[styles.menuCard, { borderBottomColor: item.color + "40" }]}
-        onPress={() => router.push(item.path as any)}
+        onPress={() => {
+          if (isNavigating.current) return;
+          isNavigating.current = true;
+          router.push(item.path as any);
+          setTimeout(() => { isNavigating.current = false; }, 500);
+        }}
         activeOpacity={0.8}
       >
         <LinearGradient

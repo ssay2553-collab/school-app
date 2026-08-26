@@ -10,6 +10,7 @@ import { db } from '../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAcademicConfig } from '../useAcademicConfig';
 import moment from 'moment';
+import { useRef } from 'react';
 
 export interface WeeklyTopic {
   id: string;
@@ -32,6 +33,12 @@ export const useStudentWeeklyTopics = () => {
   const [loading, setLoading] = useState(true);
   const [topics, setTopics] = useState<WeeklyTopic[]>([]);
   const [selectedWeek, setSelectedWeek] = useState(moment().startOf('isoWeek').format('YYYY-MM-DD'));
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const academicYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
@@ -57,11 +64,13 @@ export const useStudentWeeklyTopics = () => {
         ...doc.data()
       })) as WeeklyTopic[];
 
-      setTopics(list);
+      if (isMounted.current) {
+        setTopics(list);
+      }
     } catch (err) {
-      console.error("fetchStudentWeeklyTopics error:", err);
+      if (isMounted.current) console.error("fetchStudentWeeklyTopics error:", err);
     } finally {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
   }, [appUser?.classId, selectedWeek, academicYear]);
 

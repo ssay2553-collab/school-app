@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   collection,
   doc,
@@ -44,6 +44,12 @@ export const useManageTimetable = () => {
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingData, setLoadingData] = useState(false);
   const [saving, setSaving] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
 
@@ -83,16 +89,18 @@ export const useManageTimetable = () => {
           }));
         }
 
-        const sorted = sortClasses(list);
-        setClasses(sorted);
-        if (sorted.length > 0 && !selectedClass) {
-          setSelectedClass(sorted[0].id);
-          if (sorted[0].curriculum) setCurriculum(sorted[0].curriculum);
+        if (isMounted.current) {
+          const sorted = sortClasses(list);
+          setClasses(sorted);
+          if (sorted.length > 0 && !selectedClass) {
+            setSelectedClass(sorted[0].id);
+            if (sorted[0].curriculum) setCurriculum(sorted[0].curriculum);
+          }
         }
       } catch (err) {
-        console.error("fetchClasses error:", err);
+        if (isMounted.current) console.error("fetchClasses error:", err);
       } finally {
-        setLoadingClasses(false);
+        if (isMounted.current) setLoadingClasses(false);
       }
     };
     fetchClasses();
@@ -105,6 +113,8 @@ export const useManageTimetable = () => {
     try {
       const docRef = doc(db, "timetables", classId);
       const snap = await getDoc(docRef);
+
+      if (!isMounted.current) return;
 
       if (snap.exists()) {
         const data = snap.data();
@@ -127,9 +137,9 @@ export const useManageTimetable = () => {
         setNumColumns(6);
       }
     } catch (err) {
-      console.error("loadTimetable error:", err);
+      if (isMounted.current) console.error("loadTimetable error:", err);
     } finally {
-      setLoadingData(false);
+      if (isMounted.current) setLoadingData(false);
     }
   }, []);
 
@@ -193,12 +203,18 @@ export const useManageTimetable = () => {
 
       await scheduleTimetableReminders(flatLessons);
 
-      showToast({ message: "Timetable saved and reminders scheduled!", type: "success" });
+      if (isMounted.current) {
+        showToast({ message: "Timetable saved and reminders scheduled!", type: "success" });
+      }
     } catch (err) {
-      console.error("saveTimetable error:", err);
-      showToast({ message: "Failed to save timetable.", type: "error" });
+      if (isMounted.current) {
+        console.error("saveTimetable error:", err);
+        showToast({ message: "Failed to save timetable.", type: "error" });
+      }
     } finally {
-      setSaving(false);
+      if (isMounted.current) {
+        setSaving(false);
+      }
     }
   };
 

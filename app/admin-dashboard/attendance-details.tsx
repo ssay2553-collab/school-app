@@ -20,6 +20,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import * as Animatable from "react-native-animatable";
 import moment from "moment";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { useRef } from "react";
 
 interface StudentDetail {
   id: string;
@@ -43,6 +44,13 @@ export default function AttendanceDetails() {
   const [refreshing, setRefreshing] = useState(false);
   const [students, setStudents] = useState<StudentDetail[]>([]);
   const [filter, setFilter] = useState<"all" | "present" | "absent" | "late">("all");
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const primary = SCHOOL_CONFIG.primaryColor;
 
@@ -79,6 +87,7 @@ export default function AttendanceDetails() {
           where("classId", "==", classId)
         );
         onSnapshot(attQuery, (attSnap) => {
+          if (!isMounted.current) return;
           const attendanceData = attSnap.empty ? {} : (attSnap.docs[0].data().students || {});
           const merged = studentList.map(s => ({
             ...s,
@@ -98,6 +107,7 @@ export default function AttendanceDetails() {
       const attRef = doc(db, "attendance", attendanceId);
 
       const unsubscribeAttendance = onSnapshot(attRef, (attSnap) => {
+        if (!isMounted.current) return;
         const attendanceData = attSnap.exists() ? (attSnap.data().students || {}) : {};
         const merged = studentList.map(s => ({
           ...s,
@@ -117,13 +127,14 @@ export default function AttendanceDetails() {
   }, [classId, date, academicYear, term, acadConfig.academicYear, acadConfig.currentTerm, acadConfig.loading]);
 
   const onRefresh = async () => {
+    if (refreshing || !isMounted.current) return;
     setRefreshing(true);
     try {
       await getDocsFromServer(query(collection(db, "users"), where("classId", "==", classId), limit(1)));
     } catch (e) {
-      console.error(e);
+      if (isMounted.current) console.error(e);
     } finally {
-      setRefreshing(false);
+      if (isMounted.current) setRefreshing(false);
     }
   };
 
@@ -145,7 +156,14 @@ export default function AttendanceDetails() {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.back();
+          }}
+          style={styles.backBtn}
+        >
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -153,17 +171,22 @@ export default function AttendanceDetails() {
           <Text style={styles.subtitle}>{moment(date).format("dddd, MMM Do")}</Text>
         </View>
         <TouchableOpacity
-          onPress={() => router.push({
-            pathname: "/teacher-dashboard/daily-attendance",
-            params: {
-              classId,
-              date,
-              fromAdmin: "true",
-              className,
-              academicYear,
-              term
-            }
-          })}
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.push({
+              pathname: "/teacher-dashboard/daily-attendance",
+              params: {
+                classId,
+                date,
+                fromAdmin: "true",
+                className,
+                academicYear,
+                term
+              }
+            });
+            setTimeout(() => { isNavigating.current = false; }, 500);
+          }}
           style={[styles.editBtn, { backgroundColor: primary + "10" }]}
         >
           <SVGIcon name="create-outline" size={20} color={primary} />
@@ -192,16 +215,21 @@ export default function AttendanceDetails() {
             <Animatable.View animation="fadeInUp" duration={300} delay={index * 30} style={styles.studentCard}>
               <TouchableOpacity
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-                onPress={() => router.push({
-                  pathname: "/admin-dashboard/student-attendance-details",
-                  params: {
-                    studentId: item.id,
-                    studentName: item.name,
-                    classId,
-                    academicYear,
-                    term
-                  }
-                })}
+                onPress={() => {
+                  if (isNavigating.current) return;
+                  isNavigating.current = true;
+                  router.push({
+                    pathname: "/admin-dashboard/student-attendance-details",
+                    params: {
+                      studentId: item.id,
+                      studentName: item.name,
+                      classId,
+                      academicYear,
+                      term
+                    }
+                  });
+                  setTimeout(() => { isNavigating.current = false; }, 500);
+                }}
               >
                 <View style={[styles.statusIndicator, { backgroundColor: item.status === "present" ? "#10B981" : item.status === "absent" ? "#EF4444" : item.status === "late" ? "#F59E0B" : "#CBD5E1" }]} />
                 <View style={styles.studentInfo}>

@@ -72,6 +72,12 @@ export const useAdmissionCharges = ({
     term3Count: 0,
     term3Revenue: 0,
   });
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   // UI State migrated from component
   const [paymentModalVisible, setPaymentModalVisible] = useState(false);
@@ -90,6 +96,7 @@ export const useAdmissionCharges = ({
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "classes"), (snap) => {
+      if (!isMounted.current) return;
       const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name, ...d.data() }));
       setClasses(sortClasses(list));
     });
@@ -144,18 +151,20 @@ export const useAdmissionCharges = ({
         }
       });
 
-      setStats({
-        totalCollected,
-        totalBilled,
-        term1Count: t1Uids.size,
-        term1Revenue: t1Rev,
-        term2Count: t2Uids.size,
-        term2Revenue: t2Rev,
-        term3Count: t3Uids.size,
-        term3Revenue: t3Rev,
-      });
+      if (isMounted.current) {
+        setStats({
+          totalCollected,
+          totalBilled,
+          term1Count: t1Uids.size,
+          term1Revenue: t1Rev,
+          term2Count: t2Uids.size,
+          term2Revenue: t2Rev,
+          term3Count: t3Uids.size,
+          term3Revenue: t3Rev,
+        });
+      }
     } catch (e) {
-      console.error("Error fetching admission stats:", e);
+      if (isMounted.current) console.error("Error fetching admission stats:", e);
     }
   }, [acadConfig.academicYear, selectedClassId]);
 
@@ -194,12 +203,15 @@ export const useAdmissionCharges = ({
       }
 
       if (uids.length === 0) {
-        setStudents([]);
+        if (isMounted.current) {
+          setStudents([]);
+        }
         return;
       }
 
       const studentList: Student[] = [];
       for (let i = 0; i < uids.length; i += 30) {
+        if (!isMounted.current) return;
         const batchUids = uids.slice(i, i + 30);
         const uq = query(collection(db, "users"), where(documentId(), "in", batchUids));
         const uSnap = await getDocsFromServer(uq);
@@ -222,12 +234,18 @@ export const useAdmissionCharges = ({
           });
         });
       }
-      setStudents(studentList.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+      if (isMounted.current) {
+        setStudents(studentList.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+      }
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to fetch admitted students", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to fetch admitted students", type: "error" });
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   }, [acadConfig.academicYear, selectedClassId, showToast]);
 
@@ -268,8 +286,10 @@ export const useAdmissionCharges = ({
 
       const snap = await getDocsFromServer(q);
       if (snap.empty) {
-        hasMoreRef.current = false;
-        if (isFirstLoad) setStudents([]);
+        if (isMounted.current) {
+          hasMoreRef.current = false;
+          if (isFirstLoad) setStudents([]);
+        }
         return;
       }
 
@@ -292,16 +312,22 @@ export const useAdmissionCharges = ({
         };
       });
 
-      lastVisibleRef.current = snap.docs[snap.docs.length - 1];
-      hasMoreRef.current = snap.docs.length === PAGE_SIZE;
-      setStudents(prev => isFirstLoad ? batch : [...prev, ...batch]);
+      if (isMounted.current) {
+        lastVisibleRef.current = snap.docs[snap.docs.length - 1];
+        hasMoreRef.current = snap.docs.length === PAGE_SIZE;
+        setStudents(prev => isFirstLoad ? batch : [...prev, ...batch]);
+      }
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to fetch students", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to fetch students", type: "error" });
+      }
     } finally {
       isFetchingRef.current = false;
-      setLoading(false);
-      setRefreshing(false);
+      if (isMounted.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [selectedClassId, searchQuery, showToast]);
 
@@ -341,11 +367,13 @@ export const useAdmissionCharges = ({
       );
       const snap = await getDocsFromServer(q);
       const list = snap.docs.map(d => d.data());
-      setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      if (isMounted.current) {
+        setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+      }
     } catch (e) {
-      console.error(e);
+      if (isMounted.current) console.error(e);
     } finally {
-      setLoadingHistory(false);
+      if (isMounted.current) setLoadingHistory(false);
     }
   };
 

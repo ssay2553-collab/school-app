@@ -12,6 +12,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import moment from 'moment';
+import { useRef } from 'react';
 import { db } from '../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAcademicConfig } from '../useAcademicConfig';
@@ -33,25 +34,33 @@ export function useExpenditure() {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("");
   const [isPreviousTerm, setIsPreviousTerm] = useState(false);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   useEffect(() => {
     if (!acadConfig.loading) {
-      setSelectedYear(acadConfig.academicYear || "");
-      setSelectedTerm(acadConfig.currentTerm || "");
+      if (isMounted.current) {
+        setSelectedYear(acadConfig.academicYear || "");
+        setSelectedTerm(acadConfig.currentTerm || "");
+      }
       if (!acadConfig.academicYear || !acadConfig.currentTerm) {
-        setLoading(false);
+        if (isMounted.current) setLoading(false);
       }
     }
   }, [acadConfig]);
 
   useEffect(() => {
     if (!selectedYear || !selectedTerm) {
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
       return;
     }
 
     if (expenditures.length === 0) {
-      setLoading(true);
+      if (isMounted.current) setLoading(true);
     }
 
     const q = query(
@@ -91,21 +100,26 @@ export function useExpenditure() {
         const uniqueList = Array.from(
           new Map(sorted.map((item) => [item.id, item])).values(),
         );
-        setExpenditures(uniqueList);
 
-        const total = uniqueList.reduce(
-          (sum, item) => sum + (item.amount || 0),
-          0,
-        );
-        setServerTotal(total);
+        if (isMounted.current) {
+          setExpenditures(uniqueList);
 
-        setLoading(false);
-        setRefreshing(false);
+          const total = uniqueList.reduce(
+            (sum, item) => sum + (item.amount || 0),
+            0,
+          );
+          setServerTotal(total);
+
+          setLoading(false);
+          setRefreshing(false);
+        }
       },
       (error) => {
-        console.error("Expenditure snapshot error:", error);
-        setLoading(false);
-        setRefreshing(false);
+        if (isMounted.current) {
+          console.error("Expenditure snapshot error:", error);
+          setLoading(false);
+          setRefreshing(false);
+        }
       },
     );
 
@@ -131,16 +145,18 @@ export function useExpenditure() {
         const uniqueList = Array.from(
           new Map(list.map((item) => [item.id, item])).values(),
         );
-        setExpenditures(uniqueList);
-        const total = uniqueList.reduce(
-          (sum, item) => sum + (item.amount || 0),
-          0,
-        );
-        setServerTotal(total);
+        if (isMounted.current) {
+          setExpenditures(uniqueList);
+          const total = uniqueList.reduce(
+            (sum, item) => sum + (item.amount || 0),
+            0,
+          );
+          setServerTotal(total);
+        }
       } catch (e) {
-        console.error("fetchExpenditures error:", e);
+        if (isMounted.current) console.error("fetchExpenditures error:", e);
       } finally {
-        setRefreshing(false);
+        if (isMounted.current) setRefreshing(false);
       }
     },
     [selectedYear, selectedTerm],

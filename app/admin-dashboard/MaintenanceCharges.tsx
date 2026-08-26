@@ -33,6 +33,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useMaintenanceCharges, Student } from "../../hooks/admin-dashboard/useMaintenanceCharges";
+import { useRef, useEffect } from "react";
 
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { SHADOWS } from "../../constants/theme";
@@ -50,6 +51,13 @@ export default function MaintenanceCharges() {
   const { showToast } = useToast();
   const router = useRouter();
   const acadConfig = useAcademicConfig();
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   if (acadConfig.loading || !appUser) {
     return (
@@ -162,7 +170,14 @@ export default function MaintenanceCharges() {
           style={styles.headerTop}
         >
           <View style={styles.navBar}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.headerIconBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                router.back();
+              }}
+              style={styles.headerIconBtn}
+            >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <View style={styles.titleCenter}>
@@ -366,6 +381,8 @@ export default function MaintenanceCharges() {
                       key={i}
                       style={styles.transactionTile}
                       onPress={() => {
+                        if (isNavigating.current) return;
+                        isNavigating.current = true;
                         setPaymentModalVisible(false);
                         router.push({
                           pathname: "/shared/receipt-view",
@@ -377,6 +394,7 @@ export default function MaintenanceCharges() {
                             term: h.term
                           }
                         });
+                        setTimeout(() => { isNavigating.current = false; }, 500);
                       }}
                       onLongPress={() => confirmDeletePayment(h)}
                     >

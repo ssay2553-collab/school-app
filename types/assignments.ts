@@ -1,6 +1,6 @@
 import { Timestamp } from "firebase/firestore";
 
-export type AssignmentType = "mcq" | "short_answer" | "preschool" | "mathematics";
+export type AssignmentType = "mcq" | "short_answer" | "preschool" | "mathematics" | "rich-text";
 
 export type PreschoolQuestionType =
   | "count_objects"
@@ -57,6 +57,7 @@ export interface Assignment {
   fileName?: string;
   teacherId: string;
   code: string;
+  status?: 'pending' | 'approved' | 'rejected' | 'published';
   createdAt: Timestamp;
   dueDate?: Timestamp;
   questions?: Question[];

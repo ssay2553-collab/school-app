@@ -10,7 +10,7 @@ import {
   where,
   writeBatch,
 } from "firebase/firestore";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { Alert, Platform } from "react-native";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
@@ -51,6 +51,12 @@ export function useViewAcademicRecords() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
@@ -106,7 +112,7 @@ export function useViewAcademicRecords() {
 
   // Sync with global academic config
   useEffect(() => {
-    if (!acadConfig.loading) {
+    if (!acadConfig.loading && isMounted.current) {
       setSelectedYear(acadConfig.academicYear);
       setTerm(acadConfig.currentTerm);
       if (acadConfig.nextTermBegins) setGlobalNextTermBegins(acadConfig.nextTermBegins);
@@ -130,6 +136,7 @@ export function useViewAcademicRecords() {
     const unsubscribe = onSnapshot(
       q,
       (snap) => {
+        if (!isMounted.current) return;
         const subs = snap.docs.map((d) => (d.data() as any).subject).sort();
         setAvailableSubjects(subs);
 
@@ -144,9 +151,11 @@ export function useViewAcademicRecords() {
         setRefreshing(false);
       },
       (error) => {
-        console.error("onSnapshot Error:", error);
-        setFetchingSubjects(false);
-        setRefreshing(false);
+        if (isMounted.current) {
+          console.error("onSnapshot Error:", error);
+          setFetchingSubjects(false);
+          setRefreshing(false);
+        }
       },
     );
 
@@ -269,26 +278,32 @@ export function useViewAcademicRecords() {
         .sort((a, b) => b.total - a.total)
         .map((s, i) => ({ ...s, position: i + 1 }));
 
-      setStudentScores(processed);
+      if (isMounted.current) {
+        setStudentScores(processed);
 
-      if (processed.length > 0) {
-        const sumValue = processed.reduce(
-          (acc: number, curr: any) => acc + curr.total,
-          0,
-        );
-        setStats({
-          average: parseFloat((sumValue / processed.length).toFixed(2)),
-          studentCount: processed.length,
-          passRate: 100,
-        });
-      } else {
-        setStats(null);
+        if (processed.length > 0) {
+          const sumValue = processed.reduce(
+            (acc: number, curr: any) => acc + curr.total,
+            0,
+          );
+          setStats({
+            average: parseFloat((sumValue / processed.length).toFixed(2)),
+            studentCount: processed.length,
+            passRate: 100,
+          });
+        } else {
+          setStats(null);
+        }
       }
     } catch (e) {
-      console.error("Load Data Error:", e);
-      showToast({ message: "Could not fetch records.", type: "error" });
+      if (isMounted.current) {
+        console.error("Load Data Error:", e);
+        showToast({ message: "Could not fetch records.", type: "error" });
+      }
     } finally {
-      setListLoading(false);
+      if (isMounted.current) {
+        setListLoading(false);
+      }
     }
   }, [
     selectedClassId,
@@ -307,18 +322,20 @@ export function useViewAcademicRecords() {
         name: (d.data() as any)?.name || d.id,
       }));
       const sorted = sortClasses(list);
-      setClasses(sorted);
-      if (sorted.length > 0 && !selectedClassId)
-        setSelectedClassId(sorted[0].id);
+      if (isMounted.current) {
+        setClasses(sorted);
+        if (sorted.length > 0 && !selectedClassId)
+          setSelectedClassId(sorted[0].id);
+      }
     } catch (e) {
-      console.error(e);
+      if (isMounted.current) console.error(e);
     }
   };
 
   useEffect(() => {
     const init = async () => {
       await loadClassesList();
-      setLoading(false);
+      if (isMounted.current) setLoading(false);
     };
     init();
   }, []);
@@ -430,16 +447,22 @@ export function useViewAcademicRecords() {
         { merge: true },
       );
 
-      setMetadataModalVisible(false);
-      showToast({
-        message: "Terminal metadata saved for " + editingStudent.fullName,
-        type: "success",
-      });
+      if (isMounted.current) {
+        setMetadataModalVisible(false);
+        showToast({
+          message: "Terminal metadata saved for " + editingStudent.fullName,
+          type: "success",
+        });
+      }
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to save metadata.", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to save metadata.", type: "error" });
+      }
     } finally {
-      setSavingMetadata(false);
+      if (isMounted.current) {
+        setSavingMetadata(false);
+      }
     }
   };
 

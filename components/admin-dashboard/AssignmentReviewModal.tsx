@@ -13,7 +13,7 @@ import {
   Dimensions
 } from "react-native";
 import { doc, updateDoc, serverTimestamp, query, collection, where, getDocs } from "firebase/firestore";
-import import { useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import SVGIcon from "../SVGIcon";
 import QuestionResponseItem from "../student-dashboard/assignments/QuestionResponseItem";
 import { db } from "../../firebaseConfig";

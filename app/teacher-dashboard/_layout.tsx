@@ -174,7 +174,6 @@ export default function TeacherDashboardLayout() {
           <Tabs.Screen name="review-document" options={{ href: null }} />
           <Tabs.Screen name="tlm-hub" options={{ href: null }} />
           <Tabs.Screen name="preschool-remarks" options={{ href: null }} />
-          <Tabs.Screen name="gallery" options={{ href: null }} />
         </Tabs>
       </View>
     </View>

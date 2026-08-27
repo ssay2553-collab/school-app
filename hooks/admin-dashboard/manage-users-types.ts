@@ -69,15 +69,12 @@ export const PERMISSION_KEYS = [
   { key: "staff-payroll", label: "Staff Payroll" },
   { key: "expenditure", label: "Expenditure" },
   { key: "manage-users", label: "Manage Users" },
-  { key: "gallery", label: "Gallery Management" },
   { key: "timetables", label: "Timetable Management" },
   { key: "academic-calendar", label: "Academic Calendar" },
   { key: "settings", label: "School Settings & Rates" },
-  { key: "faq", label: "FAQ Management" },
   { key: "student-groups", label: "Student Study Groups" },
   { key: "parent-chat", label: "Parent Communication" },
   { key: "staff-chat", label: "Internal Staff Chat" },
-  { key: "guest-chat", label: "Guest Inquiry Chat" },
 ];
 
 export const PERMISSION_LEVELS: { label: string; value: PermissionLevel }[] = [

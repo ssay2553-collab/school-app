@@ -117,26 +117,6 @@ export default function StaffDashboard() {
           : []),
       ],
     },
-    {
-      title: "INFORMATION 🏫",
-      color: brandPrimary,
-      items: [
-        {
-          title: "School Gallery",
-          subtitle: "Campus updates",
-          route: "/parent-dashboard/gallery",
-          icon: "images",
-          color: "#ec4899",
-        },
-        {
-          title: "FAQs",
-          subtitle: "Staff guidelines",
-          route: "/parent-dashboard/FAQ",
-          icon: "help-circle",
-          color: "#f59e0b",
-        },
-      ],
-    },
   ];
 
   const getColumns = () => {

@@ -214,20 +214,6 @@ export default function AdminDashboard() {
           icon: "chatbubble-ellipses",
           color: "#3b82f6",
         },
-        {
-          title: "Media Library",
-          subtitle: "Photo gallery",
-          route: "/admin-dashboard/gallery-upload",
-          icon: "images",
-          color: "#a855f7",
-        },
-        {
-          title: "FAQ & Help",
-          subtitle: "Manage help",
-          route: "/admin-dashboard/FAQEditor",
-          icon: "help-circle",
-          color: "#eab308",
-        },
       ],
     },
   ];

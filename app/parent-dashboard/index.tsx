@@ -210,26 +210,6 @@ export default function ParentDashboard() {
         },
       ],
     },
-    {
-      title: "EXPLORE CAMPUS 🏫",
-      color: brandPrimary,
-      items: [
-        {
-          title: "School Gallery",
-          subtitle: "Campus tour",
-          icon: "images",
-          color: "#6366f1",
-          path: "/parent-dashboard/gallery",
-        },
-        {
-          title: "Common FAQ",
-          subtitle: "Helpful info",
-          icon: "help-circle",
-          color: "#f59e0b",
-          path: "/parent-dashboard/FAQ",
-        },
-      ],
-    },
   ];
 
   if (loading)

@@ -135,13 +135,6 @@ export default function StudentDashboard() {
           path: "/student-dashboard/weekly-topics",
         },
         {
-          title: "Gallery",
-          subtitle: "Campus life",
-          icon: "images",
-          color: "#FF9F43",
-          path: "/student-dashboard/gallery",
-        },
-        {
           title: "Coding & Robotics",
           subtitle: "Robotics & Projects",
           icon: "code-slash",

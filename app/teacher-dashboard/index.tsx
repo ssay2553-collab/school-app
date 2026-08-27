@@ -287,13 +287,6 @@ export default function TeacherDashboard() {
           color: "#f43f5e",
         },
         {
-          title: "School Gallery",
-          subtitle: "Memories",
-          route: "/teacher-dashboard/gallery",
-          icon: "images",
-          color: "#8b5cf6",
-        },
-        {
           title: "Staff Chat",
           subtitle: "Staff Messaging",
           route: "/teacher-dashboard/staff-chat",

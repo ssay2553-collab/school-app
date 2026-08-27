@@ -93,13 +93,7 @@ function hasScreenPermission(screen, level) {
 
     function canManagePayroll() {
       return hasPermission('staff-payroll', 'edit');
-
     }
-
-    function canManageFAQ() {
-      return hasPermission('faq', 'edit');
-    }
-
 
     function canManageTimetables() {
       return hasPermission('timetables', 'edit');
@@ -836,18 +830,6 @@ match /feePayments/{paymentId} {
     }
 
     /* ===============================
-       GALLERY & METADATA
-    =============================== */
-    match /gallery/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-    match /gallery_metadata/{id} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    /* ===============================
        ACADEMIC YEARS
     =============================== */
     match /academicYears/{id} {
@@ -879,28 +861,6 @@ match /feePayments/{paymentId} {
         allow read: if isSignedIn() && isGroupMember();
         allow create: if isSignedIn() && isGroupMember() && request.resource.data.senderId == uid();
       }
-    }
-
-    /* ===============================
-       GUEST TICKETS & MESSAGES
-    =============================== */
-    match /guestTickets/{ticketId} {
-      allow create: if isSignedIn();
-      allow read: if isAdmin() || (isSignedIn() && resource.data.guestUid == uid());
-      allow update, delete: if isAdmin();
-
-      match /messages/{messageId} {
-        allow read, create: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/guestTickets/$(ticketId)).data.guestUid == uid());
-        allow update, delete: if isAdmin();
-      }
-    }
-
-    /* ===============================
-       FAQS
-    =============================== */
-    match /faqs/{key} {
-      allow read: if true;
-      allow write: if canManageFAQ() || isAdmin();
     }
 
     /* ===============================

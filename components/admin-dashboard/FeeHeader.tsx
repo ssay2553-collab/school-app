@@ -40,7 +40,7 @@ export const FeeHeader: React.FC<FeeHeaderProps> = ({
         style={[styles.headerTop, { minHeight: headerHeight }]}
       >
         <View style={styles.navBar}>
-          <TouchableOpacity onPress={onBack} style={styles.headerIconBtn}>
+          <TouchableOpacity onPress={onBack} style={styles.headerIconBtn} activeOpacity={0.7}>
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.titleCenter}>
@@ -59,7 +59,7 @@ export const FeeHeader: React.FC<FeeHeaderProps> = ({
             },
           ]}
         >
-          <TouchableOpacity style={styles.glassPill} onPress={onSelectClass}>
+          <TouchableOpacity style={styles.glassPill} onPress={onSelectClass} activeOpacity={0.8}>
             <Text style={styles.glassLabel}>TARGET CLASS</Text>
             <Text style={styles.glassValue} numberOfLines={1}>
               {selectedClassId === "all"

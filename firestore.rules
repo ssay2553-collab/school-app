@@ -14,12 +14,13 @@ service cloud.firestore {
     }
 
     function uid() {
-      return request.auth.uid;
+      return request.auth != null ? request.auth.uid : null;
     }
 
     function userDoc() {
-      return isSignedIn() && exists(/databases/$(database)/documents/users/$(uid()))
-        ? get(/databases/$(database)/documents/users/$(uid()))
+      let currentUid = uid();
+      return currentUid != null && exists(/databases/$(database)/documents/users/$(currentUid))
+        ? get(/databases/$(database)/documents/users/$(currentUid))
         : null;
     }
 
@@ -239,10 +240,10 @@ allow create: if
     (
 
       // ==========================================================
-      // TEACHER / STUDENT
+      // TEACHER / STUDENT / STAFF
       // ==========================================================
       (
-        request.resource.data.role in ['teacher', 'student'] &&
+        request.resource.data.role in ['teacher', 'student', 'staff'] &&
         !('permissions' in request.resource.data) &&
         !('adminRole' in request.resource.data) &&
         !('assignedRoles' in request.resource.data) &&
@@ -349,16 +350,12 @@ allow create: if
         (
           (
             'adminRole' in request.resource.data &&
-            existsAfter(
-              /databases/$(database)/documents/adminRoles/$(request.resource.data.adminRole.lower())
-            )
+            existsAfter(/databases/$(database)/documents/adminRoles/$(request.resource.data.adminRole.lower()))
           )
           ||
           (
             'adminRole' in request.resource.data.get('profile', {}) &&
-            existsAfter(
-              /databases/$(database)/documents/adminRoles/$(request.resource.data.profile.adminRole.lower())
-            )
+            existsAfter(/databases/$(database)/documents/adminRoles/$(request.resource.data.profile.adminRole.lower()))
           )
         )
       )
@@ -535,7 +532,8 @@ allow create: if
        ADMIN ROLES UNIQUENESS
     =============================== */
    match /adminRoles/{roleName} {
-     allow read: if isSignedIn();
+     // Allow anyone to check for role uniqueness or get global admin count
+     allow read: if true;
 
      allow create: if isSignedIn()
        && request.resource.data.uid == uid()

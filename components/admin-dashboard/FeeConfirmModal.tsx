@@ -30,12 +30,13 @@ export const FeeConfirmModal: React.FC<FeeConfirmModalProps> = ({
           <Text style={styles.alertTitle}>{title}</Text>
           <Text style={styles.alertText}>{message}</Text>
           <View style={styles.alertBtnRow}>
-            <TouchableOpacity onPress={onCancel} style={styles.alertBtnSec}>
+            <TouchableOpacity onPress={onCancel} style={styles.alertBtnSec} activeOpacity={0.7}>
               <Text style={styles.alertBtnTextSec}>{cancelText}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onConfirm}
               style={[styles.alertBtnPri, { backgroundColor: confirmColor }]}
+              activeOpacity={0.7}
             >
               <Text style={styles.alertBtnTextPri}>{confirmText}</Text>
             </TouchableOpacity>

@@ -387,6 +387,10 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     marginRight: 15,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   header: {
     fontSize: 28,
@@ -401,6 +405,10 @@ const styles = StyleSheet.create({
     padding: 18,
     flexDirection: "row",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   iconBox: {
     width: 40,

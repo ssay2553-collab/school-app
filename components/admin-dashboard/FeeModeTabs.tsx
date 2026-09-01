@@ -20,6 +20,7 @@ export const FeeModeTabs: React.FC<FeeModeTabsProps> = ({
             styles.modeTab,
             activeMode === "payment" && styles.activeModeTab,
           ]}
+          activeOpacity={0.7}
           onPress={() => setActiveMode("payment")}
         >
           <SVGIcon
@@ -41,6 +42,7 @@ export const FeeModeTabs: React.FC<FeeModeTabsProps> = ({
             styles.modeTab,
             activeMode === "billing" && styles.activeModeTab,
           ]}
+          activeOpacity={0.7}
           onPress={() => setActiveMode("billing")}
         >
           <SVGIcon
@@ -62,6 +64,7 @@ export const FeeModeTabs: React.FC<FeeModeTabsProps> = ({
             styles.modeTab,
             activeMode === "discounts" && styles.activeModeTab,
           ]}
+          activeOpacity={0.7}
           onPress={() => setActiveMode("discounts")}
         >
           <SVGIcon

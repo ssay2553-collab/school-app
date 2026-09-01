@@ -48,6 +48,7 @@ export const FeeStudentCard = React.memo<FeeStudentCardProps>(({
     <Animatable.View
       animation="fadeInUp"
       duration={400}
+      useNativeDriver={false}
       style={styles.cardWrapper}
     >
       <TouchableOpacity

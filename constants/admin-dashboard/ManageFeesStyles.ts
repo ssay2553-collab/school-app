@@ -47,6 +47,10 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   titleCenter: { alignItems: "center" },
   headerTitle: { fontSize: 18, fontWeight: "900", color: "#fff" },
@@ -62,6 +66,10 @@ export const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 10,
     padding: 6,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   glassLabel: {
     fontSize: 7,
@@ -89,6 +97,10 @@ export const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
     ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   archiveToggleText: {
     fontSize: 10,
@@ -122,6 +134,10 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   modeToggleArea: { paddingHorizontal: 20, marginBottom: 20 },
   modeTabs: {
@@ -139,6 +155,10 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   activeModeTab: { backgroundColor: VIBE.primary, ...SHADOWS.medium },
   modeTabText: { fontSize: 12, fontWeight: "800", color: VIBE.muted },
@@ -196,7 +216,14 @@ export const styles = StyleSheet.create({
     marginRight: 10,
   },
   bulkInput: { flex: 1, fontSize: 16, fontWeight: "700", color: VIBE.text },
-  checkAllBtn: { alignItems: "center", gap: 4 },
+  checkAllBtn: {
+    alignItems: "center",
+    gap: 4,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   checkAllText: { fontSize: 9, fontWeight: "900" },
   listHeaderRow: {
     flexDirection: "row",
@@ -220,6 +247,10 @@ export const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: VIBE.border,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   filterChipText: { fontSize: 10, fontWeight: "900", color: VIBE.muted },
   flatListContent: { paddingBottom: 120 },
@@ -231,6 +262,10 @@ export const styles = StyleSheet.create({
     ...SHADOWS.small,
     borderWidth: 1,
     borderColor: VIBE.border,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   selectedCard: {
     borderColor: VIBE.primary,
@@ -355,6 +390,10 @@ export const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 4,
     ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   ledgerButtonText: {
     fontSize: 10,
@@ -368,6 +407,10 @@ export const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: "hidden",
     ...SHADOWS.large,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   fabGrad: {
     flex: 1,
@@ -453,6 +496,10 @@ export const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     width: "100%",
     minHeight: 56,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   activeSheetItem: { backgroundColor: VIBE.primary + "10" },
   sheetItemText: {

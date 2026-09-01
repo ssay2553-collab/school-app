@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
@@ -27,6 +27,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
           >
             <TouchableOpacity
               style={styles.roleCard}
+              activeOpacity={0.7}
               onPress={() => onSelectRole(r.role)}
             >
               <View
@@ -74,6 +75,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
     ...SHADOWS.medium,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   roleIcon: {
     width: 55,

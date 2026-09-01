@@ -1,5 +1,5 @@
 import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View, Platform } from "react-native";
 import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import { getTeacherClasses } from "../../../lib/classHelpers";
@@ -153,6 +153,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 12,
     ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   selectedCard: {
     borderColor: COLORS.primary,

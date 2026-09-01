@@ -453,7 +453,18 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingVertical: 20, paddingTop: Platform.OS === 'ios' ? 10 : 30 },
   headerContent: { width: '100%' },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  miniBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
+  miniBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   titleCenter: { alignItems: 'center' },
   headerTitle: { fontSize: 20, fontWeight: '900', color: '#fff' },
   headerDate: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '600', marginTop: 2 },
@@ -463,13 +474,32 @@ const styles = StyleSheet.create({
   pillLabel: { fontSize: 8, fontWeight: '900', marginTop: 2, letterSpacing: 0.5 },
   dateControlContainer: { padding: 15 },
   dateControl: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 20, padding: 5, ...SHADOWS.small, borderWidth: 1, borderColor: '#F1F5F9' },
-  dateBtn: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  dateBtn: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   dateDisplay: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   dateText: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
   list: { padding: 15, paddingBottom: 100 },
   columnWrapper: { justifyContent: 'space-between' },
   cardContainer: { marginBottom: 15 },
-  classCard: { borderRadius: 25, overflow: 'hidden', ...SHADOWS.small, borderWidth: 1, borderColor: '#F1F5F9' },
+  classCard: {
+    borderRadius: 25,
+    overflow: 'hidden',
+    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   cardHeaderStrip: { flexDirection: 'row', alignItems: 'center', padding: 15, gap: 10 },
   classNameWhite: { flex: 1, fontSize: 16, fontWeight: '900', color: '#fff' },
   whiteStatusBadge: { backgroundColor: '#fff', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },

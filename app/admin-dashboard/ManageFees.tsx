@@ -390,7 +390,9 @@ export default function ManageFees() {
                           backgroundColor: VIBE.primary,
                           borderColor: VIBE.primary,
                         },
+                        Platform.OS === 'web' && { cursor: 'pointer' } as any
                       ]}
+                      activeOpacity={0.7}
                       onPress={() => setStatusFilter(f as any)}
                     >
                       <Text
@@ -448,6 +450,7 @@ export default function ManageFees() {
             <Animatable.View animation="bounceIn" style={styles.fabWrap}>
               <TouchableOpacity
                 style={styles.mainFab}
+                activeOpacity={0.8}
                 onPress={() =>
                   activeMode === "billing"
                     ? setBillModalVisible(true)

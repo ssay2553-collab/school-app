@@ -74,7 +74,7 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
             <Text style={styles.modalStudentName}>
               {selectedStudent?.fullName || "Student Profile"}
             </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeRound}>
+            <TouchableOpacity onPress={onClose} style={styles.closeRound} activeOpacity={0.7}>
               <SVGIcon name="close" size={24} color={VIBE.muted} />
             </TouchableOpacity>
           </View>
@@ -185,7 +185,9 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
                   style={[
                     styles.methodBtn,
                     paymentMethod === m && { backgroundColor: VIBE.primary },
+                    Platform.OS === 'web' && { cursor: 'pointer' } as any
                   ]}
+                  activeOpacity={0.7}
                   onPress={() => setPaymentMethod(m as any)}
                   disabled={!canEdit}
                 >
@@ -201,7 +203,8 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
               ))}
             </View>
             <TouchableOpacity
-              style={[styles.saveBtn, { backgroundColor: VIBE.primary }]}
+              style={[styles.saveBtn, { backgroundColor: VIBE.primary }, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
+              activeOpacity={0.8}
               onPress={onConfirm}
               disabled={saving || !canEdit}
             >

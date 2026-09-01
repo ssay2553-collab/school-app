@@ -527,6 +527,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 15,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   headerTitle: { fontSize: 20, fontWeight: "800", color: "#1E293B" },
   headerSub: { fontSize: 12, color: "#64748B", fontWeight: "600" },
@@ -537,6 +541,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   searchContainer: {
     paddingHorizontal: 20,
@@ -606,6 +614,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 12,
     justifyContent: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   graduateBtnText: { color: "#fff", fontWeight: "800", fontSize: 12 },
   listContent: { flexGrow: 1, paddingBottom: 100 },
@@ -659,6 +671,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 15,
     ...SHADOWS.medium,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   errorButtonText: {
     color: "#fff",

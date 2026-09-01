@@ -47,7 +47,7 @@ export const FeeBulkActionStrip: React.FC<FeeBulkActionStripProps> = ({
           editable={canEdit}
         />
       </View>
-      <TouchableOpacity style={styles.checkAllBtn} onPress={onToggleSelectAll}>
+      <TouchableOpacity style={styles.checkAllBtn} onPress={onToggleSelectAll} activeOpacity={0.7}>
         <SVGIcon
           name={isAllSelected ? "checkbox" : "square"}
           size={28}

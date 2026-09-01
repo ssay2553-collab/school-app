@@ -36,6 +36,7 @@ export const FeeStatsDashboard: React.FC<FeeStatsDashboardProps> = ({
         >
           <Animatable.View
             animation="zoomIn"
+            useNativeDriver={false}
             style={[styles.statBox, { backgroundColor: VIBE.info }]}
           >
             <Text style={styles.statLabel}>EXPECTED</Text>
@@ -53,6 +54,7 @@ export const FeeStatsDashboard: React.FC<FeeStatsDashboardProps> = ({
           <Animatable.View
             animation="zoomIn"
             delay={100}
+            useNativeDriver={false}
             style={[styles.statBox, { backgroundColor: VIBE.success }]}
           >
             <Text style={styles.statLabel}>RECEIVED</Text>
@@ -70,6 +72,7 @@ export const FeeStatsDashboard: React.FC<FeeStatsDashboardProps> = ({
           <Animatable.View
             animation="zoomIn"
             delay={150}
+            useNativeDriver={false}
             style={[styles.statBox, { backgroundColor: VIBE.purple }]}
           >
             <Text style={styles.statLabel}>DISCOUNTS</Text>
@@ -87,6 +90,7 @@ export const FeeStatsDashboard: React.FC<FeeStatsDashboardProps> = ({
           <Animatable.View
             animation="zoomIn"
             delay={200}
+            useNativeDriver={false}
             style={[styles.statBox, { backgroundColor: VIBE.danger }]}
           >
             <Text style={styles.statLabel}>OUTSTANDING</Text>
@@ -111,6 +115,7 @@ export const FeeStatsDashboard: React.FC<FeeStatsDashboardProps> = ({
       <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
         <Animatable.View
           animation="fadeInDown"
+          useNativeDriver={false}
           style={[
             styles.statBox,
             {

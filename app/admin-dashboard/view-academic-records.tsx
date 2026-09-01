@@ -342,6 +342,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   titleContainer: { alignItems: "center", flex: 1 },
   schoolNameMini: { color: "#fff", fontSize: 16, fontWeight: "800" },
@@ -392,6 +396,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     backgroundColor: "#fff",
     gap: 8,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   recalcBtnText: {
     fontSize: 12,

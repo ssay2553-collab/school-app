@@ -106,6 +106,7 @@ export default function StudentFeeHistoryScreen() {
           }}
           style={styles.backIcon}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
         >
           <SVGIcon name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
@@ -114,6 +115,7 @@ export default function StudentFeeHistoryScreen() {
           onPress={() => setPaymentModalVisible(true)}
           disabled={!selectedStudentUid}
           style={styles.paymentIcon}
+          activeOpacity={0.7}
         >
           <SVGIcon
             name="cash"
@@ -183,12 +185,13 @@ export default function StudentFeeHistoryScreen() {
                 <Text style={styles.emptySub}>
                   No financial data for the selected period.
                 </Text>
-                <TouchableOpacity
-                  style={[styles.saveBtn, { marginTop: 20, height: 48, paddingHorizontal: 30 }]}
-                  onPress={refresh}
-                >
-                  <Text style={styles.saveBtnText}>RELOAD DATA</Text>
-                </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.saveBtn, { marginTop: 20, height: 48, paddingHorizontal: 30 }, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
+                    activeOpacity={0.8}
+                    onPress={refresh}
+                  >
+                    <Text style={styles.saveBtnText}>RELOAD DATA</Text>
+                  </TouchableOpacity>
               </View>
             )
           )}
@@ -209,6 +212,7 @@ export default function StudentFeeHistoryScreen() {
                 </View>
                 <TouchableOpacity
                   onPress={() => setShowFullHistory(!showFullHistory)}
+                  activeOpacity={0.7}
                   style={[
                     styles.ledgerBadge,
                     showFullHistory && { backgroundColor: primary },
@@ -248,6 +252,7 @@ export default function StudentFeeHistoryScreen() {
                     <TouchableOpacity
                       key={payment.id || idx}
                       style={styles.paymentRow}
+                      activeOpacity={0.7}
                       onLongPress={() => onRevertPayment(payment)}
                       onPress={() => {
                         if (isNavigating.current) return;
@@ -262,7 +267,7 @@ export default function StudentFeeHistoryScreen() {
                             term: payment.term || selectedTerm,
                           },
                         });
-                        setTimeout(() => { isNavigating.current = false; }, 500);
+                        setTimeout(() => { isNavigating.current = false; }, 800);
                       }}
                     >
                       <View style={styles.paymentInfo}>
@@ -366,6 +371,7 @@ export default function StudentFeeHistoryScreen() {
               <TouchableOpacity
                 onPress={() => setPaymentModalVisible(false)}
                 style={styles.closeRound}
+                activeOpacity={0.7}
               >
                 <SVGIcon name="close" size={24} color="#64748B" />
               </TouchableOpacity>
@@ -470,32 +476,36 @@ export default function StudentFeeHistoryScreen() {
                   </>
                 )}
               </View>
-              <View style={styles.methodGrid}>
-                {["Cash", "Cheque", "Momo", "E-cash"].map((m) => (
+                  <View style={styles.methodGrid}>
+                    {["Cash", "Cheque", "Momo", "E-cash"].map((m) => (
+                      <TouchableOpacity
+                        key={m}
+                        activeOpacity={0.7}
+                        style={[
+                          styles.methodBtn,
+                          paymentMethod === m && { backgroundColor: primary },
+                          Platform.OS === 'web' && { cursor: 'pointer' } as any
+                        ]}
+                        onPress={() => setPaymentMethod(m as any)}
+                      >
+                        <Text
+                          style={[
+                            styles.methodText,
+                            paymentMethod === m && { color: "#fff" },
+                          ]}
+                        >
+                          {m}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
                   <TouchableOpacity
-                    key={m}
-                    style={[
-                      styles.methodBtn,
-                      paymentMethod === m && { backgroundColor: primary },
-                    ]}
-                    onPress={() => setPaymentMethod(m as any)}
+                    style={[styles.saveBtn, { backgroundColor: primary }, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
+                    activeOpacity={0.8}
+                    onPress={onLogPayment}
+                    disabled={saving}
                   >
-                    <Text
-                      style={[
-                        styles.methodText,
-                        paymentMethod === m && { color: "#fff" },
-                      ]}
-                    >
-                      {m}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: primary }]}
-                onPress={onLogPayment}
-                disabled={saving}
-              >
                 {saving ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
@@ -521,8 +531,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   navTitle: { fontSize: 18, fontWeight: "900", color: "#fff" },
-  backIcon: { width: 40 },
-  paymentIcon: { width: 40, alignItems: "flex-end", marginRight: 10 },
+  backIcon: {
+    width: 40,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
+  paymentIcon: {
+    width: 40,
+    alignItems: "flex-end",
+    marginRight: 10,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   scrollContent: { paddingBottom: 40 },
   mainContent: { padding: 15 },
   transactionsContainer: {
@@ -552,6 +576,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   ledgerBadgeText: {
     fontSize: 10,
@@ -592,6 +620,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 10,
     ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   paymentInfo: { flex: 1 },
   paymentMain: {
@@ -653,6 +685,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   modalInputs: { gap: 15, marginBottom: 30 },
   pillInput: {
@@ -684,6 +720,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 12,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   saveBtnText: {
     color: "#fff",

@@ -688,7 +688,11 @@ const styles = StyleSheet.create({
     height: 40, 
     borderRadius: 12, 
     justifyContent: 'center', 
-    alignItems: 'center' 
+    alignItems: 'center',
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   titleCenter: { alignItems: 'center' },
   headerTitleText: { fontSize: 20, fontWeight: '900', color: '#fff' },
@@ -708,6 +712,10 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     backgroundColor: '#fff',
     gap: 10,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   bdayBtnText: {
     fontSize: 14,
@@ -777,6 +785,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     flex: 1,
     alignItems: 'center',
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   audienceBtnText: {
     fontSize: 10,
@@ -793,6 +805,10 @@ const styles = StyleSheet.create({
     gap: 8,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   actionBtnText: {
     fontSize: 13,
@@ -811,7 +827,18 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   mediaActionRow: { flexDirection: 'row', gap: 12, marginTop: 5 },
-  mediaActionBox: { flex: 1, padding: 15, borderRadius: 16, borderStyle: 'dashed', borderWidth: 1, alignItems: 'center' },
+  mediaActionBox: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 16,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    alignItems: 'center',
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   mediaIconCircle: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   mediaActionText: { fontSize: 12, fontWeight: '800' },
   previewWrapper: {
@@ -842,6 +869,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     ...SHADOWS.medium,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   publishBtnText: {
     color: "#fff",
@@ -866,6 +897,10 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 10,
     ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   deleteAction: {
     position: "absolute",

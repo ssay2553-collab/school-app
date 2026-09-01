@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StyleSheet,
+  Platform,
 } from "react-native";
 import moment from "moment";
 import SVGIcon from "../SVGIcon";
@@ -35,7 +36,7 @@ export const AdminEventStats: React.FC<AdminEventStatsProps> = ({
     <View style={styles.statsGrid}>
       <View style={styles.headerRow}>
         <Text style={styles.statLabel}>UPCOMING EVENTS 📅</Text>
-        <TouchableOpacity onPress={onViewAll}>
+        <TouchableOpacity onPress={onViewAll} activeOpacity={0.7}>
           <Text style={[styles.statLabel, { color: "#FFD93D" }]}>VIEW ALL</Text>
         </TouchableOpacity>
       </View>
@@ -49,6 +50,7 @@ export const AdminEventStats: React.FC<AdminEventStatsProps> = ({
           upcomingEvents.map((event) => (
             <TouchableOpacity
               key={event.id}
+              activeOpacity={0.7}
               onPress={() => onEventPress(event)}
               style={[styles.statCard, styles.eventCard]}
             >
@@ -118,6 +120,10 @@ const styles = StyleSheet.create({
   },
   eventCard: {
     backgroundColor: "rgba(255,255,255,0.15)",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   statIconBox: {
     width: 36,

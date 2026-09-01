@@ -124,7 +124,8 @@ export default function UniformCharges() {
     if (activeFilter) {
       return (
         <TouchableOpacity
-          style={sharedStyles.financeCard}
+          style={[sharedStyles.financeCard, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
+          activeOpacity={0.7}
           onPress={() => {
             if (isNavigating.current) return;
             isNavigating.current = true;
@@ -138,7 +139,7 @@ export default function UniformCharges() {
                 term: item.term
               }
             });
-            setTimeout(() => { isNavigating.current = false; }, 500);
+            setTimeout(() => { isNavigating.current = false; }, 800);
           }}
         >
           <View style={sharedStyles.cardContent}>
@@ -168,7 +169,8 @@ export default function UniformCharges() {
 
     return (
       <TouchableOpacity
-        style={sharedStyles.financeCard}
+        style={[sharedStyles.financeCard, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
+        activeOpacity={0.7}
         onPress={() => openPaymentModal(item)}
       >
         <View style={sharedStyles.cardContent}>
@@ -218,8 +220,10 @@ export default function UniformCharges() {
                 if (isNavigating.current) return;
                 isNavigating.current = true;
                 router.push("/admin-dashboard/StudentCharges");
+                setTimeout(() => { isNavigating.current = false; }, 500);
               }}
               style={sharedStyles.headerIconBtn}
+              activeOpacity={0.7}
             >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
@@ -227,7 +231,7 @@ export default function UniformCharges() {
               <Text style={sharedStyles.headerTitle}>Uniforms</Text>
               <Text style={sharedStyles.headerSub}>WEAR & GEAR</Text>
             </View>
-            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={sharedStyles.headerIconBtn}>
+            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={sharedStyles.headerIconBtn} activeOpacity={0.7}>
               <SVGIcon name="funnel-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -235,6 +239,7 @@ export default function UniformCharges() {
           <TouchableOpacity
             style={sharedStyles.glassPill}
             onPress={() => setClassModalVisible(true)}
+            activeOpacity={0.8}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
               <SVGIcon name="layers-outline" size={14} color="rgba(255,255,255,0.8)" style={{ marginRight: 6 }} />
@@ -260,7 +265,7 @@ export default function UniformCharges() {
               placeholderTextColor={VIBE.muted}
             />
           </View>
-          <TouchableOpacity onPress={handleRefresh} style={sharedStyles.refreshRound}>
+          <TouchableOpacity onPress={handleRefresh} style={sharedStyles.refreshRound} activeOpacity={0.7}>
             <SVGIcon name="refresh" size={18} color={VIBE.primary} />
           </TouchableOpacity>
         </View>
@@ -286,6 +291,7 @@ export default function UniformCharges() {
             <TouchableOpacity
               key={type.id}
               style={[sharedStyles.breakdownCard, activeFilter === type.id && sharedStyles.activeBreakdownCard]}
+              activeOpacity={0.7}
               onPress={() => handleToggleFilter(type.id)}
             >
               <View style={[sharedStyles.typeIconWrap, { backgroundColor: activeFilter === type.id ? "#fff" : VIBE.primary + "10" }]}>
@@ -303,7 +309,7 @@ export default function UniformCharges() {
       {activeFilter && (
         <View style={sharedStyles.filterInfoBar}>
           <Text style={sharedStyles.filterInfoText}>Showing {UNIFORM_TYPES.find(t => t.id === activeFilter)?.label} purchases</Text>
-          <TouchableOpacity onPress={() => handleToggleFilter(null)}>
+          <TouchableOpacity onPress={() => handleToggleFilter(null)} activeOpacity={0.7}>
             <SVGIcon name="close-circle" size={20} color={VIBE.muted} />
           </TouchableOpacity>
         </View>
@@ -349,7 +355,7 @@ export default function UniformCharges() {
                 <Text style={sharedStyles.sheetTitle}>{selectedStudent?.fullName}</Text>
                 <Text style={sharedStyles.glassLabel}>UNIFORM PURCHASE</Text>
               </View>
-              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={sharedStyles.closeRound}>
+              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={sharedStyles.closeRound} activeOpacity={0.7}>
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
@@ -361,6 +367,7 @@ export default function UniformCharges() {
                   <TouchableOpacity
                     key={t.id}
                     style={[sharedStyles.methodBtn, selectedType === t.id && { backgroundColor: VIBE.primary, borderColor: VIBE.primary }, { flexDirection: 'row', gap: 8, paddingHorizontal: 15 }]}
+                    activeOpacity={0.7}
                     onPress={() => setSelectedType(t.id)}
                   >
                     <SVGIcon name={t.icon} size={20} color={selectedType === t.id ? "#fff" : VIBE.muted} />
@@ -391,7 +398,7 @@ export default function UniformCharges() {
                 </View>
               </View>
 
-              <TouchableOpacity style={[sharedStyles.saveBtn, { backgroundColor: VIBE.primary }]} onPress={handleLogPayment} disabled={saving}>
+              <TouchableOpacity style={[sharedStyles.saveBtn, { backgroundColor: VIBE.primary }, Platform.OS === 'web' && { cursor: 'pointer' } as any]} activeOpacity={0.8} onPress={handleLogPayment} disabled={saving}>
                 {saving ? <ActivityIndicator color="#fff" /> : <Text style={sharedStyles.saveBtnText}>RECORD PURCHASE</Text>}
               </TouchableOpacity>
 
@@ -404,6 +411,7 @@ export default function UniformCharges() {
                     <TouchableOpacity
                       key={i}
                       style={sharedStyles.transactionTile}
+                      activeOpacity={0.7}
                       onPress={() => {
                         if (isNavigating.current) return;
                         isNavigating.current = true;
@@ -418,7 +426,7 @@ export default function UniformCharges() {
                             term: h.term
                           }
                         });
-                        setTimeout(() => { isNavigating.current = false; }, 500);
+                        setTimeout(() => { isNavigating.current = false; }, 800);
                       }}
                       onLongPress={() => confirmDeletePayment(h)}
                     >

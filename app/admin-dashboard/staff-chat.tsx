@@ -648,7 +648,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerTitleMain: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  backBtnHeader: { padding: 5 },
+  backBtnHeader: {
+    padding: 5,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -675,6 +681,10 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
     borderWidth: 1,
     borderColor: "#F1F5F9",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   avatar: {
     width: 48,
@@ -714,6 +724,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   chatHeaderTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B" },
   headerSub: { fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
@@ -726,7 +740,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#F1F5F9",
   },
-  emojiBtn: { padding: 8, marginRight: 10 },
+  emojiBtn: {
+    padding: 8,
+    marginRight: 10,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   emojiText: { fontSize: 24 },
   inputArea: {
     padding: 15,
@@ -736,7 +757,13 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 25 : 20,
   },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  emojiToggle: { padding: 5 },
+  emojiToggle: {
+    padding: 5,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   textInput: {
     flex: 1,
     backgroundColor: "#F1F5F9",
@@ -754,6 +781,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   recordingBtn: { backgroundColor: "#EF4444" },
   sendBtn: {
@@ -762,5 +793,9 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
 });

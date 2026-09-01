@@ -548,6 +548,10 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.2)",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   headerTitle: {
     fontSize: 24,
@@ -674,6 +678,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   viewBtnText: {
     fontSize: 14,
@@ -797,6 +805,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     marginLeft: 10,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   reviewBtnText: {
     fontSize: 12,
@@ -821,6 +833,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: "center",
     ...SHADOWS.medium,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   closeModalBtnText: {
     color: "#FFFFFF",

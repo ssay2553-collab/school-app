@@ -468,6 +468,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     backgroundColor: "rgba(255,255,255,0.1)",
     borderColor: "rgba(255,255,255,0.1)",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   approvedChip: {
     backgroundColor: "rgba(16, 185, 129, 0.15)",
@@ -507,6 +511,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   titleContainer: {
     flex: 1,
@@ -593,6 +601,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#FEE2E2",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   saveBtn: {
     flex: 1,
@@ -602,6 +614,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   saveBtnText: {
     color: "#fff",

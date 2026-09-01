@@ -61,6 +61,7 @@ export const FeeSearchStrip: React.FC<FeeSearchStripProps> = ({
             styles.archiveToggle,
             showArchived && { backgroundColor: COLORS.secondary },
           ]}
+          activeOpacity={0.7}
         >
           <SVGIcon
             name="archive"
@@ -77,15 +78,15 @@ export const FeeSearchStrip: React.FC<FeeSearchStripProps> = ({
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={onPrintReports} style={styles.refreshRound}>
+        <TouchableOpacity onPress={onPrintReports} style={styles.refreshRound} activeOpacity={0.7}>
           <SVGIcon name="print" size={18} color={VIBE.primary} />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={onRefresh} style={styles.refreshRound}>
+        <TouchableOpacity onPress={onRefresh} style={styles.refreshRound} activeOpacity={0.7}>
           <SVGIcon name="refresh" size={18} color={VIBE.primary} />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={onShowDaily} style={styles.refreshRound}>
+        <TouchableOpacity onPress={onShowDaily} style={styles.refreshRound} activeOpacity={0.7}>
           <SVGIcon name="calendar" size={18} color={VIBE.secondary} />
         </TouchableOpacity>
 
@@ -93,6 +94,7 @@ export const FeeSearchStrip: React.FC<FeeSearchStripProps> = ({
           <TouchableOpacity
             onPress={onNormalize}
             style={[styles.refreshRound, { backgroundColor: VIBE.info + "10" }]}
+            activeOpacity={0.7}
           >
             <SVGIcon name="sync" size={18} color={VIBE.info} />
             {inconsistentCount > 0 && (

@@ -698,6 +698,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   headerTitle: {
     color: "#fff",
@@ -762,6 +766,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderRadius: 12,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   postBtnText: { color: COLORS.secondary, fontSize: 12, fontWeight: "900" },
   card: {
@@ -801,6 +809,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#10B981",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   updateBtnText: { color: "#fff", fontSize: 10, fontWeight: "900" },
   addBtn: {
@@ -810,6 +822,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   emptyContainer: { alignItems: "center", marginTop: 60 },
   emptyText: { color: "#94A3B8", marginTop: 15, fontWeight: "700" },
@@ -855,6 +871,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 10,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   modalBtnText: { color: "#fff", fontSize: 15, fontWeight: "900" },
   errorContainer: {
@@ -882,6 +902,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 15,
     ...SHADOWS.medium,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   errorButtonText: {
     fontSize: 16,

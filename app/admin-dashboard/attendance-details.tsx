@@ -274,7 +274,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   header: { flexDirection: 'row', alignItems: 'center', padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  backBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   title: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
   subtitle: { fontSize: 13, color: '#64748B', fontWeight: '700' },
   editBtn: {
@@ -284,18 +296,48 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     gap: 6,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   editBtnText: {
     fontSize: 13,
     fontWeight: '800',
   },
   filterBar: { flexDirection: 'row', padding: 15, gap: 10, backgroundColor: '#fff' },
-  chip: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', gap: 6 },
+  chip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 6,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   chipText: { fontSize: 12, fontWeight: '800', color: '#64748B' },
   countBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   countText: { fontSize: 10, fontWeight: '900', color: '#64748B' },
   list: { padding: 15 },
-  studentCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', padding: 16, borderRadius: 18, marginBottom: 10, ...SHADOWS.small },
+  studentCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 18,
+    marginBottom: 10,
+    ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   statusIndicator: { width: 4, height: 30, borderRadius: 2, marginRight: 15 },
   studentInfo: { flex: 1 },
   studentName: { fontSize: 15, fontWeight: '700', color: '#1E293B' },

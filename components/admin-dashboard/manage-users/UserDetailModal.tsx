@@ -859,6 +859,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginHorizontal: 20,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   actionButtonText: { color: "#fff", fontSize: 16, fontWeight: "800" },
 });

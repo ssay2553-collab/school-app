@@ -339,7 +339,20 @@ export default function ClassManagementScreen() {
 const styles = StyleSheet.create({
   container: { padding: 20, paddingBottom: 100 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  addBtn: { backgroundColor: COLORS.primary, flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, borderRadius: 15, marginBottom: 30, ...SHADOWS.medium },
+  addBtn: {
+    backgroundColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    borderRadius: 15,
+    marginBottom: 30,
+    ...SHADOWS.medium,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   addBtnText: { color: "#fff", fontSize: 16, fontWeight: "bold", marginLeft: 10 },
   deptHeader: { flexDirection: "row", alignItems: "center", marginBottom: 15, marginTop: 10 },
   departmentTitle: { fontSize: 12, fontWeight: "900", color: "#64748B", letterSpacing: 1 },
@@ -350,20 +363,64 @@ const styles = StyleSheet.create({
   statChip: { flexDirection: "row", alignItems: "center", backgroundColor: "#F1F5F9", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, gap: 4 },
   statVal: { fontSize: 10, fontWeight: "700", color: "#64748B" },
   actions: { flexDirection: "row", gap: 10 },
-  actionBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: "#F8FAFC", justifyContent: "center", alignItems: "center" },
+  actionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: 20 },
   modalContent: { backgroundColor: "#fff", borderRadius: 25, padding: 25, ...SHADOWS.large },
   modalTitle: { fontSize: 20, fontWeight: "900", color: "#1E293B", marginBottom: 20 },
   modalLabel: { fontSize: 10, fontWeight: "900", color: "#94A3B8", marginBottom: 8, marginTop: 15 },
   modalInput: { backgroundColor: "#F8FAFC", padding: 15, borderRadius: 12, fontSize: 16, fontWeight: "700", borderWidth: 1, borderColor: "#E2E8F0" },
   levelGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  levelBtn: { width: 45, height: 45, borderRadius: 12, backgroundColor: "#F1F5F9", justifyContent: "center", alignItems: "center", borderWidth: 1, borderColor: "transparent" },
+  levelBtn: {
+    width: 45,
+    height: 45,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "transparent",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   levelBtnActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   levelBtnText: { fontSize: 14, fontWeight: "800", color: "#64748B" },
   levelBtnTextActive: { color: "#fff" },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 30 },
-  cancelBtn: { flex: 1, padding: 15, borderRadius: 12, alignItems: "center", backgroundColor: "#F1F5F9" },
+  cancelBtn: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   cancelBtnText: { fontWeight: "700", color: "#64748B" },
-  confirmBtn: { flex: 2, padding: 15, borderRadius: 12, alignItems: "center", backgroundColor: COLORS.primary },
+  confirmBtn: {
+    flex: 2,
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   confirmBtnText: { fontWeight: "900", color: "#fff" },
 });

@@ -873,6 +873,10 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: "center",
     ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   actionLabel: {
     fontSize: 13,
@@ -930,6 +934,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginTop: 20,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   saveBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
   selectionGrid: {
@@ -945,6 +953,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#f1f5f9",
     borderWidth: 1,
     borderColor: "#e2e8f0",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   chipText: {
     fontSize: 12,
@@ -959,6 +971,10 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     marginBottom: 10,
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   selectBtnText: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
   labelRow: {
@@ -1026,6 +1042,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
     ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   imageActionText: {
     fontSize: 12,

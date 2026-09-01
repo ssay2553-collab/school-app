@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, Platform } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
@@ -22,10 +22,14 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   if (selectedCount === 0) return null;
 
   return (
-    <Animatable.View animation="slideInUp" style={styles.bulkActionBar}>
+    <Animatable.View
+      animation="slideInUp"
+      style={styles.bulkActionBar}
+      useNativeDriver={false}
+    >
       <View style={styles.bulkActionInfo}>
         <Text style={styles.bulkActionCount}>{selectedCount} Selected</Text>
-        <TouchableOpacity onPress={onCancel}>
+        <TouchableOpacity onPress={onCancel} activeOpacity={0.7}>
           <Text style={styles.bulkActionCancel}>Cancel</Text>
         </TouchableOpacity>
       </View>
@@ -117,6 +121,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   bulkActionText: {
     color: "#fff",

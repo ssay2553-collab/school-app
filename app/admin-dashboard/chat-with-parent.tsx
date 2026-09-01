@@ -700,7 +700,13 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   headerTitleMain: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  backBtnHeader: { padding: 5 },
+  backBtnHeader: {
+    padding: 5,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -761,6 +767,10 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
     borderWidth: 1,
     borderColor: "#F1F5F9",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   avatar: {
     width: 48,
@@ -802,6 +812,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   chatHeaderTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B" },
   headerSub: {
@@ -816,6 +830,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   messagesContainer: { padding: 20, paddingBottom: 160 },
   msgText: { fontSize: 15, lineHeight: 22 },
@@ -856,6 +874,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   recordingBtn: { backgroundColor: "#EF4444" },
   sendBtn: {
@@ -864,6 +886,10 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   previewContainer: {
     flexDirection: "row",

@@ -4,6 +4,7 @@ import {
   View,
   Text,
   StyleSheet,
+  Platform,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Animatable from "react-native-animatable";
@@ -41,12 +42,13 @@ export const AdminMenuCard: React.FC<AdminMenuCardProps> = ({
       animation="bounceIn"
       duration={800}
       delay={index * 50}
+      useNativeDriver={false}
       style={[styles.cardWrapper, { width: cardWidth }]}
     >
       <TouchableOpacity
         style={[styles.menuCard, { borderBottomColor: "rgba(0,0,0,0.1)" }]}
         onPress={onPress}
-        activeOpacity={0.8}
+        activeOpacity={0.7}
       >
         <LinearGradient
           colors={[item.color, item.color]}
@@ -118,6 +120,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 4,
     minHeight: 130,
     width: "100%",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   cardGradient: {
     flex: 1,

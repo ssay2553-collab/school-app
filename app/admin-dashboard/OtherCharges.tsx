@@ -51,9 +51,10 @@ const OtherStudentCard = React.memo(({
   const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
 
   return (
-    <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper}>
+    <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper} useNativeDriver={false}>
       <TouchableOpacity
-        style={styles.financeCard}
+        style={[styles.financeCard, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
+        activeOpacity={0.7}
         onPress={() => onPress(item)}
       >
         <View style={styles.cardContent}>
@@ -188,8 +189,10 @@ export default function OtherCharges() {
                 if (isNavigating.current) return;
                 isNavigating.current = true;
                 router.back();
+                setTimeout(() => { isNavigating.current = false; }, 500);
               }}
               style={styles.headerIconBtn}
+              activeOpacity={0.7}
             >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
@@ -197,13 +200,13 @@ export default function OtherCharges() {
               <Text style={styles.headerTitle}>Other Charges</Text>
               <Text style={styles.headerSub}>GRADUATION & SPECIALS</Text>
             </View>
-            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn}>
+            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn} activeOpacity={0.7}>
               <SVGIcon name="funnel-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.selectorGrid}>
-            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)}>
+            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)} activeOpacity={0.8}>
               <Text style={styles.glassLabel}>TARGET CLASS</Text>
               <Text style={styles.glassValue} numberOfLines={1}>
                 {selectedClassId === "all" ? "All Classes" : classes.find(c => c.id === selectedClassId)?.name || "Select Class"}
@@ -227,7 +230,7 @@ export default function OtherCharges() {
               placeholderTextColor={VIBE.muted}
             />
           </View>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound}>
+          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound} activeOpacity={0.7}>
             <SVGIcon name="refresh" size={18} color={THEME.primary} />
           </TouchableOpacity>
         </View>
@@ -290,7 +293,9 @@ export default function OtherCharges() {
                      alignItems: 'center',
                      gap: 8,
                      ...SHADOWS.small,
+                     ...Platform.select({ web: { cursor: 'pointer' } as any, default: {} })
                    }}
+                   activeOpacity={0.8}
                    disabled={saving}
                 >
                   {saving ? (
@@ -320,7 +325,7 @@ export default function OtherCharges() {
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Text style={styles.summaryBreakdownLabel} numberOfLines={1}>{item.category}</Text>
                           {selectedClassId !== "all" && (
-                            <TouchableOpacity onPress={() => confirmDeleteCharge(item.category)}>
+                            <TouchableOpacity onPress={() => confirmDeleteCharge(item.category)} activeOpacity={0.7}>
                               <SVGIcon name="close-circle" size={16} color={VIBE.danger} />
                             </TouchableOpacity>
                           )}
@@ -370,7 +375,7 @@ export default function OtherCharges() {
                 <Text style={styles.sheetTitle}>{selectedStudent?.fullName}</Text>
                 <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>MANAGE OTHER FEES</Text>
               </View>
-              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeRound}>
+              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeRound} activeOpacity={0.7}>
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
@@ -378,6 +383,7 @@ export default function OtherCharges() {
             <View style={[styles.modeTabs, { marginBottom: 20 }]}>
               <TouchableOpacity
                 style={[styles.modeTab, modalMode === "payment" && styles.activeModeTab]}
+                activeOpacity={0.7}
                 onPress={() => setModalMode("payment")}
               >
                 <SVGIcon name="cash-outline" size={18} color={modalMode === "payment" ? "#fff" : VIBE.muted} />
@@ -385,6 +391,7 @@ export default function OtherCharges() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modeTab, modalMode === "charge" && styles.activeModeTab]}
+                activeOpacity={0.7}
                 onPress={() => setModalMode("charge")}
               >
                 <SVGIcon name="add-circle-outline" size={18} color={modalMode === "charge" ? "#fff" : VIBE.muted} />
@@ -419,7 +426,12 @@ export default function OtherCharges() {
                     {["Cash", "Cheque", "Momo", "E-cash"].map(m => (
                       <TouchableOpacity
                         key={m}
-                        style={[styles.methodBtn, paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary }]}
+                        activeOpacity={0.7}
+                        style={[
+                          styles.methodBtn,
+                          paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary },
+                          Platform.OS === 'web' && { cursor: 'pointer' } as any
+                        ]}
                         onPress={() => setPaymentMethod(m as any)}
                       >
                         <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
@@ -427,8 +439,8 @@ export default function OtherCharges() {
                     ))}
                   </View>
 
-                  <TouchableOpacity onPress={handleLogPayment} disabled={saving}>
-                    <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
+                  <TouchableOpacity onPress={handleLogPayment} disabled={saving} activeOpacity={0.8}>
+                    <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
                       {saving ? <ActivityIndicator color="#fff" /> : (
                         <>
                           <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
@@ -462,8 +474,9 @@ export default function OtherCharges() {
                   <TouchableOpacity
                     onPress={() => selectedStudent && applyStudentOtherCharge(selectedStudent)}
                     disabled={saving}
+                    activeOpacity={0.8}
                   >
-                    <LinearGradient colors={[VIBE.purple, "#6D28D9"]} style={styles.saveBtn}>
+                    <LinearGradient colors={[VIBE.purple, "#6D28D9"]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
                       {saving ? <ActivityIndicator color="#fff" /> : (
                         <>
                           <Text style={styles.saveBtnText}>ADD CHARGE TO BILL</Text>
@@ -488,6 +501,7 @@ export default function OtherCharges() {
                     <TouchableOpacity
                       key={i}
                       style={styles.transactionTile}
+                      activeOpacity={0.7}
                       onPress={() => {
                         if (isNavigating.current) return;
                         isNavigating.current = true;
@@ -502,7 +516,7 @@ export default function OtherCharges() {
                             term: h.term
                           }
                         });
-                        setTimeout(() => { isNavigating.current = false; }, 500);
+                        setTimeout(() => { isNavigating.current = false; }, 800);
                       }}
                       onLongPress={() => confirmDeletePayment(h)}
                     >
@@ -525,6 +539,7 @@ export default function OtherCharges() {
                               e.stopPropagation();
                               confirmDeletePayment(h);
                             }}
+                            activeOpacity={0.7}
                             style={{ padding: 4 }}
                           >
                             <SVGIcon name="trash" size={16} color={VIBE.danger} />

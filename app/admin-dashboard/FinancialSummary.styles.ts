@@ -1,4 +1,4 @@
-import { StyleSheet, Dimensions } from "react-native";
+import { StyleSheet, Dimensions, Platform } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
 
 const { width } = Dimensions.get("window");
@@ -42,6 +42,10 @@ export default StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   headerTitle: { flex: 1, marginRight: 8 },
   headerTitleText: { fontSize: 18, fontWeight: "800", color: VIBE.text },
@@ -58,6 +62,10 @@ export default StyleSheet.create({
     backgroundColor: VIBE.bg,
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   adminBadge: {
     flexDirection: "row",
@@ -327,6 +335,10 @@ export default StyleSheet.create({
     padding: 16,
     borderRadius: 18,
     ...SHADOWS.medium,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   quickActionText: { fontSize: 14, fontWeight: "700" },
   toggleContainer: {
@@ -343,6 +355,10 @@ export default StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 12,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   toggleBtnActive: {
     backgroundColor: VIBE.surface,

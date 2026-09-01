@@ -88,9 +88,11 @@ export default function StudentCharges() {
               onPress={() => {
                 if (isNavigating.current) return;
                 isNavigating.current = true;
-                router.push("/admin-dashboard/");
+                router.replace("/admin-dashboard/");
+                setTimeout(() => { isNavigating.current = false; }, 500);
               }}
               style={styles.headerIconBtn}
+              activeOpacity={0.7}
             >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
@@ -110,15 +112,17 @@ export default function StudentCharges() {
               key={item.title}
               animation="zoomIn"
               delay={index * 100}
+              useNativeDriver={false}
               style={[styles.cardWrapper, { width: cardWidth }]}
             >
               <TouchableOpacity
                 style={styles.card}
+                activeOpacity={0.7}
                 onPress={() => {
                   if (isNavigating.current) return;
                   isNavigating.current = true;
                   router.push(item.route as any);
-                  setTimeout(() => { isNavigating.current = false; }, 500);
+                  setTimeout(() => { isNavigating.current = false; }, 800);
                 }}
               >
                 <View
@@ -164,6 +168,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   titleCenter: { alignItems: "center" },
   headerTitle: { fontSize: 20, fontWeight: "900", color: "#fff" },
@@ -191,6 +199,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: VIBE.border,
     minHeight: 160,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   iconBox: {
     width: 60,

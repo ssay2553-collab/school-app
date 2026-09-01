@@ -48,6 +48,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           <View style={styles.adminInfo}>
             <TouchableOpacity
               onPress={onProfilePress}
+              activeOpacity={0.7}
               style={[
                 styles.profileBtn,
                 {
@@ -101,6 +102,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             {showTeacherButton && (
               <TouchableOpacity
                 onPress={onTeacherDashboardPress}
+                activeOpacity={0.7}
                 style={[
                   styles.actionBtn,
                   {
@@ -123,7 +125,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 </Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity onPress={onSettingsPress} style={styles.actionBtn}>
+            <TouchableOpacity onPress={onSettingsPress} style={styles.actionBtn} activeOpacity={0.7}>
               <SVGIcon name="settings-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -202,6 +204,10 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: "rgba(255,255,255,0.5)",
     ...SHADOWS.medium,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   profileImg: { width: "100%", height: "100%" },
   profilePlaceholder: {
@@ -222,5 +228,9 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
 });

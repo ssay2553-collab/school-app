@@ -453,7 +453,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   headerTitle: { fontSize: 18, fontWeight: "800", color: "#fff" },
-  backBtn: { padding: 5 },
+  backBtn: {
+    padding: 5,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   summaryRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -485,6 +491,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   toggleItemActive: {
     backgroundColor: "rgba(255,255,255,0.25)",
@@ -513,6 +523,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     gap: 4,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   archiveBadge: {
     flexDirection: "row",
@@ -522,6 +536,10 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
     gap: 4,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   archiveText: {
     color: "#fff",
@@ -535,6 +553,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   addBtn: {
     width: 34,
@@ -543,6 +565,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.25)",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   listContent: { padding: 16, paddingBottom: 100 },
   summaryHeader: {
@@ -585,6 +611,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginTop: 10,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   errorContainer: {
@@ -612,6 +642,10 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
     borderRadius: 15,
     ...SHADOWS.medium,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   errorButtonText: {
     fontSize: 16,

@@ -57,9 +57,10 @@ const BooksStudentCard = React.memo(({
   const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
 
   return (
-    <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper}>
+    <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper} useNativeDriver={false}>
       <TouchableOpacity
-        style={styles.financeCard}
+        style={[styles.financeCard, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
+        activeOpacity={0.7}
         onPress={() => onPress(item)}
       >
         <View style={styles.cardContent}>
@@ -190,8 +191,10 @@ export default function BooksCharges() {
                 if (isNavigating.current) return;
                 isNavigating.current = true;
                 router.push("/admin-dashboard/StudentCharges");
+                setTimeout(() => { isNavigating.current = false; }, 500);
               }}
               style={styles.headerIconBtn}
+              activeOpacity={0.7}
             >
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
@@ -199,13 +202,13 @@ export default function BooksCharges() {
               <Text style={styles.headerTitle}>Books & Stationery</Text>
               <Text style={styles.headerSub}>INVENTORY BILLING</Text>
             </View>
-            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn}>
+            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn} activeOpacity={0.7}>
               <SVGIcon name="funnel-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.selectorGrid}>
-            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)}>
+            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)} activeOpacity={0.8}>
               <Text style={styles.glassLabel}>FILTER BY CLASS</Text>
               <Text style={styles.glassValue} numberOfLines={1}>
                 {selectedClassId === "all" ? "All Classes" : classes.find(c => c.id === selectedClassId)?.name || "Select Class"}
@@ -229,7 +232,7 @@ export default function BooksCharges() {
               placeholderTextColor={VIBE.muted}
             />
           </View>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound}>
+          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound} activeOpacity={0.7}>
             <SVGIcon name="refresh" size={18} color={THEME.primary} />
           </TouchableOpacity>
         </View>
@@ -291,7 +294,7 @@ export default function BooksCharges() {
                 <Text style={styles.sheetTitle}>{selectedStudent?.fullName}</Text>
                 <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>BOOKS & STATIONERY MGMT</Text>
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeRound}>
+              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeRound} activeOpacity={0.7}>
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
@@ -299,6 +302,7 @@ export default function BooksCharges() {
             <View style={styles.modeTabs}>
               <TouchableOpacity
                 style={[styles.modeTab, activeTab === "payment" && styles.activeModeTab]}
+                activeOpacity={0.7}
                 onPress={() => setActiveTab("payment")}
               >
                 <SVGIcon name="cash-outline" size={18} color={activeTab === "payment" ? "#fff" : VIBE.muted} />
@@ -306,6 +310,7 @@ export default function BooksCharges() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modeTab, activeTab === "billing" && styles.activeModeTab]}
+                activeOpacity={0.7}
                 onPress={() => setActiveTab("billing")}
               >
                 <SVGIcon name="receipt-outline" size={18} color={activeTab === "billing" ? "#fff" : VIBE.muted} />
@@ -339,7 +344,12 @@ export default function BooksCharges() {
                     {["Cash", "Momo", "Cheque", "E-cash"].map(m => (
                       <TouchableOpacity
                         key={m}
-                        style={[styles.methodBtn, paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary }]}
+                        activeOpacity={0.7}
+                        style={[
+                          styles.methodBtn,
+                          paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary },
+                          Platform.OS === 'web' && { cursor: 'pointer' } as any
+                        ]}
                         onPress={() => setPaymentMethod(m as any)}
                       >
                         <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
@@ -347,8 +357,8 @@ export default function BooksCharges() {
                     ))}
                   </View>
 
-                  <TouchableOpacity onPress={handleLogPayment} disabled={saving}>
-                    <LinearGradient colors={[THEME.primary, THEME.secondary]} style={styles.saveBtn}>
+                  <TouchableOpacity onPress={handleLogPayment} disabled={saving} activeOpacity={0.8}>
+                    <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
                       {saving ? <ActivityIndicator color="#fff" /> : (
                         <>
                           <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
@@ -377,8 +387,8 @@ export default function BooksCharges() {
                       onChangeText={setBillAmount}
                     />
                   </View>
-                  <TouchableOpacity onPress={handleLogBill} disabled={saving}>
-                    <LinearGradient colors={[VIBE.purple, "#7C3AED"]} style={styles.saveBtn}>
+                  <TouchableOpacity onPress={handleLogBill} disabled={saving} activeOpacity={0.8}>
+                    <LinearGradient colors={[VIBE.purple, "#7C3AED"]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
                       {saving ? <ActivityIndicator color="#fff" /> : (
                         <>
                           <Text style={styles.saveBtnText}>APPLY CHARGE</Text>
@@ -399,6 +409,7 @@ export default function BooksCharges() {
                     <TouchableOpacity
                       key={i}
                       style={styles.transactionTile}
+                      activeOpacity={0.7}
                       onPress={() => {
                         setModalVisible(false);
                         if (isNavigating.current) return;
@@ -413,7 +424,7 @@ export default function BooksCharges() {
                             term: h.term
                           }
                         });
-                        setTimeout(() => { isNavigating.current = false; }, 500);
+                        setTimeout(() => { isNavigating.current = false; }, 800);
                       }}
                       onLongPress={() => confirmDeletePayment(h)}
                     >

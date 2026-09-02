@@ -1,5 +1,6 @@
 import { Picker } from "@react-native-picker/picker";
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import {
   collection,
   documentId,
@@ -40,6 +41,7 @@ export default function StudentAcademicReport() {
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
+  const router = useRouter();
 
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
@@ -153,6 +155,7 @@ export default function StudentAcademicReport() {
               id: d.id,
               name: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
               classId: data.classId || data.profile?.classId || "",
+              walletBalance: data.walletBalance || 0,
             };
           });
           setChildren(list);
@@ -331,7 +334,33 @@ export default function StudentAcademicReport() {
           </View>
         )}
 
-        {!fetchingReport && subjectsData.length > 0 && (
+        {selectedChildId && children.find(c => c.id === selectedChildId)?.walletBalance > 0 && (
+          <View style={styles.debtWarningCard}>
+            <View style={styles.debtIconContainer}>
+              <SVGIcon name="alert-circle" size={40} color="#EF4444" />
+            </View>
+            <Text style={styles.debtTitle}>Access Restricted</Text>
+            <Text style={styles.debtMessage}>
+              Academic reports are currently unavailable for this student due to outstanding fees (₵{(children.find(c => c.id === selectedChildId)?.walletBalance || 0).toLocaleString()}).
+            </Text>
+            <Text style={styles.debtSubMessage}>
+              Please clear all balances at the accounts office or via the payments section to restore access.
+            </Text>
+            <TouchableOpacity
+              style={[styles.payNowBtn, { backgroundColor: primary }]}
+              onPress={() => {
+                router.push({
+                  pathname: "/parent-dashboard/student-fee-history",
+                  params: { studentId: selectedChildId }
+                });
+              }}
+            >
+              <Text style={styles.payNowBtnText}>View Financial Statement</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!fetchingReport && subjectsData.length > 0 && (!selectedChildId || (children.find(c => c.id === selectedChildId)?.walletBalance || 0) <= 0) && (
           <AcademicReportPreview
             primary={primary}
             schoolLogo={schoolLogo}
@@ -565,5 +594,57 @@ const styles = StyleSheet.create({
     color: "#64748B",
     fontWeight: "700",
     marginTop: 2,
+  },
+  debtWarningCard: {
+    backgroundColor: "#fff",
+    margin: 15,
+    padding: 25,
+    borderRadius: 24,
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FEE2E2",
+    ...SHADOWS.medium,
+  },
+  debtIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#FEF2F2",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  debtTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#1E293B",
+    marginBottom: 10,
+  },
+  debtMessage: {
+    fontSize: 14,
+    color: "#475569",
+    textAlign: "center",
+    fontWeight: "700",
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  debtSubMessage: {
+    fontSize: 12,
+    color: "#94A3B8",
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  payNowBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 25,
+    borderRadius: 16,
+    width: "100%",
+    alignItems: "center",
+  },
+  payNowBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
   },
 });

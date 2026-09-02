@@ -193,6 +193,10 @@ function hasScreenPermission(screen, level) {
       );
     }
 
+    function hasNoDebt(studentId) {
+      return get(/databases/$(database)/documents/users/$(studentId)).data.get('walletBalance', 0) <= 0;
+    }
+
 
     function canCreateNews() {
       return isAdmin() || (isTeacher() && userData() != null && userData().canCreateNews == true);
@@ -869,7 +873,7 @@ match /feePayments/{paymentId} {
         isAdmin()
         || (isTeacher() && resource.data.classId in userData().classes)
         || (isStudent() && uid() == resource.data.studentId)
-        || (isParent() && resource.data.studentId in userData().childrenIds);
+        || (isParent() && resource.data.studentId in userData().childrenIds && hasNoDebt(resource.data.studentId));
 
       allow write: if
         isAdmin()
@@ -882,7 +886,7 @@ match /feePayments/{paymentId} {
    ACADEMIC RECORDS
 =============================== */
    match /academicRecords/{recordId} {
-      allow read: if isSignedIn();
+      allow read: if isAdmin() || isTeacher() || isStudent() || (isParent() && userData().childrenIds.hasAny(resource.data.studentIds));
 
       // Admins have full access; Teachers can only create/edit if not already approved
       allow create: if isSignedIn() && (
@@ -912,7 +916,7 @@ match /feePayments/{paymentId} {
         isAdmin()
         || (isTeacher() && resource.data.classId in userData().classes)
         || (isStudent() && uid() == resource.data.studentId && resource.data.status == 'approved')
-        || (isParent() && resource.data.studentId in userData().childrenIds && resource.data.status == 'approved');
+        || (isParent() && resource.data.studentId in userData().childrenIds && resource.data.status == 'approved' && hasNoDebt(resource.data.studentId));
 
       allow write: if
         isAdmin()
@@ -927,7 +931,7 @@ match /academicRecordsSummary/{id} {
         isAdmin() ||
         (isTeacher() && resource.data.classId in userData().classes) ||
         (isStudent() && id.split('_')[0] == uid()) ||
-        (isParent() && id.split('_')[0] in userData().childrenIds)
+        (isParent() && id.split('_')[0] in userData().childrenIds && hasNoDebt(id.split('_')[0]))
       );
       allow write: if isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
     }

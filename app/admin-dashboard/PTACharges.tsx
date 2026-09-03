@@ -63,7 +63,14 @@ const PTAStudentCard = React.memo(({
               <SVGIcon name="people-outline" size={24} color={THEME.primary} />
             </View>
             <View style={styles.mainInfo}>
-              <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+                {item.exemptions?.includes('pta') && (
+                  <View style={{ backgroundColor: VIBE.warning + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ color: VIBE.warning, fontSize: 8, fontWeight: '900' }}>EXEMPTED</Text>
+                  </View>
+                )}
+              </View>
 
               <View style={styles.tuitionBreakdown}>
                 <View style={styles.breakdownItem}>
@@ -129,6 +136,7 @@ export default function PTACharges() {
     loadingHistory,
     fetchStudents,
     handleRefresh,
+    toggleExemption,
 
     // UI state & handlers
     paymentModalVisible,
@@ -366,6 +374,35 @@ export default function PTACharges() {
                     <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+
+              <View style={{ marginVertical: 20, padding: 15, backgroundColor: VIBE.light, borderRadius: 15, borderStyle: 'dashed', borderWidth: 1, borderColor: VIBE.border }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: VIBE.dark }}>Individual Exemption</Text>
+                    <Text style={{ fontSize: 10, color: VIBE.muted }}>Exclude from bulk PTA billing</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => selectedStudent && toggleExemption(selectedStudent.uid, 'pta', !selectedStudent.exemptions?.includes('pta'))}
+                    activeOpacity={0.7}
+                    style={{
+                      width: 44,
+                      height: 24,
+                      borderRadius: 12,
+                      backgroundColor: selectedStudent?.exemptions?.includes('pta') ? VIBE.warning : '#CBD5E1',
+                      justifyContent: 'center',
+                      paddingHorizontal: 2
+                    }}
+                  >
+                    <View style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: '#fff',
+                      alignSelf: selectedStudent?.exemptions?.includes('pta') ? 'flex-end' : 'flex-start'
+                    }} />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <TouchableOpacity onPress={handleConfirmPayment} disabled={saving} activeOpacity={0.8}>

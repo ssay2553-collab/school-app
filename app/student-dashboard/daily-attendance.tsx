@@ -19,6 +19,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { markNotificationsAsRead } from "../../src/services/notificationService";
 import { useRef } from "react";
 
 interface AttendanceDoc {
@@ -133,7 +134,11 @@ export default function StudentAttendanceScreen() {
 
   useEffect(() => {
     fetchAttendanceSummary();
-  }, [fetchAttendanceSummary]);
+    if (appUser?.uid) {
+      markNotificationsAsRead(appUser.uid, "attendance");
+      markNotificationsAsRead(appUser.uid, "attendance_reminder");
+    }
+  }, [fetchAttendanceSummary, appUser?.uid]);
 
   const totalDays = presentCount + absentCount;
   const attendancePercent =

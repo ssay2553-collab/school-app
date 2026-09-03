@@ -31,6 +31,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
 import moment from "moment";
+import { markNotificationsAsRead } from "../../src/services/notificationService";
 
 const { width } = Dimensions.get("window");
 
@@ -61,6 +62,10 @@ export default function ManageAssignments() {
       setAssignments(list);
       setLoading(false);
       setRefreshing(false);
+
+      if (appUser?.uid) {
+        markNotificationsAsRead(appUser.uid, "assignment");
+      }
     }, (error) => {
       console.error("Fetch Assignments Error:", error);
       setLoading(false);

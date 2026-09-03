@@ -51,6 +51,7 @@ interface TeacherStats {
   fullName: string;
   email: string;
   profileImage?: string;
+  role: string;
   totalAssignments: number;
   pendingAssignmentsCount: number;
   totalGroups: number;
@@ -121,7 +122,7 @@ export default function TeacherStatistics() {
 
       // 1. Batch Fetch all required collections for the school
       const [teacherSnap, allAssignmentsSnap, allGroupsSnap, allTopicsSnap] = await Promise.all([
-        getDocsFromServer(query(collection(db, "users"), where("role", "==", "teacher"))),
+        getDocsFromServer(query(collection(db, "users"), where("role", "in", ["teacher", "admin", "superadmin", "super admin"]))),
         getDocsFromServer(collection(db, "assignments")),
         getDocsFromServer(collection(db, "studentGroups")),
         getDocsFromServer(collection(db, "weeklyTopics")),
@@ -186,6 +187,7 @@ export default function TeacherStatistics() {
 
         return {
           uid: t.uid,
+          role: t.role || "teacher",
           fullName: `${t.profile?.firstName || ""} ${t.profile?.lastName || ""}`.trim() || "Teacher",
           email: t.profile?.email || "",
           profileImage: t.profile?.profileImage,
@@ -209,13 +211,22 @@ export default function TeacherStatistics() {
       });
 
       if (isMounted.current) {
-        teacherList.sort((a, b) => b.usageScore - a.usageScore);
-        setTeachers(teacherList);
+        // Filter: Keep all teachers, but only include admins who have some teaching activity
+        const filteredList = teacherList.filter(t =>
+          t.role === 'teacher' ||
+          t.totalAssignments > 0 ||
+          t.totalGroups > 0 ||
+          t.totalTopics > 0 ||
+          (t.assignedClasses && t.assignedClasses.length > 0)
+        );
+
+        filteredList.sort((a, b) => b.usageScore - a.usageScore);
+        setTeachers(filteredList);
         lastFetchRef.current = Date.now();
 
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
           timestamp: Date.now(),
-          data: teacherList
+          data: filteredList
         }));
       }
     } catch (error) {

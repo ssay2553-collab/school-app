@@ -9,11 +9,14 @@ import { fetchCategories, fetchNewsForAudience } from "../../lib/newsFetcher";
 import { NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
+import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import { markNotificationsAsRead } from "../../src/services/notificationService";
 import { useRef } from "react";
 
 export default function StudentNewsScreen({ className }: { className?: string }) {
   const router = useRouter();
+  const { appUser } = useAuth();
   const { showToast } = useToast();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +51,10 @@ export default function StudentNewsScreen({ className }: { className?: string })
           const categoryNames = cats?.map((c: any) => c.name).filter(Boolean) || [];
           const uniqueCategories = Array.from(new Set(["All", ...categoryNames]));
           setCategories(uniqueCategories);
+
+          if (appUser?.uid) {
+            markNotificationsAsRead(appUser.uid, "news");
+          }
         }
       } catch (err) {
         if (isMounted.current) {

@@ -857,6 +857,9 @@ export const useUploadAssignment = () => {
       const assignmentRef = doc(collection(db, "assignments"));
       const answerKeyRef = doc(db, "assignmentAnswerKeys", assignmentRef.id);
 
+      const role = appUser?.role?.toLowerCase();
+      const isAdmin = role === "admin" || role === "superadmin" || role === "super admin" || !!appUser.adminRole;
+
       const assignmentData = {
         title: title.trim(),
         description: description.trim(),
@@ -871,7 +874,7 @@ export const useUploadAssignment = () => {
         questions: publicQuestions,
         dueDate,
         code,
-        status: "pending",
+        status: isAdmin ? "approved" : "pending",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -890,8 +893,9 @@ export const useUploadAssignment = () => {
       await batch.commit();
 
       showToast({
-        message:
-          "Assignment submitted! It will be visible to students once approved by the admin.",
+        message: isAdmin
+          ? "Assignment posted successfully!"
+          : "Assignment submitted! It will be visible to students once approved by the admin.",
         type: "success",
       });
 

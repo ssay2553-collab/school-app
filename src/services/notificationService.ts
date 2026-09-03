@@ -4,6 +4,10 @@ import {
   serverTimestamp,
   getDoc,
   doc,
+  query,
+  where,
+  getDocs,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
@@ -42,6 +46,38 @@ export async function sendNotification(payload: NotificationPayload) {
     });
   } catch (error) {
     console.error("Error sending notification:", error);
+  }
+}
+
+/**
+ * Marks notifications as read for a specific user and optionally a specific type.
+ */
+export async function markNotificationsAsRead(recipientId: string, type?: NotificationType) {
+  try {
+    let q = query(
+      collection(db, "notifications"),
+      where("recipientId", "==", recipientId),
+      where("read", "==", false)
+    );
+
+    if (type) {
+      q = query(q, where("type", "==", type));
+    }
+
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return;
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((d) => {
+      batch.update(d.ref, {
+        read: true,
+        readAt: serverTimestamp()
+      });
+    });
+
+    await batch.commit();
+  } catch (error) {
+    console.error("Error marking notifications as read:", error);
   }
 }
 

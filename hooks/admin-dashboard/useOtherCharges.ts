@@ -39,6 +39,7 @@ export type Student = {
   maintenanceBalance?: number;
   booksBalance?: number;
   uniformBalance?: number;
+  exemptions?: string[];
 };
 
 interface UseOtherChargesProps {
@@ -198,6 +199,7 @@ export const useOtherCharges = ({
             maintenanceBalance: data.maintenanceBalance || 0,
             booksBalance: data.booksBalance || 0,
             uniformBalance: data.uniformBalance || 0,
+            exemptions: data.exemptions || [],
           };
         });
 
@@ -377,9 +379,21 @@ export const useOtherCharges = ({
       );
       const snap = await getDocsFromServer(q);
 
+      // Filter out exempted students for this specific other charge category
+      const targetDocs = snap.docs.filter(d => {
+        const exemptions = d.data().exemptions || [];
+        return !exemptions.includes(`other:${chargeType.trim()}`);
+      });
+
+      if (targetDocs.length === 0 && !snap.empty) {
+        setSaving(false);
+        showToast({ message: `All students in this class are exempted from '${chargeType.trim()}'`, type: "info" });
+        return true;
+      }
+
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
-      const docs = snap.docs;
+      const docs = targetDocs;
       const CHUNK_SIZE = 150;
 
       for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
@@ -490,6 +504,29 @@ export const useOtherCharges = ({
     } catch (e) {
       console.error(e);
       showToast({ message: "Failed to apply bulk charges", type: "error" });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleExemption = async (studentId: string, type: string, isExempted: boolean) => {
+    setSaving(true);
+    try {
+      const studentRef = doc(db, "users", studentId);
+      await writeBatch(db).update(studentRef, {
+        exemptions: isExempted ? arrayUnion(type) : arrayRemove(type)
+      }).commit();
+
+      showToast({
+        message: isExempted ? `Student exempted` : `Exemption removed`,
+        type: "success"
+      });
+      fetchStudents(true);
+      return true;
+    } catch (e) {
+      console.error(e);
+      showToast({ message: "Failed to update exemption", type: "error" });
       return false;
     } finally {
       setSaving(false);
@@ -846,6 +883,7 @@ export const useOtherCharges = ({
     fetchPaymentHistory,
     handleLogPayment,
     applyOtherCharge,
+    toggleExemption,
     applyStudentOtherCharge,
     confirmDeleteCharge,
     confirmDeletePayment,

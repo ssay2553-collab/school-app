@@ -8,9 +8,12 @@ import { fetchCategories, fetchNewsForAudience } from "../../lib/newsFetcher";
 import { NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
+import { useAuth } from "../../contexts/AuthContext";
+import { markNotificationsAsRead } from "../../src/services/notificationService";
 
 export default function NewsScreen() {
   const router = useRouter();
+  const { appUser } = useAuth();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<string>("All");
@@ -29,6 +32,10 @@ export default function NewsScreen() {
         const categoryNames = cats?.map((c: any) => c.name).filter(Boolean) || [];
         const uniqueCategories = Array.from(new Set(["All", ...categoryNames]));
         setCategories(uniqueCategories);
+
+        if (appUser?.uid) {
+          markNotificationsAsRead(appUser.uid, "news");
+        }
       } catch (err) {
         console.error("Error fetching parent news:", err);
       } finally {

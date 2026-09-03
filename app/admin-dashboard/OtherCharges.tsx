@@ -63,7 +63,14 @@ const OtherStudentCard = React.memo(({
               <SVGIcon name="layers-outline" size={24} color={THEME.primary} />
             </View>
             <View style={styles.mainInfo}>
-              <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+                {item.exemptions?.some(e => e.startsWith('other:')) && (
+                  <View style={{ backgroundColor: VIBE.warning + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                    <Text style={{ color: VIBE.warning, fontSize: 8, fontWeight: '900' }}>EXEMPTIONS</Text>
+                  </View>
+                )}
+              </View>
 
               <View style={styles.tuitionBreakdown}>
                 <View style={styles.breakdownItem}>
@@ -136,6 +143,7 @@ export default function OtherCharges() {
     confirmDeleteCharge,
     confirmDeletePayment,
     handleRefresh,
+    toggleExemption,
 
     // UI States & Handlers
     paymentModalVisible,
@@ -449,6 +457,36 @@ export default function OtherCharges() {
                       )}
                     </LinearGradient>
                   </TouchableOpacity>
+
+                  <View style={{ marginTop: 20, padding: 15, backgroundColor: VIBE.light, borderRadius: 15 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: VIBE.dark, marginBottom: 10 }}>Active Exemptions</Text>
+                    {selectedStudent?.exemptions?.filter(e => e.startsWith('other:')).length === 0 ? (
+                      <Text style={{ fontSize: 10, color: VIBE.muted, fontStyle: 'italic' }}>No active exemptions for other charges</Text>
+                    ) : (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                        {selectedStudent?.exemptions?.filter(e => e.startsWith('other:')).map((e, idx) => (
+                          <TouchableOpacity
+                            key={idx}
+                            onPress={() => toggleExemption(selectedStudent.uid, e, false)}
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                              backgroundColor: VIBE.warning + '20',
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                              borderRadius: 8,
+                              borderWidth: 1,
+                              borderColor: VIBE.warning + '40'
+                            }}
+                          >
+                            <Text style={{ fontSize: 10, fontWeight: '700', color: VIBE.warning }}>{e.replace('other:', '')}</Text>
+                            <SVGIcon name="close-circle" size={12} color={VIBE.warning} />
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
                 </>
               ) : (
                 <>
@@ -471,20 +509,53 @@ export default function OtherCharges() {
                     />
                   </View>
 
-                  <TouchableOpacity
-                    onPress={() => selectedStudent && applyStudentOtherCharge(selectedStudent)}
-                    disabled={saving}
-                    activeOpacity={0.8}
-                  >
-                    <LinearGradient colors={[VIBE.purple, "#6D28D9"]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
-                      {saving ? <ActivityIndicator color="#fff" /> : (
-                        <>
-                          <Text style={styles.saveBtnText}>ADD CHARGE TO BILL</Text>
-                          <SVGIcon name="add-circle" size={20} color="#fff" />
-                        </>
-                      )}
-                    </LinearGradient>
-                  </TouchableOpacity>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <TouchableOpacity
+                      onPress={() => selectedStudent && applyStudentOtherCharge(selectedStudent)}
+                      disabled={saving}
+                      activeOpacity={0.8}
+                      style={{ flex: 2 }}
+                    >
+                      <LinearGradient colors={[VIBE.purple, "#6D28D9"]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
+                        {saving ? <ActivityIndicator color="#fff" /> : (
+                          <>
+                            <Text style={styles.saveBtnText}>ADD CHARGE</Text>
+                            <SVGIcon name="add-circle" size={20} color="#fff" />
+                          </>
+                        )}
+                      </LinearGradient>
+                    </TouchableOpacity>
+
+                    {chargeType.trim().length > 0 && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          const type = `other:${chargeType.trim()}`;
+                          const isExempted = selectedStudent?.exemptions?.includes(type);
+                          toggleExemption(selectedStudent!.uid, type, !isExempted);
+                        }}
+                        disabled={saving}
+                        activeOpacity={0.8}
+                        style={{
+                          flex: 1,
+                          backgroundColor: selectedStudent?.exemptions?.includes(`other:${chargeType.trim()}`) ? VIBE.warning : VIBE.light,
+                          borderRadius: 15,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          borderWidth: 1,
+                          borderColor: VIBE.border
+                        }}
+                      >
+                        <Text style={{
+                          fontSize: 10,
+                          fontWeight: '900',
+                          color: selectedStudent?.exemptions?.includes(`other:${chargeType.trim()}`) ? '#fff' : VIBE.muted,
+                          textAlign: 'center'
+                        }}>
+                          {selectedStudent?.exemptions?.includes(`other:${chargeType.trim()}`) ? 'EXEMPTED' : 'EXEMPT'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
 
                   {chargeType.length > 0 && chargeAmount.length > 0 && (
                     <Text style={{ fontSize: 10, color: VIBE.muted, textAlign: 'center', marginTop: 10, fontWeight: '700' }}>

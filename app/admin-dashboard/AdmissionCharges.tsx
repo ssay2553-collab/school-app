@@ -155,6 +155,7 @@ export default function AdmissionCharges() {
     handleLogBill,
     openPaymentModal,
     deletePayment,
+    handleBulkImport,
   } = useAdmissionCharges({
     appUser,
     acadConfig,
@@ -267,9 +268,15 @@ export default function AdmissionCharges() {
               placeholderTextColor={VIBE.muted}
             />
           </View>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound} activeOpacity={0.7}>
-            <SVGIcon name="refresh" size={18} color={THEME.primary} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TouchableOpacity onPress={handleBulkImport} style={[styles.refreshRound, { width: 'auto', paddingHorizontal: 12, flexDirection: 'row', gap: 6 }]} activeOpacity={0.7}>
+              <SVGIcon name="cloud-upload" size={18} color={THEME.primary} />
+              <Text style={{ fontSize: 12, fontWeight: '800', color: THEME.primary }}>CSV</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound} activeOpacity={0.7}>
+              <SVGIcon name="refresh" size={18} color={THEME.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 

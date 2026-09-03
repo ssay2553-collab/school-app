@@ -37,7 +37,7 @@ interface TimetableDays {
 }
 
 interface ClassTimetable {
-  timetableDays?: TimetableDays;
+  days?: TimetableDays;
   otherActivities?: Lesson[];
 }
 
@@ -125,27 +125,9 @@ export default function TeacherTimetable() {
         );
         const classSnaps = await getDocs(classesQuery);
 
-        const teacherCurriculum = appUser?.curriculum || "GES";
-        const role = (appUser?.role || "").toLowerCase();
-        const adminRole = (appUser?.adminRole || "").toLowerCase();
-        const isAdmin = [
-          "admin",
-          "headmaster",
-          "headmistress",
-          "proprietor",
-          "proprietress",
-          "secretary",
-          "manager",
-          "director",
-        ].some((r) => role.includes(r) || adminRole.includes(r));
-
         classSnaps.forEach((doc) => {
           const data = doc.data() as any;
-          const classCurriculum = data.curriculum || "GES";
-          // Only show classes matching teacher's curriculum, or all for admins
-          if (isAdmin || classCurriculum === teacherCurriculum) {
-            nameResult[doc.id] = data.name || doc.id;
-          }
+          nameResult[doc.id] = data.name || doc.id;
         });
 
         const ttQuery = query(
@@ -166,9 +148,9 @@ export default function TeacherTimetable() {
         const allLessons: any[] = [];
         Object.keys(ttResult).forEach((classId) => {
           const tt = ttResult[classId];
-          if (tt.timetableDays) {
-            Object.keys(tt.timetableDays).forEach((day) => {
-              tt.timetableDays![day].forEach((lesson) => {
+          if (tt.days) {
+            Object.keys(tt.days).forEach((day) => {
+              tt.days![day].forEach((lesson) => {
                 allLessons.push({ ...lesson, day });
               });
             });
@@ -287,7 +269,7 @@ export default function TeacherTimetable() {
           <View style={isLargeScreen ? styles.grid : null}>
             {sortedClassIds.map((classId, index) => {
               const lessons =
-                timetables[classId]?.timetableDays?.[selectedDay] || [];
+                timetables[classId]?.days?.[selectedDay] || [];
               const otherActs = timetables[classId]?.otherActivities || [];
               const isAssignedClass = teacherClasses.includes(classId);
 

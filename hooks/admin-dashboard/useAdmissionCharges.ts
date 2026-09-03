@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import * as DocumentPicker from "expo-document-picker";
+import { initializeApp, deleteApp } from "firebase/app";
+import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import {
   collection,
   doc,
@@ -14,13 +16,15 @@ import {
   where,
   writeBatch,
   documentId,
+  Timestamp,
 } from "firebase/firestore";
 import moment from "moment";
-import { db } from "../../firebaseConfig";
+import { db, storage } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
+import { Alert, Platform } from "react-native";
 
 const PAGE_SIZE = 50;
 
@@ -679,6 +683,190 @@ export const useAdmissionCharges = ({
     fetchPaymentHistory(student.uid);
   };
 
+  const handleBulkImport = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "text/comma-separated-values",
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets.length) return;
+
+      setLoading(true);
+      const fileUri = result.assets[0].uri;
+      const response = await fetch(fileUri);
+      const csvText = await response.text();
+
+      const rows = csvText.split(/\r?\n|\r/).filter((line) => line.trim() !== "");
+      if (rows.length < 2) throw new Error("CSV file is empty or missing data.");
+
+      const userData = rows.slice(1);
+
+      let count = 0;
+      let activatedCount = 0;
+      let pendingCount = 0;
+      let studentIncrement = 0;
+      let importErrors: string[] = [];
+
+      const firebaseConfig = (SCHOOL_CONFIG as any).firebase;
+      if (!firebaseConfig || !firebaseConfig.apiKey) {
+        throw new Error("Invalid school configuration: Firebase credentials missing.");
+      }
+
+      const secondaryAppName = `bulk-import-adm-${Date.now()}`;
+      const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+      const secondaryAuth = getAuth(secondaryApp);
+
+      try {
+        const CHUNK_SIZE = 450;
+        for (let i = 0; i < userData.length; i += CHUNK_SIZE) {
+          const chunk = userData.slice(i, i + CHUNK_SIZE);
+          const batch = writeBatch(db);
+          let chunkStudentIncrement = 0;
+
+          for (const row of chunk) {
+            const values = row.split(/[,;\t]/).map(v => v.trim().replace(/^"|"$/g, ''));
+
+            if (values.length < 2) continue;
+
+            const firstName = values[0];
+            const lastName = values[1];
+            const gender = values[2] || "";
+            const extraInput = values[3];
+
+            const cleanString = (val: string) => {
+              if (!val) return "";
+              const cleaned = val.trim().replace(/^"|"$/g, '');
+              if (cleaned.toUpperCase().includes("E+")) {
+                const num = Number(cleaned);
+                return isNaN(num) ? cleaned : num.toLocaleString("fullwide", { useGrouping: false });
+              }
+              return cleaned;
+            };
+
+            const emergencyPhone = cleanString(values[4] || "");
+            const parentPhone = cleanString(values[5] || "");
+            const email = cleanString(values[6] || "");
+            const password = cleanString(values[7] || "");
+
+            if (!firstName || !lastName || firstName.toLowerCase() === "firstname") continue;
+
+            let authUid = "";
+            let signupCode = "";
+            let status = "pending_activation";
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+            if (email && password && password.length >= 6) {
+              if (!emailRegex.test(email)) {
+                importErrors.push(`${firstName} ${lastName}: Invalid email "${email}"`);
+                signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                pendingCount++;
+              } else {
+                try {
+                  const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+                  authUid = userCred.user.uid;
+                  status = "active";
+                  activatedCount++;
+                } catch (authError: any) {
+                  const errorCode = (authError as any).code || 'auth-error';
+                  if (errorCode === 'auth/email-already-in-use') {
+                    importErrors.push(`${firstName} ${lastName}: Email "${email}" is already taken.`);
+                  } else {
+                    importErrors.push(`${firstName} ${lastName} (${email}): ${errorCode}`);
+                  }
+                  signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                  pendingCount++;
+                }
+              }
+            } else {
+              signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+              pendingCount++;
+            }
+
+            const tempId = authUid || doc(collection(db, "users")).id;
+
+            const newUserDoc: any = {
+              uid: tempId,
+              role: "student",
+              status: status,
+              profile: { firstName, lastName, gender, emergencyPhone, parentPhone },
+              createdAt: Timestamp.now(),
+            };
+
+            if (email) {
+              newUserDoc.email = email.toLowerCase();
+              newUserDoc.profile.email = email.toLowerCase();
+            }
+            if (authUid) {
+              newUserDoc.authUid = authUid;
+              newUserDoc.hasLoginEnabled = true;
+            }
+
+            let importClassId = "";
+            if (extraInput) {
+              const matchedClass = classes.find(
+                (c) => c.name.toLowerCase() === extraInput.toLowerCase() || c.id === extraInput,
+              );
+              importClassId = matchedClass ? matchedClass.id : "";
+            } else {
+              importClassId = selectedClassId === "all" ? "" : selectedClassId;
+            }
+            newUserDoc.classId = importClassId;
+            chunkStudentIncrement++;
+
+            if (signupCode) {
+              newUserDoc.signupCode = signupCode;
+              const codeData: any = {
+                code: signupCode,
+                intendedForRole: "student",
+                used: false,
+                createdBy: appUser?.uid,
+                createdAt: serverTimestamp(),
+                classId: importClassId,
+              };
+              batch.set(doc(db, "signupCodes", signupCode), codeData);
+            }
+
+            batch.set(doc(db, "users", tempId), newUserDoc);
+            count++;
+          }
+
+          if (chunkStudentIncrement > 0) {
+            const statsRef = doc(db, "stats", "global");
+            batch.set(statsRef, { totalStudents: increment(chunkStudentIncrement) }, { merge: true });
+            studentIncrement += chunkStudentIncrement;
+          }
+          await batch.commit();
+        }
+
+        if (count > 0) {
+          let summaryMsg = `Successfully imported ${count} student(s).`;
+          if (activatedCount > 0) summaryMsg += `\n- ${activatedCount} Active (Login enabled)`;
+          if (pendingCount > 0) summaryMsg += `\n- ${pendingCount} Pending Activation`;
+
+          if (importErrors.length > 0) {
+            Alert.alert(
+              "Import Completed with Warnings",
+              `${summaryMsg}\n\nSome accounts could not be activated:\n${importErrors.slice(0, 5).join("\n")}${importErrors.length > 5 ? "\n..." : ""}`,
+              [{ text: "OK" }]
+            );
+          } else {
+            showToast?.({ message: summaryMsg, type: "success" });
+          }
+          handleRefresh();
+        }
+      } finally {
+        await deleteApp(secondaryApp);
+      }
+    } catch (error: any) {
+      console.error(error);
+      showToast?.({ message: `Import Failed: ${error.message}`, type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     loading,
     refreshing,
@@ -691,6 +879,7 @@ export const useAdmissionCharges = ({
     logBill,
     deletePayment,
     fetchStudents,
+    handleBulkImport,
 
     // UI state & handlers
     paymentModalVisible,

@@ -40,6 +40,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { Assignment, Question, VisualItem } from "../../types/assignments";
 import QuestionResponseItem from "../../components/student-dashboard/assignments/QuestionResponseItem";
 import AssignmentCard from "../../components/student-dashboard/assignments/AssignmentCard";
+import { markNotificationsAsRead } from "../../src/services/notificationService";
 import { useRef } from "react";
 
 export default function Assignments() {
@@ -115,7 +116,11 @@ export default function Assignments() {
 
   useEffect(() => {
     fetchAssignments();
-  }, [fetchAssignments]);
+    if (appUser?.uid) {
+      markNotificationsAsRead(appUser.uid, "assignment");
+      markNotificationsAsRead(appUser.uid, "score");
+    }
+  }, [fetchAssignments, appUser?.uid]);
 
   const onRefresh = () => {
     setRefreshing(true);

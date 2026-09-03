@@ -38,6 +38,7 @@ import { useRouter } from "expo-router";
 import * as Animatable from "react-native-animatable";
 import moment from "moment";
 import RichTextEditor from "../../components/RichTextEditor";
+import { markNotificationsAsRead } from "../../src/services/notificationService";
 
 interface ScoreRecord {
   id: string;
@@ -157,7 +158,11 @@ export default function AssignmentScores() {
 
   useEffect(() => {
     fetchScores();
-  }, [fetchScores]);
+    if (appUser?.uid) {
+      markNotificationsAsRead(appUser.uid, "score");
+      markNotificationsAsRead(appUser.uid, "submission");
+    }
+  }, [fetchScores, appUser?.uid]);
 
   const toggleExpand = async (item: ScoreRecord) => {
     if (expandedId === item.id) {

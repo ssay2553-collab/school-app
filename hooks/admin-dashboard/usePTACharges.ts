@@ -39,6 +39,7 @@ export type Student = {
   booksBalance?: number;
   uniformBalance?: number;
   otherBalance?: number;
+  exemptions?: string[];
 };
 
 interface UsePTAChargesProps {
@@ -165,6 +166,7 @@ export const usePTACharges = ({
             booksBalance: data.booksBalance || 0,
             uniformBalance: data.uniformBalance || 0,
             otherBalance: data.otherBalance || 0,
+            exemptions: data.exemptions || [],
           };
         });
 
@@ -345,11 +347,23 @@ export const usePTACharges = ({
         return false;
       }
 
+      // Filter out exempted students
+      const targetDocs = snap.docs.filter(d => {
+        const exemptions = d.data().exemptions || [];
+        return !exemptions.includes('pta');
+      });
+
+      if (targetDocs.length === 0) {
+        setSaving(false);
+        showToast({ message: "All students in this class are exempted from PTA dues", type: "info" });
+        return true;
+      }
+
       const year = acadConfig.academicYear?.replace(/\//g, "-");
       const term = acadConfig.currentTerm?.replace(/\s/g, "");
 
       const CHUNK_SIZE = 150; // 3 operations per student, 150*3 = 450 < 500
-      const docs = snap.docs;
+      const docs = targetDocs;
 
       for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
         const chunk = docs.slice(i, i + CHUNK_SIZE);
@@ -522,6 +536,29 @@ export const usePTACharges = ({
     }
   };
 
+  const toggleExemption = async (studentId: string, type: string, isExempted: boolean) => {
+    setSaving(true);
+    try {
+      const studentRef = doc(db, "users", studentId);
+      await writeBatch(db).update(studentRef, {
+        exemptions: isExempted ? arrayUnion(type) : arrayRemove(type)
+      }).commit();
+
+      showToast({
+        message: isExempted ? `Student exempted from ${type.toUpperCase()}` : `Exemption removed for ${type.toUpperCase()}`,
+        type: "success"
+      });
+      fetchStudents(true);
+      return true;
+    } catch (e) {
+      console.error(e);
+      showToast({ message: "Failed to update exemption", type: "error" });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     fetchStudents(true);
@@ -592,6 +629,7 @@ export const usePTACharges = ({
     fetchPaymentHistory,
     handleLogPayment,
     applyBulkCharge,
+    toggleExemption,
     handleDeletePayment,
     handleRefresh,
 

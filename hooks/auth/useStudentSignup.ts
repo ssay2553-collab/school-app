@@ -23,6 +23,7 @@ import { SCHOOL_CONFIG } from '../../constants/Config';
 import { useToast } from '../../contexts/ToastContext';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { getStudentFinalEmail } from '../../utils/authUnify';
 
 interface ClassItem {
     id: string;
@@ -132,6 +133,7 @@ export const useStudentSignup = () => {
                     ...prev,
                     firstName: data.profile?.firstName || prev.firstName,
                     lastName: data.profile?.lastName || prev.lastName,
+                    email: data.email || data.profile?.email || prev.email,
                     gender: data.profile?.gender || data.gender || "",
                     selectedClassId: data.classId || prev.selectedClassId,
                     dateOfBirth: data.dateOfBirth?.toDate ? data.dateOfBirth.toDate() : (data.dateOfBirth ? new Date(data.dateOfBirth) : null),
@@ -287,6 +289,11 @@ export const useStudentSignup = () => {
             });
         }
 
+        if (!pendingDocId) {
+            const statsRef = doc(db, "stats", "global");
+            batch.set(statsRef, { totalStudents: increment(1) }, { merge: true });
+        }
+
         await batch.commit();
     };
 
@@ -342,14 +349,7 @@ export const useStudentSignup = () => {
                 codeDocId = codeDoc.id;
             }
 
-            let finalEmail = form.email.trim().toLowerCase().replace(/\s+/g, "");
-
-            if (finalEmail && !finalEmail.includes("@")) {
-                const domainSlug = (SCHOOL_CONFIG.schoolId || 'student')
-                    .toLowerCase()
-                    .replace(/[^a-z0-9]/g, '');
-                finalEmail = `${finalEmail}@${domainSlug}.edueaz.com`;
-            }
+            const finalEmail = getStudentFinalEmail(form.email);
 
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(finalEmail)) {
@@ -396,9 +396,14 @@ export const useStudentSignup = () => {
             showToast({ message: "Account created successfully! Welcome to your school portal.", type: "success" });
             router.replace("/(auth)/login/student");
         } catch (err: any) {
-            let msg = err.message;
+            console.error("Student Signup Error:", err);
+            let msg = err.message || "An unexpected error occurred.";
             if (err.code === 'auth/email-already-in-use') msg = "This email or username is already taken.";
-            showToast({ message: msg || "An unexpected error occurred.", type: "error" });
+            if (err.code === 'auth/invalid-email') msg = "Invalid email format.";
+            if (err.code === 'auth/weak-password') msg = "Password is too short.";
+            if (err.code === 'auth/network-request-failed') msg = "Network error. Please check your connection.";
+
+            showToast({ message: msg, type: "error" });
         } finally {
             setLoading(false);
         }

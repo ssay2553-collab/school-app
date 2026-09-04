@@ -64,7 +64,7 @@ export default function StudentSignupScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: primary }}>
       <StatusBar barStyle="light-content" />
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           
           <Animatable.View animation="fadeInDown" useNativeDriver={Platform.OS !== 'web'} style={styles.header}>
@@ -103,7 +103,7 @@ export default function StudentSignupScreen() {
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <View style={styles.joinBtnContent}>
                       <Text style={[styles.themedDefault, styles.joinBtnText]}>Verify Code</Text>
@@ -261,7 +261,7 @@ export default function StudentSignupScreen() {
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color="#fff" size="small" />
                   ) : (
                     <View style={styles.joinBtnContent}>
                       <Text style={[styles.themedDefault, styles.joinBtnText]}>Finish Signup</Text>

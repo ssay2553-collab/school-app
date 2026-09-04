@@ -30,6 +30,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { db, functions } from "../../firebaseConfig";
 import { useToast } from "../../contexts/ToastContext";
 import { httpsCallable } from "firebase/functions";
+import { getStudentFinalEmail } from "../../utils/authUnify";
 
 export default function TokenResetScreen() {
   const router = useRouter();
@@ -62,7 +63,7 @@ export default function TokenResetScreen() {
 
     setLoading(true);
     try {
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanEmail = getStudentFinalEmail(email);
       const cleanToken = token.trim().toUpperCase();
 
       // Find user by email
@@ -115,7 +116,7 @@ export default function TokenResetScreen() {
 
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >

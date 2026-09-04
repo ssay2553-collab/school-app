@@ -26,6 +26,7 @@ import { getSchoolLogo } from "../../../constants/Logos";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import { auth, db, functions } from "../../../firebaseConfig";
 import { useToast } from "../../../contexts/ToastContext";
+import { getStudentFinalEmail } from "../../../utils/authUnify";
 
 export default function StudentLoginScreen() {
   const router = useRouter();
@@ -52,10 +53,7 @@ export default function StudentLoginScreen() {
     }
 
     setLoading(true);
-    let finalEmail = email.trim().toLowerCase();
-    if (!finalEmail.includes("@")) {
-      finalEmail = `${finalEmail}@${SCHOOL_CONFIG.schoolId || 'student'}.edueaz.com`;
-    }
+    const finalEmail = getStudentFinalEmail(email);
 
     try {
       // 1. Try standard login
@@ -81,6 +79,16 @@ export default function StudentLoginScreen() {
         if (!snap.empty) {
           const userDoc = snap.docs[0];
           const userData = userDoc.data();
+
+          if (userData.status === "pending_activation" || !userData.hasLoginEnabled) {
+            showToast({
+              message: "Almost there! Please tap 'Join your Class' and enter your code to set your password. ✨",
+              type: "info",
+            });
+            setLoading(false);
+            return;
+          }
+
           const storedToken = userData.signupCode || userData.secretCode;
 
           if (storedToken && storedToken === cleanToken) {
@@ -106,8 +114,12 @@ export default function StudentLoginScreen() {
 
       // If both fail, show original error
       let message = error.message || "An error occurred during login.";
-      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
+      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
         message = "Oops! Wrong email or password. Try again! ✨";
+      } else if (error.code === "auth/too-many-requests") {
+        message = "Too many attempts. Please wait a bit! ⏳";
+      } else if (error.code === "auth/network-request-failed") {
+        message = "Check your internet connection! 🌐";
       }
       showToast({ message, type: "error" });
     } finally {
@@ -163,7 +175,7 @@ export default function StudentLoginScreen() {
 
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
@@ -224,7 +236,7 @@ export default function StudentLoginScreen() {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   editable={!loading}
-                  autoComplete="off"
+                  autoComplete="username"
                 />
               </View>
 
@@ -239,7 +251,7 @@ export default function StudentLoginScreen() {
                     value={password}
                     onChangeText={setPassword}
                     editable={!loading}
-                    autoComplete="off"
+                    autoComplete="password"
                   />
                   <TouchableOpacity
                     onPress={() => setShowPassword(!showPassword)}
@@ -264,7 +276,7 @@ export default function StudentLoginScreen() {
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
                   <Text style={styles.buttonText}>Let's Go! 🚀</Text>
                 )}

@@ -25,6 +25,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
 import { Alert, Platform } from "react-native";
+import { getStudentFinalEmail } from "../../utils/authUnify";
 
 const PAGE_SIZE = 50;
 
@@ -746,10 +747,12 @@ export const useAdmissionCharges = ({
 
             const emergencyPhone = cleanString(values[4] || "");
             const parentPhone = cleanString(values[5] || "");
-            const email = cleanString(values[6] || "");
+            const rawEmail = cleanString(values[6] || "");
             const password = cleanString(values[7] || "");
 
             if (!firstName || !lastName || firstName.toLowerCase() === "firstname") continue;
+
+            const email = getStudentFinalEmail(rawEmail);
 
             let authUid = "";
             let signupCode = "";

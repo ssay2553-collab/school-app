@@ -34,6 +34,7 @@ import { useFinanceCleanup } from "./useFinanceCleanup";
 import { useAcademicCleanup } from "./useAcademicCleanup";
 import { User, UserRole, PermissionLevel, AssignmentModalState, PERMISSION_KEYS } from "./manage-users-types";
 import { useRef } from "react";
+import { getStudentFinalEmail } from "../../utils/authUnify";
 
 interface UseManageUsersProps {
   appUser: any;
@@ -321,10 +322,12 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
             const emergencyPhone = cleanString(values[4] || "");
             const parentPhone = cleanString(values[5] || "");
-            const email = cleanString(values[6] || "");
+            const rawEmail = cleanString(values[6] || "");
             const password = cleanString(values[7] || "");
 
             if (!firstName || !lastName || firstName.toLowerCase() === "firstname") continue;
+
+            const email = getStudentFinalEmail(rawEmail);
 
             let authUid = "";
             let signupCode = "";

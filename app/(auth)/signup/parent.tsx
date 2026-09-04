@@ -233,8 +233,11 @@ export default function ParentSignup() {
       router.replace("/(auth)/login/parent");
     } catch (err: any) {
       console.error("Signup error:", err);
-      let msg = err.message;
-      if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
+      let msg = err.message || "An unexpected error occurred.";
+      if (err.code === 'auth/email-already-in-use') msg = "This email is already registered. Try signing in instead!";
+      if (err.code === 'auth/invalid-email') msg = "The email address is not valid.";
+      if (err.code === 'auth/weak-password') msg = "The password is too weak (min 6 characters).";
+      if (err.code === 'auth/network-request-failed') msg = "Network error. Please check your internet connection.";
       showToast({ message: msg, type: "error" });
     } finally {
       setIsLoading(false);
@@ -245,7 +248,7 @@ export default function ParentSignup() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: SCHOOL_CONFIG.surfaceColor || "#F8FAFC" }]}>
       <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.keyboardView}
       >
         <ScrollView 

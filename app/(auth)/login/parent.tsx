@@ -100,8 +100,12 @@ export default function ParentLoginScreen() {
     } catch (error: any) {
       console.error("Login error:", error.code);
       let message = error.message || "An error occurred.";
-      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
+      if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password" || error.code === "auth/user-not-found") {
         message = "Invalid email or password.";
+      } else if (error.code === "auth/too-many-requests") {
+        message = "Too many failed attempts. Please try again later.";
+      } else if (error.code === "auth/network-request-failed") {
+        message = "Network error. Please check your internet connection.";
       }
       showToast({ message, type: "error" });
     } finally {
@@ -130,7 +134,7 @@ export default function ParentLoginScreen() {
 
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView 
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.keyboardView}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
         >
@@ -195,7 +199,7 @@ export default function ParentLoginScreen() {
                   disabled={loading}
                   activeOpacity={0.8}
               >
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign In</Text>}
+                {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.buttonText}>Sign In</Text>}
               </TouchableOpacity>
 
               <View style={styles.cardFooter}>

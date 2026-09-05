@@ -60,7 +60,9 @@ interface TeacherStats {
   onlineTimeMinutes: number; // Simulated or calculated if available
   usageScore: number; // Percentage
   assignedClasses: string[];
+  assignedClassIds: string[];
   assignments: any[];
+  allTopics: any[];
   groups: { name: string, className: string, memberCount: number }[];
   assignmentBreakdown: {
     subject: string;
@@ -69,8 +71,10 @@ interface TeacherStats {
   }[];
   topicBreakdown: {
     subject: string;
+    classId: string;
     className: string;
     count: number;
+    topics: any[];
   }[];
 }
 
@@ -86,6 +90,8 @@ export default function TeacherStatistics() {
   const isNavigating = useRef(false);
 
   const [reviewingAssignment, setReviewingAssignment] = useState<any | null>(null);
+  const [viewingTopicsList, setViewingTopicsList] = useState<any[] | null>(null);
+  const [selectedTopicDetail, setSelectedTopicDetail] = useState<any | null>(null);
 
   useEffect(() => {
     isMounted.current = true;
@@ -170,15 +176,22 @@ export default function TeacherStatistics() {
         });
 
         // Calculate topic breakdown
-        const topicBreakdownMap: Record<string, number> = {};
+        const topicBreakdownMap: Record<string, any[]> = {};
         tTopics.forEach(top => {
           const key = `${top.classId}|||${top.subject}`;
-          topicBreakdownMap[key] = (topicBreakdownMap[key] || 0) + 1;
+          if (!topicBreakdownMap[key]) topicBreakdownMap[key] = [];
+          topicBreakdownMap[key].push(top);
         });
 
-        const topicBreakdown = Object.entries(topicBreakdownMap).map(([key, count]) => {
+        const topicBreakdown = Object.entries(topicBreakdownMap).map(([key, topics]) => {
           const [classId, subject] = key.split("|||");
-          return { subject, className: classMap[classId] || classId, count };
+          return {
+            subject,
+            classId,
+            className: classMap[classId] || classId,
+            count: topics.length,
+            topics: topics.sort((a, b) => (b.weekNumber || 0) - (a.weekNumber || 0))
+          };
         });
 
         const teacherClasses = getTeacherClasses(t);
@@ -199,7 +212,9 @@ export default function TeacherStatistics() {
           onlineTimeMinutes: t.onlineTimeMinutes || 0,
           usageScore,
           assignedClasses: teacherClasses.map((cid: string) => classMap[cid] || cid),
+          assignedClassIds: teacherClasses,
           assignments: tAssignments,
+          allTopics: tTopics,
           groups: tGroups.map(g => ({
             name: g.name || "Unnamed Group",
             className: classMap[g.classId] || g.classId || "General",
@@ -483,9 +498,13 @@ export default function TeacherStatistics() {
                         <Text style={styles.breakdownClass}>{item.className}</Text>
                         <Text style={styles.breakdownSubject}>{item.subject}</Text>
                       </View>
-                      <View style={[styles.countBadge, { backgroundColor: primary + "20" }]}>
+                      <TouchableOpacity
+                        style={[styles.countBadge, { backgroundColor: primary + "20", flexDirection: 'row', alignItems: 'center', gap: 5 }]}
+                        onPress={() => setViewingTopicsList(item.topics)}
+                      >
                         <Text style={[styles.countText, { color: primary }]}>{item.count} Weeks</Text>
-                      </View>
+                        <SVGIcon name="eye-outline" size={14} color={primary} />
+                      </TouchableOpacity>
                     </View>
                   ))
                 ) : (
@@ -524,6 +543,69 @@ export default function TeacherStatistics() {
               </TouchableOpacity>
             </ScrollView>
           </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={!!viewingTopicsList}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setViewingTopicsList(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { maxHeight: '70%' }]}>
+             <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Weekly Topics</Text>
+                <TouchableOpacity onPress={() => setViewingTopicsList(null)}>
+                   <SVGIcon name="close-circle" size={28} color="#64748B" />
+                </TouchableOpacity>
+             </View>
+             <FlatList
+                data={viewingTopicsList}
+                keyExtractor={(item, idx) => idx.toString()}
+                contentContainerStyle={{ padding: 10 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.breakdownItem}
+                    onPress={() => setSelectedTopicDetail(item)}
+                  >
+                    <View style={styles.breakdownInfo}>
+                      <Text style={styles.breakdownClass}>Week {item.weekNumber}: {item.topic}</Text>
+                      <Text style={styles.breakdownSubject}>{moment(item.startDate).format("MMM D")} - {moment(item.endDate).format("MMM D")}</Text>
+                    </View>
+                    <SVGIcon name="chevron-forward" size={18} color={primary} />
+                  </TouchableOpacity>
+                )}
+             />
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={!!selectedTopicDetail}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedTopicDetail(null)}
+      >
+        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
+           <View style={[styles.modalContent, { width: '90%', maxHeight: '80%' }]}>
+              <View style={styles.modalHeader}>
+                 <Text style={styles.modalTitle}>Lesson Details</Text>
+                 <TouchableOpacity onPress={() => setSelectedTopicDetail(null)}>
+                    <SVGIcon name="close-circle" size={28} color="#64748B" />
+                 </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={{ padding: 20 }}>
+                 <Text style={styles.detailLabel}>TOPIC</Text>
+                 <Text style={styles.detailValue}>{selectedTopicDetail?.topic}</Text>
+
+                 <Text style={styles.detailLabel}>SUB-TOPICS / ACTIVITIES</Text>
+                 <Text style={styles.detailValue}>{selectedTopicDetail?.subTopics || "Not specified"}</Text>
+
+                 <Text style={styles.detailLabel}>OBJECTIVES</Text>
+                 <Text style={styles.detailValue}>{selectedTopicDetail?.objectives || "Not specified"}</Text>
+              </ScrollView>
+           </View>
         </View>
       </Modal>
 
@@ -853,5 +935,20 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
+  },
+  detailLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#94A3B8',
+    letterSpacing: 1,
+    marginTop: 15,
+    marginBottom: 5,
+    textTransform: 'uppercase',
+  },
+  detailValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+    lineHeight: 22,
   },
 });

@@ -541,8 +541,15 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         },
         {} as Record<string, PermissionLevel>,
       );
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), { permissions: sanitized });
-      const updatedUser = { ...assignmentModal.target, permissions: sanitized };
+      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
+        permissions: sanitized,
+        canCreateNews: newsPermission
+      });
+      const updatedUser = {
+        ...assignmentModal.target,
+        permissions: sanitized,
+        canCreateNews: newsPermission
+      };
       if (viewingUser?.uid === updatedUser.uid) setViewingUser(updatedUser);
       setAssignmentModal({ type: "none", target: null });
       showToast?.({ message: "Admin permissions updated", type: "success" });
@@ -1088,6 +1095,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       return acc;
     }, {} as Record<string, PermissionLevel>);
     setTempPermissions(merged);
+    setNewsPermission(!!user.canCreateNews);
     setAssignmentModal({ type: "permissions", target: user });
   };
 

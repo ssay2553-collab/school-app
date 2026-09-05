@@ -184,6 +184,19 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   </View>
                 )}
                 <Text style={styles.sectionHeader}>Delegated Permissions</Text>
+
+                <View style={styles.switchRow}>
+                  <View style={styles.switchInfo}>
+                    <Text style={styles.switchLabel}>News Broadcast Authority</Text>
+                    <Text style={styles.switchSub}>Allow user to post school news & alerts</Text>
+                  </View>
+                  <Switch
+                    value={newsPermission}
+                    onValueChange={setNewsPermission}
+                    trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                  />
+                </View>
+
                 {PERMISSION_KEYS.map((pk) => (
                   <View key={pk.key} style={styles.permItem}>
                     <View style={styles.permPickerBox}>

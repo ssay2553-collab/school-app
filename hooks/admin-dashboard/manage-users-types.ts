@@ -55,26 +55,18 @@ export const roles: { name: string; role: UserRole; icon: string }[] = [
 ];
 
 export const PERMISSION_KEYS = [
-  { key: "news", label: "News & Announcements" },
   { key: "manage-fees", label: "Manage Fees & Billing" },
   { key: "manage-sales", label: "Financial Records (Sales)" },
+  { key: "expenditure", label: "Expenditure Management" },
+  { key: "staff-payroll", label: "Staff Payroll" },
+  { key: "manage-users", label: "User Management" },
   { key: "feeding", label: "Feeding Recording" },
   { key: "record-bus-fee", label: "Bus Fee Recording" },
   { key: "record-extra-classes", label: "Extra Classes Recording" },
   { key: "attendance", label: "Attendance Management" },
-  { key: "academic-records", label: "Academic Records" },
-  { key: "scores", label: "Scores & Grading" },
-  { key: "behavioral-records", label: "Behavioral Records" },
-  { key: "assignments", label: "Assignments & Homework" },
-  { key: "staff-payroll", label: "Staff Payroll" },
-  { key: "expenditure", label: "Expenditure" },
-  { key: "manage-users", label: "Manage Users" },
   { key: "timetables", label: "Timetable Management" },
   { key: "academic-calendar", label: "Academic Calendar" },
-  { key: "settings", label: "School Settings & Rates" },
-  { key: "student-groups", label: "Student Study Groups" },
-  { key: "parent-chat", label: "Parent Communication" },
-  { key: "staff-chat", label: "Internal Staff Chat" },
+  { key: "assignments", label: "Assignments & Homework" },
 ];
 
 export const PERMISSION_LEVELS: { label: string; value: PermissionLevel }[] = [

@@ -2,6 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
+  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,

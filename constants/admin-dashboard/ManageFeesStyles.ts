@@ -450,10 +450,15 @@ export const styles = StyleSheet.create({
     alignItems: "stretch",
     flexShrink: 1,
     elevation: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
+    ...Platform.select({
+      web: { boxShadow: "0 -10px 20px rgba(0,0,0,0.15)" },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+      }
+    })
   },
   sheetHandle: {
     width: 40,

@@ -329,6 +329,18 @@ export default function StudentNoteScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerRow}>
+        {!isAdding && (
+          <TouchableOpacity
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
+            style={styles.backBtn}
+          >
+            <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+        )}
         <Text style={styles.headerTitle}>
           {isAdding ? (editingId ? "Edit Note" : "New Note") : "My Study Notes 📚"}
         </Text>
@@ -517,6 +529,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
     marginTop: Platform.OS === "ios" ? 40 : 10,
+    gap: 15,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
+    ...SHADOWS.small,
   },
   headerTitle: {
     fontSize: 26,

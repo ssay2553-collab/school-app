@@ -805,7 +805,9 @@ match /feePayments/{paymentId} {
              isAdmin() ||
              (isTeacher() && (
                resource.data.assignmentId in (get(/databases/$(database)/documents/users/$(uid())).data.assignedAssignments) ||
-               // Fallback: check if they are the teacher of the student
+               // Allow if they are the teacher of the subject in that class
+               (resource.data.subjectId in userData().get('subjects', []) && (resource.data.classId in userData().get('classes', []) || userData().get('classTeacherOf', '') == resource.data.classId)) ||
+               // Fallback: check if they are the teacher of the student's class
                isClassTeacher(get(/databases/$(database)/documents/users/$(resource.data.studentId)).data.classId)
              ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['marks', 'marked', 'feedback', 'markedAt', 'questionScores']))
            );

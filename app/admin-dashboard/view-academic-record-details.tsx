@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ActivityIndicator,
+  Platform,
   SafeAreaView,
   StyleSheet,
   Text,
@@ -202,10 +203,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#E2E8F0",
     elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    ...Platform.select({
+      web: { boxShadow: "0 1px 2px rgba(0,0,0,0.05)" },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      }
+    }),
     zIndex: 10,
   },
   navLeft: {

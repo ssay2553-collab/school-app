@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../SVGIcon";
 import { ScoreData } from "../../hooks/admin-dashboard/useViewAcademicRecords";
@@ -65,11 +65,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginTop: 12,
     borderRadius: 18,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 15,
     elevation: 2,
+    ...Platform.select({
+      web: { boxShadow: "0 2px 15px rgba(0,0,0,0.05)" },
+      default: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 15,
+      }
+    })
   },
   cardInner: { flexDirection: "row", alignItems: "center", padding: 15 },
   posBadge: {

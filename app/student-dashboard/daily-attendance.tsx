@@ -41,6 +41,7 @@ export default function StudentAttendanceScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const isMounted = useRef(true);
+  const isNavigating = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
@@ -166,7 +167,17 @@ export default function StudentAttendanceScreen() {
         }
       >
         <View style={styles.headerRow}>
-          <View>
+          <TouchableOpacity
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
+            style={styles.backBtn}
+          >
+            <SVGIcon name="arrow-back" size={24} color={brandColor} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
             <Text style={[styles.header, { color: brandColor }]}>
               My Attendance 📅
             </Text>
@@ -272,11 +283,20 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 25,
+    gap: 15,
   },
-  header: { fontSize: 24, fontWeight: "900" },
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: "#fff",
+    justifyContent: "center",
+    alignItems: "center",
+    ...SHADOWS.small,
+  },
+  header: { fontSize: 22, fontWeight: "900" },
   subHeader: { fontSize: 14, color: "#64748B", marginTop: 4 },
   analysisBtn: {
     width: 44,

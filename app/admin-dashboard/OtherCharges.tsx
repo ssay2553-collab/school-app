@@ -16,7 +16,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -30,8 +30,6 @@ import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { SHADOWS } from "../../constants/theme";
 import { useRef, useEffect } from "react";
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
-
-const { width } = Dimensions.get("window");
 
 const THEME = {
   primary: "#8B5CF6", // Purple for Other Charges
@@ -101,6 +99,7 @@ const OtherStudentCard = React.memo(({
 });
 
 export default function OtherCharges() {
+  const { width } = useWindowDimensions();
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
@@ -182,6 +181,105 @@ export default function OtherCharges() {
     <OtherStudentCard item={item} onPress={handleOpenModal} />
   ), [handleOpenModal]);
 
+  const ListHeader = useMemo(() => (
+    <>
+      <View style={[styles.statsDashboard, { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }]}>
+         <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
+            <Text style={styles.statLabel}>TOTAL BILLED</Text>
+            <Text style={styles.statValue}>₵{stats.totalBilled.toLocaleString()}</Text>
+            <SVGIcon name="receipt" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+         </LinearGradient>
+         <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
+            <Text style={styles.statLabel}>COLLECTED</Text>
+            <Text style={styles.statValue}>₵{stats.totalCollected.toLocaleString()}</Text>
+            <SVGIcon name="cash" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+         </LinearGradient>
+      </View>
+
+      <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
+        <Text style={styles.listTitle}>BILL NEW ITEM (CLASS BULK)</Text>
+        <View style={{ marginTop: 10 }}>
+          <View style={[styles.bulkInputContainer, { paddingHorizontal: 12, height: 54 }]}>
+            <TextInput
+              style={[styles.bulkInput, { flex: 2, fontSize: 14 }]}
+              placeholder="Charge Item (e.g. Exam)"
+              value={chargeType}
+              onChangeText={setChargeType}
+              placeholderTextColor={VIBE.muted}
+            />
+            <View style={{ width: 1, height: 25, backgroundColor: VIBE.border, marginHorizontal: 10 }} />
+            <TextInput
+              style={[styles.bulkInput, { flex: 1, fontSize: 14, textAlign: 'center' }]}
+              placeholder="Amount"
+              keyboardType="numeric"
+              value={chargeAmount}
+              onChangeText={setChargeAmount}
+              placeholderTextColor={VIBE.muted}
+            />
+          </View>
+
+          <TouchableOpacity
+             onPress={applyOtherCharge}
+             style={{
+               marginTop: 10,
+               backgroundColor: THEME.primary,
+               height: 50,
+               borderRadius: 15,
+               flexDirection: 'row',
+               justifyContent: 'center',
+               alignItems: 'center',
+               gap: 8,
+               ...SHADOWS.small,
+               ...Platform.select({ web: { cursor: 'pointer' } as any, default: {} })
+             }}
+             activeOpacity={0.8}
+             disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <SVGIcon name="add-circle-outline" size={20} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 }}>APPLY BULK CHARGE</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+        {selectedClassId === "all" && (
+          <Text style={{ fontSize: 10, color: VIBE.danger, marginTop: 8, fontWeight: "700" }}>
+            * Select a specific class to enable bulk billing
+          </Text>
+        )}
+      </View>
+
+      {appliedCharges.length > 0 && (
+        <View style={styles.breakdownContainer}>
+          <Text style={styles.listTitle}>APPLIED CHARGES ({selectedClassId === "all" ? "TOTAL" : classes.find(c => c.id === selectedClassId)?.name})</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.breakdownScroll}>
+            {appliedCharges.map((item, idx) => (
+              <View key={idx} style={styles.breakdownCard}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={styles.summaryBreakdownLabel} numberOfLines={1}>{item.category}</Text>
+                    {selectedClassId !== "all" && (
+                      <TouchableOpacity onPress={() => confirmDeleteCharge(item.category)} activeOpacity={0.7}>
+                        <SVGIcon name="close-circle" size={16} color={VIBE.danger} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <Text style={styles.summaryBreakdownValue}>₵{item.amount.toLocaleString()}</Text>
+                  <Text style={{ fontSize: 9, color: VIBE.muted, fontWeight: '700' }}>{item.count} students</Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
+      <Text style={[styles.listTitle, { marginHorizontal: 20, marginTop: 25, marginBottom: 15 }]}>STUDENT DIRECTORY</Text>
+    </>
+  ), [stats, chargeType, setChargeType, chargeAmount, setChargeAmount, applyOtherCharge, saving, selectedClassId, appliedCharges, classes, confirmDeleteCharge, THEME, width]);
+
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
@@ -252,104 +350,7 @@ export default function OtherCharges() {
         onEndReached={() => fetchStudents()}
         removeClippedSubviews={Platform.OS === "android"}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />}
-        ListHeaderComponent={
-          <>
-            <View style={[styles.statsDashboard, { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }]}>
-               <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: (width - 52)/2 }]}>
-                  <Text style={styles.statLabel}>TOTAL BILLED</Text>
-                  <Text style={styles.statValue}>₵{stats.totalBilled.toLocaleString()}</Text>
-                  <SVGIcon name="receipt" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
-               </LinearGradient>
-               <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: (width - 52)/2 }]}>
-                  <Text style={styles.statLabel}>COLLECTED</Text>
-                  <Text style={styles.statValue}>₵{stats.totalCollected.toLocaleString()}</Text>
-                  <SVGIcon name="cash" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
-               </LinearGradient>
-            </View>
-
-            <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
-              <Text style={styles.listTitle}>BILL NEW ITEM (CLASS BULK)</Text>
-              <View style={{ marginTop: 10 }}>
-                <View style={[styles.bulkInputContainer, { paddingHorizontal: 12, height: 54 }]}>
-                  <TextInput
-                    style={[styles.bulkInput, { flex: 2, fontSize: 14 }]}
-                    placeholder="Charge Item (e.g. Exam)"
-                    value={chargeType}
-                    onChangeText={setChargeType}
-                    placeholderTextColor={VIBE.muted}
-                  />
-                  <View style={{ width: 1, height: 25, backgroundColor: VIBE.border, marginHorizontal: 10 }} />
-                  <TextInput
-                    style={[styles.bulkInput, { flex: 1, fontSize: 14, textAlign: 'center' }]}
-                    placeholder="Amount"
-                    keyboardType="numeric"
-                    value={chargeAmount}
-                    onChangeText={setChargeAmount}
-                    placeholderTextColor={VIBE.muted}
-                  />
-                </View>
-
-                <TouchableOpacity
-                   onPress={applyOtherCharge}
-                   style={{
-                     marginTop: 10,
-                     backgroundColor: THEME.primary,
-                     height: 50,
-                     borderRadius: 15,
-                     flexDirection: 'row',
-                     justifyContent: 'center',
-                     alignItems: 'center',
-                     gap: 8,
-                     ...SHADOWS.small,
-                     ...Platform.select({ web: { cursor: 'pointer' } as any, default: {} })
-                   }}
-                   activeOpacity={0.8}
-                   disabled={saving}
-                >
-                  {saving ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <SVGIcon name="add-circle-outline" size={20} color="#fff" />
-                      <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 }}>APPLY BULK CHARGE</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-              {selectedClassId === "all" && (
-                <Text style={{ fontSize: 10, color: VIBE.danger, marginTop: 8, fontWeight: "700" }}>
-                  * Select a specific class to enable bulk billing
-                </Text>
-              )}
-            </View>
-
-            {appliedCharges.length > 0 && (
-              <View style={styles.breakdownContainer}>
-                <Text style={styles.listTitle}>APPLIED CHARGES ({selectedClassId === "all" ? "TOTAL" : classes.find(c => c.id === selectedClassId)?.name})</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.breakdownScroll}>
-                  {appliedCharges.map((item, idx) => (
-                    <View key={idx} style={styles.breakdownCard}>
-                      <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text style={styles.summaryBreakdownLabel} numberOfLines={1}>{item.category}</Text>
-                          {selectedClassId !== "all" && (
-                            <TouchableOpacity onPress={() => confirmDeleteCharge(item.category)} activeOpacity={0.7}>
-                              <SVGIcon name="close-circle" size={16} color={VIBE.danger} />
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                        <Text style={styles.summaryBreakdownValue}>₵{item.amount.toLocaleString()}</Text>
-                        <Text style={{ fontSize: 9, color: VIBE.muted, fontWeight: '700' }}>{item.count} students</Text>
-                      </View>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            <Text style={[styles.listTitle, { marginHorizontal: 20, marginTop: 25, marginBottom: 15 }]}>STUDENT DIRECTORY</Text>
-          </>
-        }
+        ListHeaderComponent={ListHeader}
         ListEmptyComponent={
           loading ? (
             <ActivityIndicator size="large" color={THEME.primary} style={{ marginTop: 50 }} />

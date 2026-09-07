@@ -22,7 +22,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -36,8 +36,6 @@ import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelect
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { useBooksCharges, Student } from "../../hooks/admin-dashboard/useBooksCharges";
 import { useRef, useEffect } from "react";
-
-const { width } = Dimensions.get("window");
 
 const THEME = {
   primary: "#3B82F6", // Books Blue
@@ -100,6 +98,7 @@ const BooksStudentCard = React.memo(({
 });
 
 export default function BooksCharges() {
+  const { width } = useWindowDimensions();
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
@@ -251,12 +250,12 @@ export default function BooksCharges() {
         ListHeaderComponent={
           <>
             <View style={[styles.statsDashboard, { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10, paddingBottom: 15 }]}>
-              <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: (width - 52)/2 }]}>
+              <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
                 <Text style={styles.statLabel}>TERM BILLED</Text>
                 <Text style={styles.statValue}>₵{(stats.totalBilled || 0).toLocaleString()}</Text>
                 <SVGIcon name="receipt" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
               </LinearGradient>
-              <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: (width - 52)/2 }]}>
+              <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
                 <Text style={styles.statLabel}>TERM COLLECTED</Text>
                 <Text style={styles.statValue}>₵{(stats.totalCollected || 0).toLocaleString()}</Text>
                 <SVGIcon name="cash" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />

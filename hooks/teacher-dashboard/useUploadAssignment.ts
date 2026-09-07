@@ -238,6 +238,7 @@ export const useUploadAssignment = () => {
   const [fetchingMetadata, setFetchingMetadata] = useState(true);
 
   const [teacherClasses, setTeacherClasses] = useState<ClassData[]>([]);
+  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
 
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
@@ -288,92 +289,70 @@ export const useUploadAssignment = () => {
       return;
     }
 
+    const userRole = appUser?.role?.toLowerCase() || "";
+    const adminRole = appUser?.adminRole?.toLowerCase() || "";
+    const isManagerOrAdmin =
+        userRole === "admin" ||
+        ["manager", "headmaster", "headmistress", "administrator", "director", "proprietor", "proprietress", "accountant", "bursar"].includes(adminRole);
+
     const fetchMetadata = async () => {
       if (teacherClasses.length === 0) {
         setFetchingMetadata(true);
       }
 
       try {
-        if (teacherClassIds.length > 0) {
-          const results: ClassData[] = [];
+        let sortedClasses: ClassData[] = [];
+        let subjectList: string[] = [];
 
-          for (let i = 0; i < teacherClassIds.length; i += 10) {
-            const chunk = teacherClassIds.slice(i, i + 10);
+        if (isManagerOrAdmin) {
+          // Fetch ALL classes for managers/admins
+          const q = query(collection(db, "classes"));
+          const snap = await getDocs(q);
+          const results = snap.docs.map(item => ({
+            id: item.id,
+            name: (item.data() as any).name || item.id
+          }));
+          sortedClasses = sortClasses(results);
 
-            const q = query(
-              collection(db, "classes"),
-              where(documentId(), "in", chunk)
-            );
-
-            const snap = await getDocs(q);
-
-            results.push(
-              ...snap.docs.map((item) => {
-                const data = item.data();
-
-                return {
-                  id: item.id,
-                  name:
-                    typeof data.name === "string"
-                      ? data.name
-                      : item.id,
-                };
-              })
-            );
+          // Fetch ALL subjects for managers/admins
+          const subQ = query(collection(db, "subjects"));
+          const subSnap = await getDocs(subQ);
+          subjectList = Array.from(new Set([...subSnap.docs.map(d => d.id), ...(appUser.subjects || [])]));
+        } else {
+          // Fetch assigned classes for teachers
+          if (teacherClassIds.length > 0) {
+            const results: ClassData[] = [];
+            for (let i = 0; i < teacherClassIds.length; i += 10) {
+              const chunk = teacherClassIds.slice(i, i + 10);
+              const q = query(collection(db, "classes"), where(documentId(), "in", chunk));
+              const snap = await getDocs(q);
+              results.push(...snap.docs.map(item => ({
+                id: item.id,
+                name: (item.data() as any).name || item.id
+              })));
+            }
+            sortedClasses = sortClasses(results);
           }
-
-          if (!mounted) return;
-
-          const sorted = sortClasses(results);
-
-          setTeacherClasses((previous) => {
-            const unchanged =
-              previous.length === sorted.length &&
-              previous.every(
-                (item, index) =>
-                  item.id === sorted[index].id &&
-                  item.name === sorted[index].name
-              );
-
-            return unchanged ? previous : sorted;
-          });
-
-          setSelectedClassId((current) => {
-            if (
-              current &&
-              sorted.some((item) => item.id === current)
-            ) {
-              return current;
-            }
-
-            return sorted[0]?.id || "";
-          });
-        } else {
-          setTeacherClasses([]);
-          setSelectedClassId("");
+          subjectList = appUser.subjects || [];
         }
 
-        if (appUser.subjects?.length) {
-          setSelectedSubject((current) => {
-            if (
-              current &&
-              appUser.subjects!.includes(current)
-            ) {
-              return current;
-            }
+        if (!mounted) return;
 
-            return appUser.subjects![0] || "";
-          });
-        } else {
-          setSelectedSubject("");
+        setTeacherClasses(sortedClasses);
+        setAvailableSubjects(subjectList);
+
+        if (sortedClasses.length > 0 && !selectedClassId) {
+          setSelectedClassId(sortedClasses[0].id);
         }
+        if (subjectList.length > 0 && !selectedSubject) {
+          setSelectedSubject(subjectList[0]);
+        }
+
       } catch (error) {
         console.error("Failed to load assignment metadata:", error);
-
         if (mounted) {
           showToast({
-            message:
-              "Unable to load your classes or subjects. Please try again.",
+            message: "Unable to load your classes or subjects. Please try again.",
             type: "error",
           });
         }
@@ -892,6 +871,37 @@ export const useUploadAssignment = () => {
 
       await batch.commit();
 
+      // Send notifications to students if auto-approved
+      if (isAdmin) {
+        try {
+          const studentsQuery = query(
+            collection(db, "users"),
+            where("role", "==", "student"),
+            where("classId", "==", selectedClassId)
+          );
+          const studentsSnap = await getDocs(studentsQuery);
+
+          await Promise.allSettled(
+            studentsSnap.docs.map(studentDoc =>
+              sendNotification({
+                recipientId: studentDoc.id,
+                senderId: appUser.uid,
+                senderName: appUser.displayName || "School Admin",
+                type: "assignment",
+                title: "New Assignment",
+                body: `${selectedSubject}: ${title.trim()} is now available.`,
+                data: {
+                  assignmentId: assignmentRef.id,
+                  classId: selectedClassId,
+                },
+              })
+            )
+          );
+        } catch (notifError) {
+          console.error("Failed to send assignment notifications:", notifError);
+        }
+      }
+
       showToast({
         message: isAdmin
           ? "Assignment posted successfully!"
@@ -1061,7 +1071,7 @@ export const useUploadAssignment = () => {
     selectedSubject,
     setSelectedSubject,
 
-    subjects: appUser?.subjects || [],
+    subjects: availableSubjects,
 
     title,
     setTitle,

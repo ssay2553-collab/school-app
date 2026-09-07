@@ -63,6 +63,7 @@ export const useMarkAssignment = () => {
 
   const [availableClasses, setAvailableClasses] = useState<ClassInfo[]>([]);
   const [selectedClass, setSelectedClass] = useState("");
+  const [availableSubjects, setAvailableSubjects] = useState<string[]>([]);
   const [selectedSubject, setSelectedSubject] = useState("");
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -100,49 +101,88 @@ export const useMarkAssignment = () => {
 
   // Fetch classes
   useEffect(() => {
-    const classIds = getTeacherClasses(appUser);
-    if (classIds.length === 0) return;
+    if (!appUser) return;
+    const userRole = appUser?.role?.toLowerCase() || "";
+    const adminRole = appUser?.adminRole?.toLowerCase() || "";
+    const isManagerOrAdmin =
+        userRole === "admin" ||
+        ["manager", "headmaster", "headmistress", "administrator", "director", "proprietor", "proprietress", "accountant", "bursar"].includes(adminRole);
 
-    const fetchNames = async () => {
+    const fetchClasses = async () => {
       try {
-        const results: ClassInfo[] = [];
+        let results: ClassInfo[] = [];
 
-        // Efficiently fetch all classes in chunks (max 30 for 'in' operator)
-        for (let i = 0; i < classIds.length; i += 30) {
-          const chunk = classIds.slice(i, i + 30);
-          const q = query(
-            collection(db, "classes"),
-            where(documentId(), "in", chunk)
-          );
+        if (isManagerOrAdmin) {
+          // Fetch ALL classes for managers/admins
+          const q = query(collection(db, "classes"));
           const snap = await getDocs(q);
-
-          results.push(...snap.docs.map(item => ({
+          results = snap.docs.map(item => ({
             id: item.id,
             name: (item.data() as any).name || item.id
-          })));
+          }));
+        } else {
+          // Fetch only assigned classes for teachers
+          const classIds = getTeacherClasses(appUser);
+          if (classIds.length === 0) {
+            setAvailableClasses([]);
+            return;
+          }
+
+          for (let i = 0; i < classIds.length; i += 30) {
+            const chunk = classIds.slice(i, i + 30);
+            const q = query(
+              collection(db, "classes"),
+              where(documentId(), "in", chunk)
+            );
+            const snap = await getDocs(q);
+            results.push(...snap.docs.map(item => ({
+              id: item.id,
+              name: (item.data() as any).name || item.id
+            })));
+          }
         }
 
-        // Handle any IDs that might not have documents
-        const foundIds = results.map(r => r.id);
-        const missingIds = classIds.filter(id => !foundIds.includes(id));
-        missingIds.forEach(id => results.push({ id, name: id }));
-
         if (isMounted.current) {
-          setAvailableClasses(results);
-          if (results.length > 0 && !selectedClass) setSelectedClass(results[0].id);
+          const sorted = results.sort((a, b) => a.name.localeCompare(b.name));
+          setAvailableClasses(sorted);
+          if (sorted.length > 0 && !selectedClass) setSelectedClass(sorted[0].id);
         }
       } catch (err) {
         if (isMounted.current) console.error("Error fetching class names:", err);
       }
     };
 
-    fetchNames();
+    fetchClasses();
   }, [appUser, selectedClass]);
 
   useEffect(() => {
-    const firstSub = appUser?.subjects?.[0];
-    if (firstSub && !selectedSubject) {
-      setSelectedSubject(firstSub);
+    if (!appUser) return;
+    const userRole = appUser?.role?.toLowerCase() || "";
+    const adminRole = appUser?.adminRole?.toLowerCase() || "";
+    const isManagerOrAdmin =
+        userRole === "admin" ||
+        ["manager", "headmaster", "headmistress", "administrator", "director", "proprietor", "proprietress", "accountant", "bursar"].includes(adminRole);
+
+    if (isManagerOrAdmin) {
+       const fetchAllSubjects = async () => {
+         try {
+           const q = query(collection(db, "subjects"));
+           const snap = await getDocs(q);
+           const list = snap.docs.map(d => d.id);
+           if (isMounted.current) {
+             const combined = Array.from(new Set([...list, ...(appUser.subjects || [])]));
+             setAvailableSubjects(combined);
+             if (combined.length > 0 && !selectedSubject) setSelectedSubject(combined[0]);
+           }
+         } catch (e) { console.error(e); }
+       };
+       fetchAllSubjects();
+    } else {
+      const userSubjects = appUser?.subjects || [];
+      setAvailableSubjects(userSubjects);
+      if (userSubjects.length > 0 && !selectedSubject) {
+        setSelectedSubject(userSubjects[0]);
+      }
     }
   }, [appUser, selectedSubject]);
 
@@ -169,18 +209,23 @@ export const useMarkAssignment = () => {
     }
 
     try {
-      const userRole = appUser?.adminRole?.toLowerCase() || appUser?.role?.toLowerCase() || "";
-      const isManagerOrAdmin = ["manager", "headmaster", "headmistress", "administrator", "director", "admin", "super admin", "superadmin"].includes(userRole);
+      const userRole = appUser?.role?.toLowerCase() || "";
+      const adminRole = appUser?.adminRole?.toLowerCase() || "";
+
+      const isManagerOrAdmin =
+        userRole === "admin" ||
+        ["manager", "headmaster", "headmistress", "administrator", "director", "proprietor", "proprietress", "accountant", "bursar"].includes(adminRole);
 
       // Managers and Admins should see ALL assignments for the class/subject
-      // Teachers should only see assignments they created (teacherId filter)
+      // Teachers should also see assignments for their subjects even if created by admins
       const queryConstraints: any[] = [
         where("classId", "==", selectedClass),
         where("subjectId", "==", selectedSubject),
       ];
 
-      // Only apply teacherId filter if NOT a manager/admin
-      if (!isManagerOrAdmin) {
+      // Only apply teacherId filter if NOT a manager/admin AND we want to restrict strictly to own
+      // However, the request is to allow seeing admin assignments, so we relax this.
+      if (!isManagerOrAdmin && !appUser?.subjects?.includes(selectedSubject)) {
         queryConstraints.push(where("teacherId", "==", teacherId));
       }
 
@@ -428,6 +473,6 @@ export const useMarkAssignment = () => {
     updateQScore,
     updateStandardMark,
     updateFeedback,
-    subjects: appUser?.subjects || [],
+    subjects: availableSubjects,
   };
 };

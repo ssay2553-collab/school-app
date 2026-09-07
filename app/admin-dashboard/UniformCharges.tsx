@@ -23,6 +23,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
@@ -52,6 +53,7 @@ const UNIFORM_TYPES = [
 ];
 
 export default function UniformCharges() {
+  const { width } = useWindowDimensions();
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();

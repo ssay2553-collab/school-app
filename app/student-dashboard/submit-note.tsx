@@ -11,6 +11,7 @@ import {
 import React, { useState, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -290,11 +291,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 40,
-    shadowColor: "#10B981",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
     elevation: 15,
+    ...Platform.select({
+      web: { boxShadow: "0 10px 20px rgba(16, 185, 129, 0.5)" },
+      default: {
+        shadowColor: "#10B981",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.5,
+        shadowRadius: 20,
+      }
+    })
   },
   successRing: {
     position: 'absolute',
@@ -325,11 +331,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 100,
-    shadowColor: "#F59E0B",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
     elevation: 5,
+    ...Platform.select({
+      web: { boxShadow: "0 4px 8px rgba(245, 158, 11, 0.4)" },
+      default: {
+        shadowColor: "#F59E0B",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      }
+    })
   },
   xpText: {
     color: "#fff",

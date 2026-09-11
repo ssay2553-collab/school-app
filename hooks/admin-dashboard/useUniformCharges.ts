@@ -400,7 +400,14 @@ export const useUniformCharges = ({
       const batch = writeBatch(db);
       const serial = existing ? existing.id : `UNI-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-      const entry = {
+      // INDEPENDENT PAYMENT LOGIC:
+      // If payment exceeds current balance, auto-bill the difference so walletBalance impact is only the debt portion.
+      const currentCatBalance = student.uniformBalance || 0;
+      const billNeeded = Math.max(0, amountVal - Math.max(0, currentCatBalance));
+      const debtPaid = amountVal - billNeeded;
+      const walletImpact = -debtPaid;
+
+      const entry: any = {
         amount: amountVal,
         method: "Cash",
         receivedFrom: receivedFromVal.trim(),
@@ -418,6 +425,7 @@ export const useUniformCharges = ({
         subTypeLabel: typeLabel,
         academicYear: acadConfig.academicYear,
         term: acadConfig.currentTerm,
+        autoBilledAmount: billNeeded, // Store for accurate reversal
       };
 
       batch.set(doc(db, "feePayments", serial), entry);
@@ -427,11 +435,21 @@ export const useUniformCharges = ({
       const recordId = `${student.uid}_${year}_${term}`;
 
       if (existing) {
+        // For existing payment update, the logic is slightly more complex if we want to be perfect,
+        // but typically uniforms are one-off. We'll handle the diff.
+        const diffBillNeeded = Math.max(0, diff - Math.max(0, currentCatBalance));
         batch.update(doc(db, "studentFeeRecords", recordId), {
           uniformPaid: increment(diff),
-          uniformBill: increment(diff),
-          uniformBalance: increment(0),
+          uniformBill: increment(diffBillNeeded),
+          uniformBalance: increment(diffBillNeeded - diff),
+          balance: increment(diffBillNeeded - diff),
           lastUpdated: serverTimestamp(),
+        });
+        batch.update(doc(db, "users", student.uid), {
+          uniformPaid: increment(diff),
+          uniformBill: increment(diffBillNeeded),
+          uniformBalance: increment(diffBillNeeded - diff),
+          walletBalance: increment(-(diff - diffBillNeeded)),
         });
       } else {
         batch.set(
@@ -444,26 +462,29 @@ export const useUniformCharges = ({
             academicYear: acadConfig.academicYear,
             term: acadConfig.currentTerm,
             uniformPaid: increment(amountVal),
-            uniformBill: increment(amountVal),
-            uniformBalance: increment(0),
-            balance: increment(0),
+            uniformBill: increment(billNeeded),
+            uniformBalance: increment(billNeeded - amountVal),
+            balance: increment(billNeeded - amountVal),
             payments: arrayUnion(entry),
             lastUpdated: serverTimestamp(),
           },
           { merge: true }
         );
+        batch.update(doc(db, "users", student.uid), {
+          uniformPaid: increment(amountVal),
+          uniformBill: increment(billNeeded),
+          uniformBalance: increment(billNeeded - amountVal),
+          walletBalance: increment(walletImpact),
+        });
       }
-
-      batch.update(doc(db, "users", student.uid), {
-        uniformPaid: increment(diff),
-        uniformBill: increment(diff),
-      });
 
       await batch.commit();
 
-      if (Math.abs(diff) >= 0.01) {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diff, 'bill', 'uniform').catch(console.error);
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -diff, 'payment', 'uniform').catch(console.error);
+      if (billNeeded > 0) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, billNeeded, 'bill', 'uniform').catch(console.error);
+      }
+      if (amountVal > 0) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amountVal, 'payment', 'uniform').catch(console.error);
       }
 
       try {
@@ -526,17 +547,22 @@ export const useUniformCharges = ({
       const recordId = `${student.uid}_${year}_${term}`;
       const batch = writeBatch(db);
       const amountVal = Number(payment.amount) || 0;
+      const autoBilled = Number(payment.autoBilledAmount) || 0;
+      const debtPortion = amountVal - autoBilled;
 
       batch.update(doc(db, "studentFeeRecords", recordId), {
         uniformPaid: increment(-amountVal),
-        uniformBill: increment(-amountVal),
-        uniformBalance: increment(0),
+        uniformBill: increment(-autoBilled),
+        uniformBalance: increment(debtPortion),
+        balance: increment(debtPortion),
         payments: arrayRemove(payment),
         lastUpdated: serverTimestamp(),
       });
       batch.update(doc(db, "users", student.uid), {
         uniformPaid: increment(-amountVal),
-        uniformBill: increment(-amountVal),
+        uniformBill: increment(-autoBilled),
+        uniformBalance: increment(debtPortion),
+        walletBalance: increment(debtPortion),
       });
 
       if (payment.receiptNo) {
@@ -545,8 +571,10 @@ export const useUniformCharges = ({
 
       await batch.commit();
 
-      if (Math.abs(amountVal) >= 0.01) {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amountVal, 'bill', 'uniform').catch(console.error);
+      if (autoBilled > 0) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -autoBilled, 'bill', 'uniform').catch(console.error);
+      }
+      if (amountVal > 0) {
         propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amountVal, 'payment', 'uniform').catch(console.error);
       }
 

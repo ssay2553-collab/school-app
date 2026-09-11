@@ -128,6 +128,8 @@ export const useExtraClassesFeeLogic = () => {
   const [extraClassesAmount, setExtraClassesAmount] = useState("");
   const [classRates, setClassRates] = useState<Record<string, number>>({});
   const [overrideMap, setOverrideMap] = useState<Record<string, string | undefined>>({});
+  const [selectedStudentUids, setSelectedStudentUids] = useState<Set<string>>(new Set());
+  const [bulkBillAmount, setBulkBillAmount] = useState("");
 
   const currentClassRate = useMemo(() => {
     if (selectedClassId === "all")
@@ -596,6 +598,86 @@ export const useExtraClassesFeeLogic = () => {
     }
   };
 
+  const handleBulkBill = async () => {
+    if (selectedStudentUids.size === 0) return;
+    const amount = parseFloat(bulkBillAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showToast({ message: "Enter a valid billing amount.", type: "error" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const dateStr = moment(selectedDate).format("YYYY-MM-DD");
+      const batch = writeBatch(db);
+      const selectedUids = Array.from(selectedStudentUids);
+
+      for (const uid of selectedUids) {
+        const student = students.find((s) => s.uid === uid);
+        const existingRecord = dailyRecords.find((r) => r.studentUid === uid);
+        const oldFee = existingRecord?.extraClassesFee || 0;
+        const feeDiff = amount - oldFee;
+        const docId = `${uid}_${dateStr}`;
+        const ref = doc(db, "dailyFinancials", docId);
+
+        const data: any = {
+          studentUid: uid,
+          studentName: student?.fullName || "Student",
+          classId: student?.classId || "unknown",
+          className: student?.className || "Class",
+          date: dateStr,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
+          extraClassesFee: amount,
+          total: increment(feeDiff),
+          recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
+          recordedByUid: appUser?.uid || "unknown",
+          updatedAt: serverTimestamp(),
+        };
+
+        if (!existingRecord) {
+          data.createdAt = serverTimestamp();
+          data.extraPaid = false;
+          data.extraPaidAmount = 0;
+          data.feedingFee = 0;
+          data.busFee = 0;
+          data.otherFees = 0;
+          data.otherFeesDescription = "";
+        }
+
+        batch.set(ref, data, { merge: true } as any);
+      }
+
+      await batch.commit();
+      showToast({ message: `Billed ${selectedStudentUids.size} students successfully.`, type: "success" });
+      setSelectedStudentUids(new Set());
+      setBulkBillAmount("");
+    } catch (e) {
+      console.error("Bulk billing error:", e);
+      showToast({ message: "Bulk billing failed.", type: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleStudentSelection = (uid: string) => {
+    setSelectedStudentUids((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  };
+
+  const handleSelectAll = (filtered: StudentRecord[]) => {
+    const allSelected = filtered.length > 0 && filtered.every(s => selectedStudentUids.has(s.uid));
+    if (allSelected) {
+      setSelectedStudentUids(new Set());
+    } else {
+      setSelectedStudentUids(new Set(filtered.map(s => s.uid)));
+    }
+  };
+
   return {
     appUser,
     canView,
@@ -632,5 +714,12 @@ export const useExtraClassesFeeLogic = () => {
     handleDisburseToStaff,
     markStudentPaid,
     markStudentNotPaid,
+    selectedStudentUids,
+    setSelectedStudentUids,
+    bulkBillAmount,
+    setBulkBillAmount,
+    handleBulkBill,
+    toggleStudentSelection,
+    handleSelectAll,
   };
 };

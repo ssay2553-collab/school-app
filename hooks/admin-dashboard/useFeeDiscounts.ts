@@ -35,6 +35,7 @@ export const useFeeDiscounts = ({
   const [individualDiscountOverrides, setIndividualDiscountOverrides] = useState<Record<string, string>>({});
 
   const saveDiscounts = async (selectedStudentUids: Set<string>) => {
+    if (saving) return;
     if (!canEdit) return;
     setSaving(true);
     try {
@@ -114,6 +115,7 @@ export const useFeeDiscounts = ({
   };
 
   const handleNormalizeDiscounts = async () => {
+    if (saving) return;
     if (!isSuperAdmin) return;
     const targets = students.filter((s) => !s.onDiscount && (s.discount || 0) > 0 && s.hasRecordInTerm);
     if (targets.length === 0) {

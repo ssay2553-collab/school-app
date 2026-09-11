@@ -270,15 +270,15 @@ export default function StudentDashboard() {
                 styles.iconBox,
                 {
                   backgroundColor: "rgba(255,255,255,0.2)",
-                  width: isSmallScreen ? 50 : 60,
-                  height: isSmallScreen ? 50 : 60,
-                  borderRadius: isSmallScreen ? 18 : 22,
+                  width: isSmallScreen ? 42 : 48,
+                  height: isSmallScreen ? 42 : 48,
+                  borderRadius: isSmallScreen ? 14 : 16,
                 },
               ]}
             >
               <SVGIcon
                 name={item.icon}
-                size={numColumns > 3 ? 36 : isSmallScreen ? 26 : 30}
+                size={numColumns > 3 ? 24 : isSmallScreen ? 20 : 22}
                 color="#FFFFFF"
               />
             </View>
@@ -626,22 +626,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",
     borderBottomWidth: 4, // 3D effect
-    minHeight: 130,
+    minHeight: 110,
     width: "100%",
   },
   cardGradient: {
     flex: 1,
-    padding: 20,
+    padding: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   iconBox: {
-    width: 65,
-    height: 65,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 8,
     ...SHADOWS.small,
   },
   cardInfo: { alignItems: "center" },

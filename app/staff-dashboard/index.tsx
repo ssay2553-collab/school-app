@@ -156,15 +156,15 @@ export default function StaffDashboard() {
               styles.iconBox,
               {
                 backgroundColor: item.color + "20",
-                width: isSmallScreen ? 50 : 60,
-                height: isSmallScreen ? 50 : 60,
-                borderRadius: isSmallScreen ? 18 : 22,
+                width: isSmallScreen ? 42 : 48,
+                height: isSmallScreen ? 42 : 48,
+                borderRadius: isSmallScreen ? 14 : 16,
               },
             ]}
           >
             <SVGIcon
               name={item.icon}
-              size={numColumns > 3 ? 36 : isSmallScreen ? 26 : 30}
+              size={numColumns > 3 ? 24 : isSmallScreen ? 20 : 22}
               color={item.color}
             />
           </View>
@@ -401,20 +401,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
     borderBottomWidth: 4,
-    minHeight: 130,
+    minHeight: 110,
     width: "100%",
   },
   cardGradient: {
     flex: 1,
-    padding: 20,
+    padding: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   iconBox: {
-    borderRadius: 25,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 8,
     ...SHADOWS.small,
   },
   cardInfo: { alignItems: "center" },

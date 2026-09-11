@@ -26,6 +26,7 @@ export interface User {
   departmentHeadOf?: string;
   childrenIds?: string[];
   parentUids?: string[];
+  parentLinkCode?: string;
   canCreateNews?: boolean;
   permissions?: Record<string, PermissionLevel>;
   signupCode?: string;

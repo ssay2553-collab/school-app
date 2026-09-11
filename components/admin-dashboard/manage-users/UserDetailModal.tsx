@@ -268,9 +268,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                 </View>
               )}
 
-              {(user.signupCode || user.secretCode) && (
+              {(user.signupCode || user.secretCode || (user.role === 'student' && user.parentLinkCode)) && (
                 <View style={styles.infoSection}>
-                  <Text style={styles.infoLabel}>Security Tokens</Text>
+                  <Text style={styles.infoLabel}>Security Tokens & Link Codes</Text>
                   <View
                     style={[
                       styles.financeBox,
@@ -283,7 +283,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     <Text style={[styles.financeLabel, { color: "#b45309" }]}>
                       {user.status === "pending_activation"
                         ? "SIGNUP CODE"
-                        : "RESET/SECRET TOKEN"}
+                        : user.role === 'student' ? "PARENT LINK CODE" : "RESET/SECRET TOKEN"}
                     </Text>
                     <View
                       style={{
@@ -303,11 +303,19 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                           },
                         ]}
                       >
-                        {user.signupCode || user.secretCode || "N/A"}
+                        {user.signupCode || user.parentLinkCode || user.secretCode || "N/A"}
                       </Text>
                       <View style={{ flexDirection: "row", gap: 8 }}>
                         <TouchableOpacity
-                          onPress={() => onShareCode(user)}
+                          onPress={() => {
+                            if (user.role === 'student' && user.parentLinkCode && !user.signupCode) {
+                               // Custom share for parent link code if we had a prop,
+                               // but for now onShareCode will be updated in the hook to handle this.
+                               onShareCode(user);
+                            } else {
+                               onShareCode(user);
+                            }
+                          }}
                           style={{
                             backgroundColor: COLORS.primary,
                             paddingHorizontal: 12,
@@ -362,7 +370,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     >
                       {user.status === "pending_activation"
                         ? "Provide this code to the student to claim their profile."
-                        : "This token can be used for secure password resets."}
+                        : user.role === 'student'
+                          ? "Share this code with parents to link their account to this student."
+                          : "This token can be used for secure password resets."}
                     </Text>
                   </View>
                 </View>
@@ -425,6 +435,19 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                       {user.email || user.profile?.email || "N/A"}
                     </Text>
                   </View>
+                  {user.role === "student" && (
+                    <View style={styles.infoRow}>
+                      <Text style={styles.infoKey}>Parent Link Code:</Text>
+                      <Text
+                        style={[
+                          styles.infoValue,
+                          { color: COLORS.secondary, letterSpacing: 1 },
+                        ]}
+                      >
+                        {user.parentLinkCode || "N/A"}
+                      </Text>
+                    </View>
+                  )}
                   {user.role !== "student" && (
                     <View style={styles.infoRow}>
                       <Text style={styles.infoKey}>Phone:</Text>

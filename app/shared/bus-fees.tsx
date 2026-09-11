@@ -78,6 +78,13 @@ export default function BusFees() {
     handleSaveLocationRate,
     markStudentPaid,
     markStudentNotPaid,
+    selectedStudentUids,
+    setSelectedStudentUids,
+    bulkBillAmount,
+    setBulkBillAmount,
+    handleBulkBill,
+    toggleStudentSelection,
+    handleSelectAll,
   } = useBusFeeLogic();
 
   const handleBack = () => {
@@ -165,37 +172,42 @@ export default function BusFees() {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
-        </TouchableOpacity>
-        <View style={styles.headerTitle}>
-          <Text style={styles.headerTitleText}>Bus Fees</Text>
-          <Text style={styles.headerSubtitle}>
-            Record daily transportation fees
-          </Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <SVGIcon name="arrow-back" size={24} color={VIBE.text} />
+          </TouchableOpacity>
+          <View style={styles.headerTitle}>
+            <Text style={styles.headerTitleText}>Bus Fees</Text>
+            <Text style={styles.headerSubtitle}>Record daily transportation fees</Text>
+          </View>
         </View>
-        <View style={styles.dateNavContainer}>
-          <TouchableOpacity
-            onPress={() => changeDate(-1)}
-            style={styles.dateNavButton}
-          >
-            <SVGIcon name="chevron-back" size={18} color={COLORS.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setShowDatePicker(true)}
-            style={styles.dateButton}
-          >
-            <SVGIcon name="calendar" size={20} color={COLORS.primary} />
-            <Text style={styles.dateButtonText}>
-              {moment(selectedDate).format("MMM DD, YYYY")}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => changeDate(1)}
-            style={styles.dateNavButton}
-          >
-            <SVGIcon name="chevron-forward" size={18} color={COLORS.primary} />
-          </TouchableOpacity>
+
+        <View style={styles.headerBottom}>
+          <View style={styles.datePill}>
+            <TouchableOpacity
+              onPress={() => changeDate(-1)}
+              style={styles.dateArrow}
+            >
+              <SVGIcon name="chevron-back" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setShowDatePicker(true)}
+              style={styles.dateTextContainer}
+            >
+              <SVGIcon name="calendar" size={16} color={COLORS.primary} />
+              <Text style={styles.dateText}>
+                {moment(selectedDate).format("ddd, MMM DD, YYYY")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => changeDate(1)}
+              style={styles.dateArrow}
+            >
+              <SVGIcon name="chevron-forward" size={20} color={COLORS.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -501,7 +513,22 @@ export default function BusFees() {
 
                 {/* Student List */}
                 <View style={styles.studentListHeader}>
-                  <Text style={styles.studentListTitle}>Students List</Text>
+                  <TouchableOpacity
+                    style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                    onPress={() => handleSelectAll(filteredStudents)}
+                  >
+                    <SVGIcon
+                        name={
+                            filteredStudents.length > 0 &&
+                            filteredStudents.every((s) => selectedStudentUids.has(s.uid))
+                                ? "checkbox"
+                                : "square-outline"
+                        }
+                        size={20}
+                        color={COLORS.primary}
+                    />
+                    <Text style={styles.studentListTitle}>Students List</Text>
+                  </TouchableOpacity>
                   <Text style={styles.studentCount}>
                     {filteredStudents.length} Students
                   </Text>
@@ -520,6 +547,9 @@ export default function BusFees() {
                       onMarkPaid={markStudentPaid}
                       onMarkNotPaid={markStudentNotPaid}
                       onSetOverride={(uid, val) => setOverrideMap(m => ({...m, [uid]: val}))}
+                      isSelected={selectedStudentUids.has(item.uid)}
+                      onToggleSelection={toggleStudentSelection}
+                      isSelectionMode={selectedStudentUids.size > 0}
                     />
                   ))
                 ) : (
@@ -608,6 +638,49 @@ export default function BusFees() {
           )}
         </>
       )}
+
+      {/* Bulk Action Bar */}
+      {selectedStudentUids.size > 0 && activeTab === "record" && (
+        <Animatable.View
+            animation="slideInUp"
+            duration={300}
+            style={styles.bulkActionBar}
+        >
+            <View style={styles.bulkActionHeader}>
+                <Text style={styles.bulkActionTitle}>{selectedStudentUids.size} Selected</Text>
+                <TouchableOpacity onPress={() => setSelectedStudentUids(new Set())}>
+                    <Text style={styles.bulkActionCancel}>Cancel</Text>
+                </TouchableOpacity>
+            </View>
+            <View style={styles.bulkActionControls}>
+                <View style={styles.bulkInputContainer}>
+                    <Text style={styles.bulkInputSymbol}>₵</Text>
+                    <TextInput
+                        style={styles.bulkInput}
+                        placeholder="Unique Amount"
+                        value={bulkBillAmount}
+                        onChangeText={setBulkBillAmount}
+                        keyboardType="numeric"
+                        placeholderTextColor="#94A3B8"
+                    />
+                </View>
+                <TouchableOpacity
+                    style={[
+                        styles.bulkApplyBtn,
+                        saving && { opacity: 0.7 }
+                    ]}
+                    onPress={handleBulkBill}
+                    disabled={saving}
+                >
+                    {saving ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                        <Text style={styles.bulkApplyText}>Apply Bill</Text>
+                    )}
+                </TouchableOpacity>
+            </View>
+        </Animatable.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -616,53 +689,146 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: VIBE.bg },
   centerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
 
-  // Header
-  header: {
+  // Bulk Action Bar
+  bulkActionBar: {
+    position: "absolute",
+    bottom: Platform.OS === "ios" ? 34 : 20,
+    left: 20,
+    right: 20,
+    backgroundColor: "#1E293B",
+    borderRadius: 24,
+    padding: 20,
+    ...SHADOWS.large,
+    zIndex: 1000,
+  },
+  bulkActionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  bulkActionTitle: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+  bulkActionCancel: {
+    color: "#94A3B8",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  bulkActionControls: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  bulkInputContainer: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#334155",
+    borderRadius: 14,
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 16,
+    height: 52,
+  },
+  bulkInputSymbol: {
+    color: "#94A3B8",
+    fontSize: 16,
+    fontWeight: "800",
+    marginRight: 8,
+  },
+  bulkInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  bulkApplyBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 100,
+  },
+  bulkApplyText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
+  // Header
+  header: {
     backgroundColor: VIBE.surface,
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "ios" ? 10 : 20,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: VIBE.border,
   },
+  headerTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: VIBE.bg,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 16,
+    ...SHADOWS.small,
   },
   headerTitle: { flex: 1 },
-  headerTitleText: { fontSize: 20, fontWeight: "900", color: VIBE.text },
-  headerSubtitle: { fontSize: 13, color: VIBE.muted, marginTop: 1 },
-  dateNavContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginLeft: 8,
+  headerTitleText: {
+    fontSize: 24,
+    fontWeight: "900",
+    color: VIBE.text,
+    letterSpacing: -0.5,
   },
-  dateNavButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
+  headerSubtitle: {
+    fontSize: 14,
+    color: VIBE.muted,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  headerBottom: {
+    flexDirection: "row",
     justifyContent: "center",
-    backgroundColor: VIBE.primary + "10",
+    alignItems: "center",
   },
-  dateButton: {
+  datePill: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: VIBE.primary + "10",
-    borderRadius: 12,
-    gap: 6,
+    backgroundColor: VIBE.bg,
+    borderRadius: 25,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: VIBE.border,
+    ...SHADOWS.small,
   },
-  dateButtonText: { fontSize: 13, fontWeight: "700", color: VIBE.primary },
+  dateArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dateTextContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    height: 40,
+    backgroundColor: COLORS.primary + "15",
+    borderRadius: 20,
+    gap: 8,
+  },
+  dateText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
 
   // Tabs
   tabBar: {

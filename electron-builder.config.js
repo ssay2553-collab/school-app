@@ -29,8 +29,8 @@ const schools = {
   },
   perfect: {
     appId: "com.saysmanage.peiapp",
-    productName: "PEI End",
-    icon: "assets/icon-perfect.png",
+    productName: "TAPM APP",
+    icon: "assets/tapm-icon.jpg",
   },
   creation: {
     appId: "com.saysmanage.creation",

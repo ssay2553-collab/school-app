@@ -246,6 +246,13 @@ export const useBooksCharges = ({
       const batch = writeBatch(db);
       const serial = `BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
+      // INDEPENDENT PAYMENT LOGIC:
+      // If payment exceeds current balance, auto-bill the difference so walletBalance impact is only the debt portion.
+      const currentCatBalance = student.booksBalance || 0;
+      const billNeeded = Math.max(0, amountVal - Math.max(0, currentCatBalance));
+      const debtPaid = amountVal - billNeeded;
+      const walletImpact = -debtPaid;
+
       const paymentEntry = {
         amount: amountVal,
         method: paymentMethodVal,
@@ -262,14 +269,16 @@ export const useBooksCharges = ({
         type: "books_payment",
         academicYear: acadConfig.academicYear,
         term: acadConfig.currentTerm,
+        autoBilledAmount: billNeeded, // Store for accurate reversal
       };
 
       batch.set(doc(db, "feePayments", serial), paymentEntry);
 
       batch.update(doc(db, "users", student.uid), {
         booksPaid: increment(amountVal),
-        booksBalance: increment(-amountVal),
-        walletBalance: increment(-amountVal),
+        booksBill: increment(billNeeded),
+        booksBalance: increment(billNeeded - amountVal),
+        walletBalance: increment(walletImpact),
       });
 
       const year = acadConfig.academicYear?.replace(/\//g, "-");
@@ -284,14 +293,18 @@ export const useBooksCharges = ({
         academicYear: acadConfig.academicYear,
         term: acadConfig.currentTerm,
         booksPaid: increment(amountVal),
-        booksBalance: increment(-amountVal),
-        balance: increment(-amountVal),
+        booksBill: increment(billNeeded),
+        booksBalance: increment(billNeeded - amountVal),
+        balance: increment(billNeeded - amountVal),
         payments: arrayUnion(paymentEntry),
         lastUpdated: serverTimestamp(),
       }, { merge: true });
 
       await batch.commit();
 
+      if (billNeeded > 0) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, billNeeded, 'bill', 'books');
+      }
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amountVal, 'payment', 'books');
 
       try {
@@ -462,18 +475,22 @@ export const useBooksCharges = ({
       const recordId = `${student.uid}_${year}_${term}`;
       const batch = writeBatch(db);
       const amountVal = Number(payment.amount) || 0;
+      const autoBilled = Number(payment.autoBilledAmount) || 0;
+      const debtPortion = amountVal - autoBilled;
       const isPayment = payment.type === "books_payment";
 
       if (isPayment) {
         batch.update(doc(db, "studentFeeRecords", recordId), {
           booksPaid: increment(-amountVal),
-          booksBalance: increment(amountVal),
-          balance: increment(amountVal),
+          booksBill: increment(-autoBilled),
+          booksBalance: increment(debtPortion),
+          balance: increment(debtPortion),
         });
         batch.update(doc(db, "users", student.uid), {
           booksPaid: increment(-amountVal),
-          booksBalance: increment(amountVal),
-          walletBalance: increment(amountVal),
+          booksBill: increment(-autoBilled),
+          booksBalance: increment(debtPortion),
+          walletBalance: increment(debtPortion),
         });
       } else {
         batch.update(doc(db, "studentFeeRecords", recordId), {
@@ -499,9 +516,14 @@ export const useBooksCharges = ({
 
       await batch.commit();
 
-      const propagationAmount = isPayment ? amountVal : -amountVal;
-      const propType = isPayment ? 'payment' : 'bill';
-      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, propagationAmount, propType, 'books');
+      if (isPayment) {
+        if (autoBilled > 0) {
+            propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -autoBilled, 'bill', 'books');
+        }
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amountVal, 'payment', 'books');
+      } else {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amountVal, 'bill', 'books');
+      }
 
       showToast({ message: "Transaction reverted", type: "success" });
       handleRefresh();

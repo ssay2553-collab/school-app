@@ -88,6 +88,7 @@ export const useFeePayments = ({
   }, [dailyModalVisible, selectedDailyDate, academicYear, term]);
 
   const handleLogPayment = async () => {
+    if (saving) return;
     if (!canEdit) {
       showToast({ message: "Access Denied: You don't have permission to log payments.", type: "error" });
       return;
@@ -246,7 +247,7 @@ export const useFeePayments = ({
   };
 
   const handleDeletePayment = async (student: StudentDraft | null, payment: any) => {
-    if (!canEdit || !student) return;
+    if (saving || !canEdit || !student) return;
 
     const performDelete = async () => {
       setSaving(true);

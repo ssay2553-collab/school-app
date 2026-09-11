@@ -1039,11 +1039,12 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   };
 
   const handleShareCode = async (user: User) => {
-    const code = user.signupCode || user.secretCode;
+    const code = user.signupCode || user.parentLinkCode || user.secretCode;
     if (!code) return;
     const firstName = user.profile?.firstName || "there";
+    const codeType = user.signupCode ? "signup token" : (user.parentLinkCode ? "parent link code" : "security token");
     try {
-      await Share.share({ message: `Hello ${firstName}, your ${acadConfig.schoolName || "school"} token is: ${code}` });
+      await Share.share({ message: `Hello ${firstName}, your ${acadConfig.schoolName || "school"} ${codeType} is: ${code}` });
     } catch (error) {
       console.error(error);
     }

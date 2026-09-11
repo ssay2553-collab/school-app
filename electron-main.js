@@ -34,7 +34,7 @@ const schools = {
     authDomain: "morgis-app.firebaseapp.com",
   },
   perfect: {
-    name: "PEI End",
+    name: "TAPM APP",
     backgroundColor: "#b9b9b9ff",
     authDomain: "clis-app-f89b8.firebaseapp.com",
   },

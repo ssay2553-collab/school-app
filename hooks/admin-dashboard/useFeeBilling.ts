@@ -41,6 +41,7 @@ export const useFeeBilling = ({
   };
 
   const saveFees = async (selectedStudentUids: Set<string>) => {
+    if (saving) return;
     if (!canEdit) {
       showToast({ message: "Access Denied: You don't have permission to modify billing.", type: "error" });
       return;

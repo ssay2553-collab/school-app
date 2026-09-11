@@ -15,6 +15,9 @@ interface StudentRowProps {
   onMarkPaid: (uid: string, override?: string) => Promise<void>;
   onMarkNotPaid: (uid: string) => Promise<void>;
   onSetOverride: (uid: string, val?: string) => void;
+  isSelected: boolean;
+  onToggleSelection: (uid: string) => void;
+  isSelectionMode: boolean;
 }
 
 export const StudentRow = memo(({
@@ -26,7 +29,10 @@ export const StudentRow = memo(({
   overrideValue,
   onMarkPaid,
   onMarkNotPaid,
-  onSetOverride
+  onSetOverride,
+  isSelected,
+  onToggleSelection,
+  isSelectionMode,
 }: StudentRowProps) => {
   const { showToast } = useToast();
   const isPaid = existingRecord?.busPaid === true;
@@ -34,31 +40,49 @@ export const StudentRow = memo(({
   const hasArrears = (item.dailyArrears || 0) > 0;
 
   return (
-    <View
+    <TouchableOpacity
       style={[
         styles.studentCard,
         isPaid && styles.studentCardPaid,
         isAbsent && styles.studentCardAbsent,
+        isSelected && styles.studentCardSelected,
       ]}
+      onPress={() => {
+        if (isSelectionMode) {
+          onToggleSelection(item.uid);
+        }
+      }}
+      onLongPress={() => {
+        if (canEdit && !isSelectionMode) {
+          onToggleSelection(item.uid);
+        }
+      }}
+      activeOpacity={0.7}
     >
       <View style={styles.studentCardMain}>
-        <View
-          style={[
-            styles.studentAvatar,
-            isPaid && { backgroundColor: VIBE.success + "20" },
-            isAbsent && { backgroundColor: VIBE.danger + "10" },
-          ]}
-        >
-          <Text
+        <TouchableOpacity
+            onPress={() => onToggleSelection(item.uid)}
             style={[
-              styles.studentAvatarText,
-              isPaid && { color: VIBE.success },
-              isAbsent && { color: VIBE.danger },
+                styles.studentAvatar,
+                isPaid && { backgroundColor: VIBE.success + "20" },
+                isAbsent && { backgroundColor: VIBE.danger + "10" },
+                isSelected && { backgroundColor: VIBE.primary, borderColor: VIBE.primary },
             ]}
-          >
-            {item.fullName.charAt(0)}
-          </Text>
-        </View>
+        >
+          {isSelected ? (
+            <SVGIcon name="checkbox" size={24} color="#fff" />
+          ) : (
+            <Text
+                style={[
+                styles.studentAvatarText,
+                isPaid && { color: VIBE.success },
+                isAbsent && { color: VIBE.danger },
+                ]}
+            >
+                {item.fullName.charAt(0)}
+            </Text>
+          )}
+        </TouchableOpacity>
         <View style={styles.studentInfo}>
           <View style={styles.studentNameRow}>
             <Text style={styles.studentName} numberOfLines={1}>
@@ -170,7 +194,7 @@ export const StudentRow = memo(({
           />
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 });
 
@@ -182,6 +206,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: VIBE.border,
+  },
+  studentCardSelected: {
+    borderColor: VIBE.primary,
+    backgroundColor: VIBE.primary + "05",
   },
   studentCardPaid: {
     borderColor: VIBE.success + "40",

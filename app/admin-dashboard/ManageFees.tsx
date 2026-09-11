@@ -532,6 +532,7 @@ export default function ManageFees() {
         onConfirm={() => saveFees(selectedStudentUids)}
         onCancel={() => setBillModalVisible(false)}
         confirmColor={VIBE.primary}
+        loading={saving}
       />
 
       <FeeConfirmModal
@@ -541,6 +542,7 @@ export default function ManageFees() {
         onConfirm={() => saveDiscounts(selectedStudentUids)}
         onCancel={() => setDiscountModalVisible(false)}
         confirmColor={VIBE.success}
+        loading={saving}
       />
 
       <FeeDailyTransactionsModal

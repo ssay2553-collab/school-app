@@ -398,6 +398,13 @@ export const useAdmissionCharges = ({
       const batch = writeBatch(db);
       const serial = `ADM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
+      // INDEPENDENT PAYMENT LOGIC:
+      // If payment exceeds current balance, auto-bill the difference so walletBalance impact is only the debt portion.
+      const currentCatBalance = student.admissionBalance || 0;
+      const billNeeded = Math.max(0, amount - Math.max(0, currentCatBalance));
+      const debtPaid = amount - billNeeded;
+      const walletImpact = -debtPaid;
+
       const paymentEntry = {
         amount,
         method: paymentMethod,
@@ -414,14 +421,16 @@ export const useAdmissionCharges = ({
         type: "admission_payment",
         academicYear: acadConfig.academicYear,
         term: acadConfig.currentTerm,
+        autoBilledAmount: billNeeded, // Store for accurate reversal
       };
 
       batch.set(doc(db, "feePayments", serial), paymentEntry);
 
       batch.update(doc(db, "users", student.uid), {
         admissionPaid: increment(amount),
-        admissionBalance: increment(-amount),
-        walletBalance: increment(-amount),
+        admissionBill: increment(billNeeded),
+        admissionBalance: increment(billNeeded - amount),
+        walletBalance: increment(walletImpact),
       });
 
       const year = acadConfig.academicYear?.replace(/\//g, "-");
@@ -439,8 +448,9 @@ export const useAdmissionCharges = ({
         academicYear: acadConfig.academicYear,
         term: acadConfig.currentTerm,
         admissionPaid: increment(amount),
-        admissionBalance: increment(-amount),
-        balance: increment(-amount),
+        admissionBill: increment(billNeeded),
+        admissionBalance: increment(billNeeded - amount),
+        balance: increment(billNeeded - amount),
         payments: arrayUnion(paymentEntry),
         lastUpdated: serverTimestamp(),
       }, { merge: true });
@@ -448,6 +458,9 @@ export const useAdmissionCharges = ({
       await batch.commit();
 
       // Propagate changes to future terms
+      if (billNeeded > 0) {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, billNeeded, 'bill', 'admission');
+      }
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'admission');
 
       try {
@@ -625,18 +638,22 @@ export const useAdmissionCharges = ({
       const recordId = `${student.uid}_${year}_${term}`;
       const batch = writeBatch(db);
       const amount = Number(payment.amount) || 0;
+      const autoBilled = Number(payment.autoBilledAmount) || 0;
+      const debtPortion = amount - autoBilled;
       const isPayment = (payment.type || "").toLowerCase() === "admission_payment";
 
       if (isPayment) {
         batch.update(doc(db, "studentFeeRecords", recordId), {
           admissionPaid: increment(-amount),
-          admissionBalance: increment(amount),
-          balance: increment(amount),
+          admissionBill: increment(-autoBilled),
+          admissionBalance: increment(debtPortion),
+          balance: increment(debtPortion),
         });
         batch.update(doc(db, "users", student.uid), {
           admissionPaid: increment(-amount),
-          admissionBalance: increment(amount),
-          walletBalance: increment(amount),
+          admissionBill: increment(-autoBilled),
+          admissionBalance: increment(debtPortion),
+          walletBalance: increment(debtPortion),
         });
       } else {
         batch.update(doc(db, "studentFeeRecords", recordId), {
@@ -663,9 +680,14 @@ export const useAdmissionCharges = ({
       await batch.commit();
 
       // Propagate changes to future terms
-      const propagationAmount = isPayment ? amount : -amount;
-      const propType = isPayment ? 'payment' : 'bill';
-      propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, propagationAmount, propType, 'admission');
+      if (isPayment) {
+        if (autoBilled > 0) {
+            propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -autoBilled, 'bill', 'admission');
+        }
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'payment', 'admission');
+      } else {
+        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'bill', 'admission');
+      }
 
       showToast({ message: "Transaction reverted successfully", type: "success" });
       handleRefresh();

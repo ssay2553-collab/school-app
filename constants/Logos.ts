@@ -7,7 +7,7 @@ export const SCHOOL_LOGOS: Record<string, any> = {
   afahjoy: require("../assets/gilead.png"),
   beano: require("../assets/beano.png"),
   morgis: require("../assets/kings.png"),
-  perfect: require("../assets/perfect.png"),
+  perfect: require("../assets/tapm.png"),
   bishops: require("../assets/bishop.png"),
   ibs: require("../assets/advent.png"),
   IBS: require("../assets/advent.png"),

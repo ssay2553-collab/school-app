@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
@@ -21,6 +22,7 @@ import { SHADOWS } from "../../../constants/theme";
 export default function LoginSelectionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const isWeb = Platform.OS === "web";
 
   const schoolId = SCHOOL_CONFIG.schoolId;
@@ -31,6 +33,8 @@ export default function LoginSelectionScreen() {
   const brandPrimary = SCHOOL_CONFIG.brandPrimary;
   const brandSecondary = SCHOOL_CONFIG.brandSecondary;
   const surface = SCHOOL_CONFIG.surfaceColor;
+
+  const cardWidth = (width - 70) / 2; // Calculate width for 2 columns with padding/gap
 
   const options = [
     {
@@ -130,38 +134,36 @@ export default function LoginSelectionScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.mainWrapper}>
-          <Animatable.View
-            animation={isWeb ? undefined : "fadeInUp"}
-            delay={400}
-            style={styles.grid}
-          >
-            {options.map((opt) => (
-              <TouchableOpacity
+          <View style={styles.grid}>
+            {options.map((opt, index) => (
+              <Animatable.View
                 key={opt.title}
-                style={styles.portalCard}
-                onPress={() => router.push(opt.route as any)}
-                activeOpacity={0.7}
+                animation={isWeb ? undefined : "bounceIn"}
+                delay={400 + index * 100}
+                useNativeDriver={false}
               >
-                <View
-                  style={[
-                    styles.iconBox,
-                    { backgroundColor: opt.color + "15" },
-                  ]}
+                <TouchableOpacity
+                  style={[styles.portalCard, { width: cardWidth }]}
+                  onPress={() => router.push(opt.route as any)}
+                  activeOpacity={0.7}
                 >
-                  <SVGIcon name={opt.icon} size={28} color={opt.color} />
-                </View>
+                  <View
+                    style={[
+                      styles.iconBox,
+                      { backgroundColor: opt.color + "15" },
+                    ]}
+                  >
+                    <SVGIcon name={opt.icon} size={24} color={opt.color} />
+                  </View>
 
-                <View style={styles.cardInfo}>
-                  <Text style={styles.optTitle}>{opt.title}</Text>
-                  <Text style={styles.optRole}>{opt.role}</Text>
-                </View>
-
-                <View style={[styles.arrowBox, { backgroundColor: surface }]}>
-                  <SVGIcon name="chevron-forward" size={16} color={opt.color} />
-                </View>
-              </TouchableOpacity>
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.optTitle}>{opt.title}</Text>
+                    <Text style={styles.optRole}>{opt.role}</Text>
+                  </View>
+                </TouchableOpacity>
+              </Animatable.View>
             ))}
-          </Animatable.View>
+          </View>
 
           <Animatable.View
             animation={isWeb ? undefined : "fadeIn"}
@@ -274,13 +276,15 @@ const styles = StyleSheet.create({
   },
 
   grid: {
-    rowGap: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 16,
+    justifyContent: "center",
   },
 
   portalCard: {
-    flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: 12,
     borderRadius: 24,
     backgroundColor: "#fff",
     borderWidth: 1,
@@ -289,29 +293,31 @@ const styles = StyleSheet.create({
   },
 
   iconBox: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: 8,
   },
 
   cardInfo: {
-    flex: 1,
-    marginLeft: 16,
+    alignItems: "center",
   },
 
   optTitle: {
-    fontSize: 17,
+    fontSize: 14,
     fontWeight: "800",
     color: "#1e293b",
+    textAlign: "center",
   },
 
   optRole: {
-    fontSize: 13,
+    fontSize: 11,
     color: "#64748b",
     marginTop: 2,
     fontWeight: "600",
+    textAlign: "center",
   },
 
   arrowBox: {

@@ -128,6 +128,9 @@ export const reconcileStudentBalances = (
       cumulativeTuitionPaid += amountToApply;
     }
 
+    // Capture the net arrears brought forward to this record
+    const recordTuitionArrears = Math.max(0, cumulativeTuitionBill - cumulativeTuitionPaid);
+
     // Now process this term's bill
     cumulativeTuitionBill += termNetTuition;
 
@@ -179,6 +182,8 @@ export const reconcileStudentBalances = (
         cumulativeCategoryPaid[k] += amountToApply;
       }
 
+      const catArrearsToRecord = Math.max(0, cumulativeCategoryBill[k] - cumulativeCategoryPaid[k]);
+
       cumulativeCategoryBill[k] += termBill;
 
       const termCatPayment = termSpecificPayments
@@ -206,12 +211,11 @@ export const reconcileStudentBalances = (
       updates[`${k}Bill`] = termBill;
       updates[`${k}Balance`] = cumulativeCategoryBill[k] - cumulativeCategoryPaid[k] - unallocatedCategory[k];
 
-      currentTotalCategoryArrears += Math.max(0, (cumulativeCategoryBill[k] - termBill) - (cumulativeCategoryPaid[k] - termCatPayment));
+      currentTotalCategoryArrears += catArrearsToRecord;
     });
 
     // --- SUMMARY ---
-    // Correct Arrears: Amount owed from PREVIOUS terms only
-    const recordTuitionArrears = Math.max(0, (cumulativeTuitionBill - termNetTuition) - (cumulativeTuitionPaid - termTuitionPayment));
+    // Correct Arrears: Amount owed from PREVIOUS terms only (captured during loop)
     const totalRecordArrears = recordTuitionArrears + currentTotalCategoryArrears;
 
     const totalPaymentsAllTime = actualPayments.reduce((s, p) => s + Number(p.amount ?? p.amountPaid ?? p.value ?? 0), 0);

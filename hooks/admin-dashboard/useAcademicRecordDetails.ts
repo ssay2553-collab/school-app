@@ -79,6 +79,7 @@ export const useAcademicRecordDetails = (
   const [reportStatus, setReportStatus] = useState("pending");
   const [isReportApproved, setIsReportApproved] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [termBalance, setTermBalance] = useState<number | null>(null);
 
   const schoolId = (
     Constants.expoConfig?.extra?.schoolId || "afahjoy"
@@ -109,9 +110,29 @@ export const useAcademicRecordDetails = (
     setNextTermBegins("");
     setAttendance("");
     setOverallPosition("-");
+    setTermBalance(null);
 
     try {
-      // 1. Fetch Academic Scores (Historical safe - query by studentId)
+      // 1. Fetch Fee Status for this specific term
+      const yearSlug = academicYearState.replace(/\//g, "-");
+      const termSlug = termState.replace(/\s+/g, "");
+      const feeRecordId = `${studentId}_${yearSlug}_${termSlug}`;
+      try {
+        const feeSnap = await getDoc(doc(db, "studentFeeRecords", feeRecordId));
+        if (feeSnap.exists()) {
+          setTermBalance(feeSnap.data().balance || 0);
+        } else {
+          // If no record exists for this term, we assume 0 specific debt for this term,
+          // but we might want to check the profile's wallet balance as a fallback
+          // or just allow it since the user asked for "term specific".
+          setTermBalance(0);
+        }
+      } catch (feeErr) {
+        console.error("Error fetching term balance:", feeErr);
+        setTermBalance(0);
+      }
+
+      // 2. Fetch Academic Scores (Historical safe - query by studentId)
       const qScores = query(
         collection(db, "academicRecords"),
         where("studentIds", "array-contains", studentId),
@@ -507,5 +528,6 @@ export const useAcademicRecordDetails = (
     reportStatus,
     refreshing,
     refresh,
+    termBalance,
   };
 };

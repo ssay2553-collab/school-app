@@ -98,6 +98,7 @@ export default function StudentAcademicReport() {
     TAS,
     AGGREGATE,
     classIdState,
+    termBalance,
   } = useAcademicRecordDetails({
     studentId: selectedChildId,
     term: selectedTerm,
@@ -334,17 +335,17 @@ export default function StudentAcademicReport() {
           </View>
         )}
 
-        {selectedChildId && children.find(c => c.id === selectedChildId)?.walletBalance > 0 && (
+        {selectedChildId && !fetchingReport && termBalance !== null && termBalance > 0 && (
           <View style={styles.debtWarningCard}>
             <View style={styles.debtIconContainer}>
               <SVGIcon name="alert-circle" size={40} color="#EF4444" />
             </View>
             <Text style={styles.debtTitle}>Access Restricted</Text>
             <Text style={styles.debtMessage}>
-              Academic reports are currently unavailable for this student due to outstanding fees (₵{(children.find(c => c.id === selectedChildId)?.walletBalance || 0).toLocaleString()}).
+              Academic reports for {selectedTerm} ({selectedYear}) are currently unavailable due to outstanding fees for this specific period (₵{(termBalance || 0).toLocaleString()}).
             </Text>
             <Text style={styles.debtSubMessage}>
-              Please clear all balances at the accounts office or via the payments section to restore access.
+              Please clear the balance for this term at the accounts office or via the payments section to restore access to this report.
             </Text>
             <TouchableOpacity
               style={[styles.payNowBtn, { backgroundColor: primary }]}
@@ -360,7 +361,7 @@ export default function StudentAcademicReport() {
           </View>
         )}
 
-        {!fetchingReport && subjectsData.length > 0 && (!selectedChildId || (children.find(c => c.id === selectedChildId)?.walletBalance || 0) <= 0) && (
+        {!fetchingReport && subjectsData.length > 0 && termBalance !== null && termBalance <= 0 && (
           <AcademicReportPreview
             primary={primary}
             schoolLogo={schoolLogo}

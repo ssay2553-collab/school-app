@@ -9,6 +9,7 @@ import {
     doc,
     getDocs,
     getDocsFromServer,
+    increment,
     limit,
     query,
     serverTimestamp,

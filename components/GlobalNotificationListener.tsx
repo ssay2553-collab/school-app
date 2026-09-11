@@ -56,7 +56,7 @@ export const GlobalNotificationListener = () => {
               content: {
                 title: data.title,
                 body: data.body,
-                data: { ...data.data, firestoreId: notifId } || { firestoreId: notifId },
+                data: { ...(data.data || {}), firestoreId: notifId },
                 sound: true,
               },
               trigger: null, // show immediately
@@ -69,7 +69,7 @@ export const GlobalNotificationListener = () => {
     // 2. Handle push notification interactions (clicks)
     const responseListener = Notifications.addNotificationResponseReceivedListener(async (response) => {
       const data = response.notification.request.content.data;
-      if (data?.firestoreId) {
+      if (data && typeof data.firestoreId === 'string') {
         try {
           await updateDoc(doc(db, "notifications", data.firestoreId), {
             read: true,

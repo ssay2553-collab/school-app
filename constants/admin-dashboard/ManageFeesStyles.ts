@@ -7,6 +7,7 @@ export const VIBE = {
   primary: "#6366F1",
   secondary: "#F59E0B",
   success: "#10B981",
+  warning: "#F59E0B",
   danger: "#EF4444",
   info: "#3B82F6",
   purple: "#8B5CF6",
@@ -15,6 +16,8 @@ export const VIBE = {
   text: "#1E293B",
   muted: "#64748B",
   border: "#E2E8F0",
+  light: "#F1F5F9",
+  dark: "#0F172A",
 };
 
 export const styles = StyleSheet.create({

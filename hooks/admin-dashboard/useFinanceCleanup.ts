@@ -96,6 +96,7 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
 
       const recordUpdates = new Map<string, any>();
       const paymentUpdates = new Map<string, any>();
+      const userUpdates = new Map<string, any>();
 
       const migrationResult = await migrateStudentIdentity(
         recordsSnap,
@@ -111,6 +112,33 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
         (n) => (opCount += n)
       );
 
+      // IDENTITY SCAN REPAIR: Ensure all students have link codes and signup codes if pending
+      let codesFixed = 0;
+      usersSnap.docs.forEach((d) => {
+        const userData = d.data();
+        if (userData.role !== "student") return;
+
+        let needsUpdate = false;
+        const updates: any = {};
+
+        // 1. Repair missing parent link codes
+        if (!userData.parentLinkCode) {
+          updates.parentLinkCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+          needsUpdate = true;
+        }
+
+        // 2. Repair missing signup codes for students who haven't activated yet
+        if (userData.status === "pending_activation" && !userData.signupCode) {
+          updates.signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          userUpdates.set(d.id, updates);
+          codesFixed++;
+        }
+      });
+
       // Apply updates from migration
       for (const [id, updates] of recordUpdates.entries()) {
         currentBatch.update(doc(db, "studentFeeRecords", id), updates);
@@ -122,11 +150,19 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
         opCount++;
         if (opCount >= 450) await commitBatch();
       }
+      for (const [uid, updates] of userUpdates.entries()) {
+        currentBatch.update(doc(db, "users", uid), updates);
+        opCount++;
+        if (opCount >= 450) await commitBatch();
+      }
 
       await commitBatch();
 
+      let summary = `Identity migration complete. Fixed ${migrationResult.fixedRecordsCount} records.`;
+      if (codesFixed > 0) summary += ` Also repaired ${codesFixed} missing access codes.`;
+
       showToast({
-        message: `Identity migration complete. Fixed ${migrationResult.fixedRecordsCount} records.`,
+        message: summary,
         type: "success",
       });
     } catch (error) {
@@ -245,8 +281,38 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
 
       // 5. Balance Reconciliation
       let reconciledBalancesCount = 0;
+      let missingCodesFixed = 0;
       const allStudentUids = new Set([...Object.keys(recordsByStudent), ...Object.keys(paymentsByStudent)]);
+
+      // Include students from usersSnap who might not have any records/payments yet
+      usersSnap.docs.forEach(d => allStudentUids.add(d.id));
+
       for (const uid of allStudentUids) {
+        // Ensure student has link codes
+        const userDoc = usersSnap.docs.find(d => d.id === uid);
+        if (userDoc) {
+          const userData = userDoc.data();
+          if (userData.role === 'student') {
+            let needsUpdate = false;
+            const existingUpdates = userUpdates.get(uid) || {};
+
+            if (!userData.parentLinkCode) {
+              existingUpdates.parentLinkCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+              needsUpdate = true;
+            }
+
+            if (userData.status === 'pending_activation' && !userData.signupCode) {
+              existingUpdates.signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+              needsUpdate = true;
+            }
+
+            if (needsUpdate) {
+              userUpdates.set(uid, existingUpdates);
+              missingCodesFixed++;
+            }
+          }
+        }
+
         reconciledBalancesCount += reconcileStudentBalances(
           uid,
           recordsByStudent[uid] || [],

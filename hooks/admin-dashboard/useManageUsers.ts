@@ -291,6 +291,8 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
 
+      const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+
       try {
         // Firestore batch limit is 500. Each user has 1 set.
         const CHUNK_SIZE = 450;
@@ -340,7 +342,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
               if (!emailRegex.test(email)) {
                 importErrors.push(`${firstName} ${lastName}: Invalid email "${email}"`);
                 // Fallback to signup code if email is invalid
-                signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                signupCode = generateCode();
                 pendingCount++;
               } else {
                 try {
@@ -360,13 +362,13 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
                   }
 
                   // Fallback to signup code so they aren't lost
-                  signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+                  signupCode = generateCode();
                   pendingCount++;
                 }
               }
             } else {
               // Standard behavior: No email/pass provided, generate code for later
-              signupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+              signupCode = generateCode();
               pendingCount++;
             }
 
@@ -379,6 +381,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
               profile: { firstName, lastName, gender, emergencyPhone, parentPhone },
               createdAt: Timestamp.now(),
             };
+
+            if (selectedRole === "student") {
+               newUserDoc.parentLinkCode = generateCode();
+            }
 
             if (email) {
               newUserDoc.email = email.toLowerCase();
@@ -1038,6 +1044,22 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     }
   };
 
+  const handleRegenerateParentLinkCode = async (user: User) => {
+    if (user.role !== "student") return;
+    setUpdating(true);
+    try {
+      const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      await updateDoc(doc(db, "users", user.uid), { parentLinkCode: newCode });
+      if (viewingUser?.uid === user.uid) setViewingUser({ ...user, parentLinkCode: newCode });
+      showToast?.({ message: `Parent Link Code updated: ${newCode}`, type: "success" });
+    } catch (err) {
+      console.error(err);
+      showToast?.({ message: "Failed to update parent link code.", type: "error" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleShareCode = async (user: User) => {
     const code = user.signupCode || user.parentLinkCode || user.secretCode;
     if (!code) return;
@@ -1330,6 +1352,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     handleUploadProfileImage,
     handleCopyAllCodes, clearServiceArrears,
     clearTermArrears,
+    handleRegenerateParentLinkCode,
     isSuperAdmin, hasManageUsersAccess,
     handlePromoteRepeat,
     openPromoteRepeat: (target: User | null = null) => setAssignmentModal({ type: "promote_repeat", target }),

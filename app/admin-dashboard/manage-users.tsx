@@ -120,6 +120,7 @@ export default function ManageUsers() {
     handleCopyAllCodes,
     clearServiceArrears,
     clearTermArrears,
+    handleRegenerateParentLinkCode,
     isSuperAdmin,
     hasManageUsersAccess,
     handlePromoteRepeat,
@@ -436,6 +437,7 @@ export default function ManageUsers() {
           onUnlinkParent={handleUnlinkParent}
           onShareCode={handleShareCode}
           onRegenerateCode={handleRegenerateSignupCode}
+          onRegenerateParentCode={handleRegenerateParentLinkCode}
           onClearArrears={clearServiceArrears}
           onClearTermArrears={clearTermArrears}
           onRemoveAssignedRole={handleRemoveAssignedRole}

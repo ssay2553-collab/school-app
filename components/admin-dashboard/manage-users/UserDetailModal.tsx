@@ -37,6 +37,7 @@ interface UserDetailModalProps {
   onUnlinkParent: (parentUid: string) => void;
   onShareCode: (user: User) => void;
   onRegenerateCode: (user: User) => void;
+  onRegenerateParentCode?: (user: User) => void;
   onClearArrears: (user: User) => void;
   onClearTermArrears?: (termKey: string, user: User) => void;
   onRemoveAssignedRole: (role: string, user: User) => void;
@@ -68,6 +69,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onUnlinkParent,
   onShareCode,
   onRegenerateCode,
+  onRegenerateParentCode,
   onClearArrears,
   onClearTermArrears,
   onRemoveAssignedRole,
@@ -340,6 +342,27 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                         {user.status === "pending_activation" && (
                           <TouchableOpacity
                             onPress={() => onRegenerateCode(user)}
+                            style={{
+                              backgroundColor: "#b45309",
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              borderRadius: 8,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontSize: 10,
+                                fontWeight: "800",
+                              }}
+                            >
+                              REGENERATE
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                        {user.role === 'student' && user.status !== 'pending_activation' && onRegenerateParentCode && (
+                          <TouchableOpacity
+                            onPress={() => onRegenerateParentCode(user)}
                             style={{
                               backgroundColor: "#b45309",
                               paddingHorizontal: 12,

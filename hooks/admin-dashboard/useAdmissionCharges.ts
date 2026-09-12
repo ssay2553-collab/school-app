@@ -741,6 +741,8 @@ export const useAdmissionCharges = ({
       const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
 
+      const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+
       try {
         const CHUNK_SIZE = 450;
         for (let i = 0; i < userData.length; i += CHUNK_SIZE) {
@@ -818,6 +820,7 @@ export const useAdmissionCharges = ({
               status: status,
               profile: { firstName, lastName, gender, emergencyPhone, parentPhone },
               createdAt: Timestamp.now(),
+              parentLinkCode: generateCode(),
             };
 
             if (email) {

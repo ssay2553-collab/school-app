@@ -348,8 +348,11 @@ export default function OtherCharges() {
         keyExtractor={item => item.uid}
         contentContainerStyle={styles.flatListContent}
         onEndReached={() => fetchStudents()}
-        removeClippedSubviews={Platform.OS === "android"}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />}
+        removeClippedSubviews={Platform.OS === "android"}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={
           loading ? (

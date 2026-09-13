@@ -72,6 +72,7 @@ export default function useUnreadCounts() {
         }
       });
     }, (err) => {
+      if (err.code === 'permission-denied') return;
       console.warn("studentGroups listener failed", err);
     });
 
@@ -98,6 +99,7 @@ export default function useUnreadCounts() {
         }
       },
       (err) => {
+        if (err.code === 'permission-denied') return;
         console.warn("user unreads listener failed", err);
       },
     );
@@ -142,10 +144,15 @@ export default function useUnreadCounts() {
             ...g,
             [groupId]: snapCount.data().count || 0,
           }));
-        } catch (err) {
+        } catch (err: any) {
           // fallback to indicator
-          setGroupUnread((g) => ({ ...g, [groupId]: 1 }));
+          if (err.code !== 'permission-denied') {
+            setGroupUnread((g) => ({ ...g, [groupId]: 1 }));
+          }
         }
+      }, (err) => {
+        if (err.code === 'permission-denied') return;
+        console.warn("watchGroup onSnapshot error", err);
       });
       groupUnsubs.current[groupId] = unsub;
     } catch (err) {
@@ -185,9 +192,14 @@ export default function useUnreadCounts() {
           ...d,
           [chatId]: snapCount.data().count || 0,
         }));
-      } catch (err) {
-        setDirectUnread((d) => ({ ...d, [chatId]: 1 }));
+      } catch (err: any) {
+        if (err.code !== 'permission-denied') {
+          setDirectUnread((d) => ({ ...d, [chatId]: 1 }));
+        }
       }
+    }, (err) => {
+      if (err.code === 'permission-denied') return;
+      console.warn("registerDirectChat onSnapshot error", err);
     });
     directUnsubs.current[chatId] = unsub;
   };
@@ -244,6 +256,9 @@ export default function useUnreadCounts() {
 
     const unsub = onSnapshot(assignmentQuery, (snap) => {
       setAllAssignmentIds(snap.docs.map(d => d.id));
+    }, (err) => {
+      if (err.code === 'permission-denied') return;
+      console.warn("Watch Assignments error", err);
     });
 
     return () => unsub();
@@ -273,6 +288,9 @@ export default function useUnreadCounts() {
 
     const unsub = onSnapshot(submissionQuery, (snap) => {
       setSubmittedIds(snap.docs.map(d => d.data().assignmentId));
+    }, (err) => {
+      if (err.code === 'permission-denied') return;
+      console.warn("Watch Submissions error", err);
     });
 
     return () => unsub();
@@ -296,6 +314,9 @@ export default function useUnreadCounts() {
 
     const unsub = onSnapshot(submissionsQ, (snap) => {
       setSubmissionUnread(snap.docs.length);
+    }, (err) => {
+      if (err.code === 'permission-denied') return;
+      console.warn("Watch Marked Submissions error", err);
     });
 
     return () => unsub();

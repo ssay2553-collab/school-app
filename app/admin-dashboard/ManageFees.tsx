@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -210,7 +210,7 @@ export default function ManageFees() {
     dailyModalVisible,
   ]);
 
-  const renderStudentItem = ({ item }: { item: StudentDraft }) => {
+  const renderStudentItem = useCallback(({ item }: { item: StudentDraft }) => {
     return (
       <FeeStudentCard
         item={item}
@@ -246,7 +246,7 @@ export default function ManageFees() {
         }}
       />
     );
-  };
+  }, [selectedStudentUids, activeMode, termBillAmount, individualBillOverrides, discountAmount, individualDiscountOverrides, canEdit, toggleStudentSelection, academicYear, term, router]);
 
   if (!appUser || !canView) {
     return (
@@ -420,6 +420,10 @@ export default function ManageFees() {
           onEndReached={() => fetchStudents(false)}
           renderItem={renderStudentItem}
           contentContainerStyle={styles.flatListContent}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === "android"}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -427,7 +431,6 @@ export default function ManageFees() {
               colors={[VIBE.primary]}
             />
           }
-          removeClippedSubviews={Platform.OS === "android"}
           ListEmptyComponent={
             !loading ? (
               <View style={styles.emptyWrap}>

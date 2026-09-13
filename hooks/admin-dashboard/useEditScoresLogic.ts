@@ -69,9 +69,10 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
   }, [classes, selectedClassId]);
 
   const filteredStudents = useMemo(() => {
-    if (!searchQuery) return allStudents;
+    let list = allStudents.filter(s => s.status !== "draft");
+    if (!searchQuery) return list;
     const q = searchQuery.toLowerCase();
-    return allStudents.filter(
+    return list.filter(
       (s) =>
         s.fullName?.toLowerCase().includes(q) ||
         s.studentId?.toLowerCase().includes(q)
@@ -365,17 +366,19 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
   };
 
   const classStats = useMemo(() => {
-    if (allStudents.length === 0) return { avg: "0.00", graded: 0, high: "0.00" };
-    const scores = allStudents
+    const nonDraftStudents = allStudents.filter(s => s.status !== "draft");
+    if (nonDraftStudents.length === 0) return { avg: "0.00", graded: 0, high: "0.00" };
+
+    const scores = nonDraftStudents
       .map((s) => parseFloat(s.finalScore) || 0)
       .filter((s) => s > 0);
 
     const graded = scores.length;
-    const totalScore = allStudents.reduce((sum, s) => sum + (parseFloat(s.finalScore) || 0), 0);
+    const totalScore = nonDraftStudents.reduce((sum, s) => sum + (parseFloat(s.finalScore) || 0), 0);
     const high = scores.length > 0 ? Math.max(...scores).toFixed(2) : "0.00";
 
     return {
-      avg: (totalScore / allStudents.length).toFixed(2),
+      avg: (totalScore / nonDraftStudents.length).toFixed(2),
       graded,
       high,
     };

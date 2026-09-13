@@ -274,11 +274,85 @@ export default function AttendanceOverview() {
   };
 
 
+  const renderClassItem = useCallback(({ item, index }: { item: ClassStat, index: number }) => {
+    const cardColor = CLASS_COLORS[index % CLASS_COLORS.length];
+    const attendanceRate = item.totalStudents > 0 ? (item.present / item.totalStudents) : 0;
+
+    return (
+      <Animatable.View
+        animation="fadeInUp"
+        duration={400}
+        delay={index * 20}
+        style={[styles.cardContainer, numColumns > 1 && { width: `${100 / numColumns - 2}%` }]}
+      >
+        <TouchableOpacity
+          style={[styles.classCard, { backgroundColor: cardColor + '05' }]}
+          activeOpacity={0.9}
+          onPress={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.push({
+              pathname: "/admin-dashboard/attendance-details",
+              params: {
+                classId: item.id,
+                className: item.name,
+                date: selectedDate,
+                academicYear: item.academicYear || acadConfig.academicYear,
+                term: item.term || acadConfig.currentTerm
+              }
+            });
+            setTimeout(() => { isNavigating.current = false; }, 500);
+          }}
+        >
+          <View style={[styles.cardHeaderStrip, { backgroundColor: cardColor }]}>
+            <SVGIcon name="school" size={18} color="#fff" />
+            <Text style={styles.classNameWhite} numberOfLines={1}>{item.name}</Text>
+            <View style={styles.whiteStatusBadge}>
+              <Text style={[styles.statusTextMini, { color: cardColor }]}>
+                {item.marked ? "MARKED" : "NOT MARKED"}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.cardBody}>
+            <View style={styles.mainMetrics}>
+              <View style={styles.metric}>
+                <Text style={[styles.metricVal, { color: cardColor }]}>{item.present}</Text>
+                <Text style={styles.metricLab}>Present</Text>
+              </View>
+              <View style={styles.metricSep} />
+              <View style={styles.metric}>
+                <Text style={[styles.metricVal, { color: '#EF4444' }]}>{item.absent}</Text>
+                <Text style={styles.metricLab}>Absent</Text>
+              </View>
+              <View style={styles.metricSep} />
+              <View style={styles.metric}>
+                <Text style={[styles.metricVal, { color: '#64748B' }]}>{item.totalStudents}</Text>
+                <Text style={styles.metricLab}>Total</Text>
+              </View>
+            </View>
+
+            <View style={styles.progressSection}>
+              <View style={styles.progressInfo}>
+                <Text style={[styles.rateText, { color: cardColor }]}>{item.totalStudents > 0 ? Math.round((item.present / item.totalStudents) * 100) : 0}% Present</Text>
+              </View>
+              <View style={styles.barContainer}>
+                <View style={styles.barBg}>
+                  <View style={[styles.barFill, { backgroundColor: cardColor, width: `${attendanceRate * 100}%` }]} />
+                </View>
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Animatable.View>
+    );
+  }, [numColumns, selectedDate, acadConfig.academicYear, acadConfig.currentTerm, router]);
+
   if (!appUser) return null;
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
       
       <View style={styles.headerWrapper}>
         <LinearGradient 
@@ -306,7 +380,12 @@ export default function AttendanceOverview() {
                 <SVGIcon name="refresh" size={18} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={sendReminders}
+                onPress={() => {
+                  if (isNavigating.current) return;
+                  isNavigating.current = true;
+                  sendReminders();
+                  setTimeout(() => { isNavigating.current = false; }, 1000);
+                }}
                 style={[styles.miniBtn, { marginLeft: 10, width: 'auto', paddingHorizontal: 12, flexDirection: 'row', gap: 6, backgroundColor: '#FFD93D' }]}
                 disabled={sendingReminders}
               >
@@ -365,79 +444,11 @@ export default function AttendanceOverview() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[primary]} />}
           contentContainerStyle={[styles.list, isDesktop && styles.maxContainer]}
           columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
-          renderItem={({ item, index }) => {
-            const cardColor = CLASS_COLORS[index % CLASS_COLORS.length];
-            const attendanceRate = item.totalStudents > 0 ? (item.present / item.totalStudents) : 0;
-            
-            return (
-              <Animatable.View 
-                animation="fadeInUp" 
-                duration={400} 
-                delay={index * 20} 
-                style={[styles.cardContainer, numColumns > 1 && { width: `${100 / numColumns - 2}%` }]}
-              >
-                <TouchableOpacity 
-                  style={[styles.classCard, { backgroundColor: cardColor + '05' }]}
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    if (isNavigating.current) return;
-                    isNavigating.current = true;
-                    router.push({
-                      pathname: "/admin-dashboard/attendance-details",
-                      params: {
-                        classId: item.id,
-                        className: item.name,
-                        date: selectedDate,
-                        academicYear: item.academicYear || acadConfig.academicYear,
-                        term: item.term || acadConfig.currentTerm
-                      }
-                    });
-                    setTimeout(() => { isNavigating.current = false; }, 500);
-                  }}
-                >
-                  <View style={[styles.cardHeaderStrip, { backgroundColor: cardColor }]}>
-                    <SVGIcon name="school" size={18} color="#fff" />
-                    <Text style={styles.classNameWhite} numberOfLines={1}>{item.name}</Text>
-                    <View style={styles.whiteStatusBadge}>
-                      <Text style={[styles.statusTextMini, { color: cardColor }]}>
-                        {item.marked ? "MARKED" : "NOT MARKED"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.cardBody}>
-                    <View style={styles.mainMetrics}>
-                      <View style={styles.metric}>
-                        <Text style={[styles.metricVal, { color: cardColor }]}>{item.present}</Text>
-                        <Text style={styles.metricLab}>Present</Text>
-                      </View>
-                      <View style={styles.metricSep} />
-                      <View style={styles.metric}>
-                        <Text style={[styles.metricVal, { color: '#EF4444' }]}>{item.absent}</Text>
-                        <Text style={styles.metricLab}>Absent</Text>
-                      </View>
-                      <View style={styles.metricSep} />
-                      <View style={styles.metric}>
-                        <Text style={[styles.metricVal, { color: '#64748B' }]}>{item.totalStudents}</Text>
-                        <Text style={styles.metricLab}>Total</Text>
-                      </View>
-                    </View>
-
-                    <View style={styles.progressSection}>
-                      <View style={styles.progressInfo}>
-                        <Text style={[styles.rateText, { color: cardColor }]}>{item.totalStudents > 0 ? Math.round((item.present / item.totalStudents) * 100) : 0}% Present</Text>
-                      </View>
-                      <View style={styles.barContainer}>
-                        <View style={styles.barBg}>
-                          <View style={[styles.barFill, { backgroundColor: cardColor, width: `${attendanceRate * 100}%` }]} />
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              </Animatable.View>
-            );
-          }}
+          renderItem={renderClassItem}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === "android"}
           ListEmptyComponent={<View style={styles.empty}><SVGIcon name="people" size={64} color="#CBD5E1" /><Text style={styles.emptyTitle}>No Records Found</Text></View>}
         />
       )}

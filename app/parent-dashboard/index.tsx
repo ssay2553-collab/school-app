@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { collection, doc, documentId, getDoc, getDocsFromServer, query, where } from "firebase/firestore";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -13,6 +13,8 @@ import {
     Text,
     TouchableOpacity,
     View,
+    Linking,
+    Alert
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
@@ -25,6 +27,11 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
+import { AdminEventStats } from "../../components/admin-dashboard/AdminEventStats";
+import DashboardHeader from "../../components/DashboardHeader";
+import StationaryBackground from "../../components/StationaryBackground";
+import { useUpcomingEvents } from "../../hooks/useUpcomingEvents";
+
 const { width } = Dimensions.get("window");
 
 export default function ParentDashboard() {
@@ -32,6 +39,7 @@ export default function ParentDashboard() {
   const { appUser } = useAuth();
   const config = useSchoolConfig();
   const { totalUnread } = useUnreadCounts();
+  const { upcomingEvents, loading: eventsLoading } = useUpcomingEvents(2);
 
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -101,7 +109,6 @@ export default function ParentDashboard() {
     const cleanNumber = number.replace(/[^0-9+]/g, "");
     const url = `tel:${cleanNumber}`;
     try {
-      const { Linking, Alert } = require("react-native");
       const supported = await Linking.canOpenURL(url);
       if (supported) {
         await Linking.openURL(url);
@@ -306,54 +313,23 @@ export default function ParentDashboard() {
 
   return (
     <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
+      <StationaryBackground />
       <StatusBar barStyle="light-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <LinearGradient
-          colors={[brandPrimary, brandSecondary]}
-          style={styles.header}
+        <DashboardHeader
+          brandPrimary={brandPrimary}
+          brandSecondary={brandSecondary}
+          appUser={appUser}
+          isSmallScreen={isSmallScreen}
+          welcomeText="WELCOME BACK,"
+          roleTag="Parent"
+          onProfilePress={() => router.push("/parent-dashboard/settings")}
+          onSettingsPress={() => router.push("/parent-dashboard/settings")}
         >
-          <View style={styles.blob1} />
-          <View style={styles.blob2} />
-
-          <SafeAreaView edges={["top"]}>
-            <View style={styles.topBar}>
-              <View style={styles.schoolBadge}>
-                <Image
-                  source={schoolLogo}
-                  style={styles.schoolLogoMini}
-                  resizeMode="contain"
-                />
-                <Text style={styles.schoolNameMini}>{schoolName}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => router.push("/parent-dashboard/settings")}
-                style={styles.settingsBtn}
-              >
-                <SVGIcon name="settings-outline" size={22} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.heroSection}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.welcomeText}>WELCOME BACK,</Text>
-                <Text
-                  style={[styles.nameText, { fontSize: isSmallScreen ? 24 : 32 }]}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                >
-                  {fullName?.split(" ")[0] || "Parent"}
-                </Text>
-              </View>
-              <View style={styles.statusBadge}>
-                <SVGIcon name="checkmark-seal" size={12} color="#fff" />
-                <Text style={styles.statusText}>PARENT PORTAL</Text>
-              </View>
-            </View>
-
-            <Animatable.View animation="fadeInUp" delay={400} style={styles.headerContactInfo}>
+          <Animatable.View animation="fadeInUp" delay={400} style={styles.headerContactInfo}>
               <View style={styles.headerContactItem}>
                 <SVGIcon name="business-outline" size={14} color="#fff" />
                 <Text style={[styles.headerContactText, { flex: 1 }]} numberOfLines={1}>
@@ -379,9 +355,16 @@ export default function ParentDashboard() {
                   </View>
                 )}
               </View>
-            </Animatable.View>
-          </SafeAreaView>
-        </LinearGradient>
+          </Animatable.View>
+
+          <AdminEventStats
+            upcomingEvents={upcomingEvents}
+            loading={eventsLoading}
+            brandPrimary={brandPrimary}
+            onViewAll={() => router.push("/academic-calendar")}
+            onEventPress={() => router.push("/academic-calendar")}
+          />
+        </DashboardHeader>
 
         <View style={styles.contentContainer}>
           <View style={styles.mainContent}>
@@ -412,88 +395,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   scrollContent: { flexGrow: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    overflow: "hidden",
-    ...SHADOWS.medium,
-  },
-  blob1: {
-    position: 'absolute',
-    top: -20,
-    right: -20,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  blob2: {
-    position: 'absolute',
-    bottom: -40,
-    left: -30,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 25,
-    paddingTop: Platform.OS === "web" ? 20 : 0,
-  },
-  schoolBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  schoolLogoMini: { width: 18, height: 18, marginRight: 8 },
-  schoolNameMini: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#fff",
-    textTransform: "uppercase",
-  },
-  settingsBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  heroSection: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  welcomeText: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  nameText: { fontSize: 32, fontWeight: "900", color: "#fff", marginTop: 2 },
-  statusBadge: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    alignItems: "center",
-    gap: 6,
-  },
-  statusText: { color: "#fff", fontSize: 10, fontWeight: "900", letterSpacing: 0.5 },
   contentContainer: { alignItems: "center", width: "100%" },
   mainContent: {
     paddingHorizontal: 20,
@@ -582,4 +483,3 @@ const styles = StyleSheet.create({
   },
   badgePos: { position: "absolute", top: 15, right: 15 },
 });
-

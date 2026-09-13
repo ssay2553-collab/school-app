@@ -17,7 +17,7 @@ interface UserCardProps {
   onLongPress: (user: User) => void;
 }
 
-export const UserCard: React.FC<UserCardProps> = ({
+export const UserCard = React.memo(({
   user,
   isSelected,
   isSelectionActive,
@@ -25,7 +25,7 @@ export const UserCard: React.FC<UserCardProps> = ({
   onToggleSelection,
   onPress,
   onLongPress,
-}) => {
+}: UserCardProps) => {
   const teacherClasses = ["teacher", "staff", "admin"].includes(user.role)
     ? getTeacherClasses(user as any)
     : [];
@@ -35,6 +35,7 @@ export const UserCard: React.FC<UserCardProps> = ({
       style={[styles.userCard, isSelected && styles.selectedCard]}
       onLongPress={() => onLongPress(user)}
       onPress={() => onPress(user)}
+      activeOpacity={0.7}
     >
       {isSelectionActive && user.role === "student" && (
         <View style={styles.selectionIndicator}>
@@ -142,7 +143,12 @@ export const UserCard: React.FC<UserCardProps> = ({
       />
     </TouchableOpacity>
   );
-};
+}, (prev, next) => {
+  return prev.isSelected === next.isSelected &&
+         prev.isSelectionActive === next.isSelectionActive &&
+         prev.user === next.user &&
+         prev.allClasses === next.allClasses;
+});
 
 const styles = StyleSheet.create({
   userCard: {

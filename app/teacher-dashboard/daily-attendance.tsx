@@ -421,9 +421,11 @@ export default function DailyAttendanceScreen() {
           }
           showsVerticalScrollIndicator={true}
           removeClippedSubviews={false} // Setting this to false can prevent some Android crashes during rapid updates
-          initialNumToRender={15}
+          initialNumToRender={10}
+          initialNumToRender={10}
           maxToRenderPerBatch={10}
-          windowSize={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === "android"}
           extraData={localAttendance} // Ensure FlatList knows when to check items for updates
         />
       )}

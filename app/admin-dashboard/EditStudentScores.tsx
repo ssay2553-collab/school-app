@@ -324,7 +324,7 @@ export default function EditStudentScores() {
 
                 <EditScoresStats
                   stats={classStats}
-                  totalStudents={allStudents.length}
+                  totalStudents={allStudents.filter(s => s.status !== "draft").length}
                   primary={primary}
                 />
               </Animatable.View>

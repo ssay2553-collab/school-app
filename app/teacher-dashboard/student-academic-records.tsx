@@ -154,7 +154,7 @@ export default function StudentAcademicRecords() {
         <FlatList
           data={allStudents}
           keyExtractor={(item) => item.studentId}
-          renderItem={({ item }) => <StudentCard student={item} onUpdate={updateStudentScore} reportType={reportType} disabled={isApproved} />}
+          renderItem={({ item }) => <StudentCard student={item} onUpdate={updateStudentScore} reportType={reportType} disabled={isApproved || item.status === "approved"} />}
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={<View style={styles.emptyState}><SVGIcon name="people-outline" size={48} color="#CBD5E1" /><Text style={styles.emptyStateText}>{!selectedSubject ? "Select subject" : "No students found"}</Text></View>}
           contentContainerStyle={styles.listContent}

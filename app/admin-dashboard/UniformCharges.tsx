@@ -204,7 +204,7 @@ export default function UniformCharges() {
         </View>
       </TouchableOpacity>
     );
-  }, [activeFilter, router]);
+  }, [activeFilter, router, openPaymentModal]);
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -323,6 +323,9 @@ export default function UniformCharges() {
         renderItem={renderItem}
         contentContainerStyle={sharedStyles.flatListContent}
         onEndReached={() => !activeFilter && fetchStudents()}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[VIBE.primary]} />}
         removeClippedSubviews={Platform.OS === "android"}
         ListEmptyComponent={

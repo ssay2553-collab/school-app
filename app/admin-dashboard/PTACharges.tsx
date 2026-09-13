@@ -303,6 +303,9 @@ export default function PTACharges() {
         keyExtractor={item => item.uid}
         contentContainerStyle={styles.flatListContent}
         onEndReached={() => fetchStudents()}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
         removeClippedSubviews={Platform.OS === "android"}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />}
         ListHeaderComponent={ListHeader}

@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -14,16 +14,22 @@ import {
   Text,
   TouchableOpacity,
   View,
+  ActivityIndicator
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
-import { SHADOWS } from "../../constants/theme";
+import { SHADOWS, COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { auth } from "../../firebaseConfig";
+
+import { AdminEventStats } from "../../components/admin-dashboard/AdminEventStats";
+import DashboardHeader from "../../components/DashboardHeader";
+import StationaryBackground from "../../components/StationaryBackground";
+import { useUpcomingEvents } from "../../hooks/useUpcomingEvents";
 
 const { width } = Dimensions.get("window");
 
@@ -31,11 +37,10 @@ export default function StaffDashboard() {
   const { showToast } = useToast();
   const { appUser } = useAuth();
   const router = useRouter();
-  const schoolLogo = getSchoolLogo(SCHOOL_CONFIG.schoolId);
-  const schoolName = SCHOOL_CONFIG.name;
+  const { upcomingEvents, loading: eventsLoading } = useUpcomingEvents(2);
 
-  const brandPrimary = SCHOOL_CONFIG.brandPrimary;
-  const brandSecondary = SCHOOL_CONFIG.brandSecondary;
+  const brandPrimary = SCHOOL_CONFIG.brandPrimary || COLORS.primary || "#6366F1";
+  const brandSecondary = SCHOOL_CONFIG.brandSecondary || "#4338ca";
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -43,32 +48,6 @@ export default function StaffDashboard() {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
   }, []);
-
-  const handleLogout = () => {
-    if (Platform.OS === "web") {
-      if (window.confirm("Are you sure you want to log out?")) {
-        signOut(auth).then(() => router.replace("/"));
-      }
-      return;
-    }
-
-    Alert.alert("Sign Out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign Out",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await signOut(auth);
-            router.replace("/");
-          } catch (err) {
-            console.error(err);
-            showToast({ message: "Could not sign out.", type: "error" });
-          }
-        },
-      },
-    ]);
-  };
 
   const isAdmin = appUser?.role === "admin";
   const canFeeding =
@@ -193,6 +172,7 @@ export default function StaffDashboard() {
 
   return (
     <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
+      <StationaryBackground />
       <StatusBar barStyle="light-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -206,52 +186,26 @@ export default function StaffDashboard() {
         }
         contentContainerStyle={styles.scrollContent}
       >
-        <LinearGradient
-          colors={[brandPrimary, brandSecondary]}
-          style={styles.header}
+        <DashboardHeader
+          brandPrimary={brandPrimary}
+          brandSecondary={brandSecondary}
+          appUser={appUser}
+          isSmallScreen={isSmallScreen}
+          welcomeText="WELCOME BACK,"
+          roleTag="Staff"
+          onProfilePress={() => router.push("/teacher-dashboard/profile-edit")}
+          onSettingsPress={() => router.push("/teacher-dashboard/settings")}
+          onAdminDashboardPress={() => router.push("/admin-dashboard")}
+          showAdminButton={appUser?.role === "admin"}
         >
-          <View style={styles.blob1} />
-          <View style={styles.blob2} />
-
-          <SafeAreaView edges={["top"]}>
-            <View style={styles.topBar}>
-              <View style={styles.schoolBadge}>
-                <Image
-                  source={schoolLogo}
-                  style={styles.schoolLogoMini}
-                  resizeMode="contain"
-                />
-                <Text style={styles.schoolNameMini}>{schoolName}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={handleLogout}
-                style={styles.settingsBtn}
-              >
-                <SVGIcon name="log-out-outline" size={22} color="#fff" />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.heroSection}>
-              <View>
-                <Text style={styles.welcomeText}>WELCOME BACK,</Text>
-                <Text
-                  style={[
-                    styles.nameText,
-                    { fontSize: isSmallScreen ? 24 : 32 },
-                  ]}
-                >
-                  {appUser?.displayName || "Staff Member"}
-                </Text>
-              </View>
-              <View style={styles.statusBadge}>
-                <SVGIcon name="briefcase" size={12} color="#fff" />
-                <Text style={styles.statusText}>
-                  {appUser?.adminRole?.toUpperCase() || "STAFF"}
-                </Text>
-              </View>
-            </View>
-          </SafeAreaView>
-        </LinearGradient>
+          <AdminEventStats
+            upcomingEvents={upcomingEvents}
+            loading={eventsLoading}
+            brandPrimary={brandPrimary}
+            onViewAll={() => router.push("/academic-calendar")}
+            onEventPress={() => router.push("/academic-calendar")}
+          />
+        </DashboardHeader>
 
         <View style={styles.contentContainer}>
           <View style={styles.mainContent}>
@@ -284,93 +238,6 @@ export default function StaffDashboard() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { flexGrow: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    borderBottomLeftRadius: 40,
-    borderBottomRightRadius: 40,
-    overflow: "hidden",
-    ...SHADOWS.medium,
-  },
-  blob1: {
-    position: "absolute",
-    top: -20,
-    right: -20,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  blob2: {
-    position: "absolute",
-    bottom: -40,
-    left: -30,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: "rgba(255,255,255,0.05)",
-  },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 25,
-    paddingTop: Platform.OS === "web" ? 20 : 0,
-  },
-  schoolBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 100,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  schoolLogoMini: { width: 18, height: 18, marginRight: 8 },
-  schoolNameMini: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#fff",
-    textTransform: "uppercase",
-  },
-  settingsBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 15,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-  },
-  heroSection: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  welcomeText: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.9)",
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-  nameText: { fontSize: 32, fontWeight: "900", color: "#fff", marginTop: 2 },
-  statusBadge: {
-    flexDirection: "row",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    alignItems: "center",
-    gap: 6,
-  },
-  statusText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-  },
   contentContainer: { alignItems: "center", width: "100%" },
   mainContent: {
     paddingHorizontal: 20,

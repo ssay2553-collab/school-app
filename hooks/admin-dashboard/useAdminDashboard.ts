@@ -52,7 +52,7 @@ export const useAdminDashboard = () => {
         setEventsLoading(false);
       },
       (err) => {
-        if (!isMounted) return;
+        if (!isMounted || err.code === 'permission-denied') return;
         console.error("Error fetching upcoming events:", err);
         setEventsLoading(false);
       }

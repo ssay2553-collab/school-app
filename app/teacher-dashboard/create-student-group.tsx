@@ -271,9 +271,9 @@ export default function TeacherStudentGroups() {
   >([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [students, setStudents] = useState<Student[]>([]);
-  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [staff, setStaff] = useState<Staff[]>([]);
-  const [selectedStaffIds, setSelectedStaffIds] = useState<string[]>([]);
+  const [selectedStaffIds, setSelectedStaffIds] = useState<Set<string>>(new Set());
   const [groupName, setGroupName] = useState("");
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
   const isMounted = useRef(true);
@@ -397,8 +397,8 @@ export default function TeacherStudentGroups() {
 
       setGroupName("");
       setSelectedClassId("");
-      setSelectedStudentIds([]);
-      setSelectedStaffIds([]);
+      setSelectedStudentIds(new Set());
+      setSelectedStaffIds(new Set());
       setView("CREATE");
     } catch {
       showToast({ message: "Could not fetch classes.", type: "error" });
@@ -431,8 +431,8 @@ export default function TeacherStudentGroups() {
       setActiveGroup(group);
       setGroupName(group.name);
       setSelectedClassId(group.classId);
-      setSelectedStudentIds(group.studentIds);
-      setSelectedStaffIds(group.staffIds || []);
+      setSelectedStudentIds(new Set(group.studentIds));
+      setSelectedStaffIds(new Set(group.staffIds || []));
       setView("EDIT");
     } catch {
       showToast({ message: "Could not load edit screen.", type: "error" });
@@ -471,7 +471,7 @@ export default function TeacherStudentGroups() {
   }, [view, selectedClassId]);
 
   const handleCreateOrUpdate = async () => {
-    if (!groupName.trim() || selectedStudentIds.length === 0)
+    if (!groupName.trim() || selectedStudentIds.size === 0)
       return showToast({
         message: "Please provide a name and select students",
         type: "error"
@@ -481,8 +481,8 @@ export default function TeacherStudentGroups() {
       if (view === "EDIT" && activeGroup) {
         await updateDoc(doc(db, "studentGroups", activeGroup.id), {
           name: groupName.trim(),
-          studentIds: selectedStudentIds,
-          staffIds: selectedStaffIds,
+          studentIds: Array.from(selectedStudentIds),
+          staffIds: Array.from(selectedStaffIds),
         });
         showToast({ message: "Group updated.", type: "success" });
       } else {
@@ -490,8 +490,8 @@ export default function TeacherStudentGroups() {
           name: groupName.trim(),
           teacherId: appUser!.uid,
           classId: selectedClassId,
-          studentIds: selectedStudentIds,
-          staffIds: selectedStaffIds,
+          studentIds: Array.from(selectedStudentIds),
+          staffIds: Array.from(selectedStaffIds),
           createdAt: serverTimestamp(),
         });
         showToast({ message: "Group created.", type: "success" });
@@ -505,15 +505,21 @@ export default function TeacherStudentGroups() {
   };
 
   const toggleStudent = (id: string) => {
-    setSelectedStudentIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setSelectedStudentIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const toggleStaff = (id: string) => {
-    setSelectedStaffIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setSelectedStaffIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   if (loading && view === "LIST")
@@ -694,7 +700,7 @@ export default function TeacherStudentGroups() {
             {selectedClassId ? (
               <View style={{ marginTop: 20 }}>
                 <Text style={styles.label}>
-                  SELECT STUDENTS ({selectedStudentIds.length})
+                  SELECT STUDENTS ({selectedStudentIds.size})
                 </Text>
                 {fetchingStudents ? (
                   <ActivityIndicator
@@ -708,7 +714,7 @@ export default function TeacherStudentGroups() {
                         key={s.id}
                         style={[
                           styles.studentChip,
-                          selectedStudentIds.includes(s.id) && {
+                          selectedStudentIds.has(s.id) && {
                             backgroundColor: primary,
                             borderColor: primary,
                           },
@@ -718,7 +724,7 @@ export default function TeacherStudentGroups() {
                         <Text
                           style={[
                             styles.studentChipText,
-                            selectedStudentIds.includes(s.id) && {
+                            selectedStudentIds.has(s.id) && {
                               color: "#fff",
                             },
                           ]}
@@ -727,13 +733,13 @@ export default function TeacherStudentGroups() {
                         </Text>
                         <SVGIcon
                           name={
-                            selectedStudentIds.includes(s.id)
+                            selectedStudentIds.has(s.id)
                               ? "checkmark-circle"
                               : "add-circle-outline"
                           }
                           size={16}
                           color={
-                            selectedStudentIds.includes(s.id) ? "#fff" : primary
+                            selectedStudentIds.has(s.id) ? "#fff" : primary
                           }
                         />
                       </TouchableOpacity>
@@ -752,7 +758,7 @@ export default function TeacherStudentGroups() {
 
             <View style={{ marginTop: 25, borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 20 }}>
               <Text style={styles.label}>
-                ADD COLLABORATORS (STAFF) ({selectedStaffIds.length})
+                ADD COLLABORATORS (STAFF) ({selectedStaffIds.size})
               </Text>
               <View style={styles.studentList}>
                 {staff.map((s) => (
@@ -760,7 +766,7 @@ export default function TeacherStudentGroups() {
                     key={s.id}
                     style={[
                       styles.studentChip,
-                      selectedStaffIds.includes(s.id) && {
+                      selectedStaffIds.has(s.id) && {
                         backgroundColor: secondary,
                         borderColor: secondary,
                       },
@@ -770,7 +776,7 @@ export default function TeacherStudentGroups() {
                     <Text
                       style={[
                         styles.studentChipText,
-                        selectedStaffIds.includes(s.id) && {
+                        selectedStaffIds.has(s.id) && {
                           color: "#fff",
                         },
                       ]}
@@ -779,13 +785,13 @@ export default function TeacherStudentGroups() {
                     </Text>
                     <SVGIcon
                       name={
-                        selectedStaffIds.includes(s.id)
+                        selectedStaffIds.has(s.id)
                           ? "checkmark-circle"
                           : "add-circle-outline"
                       }
                       size={16}
                       color={
-                        selectedStaffIds.includes(s.id) ? "#fff" : secondary
+                        selectedStaffIds.has(s.id) ? "#fff" : secondary
                       }
                     />
                   </TouchableOpacity>

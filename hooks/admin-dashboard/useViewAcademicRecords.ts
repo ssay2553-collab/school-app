@@ -130,7 +130,7 @@ export function useViewAcademicRecords() {
       where("academicYear", "==", selectedYear),
       where("term", "==", term),
       where("reportType", "==", selectedReportType),
-      where("status", "==", "approved"),
+      where("status", "in", ["approved", "partially_approved"]),
     );
 
     const unsubscribe = onSnapshot(
@@ -182,7 +182,7 @@ export function useViewAcademicRecords() {
           where("academicYear", "==", selectedYear),
           where("term", "==", term),
           where("reportType", "==", selectedReportType),
-          where("status", "==", "approved"),
+          where("status", "in", ["approved", "partially_approved"]),
         ),
       );
 
@@ -556,7 +556,7 @@ export function useViewAcademicRecords() {
           where("academicYear", "==", selectedYear),
           where("term", "==", term),
           where("reportType", "==", selectedReportType),
-          where("status", "==", "approved"),
+          where("status", "in", ["approved", "partially_approved"]),
         );
 
         const allSnap = await getDocsFromServer(qAll);

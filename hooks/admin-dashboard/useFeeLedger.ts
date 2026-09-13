@@ -638,7 +638,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                     batch.update(doc(db, "users", selectedStudentUid), { maintenanceBalance: increment(-amount) });
                 } else if (type === 'admission') {
                     batch.update(doc(db, "studentFeeRecords", recordId), { admissionBalance: increment(-amount), admissionBill: increment(-amount) });
-                    batch.update(doc(db, "users", selectedStudentUid), { admissionBalance: increment(-amount), admissionFeeBill: increment(-amount) });
+                    batch.update(doc(db, "users", selectedStudentUid), { admissionBalance: increment(-amount), admissionBill: increment(-amount) });
                 } else if (type === 'books') {
                     batch.update(doc(db, "studentFeeRecords", recordId), { booksBalance: increment(-amount), booksBill: increment(-amount) });
                     batch.update(doc(db, "users", selectedStudentUid), { booksBalance: increment(-amount), booksBill: increment(-amount) });

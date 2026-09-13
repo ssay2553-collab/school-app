@@ -336,7 +336,7 @@ export default function ManageUsers() {
                     <SVGIcon
                       name={
                         filteredUsers.length > 0 &&
-                        filteredUsers.every((u) => selectedUserUids.includes(u.uid))
+                        filteredUsers.every((u) => selectedUserUids.has(u.uid))
                           ? "checkbox"
                           : "square-outline"
                       }
@@ -345,7 +345,7 @@ export default function ManageUsers() {
                     />
                     <Text style={styles.selectAllText}>Select All Visible</Text>
                   </TouchableOpacity>
-                  {selectedUserUids.length > 0 && (
+                  {selectedUserUids.size > 0 && (
                     <TouchableOpacity onPress={handleCopyAllCodes}>
                       <Text
                         style={[styles.selectAllText, { color: COLORS.secondary }]}
@@ -363,12 +363,12 @@ export default function ManageUsers() {
             <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
               <UserCard
                 user={item}
-                isSelected={selectedUserUids.includes(item.uid)}
-                isSelectionActive={selectedUserUids.length > 0}
+                isSelected={selectedUserUids.has(item.uid)}
+                isSelectionActive={selectedUserUids.size > 0}
                 allClasses={allClasses}
                 onToggleSelection={toggleUserSelection}
                 onPress={(u) => {
-                  if (selectedUserUids.length > 0 && u.role === "student") {
+                  if (selectedUserUids.size > 0 && u.role === "student") {
                     toggleUserSelection(u.uid);
                   } else {
                     setViewingUser(u);
@@ -384,6 +384,10 @@ export default function ManageUsers() {
             </View>
           )}
           contentContainerStyle={styles.listContent}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={5}
+          removeClippedSubviews={Platform.OS === "android"}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => {}} />
           }
@@ -406,8 +410,8 @@ export default function ManageUsers() {
         />
 
         <BulkActionBar
-          selectedCount={selectedUserUids.length}
-          onCancel={() => setSelectedUserUids([])}
+          selectedCount={selectedUserUids.size}
+          onCancel={() => setSelectedUserUids(new Set())}
           onBulkUpdate={handleBulkUpdate}
           onClearArrears={() => {
             handleBulkUpdate("dailyArrears", 0);

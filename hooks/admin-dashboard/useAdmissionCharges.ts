@@ -151,6 +151,8 @@ export const useAdmissionCharges = ({
 
         if (data.type === "admission") {
           totalBilled += (data.amount || 0);
+        }
+        if (data.type === "admission" || data.type === "admission_payment") {
           if (isT1) t1Uids.add(data.studentUid);
           if (isT2) t2Uids.add(data.studentUid);
           if (isT3) t3Uids.add(data.studentUid);
@@ -400,8 +402,9 @@ export const useAdmissionCharges = ({
 
       // INDEPENDENT PAYMENT LOGIC:
       // If payment exceeds current balance, auto-bill the difference so walletBalance impact is only the debt portion.
+      // We use the raw balance to ensure billing auto-adjusts even if there's an existing credit.
       const currentCatBalance = student.admissionBalance || 0;
-      const billNeeded = Math.max(0, amount - Math.max(0, currentCatBalance));
+      const billNeeded = Math.max(0, amount - currentCatBalance);
       const debtPaid = amount - billNeeded;
       const walletImpact = -debtPaid;
 

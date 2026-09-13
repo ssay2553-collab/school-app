@@ -84,7 +84,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [selectedUserUids, setSelectedUserUids] = useState<string[]>([]);
+  const [selectedUserUids, setSelectedUserUids] = useState<Set<string>>(new Set());
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -178,7 +178,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       collection(db, "users"),
       where("role", "==", selectedRole),
       where("status", "in", showArchived ? ["archived"] : ["active", "pending_activation"]),
-      limit(100),
+      limit(1000),
     );
 
     if (selectedRole === "student" && selectedClassId !== "all") {
@@ -187,7 +187,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         where("role", "==", "student"),
         where("classId", "==", selectedClassId),
         where("status", "in", showArchived ? ["archived"] : ["active", "pending_activation"]),
-        limit(100),
+        limit(1000),
       );
     }
 
@@ -236,23 +236,36 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   }, [selectedRole, selectedClassId, allClasses]);
 
   useEffect(() => {
-    setSelectedUserUids([]);
+    setSelectedUserUids(new Set());
   }, [selectedRole, selectedClassId, showArchived]);
 
-  const toggleUserSelection = (uid: string) => {
-    setSelectedUserUids((prev) => (prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]));
-  };
+  const toggleUserSelection = useCallback((uid: string) => {
+    setSelectedUserUids((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid);
+      else next.add(uid);
+      return next;
+    });
+  }, []);
 
-  const handleSelectAll = () => {
+  const handleSelectAll = useCallback(() => {
     if (filteredUsers.length === 0) return;
     const allUids = filteredUsers.map((u) => u.uid);
-    const isAllSelected = allUids.every((uid) => selectedUserUids.includes(uid));
+    const isAllSelected = allUids.every((uid) => selectedUserUids.has(uid));
     if (isAllSelected) {
-      setSelectedUserUids((prev) => prev.filter((uid) => !allUids.includes(uid)));
+      setSelectedUserUids((prev) => {
+        const next = new Set(prev);
+        allUids.forEach(id => next.delete(id));
+        return next;
+      });
     } else {
-      setSelectedUserUids((prev) => Array.from(new Set([...prev, ...allUids])));
+      setSelectedUserUids((prev) => {
+        const next = new Set(prev);
+        allUids.forEach(id => next.add(id));
+        return next;
+      });
     }
-  };
+  }, [filteredUsers, selectedUserUids]);
 
   const handleBulkImport = async () => {
     try {
@@ -470,15 +483,16 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   };
 
   const handleBulkUpdate = async (field: string, value: any) => {
-    if (selectedUserUids.length === 0) return;
+    if (selectedUserUids.size === 0) return;
     setUpdating(true);
     try {
       const batch = writeBatch(db);
+      const uids = Array.from(selectedUserUids);
 
       // Firestore batch limit is 500. Each user has 1 update.
       const CHUNK_SIZE = 450;
-      for (let i = 0; i < selectedUserUids.length; i += CHUNK_SIZE) {
-        const chunk = selectedUserUids.slice(i, i + CHUNK_SIZE);
+      for (let i = 0; i < uids.length; i += CHUNK_SIZE) {
+        const chunk = uids.slice(i, i + CHUNK_SIZE);
         const batch = writeBatch(db);
         chunk.forEach((uid) => {
           batch.update(doc(db, "users", uid), { [field]: value });
@@ -486,8 +500,8 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         await batch.commit();
       }
 
-      setSelectedUserUids([]);
-      showToast?.({ message: `Updated ${selectedUserUids.length} students`, type: "success" });
+      setSelectedUserUids(new Set());
+      showToast?.({ message: `Updated ${uids.length} students`, type: "success" });
     } catch (error) {
       console.error(error);
       showToast?.({ message: "Bulk update failed.", type: "error" });
@@ -1149,7 +1163,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       showToast?.({ message: "No pending students with codes found.", type: "error" });
       return;
     }
-    const report = pendingStudents.map((s) => `${s.profile.firstName} ${s.profile.lastName}: ${s.signupCode}`).join("\n");
+    const report = pendingStudents.map((s) => `${s.profile?.firstName} ${s.profile?.lastName}: ${s.signupCode}`).join("\n");
     await Clipboard.setStringAsync(report);
     showToast?.({ message: `Codes for ${pendingStudents.length} students copied.`, type: "success" });
   };
@@ -1265,8 +1279,8 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       showToast?.({ message: "Please select a target class.", type: "error" });
       return;
     }
-    const isBulk = selectedUserUids.length > 0;
-    let targetUids = isBulk ? selectedUserUids : (assignmentModal.target ? [assignmentModal.target.uid] : []);
+    const isBulk = selectedUserUids.size > 0;
+    let targetUids = isBulk ? Array.from(selectedUserUids) : (assignmentModal.target ? [assignmentModal.target.uid] : []);
 
     // If no specific selection, but a class is filtered, target the entire class
     if (targetUids.length === 0 && selectedClassId !== "all") {
@@ -1298,7 +1312,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         message: `${action} successful for ${targetUids.length} student(s).`,
         type: "success",
       });
-      setSelectedUserUids([]);
+      setSelectedUserUids(new Set());
       setAssignmentModal({ type: "none", target: null });
       setTargetClassId("");
     } catch (e: any) {

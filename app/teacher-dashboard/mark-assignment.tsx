@@ -17,6 +17,7 @@ import {
   TouchableOpacity,
   View,
   BackHandler,
+  Platform,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
@@ -574,10 +575,10 @@ export default function MarkAssignment() {
         renderItem={renderSubmission}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        removeClippedSubviews={true}
         initialNumToRender={5}
         maxToRenderPerBatch={5}
         windowSize={5}
+        removeClippedSubviews={Platform.OS === "android"}
         ListEmptyComponent={() => (
           <View style={styles.emptyBox}>
             {fetchingSubmissions ? (

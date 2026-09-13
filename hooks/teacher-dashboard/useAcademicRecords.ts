@@ -28,6 +28,7 @@ export interface StudentScoreRecord {
   exam50: string;
   finalScore: string;
   grade: string;
+  status?: string;
 }
 
 export const useAcademicRecords = () => {
@@ -139,7 +140,10 @@ export const useAcademicRecords = () => {
         if (docSnap.exists()) {
           const data = docSnap.data();
           const students = Array.isArray(data.students) ? data.students : [];
-          const loadedStudents = students.map((s: StudentScoreRecord) => calculateScores(s, reportType));
+          const loadedStudents = students.map((s: StudentScoreRecord) => ({
+            ...calculateScores(s, reportType),
+            status: s.status || "pending"
+          }));
           setAllStudents(loadedStudents);
           setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
           setRecordStatus(data.status || "pending");
@@ -171,6 +175,7 @@ export const useAcademicRecords = () => {
               exam50: "0",
               finalScore: "0",
               grade: "N/A",
+              status: "draft",
             };
           }).filter((s): s is StudentScoreRecord => s !== null).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
@@ -214,6 +219,25 @@ export const useAcademicRecords = () => {
       const reportSlug = reportType.replace(/\s+/g, "");
       const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
 
+      const updatedStudents = allStudents.map(s => {
+        const isFilled = reportType === "End of Term"
+          ? s.classScore && s.classScore.trim() !== "" && s.examsMark && s.examsMark.trim() !== ""
+          : s.examsMark && s.examsMark.trim() !== "";
+
+        if (s.status === "approved") return s;
+
+        return {
+          ...s,
+          status: isFilled ? "pending" : "draft"
+        };
+      });
+
+      const overallStatus = updatedStudents.every(s => s.status === "approved")
+        ? "approved"
+        : updatedStudents.some(s => s.status === "approved")
+          ? "partially_approved"
+          : "pending";
+
       batch.set(doc(db, "academicRecords", docId), {
         docId,
         teacherId: firebaseUser.uid,
@@ -223,15 +247,17 @@ export const useAcademicRecords = () => {
         academicYear,
         term,
         reportType,
-        students: allStudents,
-        studentIds: allStudents.map(s => s.studentId),
-        status: "pending",
+        students: updatedStudents,
+        studentIds: updatedStudents.map(s => s.studentId),
+        status: overallStatus,
         timestamp: serverTimestamp(),
         updatedAt: serverTimestamp(),
         containsBehavioralData: false,
       });
 
-      allStudents.forEach(student => {
+      updatedStudents.forEach(student => {
+        if (student.status === "draft") return; // Don't update summary for drafts
+
         const summaryId = `${student.studentId}_${academicYear.replace(/\//g, "_")}_${term.replace(/\s+/g, "")}`;
         const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${reportType.replace(/\s+/g, "")}`;
         batch.set(doc(db, "academicRecordsSummary", summaryId), {
@@ -245,7 +271,7 @@ export const useAcademicRecords = () => {
               finalScore: parseFloat(student.finalScore) || 0,
               grade: student.grade,
               reportType,
-              status: "pending",
+              status: student.status,
               lastUpdated: serverTimestamp(),
               updatedAt: serverTimestamp(),
             },
@@ -255,7 +281,9 @@ export const useAcademicRecords = () => {
 
       await batch.commit();
       if (isMounted.current) {
-        setServerStudents(JSON.parse(JSON.stringify(allStudents)));
+        setAllStudents(updatedStudents);
+        setServerStudents(JSON.parse(JSON.stringify(updatedStudents)));
+        setRecordStatus(overallStatus);
         showToast({ message: "Saved successfully.", type: "success" });
       }
       return true;

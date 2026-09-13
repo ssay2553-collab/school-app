@@ -11,10 +11,11 @@ import {
 } from "react-native";
 import { SHADOWS } from "../../constants/theme";
 import { getTeacherClasses } from "../../lib/classHelpers";
-import { AdminHeader } from "../../components/admin-dashboard/AdminHeader";
 import { AdminEventStats } from "../../components/admin-dashboard/AdminEventStats";
 import { AdminMenuCard } from "../../components/admin-dashboard/AdminMenuCard";
+import DashboardHeader from "../../components/DashboardHeader";
 import { useAdminDashboard } from "../../hooks/admin-dashboard/useAdminDashboard";
+import StationaryBackground from "../../components/StationaryBackground";
 
 let lastDashboardScrollY = 0;
 
@@ -228,6 +229,7 @@ export default function AdminDashboard() {
 
   return (
     <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
+      <StationaryBackground />
       <StatusBar barStyle="light-content" />
       <ScrollView
         ref={scrollRef}
@@ -243,11 +245,13 @@ export default function AdminDashboard() {
           />
         }
       >
-        <AdminHeader
+        <DashboardHeader
           brandPrimary={brandPrimary}
           brandSecondary={brandSecondary}
           appUser={appUser}
           isSmallScreen={isSmallScreen}
+          welcomeText="WELCOME BACK, CHIEF! 🛡️"
+          roleTag="Admin"
           onProfilePress={() => router.push("/admin-dashboard/settings")}
           onSettingsPress={() => router.push("/admin-dashboard/settings")}
           onTeacherDashboardPress={() => router.push("/teacher-dashboard")}
@@ -264,7 +268,7 @@ export default function AdminDashboard() {
             onViewAll={() => router.push("/academic-calendar")}
             onEventPress={() => router.push("/academic-calendar")}
           />
-        </AdminHeader>
+        </DashboardHeader>
 
         <View style={styles.contentContainer}>
           <View style={styles.content}>

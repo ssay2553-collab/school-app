@@ -28,11 +28,18 @@ import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { copyToClipboard } from "../../utils/copyToClipboard";
 import { useEffect, useRef } from "react";
 
+import { AdminEventStats } from "../../components/admin-dashboard/AdminEventStats";
+import { AdminMenuCard } from "../../components/admin-dashboard/AdminMenuCard";
+import DashboardHeader from "../../components/DashboardHeader";
+import StationaryBackground from "../../components/StationaryBackground";
+import { useUpcomingEvents } from "../../hooks/useUpcomingEvents";
+
 export default function StudentDashboard() {
   const { appUser, loading: authLoading } = useAuth();
   const router = useRouter();
   const config = useSchoolConfig();
   const { width: windowWidth } = useWindowDimensions();
+  const { upcomingEvents, loading: eventsLoading } = useUpcomingEvents(2);
 
   const brandPrimary = config.brandPrimary || COLORS.primary || "#6366F1";
   const brandSecondary =
@@ -242,91 +249,9 @@ export default function StudentDashboard() {
   const linkedParentsCount = appUser.parentUids?.length || 0;
   const isCodeLocked = linkedParentsCount >= 2;
 
-  const renderItem = (item: any, index: number) => {
-    return (
-      <Animatable.View
-        animation="bounceIn"
-        duration={800}
-        delay={index * 50}
-        key={item.title}
-        style={[styles.cardWrapper, { width: cardWidth }]}
-      >
-        <TouchableOpacity
-          style={[styles.menuCard, { borderBottomColor: "rgba(0,0,0,0.1)" }]}
-          onPress={() => {
-            if (isNavigating.current) return;
-            isNavigating.current = true;
-            router.push(item.path as any);
-            setTimeout(() => { isNavigating.current = false; }, 500);
-          }}
-          activeOpacity={0.8}
-        >
-          <LinearGradient
-            colors={[item.color, item.color]}
-            style={styles.cardGradient}
-          >
-            <View
-              style={[
-                styles.iconBox,
-                {
-                  backgroundColor: "rgba(255,255,255,0.2)",
-                  width: isSmallScreen ? 42 : 48,
-                  height: isSmallScreen ? 42 : 48,
-                  borderRadius: isSmallScreen ? 14 : 16,
-                },
-              ]}
-            >
-              <SVGIcon
-                name={item.icon}
-                size={numColumns > 3 ? 24 : isSmallScreen ? 20 : 22}
-                color="#FFFFFF"
-              />
-            </View>
-            <View style={styles.cardInfo}>
-              <Text
-                style={[
-                  styles.menuText,
-                  { fontSize: isSmallScreen ? 13 : 15, color: "#FFFFFF" },
-                ]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-              >
-                {item.title}
-              </Text>
-              <Text
-                style={[
-                  styles.menuSubtitle,
-                  {
-                    color: "rgba(255,255,255,0.8)",
-                    fontSize: isSmallScreen ? 9 : 10,
-                  },
-                ]}
-                numberOfLines={1}
-              >
-                {item.subtitle}
-              </Text>
-            </View>
-            {item.path &&
-            (item.path.includes("chat") || item.path.includes("Group")) &&
-            totalUnread > 0 ? (
-              <View style={styles.badgePos}>
-                <UnreadBadge count={totalUnread} />
-              </View>
-            ) : null}
-
-            {item.path && item.path.includes("assignments") && assignmentUnread > 0 ? (
-              <View style={styles.badgePos}>
-                <UnreadBadge count={assignmentUnread} />
-              </View>
-            ) : null}
-          </LinearGradient>
-        </TouchableOpacity>
-      </Animatable.View>
-    );
-  };
-
   return (
     <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
+      <StationaryBackground />
       <StatusBar barStyle="light-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -336,138 +261,81 @@ export default function StudentDashboard() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <LinearGradient
-          colors={[brandPrimary, brandSecondary]}
-          style={styles.header}
+        <DashboardHeader
+          brandPrimary={brandPrimary}
+          brandSecondary={brandSecondary}
+          appUser={appUser}
+          isSmallScreen={isSmallScreen}
+          welcomeText="HI THERE, EXPLORER! 👋"
+          roleTag="Student"
+          onProfilePress={() => router.push("/student-dashboard/settings")}
+          onSettingsPress={() => router.push("/student-dashboard/settings")}
         >
-          <View style={styles.blob1} />
-          <View style={styles.blob2} />
-
-          <SafeAreaView edges={["top"]}>
-            <View style={styles.headerRow}>
-              <View style={styles.studentInfo}>
-                <TouchableOpacity
-                  onPress={() => router.push("/student-dashboard/settings")}
-                  style={[
-                    styles.profileBtn,
-                    {
-                      width: isSmallScreen ? 60 : 80,
-                      height: isSmallScreen ? 60 : 80,
-                      borderRadius: isSmallScreen ? 30 : 40,
-                    },
-                  ]}
-                >
-                  {appUser?.profile?.profileImage ? (
-                    <Image
-                      source={{ uri: appUser.profile.profileImage }}
-                      style={styles.profileImg}
-                    />
-                  ) : (
-                    <View style={styles.profilePlaceholder}>
-                      <Text
-                        style={[
-                          styles.profilePlaceholderText,
-                          { fontSize: isSmallScreen ? 24 : 32 },
-                        ]}
-                      >
-                        {appUser?.profile?.firstName?.[0] || "S"}
-                      </Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-                <View style={{ marginLeft: isSmallScreen ? 10 : 15, flex: 1 }}>
-                  <Text style={styles.welcomeText}>HI THERE, EXPLORER! 👋</Text>
-                  <Text
-                    style={[
-                      styles.studentName,
-                      { fontSize: isSmallScreen ? 24 : 32 },
-                    ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {appUser?.profile?.firstName || "Student"}
-                  </Text>
-
-                  {/* AUTO-HIDE LOGIC: Hide code if 2 parents are linked */}
-                  {!isCodeLocked ? (
-                    <TouchableOpacity
-                      onPress={async () => {
-                        const code = appUser?.parentLinkCode;
-                        if (!code) return;
-                        const ok = await copyToClipboard(code);
-                        if (ok) {
-                          if (Platform.OS === "web")
-                            window.alert("Magic code copied! ✨");
-                          else
-                            Alert.alert(
-                              "Copied!",
-                              "Your magic code is ready to share. ✨",
-                            );
-                        }
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Animatable.View
-                        animation="pulse"
-                        iterationCount="infinite"
-                        style={[styles.codeBadge, styles.codeBadgeClickable]}
-                      >
-                        <Text style={styles.codeLabel}>MAGIC CODE: </Text>
-                        <Text style={styles.codeValue}>
-                          {appUser?.parentLinkCode || "------"}
-                        </Text>
-                      </Animatable.View>
-                    </TouchableOpacity>
-                  ) : (
-                    <View
-                      style={[
-                        styles.codeBadge,
-                        {
-                          backgroundColor: "rgba(255,255,255,0.3)",
-                          borderColor: "rgba(255,255,255,0.4)",
-                        },
-                      ]}
-                    >
-                      <SVGIcon
-                        name="heart"
-                        size={12}
-                        color="#fff"
-                      />
-                      <Text
-                        style={[
-                          styles.codeValue,
-                          { color: "#fff", marginLeft: 5, fontSize: 10 },
-                        ]}
-                      >
-                        FAMILY CONNECTED!
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-              <View style={styles.headerActions}>
-                <TouchableOpacity
-                  onPress={handleLogout}
-                  style={[styles.actionBtn, styles.exitBtn]}
-                >
-                  <SVGIcon name="log-out-outline" size={20} color="#fff" />
-                </TouchableOpacity>
-                {isDesktop && (
-                  <>
-                    <TouchableOpacity
-                      onPress={() =>
-                        router.canGoBack() ? router.back() : router.replace("/")
-                      }
-                      style={styles.actionBtn}
-                    >
-                      <SVGIcon name="arrow-back" size={20} color="#fff" />
-                    </TouchableOpacity>
-                  </>
-                )}
-              </View>
+          {/* AUTO-HIDE LOGIC: Hide code if 2 parents are linked */}
+          {!isCodeLocked ? (
+            <TouchableOpacity
+              onPress={async () => {
+                const code = appUser?.parentLinkCode;
+                if (!code) return;
+                const ok = await copyToClipboard(code);
+                if (ok) {
+                  if (Platform.OS === "web")
+                    window.alert("Magic code copied! ✨");
+                  else
+                    Alert.alert(
+                      "Copied!",
+                      "Your magic code is ready to share. ✨",
+                    );
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Animatable.View
+                animation="pulse"
+                iterationCount="infinite"
+                style={[styles.codeBadge, styles.codeBadgeClickable]}
+              >
+                <Text style={styles.codeLabel}>MAGIC CODE: </Text>
+                <Text style={styles.codeValue}>
+                  {appUser?.parentLinkCode || "------"}
+                </Text>
+              </Animatable.View>
+            </TouchableOpacity>
+          ) : (
+            <View
+              style={[
+                styles.codeBadge,
+                {
+                  backgroundColor: "rgba(255,255,255,0.3)",
+                  borderColor: "rgba(255,255,255,0.4)",
+                  marginTop: 12,
+                },
+              ]}
+            >
+              <SVGIcon
+                name="heart"
+                size={12}
+                color="#fff"
+              />
+              <Text
+                style={[
+                  styles.codeValue,
+                  { color: "#fff", marginLeft: 5, fontSize: 10 },
+                ]}
+              >
+                FAMILY CONNECTED!
+              </Text>
             </View>
-          </SafeAreaView>
-        </LinearGradient>
+          )}
+
+          <AdminEventStats
+            upcomingEvents={upcomingEvents}
+            loading={eventsLoading}
+            brandPrimary={brandPrimary}
+            onViewAll={() => router.push("/academic-calendar")}
+            onEventPress={() => router.push("/academic-calendar")}
+          />
+        </DashboardHeader>
 
         <View style={styles.contentContainer}>
           <View style={styles.content}>
@@ -481,7 +349,27 @@ export default function StudentDashboard() {
                 </View>
                 <View style={styles.grid}>
                   {section.items.map((item, iIndex) =>
-                    renderItem(item, sIndex * 4 + iIndex),
+                    <AdminMenuCard
+                      key={item.title}
+                      item={{
+                        title: item.title,
+                        subtitle: item.subtitle,
+                        route: item.path,
+                        icon: item.icon,
+                        color: item.color
+                      }}
+                      index={sIndex * 4 + iIndex}
+                      cardWidth={cardWidth}
+                      isSmallScreen={isSmallScreen}
+                      numColumns={numColumns}
+                      totalUnread={totalUnread}
+                      onPress={() => {
+                        if (isNavigating.current) return;
+                        isNavigating.current = true;
+                        router.push(item.path as any);
+                        setTimeout(() => { isNavigating.current = false; }, 500);
+                      }}
+                    />
                   )}
                 </View>
               </View>
@@ -584,12 +472,12 @@ const styles = StyleSheet.create({
   profilePlaceholderText: { color: "#4338ca", fontWeight: "900", fontSize: 32 },
   headerActions: { flexDirection: "row", gap: 10, alignItems: "center" },
   actionBtn: {
-    width: 44,
     height: 44,
+    minWidth: 44,
     alignItems: "center",
     justifyContent: 'center',
     backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 22,
+    borderRadius: 15,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
   },

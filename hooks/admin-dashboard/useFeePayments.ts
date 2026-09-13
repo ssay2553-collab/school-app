@@ -338,7 +338,7 @@ export const useFeePayments = ({
           } else if (type === "admission") {
             feeRecordUpdate.admissionBill = increment(-amount);
             feeRecordUpdate.admissionBalance = increment(-amount);
-            userUpdate.admissionFeeBill = increment(-amount);
+            userUpdate.admissionBill = increment(-amount);
             userUpdate.admissionBalance = increment(-amount);
           } else if (type === "books") {
             feeRecordUpdate.booksBill = increment(-amount);

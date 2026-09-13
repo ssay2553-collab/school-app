@@ -67,7 +67,14 @@ const AdmissionStudentCard = React.memo(({
               <Text style={[styles.avatarText, { color: THEME.primary }]}>{item.fullName.charAt(0)}</Text>
             </View>
             <View style={styles.mainInfo}>
-              <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
+                {item.admissionBill > 0 && (
+                  <View style={{ backgroundColor: VIBE.success, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ color: '#fff', fontSize: 8, fontWeight: '900' }}>NEW</Text>
+                  </View>
+                )}
+              </View>
 
               <View style={styles.tuitionBreakdown}>
                 <View style={styles.breakdownItem}>
@@ -85,7 +92,7 @@ const AdmissionStudentCard = React.memo(({
                   {item.admissionBalance > 0 ? "Admission Owed: " : "Paid: "}
                 </Text>
                 <Text style={[styles.debtValue, { color: item.admissionBalance > 0 ? VIBE.danger : VIBE.success }]}>
-                  ₵{Math.max(0, item.admissionBalance || 0).toFixed(0)}
+                  ₵{item.admissionBalance > 0 ? (item.admissionBalance || 0).toFixed(0) : (item.admissionPaid || 0).toFixed(0)}
                 </Text>
               </View>
             </View>
@@ -284,6 +291,9 @@ export default function AdmissionCharges() {
         keyExtractor={item => item.uid}
         contentContainerStyle={styles.flatListContent}
         onEndReached={() => !selectedTerm && fetchStudents()}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
         removeClippedSubviews={Platform.OS === "android"}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />

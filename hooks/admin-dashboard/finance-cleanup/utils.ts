@@ -1,24 +1,40 @@
 export const normalizeCategory = (p: any) => {
   if (!p) return "tuition";
   const type = (p.type || "").toLowerCase();
+  const otherCat = (p.otherCategory || "").toLowerCase().trim();
 
-  // Explicitly check for payment suffixes first to ensure we don't misidentify them
+  // Explicitly check for payment suffixes first
   if (type.endsWith("_payment")) {
     const cat = type.replace("_payment", "");
     if (isolatedKeys.includes(cat)) return cat;
+    if (otherCat) return otherCat;
+    return "other";
   }
+
+  // Explicit check for tuition types
+  if (type.includes("tuition")) return "tuition";
+
+  // If it's a known non-hardcoded bill, use otherCategory or type
+  if (type === "other" && otherCat) return otherCat;
 
   const cand = (p.type || p.category || p.purpose || p.memo || "tuition")
     .toString()
     .toLowerCase()
     .trim();
   const cleaned = cand.replace(/[^a-z0-9]/g, "");
+
   if (cleaned.includes("pta")) return "pta";
   if (cleaned.includes("maintenance")) return "maintenance";
   if (cleaned.includes("admission")) return "admission";
   if (cleaned.includes("book") || cleaned.includes("books")) return "books";
   if (cleaned.includes("uniform")) return "uniform";
+
+  if (otherCat) return otherCat;
   if (cleaned.includes("other")) return "other";
+
+  // Fallback for custom labels
+  if (type !== "" && type !== "tuition" && !isolatedKeys.includes(type)) return type;
+
   return "tuition";
 };
 

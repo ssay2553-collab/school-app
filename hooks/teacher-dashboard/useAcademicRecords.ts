@@ -176,7 +176,7 @@ export const useAcademicRecords = () => {
               finalScore: "0",
               grade: "N/A",
               status: "draft",
-            };
+            } as StudentScoreRecord;
           }).filter((s): s is StudentScoreRecord => s !== null).sort((a, b) => a.fullName.localeCompare(b.fullName));
 
           setAllStudents(list);

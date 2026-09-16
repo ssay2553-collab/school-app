@@ -402,9 +402,8 @@ export const useAdmissionCharges = ({
 
       // INDEPENDENT PAYMENT LOGIC:
       // If payment exceeds current balance, auto-bill the difference so walletBalance impact is only the debt portion.
-      // We use the raw balance to ensure billing auto-adjusts even if there's an existing credit.
       const currentCatBalance = student.admissionBalance || 0;
-      const billNeeded = Math.max(0, amount - currentCatBalance);
+      const billNeeded = Math.max(0, amount - Math.max(0, currentCatBalance));
       const debtPaid = amount - billNeeded;
       const walletImpact = -debtPaid;
 

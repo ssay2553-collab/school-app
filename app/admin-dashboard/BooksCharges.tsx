@@ -443,7 +443,19 @@ export default function BooksCharges() {
                       <Text style={styles.tileDetail}>{h.method}</Text>
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
                         <Text style={styles.tileDate}>{moment(h.createdAt).format("MMM DD, YYYY • HH:mm")}</Text>
-                        <SVGIcon name="eye-outline" size={14} color={VIBE.muted} />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              confirmDeletePayment(h);
+                            }}
+                            activeOpacity={0.7}
+                            style={{ padding: 4 }}
+                          >
+                            <SVGIcon name="trash" size={16} color={VIBE.danger} />
+                          </TouchableOpacity>
+                          <SVGIcon name="eye-outline" size={14} color={VIBE.muted} />
+                        </View>
                       </View>
                     </TouchableOpacity>
                   ))

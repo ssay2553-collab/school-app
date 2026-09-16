@@ -857,7 +857,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           batch.set(doc(db, "stats", "global"), { totalStudents: increment(-chunk.length) }, { merge: true });
           await batch.commit();
         }
-        setSelectedUserUids([]);
+        setSelectedUserUids(new Set());
         showToast?.({ message: `Graduation for ${currentYear} completed.`, type: "success" });
       } catch (e) {
         showToast?.({ message: "Graduation process failed.", type: "error" });

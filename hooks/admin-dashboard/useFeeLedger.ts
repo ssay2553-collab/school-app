@@ -23,6 +23,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
 import { useRef } from "react";
+import { isPaymentEntry, normalizeCategory } from "./finance-cleanup/utils";
 
 export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, initialTerm?: string) => {
     const { appUser } = useAuth();
@@ -437,8 +438,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                     { key: 'maintenance', balance: maintenanceBalance, field: 'maintenanceBalance', paidField: 'maintenancePaid' },
                     { key: 'admission', balance: admissionBalance, field: 'admissionBalance', paidField: 'admissionPaid' },
                     { key: 'books', balance: booksBalance, field: 'booksBalance', paidField: 'booksPaid' },
-                    { key: 'uniform', balance: uniformBalance, field: 'uniformBalance', paidField: 'uniformPaid' },
-                    { key: 'other', balance: otherBalance, field: 'otherBalance', paidField: 'otherPaid' },
+                    { key: 'uniform', balance: uniformBalance, field: 'uniformBalance', paidField: 'uniformPaid' }
                 ];
 
                 for (const target of isolatedTargets) {
@@ -487,16 +487,27 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                   const snapP = await getDocsFromServer(qP);
                   const payments = snapP.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
                   const categoryMap: Record<string, { billed: number; paid: number }> = {};
-                  payments.forEach((p) => {
-                    const type = p.type || "other";
-                    const category = type.replace("_payment", "");
-                    const isPayment = type.endsWith("_payment");
+                  payments.forEach((p: any) => {
+                    const type = (p.type || "other").toLowerCase();
+                    const isPayment = type.endsWith("_payment") || type === "tuition_credit";
+                    let category = type.replace("_payment", "").replace("_credit", "");
+
+                    if (category === "other" && p.otherCategory) {
+                        category = p.otherCategory.trim();
+                    }
+
                     if (!categoryMap[category]) categoryMap[category] = { billed: 0, paid: 0 };
-                    if (isPayment) categoryMap[category].paid += p.amount;
-                    else if (!['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(type)) categoryMap[category].billed += p.amount;
+                    if (isPayment) {
+                        categoryMap[category].paid += Number(p.amount) || 0;
+                    } else {
+                        const isHardcoded = ['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(type);
+                        if (!isHardcoded || (type === "other" && p.otherCategory)) {
+                            categoryMap[category].billed += Number(p.amount) || 0;
+                        }
+                    }
                   });
-                  const categories = Object.keys(categoryMap).filter((cat) => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(cat));
-                  for (const cat of categories) {
+                  const customCats = Object.keys(categoryMap).filter((cat) => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(cat.toLowerCase()));
+                  for (const cat of customCats) {
                     if (remainingAmount <= 0) break;
                     const due = categoryMap[cat].billed - categoryMap[cat].paid;
                     if (due > 0) {
@@ -517,14 +528,22 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                             className: className,
                             academicYear: selectedYear,
                             term: selectedTerm,
-                            type: `${cat}_payment`,
+                            type: "other_payment",
+                            otherCategory: cat,
                         };
                         batch.set(doc(db, "feePayments", subSerial), subEntry);
                         batch.update(doc(db, "studentFeeRecords", recordId), {
                             amountPaid: increment(allocation),
+                            otherPaid: increment(allocation),
+                            otherBalance: increment(-allocation),
                             balance: increment(-allocation),
                             payments: arrayUnion(subEntry),
                             lastUpdated: serverTimestamp(),
+                        });
+                        batch.update(doc(db, "users", selectedStudentUid), {
+                          otherPaid: increment(allocation),
+                          otherBalance: increment(-allocation),
+                          walletBalance: increment(-allocation)
                         });
                         remainingAmount -= allocation;
                     }
@@ -701,72 +720,66 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             summary["arrears"] = { billed: reconciledArrears, paid: 0 };
         }
 
+        const waterfallPool: any[] = [];
+
         allTransactions.forEach((t: any) => {
-            const type = (t.type || "tuition").toLowerCase();
-            const method = (t.method || "").toLowerCase();
-            const receivedFrom = (t.receivedFrom || "").toLowerCase();
-
-            const isPayment = (
-                !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
-                (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
-            );
-
-            let category = type.replace("_payment", "").replace("_credit", "");
-            if (type === "other") category = (t.otherCategory || "other").toLowerCase();
+            const isPayment = isPaymentEntry(t);
+            const category = normalizeCategory(t);
 
             if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
 
             if (isPayment) {
-                if (category === "tuition" && summary["arrears"]) {
-                    let amt = t.amount || 0;
-                    const toArrears = Math.min(amt, summary["arrears"].billed - summary["arrears"].paid);
-                    summary["arrears"].paid += toArrears;
-                    summary["tuition"].paid += (amt - toArrears);
+                if (category === "tuition") {
+                    waterfallPool.push(t.amount || 0);
                 } else {
                     summary[category].paid += t.amount || 0;
                 }
             } else {
-                // If it's not a payment, it's a bill/charge
                 summary[category].billed += t.amount || 0;
             }
         });
 
-        if (record) {
-            const isolated = [
-                { key: 'pta', bill: (record.ptaBill || 0), paid: record.ptaPaid },
-                { key: 'maintenance', bill: (record.maintenanceBill || 0), paid: record.maintenancePaid },
-                { key: 'admission', bill: (record.admissionBill || 0), paid: record.admissionPaid },
-                { key: 'books', bill: (record.booksBill || 0), paid: record.booksPaid },
-                { key: 'uniform', bill: (record.uniformBill || 0), paid: record.uniformPaid },
-            ];
-            isolated.forEach(cat => {
-                if (!summary[cat.key]) summary[cat.key] = { billed: 0, paid: 0 };
-                summary[cat.key].billed = Math.max(summary[cat.key].billed, cat.bill || 0);
-                summary[cat.key].paid = Math.max(summary[cat.key].paid, cat.paid || 0);
-            });
+        // Virtual Waterfall for display
+        let totalGeneralPool = waterfallPool.reduce((a, b) => a + b, 0);
 
-            // Special handling for tuition/arrears match with record.amountPaid
-            const totalTuitionPaidInSummary = summary.tuition.paid + (summary.arrears?.paid || 0);
-            if (record.amountPaid > totalTuitionPaidInSummary) {
-                let diff = record.amountPaid - totalTuitionPaidInSummary;
-                if (summary.arrears) {
-                    const extraToArrears = Math.min(diff, summary.arrears.billed - summary.arrears.paid);
-                    summary.arrears.paid += extraToArrears;
-                    diff -= extraToArrears;
-                }
-                summary.tuition.paid += diff;
-            }
-
-            const specificOtherBilled = Object.entries(summary)
-                .filter(([k]) => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other', 'arrears'].includes(k))
-                .reduce((sum, [_, v]) => sum + v.billed, 0);
-            const unnamedOtherBill = Math.max(0, (record.otherBill || 0) - specificOtherBilled);
-            if (unnamedOtherBill > 0 || record.otherPaid > 0) {
-                if (!summary['other']) summary['other'] = { billed: 0, paid: 0 };
-                summary['other'].billed = Math.max(summary['other'].billed, unnamedOtherBill);
-                summary['other'].paid = Math.max(summary['other'].paid, record.otherPaid || 0);
-            }
+        // 1. Settle Arrears first
+        if (summary["arrears"] && totalGeneralPool > 0) {
+            const toArrears = Math.min(totalGeneralPool, summary["arrears"].billed);
+            summary["arrears"].paid += toArrears;
+            totalGeneralPool -= toArrears;
         }
+
+        // 2. Settle Tuition Bill
+        const tuitionToPay = Math.min(totalGeneralPool, summary["tuition"].billed);
+        summary["tuition"].paid += tuitionToPay;
+        totalGeneralPool -= tuitionToPay;
+
+        // 3. Settle Isolated Categories in Order
+        const displayWaterfallOrder = ['admission', 'pta', 'maintenance', 'books', 'uniform'];
+        displayWaterfallOrder.forEach(cat => {
+            if (summary[cat] && totalGeneralPool > 0) {
+                const due = Math.max(0, summary[cat].billed - summary[cat].paid);
+                const settle = Math.min(totalGeneralPool, due);
+                summary[cat].paid += settle;
+                totalGeneralPool -= settle;
+            }
+        });
+
+        // 4. Settle Dynamic Categories
+        Object.keys(summary).forEach(cat => {
+            if (!['tuition', 'arrears', ...displayWaterfallOrder].includes(cat) && totalGeneralPool > 0) {
+                const due = Math.max(0, summary[cat].billed - summary[cat].paid);
+                const settle = Math.min(totalGeneralPool, due);
+                summary[cat].paid += settle;
+                totalGeneralPool -= settle;
+            }
+        });
+
+        // 5. Remaining goes to Tuition (as credit)
+        if (totalGeneralPool > 0) {
+            summary["tuition"].paid += totalGeneralPool;
+        }
+
         return summary;
     }, [allTransactions, record]);
 

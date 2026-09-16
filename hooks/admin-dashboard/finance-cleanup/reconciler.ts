@@ -16,6 +16,11 @@ export const reconcileStudentBalances = (
   userUpdates: Map<string, any>,
   fixedRecordsCount: number
 ) => {
+  const safeNum = (val: any) => {
+    const n = Number(val);
+    return isNaN(n) ? 0 : n;
+  };
+
   // 1. Filter out non-payment entries from actual payment sums
   const actualPayments = studentPayments.filter(isPaymentEntry);
   const chargeEntries = studentPayments.filter(p => !isPaymentEntry(p));
@@ -52,15 +57,23 @@ export const reconcileStudentBalances = (
     chargesByTerm[key].push(c);
   });
 
-  // 5. Initialize pools for unallocated money (money not tied to a specific term)
+  // 5. Initialize pools for unallocated money
+  const detectedCategories = new Set<string>();
+  studentPayments.forEach(p => {
+    const cat = normalizeCategory(p);
+    if (cat !== 'tuition' && !isolatedKeys.includes(cat)) detectedCategories.add(cat);
+  });
+  const dynamicCategories = Array.from(detectedCategories);
+  const fullWaterfall = [...waterfallOrder.filter(k => k !== 'other'), ...dynamicCategories];
+
   let unallocatedTuition = unallocatedPayments
-    .filter(p => !isolatedKeys.includes(p._category || normalizeCategory(p)))
+    .filter(p => !fullWaterfall.includes(normalizeCategory(p)))
     .reduce((sum, p) => sum + Number(p.amount ?? p.amountPaid ?? p.value ?? 0), 0);
 
-  const unallocatedCategory: Record<string, number> = {};
-  isolatedKeys.forEach(k => {
-    unallocatedCategory[k] = unallocatedPayments
-      .filter(p => (p._category || normalizeCategory(p)) === k)
+  const unallocatedCategoryPool: Record<string, number> = {};
+  fullWaterfall.forEach(k => {
+    unallocatedCategoryPool[k] = unallocatedPayments
+      .filter(p => normalizeCategory(p) === k)
       .reduce((sum, p) => sum + Number(p.amount ?? p.amountPaid ?? p.value ?? 0), 0);
   });
 
@@ -68,11 +81,11 @@ export const reconcileStudentBalances = (
   let cumulativeTuitionBill = 0;
   let cumulativeTuitionPaid = 0;
 
-  const cumulativeCategoryBill: Record<string, number> = {};
-  const cumulativeCategoryPaid: Record<string, number> = {};
-  isolatedKeys.forEach(k => {
-    cumulativeCategoryBill[k] = 0;
-    cumulativeCategoryPaid[k] = 0;
+  const cumulativeCategoryBillPool: Record<string, number> = {};
+  const cumulativeCategoryPaidPool: Record<string, number> = {};
+  fullWaterfall.forEach(k => {
+    cumulativeCategoryBillPool[k] = 0;
+    cumulativeCategoryPaidPool[k] = 0;
   });
 
   let reconciledCount = 0;
@@ -97,10 +110,9 @@ export const reconcileStudentBalances = (
     const termSpecificPayments = paymentsByTerm[key] || [];
     const termSpecificCharges = chargesByTerm[key] || [];
 
-    const safeNum = (val: any) => {
-      const n = Number(val);
-      return isNaN(n) ? 0 : n;
-    };
+    const prevCumulativeTuitionPaid = cumulativeTuitionPaid;
+    const prevCumulativeCategoryPaid: Record<string, number> = {};
+    fullWaterfall.forEach(k => prevCumulativeCategoryPaid[k] = cumulativeCategoryPaidPool[k]);
 
     const updates: any = {
       lastUpdated: serverTimestamp(),
@@ -118,108 +130,127 @@ export const reconcileStudentBalances = (
     const termNetTuition = termGrossTuition - safeNum(data.discount);
 
     // Arrears = What was owed before this term - What was paid before this term
-    // IMPORTANT: Arrears calculation must distinguish between previous term debt and current term bill
-    const currentTuitionArrears = Math.max(0, cumulativeTuitionBill - cumulativeTuitionPaid);
+    const recordTuitionArrears = Math.max(0, cumulativeTuitionBill - cumulativeTuitionPaid);
 
-    // Apply unallocated money to existing tuition arrears
-    if (currentTuitionArrears > 0 && unallocatedTuition > 0) {
-      const amountToApply = Math.min(currentTuitionArrears, unallocatedTuition);
+    // Now process this term's debt pool
+    cumulativeTuitionBill += termNetTuition;
+
+    // 1. Apply unallocated money to existing tuition debt (Arrears + Current Bill)
+    let tuitionDebt = Math.max(0, cumulativeTuitionBill - cumulativeTuitionPaid);
+    if (tuitionDebt > 0 && unallocatedTuition > 0) {
+      const amountToApply = Math.min(tuitionDebt, unallocatedTuition);
       unallocatedTuition -= amountToApply;
       cumulativeTuitionPaid += amountToApply;
     }
 
-    // Capture the net arrears brought forward to this record
-    const recordTuitionArrears = Math.max(0, cumulativeTuitionBill - cumulativeTuitionPaid);
-
-    // Now process this term's bill
-    cumulativeTuitionBill += termNetTuition;
-
-    // Direct payments for this term
+    // 2. Add direct payments for this term
     const termTuitionPayment = termSpecificPayments
       .filter(p => !isolatedKeys.includes(p._category || normalizeCategory(p)))
       .reduce((sum, p) => sum + Number(p.amount ?? p.amountPaid ?? p.value ?? 0), 0);
 
     cumulativeTuitionPaid += termTuitionPayment;
 
-    // WATERFALL: If we have excess tuition payment, move it to unallocatedTuition pool to settle categories
+    // 3. WATERFALL: If we have excess tuition payment, move it to unallocatedTuition pool to settle categories
     const tuitionExcess = Math.max(0, cumulativeTuitionPaid - cumulativeTuitionBill);
     if (tuitionExcess > 0) {
       unallocatedTuition += tuitionExcess;
       cumulativeTuitionPaid -= tuitionExcess;
     }
 
-    updates.amountPaid = termTuitionPayment;
+    updates.amountPaid = cumulativeTuitionPaid - prevCumulativeTuitionPaid;
     updates.termBill = termGrossTuition;
 
     // --- CATEGORIES ---
     let totalTermCategoryBill = 0;
     let currentTotalCategoryArrears = 0;
 
+    // Tracking for record.other fields
+    let termOtherPaid = 0;
+    let termOtherBill = 0;
+    let termOtherBalance = 0;
+
     // Sort keys to respect waterfall order
-    waterfallOrder.forEach(k => {
+    fullWaterfall.forEach(k => {
+      const isHardcoded = isolatedKeys.includes(k) && k !== 'other';
+
       // Sum of charges in feePayments for this category/term
       const totalChargesInTerm = termSpecificCharges
-        .filter(c => (c._category || normalizeCategory(c)) === k)
+        .filter(c => normalizeCategory(c) === k)
         .reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
 
       // Use the higher of the record's bill or the sum of charges found
-      const termBill = Math.max(safeNum(data[`${k}Bill`]), totalChargesInTerm);
+      // If it's dynamic, it only exists in feePayments charges
+      const termBill = isHardcoded ? Math.max(safeNum(data[`${k}Bill`]), totalChargesInTerm) : totalChargesInTerm;
       totalTermCategoryBill += termBill;
 
-      const catArrears = Math.max(0, cumulativeCategoryBill[k] - cumulativeCategoryPaid[k]);
+      const catArrears = Math.max(0, cumulativeCategoryBillPool[k] - cumulativeCategoryPaidPool[k]);
+      currentTotalCategoryArrears += catArrears;
 
-      // Apply unallocated category-specific money first
-      if (catArrears > 0 && unallocatedCategory[k] > 0) {
-        const amountToApply = Math.min(catArrears, unallocatedCategory[k]);
-        unallocatedCategory[k] -= amountToApply;
-        cumulativeCategoryPaid[k] += amountToApply;
+      cumulativeCategoryBillPool[k] += termBill;
+
+      // 1. Apply unallocated category-specific money first
+      let catDebt = Math.max(0, cumulativeCategoryBillPool[k] - cumulativeCategoryPaidPool[k]);
+      if (catDebt > 0 && unallocatedCategoryPool[k] > 0) {
+        const amountToApply = Math.min(catDebt, unallocatedCategoryPool[k]);
+        unallocatedCategoryPool[k] -= amountToApply;
+        cumulativeCategoryPaidPool[k] += amountToApply;
+        catDebt -= amountToApply;
       }
 
-      // Apply unallocated tuition/general money to category arrears
-      if (catArrears > 0 && unallocatedTuition > 0) {
-        const amountToApply = Math.min(catArrears, unallocatedTuition);
+      // 2. Apply unallocated tuition/general money to category debt
+      if (catDebt > 0 && unallocatedTuition > 0) {
+        const amountToApply = Math.min(catDebt, unallocatedTuition);
         unallocatedTuition -= amountToApply;
-        cumulativeCategoryPaid[k] += amountToApply;
+        cumulativeCategoryPaidPool[k] += amountToApply;
+        catDebt -= amountToApply;
       }
 
-      const catArrearsToRecord = Math.max(0, cumulativeCategoryBill[k] - cumulativeCategoryPaid[k]);
-
-      cumulativeCategoryBill[k] += termBill;
-
+      // 3. Add direct payments for this term
       const termCatPayment = termSpecificPayments
-        .filter(p => (p._category || normalizeCategory(p)) === k)
+        .filter(p => normalizeCategory(p) === k)
         .reduce((sum, p) => sum + Number(p.amount ?? p.amountPaid ?? p.value ?? 0), 0);
 
-      cumulativeCategoryPaid[k] += termCatPayment;
+      cumulativeCategoryPaidPool[k] += termCatPayment;
 
-      // WATERFALL: If we have excess category payment, move it to general pool
-      const catExcess = Math.max(0, cumulativeCategoryPaid[k] - cumulativeCategoryBill[k]);
+      // 4. WATERFALL: If we have excess category payment, move it to general pool
+      const catExcess = Math.max(0, cumulativeCategoryPaidPool[k] - cumulativeCategoryBillPool[k]);
       if (catExcess > 0) {
         unallocatedTuition += catExcess;
-        cumulativeCategoryPaid[k] -= catExcess;
+        cumulativeCategoryPaidPool[k] -= catExcess;
       }
 
-      // Final attempt to settle this term's category bill with remaining general pool
-      const remainingCatDebt = Math.max(0, cumulativeCategoryBill[k] - cumulativeCategoryPaid[k]);
+      // 5. Final attempt to settle this term's category bill with remaining general pool
+      const remainingCatDebt = Math.max(0, cumulativeCategoryBillPool[k] - cumulativeCategoryPaidPool[k]);
       if (remainingCatDebt > 0 && unallocatedTuition > 0) {
         const spillover = Math.min(remainingCatDebt, unallocatedTuition);
-        cumulativeCategoryPaid[k] += spillover;
+        cumulativeCategoryPaidPool[k] += spillover;
         unallocatedTuition -= spillover;
       }
 
-      updates[`${k}Paid`] = termCatPayment; // Physical term payment
-      updates[`${k}Bill`] = termBill;
-      updates[`${k}Balance`] = cumulativeCategoryBill[k] - cumulativeCategoryPaid[k] - unallocatedCategory[k];
+      const allocatedPaid = cumulativeCategoryPaidPool[k] - prevCumulativeCategoryPaid[k];
+      const catBalance = cumulativeCategoryBillPool[k] - cumulativeCategoryPaidPool[k] - unallocatedCategoryPool[k];
 
-      currentTotalCategoryArrears += catArrearsToRecord;
+      if (isHardcoded) {
+        updates[`${k}Paid`] = allocatedPaid;
+        updates[`${k}Bill`] = termBill;
+        updates[`${k}Balance`] = catBalance;
+      } else {
+        termOtherPaid += allocatedPaid;
+        termOtherBill += termBill;
+        termOtherBalance += catBalance;
+      }
     });
+
+    updates.otherPaid = termOtherPaid;
+    updates.otherBill = termOtherBill;
+    updates.otherBalance = termOtherBalance;
 
     // --- SUMMARY ---
     // Correct Arrears: Amount owed from PREVIOUS terms only (captured during loop)
     const totalRecordArrears = recordTuitionArrears + currentTotalCategoryArrears;
 
     const totalPaymentsAllTime = actualPayments.reduce((s, p) => s + Number(p.amount ?? p.amountPaid ?? p.value ?? 0), 0);
-    const totalBillsAllTime = cumulativeTuitionBill + Object.values(cumulativeCategoryBill).reduce((a, b) => a + b, 0);
+    const totalBillsAllTime = cumulativeTuitionBill + Object.values(cumulativeCategoryBillPool).reduce((a, b) => a + b, 0);
 
     const recordBalance = totalBillsAllTime - totalPaymentsAllTime;
 
@@ -250,14 +281,33 @@ export const reconcileStudentBalances = (
   };
 
   // Sync category balances to user profile
-  waterfallOrder.forEach((k) => {
-    finalUserUpdates[`${k}Balance`] =
-      cumulativeCategoryBill[k] -
-      cumulativeCategoryPaid[k] -
-      unallocatedCategory[k];
-    finalUserUpdates[`${k}Paid`] = cumulativeCategoryPaid[k] + unallocatedCategory[k];
-    finalUserUpdates[`${k}Bill`] = cumulativeCategoryBill[k];
+  let finalOtherBalance = 0;
+  let finalOtherPaid = 0;
+  let finalOtherBill = 0;
+
+  fullWaterfall.forEach((k) => {
+    const isHardcoded = isolatedKeys.includes(k) && k !== 'other';
+    const catBalance =
+      cumulativeCategoryBillPool[k] -
+      cumulativeCategoryPaidPool[k] -
+      unallocatedCategoryPool[k];
+    const catPaid = cumulativeCategoryPaidPool[k] + unallocatedCategoryPool[k];
+    const catBill = cumulativeCategoryBillPool[k];
+
+    if (isHardcoded) {
+      finalUserUpdates[`${k}Balance`] = catBalance;
+      finalUserUpdates[`${k}Paid`] = catPaid;
+      finalUserUpdates[`${k}Bill`] = catBill;
+    } else {
+      finalOtherBalance += catBalance;
+      finalOtherPaid += catPaid;
+      finalOtherBill += catBill;
+    }
   });
+
+  finalUserUpdates.otherBalance = finalOtherBalance;
+  finalUserUpdates.otherPaid = finalOtherPaid;
+  finalUserUpdates.otherBill = finalOtherBill;
 
   userUpdates.set(uid, finalUserUpdates);
 

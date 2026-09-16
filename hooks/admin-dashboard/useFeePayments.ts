@@ -112,7 +112,7 @@ export const useFeePayments = ({
       const cleanYear = academicYear.replace(/\//g, "-");
       const cleanTerm = term.replace(/\s/g, "");
       const recordId = `${selectedStudent.uid}_${cleanYear}_${cleanTerm}`;
-      const receiptNo = `REC-${Date.now().toString().slice(-6)}`;
+      const baseReceiptNo = `REC-${Date.now().toString().slice(-6)}`;
 
       const safePaymentDate = paymentDate instanceof Date && !isNaN(paymentDate.getTime())
         ? paymentDate
@@ -120,7 +120,6 @@ export const useFeePayments = ({
       const paymentDateStr = moment(safePaymentDate).format("YYYY-MM-DD");
 
       const batch = writeBatch(db);
-      const globalPaymentRef = doc(collection(db, "feePayments"), receiptNo);
 
       const paymentObj = {
         amount,
@@ -129,7 +128,7 @@ export const useFeePayments = ({
         updatedBy: appUser?.adminRole || "Admin",
         adminUid: appUser?.uid || "unknown",
         createdAt: new Date().toISOString(),
-        receiptNo,
+        receiptNo: baseReceiptNo,
         date: paymentDateStr,
         academicYear,
         term,
@@ -137,7 +136,7 @@ export const useFeePayments = ({
       };
 
       let remainingPayment = amount;
-      const allocations: Record<string, number> = {};
+      const paymentsToLog: any[] = [];
 
       const currentTuitionDebt = Math.max(0, (Number(selectedStudent.currentBalance) || 0) -
         (Number(selectedStudent.ptaBalance) || 0) -
@@ -148,8 +147,6 @@ export const useFeePayments = ({
         (Number(selectedStudent.otherBalance) || 0));
 
       const tuitionToPay = Math.min(remainingPayment, currentTuitionDebt);
-      remainingPayment -= tuitionToPay;
-      allocations.tuition = tuitionToPay;
 
       const feeRecordUpdate: any = {
         studentUid: selectedStudent.uid,
@@ -167,32 +164,102 @@ export const useFeePayments = ({
         walletBalance: increment(-amount),
       };
 
-      const categories = [
+      if (tuitionToPay > 0) {
+        const serial = `${baseReceiptNo}-TUI`;
+        const entry = { ...paymentObj, amount: tuitionToPay, receiptNo: serial, type: "tuition" };
+        paymentsToLog.push(entry);
+        remainingPayment -= tuitionToPay;
+      }
+
+      const hardcoded = [
         { key: "admission", field: "admission" },
         { key: "pta", field: "pta" },
         { key: "maintenance", field: "maintenance" },
         { key: "books", field: "books" },
-        { key: "uniform", field: "uniform" },
-        { key: "other", field: "other" }
+        { key: "uniform", field: "uniform" }
       ];
 
-      for (const cat of categories) {
+      for (const cat of hardcoded) {
+        if (remainingPayment <= 0) break;
         const balanceKey = `${cat.key}Balance` as keyof StudentDraft;
         const catBalance = Number(selectedStudent[balanceKey]) || 0;
-        if (remainingPayment > 0 && catBalance > 0) {
+        if (catBalance > 0) {
           const settlement = Math.min(remainingPayment, catBalance);
-          remainingPayment -= settlement;
-          allocations[cat.key] = settlement;
+          const serial = `${baseReceiptNo}-${cat.key.toUpperCase()}`;
+          const entry = { ...paymentObj, amount: settlement, receiptNo: serial, type: `${cat.key}_payment` };
+          paymentsToLog.push(entry);
 
           feeRecordUpdate[`${cat.key}Paid`] = increment(settlement);
           feeRecordUpdate[`${cat.key}Balance`] = increment(-settlement);
           userUpdate[`${cat.key}Balance`] = increment(-settlement);
           userUpdate[`${cat.key}Paid`] = increment(settlement);
+
+          remainingPayment -= settlement;
         }
       }
 
-      const paymentObjWithAlloc = { ...paymentObj, allocations };
-      feeRecordUpdate.payments = arrayUnion(paymentObjWithAlloc);
+      // Custom Waterfall for Other Categories (Exams, Mocks etc)
+      if (remainingPayment > 0) {
+        const qP = query(
+          collection(db, "feePayments"),
+          where("studentUid", "==", selectedStudent.uid),
+          where("academicYear", "==", academicYear),
+          where("term", "==", term)
+        );
+        const snapP = await getDocsFromServer(qP);
+        const history = snapP.docs.map(d => d.data());
+        const categoryMap: Record<string, { billed: number; paid: number }> = {};
+
+        history.forEach((p: any) => {
+          const type = (p.type || "other").toLowerCase();
+          const isPayment = type.endsWith("_payment") || type === "tuition_credit";
+          let category = type.replace("_payment", "").replace("_credit", "");
+
+          if (category === "other" && p.otherCategory) {
+            category = p.otherCategory.trim();
+          }
+
+          if (!categoryMap[category]) categoryMap[category] = { billed: 0, paid: 0 };
+          if (isPayment) {
+            categoryMap[category].paid += Number(p.amount) || 0;
+          } else {
+            const isHardcoded = ['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(type);
+            if (!isHardcoded || (type === "other" && p.otherCategory)) {
+              categoryMap[category].billed += Number(p.amount) || 0;
+            }
+          }
+        });
+
+        const customCats = Object.keys(categoryMap).filter(c => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(c.toLowerCase()));
+        for (const cat of customCats) {
+          if (remainingPayment <= 0) break;
+          const due = categoryMap[cat].billed - categoryMap[cat].paid;
+          if (due > 0) {
+            const settlement = Math.min(remainingPayment, due);
+            const serial = `${baseReceiptNo}-${cat.replace(/\s/g, '').toUpperCase()}`;
+            const entry = { ...paymentObj, amount: settlement, receiptNo: serial, type: "other_payment", otherCategory: cat };
+            paymentsToLog.push(entry);
+
+            feeRecordUpdate.amountPaid = increment(settlement);
+            feeRecordUpdate.otherPaid = increment(settlement);
+            feeRecordUpdate.otherBalance = increment(-settlement);
+            userUpdate.otherPaid = increment(settlement);
+            userUpdate.otherBalance = increment(-settlement);
+
+            remainingPayment -= settlement;
+          }
+        }
+      }
+
+      if (remainingPayment > 0) {
+        const serial = `${baseReceiptNo}-CR`;
+        const entry = { ...paymentObj, amount: remainingPayment, receiptNo: serial, type: "tuition_credit" };
+        paymentsToLog.push(entry);
+        feeRecordUpdate.amountPaid = increment(remainingPayment);
+        remainingPayment = 0;
+      }
+
+      feeRecordUpdate.payments = arrayUnion(...paymentsToLog);
 
       if (!selectedStudent.hasRecordInTerm) {
         feeRecordUpdate.arrears = Number(selectedStudent.previousBalance) || 0;
@@ -203,12 +270,14 @@ export const useFeePayments = ({
       batch.set(doc(db, "studentFeeRecords", recordId), feeRecordUpdate, { merge: true });
       batch.update(doc(db, "users", selectedStudent.uid), userUpdate);
 
-      batch.set(globalPaymentRef, {
-        ...paymentObjWithAlloc,
-        studentUid: selectedStudent.uid,
-        studentName: selectedStudent.fullName || "Student",
-        classId: selectedStudent.classId || "unknown",
-        className: selectedStudent.className || "Class",
+      paymentsToLog.forEach(p => {
+        batch.set(doc(collection(db, "feePayments"), p.receiptNo), {
+          ...p,
+          studentUid: selectedStudent.uid,
+          studentName: selectedStudent.fullName || "Student",
+          classId: selectedStudent.classId || "unknown",
+          className: selectedStudent.className || "Class",
+        });
       });
 
       await batch.commit();
@@ -231,7 +300,7 @@ export const useFeePayments = ({
             senderId: appUser?.uid || "admin",
             senderName: appUser?.displayName || "Administrator",
             title: "Fee Payment Received - Thank You!",
-            body: `Thank you! We've received a payment of ₵${amount.toLocaleString()} for ${selectedStudent.fullName}. We appreciate your promptness! Receipt: ${receiptNo}`,
+            body: `Thank you! We've received a payment of ₵${amount.toLocaleString()} for ${selectedStudent.fullName}. We appreciate your promptness! Receipt: ${baseReceiptNo}`,
             type: "payment",
           }).catch(e => console.error("Notification error:", e));
         }

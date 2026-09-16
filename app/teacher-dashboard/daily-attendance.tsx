@@ -420,8 +420,6 @@ export default function DailyAttendanceScreen() {
             </View>
           }
           showsVerticalScrollIndicator={true}
-          removeClippedSubviews={false} // Setting this to false can prevent some Android crashes during rapid updates
-          initialNumToRender={10}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
           windowSize={5}

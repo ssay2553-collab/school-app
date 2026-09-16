@@ -4,13 +4,14 @@ import { db } from '../firebaseConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import moment from 'moment';
 import { SCHOOL_CONFIG } from '../constants/Config';
 import { getSchoolLogo } from '../constants/Logos';
 import { generateFeeReceiptPDF, generateFeeStatementPDF } from '../utils/pdfGenerator';
 import Constants from 'expo-constants';
 import { COLORS } from '../constants/theme';
+import { normalizeCategory, isPaymentEntry } from './admin-dashboard/finance-cleanup/utils';
 
 interface UseReceiptViewProps {
     type: string | string[];
@@ -112,121 +113,108 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
     const categorySummary = useMemo(() => {
         if (type !== "bill") return [];
 
-        // 1. Initialize with tuition (term bill - discount) and arrears
         const summary: Record<string, { billed: number; paid: number }> = {
-            tuition: {
-                billed: Math.max(
-                    0,
-                    (Number(record?.termBill) || 0) - (Number(record?.discount) || 0),
-                ),
-                paid: 0,
-            },
+            tuition: { billed: 0, paid: 0 },
         };
 
         if (record?.arrears && Number(record.arrears) !== 0) {
             summary["arrears"] = { billed: Number(record.arrears), paid: 0 };
         }
 
-        // 2. Aggregate Transactions for all categories
+        const waterfallPool: any[] = [];
+
         allTransactions.forEach((t: any) => {
-            const typeStr = (t.type || "tuition").toLowerCase();
-            const method = (t.method || "").toLowerCase();
-            const receivedFrom = (t.receivedFrom || "").toLowerCase();
-
-            // STRICT PAYMENT IDENTIFICATION (Aligns with reconciler.ts)
-            const isPayment = (
-                !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
-                (typeStr.endsWith("_payment") || typeStr === "tuition" || typeStr === "tuition_credit" || !["pta", "maintenance", "admission", "books", "uniform", "other"].includes(typeStr) || method !== "bulk charge")
-            );
-
-            // CATEGORY NORMALIZATION (Aligns with reconciler.ts)
-            let category = "tuition";
-            if (typeStr.endsWith("_payment")) {
-                category = typeStr.replace("_payment", "");
-            } else if (typeStr.endsWith("_credit")) {
-                category = typeStr.replace("_credit", "");
-            } else {
-                const cand = (t.type || t.category || t.purpose || t.memo || "tuition").toString().toLowerCase().trim();
-                const cleaned = cand.replace(/[^a-z0-9]/g, "");
-                if (cleaned.includes("pta")) category = "pta";
-                else if (cleaned.includes("maintenance")) category = "maintenance";
-                else if (cleaned.includes("admission")) category = "admission";
-                else if (cleaned.includes("book") || cleaned.includes("books")) category = "books";
-                else if (cleaned.includes("uniform")) category = "uniform";
-                else if (cleaned.includes("other")) category = (t.otherCategory || "other").trim().toLowerCase();
-                else category = "tuition";
-            }
+            const isPayment = isPaymentEntry(t);
+            const category = normalizeCategory(t);
 
             if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
 
-            // Only sum payments from transactions - bills come from record or transactions
             if (isPayment) {
-                if (category === "tuition" && summary["arrears"]) {
-                    let amt = Number(t.amount) || 0;
-                    const toArrears = Math.min(amt, summary["arrears"].billed - summary["arrears"].paid);
-                    summary["arrears"].paid += toArrears;
-                    summary["tuition"].paid += (amt - toArrears);
+                if (category === "tuition") {
+                    waterfallPool.push(Number(t.amount) || 0);
                 } else {
                     summary[category].paid += Number(t.amount) || 0;
                 }
             } else {
-                // If it's not a payment, it's a bill/charge
                 summary[category].billed += Number(t.amount) || 0;
             }
         });
 
-        // 3. Reflect Record "Base" Totals for isolated categories
+        // Add hardcoded records from the database doc
         if (record) {
+            const baseTuitionBilled = Math.max(0, (Number(record.termBill) || 0) - (Number(record.discount) || 0));
+            summary["tuition"].billed = Math.max(summary["tuition"].billed, baseTuitionBilled);
+
             const isolated = [
                 { key: "pta", bill: record.ptaBill || 0, paid: record.ptaPaid || 0 },
-                {
-                    key: "maintenance",
-                    bill: record.maintenanceBill || 0,
-                    paid: record.maintenancePaid || 0,
-                },
-                {
-                    key: "admission",
-                    bill: record.admissionBill || 0,
-                    paid: record.admissionPaid || 0,
-                },
-                {
-                    key: "books",
-                    bill: record.booksBill || 0,
-                    paid: record.booksPaid || 0,
-                },
-                {
-                    key: "uniform",
-                    bill: record.uniformBill || 0,
-                    paid: record.uniformPaid || 0,
-                },
+                { key: "maintenance", bill: record.maintenanceBill || 0, paid: record.maintenancePaid || 0 },
+                { key: "admission", bill: record.admissionBill || 0, paid: record.admissionPaid || 0 },
+                { key: "books", bill: record.booksBill || 0, paid: record.booksPaid || 0 },
+                { key: "uniform", bill: record.uniformBill || 0, paid: record.uniformPaid || 0 },
             ];
 
             isolated.forEach((cat) => {
                 if (!summary[cat.key]) summary[cat.key] = { billed: 0, paid: 0 };
-                summary[cat.key].billed = Math.max(summary[cat.key].billed, cat.bill);
-                summary[cat.key].paid = Math.max(summary[cat.key].paid, cat.paid);
+                summary[cat.key].billed = Math.max(summary[cat.key].billed, Number(cat.bill) || 0);
+                // We don't Math.max the paid here because the waterfall handles it,
+                // but we should respect the base documents that were already split
             });
-
-            // Special handling for tuition/arrears match with record.amountPaid
-            const totalTuitionPaidInSummary = summary.tuition.paid + (summary.arrears?.paid || 0);
-            if (record.amountPaid > totalTuitionPaidInSummary + 0.01) {
-                let diff = record.amountPaid - totalTuitionPaidInSummary;
-                if (summary.arrears) {
-                    const extraToArrears = Math.min(diff, summary.arrears.billed - summary.arrears.paid);
-                    summary.arrears.paid += extraToArrears;
-                    diff -= extraToArrears;
-                }
-                summary.tuition.paid += diff;
-            }
         }
 
-        // Return all items with non-zero billed or paid for the statement view
+        // Virtual Waterfall for display (Matched with useFeeLedger.ts)
+        let totalGeneralPool = waterfallPool.reduce((a, b) => a + b, 0);
+
+        // 1. Settle Arrears first
+        if (summary["arrears"] && totalGeneralPool > 0) {
+            const toArrears = Math.min(totalGeneralPool, summary["arrears"].billed);
+            summary["arrears"].paid += toArrears;
+            totalGeneralPool -= toArrears;
+        }
+
+        // 2. Settle Tuition Bill
+        const tuitionToPay = Math.min(totalGeneralPool, summary["tuition"].billed);
+        summary["tuition"].paid += tuitionToPay;
+        totalGeneralPool -= tuitionToPay;
+
+        // 3. Settle Isolated Categories in Order
+        const displayWaterfallOrder = ['admission', 'pta', 'maintenance', 'books', 'uniform'];
+        displayWaterfallOrder.forEach(cat => {
+            if (summary[cat] && totalGeneralPool > 0) {
+                const due = Math.max(0, summary[cat].billed - summary[cat].paid);
+                const settle = Math.min(totalGeneralPool, due);
+                summary[cat].paid += settle;
+                totalGeneralPool -= settle;
+            }
+        });
+
+        // 4. Settle Dynamic Categories (Exams, Mocks, etc)
+        Object.keys(summary).forEach(cat => {
+            if (!['tuition', 'arrears', ...displayWaterfallOrder].includes(cat) && totalGeneralPool > 0) {
+                const due = Math.max(0, summary[cat].billed - summary[cat].paid);
+                const settle = Math.min(totalGeneralPool, due);
+                summary[cat].paid += settle;
+                totalGeneralPool -= settle;
+            }
+        });
+
+        // 5. Remaining goes to Tuition (as credit)
+        if (totalGeneralPool > 0) {
+            summary["tuition"].paid += totalGeneralPool;
+        }
+
+        // Return all items with non-zero billed or paid
         return Object.entries(summary)
             .filter(([_, vals]) => Math.abs(vals.billed) >= 0.01 || Math.abs(vals.paid) >= 0.01)
+            .sort(([a], [b]) => {
+                if (a === 'arrears') return -1;
+                if (b === 'arrears') return 1;
+                if (a === 'tuition') return -1;
+                if (b === 'tuition') return 1;
+                return a.localeCompare(b);
+            })
             .map(([cat, vals]) => ({
-                name:
-                    nameMap[cat] ||
-                    cat.charAt(0).toUpperCase() + cat.slice(1).replace(/_/g, " "),
+                id: cat,
+                name: nameMap[cat] || cat.toUpperCase(),
                 billed: vals.billed,
                 paid: vals.paid,
                 balance: vals.billed - vals.paid,
@@ -253,85 +241,93 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
             ? "This will remove the term record and reset all balances for this period. Are you sure?"
             : "This will remove the payment and update the student's debt balance. This cannot be undone.";
 
-        Alert.alert(title, message, [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete",
-                style: "destructive",
-                onPress: async () => {
-                    setLoading(true);
-                    try {
-                        if (isBill) {
-                            const cleanYear = (year as string).replace(/\//g, "-");
-                            const cleanTerm = (term as string).replace(/\s/g, "");
-                            const recordId = `${studentId}_${cleanYear}_${cleanTerm}`;
-                            await deleteDoc(doc(db, "studentFeeRecords", recordId));
-                            showToast({
-                                message: "Bill record deleted successfully",
-                                type: "success",
-                            });
-                        } else {
-                            // Atomic transaction to delete payment and revert balance
-                            await runTransaction(db, async (transaction) => {
-                                const pDocRef = doc(db, "feePayments", paymentId as string);
-                                const pSnap = await transaction.get(pDocRef);
-                                if (!pSnap.exists()) throw "Payment not found";
+        const proceedDelete = async () => {
+            setLoading(true);
+            try {
+                if (isBill) {
+                    const cleanYear = (year as string).replace(/\//g, "-");
+                    const cleanTerm = (term as string).replace(/\s/g, "");
+                    const recordId = `${studentId}_${cleanYear}_${cleanTerm}`;
+                    await deleteDoc(doc(db, "studentFeeRecords", recordId));
+                    showToast({
+                        message: "Bill record deleted successfully",
+                        type: "success",
+                    });
+                } else {
+                    // Atomic transaction to delete payment and revert balance
+                    await runTransaction(db, async (transaction) => {
+                        const pDocRef = doc(db, "feePayments", paymentId as string);
+                        const pSnap = await transaction.get(pDocRef);
+                        if (!pSnap.exists()) throw "Payment not found";
 
-                                const pData = pSnap.data();
-                                const amt = Number(pData.amount) || 0;
-                                const pType = (pData.type || "tuition").toLowerCase();
-                                const cleanYear = (pData.academicYear as string).replace(
-                                    /\//g,
-                                    "-",
-                                );
-                                const cleanTerm = (pData.term as string).replace(/\s/g, "");
-                                const recordId = `${studentId}_${cleanYear}_${cleanTerm}`;
+                        const pData = pSnap.data();
+                        const amt = Number(pData.amount) || 0;
+                        const pType = (pData.type || "tuition").toLowerCase();
+                        const cleanYear = (pData.academicYear as string).replace(
+                            /\//g,
+                            "-",
+                        );
+                        const cleanTerm = (pData.term as string).replace(/\s/g, "");
+                        const recordId = `${studentId}_${cleanYear}_${cleanTerm}`;
 
-                                // 1. Revert Global Wallet Balance
-                                const userRef = doc(db, "users", studentId as string);
-                                transaction.update(userRef, {
-                                    walletBalance: increment(amt),
-                                });
+                        // 1. Revert Global Wallet Balance
+                        const userRef = doc(db, "users", studentId as string);
+                        transaction.update(userRef, {
+                            walletBalance: increment(amt),
+                        });
 
-                                // 2. Revert Term Record Balance
-                                const rRef = doc(db, "studentFeeRecords", recordId);
-                                const rSnap = await transaction.get(rRef);
+                        // 2. Revert Term Record Balance
+                        const rRef = doc(db, "studentFeeRecords", recordId);
+                        const rSnap = await transaction.get(rRef);
 
-                                if (rSnap.exists()) {
-                                    const updateData: any = {};
-                                    if (
-                                        pType === "tuition" ||
-                                        pType === "tuition_payment" ||
-                                        pType === "tuition_credit"
-                                    ) {
-                                        updateData.amountPaid = increment(-amt);
-                                        updateData.balance = increment(amt);
-                                    } else {
-                                        const cat = pType.replace("_payment", "");
-                                        updateData[`${cat}Paid`] = increment(-amt);
-                                        updateData[`${cat}Balance`] = increment(amt);
-                                    }
-                                    transaction.update(rRef, updateData);
-                                }
-
-                                // 3. Delete the actual payment
-                                transaction.delete(pDocRef);
-                            });
-                            showToast({
-                                message: "Payment deleted and balance reverted",
-                                type: "success",
-                            });
+                        if (rSnap.exists()) {
+                            const updateData: any = {};
+                            if (
+                                pType === "tuition" ||
+                                pType === "tuition_payment" ||
+                                pType === "tuition_credit"
+                            ) {
+                                updateData.amountPaid = increment(-amt);
+                                updateData.balance = increment(amt);
+                            } else {
+                                const cat = pType.replace("_payment", "");
+                                updateData[`${cat}Paid`] = increment(-amt);
+                                updateData[`${cat}Balance`] = increment(amt);
+                            }
+                            transaction.update(rRef, updateData);
                         }
-                        router.back();
-                    } catch (err) {
-                        console.error("Delete error:", err);
-                        showToast({ message: "Failed to delete record", type: "error" });
-                    } finally {
-                        setLoading(false);
-                    }
+
+                        // 3. Delete the actual payment
+                        transaction.delete(pDocRef);
+                    });
+                    showToast({
+                        message: "Payment deleted and balance reverted",
+                        type: "success",
+                    });
+                }
+                router.back();
+            } catch (err) {
+                console.error("Delete error:", err);
+                showToast({ message: "Failed to delete record", type: "error" });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                await proceedDelete();
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: proceedDelete,
                 },
-            },
-        ]);
+            ]);
+        }
     };
 
     const generatePDF = async () => {

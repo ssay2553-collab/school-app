@@ -330,6 +330,18 @@ export default function StudentFeeHistoryScreen() {
                         </Text>
                       </View>
                       <View style={styles.paymentAction}>
+                        {Platform.OS === 'web' && (
+                          <TouchableOpacity
+                            onPress={(e) => {
+                              e.stopPropagation();
+                              onRevertPayment(payment);
+                            }}
+                            style={{ padding: 4, marginRight: 5 }}
+                            activeOpacity={0.7}
+                          >
+                            <SVGIcon name="trash" size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        )}
                         <Text
                           style={[
                             styles.paymentAmt,

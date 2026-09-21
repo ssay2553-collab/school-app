@@ -20,6 +20,8 @@ export default function ViewAcademicRecordDetails() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const reportType = (params.reportType as ReportType) || "End of Term";
+  const term = params.term as string;
+  const reportNumber = parseInt(params.reportNumber as string) || 1;
   const isNavigating = useRef(false);
   const isMounted = useRef(true);
 
@@ -158,10 +160,12 @@ export default function ViewAcademicRecordDetails() {
           primary={primary}
           schoolLogo={schoolLogo}
           reportType={reportType}
+          reportNumber={reportNumber}
           studentName={studentName}
           className={className}
           classIdState={classIdState}
           academicYearState={academicYearState}
+          termState={term}
           overallPosition={overallPosition}
           attendance={attendance}
           isFullReport={isFullReport}

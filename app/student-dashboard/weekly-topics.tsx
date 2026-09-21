@@ -32,7 +32,42 @@ export default function StudentWeeklyTopicsScreen() {
     selectedWeek,
     setSelectedWeek,
     weekRange,
+    curriculum,
   } = useStudentWeeklyTopics();
+
+  const getLabels = (topicCurriculum: string | undefined) => {
+    const activeCurr = topicCurriculum || curriculum || "GES";
+    switch (activeCurr) {
+      case "Cambridge":
+        return {
+          topic: "Unit / Topic",
+          strand: "Syllabus Reference",
+          subStrand: "Learning Objective Ref",
+          indicator: "Success Criteria",
+          subTopics: "Lesson Content",
+          objectives: "Key Learning Outcomes"
+        };
+      case "Montessori":
+        return {
+          topic: "Area of Interest",
+          strand: "Material / Apparatus",
+          subStrand: "Lesson Type",
+          indicator: "Control of Error",
+          subTopics: "Presentation",
+          objectives: "Indirect Aim"
+        };
+      case "GES":
+      default:
+        return {
+          topic: "Week Topic",
+          strand: "Strand",
+          subStrand: "Sub-strand",
+          indicator: "Indicator Code",
+          subTopics: "Sub-topics & Activities",
+          objectives: "Learning Objectives"
+        };
+    }
+  };
 
   const brandColor = SCHOOL_CONFIG.brandPrimary || COLORS.primary;
 
@@ -105,39 +140,69 @@ export default function StudentWeeklyTopicsScreen() {
           </View>
         ) : (
           <View style={styles.topicsGrid}>
-            {topics.map((topic, index) => (
-              <Animatable.View
-                key={topic.id}
-                animation="fadeInUp"
-                delay={index * 100}
-                style={styles.topicCard}
-              >
-                <View style={[styles.subjectHeader, { borderLeftColor: brandColor }]}>
-                  <Text style={styles.subjectName}>{topic.subject}</Text>
-                </View>
-
-                <View style={styles.topicContent}>
-                  <View style={styles.contentSection}>
-                    <Text style={styles.sectionLabel}>Main Topic</Text>
-                    <Text style={styles.topicTitle}>{topic.topic}</Text>
+            {topics.map((topic, index) => {
+              const labels = getLabels(topic.curriculum);
+              return (
+                <Animatable.View
+                  key={topic.id}
+                  animation="fadeInUp"
+                  delay={index * 100}
+                  style={styles.topicCard}
+                >
+                  <View style={[styles.subjectHeader, { borderLeftColor: brandColor }]}>
+                    <Text style={styles.subjectName}>{topic.subject}</Text>
+                    {topic.curriculum && (
+                       <View style={styles.curriculumTag}>
+                          <Text style={styles.curriculumTagText}>{topic.curriculum}</Text>
+                       </View>
+                    )}
                   </View>
 
-                  {topic.subTopics && (
+                  <View style={styles.topicContent}>
                     <View style={styles.contentSection}>
-                      <Text style={styles.sectionLabel}>Sub-topics & Activities</Text>
-                      <Text style={styles.sectionText}>{topic.subTopics}</Text>
+                      <Text style={styles.sectionLabel}>{labels.topic}</Text>
+                      <Text style={styles.topicTitle}>{topic.topic}</Text>
                     </View>
-                  )}
 
-                  {topic.objectives && (
-                    <View style={styles.contentSection}>
-                      <Text style={styles.sectionLabel}>Objectives</Text>
-                      <Text style={styles.sectionText}>{topic.objectives}</Text>
+                    <View style={styles.row}>
+                      {topic.strand && (
+                        <View style={[styles.contentSection, { flex: 1 }]}>
+                          <Text style={styles.sectionLabel}>{labels.strand}</Text>
+                          <Text style={styles.sectionText}>{topic.strand}</Text>
+                        </View>
+                      )}
+                      {topic.subStrand && (
+                        <View style={[styles.contentSection, { flex: 1 }]}>
+                          <Text style={styles.sectionLabel}>{labels.subStrand}</Text>
+                          <Text style={styles.sectionText}>{topic.subStrand}</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
-                </View>
-              </Animatable.View>
-            ))}
+
+                    {topic.indicatorCode && (
+                      <View style={styles.contentSection}>
+                        <Text style={styles.sectionLabel}>{labels.indicator}</Text>
+                        <Text style={styles.sectionText}>{topic.indicatorCode}</Text>
+                      </View>
+                    )}
+
+                    {topic.subTopics && (
+                      <View style={styles.contentSection}>
+                        <Text style={styles.sectionLabel}>{labels.subTopics}</Text>
+                        <Text style={styles.sectionText}>{topic.subTopics}</Text>
+                      </View>
+                    )}
+
+                    {topic.objectives && (
+                      <View style={styles.contentSection}>
+                        <Text style={styles.sectionLabel}>{labels.objectives}</Text>
+                        <Text style={styles.sectionText}>{topic.objectives}</Text>
+                      </View>
+                    )}
+                  </View>
+                </Animatable.View>
+              );
+            })}
           </View>
         )}
 
@@ -168,10 +233,13 @@ const styles = StyleSheet.create({
   dateDivider: { width: 1, height: 30, backgroundColor: "#E2E8F0", marginHorizontal: 15 },
   topicsGrid: { gap: 20 },
   topicCard: { backgroundColor: "#fff", borderRadius: 24, overflow: "hidden", ...SHADOWS.medium, borderWidth: 1, borderColor: "#F1F5F9" },
-  subjectHeader: { paddingHorizontal: 20, paddingVertical: 15, borderLeftWidth: 5, backgroundColor: "#F8FAFC" },
+  subjectHeader: { paddingHorizontal: 20, paddingVertical: 15, borderLeftWidth: 5, backgroundColor: "#F8FAFC", flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   subjectName: { fontSize: 18, fontWeight: "900", color: "#1E293B" },
+  curriculumTag: { backgroundColor: COLORS.primary + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  curriculumTagText: { fontSize: 9, fontWeight: '800', color: COLORS.primary, letterSpacing: 0.5 },
   topicContent: { padding: 20 },
   contentSection: { marginBottom: 15 },
+  row: { flexDirection: 'row', gap: 15 },
   sectionLabel: { fontSize: 10, fontWeight: "900", color: "#94A3B8", textTransform: "uppercase", marginBottom: 4, letterSpacing: 0.5 },
   topicTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
   sectionText: { fontSize: 14, color: "#475569", lineHeight: 20 },

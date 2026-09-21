@@ -26,7 +26,7 @@ import {
 import { generateAcademicReportPDF } from "../../utils/pdfGenerator";
 import { useAcademicConfig } from "../useAcademicConfig";
 
-export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
+export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams" | "Class Assessment Task (CAT)" | "Trial Test";
 
 interface UseAcademicRecordDetailsProps {
   studentId?: string;
@@ -34,6 +34,7 @@ interface UseAcademicRecordDetailsProps {
   classId?: string;
   academicYear?: string;
   reportType?: ReportType;
+  reportNumber?: number;
 }
 
 export const useAcademicRecordDetails = (
@@ -48,6 +49,7 @@ export const useAcademicRecordDetails = (
     props?.academicYear || (params.academicYear as string);
   const reportType =
     props?.reportType || (params.reportType as ReportType) || "End of Term";
+  const reportNumber = props?.reportNumber || parseInt(params.reportNumber as string) || 1;
 
   const isFullReport = reportType === "End of Term";
 
@@ -139,6 +141,7 @@ export const useAcademicRecordDetails = (
         where("academicYear", "==", academicYearState),
         where("term", "==", termState),
         where("reportType", "==", reportType),
+        where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? reportNumber : null),
       );
 
       const scoresSnap = await getDocsFromServer(qScores);
@@ -151,8 +154,10 @@ export const useAcademicRecordDetails = (
 
       if (!effectiveClassId) effectiveClassId = classIdState;
 
+      const reportSlug = reportType.replace(/\s+/g, "");
+      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? reportNumber : "";
       const reportId =
-        `${studentId}_${academicYearState}_${termState}_${reportType.replace(/\s+/g, "")}`.replace(
+        `${studentId}_${academicYearState}_${termState}_${reportSlug}${numSuffix}`.replace(
           /\//g,
           "-",
         );
@@ -263,6 +268,10 @@ export const useAcademicRecordDetails = (
           const students = Array.isArray(d.data().students)
             ? d.data().students
             : [];
+          const typeKey = reportType.replace(/\s+/g, "");
+          const reportSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? reportNumber : "";
+          const typeMatchKey = `${typeKey}${reportSuffix}`;
+
           students.forEach((s: any) => {
             if (!allStudents[s.studentId])
               allStudents[s.studentId] = { total: 0 };
@@ -284,6 +293,7 @@ export const useAcademicRecordDetails = (
       } catch (e) {
         console.error("Error calculating overall position:", e);
       }
+
       if (isMounted.current) {
         setOverallPosition(computedPosition);
       }
@@ -434,6 +444,7 @@ export const useAcademicRecordDetails = (
     classIdState,
     academicYearState,
     reportType,
+    reportNumber,
     acadConfig.nextTermBegins,
   ]);
 
@@ -444,8 +455,12 @@ export const useAcademicRecordDetails = (
     tas: TAS,
     aggregate: AGGREGATE,
   } = useMemo(
-    () => calculatePerformanceFromList(subjectsData, isPreschool),
-    [subjectsData, isPreschool],
+    () => calculatePerformanceFromList(
+      subjectsData,
+      isPreschool,
+      ["Class Assessment Task (CAT)", "Trial Test", "Mid-Term"].includes(reportType)
+    ),
+    [subjectsData, isPreschool, reportType],
   );
 
   const generatePDF = async () => {
@@ -463,10 +478,14 @@ export const useAcademicRecordDetails = (
           studentName,
           className,
           academicYear: academicYearState,
-          term: termState,
+          term: ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType)
+            ? `${reportType === "Trial Test" ? "TEST" : "CAT"} ${reportNumber}`
+            : termState,
           overallPosition,
           attendance: attendance || "N/A",
-          reportType,
+          reportType: ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType)
+            ? `${reportType === "Trial Test" ? "TEST" : reportType === "Mock Exams" ? "MOCK" : "CAT"} ${reportNumber}`
+            : reportType,
           isFullReport,
           subjectsData,
           TRS,

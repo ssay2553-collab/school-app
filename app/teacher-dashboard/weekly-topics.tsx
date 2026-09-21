@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useMemo } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -50,7 +50,41 @@ export default function WeeklyTopicsScreen() {
     saveTopic,
     hasUnsavedChanges,
     subjects,
+    curriculum,
   } = useWeeklyTopics();
+
+  const labels = useMemo(() => {
+    switch (curriculum) {
+      case "Cambridge":
+        return {
+          topic: "Unit / Topic",
+          strand: "Syllabus Reference",
+          subStrand: "Learning Objective Ref",
+          indicator: "Success Criteria",
+          subTopics: "Lesson Content / Activities",
+          objectives: "Key Learning Outcomes"
+        };
+      case "Montessori":
+        return {
+          topic: "Area of Interest",
+          strand: "Material / Apparatus",
+          subStrand: "Lesson Type",
+          indicator: "Control of Error",
+          subTopics: "Direct Aim / Presentation",
+          objectives: "Indirect Aim / Purpose"
+        };
+      case "GES":
+      default:
+        return {
+          topic: "Week Topic",
+          strand: "Strand",
+          subStrand: "Sub-strand",
+          indicator: "Indicator Code",
+          subTopics: "Sub-topics / Activities",
+          objectives: "Learning Objectives"
+        };
+    }
+  }, [curriculum]);
 
   const webInputStyle = Platform.OS === 'web' ? {
     padding: '10px',
@@ -310,19 +344,53 @@ export default function WeeklyTopicsScreen() {
             </View>
 
             <Animatable.View animation="fadeInUp" duration={600} style={styles.formCard}>
+              <View style={styles.curriculumBadge}>
+                <Text style={styles.curriculumBadgeText}>{curriculum} CURRICULUM</Text>
+              </View>
+
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Topic for the Week</Text>
+                <Text style={styles.inputLabel}>{labels.topic}</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Enter the main lesson topic..."
+                  placeholder={`Enter the main ${labels.topic.toLowerCase()}...`}
                   value={topicData.topic}
                   onChangeText={(text) => setTopicData({ ...topicData, topic: text })}
-                  multiline
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 15, marginBottom: 25 }}>
+                <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+                  <Text style={styles.inputLabel}>{labels.strand}</Text>
+                  <TextInput
+                    style={[styles.input, { fontSize: 14 }]}
+                    placeholder={labels.strand}
+                    value={topicData.strand}
+                    onChangeText={(text) => setTopicData({ ...topicData, strand: text })}
+                  />
+                </View>
+                <View style={[styles.inputGroup, { flex: 1, marginBottom: 0 }]}>
+                  <Text style={styles.inputLabel}>{labels.subStrand}</Text>
+                  <TextInput
+                    style={[styles.input, { fontSize: 14 }]}
+                    placeholder={labels.subStrand}
+                    value={topicData.subStrand}
+                    onChangeText={(text) => setTopicData({ ...topicData, subStrand: text })}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>{labels.indicator}</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder={`Enter ${labels.indicator.toLowerCase()}...`}
+                  value={topicData.indicatorCode}
+                  onChangeText={(text) => setTopicData({ ...topicData, indicatorCode: text })}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Sub-topics / Activities</Text>
+                <Text style={styles.inputLabel}>{labels.subTopics}</Text>
                 <TextInput
                   style={[styles.input, { minHeight: 80 }]}
                   placeholder="Details of what will be covered..."
@@ -333,7 +401,7 @@ export default function WeeklyTopicsScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Learning Objectives</Text>
+                <Text style={styles.inputLabel}>{labels.objectives}</Text>
                 <TextInput
                   style={[styles.input, { minHeight: 100 }]}
                   placeholder="Expected outcomes for students..."
@@ -445,6 +513,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   formCard: { backgroundColor: "#fff", borderRadius: 24, padding: 25, ...SHADOWS.medium, borderWidth: 1, borderColor: "#F1F5F9" },
+  curriculumBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  curriculumBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: COLORS.primary,
+    letterSpacing: 1,
+  },
   inputGroup: { marginBottom: 25 },
   inputLabel: { fontSize: 13, fontWeight: "900", color: "#1E293B", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
   input: { backgroundColor: "#F8FAFC", borderRadius: 16, padding: 18, fontSize: 16, color: "#1E293B", borderWidth: 1, borderColor: "#E2E8F0", textAlignVertical: "top" },

@@ -3,7 +3,7 @@ import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
-  getDocsFromServer,
+  getDocs,
   increment,
   limit,
   onSnapshot,
@@ -103,7 +103,7 @@ export const useMaintenanceCharges = ({
         where("academicYear", "==", acadConfig.academicYear),
         where("term", "==", acadConfig.currentTerm)
       );
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       let collected = 0;
       let billed = 0;
       snap.docs.forEach((d) => {
@@ -156,7 +156,7 @@ export const useMaintenanceCharges = ({
           q = query(q, startAfter(lastVisibleRef.current));
         }
 
-        const snap = await getDocsFromServer(q);
+        const snap = await getDocs(q);
         if (snap.empty) {
           hasMoreRef.current = false;
           if (isFirstLoad) setStudents([]);
@@ -229,7 +229,7 @@ export const useMaintenanceCharges = ({
         where("studentUid", "==", studentUid),
         where("type", "in", ["maintenance", "maintenance_payment"])
       );
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       const list = snap.docs.map(d => d.data());
       setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (e) {
@@ -385,7 +385,7 @@ export const useMaintenanceCharges = ({
         where("academicYear", "==", acadConfig.academicYear),
         where("term", "==", acadConfig.currentTerm)
       );
-      const existingSnap = await getDocsFromServer(qExisting);
+      const existingSnap = await getDocs(qExisting);
       const existingBillsMap = new Map<string, any>();
       existingSnap.docs.forEach(d => {
         existingBillsMap.set(d.data().studentUid, { id: d.id, ...d.data() });
@@ -397,7 +397,7 @@ export const useMaintenanceCharges = ({
         where("classId", "==", selectedClassId),
         where("status", "in", ["active", "pending_activation"])
       );
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
 
       if (snap.empty) {
         setSaving(false);

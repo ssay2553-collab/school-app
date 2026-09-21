@@ -1,6 +1,6 @@
 import { collection, query, where, onSnapshot, getDocsFromServer } from "firebase/firestore";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -117,8 +117,10 @@ export default function AttendanceOverview() {
     });
   }, [appUser, selectedDate]);
 
-  useEffect(() => {
-    if (classes.length === 0 && students.length === 0 && loading) return;
+  const { schoolTotal, schoolPresent, schoolAbsent, sortedStats } = useMemo(() => {
+    if (classes.length === 0 && students.length === 0 && loading) {
+       return { schoolTotal: 0, schoolPresent: 0, schoolAbsent: 0, sortedStats: [] };
+    }
 
     const classList = classes.map(d => ({
       id: d.id,
@@ -170,7 +172,7 @@ export default function AttendanceOverview() {
     let globalPresent = 0;
     let globalAbsent = 0;
 
-    const sortedStats = sortClasses(classList).map(cls => {
+    const resultStats = sortClasses(classList).map(cls => {
       const att = attendanceMap[cls.id];
       const totalInClass = studentCounts[cls.id] || 0;
       if (att) {
@@ -189,13 +191,22 @@ export default function AttendanceOverview() {
       };
     });
 
-    if (isMounted.current) {
+    return {
+      schoolTotal: globalStudentTotal,
+      schoolPresent: globalPresent,
+      schoolAbsent: globalAbsent,
+      sortedStats: resultStats
+    };
+  }, [classes, students, attendance, selectedDate]);
+
+  useEffect(() => {
+    if (sortedStats.length > 0 || !loading) {
       setClassStats(sortedStats);
-      setTotals({ schoolTotal: globalStudentTotal, schoolPresent: globalPresent, schoolAbsent: globalAbsent });
+      setTotals({ schoolTotal, schoolPresent, schoolAbsent });
       setLoading(false);
       setRefreshing(false);
     }
-  }, [classes, students, attendance, selectedDate]);
+  }, [sortedStats, schoolTotal, schoolPresent, schoolAbsent]);
 
 
   useEffect(() => {

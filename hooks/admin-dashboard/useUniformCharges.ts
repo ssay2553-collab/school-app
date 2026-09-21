@@ -3,7 +3,7 @@ import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
-  getDocsFromServer,
+  getDocs,
   increment,
   limit,
   onSnapshot,
@@ -128,7 +128,7 @@ export const useUniformCharges = ({
         q = query(q, where("classId", "==", selectedClassId));
       }
 
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       let total = 0;
       let breakdown: any = {
         main: 0,
@@ -168,7 +168,7 @@ export const useUniformCharges = ({
         where("academicYear", "==", acadConfig.academicYear),
         where("term", "==", acadConfig.currentTerm)
       );
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       const list = snap.docs.map(d => ({ id: d.id, createdAt: d.data().createdAt, ...d.data() }));
       if (isMounted.current) {
         setPurchases(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -188,7 +188,7 @@ export const useUniformCharges = ({
         where("studentUid", "==", studentUid),
         where("type", "==", "uniform")
       );
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       const list = snap.docs.map(d => d.data());
       setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (e) {
@@ -215,7 +215,7 @@ export const useUniformCharges = ({
         q = query(q, where("classId", "==", selectedClassId));
       }
 
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       const uids = Array.from(new Set(snap.docs.map((d) => d.data().studentUid)));
 
       if (uids.length === 0) {
@@ -227,7 +227,7 @@ export const useUniformCharges = ({
       for (let i = 0; i < uids.length; i += 30) {
         const batch = uids.slice(i, i + 30);
         const uq = query(collection(db, "users"), where(documentId(), "in", batch));
-        const uSnap = await getDocsFromServer(uq);
+        const uSnap = await getDocs(uq);
         uSnap.docs.forEach((d) => {
           const data = d.data();
           list.push({
@@ -296,7 +296,7 @@ export const useUniformCharges = ({
           q = query(q, startAfter(lastVisibleRef.current));
         }
 
-        const snap = await getDocsFromServer(q);
+        const snap = await getDocs(q);
         const batch: Student[] = snap.docs.map((d) => {
           const data = d.data();
           return {
@@ -385,7 +385,7 @@ export const useUniformCharges = ({
         where("academicYear", "==", acadConfig.academicYear),
         where("term", "==", acadConfig.currentTerm)
       );
-      const existingSnap = await getDocsFromServer(qExisting);
+      const existingSnap = await getDocs(qExisting);
       const existing = existingSnap.empty ? null : { id: existingSnap.docs[0].id, ...(existingSnap.docs[0].data() as any) };
 
       const oldAmount = existing ? (existing.amount || 0) : 0;

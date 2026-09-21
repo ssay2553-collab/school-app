@@ -28,7 +28,7 @@ const nameMap: Record<string, string> = {
     admission: "Admission Fee",
     books: "Books Fee",
     uniform: "Uniform Fee",
-    other: "Other Charges",
+    "other charges": "Other Charges",
     arrears: "Arrears / Previous Balance",
     tuition_payment: "Tuition Payment",
     pta_payment: "PTA Dues Payment",
@@ -36,7 +36,7 @@ const nameMap: Record<string, string> = {
     admission_payment: "Admission Fee Payment",
     books_payment: "Books Payment",
     uniform_payment: "Uniform Payment",
-    other_payment: "Other Charges Payment",
+    "other charges_payment": "Other Charges Payment",
     tuition_credit: "Tuition Credit / Overpayment",
 };
 
@@ -177,7 +177,7 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
         totalGeneralPool -= tuitionToPay;
 
         // 3. Settle Isolated Categories in Order
-        const displayWaterfallOrder = ['admission', 'pta', 'maintenance', 'books', 'uniform'];
+        const displayWaterfallOrder = ['admission', 'pta', 'maintenance', 'books', 'uniform', 'other charges'];
         displayWaterfallOrder.forEach(cat => {
             if (summary[cat] && totalGeneralPool > 0) {
                 const due = Math.max(0, summary[cat].billed - summary[cat].paid);

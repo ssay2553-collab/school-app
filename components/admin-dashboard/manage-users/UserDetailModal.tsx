@@ -45,10 +45,7 @@ interface UserDetailModalProps {
   onViewAttendance?: (user: User) => void;
   onToggleArchive?: (user: User) => void;
   onRunFinanceCleanup?: (user: User) => void;
-  onRunAcademicCleanup?: (user: User) => void;
-  onRunFinanceMigration?: (user: User) => void;
   isFinanceCleaning?: boolean;
-  isAcademicCleaning?: boolean;
 }
 
 export const UserDetailModal: React.FC<UserDetailModalProps> = ({
@@ -77,10 +74,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onViewAttendance,
   onToggleArchive,
   onRunFinanceCleanup,
-  onRunAcademicCleanup,
-  onRunFinanceMigration,
   isFinanceCleaning,
-  isAcademicCleaning,
 }) => {
   if (!user) return null;
 
@@ -732,42 +726,6 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                         <ActivityIndicator color="#fff" />
                       ) : (
                         <Text style={styles.actionButtonText}>Reconcile Student Balance</Text>
-                      )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        {
-                          backgroundColor: "#3b82f6",
-                          marginBottom: 12,
-                        },
-                      ]}
-                      onPress={() => onRunFinanceMigration?.(user)}
-                      disabled={isFinanceCleaning}
-                    >
-                      {isFinanceCleaning ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text style={styles.actionButtonText}>Fix Identity / Legacy Links</Text>
-                      )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[
-                        styles.actionButton,
-                        {
-                          backgroundColor: "#a855f7",
-                          marginBottom: 12,
-                        },
-                      ]}
-                      onPress={() => onRunAcademicCleanup?.(user)}
-                      disabled={isAcademicCleaning}
-                    >
-                      {isAcademicCleaning ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text style={styles.actionButtonText}>Academic Integrity Scan</Text>
                       )}
                     </TouchableOpacity>
                   </>

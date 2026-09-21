@@ -5,7 +5,7 @@ import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import {
   collection,
   doc,
-  getDocsFromServer,
+  getDocs,
   increment,
   limit,
   onSnapshot,
@@ -124,7 +124,7 @@ export const useAdmissionCharges = ({
         q = query(q, where("classId", "==", selectedClassId));
       }
 
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
 
       let totalCollected = 0;
       let totalBilled = 0;
@@ -193,7 +193,7 @@ export const useAdmissionCharges = ({
         q = query(q, where("classId", "==", selectedClassId));
       }
 
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
 
       let uids: string[] = [];
       if (termName) {
@@ -222,7 +222,7 @@ export const useAdmissionCharges = ({
         if (!isMounted.current) return;
         const batchUids = uids.slice(i, i + 30);
         const uq = query(collection(db, "users"), where(documentId(), "in", batchUids));
-        const uSnap = await getDocsFromServer(uq);
+        const uSnap = await getDocs(uq);
         uSnap.docs.forEach(d => {
           const data = d.data();
           studentList.push({
@@ -292,7 +292,7 @@ export const useAdmissionCharges = ({
         q = query(q, startAfter(lastVisibleRef.current));
       }
 
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       if (snap.empty) {
         if (isMounted.current) {
           hasMoreRef.current = false;
@@ -373,7 +373,7 @@ export const useAdmissionCharges = ({
         where("studentUid", "==", studentUid),
         where("type", "in", ["admission", "admission_payment"])
       );
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       const list = snap.docs.map(d => d.data());
       if (isMounted.current) {
         setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
@@ -525,7 +525,7 @@ export const useAdmissionCharges = ({
         where("academicYear", "==", acadConfig.academicYear),
         where("term", "==", acadConfig.currentTerm)
       );
-      const existingSnap = await getDocsFromServer(qExisting);
+      const existingSnap = await getDocs(qExisting);
       const existing = existingSnap.empty ? null : { id: existingSnap.docs[0].id, ...(existingSnap.docs[0].data() as any) };
 
       const oldAmount = existing ? (existing.amount || 0) : 0;

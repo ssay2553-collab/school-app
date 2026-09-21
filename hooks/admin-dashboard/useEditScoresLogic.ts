@@ -39,6 +39,7 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
   const [selectedSubject, setSelectedSubject] = useState("");
   const [subjects, setSubjects] = useState<SubjectInfo[]>([]);
   const [selectedReportType, setSelectedReportType] = useState<ReportType>("End of Term");
+  const [selectedReportNumber, setSelectedReportNumber] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [recordId, setRecordId] = useState<string | null>(null);
@@ -121,7 +122,8 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
         where("classId", "==", selectedClassId),
         where("academicYear", "==", selectedYear),
         where("term", "==", term),
-        where("reportType", "==", selectedReportType)
+        where("reportType", "==", selectedReportType),
+        where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : null)
       );
       const snap = await getDocsFromServer(q);
       const subsList: SubjectInfo[] = snap.docs
@@ -173,7 +175,8 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
     try {
       const yearSlug = selectedYear.replace(/\//g, "-");
       const reportSlug = selectedReportType.replace(/\s+/g, "");
-      const docId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
+      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? `_${selectedReportNumber}` : "";
+      const docId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
       const snap = await getDoc(doc(db, "academicRecords", docId));
       if (snap.exists()) {
         setRecordId(snap.id);
@@ -290,7 +293,9 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
         const termSlug = term.replace(/\s+/g, "");
         const summaryId = `${student.studentId}_${yearSlug}_${termSlug}`;
         const summaryRef = doc(db, "academicRecordsSummary", summaryId);
-        const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${selectedReportType.replace(/\s+/g, "")}`;
+        const typeKey = selectedReportType.replace(/\s+/g, "");
+        const reportSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
+        const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${typeKey}${reportSuffix}`;
 
         const rankInfo = calculateCompetitionRanking(
           subjectScoresList,
@@ -397,6 +402,8 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
     subjects,
     selectedReportType,
     setSelectedReportType,
+    selectedReportNumber,
+    setSelectedReportNumber,
     searchQuery,
     setSearchQuery,
     recordId,

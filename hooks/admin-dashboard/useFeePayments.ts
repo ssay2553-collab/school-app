@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {
   collection,
   doc,
-  getDocsFromServer,
+  getDocs,
   query,
   where,
   writeBatch,
@@ -62,7 +62,7 @@ export const useFeePayments = ({
         q = query(q, where("term", "==", termStr));
       }
 
-      const snap = await getDocsFromServer(q as any);
+      const snap = await getDocs(q as any);
       const payments = snap.docs.map((d) => ({
         id: d.id,
         ...(d.data() as any),
@@ -206,7 +206,7 @@ export const useFeePayments = ({
           where("academicYear", "==", academicYear),
           where("term", "==", term)
         );
-        const snapP = await getDocsFromServer(qP);
+        const snapP = await getDocs(qP);
         const history = snapP.docs.map(d => d.data());
         const categoryMap: Record<string, { billed: number; paid: number }> = {};
 
@@ -436,7 +436,7 @@ export const useFeePayments = ({
             where("receiptNo", "==", payment.receiptNo),
             where("studentUid", "==", student?.uid)
           );
-          const snap = await getDocsFromServer(q);
+          const snap = await getDocs(q);
           snap.forEach((d) => {
             batch.delete(d.ref);
           });

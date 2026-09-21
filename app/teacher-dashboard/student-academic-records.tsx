@@ -6,6 +6,7 @@ import {
   Alert,
   BackHandler,
   FlatList,
+  Platform,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -67,6 +68,8 @@ export default function StudentAcademicRecords() {
     setSelectedSubject,
     reportType,
     setReportType,
+    reportNumber,
+    setReportNumber,
     allStudents,
     updateStudentScore,
     saveRecord,
@@ -105,8 +108,11 @@ export default function StudentAcademicRecords() {
       Alert.alert("Locked", "This record has been approved by the Admin and cannot be edited.");
       return;
     }
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     const success = await saveRecord();
     if (success) router.back();
+    else isNavigating.current = false;
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
@@ -127,7 +133,17 @@ export default function StudentAcademicRecords() {
           <View style={styles.lockedConfigItem}><Text style={styles.miniLabel}>YEAR</Text><View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{academicYear || "---"}</Text></View></View>
           <View style={styles.lockedConfigItem}><Text style={styles.miniLabel}>TERM</Text><View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{term || "---"}</Text></View></View>
         </View>
-        <SelectionGroup label="REPORT TYPE" items={["End of Term", "Mid-Term", "Mock Exams"]} selectedId={reportType} onSelect={setReportType} />
+        <SelectionGroup label="REPORT TYPE" items={["End of Term", "Mid-Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"]} selectedId={reportType} onSelect={setReportType} />
+        {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) && (
+          <SelectionGroup
+            label="ASSESSMENT NUMBER"
+            items={[1, 2, 3, 4, 5]}
+            selectedId={reportNumber.toString()}
+            onSelect={(v) => setReportNumber(Number(v))}
+            getLabel={(item) => `Assessment ${item}`}
+            getId={(item) => item.toString()}
+          />
+        )}
         <SelectionGroup label="CLASS" items={teacherClasses} selectedId={selectedClassId} onSelect={setSelectedClassId} getLabel={(item) => item.name} getId={(item) => item.id} />
         <SelectionGroup label="SUBJECT" items={subjects} selectedId={selectedSubject} onSelect={setSelectedSubject} />
       </Animatable.View>
@@ -143,7 +159,9 @@ export default function StudentAcademicRecords() {
           <TouchableOpacity onPress={handleBack} style={styles.backBtn}><SVGIcon name="arrow-back" size={24} color="#fff" /></TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 15 }}>
             <Text style={styles.headerTitle}>Academic Ledger</Text>
-            <Text style={styles.headerSubtitle}>{academicYear} • {term}</Text>
+            <Text style={styles.headerSubtitle}>
+              {academicYear} • {term} {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `• ${reportType === "Trial Test" ? "TEST" : reportType === "Mock Exams" ? "MOCK" : "CAT"} ${reportNumber}` : ""}
+            </Text>
           </View>
         </View>
       </LinearGradient>
@@ -158,8 +176,10 @@ export default function StudentAcademicRecords() {
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={<View style={styles.emptyState}><SVGIcon name="people-outline" size={48} color="#CBD5E1" /><Text style={styles.emptyStateText}>{!selectedSubject ? "Select subject" : "No students found"}</Text></View>}
           contentContainerStyle={styles.listContent}
-          removeClippedSubviews={true}
-          initialNumToRender={10}
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={8}
+          maxToRenderPerBatch={5}
+          windowSize={10}
         />
       )}
 

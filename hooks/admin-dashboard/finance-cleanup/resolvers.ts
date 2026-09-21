@@ -1,7 +1,6 @@
 export const createResolvers = (
   studentNameMap: Map<string, string>,
   studentIDMap: Map<string, string>,
-  claimedMapping: Map<string, string>,
   validStudentIds: Set<string>
 ) => {
   const resolveUid = (
@@ -10,34 +9,31 @@ export const createResolvers = (
     docId?: string
   ) => {
     if (!uidOrId || uidOrId === "undefined" || uidOrId === "null") {
+      // Robustness fallback: Try to extract UID from docId if present (UID_AY_TERM)
+      if (docId) {
+        const firstPart = docId.split("_")[0];
+        if (firstPart && validStudentIds.has(firstPart)) return firstPart;
+      }
+      // Name fallback for older records that might only have a name
       if (name) {
         const cleanedName = name.toLowerCase().trim();
         const fromName = studentNameMap.get(cleanedName);
-        if (fromName) return claimedMapping.get(fromName) || fromName;
-      }
-      if (docId) {
-        const firstPart = docId.split("_")[0];
-        if (firstPart) {
-          const fromID = studentIDMap.get(firstPart.toLowerCase().trim());
-          if (fromID) return claimedMapping.get(fromID) || fromID;
-          if (validStudentIds.has(firstPart))
-            return claimedMapping.get(firstPart) || firstPart;
-        }
+        if (fromName) return fromName;
       }
       return null;
     }
 
     const trimmed = String(uidOrId).trim();
-    if (validStudentIds.has(trimmed))
-      return claimedMapping.get(trimmed) || trimmed;
+    if (validStudentIds.has(trimmed)) return trimmed;
 
+    // Last resort fallbacks for documents that might still have a studentID or name
     const fromID = studentIDMap.get(trimmed.toLowerCase());
-    if (fromID) return claimedMapping.get(fromID) || fromID;
+    if (fromID) return fromID;
 
     if (name) {
       const cleanedName = name.toLowerCase().trim();
       const fromName = studentNameMap.get(cleanedName);
-      if (fromName) return claimedMapping.get(fromName) || fromName;
+      if (fromName) return fromName;
     }
 
     return null;

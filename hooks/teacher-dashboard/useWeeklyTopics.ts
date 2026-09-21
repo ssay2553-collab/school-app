@@ -25,12 +25,16 @@ export interface WeeklyTopic {
   startDate: string; // ISO date
   endDate: string;   // ISO date
   topic: string;
+  strand?: string;
+  subStrand?: string;
+  indicatorCode?: string;
   subTopics?: string;
   objectives?: string;
   teacherId: string;
   academicYear: string;
   term: string;
   weekNumber?: string;
+  curriculum?: string;
 }
 
 export const useWeeklyTopics = () => {
@@ -51,6 +55,9 @@ export const useWeeklyTopics = () => {
 
   const [topicData, setTopicData] = useState<Partial<WeeklyTopic>>({
     topic: '',
+    strand: '',
+    subStrand: '',
+    indicatorCode: '',
     subTopics: '',
     objectives: '',
   });
@@ -64,6 +71,7 @@ export const useWeeklyTopics = () => {
 
   const academicYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
+  const userCurriculum = appUser?.curriculum || "GES";
 
   // Fetch teacher's classes and subjects
   useEffect(() => {
@@ -118,6 +126,9 @@ export const useWeeklyTopics = () => {
           const data = docSnap.data() as WeeklyTopic;
           setTopicData({
             topic: data.topic || '',
+            strand: data.strand || '',
+            subStrand: data.subStrand || '',
+            indicatorCode: data.indicatorCode || '',
             subTopics: data.subTopics || '',
             objectives: data.objectives || '',
           });
@@ -125,13 +136,23 @@ export const useWeeklyTopics = () => {
           setWeekNumber(data.weekNumber || "");
           setServerTopicData({
             topic: data.topic || '',
+            strand: data.strand || '',
+            subStrand: data.subStrand || '',
+            indicatorCode: data.indicatorCode || '',
             subTopics: data.subTopics || '',
             objectives: data.objectives || '',
             endDate: data.endDate || '',
             weekNumber: data.weekNumber || "",
           });
         } else {
-          setTopicData({ topic: '', subTopics: '', objectives: '' });
+          setTopicData({
+            topic: '',
+            strand: '',
+            subStrand: '',
+            indicatorCode: '',
+            subTopics: '',
+            objectives: ''
+          });
           setWeekNumber("");
           setServerTopicData({});
           // Only update end date if it's a new week selection, not just a clear
@@ -165,10 +186,14 @@ export const useWeeklyTopics = () => {
         weekNumber: weekNumber,
         academicYear,
         term,
-        topic: topicData.topic,
+        topic: topicData.topic || '',
+        strand: topicData.strand || '',
+        subStrand: topicData.subStrand || '',
+        indicatorCode: topicData.indicatorCode || '',
         subTopics: topicData.subTopics,
         objectives: topicData.objectives,
         teacherId: firebaseUser?.uid,
+        curriculum: userCurriculum,
         updatedAt: serverTimestamp(),
       };
 
@@ -212,5 +237,6 @@ export const useWeeklyTopics = () => {
     saveTopic,
     hasUnsavedChanges,
     subjects: appUser?.subjects || [],
+    curriculum: userCurriculum,
   };
 };

@@ -16,6 +16,12 @@ export const useFeeStudents = (
   const [fetchingMore, setFetchingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  const isMounted = useRef(true);
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
+
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
   const isFetchingRef = useRef(false);
@@ -237,7 +243,9 @@ export const useFeeStudents = (
   useEffect(() => {
     if (students.length === 0) return;
 
-    const studentIds = students.map(s => s.uid);
+    // To prevent excessive listeners, we only listen to the first 100 students in the current view
+    // Pagination should ideally use a more global listener or single-document updates
+    const studentIds = students.slice(0, 100).map(s => s.uid);
     const chunks = [];
     for (let i = 0; i < studentIds.length; i += 10) {
       chunks.push(studentIds.slice(i, i + 10));
@@ -246,6 +254,7 @@ export const useFeeStudents = (
     const unsubs = chunks.map(chunk => {
       const q = query(collection(db, "users"), where("__name__", "in", chunk));
       return onSnapshot(q, (snap) => {
+        if (!isMounted.current) return;
         setStudents(prev => {
           let updated = false;
           const next = prev.map(s => {
@@ -288,11 +297,13 @@ export const useFeeStudents = (
           });
           return updated ? next : prev;
         });
+      }, (err) => {
+        console.warn("Real-time listener failed:", err);
       });
     });
 
     return () => unsubs.forEach(unsub => unsub());
-  }, [students.map(s => s.uid).join(',')]);
+  }, [students.map(s => s.uid).slice(0, 100).join(',')]);
 
   return {
     students,

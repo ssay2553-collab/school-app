@@ -126,10 +126,7 @@ export default function ManageUsers() {
     handlePromoteRepeat,
     openPromoteRepeat,
     runFinanceCleanup,
-    runFinanceMigration,
-    runAcademicCleanup,
     isFinanceCleaning,
-    isAcademicCleaning,
   } = useManageUsers({ appUser, acadConfig, showToast, router });
 
   if (!hasManageUsersAccess && appUser) {
@@ -448,10 +445,7 @@ export default function ManageUsers() {
           onPromoteRepeat={openPromoteRepeat}
           onToggleArchive={handleToggleArchiveStatus}
           onRunFinanceCleanup={(u) => runFinanceCleanup(u.uid)}
-          onRunFinanceMigration={(u) => runFinanceMigration(u.uid)}
-          onRunAcademicCleanup={(u) => runAcademicCleanup(u.uid)}
           isFinanceCleaning={isFinanceCleaning}
-          isAcademicCleaning={isAcademicCleaning}
           onViewAttendance={(u) => {
             if (isNavigating.current) return;
             isNavigating.current = true;

@@ -31,7 +31,6 @@ import { db, functions, storage } from "../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { useFinanceCleanup } from "./useFinanceCleanup";
-import { useAcademicCleanup } from "./useAcademicCleanup";
 import { User, UserRole, PermissionLevel, AssignmentModalState, PERMISSION_KEYS } from "./manage-users-types";
 import { useRef } from "react";
 import { getStudentFinalEmail } from "../../utils/authUnify";
@@ -1323,8 +1322,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     }
   };
 
-  const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, runMigration: runFinanceMigration } = useFinanceCleanup(showToast);
-  const { cleaning: isAcademicCleaning, runCleanup: runAcademicCleanup } = useAcademicCleanup(showToast);
+  const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup } = useFinanceCleanup(showToast);
 
   return {
     selectedRole, setSelectedRole,
@@ -1371,9 +1369,6 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     handlePromoteRepeat,
     openPromoteRepeat: (target: User | null = null) => setAssignmentModal({ type: "promote_repeat", target }),
     runFinanceCleanup,
-    runFinanceMigration,
-    runAcademicCleanup,
     isFinanceCleaning,
-    isAcademicCleaning
   };
 }

@@ -258,7 +258,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                     { key: 'admission', paid: record.admissionPaid || 0 },
                     { key: 'books', paid: record.booksPaid || 0 },
                     { key: 'uniform', paid: record.uniformPaid || 0 },
-                    { key: 'other', paid: record.otherPaid || 0 },
+                    { key: 'other charges', paid: record.otherPaid || 0 },
                 ];
 
                 categories.forEach(cat => {
@@ -506,7 +506,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                         }
                     }
                   });
-                  const customCats = Object.keys(categoryMap).filter((cat) => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(cat.toLowerCase()));
+                  const customCats = Object.keys(categoryMap).filter((cat) => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other charges'].includes(cat.toLowerCase()));
                   for (const cat of customCats) {
                     if (remainingAmount <= 0) break;
                     const due = categoryMap[cat].billed - categoryMap[cat].paid;
@@ -755,7 +755,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
         totalGeneralPool -= tuitionToPay;
 
         // 3. Settle Isolated Categories in Order
-        const displayWaterfallOrder = ['admission', 'pta', 'maintenance', 'books', 'uniform'];
+        const displayWaterfallOrder = ['admission', 'pta', 'maintenance', 'books', 'uniform', 'other charges'];
         displayWaterfallOrder.forEach(cat => {
             if (summary[cat] && totalGeneralPool > 0) {
                 const due = Math.max(0, summary[cat].billed - summary[cat].paid);

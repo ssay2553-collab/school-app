@@ -64,7 +64,7 @@ export const reconcileStudentBalances = (
     if (cat !== 'tuition' && !isolatedKeys.includes(cat)) detectedCategories.add(cat);
   });
   const dynamicCategories = Array.from(detectedCategories);
-  const fullWaterfall = [...waterfallOrder.filter(k => k !== 'other'), ...dynamicCategories];
+  const fullWaterfall = [...waterfallOrder, ...dynamicCategories];
 
   let unallocatedTuition = unallocatedPayments
     .filter(p => !fullWaterfall.includes(normalizeCategory(p)))
@@ -123,7 +123,7 @@ export const reconcileStudentBalances = (
     // --- TUITION ---
     // Bill from record might be manually adjusted, but also check for bulk tuition charges
     const extraTuitionCharges = termSpecificCharges
-       .filter(c => !isolatedKeys.includes(c._category || normalizeCategory(c)))
+       .filter(c => normalizeCategory(c) === 'tuition')
        .reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
 
     const termGrossTuition = Math.max(safeNum(data.termBill), extraTuitionCharges);
@@ -171,7 +171,7 @@ export const reconcileStudentBalances = (
 
     // Sort keys to respect waterfall order
     fullWaterfall.forEach(k => {
-      const isHardcoded = isolatedKeys.includes(k) && k !== 'other';
+      const isHardcoded = isolatedKeys.includes(k) && k !== 'other charges';
 
       // Sum of charges in feePayments for this category/term
       const totalChargesInTerm = termSpecificCharges

@@ -3,7 +3,7 @@ import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
-  getDocsFromServer,
+  getDocs,
   increment,
   limit,
   onSnapshot,
@@ -108,7 +108,7 @@ export const useBooksCharges = ({
         q = query(q, where("classId", "==", selectedClassId));
       }
 
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       let billed = 0;
       let collected = 0;
       snap.docs.forEach(d => {
@@ -160,7 +160,7 @@ export const useBooksCharges = ({
         q = query(q, startAfter(lastVisibleRef.current));
       }
 
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       const batch: Student[] = snap.docs.map(d => {
         const data = d.data();
         return {
@@ -221,7 +221,7 @@ export const useBooksCharges = ({
         where("studentUid", "==", studentUid),
         where("type", "in", ["books", "books_payment"])
       );
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       const list = snap.docs.map(d => d.data());
       setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (e) {
@@ -365,7 +365,7 @@ export const useBooksCharges = ({
         where("term", "==", acadConfig.currentTerm),
         where("method", "==", bookTitleVal || "Books Charge")
       );
-      const existingSnap = await getDocsFromServer(qExisting);
+      const existingSnap = await getDocs(qExisting);
       const existing = existingSnap.empty ? null : { id: existingSnap.docs[0].id, ...(existingSnap.docs[0].data() as any) };
 
       const oldAmount = existing ? (existing.amount || 0) : 0;

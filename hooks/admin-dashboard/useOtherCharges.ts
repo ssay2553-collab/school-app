@@ -3,6 +3,7 @@ import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
+  getDocs,
   getDocsFromServer,
   increment,
   limit,
@@ -109,7 +110,7 @@ export const useOtherCharges = ({
         q = query(q, where("classId", "==", selectedClassId));
       }
 
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
 
       let totalCollected = 0;
       let totalBilled = 0;
@@ -176,7 +177,7 @@ export const useOtherCharges = ({
           q = query(q, startAfter(lastVisibleRef.current));
         }
 
-        const snap = await getDocsFromServer(q);
+        const snap = await getDocs(q);
         if (snap.empty) {
           hasMoreRef.current = false;
           if (isFirstLoad) setStudents([]);
@@ -232,7 +233,7 @@ export const useOtherCharges = ({
         where("studentUid", "==", studentUid),
         where("type", "in", ["other", "other_payment"])
       );
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
       const list = snap.docs.map((d) => d.data());
       setHistory(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (e) {
@@ -377,7 +378,7 @@ export const useOtherCharges = ({
         where("classId", "==", selectedClassId),
         where("status", "in", ["active", "pending_activation"])
       );
-      const snap = await getDocsFromServer(q);
+      const snap = await getDocs(q);
 
       // Filter out exempted students for this specific other charge category
       const targetDocs = snap.docs.filter(d => {
@@ -558,7 +559,7 @@ export const useOtherCharges = ({
         where("term", "==", acadConfig.currentTerm),
         where("otherCategory", "==", chargeType.trim())
       );
-      const existingSnap = await getDocsFromServer(qExisting);
+      const existingSnap = await getDocs(qExisting);
       const existing = existingSnap.empty ? null : existingSnap.docs[0].data();
 
       const oldAmount = existing ? (existing as any).amount : 0;
@@ -674,7 +675,7 @@ export const useOtherCharges = ({
           where("otherCategory", "==", category),
           where("academicYear", "==", acadConfig.academicYear)
         );
-        const snap = await getDocsFromServer(q);
+        const snap = await getDocs(q);
 
         const year = acadConfig.academicYear?.replace(/\//g, "-");
         const term = acadConfig.currentTerm?.replace(/\s/g, "");

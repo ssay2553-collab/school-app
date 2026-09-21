@@ -17,6 +17,7 @@ export interface AcademicReportData {
   className: string;
   academicYear: string;
   term: string;
+  reportNumber?: number;
   overallPosition: string;
   attendance: string;
   reportType: string;

@@ -78,6 +78,18 @@ interface TeacherStats {
   }[];
 }
 
+const safeFormat = (date: any, format: string) => {
+  if (!date) return "N/A";
+  try {
+    if (date.toDate && typeof date.toDate === 'function') {
+      return moment(date.toDate()).format(format);
+    }
+    return moment(date).format(format);
+  } catch (e) {
+    return "Invalid Date";
+  }
+};
+
 export default function TeacherStatistics() {
   const router = useRouter();
   const { appUser } = useAuth();
@@ -550,62 +562,94 @@ export default function TeacherStatistics() {
         visible={!!viewingTopicsList}
         transparent
         animationType="slide"
-        onRequestClose={() => setViewingTopicsList(null)}
+        onRequestClose={() => {
+          setViewingTopicsList(null);
+          setSelectedTopicDetail(null);
+        }}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { maxHeight: '70%' }]}>
+          <View style={[styles.modalContent, { maxHeight: '80%' }]}>
              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Weekly Topics</Text>
-                <TouchableOpacity onPress={() => setViewingTopicsList(null)}>
+                <View>
+                  <Text style={styles.modalTitle}>Weekly Topics</Text>
+                  <Text style={styles.modalSubtitle}>Select a week to view lesson details</Text>
+                </View>
+                <TouchableOpacity onPress={() => {
+                  setViewingTopicsList(null);
+                  setSelectedTopicDetail(null);
+                }}>
                    <SVGIcon name="close-circle" size={28} color="#64748B" />
                 </TouchableOpacity>
              </View>
-             <FlatList
-                data={viewingTopicsList}
-                keyExtractor={(item, idx) => idx.toString()}
-                contentContainerStyle={{ padding: 10 }}
-                renderItem={({ item }) => (
+
+             {selectedTopicDetail ? (
+               <Animatable.View animation="fadeInRight" duration={300} style={{ flex: 1 }}>
                   <TouchableOpacity
-                    style={styles.breakdownItem}
-                    onPress={() => setSelectedTopicDetail(item)}
+                    style={styles.backToTopicsBtn}
+                    onPress={() => setSelectedTopicDetail(null)}
                   >
-                    <View style={styles.breakdownInfo}>
-                      <Text style={styles.breakdownClass}>Week {item.weekNumber}: {item.topic}</Text>
-                      <Text style={styles.breakdownSubject}>{moment(item.startDate).format("MMM D")} - {moment(item.endDate).format("MMM D")}</Text>
-                    </View>
-                    <SVGIcon name="chevron-forward" size={18} color={primary} />
+                    <SVGIcon name="arrow-back" size={16} color={primary} />
+                    <Text style={[styles.backBtnText, { color: primary }]}>Back to Weekly List</Text>
                   </TouchableOpacity>
-                )}
-             />
+
+                  <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
+                    <View style={styles.detailCurriculumBadge}>
+                      <Text style={styles.detailCurriculumText}>
+                        {selectedTopicDetail?.curriculum || "GES"} CURRICULUM
+                      </Text>
+                    </View>
+
+                    <Text style={styles.detailLabel}>WEEK TOPIC</Text>
+                    <Text style={styles.detailValue}>{selectedTopicDetail?.topic}</Text>
+
+                    <View style={styles.detailRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.detailLabel}>STRAND / AREA</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail?.strand || "N/A"}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.detailLabel}>SUB-STRAND / TYPE</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail?.subStrand || "N/A"}</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.detailLabel}>INDICATORS / CODES</Text>
+                    <Text style={styles.detailValue}>{selectedTopicDetail?.indicatorCode || "N/A"}</Text>
+
+                    <Text style={styles.detailLabel}>SUB-TOPICS / ACTIVITIES</Text>
+                    <Text style={styles.detailValue}>{selectedTopicDetail?.subTopics || "Not specified"}</Text>
+
+                    <Text style={styles.detailLabel}>OBJECTIVES / FOCUS</Text>
+                    <Text style={styles.detailValue}>{selectedTopicDetail?.objectives || "Not specified"}</Text>
+
+                    <Text style={styles.detailLabel}>DURATION</Text>
+                    <Text style={styles.detailValue}>
+                      {safeFormat(selectedTopicDetail?.startDate, "MMM D, YYYY")} - {safeFormat(selectedTopicDetail?.endDate, "MMM D, YYYY")}
+                    </Text>
+                  </ScrollView>
+               </Animatable.View>
+             ) : (
+               <FlatList
+                  data={viewingTopicsList}
+                  keyExtractor={(item, idx) => `topic_${idx}`}
+                  contentContainerStyle={{ padding: 10, paddingBottom: 40 }}
+                  initialNumToRender={10}
+                  removeClippedSubviews={Platform.OS === 'android'}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.breakdownItem}
+                      onPress={() => setSelectedTopicDetail(item)}
+                    >
+                      <View style={styles.breakdownInfo}>
+                        <Text style={styles.breakdownClass}>Week {item.weekNumber}: {item.topic}</Text>
+                        <Text style={styles.breakdownSubject}>{safeFormat(item.startDate, "MMM D")} - {safeFormat(item.endDate, "MMM D")}</Text>
+                      </View>
+                      <SVGIcon name="chevron-forward" size={18} color={primary} />
+                    </TouchableOpacity>
+                  )}
+               />
+             )}
           </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={!!selectedTopicDetail}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSelectedTopicDetail(null)}
-      >
-        <View style={[styles.modalOverlay, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
-           <View style={[styles.modalContent, { width: '90%', maxHeight: '80%' }]}>
-              <View style={styles.modalHeader}>
-                 <Text style={styles.modalTitle}>Lesson Details</Text>
-                 <TouchableOpacity onPress={() => setSelectedTopicDetail(null)}>
-                    <SVGIcon name="close-circle" size={28} color="#64748B" />
-                 </TouchableOpacity>
-              </View>
-              <ScrollView contentContainerStyle={{ padding: 20 }}>
-                 <Text style={styles.detailLabel}>TOPIC</Text>
-                 <Text style={styles.detailValue}>{selectedTopicDetail?.topic}</Text>
-
-                 <Text style={styles.detailLabel}>SUB-TOPICS / ACTIVITIES</Text>
-                 <Text style={styles.detailValue}>{selectedTopicDetail?.subTopics || "Not specified"}</Text>
-
-                 <Text style={styles.detailLabel}>OBJECTIVES</Text>
-                 <Text style={styles.detailValue}>{selectedTopicDetail?.objectives || "Not specified"}</Text>
-              </ScrollView>
-           </View>
         </View>
       </Modal>
 
@@ -794,13 +838,31 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
+    alignItems: "center",
   },
   modalContent: {
     backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     padding: 24,
+    width: width > 600 ? 600 : "100%",
     maxHeight: "90%",
+  },
+  backToTopicsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginTop: 10,
+    alignSelf: 'flex-start'
+  },
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   modalHeader: {
     flexDirection: "row",
@@ -950,5 +1012,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1E293B',
     lineHeight: 22,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    gap: 15,
+  },
+  detailCurriculumBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  detailCurriculumText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: COLORS.primary,
+    letterSpacing: 1,
   },
 });

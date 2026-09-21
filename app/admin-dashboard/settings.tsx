@@ -11,7 +11,6 @@ import { collection, query, where, getDocs, deleteDoc, doc, writeBatch } from "f
 import { httpsCallable } from "firebase/functions";
 import moment from "moment";
 import { useFinanceCleanup } from "../../hooks/admin-dashboard/useFinanceCleanup";
-import { useAcademicCleanup } from "../../hooks/admin-dashboard/useAcademicCleanup";
 import { repairMissingSignupCodes } from "../../scratch/repair_signup_codes";
 import { useRef, useEffect } from "react";
 
@@ -31,8 +30,7 @@ export default function AdminSettingsScreen() {
     return () => { isMounted.current = false; };
   }, []);
 
-  const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, runMigration: runFinanceMigration, report: financeReport } = useFinanceCleanup(showToast);
-  const { cleaning: isAcademicCleaning, runCleanup: runAcademicCleanup, report: academicReport } = useAcademicCleanup(showToast);
+  const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, report: financeReport } = useFinanceCleanup(showToast);
 
   const handleRepairSignupCodes = async () => {
     setRepairLoading(true);
@@ -173,24 +171,6 @@ export default function AdminSettingsScreen() {
       loading: isCleaning,
     },
     {
-      title: "Identity & Legacy Migration",
-      icon: "people-circle",
-      action: () => {
-        if (Platform.OS === "web") {
-          if (window.confirm("Scan and resolve student identities? This links legacy records to newly registered Auth accounts.")) {
-            runFinanceMigration();
-          }
-        } else {
-          Alert.alert("Identity Migration", "Scan and resolve student identities? This links legacy records to newly registered Auth accounts.", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Start Migration", style: "default", onPress: runFinanceMigration }
-          ]);
-        }
-      },
-      color: "#3B82F6",
-      loading: isFinanceCleaning,
-    },
-    {
       title: "Financial Balance Reconcile",
       icon: "calculator",
       action: () => {
@@ -207,24 +187,6 @@ export default function AdminSettingsScreen() {
       },
       color: "#8B5CF6",
       loading: isFinanceCleaning,
-    },
-    {
-      title: "Academic Integrity Scan",
-      icon: "school",
-      action: () => {
-        if (Platform.OS === "web") {
-          if (window.confirm("Scan academic records (scores, reports) to migrate data from legacy IDs to new Auth UIDs?")) {
-            runAcademicCleanup();
-          }
-        } else {
-          Alert.alert("Academic Integrity Scan", "Scan academic records (scores, reports) to migrate data from legacy IDs to new Auth UIDs?", [
-            { text: "Cancel", style: "cancel" },
-            { text: "Start Scan", style: "default", onPress: runAcademicCleanup }
-          ]);
-        }
-      },
-      color: "#A55EEA",
-      loading: isAcademicCleaning,
     },
     {
         title: "Chat & Token Maintenance",
@@ -321,20 +283,8 @@ export default function AdminSettingsScreen() {
             <Text style={[styles.reportTitle, { color: theme.text }]}>Last Integrity Scan Result</Text>
             <View style={styles.reportGrid}>
               <View style={styles.reportItem}>
-                <Text style={styles.reportLabel}>Orphaned Records</Text>
-                <Text style={[styles.reportValue, { color: financeReport.orphanedRecords > 0 ? "#F59E0B" : "#10B981" }]}>{financeReport.orphanedRecords}</Text>
-              </View>
-              <View style={styles.reportItem}>
-                <Text style={styles.reportLabel}>Records Fixed</Text>
+                <Text style={styles.reportLabel}>Records Reconciled</Text>
                 <Text style={[styles.reportValue, { color: "#10B981" }]}>{financeReport.fixedRecords}</Text>
-              </View>
-              <View style={styles.reportItem}>
-                <Text style={styles.reportLabel}>Orphaned Payments</Text>
-                <Text style={[styles.reportValue, { color: financeReport.orphanedPayments > 0 ? "#EF4444" : "#10B981" }]}>{financeReport.orphanedPayments}</Text>
-              </View>
-              <View style={styles.reportItem}>
-                <Text style={styles.reportLabel}>Payments Purged</Text>
-                <Text style={[styles.reportValue, { color: "#EF4444" }]}>{financeReport.deletedPayments}</Text>
               </View>
               <View style={styles.reportItem}>
                 <Text style={styles.reportLabel}>Balances Reconciled</Text>
@@ -344,31 +294,7 @@ export default function AdminSettingsScreen() {
           </View>
         )}
 
-        {academicReport && (
-          <View style={[styles.reportCard, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
-            <Text style={[styles.reportTitle, { color: theme.text }]}>Last Academic Scan Result</Text>
-            <View style={styles.reportGrid}>
-              <View style={styles.reportItem}>
-                <Text style={styles.reportLabel}>Scores Migrated</Text>
-                <Text style={[styles.reportValue, { color: "#10B981" }]}>{academicReport.scoresFixed}</Text>
-              </View>
-              <View style={styles.reportItem}>
-                <Text style={styles.reportLabel}>Reports Migrated</Text>
-                <Text style={[styles.reportValue, { color: "#10B981" }]}>{academicReport.reportsFixed}</Text>
-              </View>
-              <View style={styles.reportItem}>
-                <Text style={styles.reportLabel}>Summaries Fixed</Text>
-                <Text style={[styles.reportValue, { color: "#8B5CF6" }]}>{academicReport.summaryFixed}</Text>
-              </View>
-              <View style={styles.reportItem}>
-                <Text style={styles.reportLabel}>Orphaned Scores</Text>
-                <Text style={[styles.reportValue, { color: academicReport.orphanedScores > 0 ? "#EF4444" : "#10B981" }]}>{academicReport.orphanedScores}</Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        <Text style={[styles.versionText, { color: theme.gray }]}>Version 2.1.0 • EduEaze Platform</Text>
+        <Text style={[styles.versionText, { color: theme.gray }]}>Version 2.2.0 • EduEaze Platform</Text>
       </ScrollView>
     </View>
   );

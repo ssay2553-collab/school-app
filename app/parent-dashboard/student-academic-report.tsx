@@ -8,7 +8,7 @@ import {
   query,
   where,
 } from "firebase/firestore";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -42,12 +42,14 @@ export default function StudentAcademicReport() {
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
   const router = useRouter();
+  const isNavigating = useRef(false);
 
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("Term 1");
   const [selectedReportType, setSelectedReportType] =
     useState<ReportType>("End of Term");
+  const [selectedReportNumber, setSelectedReportNumber] = useState(1);
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const schoolId = (
@@ -105,6 +107,7 @@ export default function StudentAcademicReport() {
     classId: children.find((c) => c.id === selectedChildId)?.classId,
     academicYear: selectedYear,
     reportType: selectedReportType,
+    reportNumber: selectedReportNumber,
   });
 
   const fetchHistory = async () => {
@@ -141,6 +144,7 @@ export default function StudentAcademicReport() {
 
   useEffect(() => {
     if (!appUser || appUser.role !== "parent") return;
+    let isMounted = true;
     const fetchData = async () => {
       const ids = (appUser as any).childrenIds || [];
       if (ids.length > 0) {
@@ -150,6 +154,7 @@ export default function StudentAcademicReport() {
             where(documentId(), "in", ids),
           );
           const snap = await getDocsFromServer(q as any);
+          if (!isMounted) return;
           const list = snap.docs.map((d) => {
             const data = d.data() as any;
             return {
@@ -165,9 +170,10 @@ export default function StudentAcademicReport() {
           console.error("Error fetching children:", e);
         }
       }
-      setLoading(false);
+      if (isMounted) setLoading(false);
     };
     fetchData();
+    return () => { isMounted = false; };
   }, [appUser]);
 
   useEffect(() => {
@@ -258,7 +264,7 @@ export default function StudentAcademicReport() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipRow}
           >
-            {["End of Term", "Mid-Term", "Mock Exams"].map((type) => (
+            {["End of Term", "Mid-Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"].map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
@@ -281,6 +287,40 @@ export default function StudentAcademicReport() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+
+          {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) && (
+            <>
+              <Text style={styles.label}>Assessment Number</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.chipRow}
+              >
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <TouchableOpacity
+                    key={n}
+                    style={[
+                      styles.chip,
+                      selectedReportNumber === n && {
+                        backgroundColor: primary,
+                        borderColor: primary,
+                      },
+                    ]}
+                    onPress={() => setSelectedReportNumber(n)}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        selectedReportNumber === n && { color: "#fff" },
+                      ]}
+                    >
+                      {n}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
 
           <View style={styles.pickerRow}>
             <View style={[styles.pickerBox, { flex: 1 }]}>
@@ -370,6 +410,7 @@ export default function StudentAcademicReport() {
             className={className}
             classIdState={classIdState}
             academicYearState={selectedYear}
+            termState={selectedTerm}
             overallPosition={overallPosition}
             attendance={attendance}
             isFullReport={isFullReport}
@@ -428,17 +469,21 @@ export default function StudentAcademicReport() {
                   <TouchableOpacity
                     style={styles.historyItem}
                     onPress={() => {
-                      setSelectedYear(item.academicYear);
-                      setSelectedTerm(item.term);
-                      if (
-                        ["End of Term", "Mid-Term", "Mock Exams"].includes(
-                          item.reportType,
-                        )
-                      ) {
-                        setSelectedReportType(item.reportType as ReportType);
-                      }
-                      setHistoryModalVisible(false);
-                    }}
+                  if (isNavigating.current) return;
+                  isNavigating.current = true;
+                  setSelectedYear(item.academicYear);
+                  setSelectedTerm(item.term);
+                  if (
+                    ["End of Term", "Mid-Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"].includes(
+                      item.reportType,
+                    )
+                  ) {
+                    setSelectedReportType(item.reportType as ReportType);
+                    if (item.reportNumber) setSelectedReportNumber(item.reportNumber);
+                  }
+                  setHistoryModalVisible(false);
+                  setTimeout(() => { isNavigating.current = false; }, 500);
+                }}
                   >
                     <View style={styles.historyItemIcon}>
                       <SVGIcon name="document-text" size={20} color={primary} />

@@ -111,7 +111,13 @@ export class AcademicReportGenerator extends BasePDFGenerator {
     const sectionGap = subjectsCount <= 7 ? 15 : 8;
 
     // Report Title Banner
-    this.drawTitleBanner(`${data.reportType} PROGRESS REPORT`);
+    const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(data.reportType);
+    const typeLabel = data.reportType === "Trial Test" ? "TEST" : data.reportType === "Mock Exams" ? "MOCK" : "CAT";
+    const reportTitle = isNumbered
+      ? `${typeLabel} ${data.reportNumber || 1} PROGRESS REPORT`
+      : `${data.reportType} PROGRESS REPORT`;
+
+    this.drawTitleBanner(reportTitle);
 
     // Professional Student Information Section
     this.drawSectionHeader("STUDENT INFORMATION");
@@ -209,6 +215,7 @@ export class AcademicReportGenerator extends BasePDFGenerator {
 
     this.currentY -= (profileBoxHeight + 8);
 
+    const isAssessment = ["Class Assessment Task (CAT)", "Trial Test", "Mid-Term"].includes(data.reportType);
     const tableColumns = data.isFullReport
       ? [
           { header: "SUBJECT", width: 155 },
@@ -217,6 +224,12 @@ export class AcademicReportGenerator extends BasePDFGenerator {
           { header: "TOTAL", width: 60, align: "center" as const },
           { header: "GRADE", width: 45, align: "center" as const },
           { header: "REMARK", width: 165 },
+        ]
+      : isAssessment
+      ? [
+          { header: "SUBJECT", width: 220 },
+          { header: "TOTAL", width: 85, align: "center" as const },
+          { header: "GRADE", width: 210, align: "center" as const },
         ]
       : [
           { header: "SUBJECT", width: 200 },
@@ -234,6 +247,13 @@ export class AcademicReportGenerator extends BasePDFGenerator {
           isNaN(Number(s.total)) ? String(s.total) : Number(s.total).toFixed(0),
           s.grade,
           s.remark,
+        ];
+      }
+      if (isAssessment) {
+        return [
+          s.subject.toUpperCase(),
+          isNaN(Number(s.total)) ? String(s.total) : Number(s.total).toFixed(0),
+          `${s.grade} (${s.remark})`,
         ];
       }
       return [
@@ -266,34 +286,44 @@ export class AcademicReportGenerator extends BasePDFGenerator {
     this.drawLine(MARGIN, summaryY, MARGIN + PAGE_WIDTH, summaryY, 0.5, rgb(0.85, 0.85, 0.85));
     this.drawLine(MARGIN, summaryY - summaryHeight, MARGIN + PAGE_WIDTH, summaryY - summaryHeight, 0.5, rgb(0.85, 0.85, 0.85));
 
-    this.currentPage.drawText(`TOTAL RAW SCORE: ${data.TRS}   |   AVERAGE: ${data.TAS}`, {
-      x: MARGIN + 10,
-      y: summaryY - 14,
-      size: 9,
-      font: this.boldFont,
-      color: rgb(0.3, 0.3, 0.3),
-    });
+    if (isAssessment) {
+      this.currentPage.drawText(`TOTAL RAW SCORE: ${data.TRS}   |   AVERAGE: ${data.TAS}`, {
+        x: MARGIN + 10,
+        y: summaryY - 14,
+        size: 9,
+        font: this.boldFont,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+    } else {
+      this.currentPage.drawText(`TOTAL RAW SCORE: ${data.TRS}   |   AVERAGE: ${data.TAS}`, {
+        x: MARGIN + 10,
+        y: summaryY - 14,
+        size: 9,
+        font: this.boldFont,
+        color: rgb(0.3, 0.3, 0.3),
+      });
 
-    const aggregateLabel = "AGGREGATE: ";
-    const aggregateValue = String(data.AGGREGATE);
-    const aggValueWidth = this.boldFont.widthOfTextAtSize(aggregateValue, 10);
-    const aggLabelWidth = this.boldFont.widthOfTextAtSize(aggregateLabel, 10);
+      const aggregateLabel = "AGGREGATE: ";
+      const aggregateValue = String(data.AGGREGATE);
+      const aggValueWidth = this.boldFont.widthOfTextAtSize(aggregateValue, 10);
+      const aggLabelWidth = this.boldFont.widthOfTextAtSize(aggregateLabel, 10);
 
-    this.currentPage.drawText(aggregateLabel, {
-      x: MARGIN + PAGE_WIDTH - aggValueWidth - aggLabelWidth - 10,
-      y: summaryY - 14,
-      size: 10,
-      font: this.boldFont,
-      color: rgb(0.15, 0.15, 0.15),
-    });
+      this.currentPage.drawText(aggregateLabel, {
+        x: MARGIN + PAGE_WIDTH - aggValueWidth - aggLabelWidth - 10,
+        y: summaryY - 14,
+        size: 10,
+        font: this.boldFont,
+        color: rgb(0.15, 0.15, 0.15),
+      });
 
-    this.currentPage.drawText(aggregateValue, {
-      x: MARGIN + PAGE_WIDTH - aggValueWidth - 10,
-      y: summaryY - 14,
-      size: 10,
-      font: this.boldFont,
-      color: rgb(0.8, 0.1, 0.1),
-    });
+      this.currentPage.drawText(aggregateValue, {
+        x: MARGIN + PAGE_WIDTH - aggValueWidth - 10,
+        y: summaryY - 14,
+        size: 10,
+        font: this.boldFont,
+        color: rgb(0.8, 0.1, 0.1),
+      });
+    }
 
     this.currentY -= (summaryHeight + sectionGap);
 

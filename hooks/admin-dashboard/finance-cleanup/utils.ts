@@ -8,7 +8,7 @@ export const normalizeCategory = (p: any) => {
     const cat = type.replace("_payment", "");
     if (isolatedKeys.includes(cat)) return cat;
     if (otherCat) return otherCat;
-    return "other";
+    return "other charges";
   }
 
   // Explicit check for tuition types
@@ -16,6 +16,7 @@ export const normalizeCategory = (p: any) => {
 
   // If it's a known non-hardcoded bill, use otherCategory or type
   if (type === "other" && otherCat) return otherCat;
+  if (type === "other charges") return "other charges";
 
   const cand = (p.type || p.category || p.purpose || p.memo || "tuition")
     .toString()
@@ -30,7 +31,8 @@ export const normalizeCategory = (p: any) => {
   if (cleaned.includes("uniform")) return "uniform";
 
   if (otherCat) return otherCat;
-  if (cleaned.includes("other")) return "other";
+  if (cleaned.includes("othercharges") || cleaned.includes("otherfees")) return "other charges";
+  if (cleaned.includes("other")) return "other charges";
 
   // Fallback for custom labels
   if (type !== "" && type !== "tuition" && !isolatedKeys.includes(type)) return type;
@@ -83,7 +85,7 @@ export const waterfallOrder = [
   "maintenance",
   "books",
   "uniform",
-  "other",
+  "other charges",
 ];
 export const isolatedKeys = waterfallOrder;
 

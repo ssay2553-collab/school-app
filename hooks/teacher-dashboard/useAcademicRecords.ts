@@ -5,7 +5,7 @@ import {
   documentId,
   getDoc,
   getDocFromServer,
-  getDocsFromServer,
+  getDocs,
   query,
   where,
   writeBatch,
@@ -17,7 +17,7 @@ import { useAcademicConfig } from '../useAcademicConfig';
 import { useToast } from '../../contexts/ToastContext';
 import { getGradeDetails, sortClasses } from '../../lib/classHelpers';
 
-export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
+export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams" | "Class Assessment Task (CAT)" | "Trial Test";
 
 export interface StudentScoreRecord {
   studentId: string;
@@ -42,6 +42,7 @@ export const useAcademicRecords = () => {
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [reportType, setReportType] = useState<ReportType>("End of Term");
+  const [reportNumber, setReportNumber] = useState(1);
   const [allStudents, setAllStudents] = useState<StudentScoreRecord[]>([]);
   const [serverStudents, setServerStudents] = useState<StudentScoreRecord[]>([]);
   const [recordStatus, setRecordStatus] = useState<string>("pending");
@@ -84,7 +85,7 @@ export const useAcademicRecords = () => {
         const classIds = appUser.classes || [];
         if (classIds.length > 0) {
           const q = query(collection(db, "classes"), where(documentId(), "in", classIds));
-          const snap = await getDocsFromServer(q);
+          const snap = await getDocs(q);
           const list = snap.docs.map(d => ({
             id: d.id,
             name: (d.data() as any).name || d.id,
@@ -130,57 +131,66 @@ export const useAcademicRecords = () => {
       try {
         const yearSlug = academicYear.replace(/\//g, "-");
         const reportSlug = reportType.replace(/\s+/g, "");
-        const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
+        const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `_${reportNumber}` : "";
+        const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
 
         // Force server fetch to ensure we don't get cached data from a different class/context
-        const docSnap = await getDocFromServer(doc(db, "academicRecords", docId)).catch(() => getDoc(doc(db, "academicRecords", docId)));
+        const docSnap = await getDoc(doc(db, "academicRecords", docId));
 
         if (!isMounted) return;
 
+        // Fetch current active students in the class to ensure anyone newly added is included
+        const qUsers = query(
+          collection(db, "users"),
+          where("role", "==", "student"),
+          where("classId", "==", selectedClassId)
+        );
+        const userSnap = await getDocs(qUsers);
+
+        if (!isMounted) return;
+
+        const activeClassStudents = userSnap.docs.map((d: any) => {
+          const data = d.data();
+          const status = data.status || (data.profile && data.profile.status) || "active";
+          if (!["active", "pending_activation"].includes(status)) return null;
+
+          return {
+            studentId: d.id,
+            fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Unknown Student",
+            classScore: "",
+            classScore50: "0",
+            examsMark: "",
+            exam50: "0",
+            finalScore: "0",
+            grade: "N/A",
+            status: "draft",
+          } as StudentScoreRecord;
+        }).filter((s): s is StudentScoreRecord => s !== null);
+
         if (docSnap.exists()) {
           const data = docSnap.data();
-          const students = Array.isArray(data.students) ? data.students : [];
-          const loadedStudents = students.map((s: StudentScoreRecord) => ({
-            ...calculateScores(s, reportType),
-            status: s.status || "pending"
-          }));
-          setAllStudents(loadedStudents);
-          setServerStudents(JSON.parse(JSON.stringify(loadedStudents)));
+          const savedStudents = Array.isArray(data.students) ? data.students : [];
+
+          // Merge logic: Use saved data if available, otherwise use default from class list
+          const mergedStudents = activeClassStudents.map(activeStudent => {
+            const saved = savedStudents.find((s: any) => s.studentId === activeStudent.studentId);
+            if (saved) {
+              return {
+                ...calculateScores(saved, reportType),
+                status: saved.status || "pending"
+              };
+            }
+            return activeStudent;
+          }).sort((a, b) => a.fullName.localeCompare(b.fullName));
+
+          setAllStudents(mergedStudents);
+          setServerStudents(JSON.parse(JSON.stringify(mergedStudents)));
           setRecordStatus(data.status || "pending");
         } else {
           setRecordStatus("pending");
-          // If no ledger exists, fetch students of the selected class
-          // We use the same query pattern as Daily Attendance to ensure compatibility with indexes
-          const q = query(
-            collection(db, "users"),
-            where("role", "==", "student"),
-            where("classId", "==", selectedClassId)
-          );
-          const snap = await getDocsFromServer(q);
-
-          if (!isMounted) return;
-
-          const list = snap.docs.map((d: any) => {
-            const data = d.data();
-            // Filter by status manually to match Daily Attendance logic and avoid rule complexity
-            const status = data.status || (data.profile && data.profile.status) || "active";
-            if (!["active", "pending_activation"].includes(status)) return null;
-
-            return {
-              studentId: d.id,
-              fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Unknown Student",
-              classScore: "",
-              classScore50: "0",
-              examsMark: "",
-              exam50: "0",
-              finalScore: "0",
-              grade: "N/A",
-              status: "draft",
-            } as StudentScoreRecord;
-          }).filter((s): s is StudentScoreRecord => s !== null).sort((a, b) => a.fullName.localeCompare(b.fullName));
-
-          setAllStudents(list);
-          setServerStudents(JSON.parse(JSON.stringify(list)));
+          const sortedList = activeClassStudents.sort((a, b) => a.fullName.localeCompare(b.fullName));
+          setAllStudents(sortedList);
+          setServerStudents(JSON.parse(JSON.stringify(sortedList)));
         }
       } catch (err) {
         console.error("syncRecords error:", err);
@@ -194,7 +204,7 @@ export const useAcademicRecords = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedClassId, selectedSubject, academicYear, term, reportType, calculateScores]);
+  }, [selectedClassId, selectedSubject, academicYear, term, reportType, reportNumber, calculateScores]);
 
   const updateStudentScore = useCallback((studentId: string, field: keyof StudentScoreRecord, value: string) => {
     setAllStudents(prev => prev.map(s => {
@@ -217,7 +227,8 @@ export const useAcademicRecords = () => {
       const batch = writeBatch(db);
       const yearSlug = academicYear.replace(/\//g, "-");
       const reportSlug = reportType.replace(/\s+/g, "");
-      const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
+      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `_${reportNumber}` : "";
+      const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
 
       const updatedStudents = allStudents.map(s => {
         const isFilled = reportType === "End of Term"
@@ -247,6 +258,7 @@ export const useAcademicRecords = () => {
         academicYear,
         term,
         reportType,
+        reportNumber: ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? reportNumber : null,
         students: updatedStudents,
         studentIds: updatedStudents.map(s => s.studentId),
         status: overallStatus,
@@ -259,7 +271,9 @@ export const useAcademicRecords = () => {
         if (student.status === "draft") return; // Don't update summary for drafts
 
         const summaryId = `${student.studentId}_${academicYear.replace(/\//g, "_")}_${term.replace(/\s+/g, "")}`;
-        const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${reportType.replace(/\s+/g, "")}`;
+        const typeKey = reportType.replace(/\s+/g, "");
+        const subKey = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `${typeKey}${reportNumber}` : typeKey;
+        const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${subKey}`;
         batch.set(doc(db, "academicRecordsSummary", summaryId), {
           teacherId: firebaseUser.uid,
           studentId: student.studentId,
@@ -308,6 +322,8 @@ export const useAcademicRecords = () => {
     setSelectedSubject,
     reportType,
     setReportType,
+    reportNumber,
+    setReportNumber,
     allStudents,
     updateStudentScore,
     saveRecord,

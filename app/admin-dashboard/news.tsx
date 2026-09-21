@@ -6,7 +6,7 @@ import {
     collection,
     deleteDoc,
     doc,
-    getDocsFromServer,
+    getDocs,
     query,
     serverTimestamp,
     where,
@@ -107,7 +107,7 @@ export default function NewsCenter() {
     setScreenLoading(true);
     try {
       const q = query(collection(db, "news"));
-      const snapshot = await getDocsFromServer(q as any);
+      const snapshot = await getDocs(q as any);
       const list = snapshot.docs.map(
         (docSnap) => ({ id: docSnap.id, ...(docSnap.data() as any) }) as NewsItem,
       );
@@ -167,7 +167,7 @@ export default function NewsCenter() {
       const today = moment().format("MM-DD");
       // Note: Firestore doesn't support MM-DD queries directly on Timestamps without a dedicated string field.
       // We'll fetch active students and filter locally since this is an admin-triggered manual action.
-      const snapshot = await getDocsFromServer(query(
+      const snapshot = await getDocs(query(
         collection(db, "users"),
         where("role", "==", "student"),
         where("status", "==", "active")

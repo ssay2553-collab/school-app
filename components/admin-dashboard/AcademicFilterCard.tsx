@@ -30,6 +30,8 @@ interface AcademicFilterCardProps {
   setTerm: (t: any) => void;
   selectedReportType: ReportType;
   setSelectedReportType: (t: ReportType) => void;
+  selectedReportNumber?: number;
+  setSelectedReportNumber?: (n: number) => void;
   classes: any[];
   selectedClassId: string;
   setSelectedClassId: (id: string) => void;
@@ -57,6 +59,8 @@ export const AcademicFilterCard = ({
   setTerm,
   selectedReportType,
   setSelectedReportType,
+  selectedReportNumber,
+  setSelectedReportNumber,
   classes,
   selectedClassId,
   setSelectedClassId,
@@ -143,7 +147,7 @@ export const AcademicFilterCard = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.bubbleRow}
       >
-        {(["End of Term", "Mid-Term", "Mock Exams"] as ReportType[]).map(
+        {(["End of Term", "Mid-Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"] as ReportType[]).map(
           (type) => (
             <TouchableOpacity
               key={type}
@@ -168,6 +172,40 @@ export const AcademicFilterCard = ({
           ),
         )}
       </ScrollView>
+
+      {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) && (
+        <>
+          <Text style={styles.bubbleLabel}>ASSESSMENT NUMBER</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.bubbleRow}
+          >
+            {[1, 2, 3, 4, 5].map((n) => (
+              <TouchableOpacity
+                key={n}
+                onPress={() => setSelectedReportNumber?.(n)}
+                style={[
+                  styles.bubble,
+                  selectedReportNumber === n && {
+                    backgroundColor: primary,
+                    borderColor: primary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.bubbleText,
+                    selectedReportNumber === n && { color: "#fff" },
+                  ]}
+                >
+                  {n}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </>
+      )}
 
       <Text style={styles.bubbleLabel}>CLASSROOM</Text>
       <ScrollView

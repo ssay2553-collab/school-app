@@ -24,7 +24,7 @@ import {
 } from "../../lib/classHelpers";
 import { useAcademicConfig } from "../useAcademicConfig";
 
-export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
+export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams" | "Class Assessment Task (CAT)" | "Trial Test";
 
 export interface ScoreData {
   id: string;
@@ -88,6 +88,7 @@ export function useViewAcademicRecords() {
   const [term, setTerm] = useState("");
   const [selectedReportType, setSelectedReportType] =
     useState<ReportType>("End of Term");
+  const [selectedReportNumber, setSelectedReportNumber] = useState(1);
 
   const [studentScores, setStudentScores] = useState<ScoreData[]>([]);
   const [stats, setStats] = useState<ClassStats | null>(null);
@@ -130,6 +131,7 @@ export function useViewAcademicRecords() {
       where("academicYear", "==", selectedYear),
       where("term", "==", term),
       where("reportType", "==", selectedReportType),
+      where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : null),
       where("status", "in", ["approved", "partially_approved"]),
     );
 
@@ -174,7 +176,6 @@ export function useViewAcademicRecords() {
     setHasSearched(true);
 
     try {
-      // 1. Fetch ALL approved records for this class to calculate aggregates
       const allRecordsSnap = await getDocsFromServer(
         query(
           collection(db, "academicRecords"),
@@ -182,6 +183,7 @@ export function useViewAcademicRecords() {
           where("academicYear", "==", selectedYear),
           where("term", "==", term),
           where("reportType", "==", selectedReportType),
+          where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : null),
           where("status", "in", ["approved", "partially_approved"]),
         ),
       );
@@ -239,31 +241,41 @@ export function useViewAcademicRecords() {
         .map((sid) => {
           const p = studentPerformanceMap[sid];
           const subs = p.subjects;
+          const isAssessment = ["Class Assessment Task (CAT)", "Trial Test", "Mid-Term"].includes(selectedReportType);
 
-          // Core 3
-          const coreEntries = Object.keys(subs)
-            .filter((k) => coreSubjects.includes(k))
-            .map((k) => subs[k]);
+          let aggregate = 0;
+          let tas = 0;
 
-          // Best 3 Electives
-          const electiveEntries = Object.keys(subs)
-            .filter((k) => !coreSubjects.includes(k))
-            .map((k) => subs[k])
-            .sort((a, b) => a.grade - b.grade); // Sort by grade (lower is better)
+          if (isAssessment) {
+            // For Assessments: TAS is simply the sum of all scores (TRS)
+            tas = Object.values(subs).reduce((acc, curr) => acc + curr.score, 0);
+            aggregate = 0; // Not applicable
+          } else {
+            // Core 3
+            const coreEntries = Object.keys(subs)
+              .filter((k) => coreSubjects.includes(k))
+              .map((k) => subs[k]);
 
-          const coreGradeSum =
-            coreEntries.reduce((a, b) => a + b.grade, 0) +
-            Math.max(0, 3 - coreEntries.length) * 9;
-          const electiveGradeSum =
-            electiveEntries.slice(0, 3).reduce((a, b) => a + b.grade, 0) +
-            Math.max(0, 3 - electiveEntries.length) * 9;
-          const aggregate = coreGradeSum + electiveGradeSum;
+            // Best 3 Electives
+            const electiveEntries = Object.keys(subs)
+              .filter((k) => !coreSubjects.includes(k))
+              .map((k) => subs[k])
+              .sort((a, b) => a.grade - b.grade); // Sort by grade (lower is better)
 
-          const coreScoreSum = coreEntries.reduce((a, b) => a + b.score, 0);
-          const electiveScoreSum = electiveEntries
-            .slice(0, 3)
-            .reduce((a, b) => a + b.score, 0);
-          const tas = coreScoreSum + electiveScoreSum;
+            const coreGradeSum =
+              coreEntries.reduce((a, b) => a + b.grade, 0) +
+              Math.max(0, 3 - coreEntries.length) * 9;
+            const electiveGradeSum =
+              electiveEntries.slice(0, 3).reduce((a, b) => a + b.grade, 0) +
+              Math.max(0, 3 - electiveEntries.length) * 9;
+            aggregate = coreGradeSum + electiveGradeSum;
+
+            const coreScoreSum = coreEntries.reduce((a, b) => a + b.score, 0);
+            const electiveScoreSum = electiveEntries
+              .slice(0, 3)
+              .reduce((a, b) => a + b.score, 0);
+            tas = coreScoreSum + electiveScoreSum;
+          }
 
           return {
             id: sid,
@@ -368,7 +380,7 @@ export function useViewAcademicRecords() {
         const studentBeh = students.find(
           (s: any) => s.studentId === student.studentId,
         );
-        if (studentBeh) {
+        if (studentBeh && isMounted.current) {
           if (studentBeh.conduct) setConduct(studentBeh.conduct);
           if (studentBeh.attitude) setAttitude(studentBeh.attitude);
           if (studentBeh.interest) setInterest(studentBeh.interest);
@@ -378,7 +390,7 @@ export function useViewAcademicRecords() {
         }
       }
     } catch (e) {
-      console.log("Error fetching behavioral defaults:", e);
+      if (isMounted.current) console.log("Error fetching behavioral defaults:", e);
     }
 
     // Auto-generate admin remarks based on OVERALL Aggregate performance
@@ -386,20 +398,23 @@ export function useViewAcademicRecords() {
     const autoAdminRemarks = getAutoRemarks(agg, false);
     const autoTeacherRemarks = getAutoRemarks(agg, true);
 
-    setAdminRemarks(autoAdminRemarks);
-    setTeacherRemarks(autoTeacherRemarks);
-
-    setMetadataModalVisible(true);
+    if (isMounted.current) {
+      setAdminRemarks(autoAdminRemarks);
+      setTeacherRemarks(autoTeacherRemarks);
+      setMetadataModalVisible(true);
+    }
 
     // 3. Fetch existing metadata from student-reports if it exists (Admin overrides)
     try {
-      const reportId =
-        `${student.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
-          /\//g,
-          "-",
-        );
+    const reportSlug = selectedReportType.replace(/\s+/g, "");
+    const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
+    const reportId =
+      `${student.studentId}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
+        /\//g,
+        "-",
+      );
       const snap = await getDoc(doc(db, "student-reports", reportId));
-      if (snap.exists()) {
+      if (snap.exists() && isMounted.current) {
         const d = snap.data() as any;
         if (d.assessment?.conduct) setConduct(d.assessment.conduct);
         if (d.assessment?.attitude) setAttitude(d.assessment.attitude);
@@ -411,7 +426,7 @@ export function useViewAcademicRecords() {
         if (d.teacherRemarks) setTeacherRemarks(d.teacherRemarks);
       }
     } catch (e) {
-      console.error(e);
+      if (isMounted.current) console.error(e);
     }
   };
 
@@ -419,11 +434,13 @@ export function useViewAcademicRecords() {
     if (!editingStudent) return;
     setSavingMetadata(true);
     try {
-      const reportId =
-        `${editingStudent.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
-          /\//g,
-          "-",
-        );
+    const reportSlug = selectedReportType.replace(/\s+/g, "");
+    const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
+    const reportId =
+      `${editingStudent.studentId}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
+        /\//g,
+        "-",
+      );
       await setDoc(
         doc(db, "student-reports", reportId),
         {
@@ -472,8 +489,10 @@ export function useViewAcademicRecords() {
     try {
       const batch = writeBatch(db);
       for (const student of studentScores) {
+        const reportSlug = selectedReportType.replace(/\s+/g, "");
+        const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
         const reportId =
-          `${student.studentId}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
+          `${student.studentId}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
             /\//g,
             "-",
           );
@@ -556,6 +575,7 @@ export function useViewAcademicRecords() {
           where("academicYear", "==", selectedYear),
           where("term", "==", term),
           where("reportType", "==", selectedReportType),
+          where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : null),
           where("status", "in", ["approved", "partially_approved"]),
         );
 
@@ -572,6 +592,18 @@ export function useViewAcademicRecords() {
         const batch = writeBatch(db);
         const studentTotals: Record<string, number> = {};
         const studentNames: Record<string, string> = {};
+        let opCount = 0;
+        let batches = [writeBatch(db)];
+        let currentBatch = batches[0];
+
+        const addOp = () => {
+          opCount++;
+          if (opCount >= 450) {
+            currentBatch = writeBatch(db);
+            batches.push(currentBatch);
+            opCount = 0;
+          }
+        };
 
         // 0. Fetch all summaries for this class/year/term to allow score recovery
         const summaryYearSlug = selectedYear.replace(/\//g, "_");
@@ -593,7 +625,9 @@ export function useViewAcademicRecords() {
           const students = Array.isArray(data.students) ? data.students : [];
           const subjectName = data.subject || "Unknown";
           const subSlug = subjectName.replace(/\s+/g, "_");
-          const subjectKey = `${subSlug}_${selectedReportType.replace(/\s+/g, "")}`;
+          const typeKey = selectedReportType.replace(/\s+/g, "");
+          const reportSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
+          const subjectKey = `${subSlug}_${typeKey}${reportSuffix}`;
 
           // Pre-process scores: if finalScore is 0, try to recover from summary
           const recoveredStudents = students.map((s: any) => {
@@ -637,7 +671,7 @@ export function useViewAcademicRecords() {
             const summaryId = `${s.studentId}_${summaryYearSlug}_${termSlug}`;
             const summaryRef = doc(db, "academicRecordsSummary", summaryId);
 
-            batch.set(
+            currentBatch.set(
               summaryRef,
               {
                 studentId: s.studentId,
@@ -656,11 +690,13 @@ export function useViewAcademicRecords() {
               },
               { merge: true },
             );
+            addOp();
 
             return { ...s, position: posStr };
           });
 
-          batch.update(subjectDoc.ref, { students: updatedStudents });
+          currentBatch.update(subjectDoc.ref, { students: updatedStudents });
+          addOp();
         });
 
         // 2. Process Overall Rankings
@@ -673,13 +709,15 @@ export function useViewAcademicRecords() {
 
         overallRankData.forEach((item) => {
           const rankInfo = calculateCompetitionRanking(overallRankData, item.id);
+          const reportSlug = selectedReportType.replace(/\s+/g, "");
+          const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
           const reportId =
-            `${item.id}_${selectedYear}_${term}_${selectedReportType.replace(/\s+/g, "")}`.replace(
+            `${item.id}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
               /\//g,
               "-",
             );
 
-          batch.set(
+          currentBatch.set(
             doc(db, "student-reports", reportId),
             {
               overallPosition: `${rankInfo.rank}/${rankInfo.total}`,
@@ -694,9 +732,10 @@ export function useViewAcademicRecords() {
             },
             { merge: true },
           );
+          addOp();
         });
 
-        await batch.commit();
+        await Promise.all(batches.map(b => b.commit()));
         showToast({
           message: "All class rankings successfully recalculated.",
           type: "success",
@@ -748,6 +787,8 @@ export function useViewAcademicRecords() {
     setTerm,
     selectedReportType,
     setSelectedReportType,
+    selectedReportNumber,
+    setSelectedReportNumber,
     studentScores,
     stats,
     hasSearched,

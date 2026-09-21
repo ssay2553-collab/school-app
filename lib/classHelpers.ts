@@ -151,14 +151,23 @@ export const getAutoRemarks = (aggregate: number, isTeacher: boolean = false) =>
  *
  * @param subjects Array of subject objects with 'subject', 'total' (score), and 'grade' (string/number)
  * @param isPreschool Whether to skip the "Best 6" penalty logic
+ * @param skipAggregate Whether to skip grade-based aggregate calculation (returns TRS for both TRS and TAS)
  */
-export const calculatePerformanceFromList = (subjects: any[], isPreschool: boolean = false) => {
+export const calculatePerformanceFromList = (subjects: any[], isPreschool: boolean = false, skipAggregate: boolean = false) => {
   if (!subjects || subjects.length === 0) {
     return { trs: "0.00", tas: "0.00", aggregate: isPreschool ? 0 : 54 };
   }
 
   // 1. TRS: Sum of ALL scores
   const trsValue = subjects.reduce((acc, curr) => acc + (parseFloat(curr.total) || 0), 0);
+
+  if (skipAggregate) {
+    return {
+      trs: trsValue.toFixed(2),
+      tas: trsValue.toFixed(2),
+      aggregate: 0
+    };
+  }
 
   if (isPreschool) {
     // For Preschool: No "Best 6" logic. Sum everything they have.

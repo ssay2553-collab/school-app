@@ -107,10 +107,16 @@ export default function FeeReports() {
         q = query(q, where("classId", "==", classId));
       }
       const studentsSnap = await getDocsFromServer(q);
-      const students = studentsSnap.docs.map((d) => ({
+      const allStudents = studentsSnap.docs.map((d) => ({
         uid: d.id,
         ...d.data(),
       }));
+
+      // SAFETY LIMIT: Prevent app crash if dataset is too large (> 1000 students)
+      const students = allStudents.slice(0, 1000);
+      if (allStudents.length > 1000 && isMounted.current) {
+         alert("Notice: Report is limited to the first 1000 students for performance stability.");
+      }
 
       // 3. Fetch Fee Records
       const studentIds = students.map((s) => s.uid);
@@ -122,7 +128,7 @@ export default function FeeReports() {
           chunks.push(studentIds.slice(i, i + 10));
         }
 
-        const feeSnaps = await Promise.all(
+        const feeSnaps = await Promise.allSettled(
           chunks.map((chunk) =>
             getDocsFromServer(
               query(
@@ -135,8 +141,12 @@ export default function FeeReports() {
           ),
         );
 
-        feeSnaps.forEach((snap) => {
-          snap.docs.forEach((doc) => feeRecords.push(doc.data()));
+        feeSnaps.forEach((result) => {
+          if (result.status === "fulfilled") {
+            result.value.docs.forEach((doc) => feeRecords.push(doc.data()));
+          } else {
+            console.error("Partial fee record fetch failed:", result.reason);
+          }
         });
       }
 

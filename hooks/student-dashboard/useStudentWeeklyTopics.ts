@@ -20,11 +20,15 @@ export interface WeeklyTopic {
   startDate: string; // ISO date
   endDate: string;   // ISO date
   topic: string;
+  strand?: string;
+  subStrand?: string;
+  indicatorCode?: string;
   subTopics?: string;
   objectives?: string;
   teacherId: string;
   academicYear: string;
   term: string;
+  curriculum?: string;
 }
 
 export const useStudentWeeklyTopics = () => {
@@ -89,6 +93,7 @@ export const useStudentWeeklyTopics = () => {
     selectedWeek,
     setSelectedWeek,
     weekRange,
-    refresh: fetchTopics
+    refresh: fetchTopics,
+    curriculum: appUser?.curriculum || "GES"
   };
 };

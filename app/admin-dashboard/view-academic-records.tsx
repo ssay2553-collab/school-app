@@ -52,6 +52,8 @@ export default function ViewAcademicRecords() {
     setTerm,
     selectedReportType,
     setSelectedReportType,
+    selectedReportNumber,
+    setSelectedReportNumber,
     studentScores,
     stats,
     hasSearched,
@@ -113,17 +115,18 @@ export default function ViewAcademicRecords() {
         onPress={() => {
           if (isNavigating.current) return;
           isNavigating.current = true;
-          router.push({
-            pathname: "/admin-dashboard/view-academic-record-details",
-            params: {
-              studentId: item.studentId,
-              term,
-              classId: selectedClassId,
-              academicYear: selectedYear,
-              subject: selectedSubject,
-              reportType: selectedReportType,
-            },
-          });
+              router.push({
+                pathname: "/admin-dashboard/view-academic-record-details",
+                params: {
+                  studentId: item.studentId,
+                  term,
+                  classId: selectedClassId,
+                  academicYear: selectedYear,
+                  subject: selectedSubject,
+                  reportType: selectedReportType,
+                  reportNumber: ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber.toString() : undefined,
+                },
+              });
           setTimeout(() => { isNavigating.current = false; }, 500);
         }}
       />
@@ -170,6 +173,8 @@ export default function ViewAcademicRecords() {
           setTerm={setTerm}
           selectedReportType={selectedReportType}
           setSelectedReportType={setSelectedReportType}
+          selectedReportNumber={selectedReportNumber}
+          setSelectedReportNumber={setSelectedReportNumber}
           classes={classes}
           selectedClassId={selectedClassId}
           setSelectedClassId={setSelectedClassId}
@@ -233,6 +238,7 @@ export default function ViewAcademicRecords() {
       selectedYear,
       term,
       selectedReportType,
+      selectedReportNumber,
       selectedClassId,
       classes,
       availableSubjects,
@@ -279,6 +285,10 @@ export default function ViewAcademicRecords() {
         keyExtractor={(item) => item.studentId}
         ListHeaderComponent={ListHeader}
         contentContainerStyle={{ paddingBottom: 100 }}
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={8}
+        maxToRenderPerBatch={5}
+        windowSize={10}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

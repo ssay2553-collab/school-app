@@ -5,7 +5,7 @@ import * as Animatable from "react-native-animatable";
 import SVGIcon from "../SVGIcon";
 import { SHADOWS } from "../../constants/theme";
 
-type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
+type ReportType = "End of Term" | "Mid-Term" | "Mock Exams" | "Class Assessment Task (CAT)" | "Trial Test";
 
 interface SubjectInfo {
   name: string;
@@ -102,7 +102,7 @@ export const ScoreFilterSection = ({
           </View>
 
           <View style={styles.reportTypeRow}>
-            {(["Mid-Term", "End of Term", "Mock Exams"] as ReportType[]).map((type) => (
+            {(["Mid-Term", "End of Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"] as ReportType[]).map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
@@ -115,7 +115,7 @@ export const ScoreFilterSection = ({
                   styles.typeChipText,
                   selectedReportType === type && { color: "#fff" }
                 ]}>
-                  {type === "End of Term" ? "Final" : type === "Mid-Term" ? "Mid" : "Mock"}
+                  {type === "End of Term" ? "Final" : type === "Mid-Term" ? "Mid" : type === "Mock Exams" ? "Mock" : type}
                 </Text>
               </TouchableOpacity>
             ))}

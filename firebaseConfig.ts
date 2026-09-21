@@ -73,13 +73,11 @@ try {
   /**
    * PERSISTENCE:
    * - Web/PWA/Electron: Use IndexedDB (persistentLocalCache) for speed and offline.
-   * - React Native: Must use Memory-Only (memoryLocalCache) to avoid errors.
+   * - React Native: Use persistentLocalCache for robust offline support.
    */
-  const cache = isWeb
-    ? persistentLocalCache({
-        tabManager: undefined // Use default multiple tab manager for PWA
-      })
-    : memoryLocalCache();
+  const cache = persistentLocalCache({
+    tabManager: isWeb ? undefined : undefined
+  });
 
   /**
    * TRANSPORT:

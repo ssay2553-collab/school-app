@@ -5,7 +5,7 @@ import SVGIcon from "../SVGIcon";
 import { getGradeDetails } from "../../lib/classHelpers";
 import { useToast } from "../../contexts/ToastContext";
 
-export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams";
+export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams" | "Class Assessment Task (CAT)" | "Trial Test";
 
 interface StudentScoreCardProps {
   item: any;

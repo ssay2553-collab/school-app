@@ -121,21 +121,16 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
             summary["arrears"] = { billed: Number(record.arrears), paid: 0 };
         }
 
-        const waterfallPool: any[] = [];
+        const waterfallPool: number[] = [];
 
+        // 1. First pass: accumulate billed amounts for all non-payment transactions
         allTransactions.forEach((t: any) => {
             const isPayment = isPaymentEntry(t);
             const category = normalizeCategory(t);
 
             if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
 
-            if (isPayment) {
-                if (category === "tuition") {
-                    waterfallPool.push(Number(t.amount) || 0);
-                } else {
-                    summary[category].paid += Number(t.amount) || 0;
-                }
-            } else {
+            if (!isPayment) {
                 summary[category].billed += Number(t.amount) || 0;
             }
         });
@@ -146,20 +141,47 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
             summary["tuition"].billed = Math.max(summary["tuition"].billed, baseTuitionBilled);
 
             const isolated = [
-                { key: "pta", bill: record.ptaBill || 0, paid: record.ptaPaid || 0 },
-                { key: "maintenance", bill: record.maintenanceBill || 0, paid: record.maintenancePaid || 0 },
-                { key: "admission", bill: record.admissionBill || 0, paid: record.admissionPaid || 0 },
-                { key: "books", bill: record.booksBill || 0, paid: record.booksPaid || 0 },
-                { key: "uniform", bill: record.uniformBill || 0, paid: record.uniformPaid || 0 },
+                { key: "pta", bill: record.ptaBill || 0 },
+                { key: "maintenance", bill: record.maintenanceBill || 0 },
+                { key: "admission", bill: record.admissionBill || 0 },
+                { key: "books", bill: record.booksBill || 0 },
+                { key: "uniform", bill: record.uniformBill || 0 },
             ];
 
             isolated.forEach((cat) => {
                 if (!summary[cat.key]) summary[cat.key] = { billed: 0, paid: 0 };
                 summary[cat.key].billed = Math.max(summary[cat.key].billed, Number(cat.bill) || 0);
-                // We don't Math.max the paid here because the waterfall handles it,
-                // but we should respect the base documents that were already split
             });
         }
+
+        // 2. Second pass: process payments against billed categories or route to waterfall pool
+        allTransactions.forEach((t: any) => {
+            const isPayment = isPaymentEntry(t);
+            if (!isPayment) return;
+
+            const category = normalizeCategory(t);
+            const amt = Number(t.amount) || 0;
+
+            if (
+                category === "tuition" ||
+                category === "other charges" ||
+                category === "other" ||
+                !summary[category] ||
+                summary[category].billed === 0
+            ) {
+                waterfallPool.push(amt);
+            } else {
+                const due = Math.max(0, summary[category].billed - summary[category].paid);
+                if (due > 0) {
+                    const direct = Math.min(amt, due);
+                    summary[category].paid += direct;
+                    const excess = amt - direct;
+                    if (excess > 0) waterfallPool.push(excess);
+                } else {
+                    waterfallPool.push(amt);
+                }
+            }
+        });
 
         // Virtual Waterfall for display (Matched with useFeeLedger.ts)
         let totalGeneralPool = waterfallPool.reduce((a, b) => a + b, 0);
@@ -177,7 +199,7 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
         totalGeneralPool -= tuitionToPay;
 
         // 3. Settle Isolated Categories in Order
-        const displayWaterfallOrder = ['admission', 'pta', 'maintenance', 'books', 'uniform', 'other charges'];
+        const displayWaterfallOrder = ['admission', 'pta', 'maintenance', 'books', 'uniform'];
         displayWaterfallOrder.forEach(cat => {
             if (summary[cat] && totalGeneralPool > 0) {
                 const due = Math.max(0, summary[cat].billed - summary[cat].paid);
@@ -201,6 +223,13 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
         if (totalGeneralPool > 0) {
             summary["tuition"].paid += totalGeneralPool;
         }
+
+        // Clean up empty zero-balance categories
+        Object.keys(summary).forEach(cat => {
+            if (cat !== 'tuition' && summary[cat].billed === 0 && summary[cat].paid === 0) {
+                delete summary[cat];
+            }
+        });
 
         // Return all items with non-zero billed or paid
         return Object.entries(summary)

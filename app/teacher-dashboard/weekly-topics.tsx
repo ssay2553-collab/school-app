@@ -47,10 +47,14 @@ export default function WeeklyTopicsScreen() {
     setWeekNumber,
     topicData,
     setTopicData,
+    performLookup,
     saveTopic,
     hasUnsavedChanges,
     subjects,
     curriculum,
+    lookupStatus,
+    clearTopicData,
+    isLookingUp,
   } = useWeeklyTopics();
 
   const labels = useMemo(() => {
@@ -380,13 +384,71 @@ export default function WeeklyTopicsScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>{labels.indicator}</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder={`Enter ${labels.indicator.toLowerCase()}...`}
-                  value={topicData.indicatorCode}
-                  onChangeText={(text) => setTopicData({ ...topicData, indicatorCode: text })}
-                />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                  <Text style={[styles.inputLabel, { marginBottom: 0 }]}>{labels.indicator}</Text>
+                  {curriculum === "GES" && (
+                    <View style={[
+                      styles.smartBadge,
+                      lookupStatus === 'success' && { backgroundColor: '#05966915' },
+                      lookupStatus === 'not_found' && { backgroundColor: '#DC262615' }
+                    ]}>
+                      <SVGIcon
+                        name={lookupStatus === 'success' ? "checkmark-circle" : lookupStatus === 'not_found' ? "alert-circle" : "flash"}
+                        size={12}
+                        color={lookupStatus === 'success' ? "#059669" : lookupStatus === 'not_found' ? "#DC2626" : COLORS.primary}
+                      />
+                      <Text style={[
+                        styles.smartBadgeText,
+                        lookupStatus === 'success' && { color: "#059669" },
+                        lookupStatus === 'not_found' && { color: "#DC2626" }
+                      ]}>
+                        {lookupStatus === 'success' ? "MATCHED" : lookupStatus === 'not_found' ? "NO MATCH" : "SMART LOOKUP"}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                <View style={styles.indicatorInputWrapper}>
+                  <TextInput
+                    style={[styles.input, { flex: 1 }, lookupStatus === 'not_found' && { borderColor: '#DC2626' }]}
+                    placeholder="e.g. B1.1.1.1.1"
+                    value={topicData.indicatorCode}
+                    onChangeText={(text) => setTopicData({ ...topicData, indicatorCode: text })}
+                  />
+
+                  {topicData.indicatorCode !== "" && (
+                    <TouchableOpacity
+                      onPress={clearTopicData}
+                      style={styles.clearInlineBtn}
+                    >
+                      <SVGIcon name="close-circle" size={20} color="#94A3B8" />
+                    </TouchableOpacity>
+                  )}
+
+                  <TouchableOpacity
+                    onPress={() => performLookup()}
+                    style={[styles.lookupInlineBtn, isLookingUp && { opacity: 0.7 }]}
+                    disabled={isLookingUp}
+                  >
+                    {isLookingUp ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <SVGIcon name="search" size={18} color="#fff" />
+                    )}
+                  </TouchableOpacity>
+
+                  {lookupStatus === 'success' && (
+                    <Animatable.View animation="bounceIn" style={[styles.checkIcon, { right: 55 }]}>
+                      <SVGIcon name="checkmark-circle" size={20} color="#059669" />
+                    </Animatable.View>
+                  )}
+                </View>
+                {curriculum === "GES" && (
+                  <Text style={[styles.hintText, lookupStatus === 'not_found' && { color: '#DC2626', fontWeight: '800' }]}>
+                    {lookupStatus === 'not_found'
+                      ? "Indicator code not found in local database. Please fill details manually."
+                      : "Enter NaCCA code to auto-fill Strand & Objectives"}
+                  </Text>
+                )}
               </View>
 
               <View style={styles.inputGroup}>
@@ -530,6 +592,13 @@ const styles = StyleSheet.create({
   inputGroup: { marginBottom: 25 },
   inputLabel: { fontSize: 13, fontWeight: "900", color: "#1E293B", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5 },
   input: { backgroundColor: "#F8FAFC", borderRadius: 16, padding: 18, fontSize: 16, color: "#1E293B", borderWidth: 1, borderColor: "#E2E8F0", textAlignVertical: "top" },
+  indicatorInputWrapper: { flexDirection: 'row', alignItems: 'center', position: 'relative' },
+  lookupInlineBtn: { backgroundColor: COLORS.primary, height: 48, width: 48, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginLeft: 8, ...SHADOWS.small },
+  clearInlineBtn: { position: 'absolute', right: 65, zIndex: 5, padding: 5 },
+  checkIcon: { position: 'absolute', right: 15 },
+  smartBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary + '10', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 },
+  smartBadgeText: { fontSize: 9, fontWeight: '900', color: COLORS.primary },
+  hintText: { fontSize: 10, color: '#94A3B8', marginTop: 8, fontWeight: '600', fontStyle: 'italic' },
   footer: { position: "absolute", bottom: 25, left: 20, right: 20, alignItems: "center" },
   saveBtn: { backgroundColor: COLORS.primary, height: 65, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, width: "100%", maxWidth: 450, ...SHADOWS.large },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "900", letterSpacing: 0.5 },

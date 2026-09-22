@@ -131,11 +131,15 @@ export const useAcademicRecords = () => {
       try {
         const yearSlug = academicYear.replace(/\//g, "-");
         const reportSlug = reportType.replace(/\s+/g, "");
-        const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `_${reportNumber}` : "";
+        const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType);
+        const numSuffix = isNumbered ? `_${reportNumber || 1}` : "";
         const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
 
-        // Force server fetch to ensure we don't get cached data from a different class/context
-        const docSnap = await getDoc(doc(db, "academicRecords", docId));
+        let docSnap = await getDoc(doc(db, "academicRecords", docId));
+        if (!docSnap.exists() && isNumbered && Number(reportNumber) === 1) {
+          const legacyDocId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
+          docSnap = await getDoc(doc(db, "academicRecords", legacyDocId));
+        }
 
         if (!isMounted) return;
 

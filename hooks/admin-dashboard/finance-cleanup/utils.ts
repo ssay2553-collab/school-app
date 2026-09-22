@@ -8,7 +8,9 @@ export const normalizeCategory = (p: any) => {
     const cat = type.replace("_payment", "");
     if (isolatedKeys.includes(cat)) return cat;
     if (otherCat) return otherCat;
-    return "other charges";
+    if (cat === "tuition" || cat === "tuition_credit" || cat === "credit") return "tuition";
+    if (cat === "other" || cat === "other charges") return "tuition";
+    return cat;
   }
 
   // Explicit check for tuition types
@@ -16,7 +18,10 @@ export const normalizeCategory = (p: any) => {
 
   // If it's a known non-hardcoded bill, use otherCategory or type
   if (type === "other" && otherCat) return otherCat;
-  if (type === "other charges") return "other charges";
+  if (type === "other charges") {
+    if (otherCat) return otherCat;
+    return "other charges";
+  }
 
   const cand = (p.type || p.category || p.purpose || p.memo || "tuition")
     .toString()
@@ -32,7 +37,7 @@ export const normalizeCategory = (p: any) => {
 
   if (otherCat) return otherCat;
   if (cleaned.includes("othercharges") || cleaned.includes("otherfees")) return "other charges";
-  if (cleaned.includes("other")) return "other charges";
+  if (cleaned.includes("other")) return "tuition";
 
   // Fallback for custom labels
   if (type !== "" && type !== "tuition" && !isolatedKeys.includes(type)) return type;
@@ -46,34 +51,61 @@ export const normalizeCategory = (p: any) => {
  */
 export const isPaymentEntry = (p: any): boolean => {
   if (!p) return true;
-  const method = (p.method || "").toLowerCase();
-  const type = (p.type || "").toLowerCase();
-  const receivedFrom = (p.receivedFrom || "").toLowerCase();
 
-  // Bulk Charges and specific category bill types are NOT payments
+  if (typeof p.isPayment === "boolean") return p.isPayment;
+  if (p.isBill === true || p.isCharge === true) return false;
+
+  const method = (p.method || p.paymentMethod || "").toLowerCase().trim();
+  const type = (p.type || "").toLowerCase().trim();
+  const receivedFrom = (p.receivedFrom || "").toLowerCase().trim();
+
+  // Explicit payment type suffixes or credit types
+  if (type.endsWith("_payment") || type === "tuition_credit" || type === "credit") {
+    return true;
+  }
+
+  // Explicit billing or charge methods/sources
   if (
     method === "bulk charge" ||
+    method === "individual charge" ||
     method === "system billing" ||
-    receivedFrom === "system billing" ||
-    method.includes("bill")
-  )
+    method.includes("charge") ||
+    method.includes("bill") ||
+    receivedFrom === "system billing"
+  ) {
     return false;
+  }
 
-  // If it ends with _payment, it's definitely a payment
-  if (type.endsWith("_payment")) return true;
+  // Known fee category types that represent bills when logged without '_payment' suffix
+  const billingCategories = [
+    "pta",
+    "maintenance",
+    "admission",
+    "books",
+    "uniform",
+    "other",
+    "bus",
+    "feeding",
+    "extra_classes",
+  ];
+  if (billingCategories.includes(type)) {
+    return false;
+  }
 
-  // Tuition is usually a payment unless specified as a bill in method
+  // Tuition type logic
   if (type === "tuition") {
     return (
-      method !== "bill" &&
+      !method.includes("bill") &&
       !method.includes("charge") &&
       method !== "system billing"
     );
   }
 
-  // Fallback for older records: if type is an isolated key (e.g. "pta"),
-  // and method is "bulk charge", it's a bill.
-  if (isolatedKeys.includes(type) && method === "bulk charge") return false;
+  // Fallback for payment methods
+  const paymentMethods = ["cash", "momo", "cheque", "e-cash", "bank", "transfer", "mobile money"];
+  if (paymentMethods.some((pm) => method.includes(pm))) {
+    return true;
+  }
 
   return true;
 };
@@ -85,7 +117,6 @@ export const waterfallOrder = [
   "maintenance",
   "books",
   "uniform",
-  "other charges",
 ];
 export const isolatedKeys = waterfallOrder;
 

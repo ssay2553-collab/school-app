@@ -611,6 +611,80 @@ export const usePTACharges = ({
     fetchPaymentHistory(student.uid);
   };
 
+  const applyIndividualCharge = async (student: Student, amount: number, memo?: string) => {
+    if (amount <= 0) {
+      showToast({ message: "Please enter a valid billing amount", type: "error" });
+      return false;
+    }
+
+    setSaving(true);
+    try {
+      const batch = writeBatch(db);
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+      const recordId = `${student.uid}_${year}_${term}`;
+      const serial = `PTA-IND-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      const billData = {
+        amount,
+        method: "Individual Charge",
+        receivedFrom: memo?.trim() || "PTA Dues",
+        updatedBy: appUser?.adminRole || "Admin",
+        adminUid: appUser?.uid || "unknown",
+        createdAt: new Date().toISOString(),
+        receiptNo: serial,
+        date: moment().format("YYYY-MM-DD"),
+        studentUid: student.uid,
+        studentName: student.fullName,
+        classId: student.classId,
+        className: student.className,
+        type: "pta",
+        academicYear: acadConfig.academicYear,
+        term: acadConfig.currentTerm,
+      };
+
+      batch.set(doc(db, "feePayments", serial), billData);
+
+      batch.set(
+        doc(db, "studentFeeRecords", recordId),
+        {
+          studentUid: student.uid,
+          studentName: student.fullName,
+          classId: student.classId,
+          className: student.className,
+          academicYear: acadConfig.academicYear,
+          term: acadConfig.currentTerm,
+          ptaBill: increment(amount),
+          ptaBalance: increment(amount),
+          balance: increment(amount),
+          lastUpdated: serverTimestamp(),
+          payments: arrayUnion(billData)
+        },
+        { merge: true }
+      );
+
+      batch.update(doc(db, "users", student.uid), {
+        ptaBalance: increment(amount),
+        ptaBill: increment(amount),
+        walletBalance: increment(amount),
+      });
+
+      await batch.commit();
+
+      await propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, amount, 'bill', 'pta');
+
+      showToast({ message: `Successfully billed ₵${amount} to ${student.fullName}`, type: "success" });
+      handleRefresh();
+      return true;
+    } catch (e) {
+      console.error("Individual billing failed:", e);
+      showToast({ message: "Failed to apply single student charge", type: "error" });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   useEffect(() => {
     fetchStudents(true);
     fetchStats();
@@ -650,5 +724,6 @@ export const usePTACharges = ({
     handleApplyBulkCharge,
     confirmDeletePayment,
     openPaymentModal,
+    applyIndividualCharge,
   };
 };

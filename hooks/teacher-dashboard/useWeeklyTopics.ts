@@ -15,6 +15,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAcademicConfig } from '../useAcademicConfig';
 import { useToast } from '../../contexts/ToastContext';
 import { sortClasses } from '../../lib/classHelpers';
+import { normalizeClassLevel } from '../../constants/Curriculum';
+import { lookupGESIndicator } from '../../constants/GES_Curriculum';
 import moment from 'moment';
 
 export interface WeeklyTopic {
@@ -62,6 +64,9 @@ export const useWeeklyTopics = () => {
     objectives: '',
   });
   const [serverTopicData, setServerTopicData] = useState<Partial<WeeklyTopic>>({});
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lookupStatus, setLookupStatus] = useState<'idle' | 'success' | 'not_found'>('idle');
+  const [isBrowserVisible, setIsBrowserVisible] = useState(false);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -165,6 +170,59 @@ export const useWeeklyTopics = () => {
     fetchTopic();
   }, [selectedClassId, selectedSubject, startDate, academicYear, term]);
 
+  // Auto-population logic for GES Curriculum based on Indicator Code
+  const performLookup = useCallback((codeOverride?: string) => {
+    const code = (codeOverride || topicData.indicatorCode || "").trim().toUpperCase();
+    if (!code || code.length < 5) {
+      setLookupStatus('idle');
+      return;
+    }
+
+    // We only perform auto-lookup if curriculum is GES OR if the code explicitly looks like a NaCCA code
+    const isNaCCACode = /^[B|J|S|K|P]\d/.test(code);
+    if (userCurriculum !== "GES" && !isNaCCACode) return;
+
+    setIsLookingUp(true);
+    const selectedClassName = teacherClasses.find(c => c.id === selectedClassId)?.name || "";
+    const match = lookupGESIndicator(code, selectedSubject, selectedClassName);
+
+    if (match) {
+      setTopicData(prev => {
+        // Prevent redundant updates
+        if (prev.strand === match.strand && prev.indicatorCode === code) return prev;
+
+        return {
+          ...prev,
+          indicatorCode: code, // Ensure the code is normalized
+          strand: match.strand,
+          subStrand: match.subStrand,
+          topic: match.contentStandard,
+          subTopics: match.indicator,
+          objectives: match.objectives
+        };
+      });
+      setLookupStatus('success');
+      showToast({ message: `NaCCA Match Found: ${match.code}`, type: "success" });
+      setIsLookingUp(false);
+      return true;
+    }
+    setLookupStatus('not_found');
+    setIsLookingUp(false);
+    return false;
+  }, [topicData.indicatorCode, topicData.strand, selectedSubject, selectedClassId, userCurriculum, teacherClasses, showToast]);
+
+  useEffect(() => {
+    // Debounced auto-lookup
+    const code = topicData.indicatorCode;
+    if (!code || code.length < 5) return;
+
+    const timer = setTimeout(() => {
+      performLookup(code);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [topicData.indicatorCode, performLookup]);
+
   const saveTopic = async () => {
     if (!selectedClassId || !selectedSubject || !startDate || !endDate || !academicYear || !term) {
       showToast({ message: "Missing required information", type: "error" });
@@ -218,6 +276,32 @@ export const useWeeklyTopics = () => {
     return JSON.stringify({ ...topicData, endDate, weekNumber }) !== JSON.stringify(serverTopicData);
   }, [topicData, endDate, weekNumber, serverTopicData]);
 
+  const clearTopicData = () => {
+    setTopicData({
+      topic: '',
+      strand: '',
+      subStrand: '',
+      indicatorCode: '',
+      subTopics: '',
+      objectives: ''
+    });
+    setLookupStatus('idle');
+  };
+
+  const handleBrowserSelect = (match: any) => {
+    setTopicData(prev => ({
+      ...prev,
+      indicatorCode: match.code,
+      strand: match.strand,
+      subStrand: match.subStrand,
+      topic: match.contentStandard,
+      subTopics: match.indicator,
+      objectives: match.objectives
+    }));
+    setLookupStatus('success');
+    showToast({ message: `Selection Applied: ${match.code}`, type: "success" });
+  };
+
   return {
     loading,
     saving,
@@ -234,6 +318,13 @@ export const useWeeklyTopics = () => {
     setWeekNumber,
     topicData,
     setTopicData,
+    performLookup,
+    isLookingUp,
+    lookupStatus,
+    clearTopicData,
+    isBrowserVisible,
+    setIsBrowserVisible,
+    handleBrowserSelect,
     saveTopic,
     hasUnsavedChanges,
     subjects: appUser?.subjects || [],

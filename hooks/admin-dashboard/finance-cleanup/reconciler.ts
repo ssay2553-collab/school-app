@@ -61,7 +61,9 @@ export const reconcileStudentBalances = (
   const detectedCategories = new Set<string>();
   studentPayments.forEach(p => {
     const cat = normalizeCategory(p);
-    if (cat !== 'tuition' && !isolatedKeys.includes(cat)) detectedCategories.add(cat);
+    if (cat !== 'tuition' && !isolatedKeys.includes(cat) && cat !== 'other charges') {
+      detectedCategories.add(cat);
+    }
   });
   const dynamicCategories = Array.from(detectedCategories);
   const fullWaterfall = [...waterfallOrder, ...dynamicCategories];
@@ -157,7 +159,6 @@ export const reconcileStudentBalances = (
       cumulativeTuitionPaid -= tuitionExcess;
     }
 
-    updates.amountPaid = cumulativeTuitionPaid - prevCumulativeTuitionPaid;
     updates.termBill = termGrossTuition;
 
     // --- CATEGORIES ---
@@ -171,7 +172,7 @@ export const reconcileStudentBalances = (
 
     // Sort keys to respect waterfall order
     fullWaterfall.forEach(k => {
-      const isHardcoded = isolatedKeys.includes(k) && k !== 'other charges';
+      const isHardcoded = isolatedKeys.includes(k);
 
       // Sum of charges in feePayments for this category/term
       const totalChargesInTerm = termSpecificCharges
@@ -241,6 +242,13 @@ export const reconcileStudentBalances = (
       }
     });
 
+    // Return any remaining unallocated general money back to cumulativeTuitionPaid so it's included in updates.amountPaid
+    if (unallocatedTuition > 0) {
+      cumulativeTuitionPaid += unallocatedTuition;
+      unallocatedTuition = 0;
+    }
+
+    updates.amountPaid = cumulativeTuitionPaid - prevCumulativeTuitionPaid;
     updates.otherPaid = termOtherPaid;
     updates.otherBill = termOtherBill;
     updates.otherBalance = termOtherBalance;
@@ -286,7 +294,7 @@ export const reconcileStudentBalances = (
   let finalOtherBill = 0;
 
   fullWaterfall.forEach((k) => {
-    const isHardcoded = isolatedKeys.includes(k) && k !== 'other';
+    const isHardcoded = isolatedKeys.includes(k);
     const catBalance =
       cumulativeCategoryBillPool[k] -
       cumulativeCategoryPaidPool[k] -

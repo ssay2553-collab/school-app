@@ -153,12 +153,15 @@ export default function PTACharges() {
     handleApplyBulkCharge,
     confirmDeletePayment,
     openPaymentModal,
+    applyIndividualCharge,
   } = usePTACharges({
     appUser,
     acadConfig,
     showToast,
     selectedClassId,
   });
+
+  const [individualChargeAmount, setIndividualChargeAmount] = useState("");
 
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase();
@@ -418,6 +421,46 @@ export default function PTACharges() {
                   )}
                 </LinearGradient>
               </TouchableOpacity>
+
+              {/* Standalone Individual Manual Billing section */}
+              <View style={{ marginTop: 25, padding: 18, backgroundColor: VIBE.light, borderRadius: 20, borderWidth: 1, borderColor: VIBE.border }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: VIBE.dark, marginBottom: 4 }}>
+                  Create Single Manual Charge
+                </Text>
+                <Text style={{ fontSize: 11, color: VIBE.muted, marginBottom: 15 }}>
+                  Apply standard itemized fee adjustment to this student independently.
+                </Text>
+                <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                  <TextInput
+                    style={[styles.pillInput, { flex: 1, height: 48, fontSize: 14, paddingHorizontal: 15, paddingVertical: 0 }]}
+                    placeholder="Amount (₵)"
+                    keyboardType="numeric"
+                    value={individualChargeAmount}
+                    onChangeText={setIndividualChargeAmount}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: THEME.secondary,
+                      paddingHorizontal: 20,
+                      height: 48,
+                      borderRadius: 24,
+                      justifyContent: "center",
+                      alignItems: "center"
+                    }}
+                    onPress={async () => {
+                      if (selectedStudent && individualChargeAmount) {
+                        const amt = parseFloat(individualChargeAmount);
+                        if (!isNaN(amt) && amt > 0) {
+                          const done = await applyIndividualCharge(selectedStudent, amt, "Late Join Adjustment");
+                          if (done) setIndividualChargeAmount("");
+                        }
+                      }
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "900", fontSize: 12 }}>APPLY BILL</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
               <View style={styles.historyBlock}>
                 <Text style={styles.blockTitle}>Transaction History</Text>

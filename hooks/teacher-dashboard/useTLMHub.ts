@@ -336,8 +336,14 @@ export const useTLMHub = () => {
       const fileName = `tlm_${appUser?.uid}_${Date.now()}.${extension}`;
       const storageRef = ref(storage, `tlms/${appUser?.uid}/${fileName}`);
 
-      const response = await fetch(uploadUri);
-      const blob = await response.blob();
+      let blob;
+      if (Platform.OS === 'web' && (file as any).file) {
+        blob = (file as any).file;
+      } else {
+        const response = await fetch(uploadUri);
+        blob = await response.blob();
+      }
+
       const uploadTask = uploadBytesResumable(storageRef, blob);
 
       uploadTask.on(

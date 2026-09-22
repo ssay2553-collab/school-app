@@ -141,14 +141,22 @@ export const useAcademicRecordDetails = (
         where("academicYear", "==", academicYearState),
         where("term", "==", termState),
         where("reportType", "==", reportType),
-        where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? reportNumber : null),
       );
 
-      const scoresSnap = await getDocsFromServer(qScores);
+      const rawScoresSnap = await getDocsFromServer(qScores);
+      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType);
+      const scoresDocs = rawScoresSnap.docs.filter((d) => {
+        const data = d.data() as any;
+        if (isNumbered) {
+          const docNum = Number(data.reportNumber || 1);
+          return docNum === Number(reportNumber || 1);
+        }
+        return true;
+      });
 
       // Resolve historical classId from records
       let effectiveClassId = "";
-      scoresSnap.docs.forEach((d) => {
+      scoresDocs.forEach((d) => {
         if (!effectiveClassId) effectiveClassId = (d.data() as any).classId;
       });
 
@@ -201,9 +209,9 @@ export const useAcademicRecordDetails = (
 
       const resultsMap = new Map();
       let nameFound = "";
-      let allApproved = scoresSnap.docs.length > 0;
+      let allApproved = scoresDocs.length > 0;
 
-      scoresSnap.docs.forEach((d) => {
+      scoresDocs.forEach((d) => {
         const data = d.data() as any;
         if (data.status !== "approved") allApproved = false;
         // Records should be visible in the Admin Portal regardless of approval status.
@@ -264,7 +272,7 @@ export const useAcademicRecordDetails = (
       let computedPosition = "-";
       try {
         let allStudents: Record<string, { total: number }> = {};
-        scoresSnap.docs.forEach((d) => {
+        scoresDocs.forEach((d) => {
           const students = Array.isArray(d.data().students)
             ? d.data().students
             : [];

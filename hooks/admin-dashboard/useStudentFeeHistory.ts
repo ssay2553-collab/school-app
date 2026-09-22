@@ -3,6 +3,7 @@ import moment from "moment";
 import { useMemo, useState } from "react";
 import { Alert, Platform } from "react-native";
 import { useFeeLedger } from "./useFeeLedger";
+import { isPaymentEntry } from "./finance-cleanup/utils";
 
 export const useStudentFeeHistory = () => {
   const params = useLocalSearchParams();
@@ -58,14 +59,7 @@ export const useStudentFeeHistory = () => {
               ? `Installment ${index + 1}`
               : null;
 
-        const method = (payment.method || payment.paymentMethod || "").toLowerCase();
-        const type = (payment.type || "").toLowerCase();
-        const receivedFrom = (payment.receivedFrom || "").toLowerCase();
-
-        const isPayment = (
-          !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
-          (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
-        );
+        const isPayment = isPaymentEntry(payment);
 
         return {
           ...payment,
@@ -90,7 +84,6 @@ export const useStudentFeeHistory = () => {
             "School account",
         };
       })
-      .filter((entry: any) => entry._isPayment)
       .sort((a: any, b: any) => {
         const aTime = new Date(
           a.date || a.createdAt || a.timestamp?.toDate?.() || 0,
@@ -104,7 +97,7 @@ export const useStudentFeeHistory = () => {
 
   const ledgerSummary = useMemo(() => {
     const totalPaid = feeLedger.totals.totalPaid;
-    const lastPayment = paymentLedgerEntries[0];
+    const lastPayment = paymentLedgerEntries.find((p: any) => p._isPayment);
 
     return {
       totalPaid,

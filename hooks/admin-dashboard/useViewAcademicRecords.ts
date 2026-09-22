@@ -125,13 +125,13 @@ export function useViewAcademicRecords() {
     if (!selectedClassId || !selectedYear || !term) return;
 
     setFetchingSubjects(true);
+    const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
     const q = query(
       collection(db, "academicRecords"),
       where("classId", "==", selectedClassId),
       where("academicYear", "==", selectedYear),
       where("term", "==", term),
       where("reportType", "==", selectedReportType),
-      where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : null),
       where("status", "in", ["approved", "partially_approved"]),
     );
 
@@ -139,7 +139,15 @@ export function useViewAcademicRecords() {
       q,
       (snap) => {
         if (!isMounted.current) return;
-        const subs = snap.docs.map((d) => (d.data() as any).subject).sort();
+        const matchingDocs = snap.docs.filter((d) => {
+          const data = d.data() as any;
+          if (isNumbered) {
+            const docNum = Number(data.reportNumber || 1);
+            return docNum === Number(selectedReportNumber || 1);
+          }
+          return true;
+        });
+        const subs = matchingDocs.map((d) => (d.data() as any).subject).sort();
         setAvailableSubjects(subs);
 
         if (subs.length > 0) {
@@ -162,7 +170,7 @@ export function useViewAcademicRecords() {
     );
 
     return () => unsubscribe();
-  }, [selectedClassId, selectedYear, term, selectedReportType]);
+  }, [selectedClassId, selectedYear, term, selectedReportType, selectedReportNumber]);
 
   const loadData = useCallback(async () => {
     if (!selectedClassId || !selectedSubject) {
@@ -176,6 +184,7 @@ export function useViewAcademicRecords() {
     setHasSearched(true);
 
     try {
+      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
       const allRecordsSnap = await getDocsFromServer(
         query(
           collection(db, "academicRecords"),
@@ -183,10 +192,18 @@ export function useViewAcademicRecords() {
           where("academicYear", "==", selectedYear),
           where("term", "==", term),
           where("reportType", "==", selectedReportType),
-          where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : null),
           where("status", "in", ["approved", "partially_approved"]),
         ),
       );
+
+      const matchingDocs = allRecordsSnap.docs.filter((d) => {
+        const data = d.data() as any;
+        if (isNumbered) {
+          const docNum = Number(data.reportNumber || 1);
+          return docNum === Number(selectedReportNumber || 1);
+        }
+        return true;
+      });
 
       // Map to store every student's data across all subjects
       const studentPerformanceMap: Record<
@@ -199,7 +216,7 @@ export function useViewAcademicRecords() {
       > = {};
       const coreSubjects = ["mathematics", "science", "english"];
 
-      allRecordsSnap.docs.forEach((doc) => {
+      matchingDocs.forEach((doc) => {
         const data = doc.data() as any;
         const subName = (data.subject || "").toLowerCase();
         const students = Array.isArray(data.students) ? data.students : [];
@@ -569,18 +586,27 @@ export function useViewAcademicRecords() {
     const performRecalculate = async () => {
       setRecalculating(true);
       try {
+        const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
         const qAll = query(
           collection(db, "academicRecords"),
           where("classId", "==", selectedClassId),
           where("academicYear", "==", selectedYear),
           where("term", "==", term),
           where("reportType", "==", selectedReportType),
-          where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : null),
           where("status", "in", ["approved", "partially_approved"]),
         );
 
         const allSnap = await getDocsFromServer(qAll);
-        if (allSnap.empty) {
+        const matchingDocs = allSnap.docs.filter((d) => {
+          const data = d.data() as any;
+          if (isNumbered) {
+            const docNum = Number(data.reportNumber || 1);
+            return docNum === Number(selectedReportNumber || 1);
+          }
+          return true;
+        });
+
+        if (matchingDocs.length === 0) {
           showToast({
             message: "No approved records found to recalculate.",
             type: "info",
@@ -620,7 +646,7 @@ export function useViewAcademicRecords() {
         summarySnap.docs.forEach((sd) => summaryMap.set(sd.data().studentId, sd.data().scores || {}));
 
         // 1. Process each subject record for subject-level ranking & summary
-        allSnap.docs.forEach((subjectDoc) => {
+        matchingDocs.forEach((subjectDoc) => {
           const data = subjectDoc.data();
           const students = Array.isArray(data.students) ? data.students : [];
           const subjectName = data.subject || "Unknown";

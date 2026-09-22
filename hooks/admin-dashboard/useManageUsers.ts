@@ -3,6 +3,7 @@ import { Alert, Platform, Share } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { initializeApp, deleteApp } from "firebase/app";
 import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import {
@@ -277,8 +278,24 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
       setLoading(true);
       const fileUri = result.assets[0].uri;
-      const response = await fetch(fileUri);
-      const csvText = await response.text();
+
+      let csvText = "";
+      if (Platform.OS === 'web') {
+        const asset = result.assets[0];
+        if ((asset as any).file) {
+          csvText = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsText((asset as any).file);
+          });
+        } else {
+          const response = await fetch(fileUri);
+          csvText = await response.text();
+        }
+      } else {
+        csvText = await FileSystem.readAsStringAsync(fileUri);
+      }
 
       const rows = csvText.split(/\r?\n|\r/).filter((line) => line.trim() !== "");
       if (rows.length < 2) throw new Error("CSV file is empty or missing data.");

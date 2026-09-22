@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../firebaseConfig";
 import { useFeeLedger } from "./admin-dashboard/useFeeLedger";
+import { isPaymentEntry } from "./admin-dashboard/finance-cleanup/utils";
 
 export const useParentFeeHistory = () => {
   const params = useLocalSearchParams();
@@ -71,14 +72,7 @@ export const useParentFeeHistory = () => {
               ? `Installment ${index + 1}`
               : null;
 
-        const method = (payment.method || payment.paymentMethod || "").toLowerCase();
-        const type = (payment.type || "").toLowerCase();
-        const receivedFrom = (payment.receivedFrom || "").toLowerCase();
-
-        const isPayment = (
-          !(method === "bulk charge" || method === "system billing" || receivedFrom === "system billing" || method.includes("bill")) &&
-          (type.endsWith("_payment") || type === "tuition" || type === "tuition_credit")
-        );
+        const isPayment = isPaymentEntry(payment);
 
         return {
           ...payment,
@@ -103,7 +97,6 @@ export const useParentFeeHistory = () => {
             "School account",
         };
       })
-      .filter((entry: any) => entry._isPayment)
       .sort((a: any, b: any) => {
         const aTime = new Date(
           a.date || a.createdAt || a.timestamp?.toDate?.() || 0,
@@ -117,7 +110,7 @@ export const useParentFeeHistory = () => {
 
   const ledgerSummary = useMemo(() => {
     const totalPaid = feeLedger.totals.totalPaid;
-    const lastPayment = paymentLedgerEntries[0];
+    const lastPayment = paymentLedgerEntries.find((p: any) => p._isPayment);
 
     return {
       totalPaid,

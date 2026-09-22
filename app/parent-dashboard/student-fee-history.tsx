@@ -376,12 +376,12 @@ export default function StudentFeeHistory() {
             <View style={styles.ledgerHeaderRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.historyTitle}>
-                  {showFullHistory ? "ALL PAYMENTS" : "PAYMENT LEDGER"}
+                  {showFullHistory ? "ALL TRANSACTIONS" : "TRANSACTION LEDGER"}
                 </Text>
                 <Text style={styles.ledgerCaption}>
                   {showFullHistory
-                    ? "Full transaction history for this student"
-                    : "Installments and payment history for this term"}
+                    ? "Full billing and payment history for this student"
+                    : "Bills, installments, and payment history for this term"}
                 </Text>
               </View>
               <TouchableOpacity

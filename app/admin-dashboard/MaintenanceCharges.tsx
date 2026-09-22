@@ -69,6 +69,7 @@ export default function MaintenanceCharges() {
   const [selectedClassId, setSelectedClassId] = useState("all");
   const [classModalVisible, setClassModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [individualChargeAmount, setIndividualChargeAmount] = useState("");
 
   const {
     loading,
@@ -99,6 +100,7 @@ export default function MaintenanceCharges() {
     chargeAmount,
     setChargeAmount,
     openPaymentModal,
+    applyIndividualCharge,
   } = useMaintenanceCharges({
     appUser,
     acadConfig,
@@ -423,6 +425,49 @@ export default function MaintenanceCharges() {
                   )}
                 </LinearGradient>
               </TouchableOpacity>
+
+              {/* Standalone Individual Manual Billing section */}
+              <View style={{ marginTop: 25, padding: 18, backgroundColor: VIBE.light, borderRadius: 20, borderWidth: 1, borderColor: VIBE.border }}>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: VIBE.dark, marginBottom: 4 }}>
+                  Create Single Manual Charge
+                </Text>
+                <Text style={{ fontSize: 11, color: VIBE.muted, marginBottom: 15 }}>
+                  Apply maintenance fee adjustment to this student independently.
+                </Text>
+                <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                  <TextInput
+                    style={[styles.pillInput, { flex: 1, height: 48, fontSize: 14, paddingHorizontal: 15, paddingVertical: 0 }]}
+                    placeholder="Amount (₵)"
+                    keyboardType="numeric"
+                    value={individualChargeAmount}
+                    onChangeText={setIndividualChargeAmount}
+                  />
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: THEME.secondary,
+                      paddingHorizontal: 20,
+                      height: 48,
+                      borderRadius: 24,
+                      justifyContent: "center",
+                      alignItems: "center"
+                    }}
+                    disabled={saving}
+                    onPress={async () => {
+                      if (selectedStudent && individualChargeAmount) {
+                        const amt = parseFloat(individualChargeAmount);
+                        if (!isNaN(amt) && amt > 0) {
+                          const done = await applyIndividualCharge(selectedStudent, amt, "Individual Maintenance Fee");
+                          if (done) setIndividualChargeAmount("");
+                        } else {
+                          showToast({ message: "Please enter a valid billing amount", type: "error" });
+                        }
+                      }
+                    }}
+                  >
+                    <Text style={{ color: "#fff", fontWeight: "900", fontSize: 12 }}>APPLY BILL</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
 
               <View style={styles.historyBlock}>
                 <Text style={styles.blockTitle}>Transaction History</Text>

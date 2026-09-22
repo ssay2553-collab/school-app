@@ -117,16 +117,25 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
     if (!selectedClassId || !selectedYear || !term) return;
     setFetchingSubjects(true);
     try {
+      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
       const q = query(
         collection(db, "academicRecords"),
         where("classId", "==", selectedClassId),
         where("academicYear", "==", selectedYear),
         where("term", "==", term),
-        where("reportType", "==", selectedReportType),
-        where("reportNumber", "==", ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : null)
+        where("reportType", "==", selectedReportType)
       );
       const snap = await getDocsFromServer(q);
-      const subsList: SubjectInfo[] = snap.docs
+      const matchingDocs = snap.docs.filter((d) => {
+        const data = d.data() as any;
+        if (isNumbered) {
+          const docNum = Number(data.reportNumber || 1);
+          return docNum === Number(selectedReportNumber || 1);
+        }
+        return true;
+      });
+
+      const subsList: SubjectInfo[] = matchingDocs
         .map((d) => {
           const data = d.data() as any;
           return {
@@ -155,13 +164,13 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
         setFetchingSubjects(false);
       }
     }
-  }, [selectedClassId, selectedYear, term, selectedReportType, selectedSubject]);
+  }, [selectedClassId, selectedYear, term, selectedReportType, selectedReportNumber, selectedSubject]);
 
   useEffect(() => {
     if (selectedClassId && selectedYear && term) {
       fetchSubjects();
     }
-  }, [selectedClassId, selectedYear, term, selectedReportType, fetchSubjects]);
+  }, [selectedClassId, selectedYear, term, selectedReportType, selectedReportNumber, fetchSubjects]);
 
   const loadSubmission = async (subjectOverride?: string) => {
     const subject = subjectOverride || selectedSubject;
@@ -175,9 +184,16 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
     try {
       const yearSlug = selectedYear.replace(/\//g, "-");
       const reportSlug = selectedReportType.replace(/\s+/g, "");
-      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? `_${selectedReportNumber}` : "";
+      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
+      const numSuffix = isNumbered ? `_${selectedReportNumber || 1}` : "";
       const docId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
-      const snap = await getDoc(doc(db, "academicRecords", docId));
+
+      let snap = await getDoc(doc(db, "academicRecords", docId));
+      if (!snap.exists() && isNumbered && Number(selectedReportNumber) === 1) {
+        const legacyDocId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
+        snap = await getDoc(doc(db, "academicRecords", legacyDocId));
+      }
+
       if (snap.exists()) {
         setRecordId(snap.id);
         const data = snap.data() as any;

@@ -230,7 +230,7 @@ export const useFeePayments = ({
           }
         });
 
-        const customCats = Object.keys(categoryMap).filter(c => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(c.toLowerCase()));
+        const customCats = Object.keys(categoryMap).filter(c => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other', 'other charges'].includes(c.toLowerCase()));
         for (const cat of customCats) {
           if (remainingPayment <= 0) break;
           const due = categoryMap[cat].billed - categoryMap[cat].paid;

@@ -20,6 +20,7 @@ import {
   deleteObject,
 } from "firebase/storage";
 import * as DocumentPicker from "expo-document-picker";
+import { Alert, Platform } from "react-native";
 
 import { db, storage } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
@@ -755,15 +756,16 @@ export const useUploadAssignment = () => {
 
         const asset = file.assets[0];
 
-        const response = await fetch(asset.uri);
-
-        if (!response.ok) {
-          throw new Error(
-            "Unable to read the selected file."
-          );
+        let blob;
+        if (Platform.OS === 'web' && (asset as any).file) {
+          blob = (asset as any).file;
+        } else {
+          const response = await fetch(asset.uri);
+          if (!response.ok) {
+            throw new Error("Unable to read the selected file.");
+          }
+          blob = await response.blob();
         }
-
-        const blob = await response.blob();
 
         if (blob.size > MAX_FILE_SIZE) {
           throw new Error(

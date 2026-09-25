@@ -48,7 +48,8 @@ export const useStudentWeeklyTopics = () => {
   const term = acadConfig.currentTerm || "";
 
   const fetchTopics = useCallback(async () => {
-    if (!appUser?.classId || !academicYear) {
+    const studentClassId = appUser?.classId || appUser?.profile?.classId;
+    if (!studentClassId) {
       setLoading(false);
       return;
     }
@@ -57,9 +58,8 @@ export const useStudentWeeklyTopics = () => {
     try {
       const q = query(
         collection(db, "weeklyTopics"),
-        where("classId", "==", appUser.classId),
-        where("startDate", "==", selectedWeek),
-        where("academicYear", "==", academicYear)
+        where("classId", "==", studentClassId),
+        where("startDate", "==", selectedWeek)
       );
 
       const snap = await getDocs(q);
@@ -76,7 +76,7 @@ export const useStudentWeeklyTopics = () => {
     } finally {
       if (isMounted.current) setLoading(false);
     }
-  }, [appUser?.classId, selectedWeek, academicYear]);
+  }, [appUser, selectedWeek]);
 
   useEffect(() => {
     fetchTopics();

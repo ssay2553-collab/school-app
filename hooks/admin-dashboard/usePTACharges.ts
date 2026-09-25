@@ -17,7 +17,7 @@ import {
 } from "firebase/firestore";
 import moment from "moment";
 import { db } from "../../firebaseConfig";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, notifyStudentAndParentsPayment } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
@@ -280,13 +280,13 @@ export const usePTACharges = ({
 
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'pta').catch(console.error);
 
-      sendNotification({
-        recipientId: student.uid,
-        senderId: appUser?.uid || "admin",
-        senderName: appUser?.displayName || "Administrator",
-        title: "PTA Payment Received",
-        body: `A PTA payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been recorded for ${student.fullName}.`,
-        type: "payment",
+      notifyStudentAndParentsPayment({
+        studentUid: student.uid,
+        studentName: student.fullName,
+        amount,
+        paymentType: "PTA Dues",
+        senderUid: appUser?.uid || "admin",
+        senderName: appUser?.displayName || "School Accounts",
       }).catch((e) => console.error(e));
 
       showToast({ message: "Payment recorded", type: "success" });

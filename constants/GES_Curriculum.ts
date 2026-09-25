@@ -27,7 +27,17 @@ export const lookupGESIndicator = (
 ): GESIndicator | null => {
   if (!code) return null;
 
-  const normalizedCode = code.trim().toUpperCase();
+  // Clean code string (strip trailing/leading spaces and punctuation, convert to uppercase)
+  const normalizedCode = code.trim().toUpperCase().replace(/[\s\-_.]+$/g, '');
+  const alphaNumericInput = normalizedCode.replace(/[^A-Z0-9]/g, '');
+
+  const isMatch = (itemCode: string) => {
+    const normItem = itemCode.trim().toUpperCase();
+    if (normItem === normalizedCode) return true;
+    const itemAlpha = normItem.replace(/[^A-Z0-9]/g, '');
+    if (alphaNumericInput.length >= 4 && itemAlpha === alphaNumericInput) return true;
+    return false;
+  };
 
   // 1. If subject is provided, try searching within that subject first
   if (subject) {
@@ -46,14 +56,14 @@ export const lookupGESIndicator = (
         const normalizedInputLevel = normalizeClassLevel(classLevel);
         const classData = subjectData[normalizedInputLevel];
         if (classData) {
-          const match = classData.find(item => item.code.toUpperCase() === normalizedCode);
+          const match = classData.find(item => isMatch(item.code));
           if (match) return match;
         }
       }
 
       // 1b. Search across all classes for this subject
       for (const level in subjectData) {
-        const match = subjectData[level].find(item => item.code.toUpperCase() === normalizedCode);
+        const match = subjectData[level].find(item => isMatch(item.code));
         if (match) return match;
       }
     }
@@ -64,7 +74,7 @@ export const lookupGESIndicator = (
   for (const sub in GES_CURRICULUM_DATA) {
     const subData = GES_CURRICULUM_DATA[sub];
     for (const level in subData) {
-      const match = subData[level].find(item => item.code.toUpperCase() === normalizedCode);
+      const match = subData[level].find(item => isMatch(item.code));
       if (match) return match;
     }
   }

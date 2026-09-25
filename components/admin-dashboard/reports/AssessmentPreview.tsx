@@ -79,6 +79,7 @@ export const AssessmentPreview: React.FC<Props> = ({
               <Text style={[styles.paperCell, { flex: 2, textAlign: "left", fontWeight: "800" }]}>{s.subject}</Text>
               <Text style={[styles.paperCell, { fontWeight: "900", color: primary }]}>
                 {isNaN(Number(s.total)) ? s.total : Number(s.total).toFixed(1)}
+                {s.maxScore && Number(s.maxScore) !== 100 ? ` / ${s.maxScore}` : ""}
               </Text>
               <Text style={[styles.paperCell, { flex: 1.5, fontWeight: "700" }]}>{s.grade} ({s.remark})</Text>
             </View>

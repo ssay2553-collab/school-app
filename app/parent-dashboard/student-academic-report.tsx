@@ -375,14 +375,14 @@ export default function StudentAcademicReport() {
           </View>
         )}
 
-        {selectedChildId && !fetchingReport && termBalance !== null && termBalance > 0 && (
+        {selectedChildId && !fetchingReport && selectedReportType === "End of Term" && termBalance !== null && termBalance > 0 && (
           <View style={styles.debtWarningCard}>
             <View style={styles.debtIconContainer}>
               <SVGIcon name="alert-circle" size={40} color="#EF4444" />
             </View>
             <Text style={styles.debtTitle}>Access Restricted</Text>
             <Text style={styles.debtMessage}>
-              Academic reports for {selectedTerm} ({selectedYear}) are currently unavailable due to outstanding fees for this specific period (₵{(termBalance || 0).toLocaleString()}).
+              End of Term academic reports for {selectedTerm} ({selectedYear}) are currently unavailable due to outstanding fees for this specific period (₵{(termBalance || 0).toLocaleString()}).
             </Text>
             <Text style={styles.debtSubMessage}>
               Please clear the balance for this term at the accounts office or via the payments section to restore access to this report.
@@ -401,7 +401,7 @@ export default function StudentAcademicReport() {
           </View>
         )}
 
-        {!fetchingReport && subjectsData.length > 0 && termBalance !== null && termBalance <= 0 && (
+        {!fetchingReport && subjectsData.length > 0 && (selectedReportType !== "End of Term" || (termBalance !== null && termBalance <= 0)) && (
           <AcademicReportPreview
             primary={primary}
             schoolLogo={schoolLogo}

@@ -11,7 +11,7 @@ import { getSchoolLogo } from '../constants/Logos';
 import { generateFeeReceiptPDF, generateFeeStatementPDF } from '../utils/pdfGenerator';
 import Constants from 'expo-constants';
 import { COLORS } from '../constants/theme';
-import { normalizeCategory, isPaymentEntry } from './admin-dashboard/finance-cleanup/utils';
+import { normalizeCategory, isPaymentEntry, calculateFeeBreakdown, getCategoryDisplayName } from './admin-dashboard/finance-cleanup/utils';
 
 interface UseReceiptViewProps {
     type: string | string[];
@@ -20,25 +20,6 @@ interface UseReceiptViewProps {
     term: string | string[];
     paymentId: string | string[];
 }
-
-const nameMap: Record<string, string> = {
-    tuition: "Tuition Fees",
-    pta: "PTA Dues",
-    maintenance: "Maintenance Fee",
-    admission: "Admission Fee",
-    books: "Books Fee",
-    uniform: "Uniform Fee",
-    "other charges": "Other Charges",
-    arrears: "Arrears / Previous Balance",
-    tuition_payment: "Tuition Payment",
-    pta_payment: "PTA Dues Payment",
-    maintenance_payment: "Maintenance Fee Payment",
-    admission_payment: "Admission Fee Payment",
-    books_payment: "Books Payment",
-    uniform_payment: "Uniform Payment",
-    "other charges_payment": "Other Charges Payment",
-    tuition_credit: "Tuition Credit / Overpayment",
-};
 
 export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseReceiptViewProps) => {
     const { appUser } = useAuth();
@@ -100,166 +81,18 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
     }, [type, studentId, year, term, paymentId]);
 
     const formatType = (rawType: string, otherCategory?: string) => {
-        if (otherCategory) return otherCategory;
-        if (!rawType) return "Fee Payment";
-        const normalized = rawType.toLowerCase();
-        if (nameMap[normalized]) return nameMap[normalized];
-        return normalized
-            .split("_")
-            .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-            .join(" ");
+        return getCategoryDisplayName(rawType, otherCategory);
     };
 
-    const categorySummary = useMemo(() => {
-        if (type !== "bill") return [];
-
-        const summary: Record<string, { billed: number; paid: number }> = {
-            tuition: { billed: 0, paid: 0 },
-        };
-
-        if (record?.arrears && Number(record.arrears) !== 0) {
-            summary["arrears"] = { billed: Number(record.arrears), paid: 0 };
+    const { categorySummary, totals } = useMemo(() => {
+        if (type !== "bill") {
+            return {
+                categorySummary: [],
+                totals: { billed: 0, paid: 0, balance: 0 },
+            };
         }
-
-        const waterfallPool: number[] = [];
-
-        // 1. First pass: accumulate billed amounts for all non-payment transactions
-        allTransactions.forEach((t: any) => {
-            const isPayment = isPaymentEntry(t);
-            const category = normalizeCategory(t);
-
-            if (!summary[category]) summary[category] = { billed: 0, paid: 0 };
-
-            if (!isPayment) {
-                summary[category].billed += Number(t.amount) || 0;
-            }
-        });
-
-        // Add hardcoded records from the database doc
-        if (record) {
-            const baseTuitionBilled = Math.max(0, (Number(record.termBill) || 0) - (Number(record.discount) || 0));
-            summary["tuition"].billed = Math.max(summary["tuition"].billed, baseTuitionBilled);
-
-            const isolated = [
-                { key: "pta", bill: record.ptaBill || 0 },
-                { key: "maintenance", bill: record.maintenanceBill || 0 },
-                { key: "admission", bill: record.admissionBill || 0 },
-                { key: "books", bill: record.booksBill || 0 },
-                { key: "uniform", bill: record.uniformBill || 0 },
-            ];
-
-            isolated.forEach((cat) => {
-                if (!summary[cat.key]) summary[cat.key] = { billed: 0, paid: 0 };
-                summary[cat.key].billed = Math.max(summary[cat.key].billed, Number(cat.bill) || 0);
-            });
-        }
-
-        // 2. Second pass: process payments against billed categories or route to waterfall pool
-        allTransactions.forEach((t: any) => {
-            const isPayment = isPaymentEntry(t);
-            if (!isPayment) return;
-
-            const category = normalizeCategory(t);
-            const amt = Number(t.amount) || 0;
-
-            if (
-                category === "tuition" ||
-                category === "other charges" ||
-                category === "other" ||
-                !summary[category] ||
-                summary[category].billed === 0
-            ) {
-                waterfallPool.push(amt);
-            } else {
-                const due = Math.max(0, summary[category].billed - summary[category].paid);
-                if (due > 0) {
-                    const direct = Math.min(amt, due);
-                    summary[category].paid += direct;
-                    const excess = amt - direct;
-                    if (excess > 0) waterfallPool.push(excess);
-                } else {
-                    waterfallPool.push(amt);
-                }
-            }
-        });
-
-        // Virtual Waterfall for display (Matched with useFeeLedger.ts)
-        let totalGeneralPool = waterfallPool.reduce((a, b) => a + b, 0);
-
-        // 1. Settle Arrears first
-        if (summary["arrears"] && totalGeneralPool > 0) {
-            const toArrears = Math.min(totalGeneralPool, summary["arrears"].billed);
-            summary["arrears"].paid += toArrears;
-            totalGeneralPool -= toArrears;
-        }
-
-        // 2. Settle Tuition Bill
-        const tuitionToPay = Math.min(totalGeneralPool, summary["tuition"].billed);
-        summary["tuition"].paid += tuitionToPay;
-        totalGeneralPool -= tuitionToPay;
-
-        // 3. Settle Isolated Categories in Order
-        const displayWaterfallOrder = ['admission', 'pta', 'maintenance', 'books', 'uniform'];
-        displayWaterfallOrder.forEach(cat => {
-            if (summary[cat] && totalGeneralPool > 0) {
-                const due = Math.max(0, summary[cat].billed - summary[cat].paid);
-                const settle = Math.min(totalGeneralPool, due);
-                summary[cat].paid += settle;
-                totalGeneralPool -= settle;
-            }
-        });
-
-        // 4. Settle Dynamic Categories (Exams, Mocks, etc)
-        Object.keys(summary).forEach(cat => {
-            if (!['tuition', 'arrears', ...displayWaterfallOrder].includes(cat) && totalGeneralPool > 0) {
-                const due = Math.max(0, summary[cat].billed - summary[cat].paid);
-                const settle = Math.min(totalGeneralPool, due);
-                summary[cat].paid += settle;
-                totalGeneralPool -= settle;
-            }
-        });
-
-        // 5. Remaining goes to Tuition (as credit)
-        if (totalGeneralPool > 0) {
-            summary["tuition"].paid += totalGeneralPool;
-        }
-
-        // Clean up empty zero-balance categories
-        Object.keys(summary).forEach(cat => {
-            if (cat !== 'tuition' && summary[cat].billed === 0 && summary[cat].paid === 0) {
-                delete summary[cat];
-            }
-        });
-
-        // Return all items with non-zero billed or paid
-        return Object.entries(summary)
-            .filter(([_, vals]) => Math.abs(vals.billed) >= 0.01 || Math.abs(vals.paid) >= 0.01)
-            .sort(([a], [b]) => {
-                if (a === 'arrears') return -1;
-                if (b === 'arrears') return 1;
-                if (a === 'tuition') return -1;
-                if (b === 'tuition') return 1;
-                return a.localeCompare(b);
-            })
-            .map(([cat, vals]) => ({
-                id: cat,
-                name: nameMap[cat] || cat.toUpperCase(),
-                billed: vals.billed,
-                paid: vals.paid,
-                balance: vals.billed - vals.paid,
-            }));
+        return calculateFeeBreakdown(record, allTransactions);
     }, [record, allTransactions, type]);
-
-    const totals = useMemo(() => {
-        if (type !== "bill") return { billed: 0, paid: 0, balance: 0 };
-
-        const totalBilled = categorySummary.reduce((acc, curr) => acc + curr.billed, 0);
-        const totalPaid = categorySummary.reduce((acc, curr) => acc + curr.paid, 0);
-
-        const netBalance = totalBilled - totalPaid;
-
-        return { billed: totalBilled, paid: totalPaid, balance: netBalance };
-    }, [categorySummary, type]);
 
     const handleDelete = async () => {
         if (appUser?.role !== "admin") return;

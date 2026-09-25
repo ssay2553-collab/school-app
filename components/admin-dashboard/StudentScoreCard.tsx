@@ -13,6 +13,7 @@ interface StudentScoreCardProps {
   primary: string;
   reportType: ReportType;
   isModified?: boolean;
+  maxScore?: number;
 }
 
 export const StudentScoreCard = React.memo(
@@ -22,6 +23,7 @@ export const StudentScoreCard = React.memo(
     primary,
     reportType,
     isModified = false,
+    maxScore,
   }: StudentScoreCardProps) => {
     const { showToast } = useToast();
     const [localItem, setLocalItem] = useState(item);
@@ -29,6 +31,8 @@ export const StudentScoreCard = React.memo(
     useEffect(() => {
       setLocalItem(item);
     }, [item]);
+
+    const effectiveMaxScore = reportType === "End of Term" ? 100 : (localItem.maxScore || maxScore || 100);
 
     const handleUpdate = (field: string, v: string) => {
       setLocalItem((prev: any) => {
@@ -44,15 +48,20 @@ export const StudentScoreCard = React.memo(
           updated.finalScore = (
             parseFloat(updated.classScore50) + parseFloat(updated.exam50)
           ).toFixed(2);
-          const gradeInfo = getGradeDetails(parseFloat(updated.finalScore));
+          const gradeInfo = getGradeDetails(parseFloat(updated.finalScore), 100);
           updated.grade = gradeInfo.grade;
           updated.remarks = gradeInfo.remark;
         } else {
           const examsMark = parseFloat(updated.examsMark) || 0;
+          if (field === "examsMark" && examsMark > effectiveMaxScore) {
+            showToast({ message: `Score cannot exceed test total (${effectiveMaxScore})`, type: "error" });
+            return prev;
+          }
           updated.finalScore = examsMark.toFixed(2);
-          const gradeInfo = getGradeDetails(examsMark);
+          const gradeInfo = getGradeDetails(examsMark, effectiveMaxScore);
           updated.grade = gradeInfo.grade;
           updated.remarks = gradeInfo.remark;
+          updated.maxScore = effectiveMaxScore;
           updated.classScore = "";
           updated.classScore50 = "0";
           updated.exam50 = "0";
@@ -163,7 +172,7 @@ export const StudentScoreCard = React.memo(
           <View style={styles.scoreGrid}>
             <View style={styles.gridRow}>
               <View style={[styles.inputSection, { flex: 2 }]}>
-                <Text style={styles.sectionLabel}>EXAMINATION SCORE (100)</Text>
+                <Text style={styles.sectionLabel}>SCORE (OVER {effectiveMaxScore})</Text>
                 <TextInput
                   style={[styles.scoreInput, { textAlign: 'left', paddingLeft: 15 }]}
                   keyboardType="numeric"
@@ -172,10 +181,12 @@ export const StudentScoreCard = React.memo(
                   placeholder="0.00"
                 />
               </View>
-              <View style={[styles.totalSection, { flex: 1 }]}>
+              <View style={[styles.totalSection, { flex: 1.2 }]}>
                 <Text style={styles.sectionLabel}>TOTAL</Text>
                 <View style={[styles.totalBox, { backgroundColor: "#F0FDF4" }]}>
-                  <Text style={[styles.totalText, { color: "#16A34A" }]}>{localItem.finalScore || "0.00"}</Text>
+                  <Text style={[styles.totalText, { color: "#16A34A" }]}>
+                    {localItem.finalScore || "0.00"} / {effectiveMaxScore}
+                  </Text>
                 </View>
               </View>
             </View>

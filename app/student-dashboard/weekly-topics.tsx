@@ -43,7 +43,8 @@ export default function StudentWeeklyTopicsScreen() {
           topic: "Unit / Topic",
           strand: "Syllabus Reference",
           subStrand: "Learning Objective Ref",
-          indicator: "Success Criteria",
+          indicator: "Success Criteria Code",
+          indicatorItem: "Success Criteria Statement",
           subTopics: "Lesson Content",
           objectives: "Key Learning Outcomes"
         };
@@ -52,17 +53,19 @@ export default function StudentWeeklyTopicsScreen() {
           topic: "Area of Interest",
           strand: "Material / Apparatus",
           subStrand: "Lesson Type",
-          indicator: "Control of Error",
+          indicator: "Control Code",
+          indicatorItem: "Control Statement",
           subTopics: "Presentation",
           objectives: "Indirect Aim"
         };
       case "GES":
       default:
         return {
-          topic: "Week Topic",
+          topic: "Week Topic / Content Standard",
           strand: "Strand",
           subStrand: "Sub-strand",
           indicator: "Indicator Code",
+          indicatorItem: "Indicator Item / Statement",
           subTopics: "Sub-topics & Activities",
           objectives: "Learning Objectives"
         };
@@ -150,12 +153,22 @@ export default function StudentWeeklyTopicsScreen() {
                   style={styles.topicCard}
                 >
                   <View style={[styles.subjectHeader, { borderLeftColor: brandColor }]}>
-                    <Text style={styles.subjectName}>{topic.subject}</Text>
-                    {topic.curriculum && (
-                       <View style={styles.curriculumTag}>
+                    <View>
+                      <Text style={styles.subjectName}>{topic.subject}</Text>
+                      {topic.className ? <Text style={styles.classNameText}>{topic.className}</Text> : null}
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                      {topic.weekNumber ? (
+                        <View style={styles.weekTag}>
+                          <Text style={styles.weekTagText}>Week {topic.weekNumber}</Text>
+                        </View>
+                      ) : null}
+                      {topic.curriculum && (
+                        <View style={styles.curriculumTag}>
                           <Text style={styles.curriculumTagText}>{topic.curriculum}</Text>
-                       </View>
-                    )}
+                        </View>
+                      )}
+                    </View>
                   </View>
 
                   <View style={styles.topicContent}>
@@ -182,11 +195,20 @@ export default function StudentWeeklyTopicsScreen() {
                     {topic.indicatorCode && (
                       <View style={styles.contentSection}>
                         <Text style={styles.sectionLabel}>{labels.indicator}</Text>
-                        <Text style={styles.sectionText}>{topic.indicatorCode}</Text>
+                        <View style={styles.indicatorCodeBadge}>
+                          <Text style={styles.indicatorCodeText}>{topic.indicatorCode}</Text>
+                        </View>
                       </View>
                     )}
 
-                    {topic.subTopics && (
+                    {(topic.indicator || (topic.subTopics && topic.subTopics !== topic.topic)) && (
+                      <View style={styles.contentSection}>
+                        <Text style={styles.sectionLabel}>{labels.indicatorItem}</Text>
+                        <Text style={styles.sectionText}>{topic.indicator || topic.subTopics}</Text>
+                      </View>
+                    )}
+
+                    {topic.subTopics && topic.indicator && topic.subTopics !== topic.indicator && (
                       <View style={styles.contentSection}>
                         <Text style={styles.sectionLabel}>{labels.subTopics}</Text>
                         <Text style={styles.sectionText}>{topic.subTopics}</Text>
@@ -235,12 +257,17 @@ const styles = StyleSheet.create({
   topicCard: { backgroundColor: "#fff", borderRadius: 24, overflow: "hidden", ...SHADOWS.medium, borderWidth: 1, borderColor: "#F1F5F9" },
   subjectHeader: { paddingHorizontal: 20, paddingVertical: 15, borderLeftWidth: 5, backgroundColor: "#F8FAFC", flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   subjectName: { fontSize: 18, fontWeight: "900", color: "#1E293B" },
+  classNameText: { fontSize: 11, fontWeight: "700", color: "#64748B", marginTop: 2 },
+  weekTag: { backgroundColor: "#3B82F615", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  weekTagText: { fontSize: 9, fontWeight: '800', color: "#2563EB", letterSpacing: 0.5 },
   curriculumTag: { backgroundColor: COLORS.primary + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   curriculumTagText: { fontSize: 9, fontWeight: '800', color: COLORS.primary, letterSpacing: 0.5 },
   topicContent: { padding: 20 },
   contentSection: { marginBottom: 15 },
   row: { flexDirection: 'row', gap: 15 },
   sectionLabel: { fontSize: 10, fontWeight: "900", color: "#94A3B8", textTransform: "uppercase", marginBottom: 4, letterSpacing: 0.5 },
+  indicatorCodeBadge: { alignSelf: 'flex-start', backgroundColor: COLORS.primary + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginTop: 2 },
+  indicatorCodeText: { fontSize: 12, fontWeight: '900', color: COLORS.primary, letterSpacing: 0.5 },
   topicTitle: { fontSize: 16, fontWeight: "800", color: "#1E293B" },
   sectionText: { fontSize: 14, color: "#475569", lineHeight: 20 },
   emptyState: { alignItems: "center", marginTop: 60 },

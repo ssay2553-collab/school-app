@@ -22,7 +22,7 @@ import {
 } from "firebase/firestore";
 import moment from "moment";
 import { db, storage } from "../../firebaseConfig";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, notifyStudentAndParentsPayment } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
@@ -467,18 +467,13 @@ export const useAdmissionCharges = ({
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'admission');
 
       try {
-        await sendNotification({
-          recipientId: student.uid,
-          senderId: appUser?.uid || "admin",
-          senderName: appUser?.displayName || "Administrator",
-          title: "Admission Payment Received",
-          body: `An admission payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been recorded for ${student.fullName}.`,
-          type: "payment",
-          data: {
-            studentUid: student.uid,
-            amount,
-            type: "admission_payment"
-          }
+        await notifyStudentAndParentsPayment({
+          studentUid: student.uid,
+          studentName: student.fullName,
+          amount,
+          paymentType: "Admission Fee",
+          senderUid: appUser?.uid || "admin",
+          senderName: appUser?.displayName || "School Accounts",
         });
       } catch (notifErr) {
         console.error("Failed to send admission notification:", notifErr);

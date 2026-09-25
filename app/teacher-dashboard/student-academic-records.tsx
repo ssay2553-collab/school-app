@@ -25,32 +25,45 @@ import { useRef } from "react";
 const SelectionGroup = React.memo(({ label, items, selectedId, onSelect, getLabel = (item) => item, getId = (item) => item }: { label: string; items: any[]; selectedId: string; onSelect: (id: any) => void; getLabel?: (item: any) => string; getId?: (item: any) => string; }) => (
   <View style={styles.selectionWrapper}>
     <Text style={styles.label}>{label}</Text>
-    <FlatList horizontal showsHorizontalScrollIndicator={false} data={items} keyExtractor={(item) => getId(item)} contentContainerStyle={styles.bubbleRow} renderItem={({ item }) => {
-      const id = getId(item);
-      const active = selectedId === id;
-      return (
-        <TouchableOpacity onPress={() => onSelect(id)} style={[styles.bubble, active && styles.bubbleActive]}>
-          <Text style={[styles.bubbleText, active && styles.bubbleTextActive]}>{getLabel(item)}</Text>
-        </TouchableOpacity>
-      );
-    }} />
+    <View style={styles.bubbleRow}>
+      {items.map((item) => {
+        const id = getId(item);
+        const active = selectedId === id;
+        return (
+          <TouchableOpacity key={id} onPress={() => onSelect(id)} style={[styles.bubble, active && styles.bubbleActive]}>
+            <Text style={[styles.bubbleText, active && styles.bubbleTextActive]}>{getLabel(item)}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   </View>
 ));
 
-const StudentCard = React.memo(({ student, onUpdate, reportType, disabled }: { student: StudentScoreRecord; onUpdate: (id: string, field: keyof StudentScoreRecord, val: string) => void; reportType: ReportType; disabled?: boolean; }) => {
+const StudentCard = React.memo(({ student, onUpdate, reportType, maxScore, disabled }: { student: StudentScoreRecord; onUpdate: (id: string, field: keyof StudentScoreRecord, val: string) => void; reportType: ReportType; maxScore?: number; disabled?: boolean; }) => {
   const isEOT = reportType === "End of Term";
+  const effectiveMax = isEOT ? 100 : (student.maxScore || maxScore || 100);
   return (
     <View style={[styles.studentCard, disabled && { opacity: 0.7 }]}>
       <View style={styles.cardHeader}>
-        <Text style={styles.studentName}>{student.fullName}</Text>
-        <View style={styles.gradeBadge}><Text style={styles.gradeText}>{student.grade}</Text></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.studentName}>{student.fullName}</Text>
+          {student.remarks ? (
+            <Text style={styles.studentRemarkLabel}>{student.remarks}</Text>
+          ) : null}
+        </View>
+        <View style={styles.gradeBadge}><Text style={styles.gradeText}>Grade {student.grade}</Text></View>
       </View>
       <View style={styles.scoresGrid}>
         {isEOT && (
           <View style={[styles.scoreInput, { flex: 1 }]}><Text style={styles.scoreLabel}>CLASS SCORE (50)</Text><TextInput value={student.classScore} onChangeText={(v) => onUpdate(student.studentId, "classScore", v)} keyboardType="numeric" placeholder="0.0" style={styles.input} editable={!disabled} /></View>
         )}
-        <View style={[styles.scoreInput, { flex: 1 }]}><Text style={styles.scoreLabel}>{isEOT ? "EXAMS (100)" : "EXAM SCORE"}</Text><TextInput value={student.examsMark} onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)} keyboardType="numeric" placeholder="0.0" style={styles.input} editable={!disabled} /></View>
-        <View style={styles.totalBox}><Text style={styles.totalLabel}>FINAL</Text><Text style={styles.totalVal}>{student.finalScore}</Text></View>
+        <View style={[styles.scoreInput, { flex: 1 }]}><Text style={styles.scoreLabel}>{isEOT ? "EXAMS (100)" : `EXAM SCORE (OVER ${effectiveMax})`}</Text><TextInput value={student.examsMark} onChangeText={(v) => onUpdate(student.studentId, "examsMark", v)} keyboardType="numeric" placeholder="0.0" style={styles.input} editable={!disabled} /></View>
+        <View style={styles.totalBox}>
+          <Text style={styles.totalLabel}>FINAL SCORE</Text>
+          <Text style={styles.totalVal}>
+            {student.finalScore}{!isEOT ? ` / ${effectiveMax}` : ""}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -61,6 +74,7 @@ export default function StudentAcademicRecords() {
   const {
     loading,
     syncing,
+    saving,
     teacherClasses,
     selectedClassId,
     setSelectedClassId,
@@ -70,6 +84,8 @@ export default function StudentAcademicRecords() {
     setReportType,
     reportNumber,
     setReportNumber,
+    maxScore,
+    handleMaxScoreChange,
     allStudents,
     updateStudentScore,
     saveRecord,
@@ -108,7 +124,7 @@ export default function StudentAcademicRecords() {
       Alert.alert("Locked", "This record has been approved by the Admin and cannot be edited.");
       return;
     }
-    if (isNavigating.current) return;
+    if (saving || isNavigating.current) return;
     isNavigating.current = true;
     const success = await saveRecord();
     if (success) router.back();
@@ -144,6 +160,16 @@ export default function StudentAcademicRecords() {
             getId={(item) => item.toString()}
           />
         )}
+        {reportType !== "End of Term" && (
+          <SelectionGroup
+            label="TEST TOTAL MARKS (OVER SCORE)"
+            items={[20, 30, 50, 100]}
+            selectedId={(maxScore || 100).toString()}
+            onSelect={(v) => handleMaxScoreChange(Number(v))}
+            getLabel={(item) => `Over ${item}`}
+            getId={(item) => item.toString()}
+          />
+        )}
         <SelectionGroup label="CLASS" items={teacherClasses} selectedId={selectedClassId} onSelect={setSelectedClassId} getLabel={(item) => item.name} getId={(item) => item.id} />
         <SelectionGroup label="SUBJECT" items={subjects} selectedId={selectedSubject} onSelect={setSelectedSubject} />
       </Animatable.View>
@@ -172,7 +198,7 @@ export default function StudentAcademicRecords() {
         <FlatList
           data={allStudents}
           keyExtractor={(item) => item.studentId}
-          renderItem={({ item }) => <StudentCard student={item} onUpdate={updateStudentScore} reportType={reportType} disabled={isApproved || item.status === "approved"} />}
+          renderItem={({ item }) => <StudentCard student={item} onUpdate={updateStudentScore} reportType={reportType} maxScore={maxScore} disabled={isApproved || saving || item.status === "approved"} />}
           ListHeaderComponent={renderHeader}
           ListEmptyComponent={<View style={styles.emptyState}><SVGIcon name="people-outline" size={48} color="#CBD5E1" /><Text style={styles.emptyStateText}>{!selectedSubject ? "Select subject" : "No students found"}</Text></View>}
           contentContainerStyle={styles.listContent}
@@ -183,10 +209,16 @@ export default function StudentAcademicRecords() {
         />
       )}
 
-      <TouchableOpacity onPress={handleSave} style={[styles.saveFab, isApproved && { opacity: 0.5 }]} disabled={isApproved}>
+      <TouchableOpacity onPress={handleSave} style={[styles.saveFab, (isApproved || saving) && { opacity: 0.5 }]} disabled={isApproved || saving}>
         <LinearGradient colors={isApproved ? ["#94A3B8", "#64748B"] : [COLORS.primary, "#4F46E5"]} style={styles.fabGrad}>
-          <Text style={styles.saveFabText}>{isApproved ? "LEDGER APPROVED & LOCKED" : "SAVE PERFORMANCE LEDGER"}</Text>
-          <SVGIcon name={isApproved ? "lock-closed" : "checkmark-done"} size={24} color="#fff" />
+          {saving ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <>
+              <Text style={styles.saveFabText}>{isApproved ? "LEDGER APPROVED & LOCKED" : "SAVE PERFORMANCE LEDGER"}</Text>
+              <SVGIcon name={isApproved ? "lock-closed" : "checkmark-done"} size={24} color="#fff" />
+            </>
+          )}
         </LinearGradient>
       </TouchableOpacity>
     </SafeAreaView>
@@ -208,8 +240,8 @@ const styles = StyleSheet.create({
   approvedText: { fontSize: 10, fontWeight: "900", color: "#059669" },
   sectionLabel: { fontSize: 10, fontWeight: "900", color: COLORS.primary, letterSpacing: 1 },
   label: { fontSize: 10, fontWeight: "900", color: "#94A3B8", marginBottom: 10 },
-  bubbleRow: { gap: 10, paddingBottom: 5 },
-  bubble: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 15, backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "#E2E8F0", marginRight: 8 },
+  bubbleRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, paddingBottom: 5 },
+  bubble: { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 15, backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "#E2E8F0", ...Platform.select({ web: { cursor: 'pointer' } as any, default: {} }) },
   bubbleActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   bubbleText: { fontSize: 12, color: "#475569", fontWeight: "700" },
   bubbleTextActive: { color: "#fff" },
@@ -228,6 +260,7 @@ const styles = StyleSheet.create({
   studentCard: { backgroundColor: "#fff", padding: 18, borderRadius: 20, marginBottom: 15, ...SHADOWS.small },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 15 },
   studentName: { fontSize: 15, fontWeight: "800", color: "#1E293B" },
+  studentRemarkLabel: { fontSize: 11, color: "#059669", fontWeight: "700", marginTop: 2 },
   gradeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: "#F1F5F9" },
   gradeText: { fontSize: 12, fontWeight: "900", color: COLORS.primary },
   scoresGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },

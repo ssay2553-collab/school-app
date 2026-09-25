@@ -241,7 +241,8 @@ export const useAcademicRecordDetails = (
             reportType,
           );
 
-          const gradeObj = getGradeDetails(scoreValue);
+          const maxScore = Number(data.maxScore || studentEntry.maxScore || 100);
+          const gradeObj = getGradeDetails(scoreValue, maxScore);
           resultsMap.set(subjectName, {
             subject: subjectName,
             classScore: studentEntry.classScore || "-",
@@ -250,6 +251,7 @@ export const useAcademicRecordDetails = (
                 ? studentEntry.exam50 || 0
                 : studentEntry.examsMark || 0,
             total: scoreValue,
+            maxScore: maxScore,
             grade: gradeObj.grade,
             aggregate: gradeObj.aggregate,
             remark: gradeObj.remark,
@@ -420,7 +422,7 @@ export const useAcademicRecordDetails = (
           }
         } else if (isMounted.current) {
           // If report record doesn't exist, check if all individual subject records are approved
-          if (allApproved && scoresSnap.docs.length > 0) {
+          if (allApproved && rawScoresSnap.docs.length > 0) {
             setReportStatus("approved");
             setIsReportApproved(true);
           }

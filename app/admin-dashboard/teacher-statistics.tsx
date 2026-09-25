@@ -599,27 +599,49 @@ export default function TeacherStatistics() {
                       </Text>
                     </View>
 
-                    <Text style={styles.detailLabel}>WEEK TOPIC</Text>
+                    <View style={styles.detailRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.detailLabel}>CLASS</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail?.className || "N/A"}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.detailLabel}>SUBJECT</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail?.subject || "N/A"}</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.detailLabel}>WEEK TOPIC / CONTENT STANDARD {selectedTopicDetail?.weekNumber ? `(WEEK #${selectedTopicDetail?.weekNumber})` : ""}</Text>
                     <Text style={styles.detailValue}>{selectedTopicDetail?.topic}</Text>
 
                     <View style={styles.detailRow}>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.detailLabel}>STRAND / AREA</Text>
+                        <Text style={styles.detailLabel}>STRAND</Text>
                         <Text style={styles.detailValue}>{selectedTopicDetail?.strand || "N/A"}</Text>
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.detailLabel}>SUB-STRAND / TYPE</Text>
+                        <Text style={styles.detailLabel}>SUB-STRAND</Text>
                         <Text style={styles.detailValue}>{selectedTopicDetail?.subStrand || "N/A"}</Text>
                       </View>
                     </View>
 
-                    <Text style={styles.detailLabel}>INDICATORS / CODES</Text>
+                    <Text style={styles.detailLabel}>INDICATOR CODE</Text>
                     <Text style={styles.detailValue}>{selectedTopicDetail?.indicatorCode || "N/A"}</Text>
 
-                    <Text style={styles.detailLabel}>SUB-TOPICS / ACTIVITIES</Text>
-                    <Text style={styles.detailValue}>{selectedTopicDetail?.subTopics || "Not specified"}</Text>
+                    {(selectedTopicDetail?.indicator || (selectedTopicDetail?.subTopics && selectedTopicDetail?.subTopics !== selectedTopicDetail?.topic)) && (
+                      <>
+                        <Text style={styles.detailLabel}>INDICATOR ITEM / STATEMENT</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail?.indicator || selectedTopicDetail?.subTopics}</Text>
+                      </>
+                    )}
 
-                    <Text style={styles.detailLabel}>OBJECTIVES / FOCUS</Text>
+                    {selectedTopicDetail?.subTopics && selectedTopicDetail?.indicator && selectedTopicDetail?.subTopics !== selectedTopicDetail?.indicator && (
+                      <>
+                        <Text style={styles.detailLabel}>SUB-TOPICS & ACTIVITIES</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail?.subTopics}</Text>
+                      </>
+                    )}
+
+                    <Text style={styles.detailLabel}>LEARNING OBJECTIVES</Text>
                     <Text style={styles.detailValue}>{selectedTopicDetail?.objectives || "Not specified"}</Text>
 
                     <Text style={styles.detailLabel}>DURATION</Text>
@@ -641,7 +663,9 @@ export default function TeacherStatistics() {
                       onPress={() => setSelectedTopicDetail(item)}
                     >
                       <View style={styles.breakdownInfo}>
-                        <Text style={styles.breakdownClass}>Week {item.weekNumber}: {item.topic}</Text>
+                        <Text style={styles.breakdownClass}>
+                          {item.className ? `${item.className} • ` : ''}{item.subject ? `${item.subject} • ` : ''}Week {item.weekNumber || '-'}: {item.topic}
+                        </Text>
                         <Text style={styles.breakdownSubject}>{safeFormat(item.startDate, "MMM D")} - {safeFormat(item.endDate, "MMM D")}</Text>
                       </View>
                       <SVGIcon name="chevron-forward" size={18} color={primary} />

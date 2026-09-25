@@ -19,6 +19,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useParentFeeHistory } from "../../hooks/useParentFeeHistory";
+import { getCategoryRank, getCategoryDisplayName } from "../../hooks/admin-dashboard/finance-cleanup/utils";
 
 export default function StudentFeeHistory() {
   const acadConfig = useAcademicConfig();
@@ -258,19 +259,13 @@ export default function StudentFeeHistory() {
                 <Text style={[styles.invoiceTh, { flex: 1.2, textAlign: 'right' }]}>BALANCE</Text>
               </View>
               {Object.entries(categorySummary)
-                .sort(([a], [b]) => {
-                  if (a === 'arrears') return -1;
-                  if (b === 'arrears') return 1;
-                  if (a === 'tuition') return -1;
-                  if (b === 'tuition') return 1;
-                  return a.localeCompare(b);
-                })
+                .sort(([a], [b]) => getCategoryRank(a) - getCategoryRank(b))
                 .map(([cat, vals]: any) => {
-                  const balance = (vals.billed || 0) - (vals.paid || 0);
+                  const balance = Math.max(0, (vals.billed || 0) - (vals.paid || 0));
                   return (
-                    <View key={cat} style={[styles.invoiceRow, cat === 'arrears' && { backgroundColor: '#FFF7ED' }]}>
-                      <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10, color: cat === 'arrears' ? '#C2410C' : '#1E293B' }]}>
-                        {cat === 'arrears' ? 'PREVIOUS ARREARS' : cat.toUpperCase()}
+                    <View key={cat} style={[styles.invoiceRow, cat === 'arrears' && { backgroundColor: '#FFF7ED' }, cat === 'surplus' && { backgroundColor: '#ECFDF5' }]}>
+                      <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10, color: cat === 'arrears' ? '#C2410C' : cat === 'surplus' ? '#065F46' : '#1E293B' }]}>
+                        {getCategoryDisplayName(cat).toUpperCase()}
                       </Text>
                       <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right' }]}>{SCHOOL_CONFIG.currencySymbol}{vals.billed.toFixed(2)}</Text>
                       <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: "#10B981" }]}>{SCHOOL_CONFIG.currencySymbol}{vals.paid.toFixed(2)}</Text>

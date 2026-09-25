@@ -264,7 +264,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                 </View>
               )}
 
-              {(user.signupCode || user.secretCode || (user.role === 'student' && user.parentLinkCode)) && (
+              {(user.signupCode || user.secretCode || user.role === 'student') && (
                 <View style={styles.infoSection}>
                   <Text style={styles.infoLabel}>Security Tokens & Link Codes</Text>
                   <View

@@ -51,7 +51,9 @@ export const generateAssessmentHtml = (data: ReportHtmlData, styles: string, hea
           <tbody>
           ${subjectsData
             .map((s) => {
-              const totalDisplay = isNaN(Number(s.total)) ? s.total : Number(s.total).toFixed(1);
+              const numScore = isNaN(Number(s.total)) ? s.total : Number(s.total).toFixed(1);
+              const maxScoreStr = s.maxScore && Number(s.maxScore) !== 100 ? ` / ${s.maxScore}` : "";
+              const totalDisplay = `${numScore}${maxScoreStr}`;
               return `
             <tr>
               <td class="subj-name">${s.subject}</td>

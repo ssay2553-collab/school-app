@@ -11,8 +11,9 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
-import { sortClasses, calculateCompetitionRanking } from "../../lib/classHelpers";
+import { sortClasses, calculateCompetitionRanking, getGradeDetails } from "../../lib/classHelpers";
 import { ReportType } from "../../components/admin-dashboard/StudentScoreCard";
+import { sendNotification } from "../../src/services/notificationService";
 
 interface SubjectInfo {
   name: string;
@@ -41,6 +42,22 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
   const [selectedReportType, setSelectedReportType] = useState<ReportType>("End of Term");
   const [selectedReportNumber, setSelectedReportNumber] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [maxScore, setMaxScore] = useState<number>(100);
+
+  const handleMaxScoreChange = useCallback((newMax: number) => {
+    setMaxScore(newMax);
+    setAllStudents(prev => prev.map(s => {
+      const examsMark = parseFloat(s.examsMark) || 0;
+      const gradeInfo = getGradeDetails(examsMark, newMax);
+      return {
+        ...s,
+        maxScore: newMax,
+        finalScore: examsMark.toFixed(2),
+        grade: gradeInfo.grade,
+        remarks: gradeInfo.remark,
+      };
+    }));
+  }, []);
 
   const [recordId, setRecordId] = useState<string | null>(null);
   const [allStudents, setAllStudents] = useState<any[]>([]);
@@ -197,7 +214,13 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
       if (snap.exists()) {
         setRecordId(snap.id);
         const data = snap.data() as any;
-        const students = Array.isArray(data.students) ? data.students : [];
+        const docMaxScore = Number(data.maxScore) || 100;
+        setMaxScore(docMaxScore);
+        const rawStudents = Array.isArray(data.students) ? data.students : [];
+        const students = rawStudents.map((s: any) => ({
+          ...s,
+          maxScore: s.maxScore || docMaxScore,
+        }));
         masterDataRef.current = {};
         setAllStudents(students);
         initialDataRef.current = JSON.stringify(students);
@@ -287,6 +310,7 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
       }));
 
       batch.update(recordRef, {
+        maxScore: selectedReportType === "End of Term" ? 100 : maxScore,
         students: studentsToSave.map((s) => {
           const rankInfo = calculateCompetitionRanking(
             subjectScoresList,
@@ -341,6 +365,47 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
       });
 
       await batch.commit();
+
+      // Notify parents of updated/approved scores
+      try {
+        const studentIdsToNotify = studentsToSave.map(s => s.studentId);
+        if (studentIdsToNotify.length > 0) {
+          const qUsers = query(
+            collection(db, "users"),
+            where("__name__", "in", studentIdsToNotify.slice(0, 30))
+          );
+          const snapUsers = await getDocsFromServer(qUsers);
+          const adminName = appUser?.displayName || "School Admin";
+
+          snapUsers.docs.forEach(uDoc => {
+            const uData = uDoc.data();
+            const parentUids = uData?.parentUids;
+            if (Array.isArray(parentUids) && parentUids.length > 0) {
+              const studentName = `${uData.profile?.firstName || ''} ${uData.profile?.lastName || ''}`.trim() || "Your ward";
+              parentUids.forEach(parentId => {
+                sendNotification({
+                  recipientId: parentId,
+                  senderId: appUser?.uid || "admin",
+                  senderName: adminName,
+                  type: "score",
+                  title: "New Exam Report Available 📊",
+                  body: `${studentName}'s ${selectedReportType} score for ${selectedSubject} (${term}, ${selectedYear}) has been published.`,
+                  data: {
+                    studentId: uDoc.id,
+                    classId: selectedClassId,
+                    subject: selectedSubject,
+                    academicYear: selectedYear,
+                    term,
+                    reportType: selectedReportType
+                  }
+                });
+              });
+            }
+          });
+        }
+      } catch (notifErr) {
+        console.error("Error sending score notifications to parents:", notifErr);
+      }
 
       if (isMounted.current) {
         initialDataRef.current = JSON.stringify(studentsToSave);
@@ -434,6 +499,8 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
     hasUnsavedChanges,
     selectedClassName,
     selectedYear,
-    term
+    term,
+    maxScore,
+    handleMaxScoreChange,
   };
 };

@@ -18,7 +18,7 @@ import {
 } from "firebase/firestore";
 import moment from "moment";
 import { db } from "../../firebaseConfig";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, notifyStudentAndParentsPayment } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
@@ -488,19 +488,13 @@ export const useUniformCharges = ({
       }
 
       try {
-        await sendNotification({
-          recipientId: student.uid,
-          senderId: appUser?.uid || "admin",
-          senderName: appUser?.displayName || "Administrator",
-          title: "Uniform Payment Recorded",
-          body: `A payment for ${typeLabel} (${SCHOOL_CONFIG.currencySymbol}${amountVal.toLocaleString()}) has been recorded for ${student.fullName}.`,
-          type: "payment",
-          data: {
-            studentUid: student.uid,
-            amount: amountVal,
-            type: "uniform_payment",
-            item: typeLabel,
-          },
+        await notifyStudentAndParentsPayment({
+          studentUid: student.uid,
+          studentName: student.fullName,
+          amount: amountVal,
+          paymentType: typeLabel || "Uniform",
+          senderUid: appUser?.uid || "admin",
+          senderName: appUser?.displayName || "School Accounts",
         });
       } catch (notifErr) {
         console.error("Failed to send uniform notification:", notifErr);

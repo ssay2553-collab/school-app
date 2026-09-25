@@ -886,7 +886,8 @@ match /feePayments/{paymentId} {
         isAdmin()
         || (isTeacher() && resource.data.classId in userData().classes)
         || (isStudent() && uid() == resource.data.studentId)
-        || (isParent() && resource.data.studentId in userData().childrenIds && hasNoDebt(resource.data.studentId));
+        || (isParent() && resource.data.studentId in userData().childrenIds &&
+           (resource.data.get('reportType', 'End of Term') != 'End of Term' || hasNoDebt(resource.data.studentId)));
 
       allow write: if
         isAdmin()
@@ -895,58 +896,85 @@ match /feePayments/{paymentId} {
       allow delete: if isAdmin();
     }
 
-/* ===============================
-   ACADEMIC RECORDS
-=============================== */
-   match /academicRecords/{recordId} {
-      allow read: if isAdmin() || isTeacher() || isStudent() || (isParent() && userData().childrenIds.hasAny(resource.data.studentIds));
+    /* ===============================
+       ACADEMIC RECORDS
+    =============================== */
+    match /academicRecords/{recordId} {
+      allow read: if isAdmin()
+        || (isTeacher() && (resource.data.classId in userData().classes || isClassTeacher(resource.data.classId)))
+        || (isStudent() && resource.data.get('studentIds', []).hasAny([uid()]))
+        || (isParent() && userData().childrenIds.hasAny(resource.data.get('studentIds', [])));
 
-      // Admins have full access; Teachers can only create/edit if not already approved
+      // Admins have full access; Teachers (class teachers or subject teachers) can create/edit for classes they teach, with pending/draft/partially_approved status
       allow create: if isSignedIn() && (
         isAdmin() ||
-        (isTeacher() && isClassTeacher(request.resource.data.classId) && request.resource.data.status == 'pending')
+        (
+          isTeacher() &&
+          (
+            request.resource.data.classId in userData().get('classes', []) ||
+            isClassTeacher(request.resource.data.classId)
+          ) &&
+          request.resource.data.status in ['pending', 'draft']
+        )
       );
 
       allow update: if isSignedIn() && (
         isAdmin() ||
         (
           isTeacher() &&
-          isClassTeacher(resource.data.classId) &&
+          (
+            resource.data.classId in userData().get('classes', []) ||
+            isClassTeacher(resource.data.classId)
+          ) &&
           resource.data.status != 'approved' &&
-          request.resource.data.status == 'pending' &&
+          request.resource.data.status in ['pending', 'draft', 'partially_approved'] &&
           (
             !request.resource.data.get('containsBehavioralData', false) ||
-            isClassTeacher(resource.data.classId)
+            isClassTeacher(resource.data.classId) ||
+            resource.data.classId in userData().get('classes', [])
           )
         )
       );
 
       allow delete: if isAdmin();
-   }
+    }
 
- match /student-reports/{reportId} {
+    /* ===============================
+       STUDENT REPORTS
+    =============================== */
+    match /student-reports/{reportId} {
       allow read: if
         isAdmin()
         || (isTeacher() && resource.data.classId in userData().classes)
         || (isStudent() && uid() == resource.data.studentId && resource.data.status == 'approved')
-        || (isParent() && resource.data.studentId in userData().childrenIds && resource.data.status == 'approved' && hasNoDebt(resource.data.studentId));
+        || (isParent() && resource.data.studentId in userData().childrenIds && resource.data.status == 'approved' &&
+           (resource.data.get('reportType', 'End of Term') != 'End of Term' || hasNoDebt(resource.data.studentId)));
 
-      allow write: if
-        isAdmin()
-        || (isTeacher() && request.resource.data.classId in userData().classes);
+      allow write: if isAdmin();
 
       allow delete: if isAdmin();
+    }
 
-}
-
-match /academicRecordsSummary/{id} {
+    /* ===============================
+       ACADEMIC RECORDS SUMMARY
+    =============================== */
+    match /academicRecordsSummary/{id} {
       allow read: if isSignedIn() && (
         isAdmin() ||
         (isTeacher() && resource.data.classId in userData().classes) ||
-        (isStudent() && id.split('_')[0] == uid()) ||
-        (isParent() && id.split('_')[0] in userData().childrenIds && hasNoDebt(id.split('_')[0]))
+        (isStudent() && (resource.data.get('studentId', '') == uid() || id.split('_')[0] == uid())) ||
+        (isParent() && (
+          (resource.data.get('studentId', '') in userData().childrenIds) ||
+          (id.split('_')[0] in userData().childrenIds)
+        ))
       );
-      allow write: if isAdmin() || (isTeacher() && isClassTeacher(request.resource.data.classId));
+      allow write: if isAdmin() || (
+        isTeacher() &&
+        (
+          isClassTeacher(request.resource.data.classId) ||
+          request.resource.data.classId in userData().get('classes', [])
+        )
+      );
     }
 
     /* ===============================
@@ -981,7 +1009,10 @@ match /academicRecordsSummary/{id} {
       allow read: if isSignedIn();
       allow create, update: if isSignedIn() && (
         isAdmin() ||
-        (isTeacher() && request.resource.data.classId in userData().classes)
+        (isTeacher() && (
+          (request.resource.data.classId in userData().get('classes', [])) ||
+          isClassTeacher(request.resource.data.classId)
+        ))
       );
       allow delete: if isAdmin();
     }

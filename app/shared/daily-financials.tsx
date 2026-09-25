@@ -612,6 +612,18 @@ export default function DailyFinancials() {
                 "/shared/extra-classes-fees",
                 true,
               )}
+
+            {/* Daily Fees Ledger - Dedicated separate ledger */}
+            {canView &&
+              renderCategoryCard(
+                "Daily Fees Ledger",
+                "Per-class daily billing, payments & days arrears",
+                stats.totalStudents,
+                "newspaper",
+                VIBE.primary,
+                "/shared/daily-ledger",
+                true,
+              )}
           </View>
 
           {/* Quick Actions */}

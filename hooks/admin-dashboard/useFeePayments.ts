@@ -15,7 +15,7 @@ import moment from "moment";
 import { Alert, Platform } from "react-native";
 import { db } from "../../firebaseConfig";
 import { StudentDraft } from "../../constants/admin-dashboard/ManageFeesTypes";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, notifyStudentAndParentsPayment } from "../../src/services/notificationService";
 import { propagateArrears } from "../../utils/financeUtils";
 
 interface UseFeePaymentsProps {
@@ -295,13 +295,13 @@ export const useFeePayments = ({
         propagateArrears(selectedStudent.uid, academicYear, term, -amount, 'payment').catch(e => console.error("Propagation error:", e));
 
         if (selectedStudent.uid) {
-          sendNotification({
-            recipientId: selectedStudent.uid,
-            senderId: appUser?.uid || "admin",
-            senderName: appUser?.displayName || "Administrator",
-            title: "Fee Payment Received - Thank You!",
-            body: `Thank you! We've received a payment of ₵${amount.toLocaleString()} for ${selectedStudent.fullName}. We appreciate your promptness! Receipt: ${baseReceiptNo}`,
-            type: "payment",
+          notifyStudentAndParentsPayment({
+            studentUid: selectedStudent.uid,
+            studentName: selectedStudent.fullName || "your child",
+            amount,
+            receiptNo: baseReceiptNo,
+            senderUid: appUser?.uid || "admin",
+            senderName: appUser?.displayName || "School Accounts",
           }).catch(e => console.error("Notification error:", e));
         }
         fetchStudents(true);

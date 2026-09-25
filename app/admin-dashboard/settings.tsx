@@ -12,6 +12,7 @@ import { httpsCallable } from "firebase/functions";
 import moment from "moment";
 import { useFinanceCleanup } from "../../hooks/admin-dashboard/useFinanceCleanup";
 import { repairMissingSignupCodes } from "../../scratch/repair_signup_codes";
+import { broadcastFeeReminders } from "../../src/services/feeReminderService";
 import { useRef, useEffect } from "react";
 
 export default function AdminSettingsScreen() {
@@ -37,7 +38,7 @@ export default function AdminSettingsScreen() {
     try {
       const count = await repairMissingSignupCodes();
       if (isMounted.current) {
-        showToast({ message: `Successfully repaired ${count} signup codes.`, type: "success" });
+        showToast({ message: `Successfully repaired ${count} signup/parent link codes.`, type: "success" });
       }
     } catch (err: any) {
       if (isMounted.current) {
@@ -48,6 +49,39 @@ export default function AdminSettingsScreen() {
       if (isMounted.current) {
         setRepairLoading(false);
       }
+    }
+  };
+
+  const handleFeeRemindersBroadcast = async () => {
+    const run = async () => {
+      setCfLoading(prev => ({ ...prev, triggerFeeReminders: true }));
+      try {
+        const result = await broadcastFeeReminders(auth.currentUser?.uid, "School Financial Office");
+        if (isMounted.current) {
+          showToast({
+            message: result.message,
+            type: "success"
+          });
+        }
+      } catch (err: any) {
+        if (isMounted.current) {
+          showToast({ message: err.message || "Failed to broadcast fee reminders.", type: "error" });
+        }
+      } finally {
+        if (isMounted.current) {
+          setCfLoading(prev => ({ ...prev, triggerFeeReminders: false }));
+        }
+      }
+    };
+
+    const confirmMessage = "Send push notification fee reminders to ALL parents with outstanding balances?";
+    if (Platform.OS === "web") {
+      if (window.confirm(confirmMessage)) run();
+    } else {
+      Alert.alert("Broadcast Fee Reminders", confirmMessage, [
+        { text: "Cancel", style: "cancel" },
+        { text: "Send Reminders", style: "default", onPress: run }
+      ]);
     }
   };
 
@@ -212,22 +246,22 @@ export default function AdminSettingsScreen() {
     {
         title: "Broadcast Fee Reminders",
         icon: "notifications-outline",
-        action: () => handleCloudFunctionTrigger("triggerFeeReminders", "Send push notification fee reminders to ALL parents with outstanding balances?"),
+        action: handleFeeRemindersBroadcast,
         color: "#F59E0B",
         loading: cfLoading["triggerFeeReminders"],
     },
     {
-      title: "Repair Missing Signup Codes",
+      title: "Repair Missing Codes (Signup & Parent)",
       icon: "key",
       action: () => {
         if (Platform.OS === "web") {
-          if (window.confirm("Scan for students with missing code entries in the global database and fix them?")) {
+          if (window.confirm("Scan for missing signup codes and student parent link codes in the database and generate/fix them?")) {
             handleRepairSignupCodes();
           }
         } else {
-          Alert.alert("Repair Signup Codes", "Scan for students with missing code entries in the global database and fix them?", [
+          Alert.alert("Repair Codes", "Scan for missing signup codes and student parent link codes in the database and generate/fix them?", [
             { text: "Cancel", style: "cancel" },
-            { text: "Repair Now", style: "default", onPress: handleRepairSignupCodes }
+            { text: "Repair Now", style: "default", onPress: handleRegenerateParentLinkCode ? handleRepairSignupCodes : handleRepairSignupCodes }
           ]);
         }
       },

@@ -1,38 +1,115 @@
-import React from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import SVGIcon from './SVGIcon';
 
-const { width, height } = Dimensions.get('window');
+const ACADEMIC_ICONS = [
+  'school',
+  'book',
+  'pencil',
+  'calculator',
+  'flask',
+  'microscope',
+  'atom',
+  'globe',
+  'ruler',
+  'trophy',
+  'certificate',
+  'compass-math',
+  'bulb-outline',
+  'color-palette',
+  'library',
+  'sqrt',
+  'code-slash',
+  'blackboard',
+  'brain',
+  'dna',
+  'backpack',
+  'telescope',
+  'journal',
+  'time-outline',
+  'attach',
+  'document-text',
+  'sparkles',
+  'bus',
+  'glasses',
+  'abacus',
+  'ribbon',
+  'hardware-chip',
+];
 
-const StationaryBackground = () => {
+const ROTATIONS = [-25, 12, -15, 28, -8, 20, -30, 15, -18, 24, -5, 22];
+const SIZES = [22, 26, 24, 28, 23, 27];
+
+interface StationaryBackgroundProps {
+  color?: string;
+  cellSpacing?: number;
+}
+
+const StationaryBackground: React.FC<StationaryBackgroundProps> = ({
+  color = 'rgba(15, 23, 42, 0.055)',
+  cellSpacing = 68,
+}) => {
+  const { width, height } = useWindowDimensions();
+
+  const gridItems = useMemo(() => {
+    const cols = Math.ceil(width / cellSpacing) + 1;
+    const rows = Math.ceil(height / cellSpacing) + 2;
+    const items = [];
+
+    for (let r = 0; r < rows; r++) {
+      const isOddRow = r % 2 === 1;
+      const xOffset = isOddRow ? cellSpacing / 2 : 0;
+
+      for (let c = 0; c < cols; c++) {
+        const index = r * cols + c;
+        const iconName = ACADEMIC_ICONS[index % ACADEMIC_ICONS.length];
+        const rotation = ROTATIONS[(r * 3 + c * 7) % ROTATIONS.length];
+        const size = SIZES[(r * 5 + c * 3) % SIZES.length];
+
+        const left = c * cellSpacing + xOffset - 15;
+        const top = r * cellSpacing - 10;
+
+        items.push({
+          key: `academic-bg-${r}-${c}`,
+          name: iconName,
+          top,
+          left,
+          size,
+          rotation,
+        });
+      }
+    }
+
+    return items;
+  }, [width, height, cellSpacing]);
+
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <View style={[styles.icon, { top: height * 0.1, left: width * 0.1, transform: [{ rotate: '15deg' }] }]}>
-        <SVGIcon name="pencil-outline" size={80} color="rgba(0,0,0,0.05)" />
-      </View>
-      <View style={[styles.icon, { top: height * 0.3, right: width * 0.05, transform: [{ rotate: '-10deg' }] }]}>
-        <SVGIcon name="book-outline" size={100} color="rgba(0,0,0,0.05)" />
-      </View>
-      <View style={[styles.icon, { bottom: height * 0.2, left: width * 0.05, transform: [{ rotate: '-20deg' }] }]}>
-        <SVGIcon name="calculator-outline" size={90} color="rgba(0,0,0,0.05)" />
-      </View>
-       <View style={[styles.icon, { bottom: height * 0.4, right: width * 0.15, transform: [{ rotate: '25deg' }] }]}>
-        <SVGIcon name="flask-outline" size={70} color="rgba(0,0,0,0.05)" />
-      </View>
-      <View style={[styles.icon, { top: height * 0.6, left: width * 0.2, transform: [{ rotate: '10deg' }] }]}>
-        <SVGIcon name="color-palette-outline" size={85} color="rgba(0,0,0,0.05)" />
-      </View>
-      <View style={[styles.icon, { top: height * 0.8, right: width * 0.25, transform: [{ rotate: '-15deg' }] }]}>
-        <SVGIcon name="school-outline" size={110} color="rgba(0,0,0,0.05)" />
-      </View>
+      {gridItems.map((item) => (
+        <View
+          key={item.key}
+          style={[
+            styles.iconWrapper,
+            {
+              top: item.top,
+              left: item.left,
+              transform: [{ rotate: `${item.rotation}deg` }],
+            },
+          ]}
+        >
+          <SVGIcon name={item.name} size={item.size} color={color} />
+        </View>
+      ))}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  icon: {
+  iconWrapper: {
     position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
-export default StationaryBackground;
+export default React.memo(StationaryBackground);

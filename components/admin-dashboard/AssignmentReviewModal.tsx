@@ -63,7 +63,7 @@ export default function AssignmentReviewModal({
       const updatedAssignment = { ...assignment, status: 'approved', updatedAt: new Date() };
       onStatusUpdate(updatedAssignment);
 
-      // Send notifications to students
+      // Send notifications to students & parents
       const studentsQuery = query(
         collection(db, "users"),
         where("role", "==", "student"),
@@ -72,22 +72,44 @@ export default function AssignmentReviewModal({
 
       const studentsSnap = await getDocs(studentsQuery);
 
-      await Promise.allSettled(
-        studentsSnap.docs.map(studentDoc =>
-          sendNotification({
-            recipientId: studentDoc.id,
-            senderId: appUser?.uid || "admin",
-            senderName: "School Admin",
-            type: "assignment",
-            title: "Assignment Approved",
-            body: `${assignment.subjectId || assignment.subject}: ${assignment.title} is now available.`,
-            data: {
-              assignmentId: assignment.id,
-              classId: assignment.classId,
-            },
-          })
-        )
-      );
+      for (const studentDoc of studentsSnap.docs) {
+        const sData = studentDoc.data();
+        const studentName = `${sData.profile?.firstName || ''} ${sData.profile?.lastName || ''}`.trim() || "Your ward";
+
+        // Notify Student
+        sendNotification({
+          recipientId: studentDoc.id,
+          senderId: appUser?.uid || "admin",
+          senderName: "School Admin",
+          type: "assignment",
+          title: "New Assignment",
+          body: `${assignment.subjectId || assignment.subject}: ${assignment.title} is now available.`,
+          data: {
+            assignmentId: assignment.id,
+            classId: assignment.classId,
+          },
+        });
+
+        // Notify Parents
+        const parentUids = sData.parentUids;
+        if (Array.isArray(parentUids) && parentUids.length > 0) {
+          parentUids.forEach(parentId => {
+            sendNotification({
+              recipientId: parentId,
+              senderId: appUser?.uid || "admin",
+              senderName: "School Admin",
+              type: "assignment",
+              title: "New Assignment Posted 📚",
+              body: `A new ${assignment.subjectId || assignment.subject} assignment (${assignment.title}) has been assigned to ${studentName}.`,
+              data: {
+                assignmentId: assignment.id,
+                classId: assignment.classId,
+                studentId: studentDoc.id
+              },
+            });
+          });
+        }
+      }
 
       Alert.alert("Success", "Assignment approved and sent to students.");
       handleClose();

@@ -23,6 +23,7 @@ import {
   sortClasses,
 } from "../../lib/classHelpers";
 import { useAcademicConfig } from "../useAcademicConfig";
+import { sendNotification } from "../../src/services/notificationService";
 
 export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams" | "Class Assessment Task (CAT)" | "Trial Test";
 
@@ -241,10 +242,12 @@ export function useViewAcademicRecords() {
             scoreValue = parseFloat(s.finalScore || s.examsMark || 0);
           }
 
-          const grade = parseInt(getGradeDetails(scoreValue).grade) || 9;
+          const maxScore = Number(data.maxScore || s.maxScore || 100);
+          const grade = parseInt(getGradeDetails(scoreValue, maxScore).grade) || 9;
           studentPerformanceMap[s.studentId].subjects[subName] = {
             grade,
             score: scoreValue,
+            maxScore,
           };
 
           if (subName === selectedSubject.toLowerCase()) {
@@ -299,7 +302,7 @@ export function useViewAcademicRecords() {
             studentId: sid,
             fullName: p.fullName,
             total: p.subjectScore || 0,
-            grade: getGradeDetails(p.subjectScore || 0).grade,
+            grade: getGradeDetails(p.subjectScore || 0, p.maxScore || 100).grade,
             aggregate: aggregate,
             tas: tas,
           };
@@ -480,6 +483,36 @@ export function useViewAcademicRecords() {
         },
         { merge: true },
       );
+
+      // Notify parent of terminal report update
+      try {
+        const studentDoc = await getDoc(doc(db, "users", editingStudent.studentId));
+        if (studentDoc.exists()) {
+          const sData = studentDoc.data();
+          const parentUids = sData.parentUids;
+          if (Array.isArray(parentUids) && parentUids.length > 0) {
+            parentUids.forEach(parentId => {
+              sendNotification({
+                recipientId: parentId,
+                senderId: appUser?.uid || "admin",
+                senderName: appUser?.displayName || "School Admin",
+                type: "score",
+                title: "New Exam Report Available 📊",
+                body: `${editingStudent.fullName}'s ${selectedReportType} report (${term}, ${selectedYear}) has been updated with conduct & remarks.`,
+                data: {
+                  studentId: editingStudent.studentId,
+                  classId: selectedClassId,
+                  academicYear: selectedYear,
+                  term,
+                  reportType: selectedReportType
+                }
+              });
+            });
+          }
+        }
+      } catch (notifErr) {
+        console.error("Error sending terminal report notification:", notifErr);
+      }
 
       if (isMounted.current) {
         setMetadataModalVisible(false);
@@ -667,7 +700,7 @@ export function useViewAcademicRecords() {
                   finalScore: String(recovered.finalScore),
                   classScore: String(recovered.classScore || s.classScore || "0"),
                   exam50: String(recovered.exam50 || recovered.examsMark || s.exam50 || "0"),
-                  grade: String(recovered.grade || getGradeDetails(parseFloat(recovered.finalScore)).grade),
+                  grade: String(recovered.grade || getGradeDetails(parseFloat(recovered.finalScore), Number(recovered.maxScore || s.maxScore || 100)).grade),
                 };
               }
             }

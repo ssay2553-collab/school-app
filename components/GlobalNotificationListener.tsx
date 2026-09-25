@@ -5,6 +5,7 @@ import { db } from "../firebaseConfig";
 import { useToast } from "../contexts/ToastContext";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
+import { checkAndSendMonthlyFeeReminders } from "../src/services/feeReminderService";
 
 export const GlobalNotificationListener = () => {
   const { appUser } = useAuth();
@@ -13,6 +14,9 @@ export const GlobalNotificationListener = () => {
 
   useEffect(() => {
     if (!appUser?.uid) return;
+
+    // Automated monthly fee debt check
+    checkAndSendMonthlyFeeReminders(appUser.role);
 
     // 1. Listen for in-app Firestore notifications
     const q = query(

@@ -30,6 +30,7 @@ export interface WeeklyTopic {
   strand?: string;
   subStrand?: string;
   indicatorCode?: string;
+  indicator?: string; // Dedicated Indicator Item Statement
   subTopics?: string;
   objectives?: string;
   teacherId: string;
@@ -60,6 +61,7 @@ export const useWeeklyTopics = () => {
     strand: '',
     subStrand: '',
     indicatorCode: '',
+    indicator: '',
     subTopics: '',
     objectives: '',
   });
@@ -134,6 +136,7 @@ export const useWeeklyTopics = () => {
             strand: data.strand || '',
             subStrand: data.subStrand || '',
             indicatorCode: data.indicatorCode || '',
+            indicator: data.indicator || '',
             subTopics: data.subTopics || '',
             objectives: data.objectives || '',
           });
@@ -144,6 +147,7 @@ export const useWeeklyTopics = () => {
             strand: data.strand || '',
             subStrand: data.subStrand || '',
             indicatorCode: data.indicatorCode || '',
+            indicator: data.indicator || '',
             subTopics: data.subTopics || '',
             objectives: data.objectives || '',
             endDate: data.endDate || '',
@@ -155,6 +159,7 @@ export const useWeeklyTopics = () => {
             strand: '',
             subStrand: '',
             indicatorCode: '',
+            indicator: '',
             subTopics: '',
             objectives: ''
           });
@@ -173,55 +178,54 @@ export const useWeeklyTopics = () => {
   // Auto-population logic for GES Curriculum based on Indicator Code
   const performLookup = useCallback((codeOverride?: string) => {
     const code = (codeOverride || topicData.indicatorCode || "").trim().toUpperCase();
-    if (!code || code.length < 5) {
+    if (!code || code.length < 4) {
       setLookupStatus('idle');
-      return;
+      return false;
     }
 
-    // We only perform auto-lookup if curriculum is GES OR if the code explicitly looks like a NaCCA code
-    const isNaCCACode = /^[B|J|S|K|P]\d/.test(code);
-    if (userCurriculum !== "GES" && !isNaCCACode) return;
+    // We perform auto-lookup if curriculum is GES OR if the code explicitly looks like a NaCCA code
+    const isNaCCACode = /^[B|J|S|K|P]\d/i.test(code);
+    if (userCurriculum !== "GES" && !isNaCCACode) return false;
 
     setIsLookingUp(true);
     const selectedClassName = teacherClasses.find(c => c.id === selectedClassId)?.name || "";
     const match = lookupGESIndicator(code, selectedSubject, selectedClassName);
 
     if (match) {
-      setTopicData(prev => {
-        // Prevent redundant updates
-        if (prev.strand === match.strand && prev.indicatorCode === code) return prev;
-
-        return {
-          ...prev,
-          indicatorCode: code, // Ensure the code is normalized
-          strand: match.strand,
-          subStrand: match.subStrand,
-          topic: match.contentStandard,
-          subTopics: match.indicator,
-          objectives: match.objectives
-        };
-      });
+      setTopicData(prev => ({
+        ...prev,
+        indicatorCode: match.code, // Set exact canonical code
+        indicator: match.indicator, // Auto-fill official Indicator Item Statement
+        strand: match.strand || prev.strand,
+        subStrand: match.subStrand || prev.subStrand,
+        topic: match.contentStandard || prev.topic,
+        subTopics: prev.subTopics || '', // Keep custom subTopics or default
+        objectives: match.objectives || prev.objectives,
+      }));
       setLookupStatus('success');
-      showToast({ message: `NaCCA Match Found: ${match.code}`, type: "success" });
+      showToast({ message: `Auto-populated from NaCCA: ${match.code}`, type: "success" });
       setIsLookingUp(false);
       return true;
     }
     setLookupStatus('not_found');
     setIsLookingUp(false);
     return false;
-  }, [topicData.indicatorCode, topicData.strand, selectedSubject, selectedClassId, userCurriculum, teacherClasses, showToast]);
+  }, [topicData.indicatorCode, selectedSubject, selectedClassId, userCurriculum, teacherClasses, showToast]);
 
   useEffect(() => {
-    // Debounced auto-lookup
-    const code = topicData.indicatorCode;
-    if (!code || code.length < 5) return;
+    // Fast debounced auto-lookup
+    const code = topicData.indicatorCode?.trim();
+    if (!code || code.length < 4) {
+      if (lookupStatus !== 'idle') setLookupStatus('idle');
+      return;
+    }
 
     const timer = setTimeout(() => {
       performLookup(code);
-    }, 1000);
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [topicData.indicatorCode, performLookup]);
+  }, [topicData.indicatorCode, selectedSubject, selectedClassId, performLookup]);
 
   const saveTopic = async () => {
     if (!selectedClassId || !selectedSubject || !startDate || !endDate || !academicYear || !term) {
@@ -248,8 +252,9 @@ export const useWeeklyTopics = () => {
         strand: topicData.strand || '',
         subStrand: topicData.subStrand || '',
         indicatorCode: topicData.indicatorCode || '',
-        subTopics: topicData.subTopics,
-        objectives: topicData.objectives,
+        indicator: topicData.indicator || '',
+        subTopics: topicData.subTopics || '',
+        objectives: topicData.objectives || '',
         teacherId: firebaseUser?.uid,
         curriculum: userCurriculum,
         updatedAt: serverTimestamp(),
@@ -282,6 +287,7 @@ export const useWeeklyTopics = () => {
       strand: '',
       subStrand: '',
       indicatorCode: '',
+      indicator: '',
       subTopics: '',
       objectives: ''
     });
@@ -292,14 +298,14 @@ export const useWeeklyTopics = () => {
     setTopicData(prev => ({
       ...prev,
       indicatorCode: match.code,
+      indicator: match.indicator,
       strand: match.strand,
       subStrand: match.subStrand,
       topic: match.contentStandard,
-      subTopics: match.indicator,
       objectives: match.objectives
     }));
     setLookupStatus('success');
-    showToast({ message: `Selection Applied: ${match.code}`, type: "success" });
+    showToast({ message: `Auto-populated from NaCCA: ${match.code}`, type: "success" });
   };
 
   return {

@@ -31,6 +31,8 @@ interface ScoreFilterSectionProps {
   listLoading: boolean;
   recordId: string | null;
   primary: string;
+  maxScore: number;
+  handleMaxScoreChange: (max: number) => void;
 }
 
 export const ScoreFilterSection = ({
@@ -50,6 +52,8 @@ export const ScoreFilterSection = ({
   listLoading,
   recordId,
   primary,
+  maxScore,
+  handleMaxScoreChange,
 }: ScoreFilterSectionProps) => {
   return (
     <Animatable.View animation="fadeInDown" style={styles.filterSection}>
@@ -120,6 +124,31 @@ export const ScoreFilterSection = ({
               </TouchableOpacity>
             ))}
           </View>
+
+          {selectedReportType !== "End of Term" && (
+            <View style={{ marginTop: 16 }}>
+              <Text style={styles.floatingLabelStatic}>TEST TOTAL MARKS (OVER SCORE)</Text>
+              <View style={[styles.reportTypeRow, { marginTop: 6 }]}>
+                {[20, 30, 50, 100].map((score) => (
+                  <TouchableOpacity
+                    key={score}
+                    style={[
+                      styles.typeChip,
+                      maxScore === score && { backgroundColor: primary, borderColor: primary }
+                    ]}
+                    onPress={() => handleMaxScoreChange(score)}
+                  >
+                    <Text style={[
+                      styles.typeChipText,
+                      maxScore === score && { color: "#fff" }
+                    ]}>
+                      Over {score}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
 
           <View style={styles.pickerGrid}>
             <View style={styles.pickerBox}>
@@ -299,6 +328,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#fff',
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
+  floatingLabelStatic: {
+    fontSize: 8,
+    fontWeight: "900",
+    color: "#94A3B8",
+    letterSpacing: 0.8,
   },
   typeChipText: {
     fontSize: 11,

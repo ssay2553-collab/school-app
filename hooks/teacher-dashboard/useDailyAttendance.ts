@@ -261,26 +261,42 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
       await batch.commit();
 
       if (isMounted.current) {
-        const changedStudents = students.filter(s =>
-          attendanceToSave[s.uid]?.status !== serverAttendance[s.uid]?.status &&
-          (attendanceToSave[s.uid]?.status === "absent" || attendanceToSave[s.uid]?.status === "late")
-        );
+        const changedStudents = students.filter(s => {
+          const newStatus = attendanceToSave[s.uid]?.status;
+          const oldStatus = serverAttendance[s.uid]?.status;
+          return newStatus && newStatus !== oldStatus;
+        });
 
         for (const student of changedStudents) {
-          if (student.parentUids && Array.isArray(student.parentUids)) {
+          if (student.parentUids && Array.isArray(student.parentUids) && student.parentUids.length > 0) {
             const status = attendanceToSave[student.uid]?.status;
-            const studentName = `${student.profile?.firstName || ''} ${student.profile?.lastName || ''}`.trim();
-            const statusLabel = status?.toUpperCase();
+            const studentName = `${student.profile?.firstName || ''} ${student.profile?.lastName || ''}`.trim() || "Your ward";
+
+            let title = "Attendance Update 📝";
+            let body = "";
+
+            if (status === "present") {
+              title = "Attendance: In School 🏫";
+              body = `${studentName} has arrived and was marked PRESENT in school today, ${moment(selectedDate).format("MMM Do")}.`;
+            } else if (status === "absent") {
+              title = "Attendance Alert: ABSENT ❌";
+              body = `${studentName} was marked ABSENT today, ${moment(selectedDate).format("MMM Do")}. Please tap to provide a reason for the absence.`;
+            } else if (status === "late") {
+              title = "Attendance Alert: LATE ⏰";
+              body = `${studentName} arrived LATE today, ${moment(selectedDate).format("MMM Do")}.`;
+            } else {
+              title = `Attendance Status: ${status.toUpperCase()}`;
+              body = `${studentName}'s attendance status was updated to ${status} for ${moment(selectedDate).format("MMM Do")}.`;
+            }
 
             for (const parentId of student.parentUids) {
-              const extraBody = status === "absent" ? " Please tap to provide a reason for the absence." : "";
               sendNotification({
                 recipientId: parentId,
                 senderId: appUser.uid,
                 senderName: staffName,
                 type: "attendance",
-                title: `Attendance Alert: ${statusLabel}`,
-                body: `${studentName} was marked ${statusLabel} today, ${moment(selectedDate).format("MMM Do")}.${extraBody}`,
+                title,
+                body,
                 data: { studentId: student.uid, date: selectedDate, status }
               });
             }

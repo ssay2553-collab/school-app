@@ -93,20 +93,24 @@ export const sortClasses = <T extends { name: string }>(list: T[]): T[] => {
 };
 
 /**
- * Calculates grade details based on total score (0-100)
- * Standardized scale: 80-100(1), 70-79(2), 60-69(3), 55-59(4), 50-54(5), 45-49(6), 40-44(7), 35-39(8), 0-34(9)
+ * Calculates grade details based on score and total score (maxScore).
+ * Automatically scales percentage: (score / maxScore) * 100
+ * Standardized scale: 80-100%(1), 70-79%(2), 60-69%(3), 55-59%(4), 50-54%(5), 45-49%(6), 40-44%(7), 35-39%(8), 0-34%(9)
  */
-export const getGradeDetails = (score: number) => {
-  const s = Math.round(score || 0);
-  if (s >= 80) return { grade: "1", aggregate: 1, remark: "Highest" };
-  if (s >= 70) return { grade: "2", aggregate: 2, remark: "Higher" };
-  if (s >= 60) return { grade: "3", aggregate: 3, remark: "High" };
-  if (s >= 55) return { grade: "4", aggregate: 4, remark: "High Average" };
-  if (s >= 50) return { grade: "5", aggregate: 5, remark: "Average" };
-  if (s >= 45) return { grade: "6", aggregate: 6, remark: "Low Average" };
-  if (s >= 40) return { grade: "7", aggregate: 7, remark: "Low" };
-  if (s >= 35) return { grade: "8", aggregate: 8, remark: "Lower" };
-  return { grade: "9", aggregate: 9, remark: "Lowest" };
+export const getGradeDetails = (score: number, maxScore: number = 100) => {
+  const max = (maxScore && maxScore > 0) ? maxScore : 100;
+  const percentage = (Math.max(0, score || 0) / max) * 100;
+  const s = Math.round(percentage);
+
+  if (s >= 80) return { grade: "1", aggregate: 1, remark: "Highest", label: "Excellent" };
+  if (s >= 70) return { grade: "2", aggregate: 2, remark: "Higher", label: "Very Good" };
+  if (s >= 60) return { grade: "3", aggregate: 3, remark: "High", label: "Good" };
+  if (s >= 55) return { grade: "4", aggregate: 4, remark: "High Average", label: "Credit" };
+  if (s >= 50) return { grade: "5", aggregate: 5, remark: "Average", label: "Pass" };
+  if (s >= 45) return { grade: "6", aggregate: 6, remark: "Low Average", label: "Pass" };
+  if (s >= 40) return { grade: "7", aggregate: 7, remark: "Low", label: "Weak" };
+  if (s >= 35) return { grade: "8", aggregate: 8, remark: "Lower", label: "Very Weak" };
+  return { grade: "9", aggregate: 9, remark: "Lowest", label: "Fail" };
 };
 
 /**

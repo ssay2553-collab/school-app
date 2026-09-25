@@ -75,6 +75,8 @@ export default function EditStudentScores() {
     selectedClassName,
     selectedYear,
     term,
+    maxScore,
+    handleMaxScoreChange,
   } = useEditScoresLogic({ appUser, acadConfig, showToast });
 
   const primary = SCHOOL_CONFIG.primaryColor;
@@ -306,6 +308,8 @@ export default function EditStudentScores() {
               listLoading={listLoading}
               recordId={recordId}
               primary={primary}
+              maxScore={maxScore}
+              handleMaxScoreChange={handleMaxScoreChange}
             />
 
             {recordId && (
@@ -337,6 +341,7 @@ export default function EditStudentScores() {
             onUpdateRef={onUpdateRef}
             primary={primary}
             reportType={selectedReportType}
+            maxScore={maxScore}
           />
         )}
         ListEmptyComponent={

@@ -23,6 +23,7 @@ import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useWeeklyTopics } from "../../hooks/teacher-dashboard/useWeeklyTopics";
+import { CurriculumBrowserModal } from "../../components/teacher-dashboard/CurriculumBrowserModal";
 import { useRef } from "react";
 
 export default function WeeklyTopicsScreen() {
@@ -55,6 +56,9 @@ export default function WeeklyTopicsScreen() {
     lookupStatus,
     clearTopicData,
     isLookingUp,
+    isBrowserVisible,
+    setIsBrowserVisible,
+    handleBrowserSelect,
   } = useWeeklyTopics();
 
   const labels = useMemo(() => {
@@ -64,7 +68,8 @@ export default function WeeklyTopicsScreen() {
           topic: "Unit / Topic",
           strand: "Syllabus Reference",
           subStrand: "Learning Objective Ref",
-          indicator: "Success Criteria",
+          indicator: "Success Criteria Code",
+          indicatorItem: "Success Criteria Statement",
           subTopics: "Lesson Content / Activities",
           objectives: "Key Learning Outcomes"
         };
@@ -73,18 +78,20 @@ export default function WeeklyTopicsScreen() {
           topic: "Area of Interest",
           strand: "Material / Apparatus",
           subStrand: "Lesson Type",
-          indicator: "Control of Error",
+          indicator: "Control Code",
+          indicatorItem: "Control of Error / Statement",
           subTopics: "Direct Aim / Presentation",
           objectives: "Indirect Aim / Purpose"
         };
       case "GES":
       default:
         return {
-          topic: "Week Topic",
+          topic: "Week Topic / Content Standard",
           strand: "Strand",
           subStrand: "Sub-strand",
           indicator: "Indicator Code",
-          subTopics: "Sub-topics / Activities",
+          indicatorItem: "Indicator Item / Statement",
+          subTopics: "Sub-topics & Activities",
           objectives: "Learning Objectives"
         };
     }
@@ -386,26 +393,35 @@ export default function WeeklyTopicsScreen() {
               <View style={styles.inputGroup}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                   <Text style={[styles.inputLabel, { marginBottom: 0 }]}>{labels.indicator}</Text>
-                  {curriculum === "GES" && (
-                    <View style={[
-                      styles.smartBadge,
-                      lookupStatus === 'success' && { backgroundColor: '#05966915' },
-                      lookupStatus === 'not_found' && { backgroundColor: '#DC262615' }
-                    ]}>
-                      <SVGIcon
-                        name={lookupStatus === 'success' ? "checkmark-circle" : lookupStatus === 'not_found' ? "alert-circle" : "flash"}
-                        size={12}
-                        color={lookupStatus === 'success' ? "#059669" : lookupStatus === 'not_found' ? "#DC2626" : COLORS.primary}
-                      />
-                      <Text style={[
-                        styles.smartBadgeText,
-                        lookupStatus === 'success' && { color: "#059669" },
-                        lookupStatus === 'not_found' && { color: "#DC2626" }
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => setIsBrowserVisible(true)}
+                      style={styles.browseCurriculumBtn}
+                    >
+                      <SVGIcon name="book-outline" size={13} color={COLORS.primary} />
+                      <Text style={styles.browseCurriculumText}>Browse Curriculum</Text>
+                    </TouchableOpacity>
+                    {curriculum === "GES" && (
+                      <View style={[
+                        styles.smartBadge,
+                        lookupStatus === 'success' && { backgroundColor: '#05966915' },
+                        lookupStatus === 'not_found' && { backgroundColor: '#DC262615' }
                       ]}>
-                        {lookupStatus === 'success' ? "MATCHED" : lookupStatus === 'not_found' ? "NO MATCH" : "SMART LOOKUP"}
-                      </Text>
-                    </View>
-                  )}
+                        <SVGIcon
+                          name={lookupStatus === 'success' ? "checkmark-circle" : lookupStatus === 'not_found' ? "alert-circle" : "flash"}
+                          size={12}
+                          color={lookupStatus === 'success' ? "#059669" : lookupStatus === 'not_found' ? "#DC2626" : COLORS.primary}
+                        />
+                        <Text style={[
+                          styles.smartBadgeText,
+                          lookupStatus === 'success' && { color: "#059669" },
+                          lookupStatus === 'not_found' && { color: "#DC2626" }
+                        ]}>
+                          {lookupStatus === 'success' ? "MATCHED" : lookupStatus === 'not_found' ? "NO MATCH" : "SMART LOOKUP"}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
                 <View style={styles.indicatorInputWrapper}>
                   <TextInput
@@ -446,9 +462,20 @@ export default function WeeklyTopicsScreen() {
                   <Text style={[styles.hintText, lookupStatus === 'not_found' && { color: '#DC2626', fontWeight: '800' }]}>
                     {lookupStatus === 'not_found'
                       ? "Indicator code not found in local database. Please fill details manually."
-                      : "Enter NaCCA code to auto-fill Strand & Objectives"}
+                      : "Enter NaCCA code to auto-fill Strand, Sub-strand, Indicator Statement & Objectives"}
                   </Text>
                 )}
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>{labels.indicatorItem}</Text>
+                <TextInput
+                  style={[styles.input, { minHeight: 70 }]}
+                  placeholder={`Official ${labels.indicatorItem.toLowerCase()}...`}
+                  value={topicData.indicator}
+                  onChangeText={(text) => setTopicData({ ...topicData, indicator: text })}
+                  multiline
+                />
               </View>
 
               <View style={styles.inputGroup}>
@@ -478,6 +505,14 @@ export default function WeeklyTopicsScreen() {
 
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      <CurriculumBrowserModal
+        visible={isBrowserVisible}
+        onClose={() => setIsBrowserVisible(false)}
+        onSelect={handleBrowserSelect}
+        initialSubject={selectedSubject}
+        initialClass={teacherClasses.find(c => c.id === selectedClassId)?.name}
+      />
     </SafeAreaView>
   );
 }
@@ -598,6 +633,8 @@ const styles = StyleSheet.create({
   checkIcon: { position: 'absolute', right: 15 },
   smartBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primary + '10', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, gap: 4 },
   smartBadgeText: { fontSize: 9, fontWeight: '900', color: COLORS.primary },
+  browseCurriculumBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary + '10', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  browseCurriculumText: { fontSize: 9, fontWeight: '900', color: COLORS.primary },
   hintText: { fontSize: 10, color: '#94A3B8', marginTop: 8, fontWeight: '600', fontStyle: 'italic' },
   footer: { position: "absolute", bottom: 25, left: 20, right: 20, alignItems: "center" },
   saveBtn: { backgroundColor: COLORS.primary, height: 65, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, width: "100%", maxWidth: 450, ...SHADOWS.large },

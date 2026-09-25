@@ -17,7 +17,7 @@ import {
 } from "firebase/firestore";
 import moment from "moment";
 import { db } from "../../firebaseConfig";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, notifyStudentAndParentsPayment } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
@@ -306,13 +306,13 @@ export const useMaintenanceCharges = ({
 
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'maintenance').catch(console.error);
 
-      sendNotification({
-        recipientId: student.uid,
-        senderId: appUser?.uid || "admin",
+      notifyStudentAndParentsPayment({
+        studentUid: student.uid,
+        studentName: student.fullName,
+        amount,
+        paymentType: "Maintenance Fee",
+        senderUid: appUser?.uid || "admin",
         senderName: appUser?.profile?.firstName || "School Admin",
-        title: "Maintenance Payment Received",
-        body: `A maintenance payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} has been recorded for ${student.fullName}.`,
-        type: "payment",
       }).catch((e) => console.error(e));
 
       showToast({ message: "Payment recorded", type: "success" });

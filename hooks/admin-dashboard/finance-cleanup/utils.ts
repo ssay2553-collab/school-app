@@ -111,14 +111,358 @@ export const isPaymentEntry = (p: any): boolean => {
 };
 
 export const termOrder = ["Term 1", "Term 2", "Term 3"];
+
+/**
+ * Strict waterfall settlement order after tuition:
+ * 1. Maintenance
+ * 2. PTA
+ * 3. Dynamic custom categories / other charges
+ * 4. Admission
+ * 5. Books
+ * 6. Uniform
+ */
 export const waterfallOrder = [
-  "admission",
-  "pta",
   "maintenance",
+  "pta",
+  "admission",
   "books",
   "uniform",
 ];
-export const isolatedKeys = waterfallOrder;
+
+export const isolatedKeys = ["maintenance", "pta", "admission", "books", "uniform"];
+
+export const getFullWaterfallOrder = (dynamicCategories: string[]) => {
+  const custom = dynamicCategories.filter(
+    (c) =>
+      ![
+        "tuition",
+        "maintenance",
+        "pta",
+        "admission",
+        "books",
+        "uniform",
+        "other charges",
+        "other",
+        "arrears",
+        "surplus",
+      ].includes(c.toLowerCase().trim())
+  );
+  return [
+    "maintenance",
+    "pta",
+    ...custom,
+    "admission",
+    "books",
+    "uniform",
+  ];
+};
+
+export const getSettlementOrder = (dynamicCategories: string[] = []) => {
+  return ["tuition", ...getFullWaterfallOrder(dynamicCategories)];
+};
+
+/**
+ * Returns numeric rank for category ordering:
+ * 1. Previous terms arrears (if there is)
+ * 2. Tuition fee
+ * 3. Maintenance
+ * 4. PTA
+ * 5. Categories of billed items from 'other charges' (custom categories)
+ * 6. Admission
+ * 7. Books
+ * 8. Uniform
+ * 9. Surplus (overpayment credit)
+ */
+export const getCategoryRank = (cat: string): number => {
+  const lower = (cat || "").toLowerCase().trim();
+  if (lower === "arrears") return 1;
+  if (lower === "tuition") return 2;
+  if (lower === "maintenance") return 3;
+  if (lower === "pta") return 4;
+  if (lower === "admission") return 6;
+  if (lower === "books") return 7;
+  if (lower === "uniform") return 8;
+  if (lower === "surplus") return 9;
+  return 5;
+};
+
+export const categoryNameMap: Record<string, string> = {
+  tuition: "Tuition Fees",
+  maintenance: "Maintenance Fee",
+  pta: "PTA Dues",
+  "other charges": "Other Charges",
+  admission: "Admission Fee",
+  books: "Books Fee",
+  uniform: "Uniform Fee",
+  arrears: "Previous Terms Arrears",
+  surplus: "Surplus",
+  tuition_payment: "Tuition Payment",
+  maintenance_payment: "Maintenance Fee Payment",
+  pta_payment: "PTA Dues Payment",
+  "other charges_payment": "Other Charges Payment",
+  admission_payment: "Admission Fee Payment",
+  books_payment: "Books Payment",
+  uniform_payment: "Uniform Payment",
+  tuition_credit: "Tuition Credit / Overpayment",
+};
+
+export const getCategoryDisplayName = (cat: string, otherCategory?: string) => {
+  if (otherCategory) return otherCategory;
+  if (!cat) return "Fee Category";
+  const lower = cat.toLowerCase().trim();
+  if (categoryNameMap[lower]) return categoryNameMap[lower];
+  return lower
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+};
+
+export interface CategorySummaryItem {
+  id: string;
+  name: string;
+  billed: number;
+  paid: number;
+  balance: number;
+}
+
+export interface FeeBreakdownResult {
+  categorySummary: CategorySummaryItem[];
+  totals: {
+    billed: number;
+    paid: number;
+    balance: number;
+  };
+  rawSummary: Record<string, { billed: number; paid: number }>;
+}
+
+export const calculateFeeBreakdown = (
+  record: any,
+  transactions: any[]
+): FeeBreakdownResult => {
+  const summary: Record<string, { billed: number; paid: number }> = {};
+
+  // 1. Check for Previous Terms Arrears
+  const arrearsVal = Math.max(0, Number(record?.arrears) || 0);
+  if (arrearsVal > 0) {
+    summary["arrears"] = { billed: arrearsVal, paid: 0 };
+  }
+
+  // 2. Initialize Tuition
+  summary["tuition"] = { billed: 0, paid: 0 };
+
+  const waterfallPool: number[] = [];
+
+  // 3. Process transactions (charges and payments)
+  (transactions || []).forEach((t: any) => {
+    const isPayment = isPaymentEntry(t);
+    const category = normalizeCategory(t);
+    const amount = Math.max(0, Number(t.amount ?? t.amountPaid ?? t.value) || 0);
+
+    if (amount <= 0) return;
+
+    if (!summary[category]) {
+      summary[category] = { billed: 0, paid: 0 };
+    }
+
+    if (isPayment) {
+      if (category === "tuition") {
+        waterfallPool.push(amount);
+      } else {
+        summary[category].paid += amount;
+      }
+    } else {
+      summary[category].billed += amount;
+    }
+  });
+
+  // 4. Incorporate hardcoded bills from the record doc
+  if (record) {
+    const baseTuitionBilled = Math.max(
+      0,
+      (Number(record.termBill) || 0) - (Number(record.discount) || 0)
+    );
+    summary["tuition"].billed = Math.max(summary["tuition"].billed, baseTuitionBilled);
+
+    const isolatedFields = [
+      { key: "maintenance", bill: record.maintenanceBill || 0 },
+      { key: "pta", bill: record.ptaBill || 0 },
+      { key: "admission", bill: record.admissionBill || 0 },
+      { key: "books", bill: record.booksBill || 0 },
+      { key: "uniform", bill: record.uniformBill || 0 },
+    ];
+
+    isolatedFields.forEach(({ key, bill }) => {
+      const b = Math.max(0, Number(bill) || 0);
+      if (!summary[key]) summary[key] = { billed: 0, paid: 0 };
+      summary[key].billed = Math.max(summary[key].billed, b);
+    });
+
+    const otherB = Math.max(0, Number(record.otherBill) || 0);
+    if (otherB > 0) {
+      // Calculate total billed across explicit custom categories (e.g. examination, mock, bus, etc.)
+      const fixedKeys = [
+        "tuition",
+        "maintenance",
+        "pta",
+        "admission",
+        "books",
+        "uniform",
+        "arrears",
+        "surplus",
+        "other charges",
+        "other",
+      ];
+      const explicitCustomBilled = Object.keys(summary)
+        .filter((k) => !fixedKeys.includes(k.toLowerCase().trim()))
+        .reduce((sum, k) => sum + (summary[k].billed || 0), 0);
+
+      // Only bill unassigned difference to 'other charges' if record.otherBill exceeds explicit custom charges
+      const unassignedOtherBilled = Math.max(0, otherB - explicitCustomBilled);
+      if (unassignedOtherBilled > 0) {
+        if (!summary["other charges"]) summary["other charges"] = { billed: 0, paid: 0 };
+        summary["other charges"].billed = Math.max(
+          summary["other charges"].billed,
+          unassignedOtherBilled
+        );
+      }
+    }
+  }
+
+  // 5. Virtual Waterfall Settlement (general pool)
+  let generalPool = Math.max(0, waterfallPool.reduce((a, b) => a + b, 0));
+
+  // Sequence:
+  // 1. Arrears
+  if (summary["arrears"] && generalPool > 0) {
+    const due = Math.max(0, summary["arrears"].billed - summary["arrears"].paid);
+    const settle = Math.min(generalPool, due);
+    summary["arrears"].paid += settle;
+    generalPool -= settle;
+  }
+
+  // 2. Tuition Fee
+  if (summary["tuition"] && generalPool > 0) {
+    const due = Math.max(0, summary["tuition"].billed - summary["tuition"].paid);
+    const settle = Math.min(generalPool, due);
+    summary["tuition"].paid += settle;
+    generalPool -= settle;
+  }
+
+  // 3. Maintenance Fee
+  if (summary["maintenance"] && generalPool > 0) {
+    const due = Math.max(0, summary["maintenance"].billed - summary["maintenance"].paid);
+    const settle = Math.min(generalPool, due);
+    summary["maintenance"].paid += settle;
+    generalPool -= settle;
+  }
+
+  // 4. PTA Dues
+  if (summary["pta"] && generalPool > 0) {
+    const due = Math.max(0, summary["pta"].billed - summary["pta"].paid);
+    const settle = Math.min(generalPool, due);
+    summary["pta"].paid += settle;
+    generalPool -= settle;
+  }
+
+  // 5. Dynamic Categories / 'other charges'
+  const fixedCategories = [
+    "arrears",
+    "tuition",
+    "maintenance",
+    "pta",
+    "admission",
+    "books",
+    "uniform",
+    "surplus",
+  ];
+  const customCategories = Object.keys(summary)
+    .filter((c) => !fixedCategories.includes(c))
+    .sort();
+
+  customCategories.forEach((cat) => {
+    if (summary[cat] && generalPool > 0) {
+      const due = Math.max(0, summary[cat].billed - summary[cat].paid);
+      const settle = Math.min(generalPool, due);
+      summary[cat].paid += settle;
+      generalPool -= settle;
+    }
+  });
+
+  // 6. Admission Fee
+  if (summary["admission"] && generalPool > 0) {
+    const due = Math.max(0, summary["admission"].billed - summary["admission"].paid);
+    const settle = Math.min(generalPool, due);
+    summary["admission"].paid += settle;
+    generalPool -= settle;
+  }
+
+  // 7. Books Fee
+  if (summary["books"] && generalPool > 0) {
+    const due = Math.max(0, summary["books"].billed - summary["books"].paid);
+    const settle = Math.min(generalPool, due);
+    summary["books"].paid += settle;
+    generalPool -= settle;
+  }
+
+  // 8. Uniform Fee
+  if (summary["uniform"] && generalPool > 0) {
+    const due = Math.max(0, summary["uniform"].billed - summary["uniform"].paid);
+    const settle = Math.min(generalPool, due);
+    summary["uniform"].paid += settle;
+    generalPool -= settle;
+  }
+
+  // 9. Surplus (Overpayment balance)
+  if (generalPool > 0) {
+    summary["surplus"] = { billed: 0, paid: generalPool };
+  }
+
+  // 6. Format and Sort Category Summary Items
+  const categorySummaryItems: CategorySummaryItem[] = Object.entries(summary)
+    .filter(([_, vals]) => Math.max(0, vals.billed) >= 0.01 || Math.max(0, vals.paid) >= 0.01)
+    .map(([cat, vals]) => {
+      const billed = Math.max(0, vals.billed);
+      const paid = Math.max(0, vals.paid);
+      const balance = Math.max(0, billed - paid);
+      return {
+        id: cat,
+        name: getCategoryDisplayName(cat),
+        billed,
+        paid,
+        balance,
+      };
+    })
+    .sort((a, b) => {
+      const rankA = getCategoryRank(a.id);
+      const rankB = getCategoryRank(b.id);
+      if (rankA !== rankB) return rankA - rankB;
+      return a.name.localeCompare(b.name);
+    });
+
+  // Re-build rawSummary as an object ordered by category rank
+  const orderedRawSummary: Record<string, { billed: number; paid: number }> = {};
+  categorySummaryItems.forEach((item) => {
+    orderedRawSummary[item.id] = { billed: item.billed, paid: item.paid };
+  });
+
+  // 7. Calculate Totals with NO negative calculations
+  const totalBilled = categorySummaryItems.reduce(
+    (acc, item) => acc + (item.id === "surplus" ? 0 : item.billed),
+    0
+  );
+  const totalPaid = categorySummaryItems.reduce((acc, item) => acc + item.paid, 0);
+  const totalBalance = Math.max(0, totalBilled - totalPaid);
+
+  return {
+    categorySummary: categorySummaryItems,
+    totals: {
+      billed: totalBilled,
+      paid: totalPaid,
+      balance: totalBalance,
+    },
+    rawSummary: orderedRawSummary,
+  };
+};
 
 export const getTermIndex = (t: string) => {
   const lower = (t || "").toLowerCase();
@@ -149,7 +493,7 @@ export const mergeFinancialData = (target: any, source: any) => {
   const maxKeys = [
     "amountPaid",
     "discount",
-    ...isolatedKeys.map(k => `${k}Paid`)
+    ...isolatedKeys.map((k) => `${k}Paid`),
   ];
 
   isolatedKeys.forEach((k) => {

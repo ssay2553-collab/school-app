@@ -18,7 +18,7 @@ import {
 } from "firebase/firestore";
 import moment from "moment";
 import { db } from "../../firebaseConfig";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, notifyStudentAndParentsPayment } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
@@ -315,13 +315,14 @@ export const useOtherCharges = ({
       // Propagate changes to future terms
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amount, 'payment', 'other').catch(console.error);
 
-      sendNotification({
-        recipientId: student.uid,
-        senderId: appUser?.uid || "admin",
-        senderName: appUser?.displayName || "Administrator",
-        title: "Other Fees Payment Received - Thank You!",
-        body: `Thank you! We've received a payment of ${SCHOOL_CONFIG.currencySymbol}${amount.toLocaleString()} for ${student.fullName} towards miscellaneous charges. We appreciate your promptness!`,
-        type: "payment",
+      notifyStudentAndParentsPayment({
+        studentUid: student.uid,
+        studentName: student.fullName,
+        amount,
+        receiptNo: serial,
+        paymentType: "Other Charges",
+        senderUid: appUser?.uid || "admin",
+        senderName: appUser?.displayName || "School Accounts",
       }).catch((e) => console.error(e));
 
       showToast({ message: `Payment recorded: ${serial}`, type: "success" });

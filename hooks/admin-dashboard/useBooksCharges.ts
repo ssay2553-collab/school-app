@@ -17,7 +17,7 @@ import {
 } from "firebase/firestore";
 import moment from "moment";
 import { db } from "../../firebaseConfig";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, notifyStudentAndParentsPayment } from "../../src/services/notificationService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { sortClasses } from "../../lib/classHelpers";
 import { propagateArrears } from "../../utils/financeUtils";
@@ -308,18 +308,13 @@ export const useBooksCharges = ({
       propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amountVal, 'payment', 'books');
 
       try {
-        await sendNotification({
-          recipientId: student.uid,
-          senderId: appUser?.uid || "admin",
-          senderName: appUser?.displayName || "Administrator",
-          title: "Books Payment Received",
-          body: `A books payment of ${SCHOOL_CONFIG.currencySymbol}${amountVal.toLocaleString()} has been recorded for ${student.fullName}.`,
-          type: "payment",
-          data: {
-            studentUid: student.uid,
-            amount: amountVal,
-            type: "books_payment"
-          }
+        await notifyStudentAndParentsPayment({
+          studentUid: student.uid,
+          studentName: student.fullName,
+          amount: amountVal,
+          paymentType: "Books Fee",
+          senderUid: appUser?.uid || "admin",
+          senderName: appUser?.displayName || "School Accounts",
         });
       } catch (notifErr) {
         console.error("Failed to send books notification:", notifErr);

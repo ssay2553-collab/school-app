@@ -88,3 +88,52 @@ export async function getUserData(uid: string) {
   const userDoc = await getDoc(doc(db, "users", uid));
   return userDoc.exists() ? userDoc.data() : null;
 }
+
+/**
+ * Sends payment received notifications to BOTH the student AND all of their parents.
+ */
+export async function notifyStudentAndParentsPayment({
+  studentUid,
+  studentName,
+  amount,
+  receiptNo,
+  paymentType,
+  senderUid,
+  senderName,
+}: {
+  studentUid: string;
+  studentName: string;
+  amount: number;
+  receiptNo?: string;
+  paymentType?: string;
+  senderUid?: string;
+  senderName?: string;
+}) {
+  try {
+    const studentDoc = await getDoc(doc(db, "users", studentUid));
+    let parentUids: string[] = [];
+    if (studentDoc.exists()) {
+      parentUids = studentDoc.data()?.parentUids || [];
+    }
+
+    const recipients = Array.from(new Set([studentUid, ...parentUids]));
+    const title = "Fee Payment Received - Thank You! 💳";
+    const receiptText = receiptNo ? ` (Receipt: #${receiptNo})` : "";
+    const typeLabel = paymentType ? ` for ${paymentType}` : "";
+    const body = `Payment Received! We have recorded a payment of ₵${amount.toLocaleString()} for ${studentName}${typeLabel}${receiptText}. Thank you for your prompt payment!`;
+
+    for (const recipientId of recipients) {
+      sendNotification({
+        recipientId,
+        senderId: senderUid || "admin",
+        senderName: senderName || "School Financial Office",
+        title,
+        body,
+        type: "payment",
+        data: { studentUid, amount, receiptNo, paymentType }
+      });
+    }
+  } catch (e) {
+    console.error("Error sending payment notifications to student & parents:", e);
+  }
+}

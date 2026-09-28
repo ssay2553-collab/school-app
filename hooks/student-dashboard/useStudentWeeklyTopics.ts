@@ -23,6 +23,8 @@ export interface WeeklyTopic {
   strand?: string;
   subStrand?: string;
   indicatorCode?: string;
+  indicator?: string;
+  weekNumber?: number | string;
   subTopics?: string;
   objectives?: string;
   teacherId: string;
@@ -48,7 +50,7 @@ export const useStudentWeeklyTopics = () => {
   const term = acadConfig.currentTerm || "";
 
   const fetchTopics = useCallback(async () => {
-    const studentClassId = appUser?.classId || appUser?.profile?.classId;
+    const studentClassId = appUser?.classId || (appUser?.profile as any)?.classId;
     if (!studentClassId) {
       setLoading(false);
       return;

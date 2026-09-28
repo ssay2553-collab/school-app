@@ -15,6 +15,7 @@ import {
 } from "./pdf/FinancialReports";
 import { SCHOOL_CONFIG } from "../constants/Config";
 import { getSchoolSignature } from "../constants/Signatures";
+import { TimetablePDFGenerator, TimetablePDFData } from "./pdf/TimetablePDFGenerator";
 
 // Re-export types for backward compatibility
 export * from "./pdf/types";
@@ -121,6 +122,28 @@ export async function generateFeeReceiptPDF(
 ) {
   const generator = new FeeReceiptGenerator({
     fileName: `Receipt_${data.receiptNo}`,
+    schoolName,
+    schoolHotline,
+    schoolEmail,
+    schoolAddress,
+    schoolMotto,
+    schoolLogo,
+  });
+
+  return generator.generate(data);
+}
+
+export async function generateTimetablePDF(
+  data: TimetablePDFData,
+  schoolName: string,
+  schoolHotline: string,
+  schoolEmail: string,
+  schoolAddress?: string,
+  schoolMotto?: string,
+  schoolLogo?: any,
+) {
+  const generator = new TimetablePDFGenerator({
+    fileName: `Timetable_${data.className.replace(/\s+/g, "_")}`,
     schoolName,
     schoolHotline,
     schoolEmail,

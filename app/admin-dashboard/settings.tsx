@@ -154,24 +154,29 @@ export default function AdminSettingsScreen() {
   const runCleanup = async () => {
     setIsCleaning(true);
     try {
-      // Purge assignments older than 60 days
-      const sixtyDaysAgo = moment().subtract(60, 'days').toDate();
-      const q = query(collection(db, "assignments"), where("createdAt", "<", sixtyDaysAgo));
-      const snap = await getDocs(q);
+      const now = new Date();
+      const snap = await getDocs(collection(db, "assignments"));
 
-      if (snap.empty) {
+      const expiredDocs = snap.docs.filter((d) => {
+        const data = d.data();
+        if (!data.dueDate) return false;
+        const due = data.dueDate.toDate ? data.dueDate.toDate() : new Date(data.dueDate);
+        return due.getTime() < now.getTime();
+      });
+
+      if (expiredDocs.length === 0) {
         showToast({ message: "No expired assignments found.", type: "info" });
         return;
       }
 
       const batch = writeBatch(db);
-      snap.forEach((d) => {
+      expiredDocs.forEach((d) => {
         batch.delete(d.ref);
       });
       await batch.commit();
 
       if (isMounted.current) {
-        showToast({ message: `Cleaned up ${snap.size} expired assignments.`, type: "success" });
+        showToast({ message: `Cleaned up ${expiredDocs.length} expired assignments.`, type: "success" });
       }
     } catch (e) {
       if (isMounted.current) {
@@ -187,15 +192,15 @@ export default function AdminSettingsScreen() {
 
   const settingsOptions = [
     {
-      title: "Clean Expired Data",
+      title: "Clear Expired Assignments",
       icon: "trash-outline",
       action: () => {
         if (Platform.OS === "web") {
-          if (window.confirm("Purge assignments older than 60 days?")) {
+          if (window.confirm("Purge all assignments with expired due dates from the system?")) {
             runCleanup();
           }
         } else {
-          Alert.alert("Confirm Cleanup", "Purge assignments older than 60 days?", [
+          Alert.alert("Confirm Cleanup", "Purge all assignments with expired due dates from the system?", [
             { text: "Cancel", style: "cancel" },
             { text: "Run Purge", style: "destructive", onPress: runCleanup }
           ]);
@@ -261,7 +266,7 @@ export default function AdminSettingsScreen() {
         } else {
           Alert.alert("Repair Codes", "Scan for missing signup codes and student parent link codes in the database and generate/fix them?", [
             { text: "Cancel", style: "cancel" },
-            { text: "Repair Now", style: "default", onPress: handleRegenerateParentLinkCode ? handleRepairSignupCodes : handleRepairSignupCodes }
+            { text: "Repair Now", style: "default", onPress: handleRepairSignupCodes }
           ]);
         }
       },

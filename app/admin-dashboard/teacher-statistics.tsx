@@ -147,9 +147,17 @@ export default function TeacherStatistics() {
       ]);
 
       // 2. Map data to teachers in memory (O(1) lookup)
+      const now = new Date();
+      const isExpired = (a: any) => {
+        if (!a.dueDate) return false;
+        const due = a.dueDate.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
+        return due.getTime() < now.getTime();
+      };
+
       const assignmentMap: Record<string, any[]> = {};
       allAssignmentsSnap.docs.forEach((d: any) => {
         const data = d.data();
+        if (isExpired(data)) return;
         if (!assignmentMap[data.teacherId]) assignmentMap[data.teacherId] = [];
         assignmentMap[data.teacherId].push({ id: d.id, ...data });
       });

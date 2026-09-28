@@ -40,6 +40,7 @@ interface AcademicMetadataModalProps {
     saveMetadata: () => void;
     savingMetadata: boolean;
     primary: string;
+    isFullReport?: boolean;
 }
 
 export const AcademicMetadataModal: React.FC<AcademicMetadataModalProps> = ({
@@ -61,6 +62,7 @@ export const AcademicMetadataModal: React.FC<AcademicMetadataModalProps> = ({
     saveMetadata,
     savingMetadata,
     primary,
+    isFullReport = true,
 }) => {
     return (
         <Modal visible={visible} animationType="slide" transparent>
@@ -71,7 +73,9 @@ export const AcademicMetadataModal: React.FC<AcademicMetadataModalProps> = ({
                 <View style={styles.modalContent}>
                     <View style={styles.modalHeader}>
                         <View>
-                            <Text style={styles.modalTitle}>Terminal Metadata</Text>
+                            <Text style={styles.modalTitle}>
+                                {isFullReport ? "Terminal Metadata" : "Report Remarks"}
+                            </Text>
                             <Text style={styles.modalSubtitle}>{editingStudent?.fullName}</Text>
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
@@ -80,57 +84,61 @@ export const AcademicMetadataModal: React.FC<AcademicMetadataModalProps> = ({
                     </View>
 
                     <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScroll}>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>CONDUCT</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                value={mConduct}
-                                onChangeText={setConduct}
-                                placeholder="e.g. Excellent"
-                            />
-                        </View>
+                        {isFullReport && (
+                            <>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>CONDUCT</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        value={mConduct}
+                                        onChangeText={setConduct}
+                                        placeholder="e.g. Excellent"
+                                    />
+                                </View>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>ATTITUDE</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                value={mAttitude}
-                                onChangeText={setAttitude}
-                                placeholder="e.g. Very Positive"
-                            />
-                        </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>ATTITUDE</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        value={mAttitude}
+                                        onChangeText={setAttitude}
+                                        placeholder="e.g. Very Positive"
+                                    />
+                                </View>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>INTEREST</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                value={mInterest}
-                                onChangeText={setInterest}
-                                placeholder="e.g. High"
-                            />
-                        </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>INTEREST</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        value={mInterest}
+                                        onChangeText={setInterest}
+                                        placeholder="e.g. High"
+                                    />
+                                </View>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>PROMOTED / REPEATED TO</Text>
-                            <TextInput
-                                style={styles.textInput}
-                                value={mPromotedTo}
-                                onChangeText={setPromotedTo}
-                                placeholder="e.g. Promoted to Basic 5"
-                            />
-                        </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>PROMOTED / REPEATED TO</Text>
+                                    <TextInput
+                                        style={styles.textInput}
+                                        value={mPromotedTo}
+                                        onChangeText={setPromotedTo}
+                                        placeholder="e.g. Promoted to Basic 5"
+                                    />
+                                </View>
 
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>TEACHER'S REMARKS</Text>
-                            <TextInput
-                                style={[styles.textInput, styles.textArea]}
-                                multiline
-                                numberOfLines={3}
-                                value={mTeacherRemarks}
-                                onChangeText={setTeacherRemarks}
-                                placeholder="Enter class teacher assessment..."
-                            />
-                        </View>
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.inputLabel}>TEACHER'S REMARKS</Text>
+                                    <TextInput
+                                        style={[styles.textInput, styles.textArea]}
+                                        multiline
+                                        numberOfLines={3}
+                                        value={mTeacherRemarks}
+                                        onChangeText={setTeacherRemarks}
+                                        placeholder="Enter class teacher assessment..."
+                                    />
+                                </View>
+                            </>
+                        )}
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.inputLabel}>ADMINISTRATIVE REMARKS</Text>

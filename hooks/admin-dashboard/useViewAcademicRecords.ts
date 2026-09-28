@@ -211,8 +211,9 @@ export function useViewAcademicRecords() {
         string,
         {
           fullName: string;
-          subjects: Record<string, { grade: number; score: number }>;
+          subjects: Record<string, { grade: number; score: number; maxScore?: number }>;
           subjectScore?: number;
+          maxScore?: number;
         }
       > = {};
       const coreSubjects = ["mathematics", "science", "english"];
@@ -252,6 +253,7 @@ export function useViewAcademicRecords() {
 
           if (subName === selectedSubject.toLowerCase()) {
             studentPerformanceMap[s.studentId].subjectScore = scoreValue;
+            studentPerformanceMap[s.studentId].maxScore = maxScore;
           }
         });
       });

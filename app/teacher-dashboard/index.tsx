@@ -235,6 +235,13 @@ export default function TeacherDashboard() {
           color: "#8b5cf6",
         },
         {
+          title: "Exam Reports",
+          subtitle: "View approved reports",
+          route: "/teacher-dashboard/student-academic-report",
+          icon: "document-text",
+          color: "#10b981",
+        },
+        {
           title: "Behavioral Remarks",
           subtitle: "Child conduct logs",
           route: "/teacher-dashboard/preschool-remarks",

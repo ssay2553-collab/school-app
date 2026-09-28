@@ -15,6 +15,7 @@ interface Props {
   TAS: string | number;
   AGGREGATE: string | number;
   teacherRemarks: string;
+  adminRemarks?: string;
   adminSig: any;
 }
 
@@ -32,6 +33,7 @@ export const AssessmentPreview: React.FC<Props> = ({
   TAS,
   AGGREGATE,
   teacherRemarks,
+  adminRemarks,
   adminSig,
 }) => {
   const typeLabel = reportType === "Trial Test" ? "TEST" : reportType === "Mid-Term" ? "MID-TERM" : "CAT";
@@ -102,12 +104,14 @@ export const AssessmentPreview: React.FC<Props> = ({
       </View>
 
       <View style={styles.paperRemarksSection}>
-        <View style={styles.remarksBox}>
-          <View style={styles.remarksHeader}>
-            <Text style={styles.remarksHeaderTitle}>REMARKS</Text>
+        {adminRemarks ? (
+          <View style={styles.remarksBox}>
+            <View style={styles.remarksHeader}>
+              <Text style={styles.remarksHeaderTitle}>ADMINISTRATIVE REMARKS</Text>
+            </View>
+            <Text style={styles.remarksText}>{adminRemarks}</Text>
           </View>
-          <Text style={styles.remarksText}>{teacherRemarks || "GOOD PROGRESS SO FAR. KEEP IT UP."}</Text>
-        </View>
+        ) : null}
 
         <View style={styles.paperSigRow}>
           <View style={styles.paperSigItem}>

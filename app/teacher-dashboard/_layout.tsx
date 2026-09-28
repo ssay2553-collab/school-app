@@ -160,6 +160,10 @@ export default function TeacherDashboardLayout() {
             name="student-academic-records"
             options={{ href: null }}
           />
+          <Tabs.Screen
+            name="student-academic-report"
+            options={{ href: null }}
+          />
           <Tabs.Screen name="daily-attendance" options={{ href: null }} />
           <Tabs.Screen name="staff-chat" options={{ href: null }} />
           <Tabs.Screen name="news-screen" options={{ href: null }} />

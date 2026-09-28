@@ -485,60 +485,66 @@ export class AcademicReportGenerator extends BasePDFGenerator {
       this.currentY = startY - boxHeight - 8;
     };
 
-    drawRemarkBox("TEACHER'S REMARKS", data.teacherRemarks);
-    drawRemarkBox("ADMINISTRATIVE REMARKS", data.adminRemarks);
+    if (data.isFullReport && data.teacherRemarks) {
+      drawRemarkBox("TEACHER'S REMARKS", data.teacherRemarks);
+    }
+    if (data.adminRemarks) {
+      drawRemarkBox("ADMINISTRATIVE REMARKS", data.adminRemarks);
+    }
 
     this.currentY -= 4;
 
-    // Next Term & Promotion Status Box
-    const statusBoxHeight = 20;
-    this.drawRect(MARGIN, PAGE_WIDTH, statusBoxHeight, {
-      color: rgb(0.97, 0.99, 0.97),
-      borderColor: rgb(0.85, 0.9, 0.85),
-      borderWidth: 1,
-    });
+    if (data.isFullReport) {
+      // Next Term & Promotion Status Box
+      const statusBoxHeight = 20;
+      this.drawRect(MARGIN, PAGE_WIDTH, statusBoxHeight, {
+        color: rgb(0.97, 0.99, 0.97),
+        borderColor: rgb(0.85, 0.9, 0.85),
+        borderWidth: 1,
+      });
 
-    const statusTextY = this.currentY - 13;
+      const statusTextY = this.currentY - 13;
 
-    this.currentPage.drawText("NEXT TERM BEGINS:", {
-      x: MARGIN + 10,
-      y: statusTextY,
-      size: 8,
-      font: this.boldFont,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-    this.currentPage.drawText(String(data.nextTermBegins || "TBA").toUpperCase(), {
-      x: MARGIN + 105,
-      y: statusTextY,
-      size: 8.5,
-      font: this.boldFont,
-      color: rgb(0.1, 0.5, 0.1),
-    });
-
-    if (data.promotedTo) {
-      const promoLabel = "PROMOTED TO:";
-      const promoVal = data.promotedTo.toUpperCase();
-      const rightX = MARGIN + PAGE_WIDTH - 10;
-      const promoValWidth = this.boldFont.widthOfTextAtSize(promoVal, 8.5);
-      const promoLabelWidth = this.boldFont.widthOfTextAtSize(promoLabel, 8);
-
-      this.currentPage.drawText(promoLabel, {
-        x: rightX - promoValWidth - promoLabelWidth - 8,
+      this.currentPage.drawText("NEXT TERM BEGINS:", {
+        x: MARGIN + 10,
         y: statusTextY,
         size: 8,
         font: this.boldFont,
         color: rgb(0.3, 0.3, 0.3),
       });
-      this.currentPage.drawText(promoVal, {
-        x: rightX - promoValWidth,
+      this.currentPage.drawText(String(data.nextTermBegins || "TBA").toUpperCase(), {
+        x: MARGIN + 105,
         y: statusTextY,
         size: 8.5,
         font: this.boldFont,
         color: rgb(0.1, 0.5, 0.1),
       });
-    }
 
-    this.currentY -= (statusBoxHeight + 8);
+      if (data.promotedTo) {
+        const promoLabel = "PROMOTED TO:";
+        const promoVal = data.promotedTo.toUpperCase();
+        const rightX = MARGIN + PAGE_WIDTH - 10;
+        const promoValWidth = this.boldFont.widthOfTextAtSize(promoVal, 8.5);
+        const promoLabelWidth = this.boldFont.widthOfTextAtSize(promoLabel, 8);
+
+        this.currentPage.drawText(promoLabel, {
+          x: rightX - promoValWidth - promoLabelWidth - 8,
+          y: statusTextY,
+          size: 8,
+          font: this.boldFont,
+          color: rgb(0.3, 0.3, 0.3),
+        });
+        this.currentPage.drawText(promoVal, {
+          x: rightX - promoValWidth,
+          y: statusTextY,
+          size: 8.5,
+          font: this.boldFont,
+          color: rgb(0.1, 0.5, 0.1),
+        });
+      }
+
+      this.currentY -= (statusBoxHeight + 8);
+    }
 
     // QR Code to cover space if present
     if (data.qrCode) {

@@ -109,19 +109,14 @@ export const MockPreview: React.FC<Props> = ({
       </View>
 
       <View style={styles.paperRemarksSection}>
-        <View style={styles.remarksBox}>
-          <View style={styles.remarksHeader}>
-            <Text style={styles.remarksHeaderTitle}>TEACHER'S REMARKS</Text>
+        {adminRemarks ? (
+          <View style={styles.remarksBox}>
+            <View style={styles.remarksHeader}>
+              <Text style={styles.remarksHeaderTitle}>ADMINISTRATIVE REMARKS</Text>
+            </View>
+            <Text style={styles.remarksText}>{adminRemarks}</Text>
           </View>
-          <Text style={styles.remarksText}>{teacherRemarks || "SATISFACTORY PERFORMANCE."}</Text>
-        </View>
-
-        <View style={styles.remarksBox}>
-          <View style={styles.remarksHeader}>
-            <Text style={styles.remarksHeaderTitle}>ADMINISTRATIVE REMARKS</Text>
-          </View>
-          <Text style={styles.remarksText}>{adminRemarks || "KEEP UP THE HARD WORK."}</Text>
-        </View>
+        ) : null}
 
         <View style={styles.paperSigRow}>
           <View style={styles.paperSigItem}>

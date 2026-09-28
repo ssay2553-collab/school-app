@@ -22,12 +22,14 @@ import {
   Alert
 } from "react-native";
 import { COLORS, SHADOWS } from "../../constants/theme";
-import { SCHOOL_CONFIG } from "../../constants/Config";
+import { SCHOOL_CONFIG, useSchoolConfig } from "../../constants/Config";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
 import { useRouter } from "expo-router";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, MONTESSORI_SUBJECTS, COMMON_ACTIVITIES } from "../../constants/Curriculum";
 import SVGIcon from "../../components/SVGIcon";
 import { useManageTimetable, Period } from "../../hooks/teacher-dashboard/useManageTimetable";
+import { generateTimetablePDF } from "../../utils/pdfGenerator";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import moment from "moment";
 import { useRef } from "react";
@@ -71,13 +73,58 @@ export default function CreateLessonTimetable() {
     customSubjects,
   } = useManageTimetable();
 
+  const acadConfig = useAcademicConfig();
+  const schoolConfig = useSchoolConfig();
+
   const [pickerModal, setPickerModal] = useState<{ day: string; col: number } | null>(null);
   const [timeModal, setTimeModal] = useState<{ col: number; type: "start" | "end" } | null>(null);
   const [tempTime, setTempTime] = useState(new Date());
+  const [exportingPDF, setExportingPDF] = useState(false);
   const isNavigating = useRef(false);
 
   const brandColor = COLORS.brandPrimary || COLORS.primary || "#2e86de";
   const neutralDark = "#1E293B";
+
+  const handleExportPDF = async () => {
+    if (!selectedClass) {
+      showToast({ message: "Please select a class first.", type: "error" });
+      return;
+    }
+    setExportingPDF(true);
+    try {
+      const currentClassObj = classes.find(c => c.id === selectedClass);
+      const className = currentClassObj?.name || "Class";
+
+      const schoolName = acadConfig.schoolName || schoolConfig.fullName || schoolConfig.name || SCHOOL_CONFIG.fullName || SCHOOL_CONFIG.name || "School";
+      const schoolHotline = schoolConfig.hotline || "";
+      const schoolEmail = schoolConfig.email || "";
+      const schoolAddress = schoolConfig.address || "";
+      const schoolMotto = schoolConfig.motto || "";
+      const schoolLogo = (schoolConfig as any).logo || null;
+
+      await generateTimetablePDF(
+        {
+          className,
+          curriculum,
+          timetableDays,
+          numColumns,
+        },
+        schoolName,
+        schoolHotline,
+        schoolEmail,
+        schoolAddress,
+        schoolMotto,
+        schoolLogo
+      );
+
+      showToast({ message: "Timetable PDF generated successfully!", type: "success" });
+    } catch (error: any) {
+      console.error("PDF export error:", error);
+      showToast({ message: error.message || "Failed to generate PDF.", type: "error" });
+    } finally {
+      setExportingPDF(false);
+    }
+  };
 
   const availableSubjects = useMemo(() => {
     let list = GES_SUBJECTS;
@@ -189,9 +236,14 @@ export default function CreateLessonTimetable() {
           <SVGIcon name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Manage Timetable</Text>
-        <TouchableOpacity onPress={saveTimetable} disabled={saving}>
-          {saving ? <ActivityIndicator size="small" color="#fff" /> : <SVGIcon name="save" size={24} color="#fff" />}
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <TouchableOpacity onPress={handleExportPDF} disabled={exportingPDF}>
+            {exportingPDF ? <ActivityIndicator size="small" color="#fff" /> : <SVGIcon name="document-text-outline" size={24} color="#fff" />}
+          </TouchableOpacity>
+          <TouchableOpacity onPress={saveTimetable} disabled={saving}>
+            {saving ? <ActivityIndicator size="small" color="#fff" /> : <SVGIcon name="save" size={24} color="#fff" />}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.controls}>

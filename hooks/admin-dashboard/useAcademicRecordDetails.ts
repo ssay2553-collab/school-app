@@ -397,18 +397,32 @@ export const useAcademicRecordDetails = (
             }
           }
         } catch (e) {}
+      }
 
-        if (r && isMounted.current) {
-          // Respect overrides from student-reports
-          if (r.overallPosition) setOverallPosition(r.overallPosition);
-          if (r.promotedTo && isFullReport) setPromotedTo(r.promotedTo);
+      if (r && isMounted.current) {
+        // Respect overrides from student-reports (Works for ALL report types)
+        if (r.overallPosition) setOverallPosition(r.overallPosition);
 
-          if (r.adminRemarks) {
-            setAdminRemarks(r.adminRemarks);
-          } else {
-            setAdminRemarks(getAutoRemarks(localAggregate, false));
+        if (isFullReport) {
+          if (r.promotedTo) setPromotedTo(r.promotedTo);
+          if (r.assessment?.conduct || r.conduct) {
+            setConduct(r.assessment?.conduct || r.conduct);
           }
+          if (r.assessment?.attitude || r.attitude) {
+            setAttitude(r.assessment?.attitude || r.attitude);
+          }
+          if (r.assessment?.interest || r.interest) {
+            setInterest(r.assessment?.interest || r.interest);
+          }
+        }
 
+        if (r.adminRemarks) {
+          setAdminRemarks(r.adminRemarks);
+        } else {
+          setAdminRemarks(getAutoRemarks(localAggregate, false));
+        }
+
+        if (isFullReport) {
           if (r.teacherRemarks) {
             setTeacherRemarks(r.teacherRemarks);
           } else if (!teacherRemarks) {
@@ -420,15 +434,17 @@ export const useAcademicRecordDetails = (
           } else if (acadConfig.nextTermBegins) {
             setNextTermBegins(acadConfig.nextTermBegins);
           }
-        } else if (isMounted.current) {
-          // If report record doesn't exist, check if all individual subject records are approved
-          if (allApproved && rawScoresSnap.docs.length > 0) {
-            setReportStatus("approved");
-            setIsReportApproved(true);
-          }
+        }
+      } else if (isMounted.current) {
+        // If report record doesn't exist, check if all individual subject records are approved
+        if (allApproved && rawScoresSnap.docs.length > 0) {
+          setReportStatus("approved");
+          setIsReportApproved(true);
+        }
 
-          // If report record doesn't exist, set auto remarks
-          setAdminRemarks(getAutoRemarks(localAggregate, false));
+        // If report record doesn't exist, set auto remarks
+        setAdminRemarks(getAutoRemarks(localAggregate, false));
+        if (isFullReport) {
           if (!teacherRemarks) {
             setTeacherRemarks(getAutoRemarks(localAggregate, true));
           }

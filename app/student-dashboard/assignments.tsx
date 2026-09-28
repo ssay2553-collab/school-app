@@ -93,8 +93,15 @@ export default function Assignments() {
         (doc) => (doc.data() as any).assignmentId,
       );
 
+      const now = new Date();
       const pendingAssignments = allAssignments.filter(
-        (assignment) => !submittedAssignmentIds.includes(assignment.id),
+        (assignment) => {
+          if (assignment.dueDate) {
+            const due = (assignment.dueDate as any).toDate ? (assignment.dueDate as any).toDate() : new Date(assignment.dueDate as any);
+            if (due.getTime() < now.getTime()) return false;
+          }
+          return !submittedAssignmentIds.includes(assignment.id);
+        },
       );
 
       if (isMounted.current) {

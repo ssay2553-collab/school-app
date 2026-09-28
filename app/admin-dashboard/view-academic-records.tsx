@@ -327,6 +327,7 @@ export default function ViewAcademicRecords() {
         saveMetadata={saveMetadata}
         savingMetadata={savingMetadata}
         primary={primary}
+        isFullReport={selectedReportType === "End of Term"}
       />
     </SafeAreaView>
   );

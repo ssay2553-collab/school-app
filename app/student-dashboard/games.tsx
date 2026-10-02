@@ -16,6 +16,7 @@ import { QuizGame } from "../../components/student-dashboard/games/QuizGame";
 import { WordHuntGame } from "../../components/student-dashboard/games/WordHuntGame";
 import { ScrambleGame } from "../../components/student-dashboard/games/ScrambleGame";
 import { WritingGame } from "../../components/student-dashboard/games/WritingGame";
+import { MathSprintGame } from "../../components/student-dashboard/games/MathSprintGame";
 import { MenuCard } from "../../components/student-dashboard/games/MenuCard";
 import { Scoreboard } from "../../components/student-dashboard/games/Scoreboard";
 import { useRef } from "react";
@@ -33,6 +34,8 @@ export default function GamesScreen() {
         return <WordHuntGame onExit={() => setMode("menu")} />;
       case "scramble":
         return <ScrambleGame onExit={() => setMode("menu")} />;
+      case "math":
+        return <MathSprintGame onExit={() => setMode("menu")} />;
       case "writing":
         return <WritingGame onExit={() => setMode("menu")} />;
       case "scoreboard":

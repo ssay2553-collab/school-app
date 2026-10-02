@@ -11,6 +11,14 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
       objectives: "Identify key characteristics of a good citizen (patriotism, honesty, obedience to laws) and state basic civic responsibilities."
     },
     {
+      code: "B4.1.1.1.2",
+      strand: "Environment",
+      subStrand: "Self and Family Relationships",
+      contentStandard: "Demonstrate understanding of individual roles and responsibility in the family",
+      indicator: "Family lineage, genealogy, and family trees",
+      objectives: "Construct a 3-generation family tree showing grandparents, parents, siblings, and cousins."
+    },
+    {
       code: "B4.1.2.1.1",
       strand: "Environment",
       subStrand: "Maps and Directions",
@@ -20,19 +28,19 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
     },
     {
       code: "B4.2.1.1.1",
-      strand: "Family Life",
-      subStrand: "Family System",
-      contentStandard: "Understand the roles of family members in nuclear and extended families",
-      indicator: "Family structures and family values",
-      objectives: "Compare nuclear and extended family structures and list responsibilities of parents and children in the home."
+      strand: "Governance and Politics",
+      subStrand: "Leadership and Governance in the Community",
+      contentStandard: "Understand traditional and formal leadership structures in Ghana",
+      indicator: "Chiefs, queen mothers, District Assemblies, and Assembly members",
+      objectives: "Differentiate between traditional leaders (Chiefs) and local government officials (Assembly Members) and their roles."
     },
     {
       code: "B4.3.1.1.1",
-      strand: "Citizenship",
-      subStrand: "National Identity",
-      contentStandard: "Demonstrate pride in Ghanaian national identity",
-      indicator: "National symbols and their importance",
-      objectives: "Explain the significance of the National Flag, Pledge, Anthem, and Coat of Arms in promoting unity."
+      strand: "Social and Economic Development",
+      subStrand: "Occupations and Work in the Community",
+      contentStandard: "Explore major occupations in the community and financial literacy",
+      indicator: "Farming, fishing, trading, teaching, craftsmanship, and saving money",
+      objectives: "Categorize community occupations and explain the importance of saving money in banks or credit unions."
     },
     {
       code: "B4.4.1.1.1",
@@ -61,20 +69,28 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
       objectives: "Propose methods of keeping water sources and surroundings clean through proper waste segregation."
     },
     {
+      code: "B5.1.1.1.2",
+      strand: "Environment",
+      subStrand: "Physical Geography of Ghana",
+      contentStandard: "Locate major regions, administrative capitals, and physical features of Ghana",
+      indicator: "Major rivers (Volta, Pra, Ankobra, Tano) and Lake Volta",
+      objectives: "Trace course of major rivers in Ghana and evaluate economic benefits of Lake Volta."
+    },
+    {
       code: "B5.2.1.1.1",
-      strand: "Family Life",
-      subStrand: "Adolescent Development",
-      contentStandard: "Understand physical and emotional changes during adolescence",
-      indicator: "Puberty changes and personal hygiene",
-      objectives: "Identify bodily changes during puberty for males and females and discuss personal hygiene practices."
+      strand: "Governance and Politics",
+      subStrand: "National Governance and Democracy",
+      contentStandard: "Understand the organs of government in Ghana (Executive, Legislature, Judiciary)",
+      indicator: "President/Cabinet, Parliament, and Law Courts",
+      objectives: "Describe functions of the Executive (President/Ministers), Legislature (Parliament), and Judiciary (Courts)."
     },
     {
       code: "B5.3.1.1.1",
-      strand: "Citizenship",
-      subStrand: "Human Rights",
-      contentStandard: "Demonstrate awareness of children's rights and responsibilities",
-      indicator: "UN Convention on Children's Rights and Ghanaian Constitution",
-      objectives: "State basic fundamental human rights of children (education, shelter, protection, healthcare) and corresponding duties."
+      strand: "Social and Economic Development",
+      subStrand: "Resource Utilization and Development",
+      contentStandard: "Appreciate natural resources of Ghana and sustainable management",
+      indicator: "Gold, cocoa, timber, crude oil, solar energy, and anti-galamsey measures",
+      objectives: "Identify major natural resources in Ghana, their economic benefits, and negative impacts of illegal mining (galamsey)."
     },
     {
       code: "B5.4.1.1.1",
@@ -103,6 +119,22 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
       objectives: "Locate major landmarks (Kakum, Mole, Lake Volta, Mt. Afadjato) and discuss their economic and tourist importance."
     },
     {
+      code: "B6.1.1.1.2",
+      strand: "Environment",
+      subStrand: "Map Reading and Direction",
+      contentStandard: "Master map reading, cardinal points, bearings, and map scale interpretation",
+      indicator: "Calculating actual distances using linear and ratio map scales",
+      objectives: "Calculate ground distance in kilometers between towns on a map using linear map scale."
+    },
+    {
+      code: "B6.1.2.1.1",
+      strand: "Environment",
+      subStrand: "Population and Migration",
+      contentStandard: "Analyze population growth, census, rural-urban migration, and social impacts",
+      indicator: "Population census, causes/effects of rural-urban migration, and urban congestion",
+      objectives: "Explain why young people migrate from rural areas to cities (Accra/Kumasi) and propose solutions to urban congestion."
+    },
+    {
       code: "B6.2.1.1.1",
       strand: "Family Life",
       subStrand: "Marriage Systems",
@@ -112,11 +144,11 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
     },
     {
       code: "B6.3.1.1.1",
-      strand: "Citizenship",
-      subStrand: "Conflict Resolution",
-      contentStandard: "Understand conflict resolution and peace building in communities",
-      indicator: "Causes of conflict and peaceful resolution mechanisms",
-      objectives: "Analyze common causes of chieftaincy and land conflicts in Ghana and propose non-violent dispute resolution strategies."
+      strand: "Social and Economic Development",
+      subStrand: "Tourism and Culture",
+      contentStandard: "Promote Ghanaian cultural heritage, festivals, and tourism sites",
+      indicator: "Traditional festivals (Homowo, Aboakyer, Hogbetsotso, Odwira) and tourist destinations",
+      objectives: "Describe major Ghanaian festivals, historical castles/forts, Kakum National Park, and their contribution to tourism revenue."
     },
     {
       code: "B6.4.1.1.1",
@@ -136,6 +168,38 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
     }
   ],
   "JHS 1": [
+    {
+      code: "B7.1.1.1.1",
+      strand: "Environment",
+      subStrand: "Environmental Degradation and Climate Change",
+      contentStandard: "Analyze causes, effects, and management of environmental degradation in Ghana",
+      indicator: "Deforestation, bush fires, water pollution, air pollution, and reforestation",
+      objectives: "Analyze causes of deforestation and land degradation in Ghana and propose community reforestation and anti-pollution measures."
+    },
+    {
+      code: "B7.1.1.1.2",
+      strand: "Environment",
+      subStrand: "Environmental Degradation and Climate Change",
+      contentStandard: "Analyze causes, effects, and management of environmental degradation in Ghana",
+      indicator: "Galamsey illegal mining, river pollution, and Environmental Protection Agency (EPA)",
+      objectives: "Evaluate social and economic consequences of galamsey and roles of EPA in environmental protection."
+    },
+    {
+      code: "B7.1.2.1.1",
+      strand: "Environment",
+      subStrand: "Adolescent Reproductive Health",
+      contentStandard: "Understand adolescent growth changes, peer pressure, and reproductive health",
+      indicator: "Puberty changes, STI/HIV prevention, teenage pregnancy prevention, and assertiveness",
+      objectives: "Describe physical and emotional changes during puberty and develop assertiveness skills to resist negative peer pressure."
+    },
+    {
+      code: "B7.3.1.1.1",
+      strand: "Social and Economic Development",
+      subStrand: "Socio-Economic Infrastructure and Development",
+      contentStandard: "Evaluate the state of healthcare, education, transport, and energy infrastructure in Ghana",
+      indicator: "Roads, healthcare centers, schools, electrification, and development challenges",
+      objectives: "Evaluate the impact of good road networks and healthcare facilities on economic productivity in Ghana."
+    },
     {
       code: "J1.1.1.1.1",
       strand: "Environment",
@@ -169,14 +233,6 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
       objectives: "Analyze how national service, inter-ethnic marriages, and national sports foster national unity in multi-cultural Ghana."
     },
     {
-      code: "J1.4.1.1.1",
-      strand: "Governance",
-      subStrand: "The 1992 Constitution & Rule of Law",
-      contentStandard: "Understand the fundamental provisions of the 1992 Constitution of Ghana and the Rule of Law",
-      indicator: "Preamble, fundamental human rights, and supremacy of the constitution",
-      objectives: "Explain the concept of the 'Rule of Law', human rights enforcement, and civic duties under the 1992 Constitution."
-    },
-    {
       code: "J1.4.2.1.1",
       strand: "Governance",
       subStrand: "Organs of Government",
@@ -202,6 +258,46 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
     }
   ],
   "JHS 2": [
+    {
+      code: "B8.1.1.1.1",
+      strand: "Environment",
+      subStrand: "Resource Management and Sustainability",
+      contentStandard: "Formulate strategies for sustainable management of land, water, forest, and mineral resources",
+      indicator: "Sustainable mining, forest conservation, water bodies protection, and land use planning",
+      objectives: "Formulate practical conservation policies to curb environmental pollution and illegal gold mining (galamsey)."
+    },
+    {
+      code: "B8.1.1.1.2",
+      strand: "Environment",
+      subStrand: "Resource Management and Sustainability",
+      contentStandard: "Formulate strategies for sustainable management of natural resources",
+      indicator: "Forest reserves, wildlife conservation, and anti-poaching laws",
+      objectives: "Propose strategies for protecting Ghana's national parks (Mole, Kakum) and forest reserves."
+    },
+    {
+      code: "B8.1.2.1.1",
+      strand: "Environment",
+      subStrand: "Social Change and Modernization",
+      contentStandard: "Analyze the impact of science, technology, and globalization on Ghanaian culture",
+      indicator: "Positive and negative effects of social media, Western culture, and modern technology on Ghanaian youth",
+      objectives: "Evaluate positive impacts (instant communication, e-learning) and negative impacts (cybercrime, erosion of cultural values) of technology."
+    },
+    {
+      code: "B8.2.1.1.1",
+      strand: "Governance and Politics",
+      subStrand: "Conflict Prevention and Peace Building",
+      contentStandard: "Demonstrate understanding of conflict causes, consequences, and resolution mechanisms",
+      indicator: "Chieftaincy disputes, land disputes, arbitration, negotiation, and National Peace Council",
+      objectives: "Identify causes of chieftaincy and land disputes in Ghana and explain peaceful negotiation and conflict resolution techniques."
+    },
+    {
+      code: "B8.3.1.1.1",
+      strand: "Social and Economic Development",
+      subStrand: "Entrepreneurship and Financial Security",
+      contentStandard: "Develop entrepreneurial skills, business planning, and personal financial management",
+      indicator: "Business plans, budgeting, investments, insurance, and self-employment",
+      objectives: "Draft a simple business proposal for a local enterprise and explain the importance of personal budgeting and insurance."
+    },
     {
       code: "J2.1.1.1.1",
       strand: "Environment",
@@ -249,17 +345,25 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
       contentStandard: "Appreciate the role of science, technology, and digitalization in national transformation",
       indicator: "Digital Ghana agenda (Mobile Money, Ghana Card, Digital Address, E-Governance)",
       objectives: "Analyze how digitalization, e-commerce, and mobile money interoperability improve business productivity in Ghana."
-    },
-    {
-      code: "J2.5.2.1.1",
-      strand: "Socio-Economic Development",
-      subStrand: "Tourism, Culture & Foreign Exchange",
-      contentStandard: "Evaluate the contribution of tourism and cultural heritage to Ghana's GDP",
-      indicator: "Ecotourism, historical heritage, Year of Return, and foreign exchange earnings",
-      objectives: "Discuss how national heritage conservation and international initiatives like 'The Year of Return' boost tourism revenue and cultural pride."
     }
   ],
   "JHS 3": [
+    {
+      code: "B9.1.1.1.2",
+      strand: "Environment",
+      subStrand: "Global Environmental Issues & Sustainable Development",
+      contentStandard: "Analyze global warming, climate change policies, and UN Sustainable Development Goals (SDGs)",
+      indicator: "Climate change adaptation and mitigation strategies in West Africa",
+      objectives: "Design community climate adaptation strategies including renewable energy and tree planting."
+    },
+    {
+      code: "B9.3.1.1.1",
+      strand: "Social and Economic Development",
+      subStrand: "BECE Social Studies Revision & National Development",
+      contentStandard: "Master complete BECE Social Studies curriculum concepts and essay writing",
+      indicator: "BECE past question analysis, essay structure, case studies, and civic leadership",
+      objectives: "Write structured BECE-standard essays answering questions on governance, environment, population, and socio-economic development."
+    },
     {
       code: "J3.1.1.1.1",
       strand: "Environment",
@@ -283,14 +387,6 @@ export const SocialStudies: Record<string, GESIndicator[]> = {
       contentStandard: "Demonstrate understanding of anti-corruption institutions and transparency",
       indicator: "CHRAJ, EOCO, Office of the Special Prosecutor, and whistleblower protection",
       objectives: "Explain the mandates of CHRAJ, EOCO, and the Special Prosecutor in combating corruption, bribery, and embezzlement of public funds."
-    },
-    {
-      code: "J3.4.1.1.1",
-      strand: "Governance",
-      subStrand: "Ghana's International Relations & Global Cooperation",
-      contentStandard: "Evaluate Ghana's active membership in international organizations",
-      indicator: "UN, ECOWAS, Commonwealth, African Union (AU), and peacekeeping missions",
-      objectives: "Assess Ghana's contributions to ECOWAS integration, UN peacekeeping operations, and international diplomacy."
     },
     {
       code: "J3.5.1.1.1",

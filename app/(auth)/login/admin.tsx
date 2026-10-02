@@ -19,10 +19,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { SHADOWS } from "../../../constants/theme";
-import { doc, getDoc, collection, query, where, limit, getDocs } from "firebase/firestore";
-import { auth, db } from "../../../firebaseConfig";
+import { auth } from "../../../firebaseConfig";
 import { StatusBar } from "expo-status-bar";
 import { useToast } from "../../../contexts/ToastContext";
+import { fetchUserDocAndData } from "../../../utils/authUnify";
 
 const { height } = Dimensions.get("window");
 
@@ -51,45 +51,16 @@ export default function AdminLogin() {
       const cleanEmail = email.trim().toLowerCase();
       const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
 
-      // Verify the user record exists in Firestore
-      let userDocRef = doc(db, "users", cred.user.uid);
-      let userDoc = await getDoc(userDocRef);
-      let userData = userDoc.data();
+      const { userData, docId } = await fetchUserDocAndData(cred.user.uid, cleanEmail);
 
-      // If document doesn't exist OR it exists but has no role/profile (skeleton record)
-if (!userDoc.exists() || !userData?.role && !userData?.profile?.role) {
-    const q = query(
-      collection(db, "users"),
-      where("uid", "==", cred.user.uid), // Check field uid
-      limit(1)
-    );
-          const querySnap = await getDocs(q);
-
-          if (!querySnap.empty) {
-            userDoc = querySnap.docs[0];
-            userData = userDoc.data();
-          } else {
-            // Check authUid as second fallback
-            const qAuth = query(
-              collection(db, "users"),
-              where("authUid", "==", cred.user.uid),
-              limit(1)
-            );
-            const authSnap = await getDocs(qAuth);
-            if (!authSnap.empty) {
-              userDoc = authSnap.docs[0];
-              userData = userDoc.data();
-            } else if (!userDoc.exists()) {
-              // If we didn't even find a skeleton record and fallbacks failed
-              console.error(`Login success but Firestore record missing for UID: ${cred.user.uid}`);
-              await auth.signOut();
-              throw new Error("Your administrative record was not found. Please contact the system owner.");
-            }
-          }
+      if (!userData) {
+        console.error(`Login success but Firestore record missing for UID: ${cred.user.uid}`);
+        await auth.signOut();
+        throw new Error("Your administrative record was not found. Please contact the system owner.");
       }
 
       console.log("User Data Found:", {
-        uid: userDoc.id,
+        uid: docId,
         role: userData?.role || userData?.profile?.role,
         adminRole: userData?.adminRole || userData?.profile?.adminRole
       });
@@ -103,6 +74,7 @@ if (!userDoc.exists() || !userData?.role && !userData?.profile?.role) {
       const isAdmin =
         role.includes("admin") ||
         role.includes("super") ||
+        role === "manager" ||
         adminRole !== "" ||
         role === "staff" ||
         permissions['manage-users'] === 'full' ||
@@ -110,6 +82,7 @@ if (!userDoc.exists() || !userData?.role && !userData?.profile?.role) {
 
       const isTeacher =
         role === "teacher" ||
+        role === "staff" ||
         !!(
           userData?.classes?.length ||
           userData?.subjects?.length ||
@@ -118,7 +91,7 @@ if (!userDoc.exists() || !userData?.role && !userData?.profile?.role) {
           userData?.profile?.subjects?.length ||
           userData?.profile?.classTeacherOf
         );
-      const isParent = role === "parent";
+      const isParent = role === "parent" || !!(userData?.childrenIds?.length || userData?.profile?.childrenIds?.length);
       const isStudent = role === "student";
 
       if (isAdmin) {

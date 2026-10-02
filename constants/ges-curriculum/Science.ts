@@ -11,6 +11,14 @@ export const Science: Record<string, GESIndicator[]> = {
       objectives: "Differentiate between vertebrate and invertebrate animals with local examples (e.g. fish, birds, insects, worms)."
     },
     {
+      code: "B4.1.1.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Living and Non-Living Things",
+      contentStandard: "Demonstrate understanding of classification of living things into vertebrates and invertebrates",
+      indicator: "Characteristics and habitats of mammals, birds, reptiles, amphibians, and fish",
+      objectives: "Group vertebrates into 5 major classes based on skin covering, breathing organs, and reproduction."
+    },
+    {
       code: "B4.1.2.1.1",
       strand: "Diversity of Matter",
       subStrand: "Materials",
@@ -19,12 +27,28 @@ export const Science: Record<string, GESIndicator[]> = {
       objectives: "Group common materials into solids, liquids, and gases based on volume, shape, and flow properties."
     },
     {
+      code: "B4.1.2.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Materials",
+      contentStandard: "Recognize physical properties of solid, liquid, and gas",
+      indicator: "Changes in states of matter (melting, freezing, evaporation, condensation)",
+      objectives: "Investigate temperature effects causing phase changes between solid, liquid, and gas."
+    },
+    {
       code: "B4.2.1.1.1",
       strand: "Cycles",
       subStrand: "Earth Cycles",
       contentStandard: "Understand the water cycle and its importance to life",
       indicator: "Stages of the water cycle",
       objectives: "Describe evaporation, condensation, precipitation, and collection in the natural water cycle."
+    },
+    {
+      code: "B4.2.1.1.2",
+      strand: "Cycles",
+      subStrand: "Earth Cycles",
+      contentStandard: "Understand the water cycle and its importance to life",
+      indicator: "Water conservation and preventing contamination of water bodies",
+      objectives: "Identify human activities contaminating water sources and propose water conservation methods."
     },
     {
       code: "B4.2.2.1.1",
@@ -41,6 +65,14 @@ export const Science: Record<string, GESIndicator[]> = {
       contentStandard: "Identify major human sense organs and their functions",
       indicator: "Sense organs (Eyes, Ears, Nose, Tongue, Skin)",
       objectives: "Describe the structure and care of human sense organs and their role in interacting with the environment."
+    },
+    {
+      code: "B4.3.1.1.2",
+      strand: "Systems",
+      subStrand: "Human Body Systems",
+      contentStandard: "Identify major human sense organs and their functions",
+      indicator: "Protection and hygiene of eyes, ears, skin, and teeth",
+      objectives: "Describe practical guidelines for taking care of eyes, ears, skin, and dental health."
     },
     {
       code: "B4.4.1.1.1",
@@ -85,6 +117,14 @@ export const Science: Record<string, GESIndicator[]> = {
       objectives: "Prepare simple mixtures and separate solid-liquid mixtures using filtration, decantation, and evaporation."
     },
     {
+      code: "B5.1.2.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Mixtures and Solutions",
+      contentStandard: "Demonstrate understanding of mixtures and methods of separation",
+      indicator: "Factors affecting rate of dissolving solutes in solvents",
+      objectives: "Investigate how temperature, stirring, and particle size influence the speed of dissolving."
+    },
+    {
       code: "B5.2.1.1.1",
       strand: "Cycles",
       subStrand: "Life Cycles of Organisms",
@@ -101,6 +141,14 @@ export const Science: Record<string, GESIndicator[]> = {
       objectives: "Trace the pathway of food through mouth, esophagus, stomach, small intestine, and large intestine during digestion."
     },
     {
+      code: "B5.3.1.1.2",
+      strand: "Systems",
+      subStrand: "Human Body Systems",
+      contentStandard: "Understand structure and function of the human digestive system",
+      indicator: "Enzymes and mechanical vs. chemical digestion",
+      objectives: "Differentiate between mechanical digestion (chewing) and chemical digestion by digestive enzymes."
+    },
+    {
       code: "B5.3.2.1.1",
       strand: "Systems",
       subStrand: "Ecosystems",
@@ -115,6 +163,14 @@ export const Science: Record<string, GESIndicator[]> = {
       contentStandard: "Construct simple electrical circuits using dry cells, wires, and bulbs",
       indicator: "Complete and incomplete circuits; conductors and insulators",
       objectives: "Assemble a working electrical circuit and classify materials into electrical conductors (metals) and insulators (wood, plastic)."
+    },
+    {
+      code: "B5.4.1.1.2",
+      strand: "Forces and Energy",
+      subStrand: "Electricity and Magnetism",
+      contentStandard: "Construct simple electrical circuits using dry cells, wires, and bulbs",
+      indicator: "Switches, series vs. parallel simple circuit connections",
+      objectives: "Demonstrate the function of switches and compare brightness of bulbs in series and parallel connections."
     },
     {
       code: "B5.4.2.1.1",
@@ -143,6 +199,14 @@ export const Science: Record<string, GESIndicator[]> = {
       objectives: "Differentiate between physical changes (melting ice, dissolving sugar) and chemical changes (burning wood, rusting iron)."
     },
     {
+      code: "B6.1.1.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Materials and Chemical Changes",
+      contentStandard: "Distinguish between physical and chemical changes in matter",
+      indicator: "Rusting of iron, combustion, and food spoilage as chemical changes",
+      objectives: "Identify indicators of chemical reactions including gas evolution, color change, and heat release."
+    },
+    {
       code: "B6.2.1.1.1",
       strand: "Cycles",
       subStrand: "Carbon and Oxygen Cycles",
@@ -159,12 +223,12 @@ export const Science: Record<string, GESIndicator[]> = {
       objectives: "Describe how the heart pumps oxygenated blood and how gaseous exchange occurs in alveoli during breathing."
     },
     {
-      code: "B6.3.2.1.1",
+      code: "B6.3.1.1.2",
       strand: "Systems",
-      subStrand: "The Solar System",
-      contentStandard: "Understand the structure of the solar system and celestial bodies",
-      indicator: "Sun, 8 planets, moons, asteroids, and comets",
-      objectives: "Identify the 8 planets in order from the Sun and explain day/night caused by Earth's rotation and seasons caused by revolution."
+      subStrand: "Human Body Systems",
+      contentStandard: "Understand human circulatory and respiratory systems",
+      indicator: "Composition of blood (plasma, red cells, white cells, platelets) and its functions",
+      objectives: "Explain functions of red blood cells (oxygen transport), white blood cells (immunity), and platelets (clotting)."
     },
     {
       code: "B6.4.1.1.1",
@@ -173,6 +237,14 @@ export const Science: Record<string, GESIndicator[]> = {
       contentStandard: "Demonstrate understanding of thermal energy transfer (conduction, convection, radiation)",
       indicator: "Conduction, convection, and radiation",
       objectives: "Demonstrate heat transfer through solids (conduction), liquids/gases (convection), and empty space (radiation)."
+    },
+    {
+      code: "B6.4.1.1.2",
+      strand: "Forces and Energy",
+      subStrand: "Heat and Temperature",
+      contentStandard: "Demonstrate understanding of thermal energy transfer",
+      indicator: "Thermometers and temperature measurement in Celsius (°C)",
+      objectives: "Use clinical and laboratory thermometers to measure temperatures accurately."
     },
     {
       code: "B6.4.2.1.1",
@@ -192,6 +264,94 @@ export const Science: Record<string, GESIndicator[]> = {
     }
   ],
   "JHS 1": [
+    {
+      code: "B7.1.1.1.1",
+      strand: "Diversity of Matter",
+      subStrand: "Materials and Atomic Structure",
+      contentStandard: "Recognize physical and chemical properties of elements, compounds, and mixtures",
+      indicator: "Atoms, elements, symbols, compounds, and chemical formulas",
+      objectives: "State chemical symbols of the first 20 elements of the Periodic Table and write simple formulas (e.g. H₂O, NaCl, CO₂)."
+    },
+    {
+      code: "B7.1.1.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Materials and Atomic Structure",
+      contentStandard: "Recognize physical and chemical properties of elements, compounds, and mixtures",
+      indicator: "Atomic structure: protons, neutrons, electrons, and atomic number Z",
+      objectives: "Identify subatomic particles (protons, neutrons, electrons), their charges, and location in atomic structure."
+    },
+    {
+      code: "B7.1.2.1.1",
+      strand: "Diversity of Matter",
+      subStrand: "Acids, Bases and Salts",
+      contentStandard: "Demonstrate understanding of acids, bases, pH scale, and indicators",
+      indicator: "Properties of acids/bases and litmus/pH testing",
+      objectives: "Test household liquids using litmus paper and universal indicator to classify them as acidic (pH < 7), neutral (pH = 7), or basic (pH > 7)."
+    },
+    {
+      code: "B7.1.2.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Acids, Bases and Salts",
+      contentStandard: "Demonstrate understanding of acids, bases, pH scale, and indicators",
+      indicator: "Neutralization reaction: Acid + Base -> Salt + Water",
+      objectives: "Perform neutralization experiments mixing dilute hydrochloric acid and sodium hydroxide."
+    },
+    {
+      code: "B7.2.1.1.1",
+      strand: "Cycles",
+      subStrand: "Life Cycle of Flowering Plants",
+      contentStandard: "Understand plant reproduction, pollination, fertilization, and seed dispersal",
+      indicator: "Flower structure, self/cross-pollination, and dispersal mechanisms",
+      objectives: "Label parts of a flower (stamen, carpel, petals, sepals) and explain pollination by wind and insects and seed dispersal modes."
+    },
+    {
+      code: "B7.3.1.1.1",
+      strand: "Systems",
+      subStrand: "Cell Structure and Organization",
+      contentStandard: "Demonstrate understanding of basic cell theory, plant cells, and animal cells",
+      indicator: "Plant cell vs. animal cell structure under microscope",
+      objectives: "Identify and compare structures of plant and animal cells (cell wall, cell membrane, nucleus, cytoplasm, chloroplasts, vacuole)."
+    },
+    {
+      code: "B7.3.2.1.1",
+      strand: "Systems",
+      subStrand: "Excretory System",
+      contentStandard: "Understand human excretion and waste elimination organs",
+      indicator: "Kidneys, lungs, skin, liver, and excretion pathways",
+      objectives: "Explain how kidneys filter blood to produce urine, skin excretes sweat, and lungs exhale carbon dioxide."
+    },
+    {
+      code: "B7.4.1.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Energy Forms and Transformations",
+      contentStandard: "Demonstrate understanding of potential energy, kinetic energy, and energy conservation",
+      indicator: "Ep = mgh, Ek = ½mv², and Law of Conservation of Energy",
+      objectives: "State the Law of Conservation of Energy and calculate potential energy (mgh) and kinetic energy (½mv²) in problem solving."
+    },
+    {
+      code: "B7.4.1.1.2",
+      strand: "Forces and Energy",
+      subStrand: "Energy Forms and Transformations",
+      contentStandard: "Demonstrate understanding of potential energy, kinetic energy, and energy conservation",
+      indicator: "Energy transformation in power stations (hydro, solar, thermal)",
+      objectives: "Trace energy transformations from water head at Akosombo Dam to electrical energy in homes."
+    },
+    {
+      code: "B7.4.2.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Forces, Pressure and Density",
+      contentStandard: "Calculate density, pressure, and buoyant force in fluids",
+      indicator: "Density (ρ = m/V) and Pressure (P = F/A)",
+      objectives: "Calculate density of regular and irregular solids and determine liquid pressure and flotation principles."
+    },
+    {
+      code: "B7.5.1.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "Waste Management and Farming",
+      contentStandard: "Apply sustainable waste management and soil conservation practices",
+      indicator: "4 Rs (Reduce, Reuse, Recycle, Recover) and soil fertility management",
+      objectives: "Explain the 4 Rs of waste management and describe methods of maintaining soil fertility (crop rotation, composting, cover cropping)."
+    },
     {
       code: "J1.1.1.1.1",
       strand: "Diversity of Matter",
@@ -259,6 +419,78 @@ export const Science: Record<string, GESIndicator[]> = {
   ],
   "JHS 2": [
     {
+      code: "B8.1.1.1.1",
+      strand: "Diversity of Matter",
+      subStrand: "Chemical Bonding and Periodic Table",
+      contentStandard: "Demonstrate understanding of atomic numbers, electronic configuration, and chemical bonding",
+      indicator: "Electronic configuration (2, 8, 8), valency, and ionic/covalent bonding",
+      objectives: "Draw Bohr diagrams showing electronic configuration for the first 20 elements and explain ionic and covalent bond formation."
+    },
+    {
+      code: "B8.1.1.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Chemical Bonding and Periodic Table",
+      contentStandard: "Demonstrate understanding of atomic numbers, electronic configuration, and chemical bonding",
+      indicator: "Periodic Table trends across Period 2 and Period 3",
+      objectives: "Identify metals, non-metals, and noble gases based on outer shell valency electrons."
+    },
+    {
+      code: "B8.1.2.1.1",
+      strand: "Diversity of Matter",
+      subStrand: "Solutions and Solubility",
+      contentStandard: "Understand factors affecting solubility and concentration of solutions",
+      indicator: "Solutes, solvents, saturated solutions, and solubility curves",
+      objectives: "Investigate how temperature, stirring, and particle size affect solubility of solids in liquids."
+    },
+    {
+      code: "B8.2.1.1.1",
+      strand: "Cycles",
+      subStrand: "Nitrogen Cycle and Animal Husbandry",
+      contentStandard: "Demonstrate understanding of the nitrogen cycle and livestock management",
+      indicator: "Nitrogen fixation, nitrification, denitrification, and poultry/rabbit rearing",
+      objectives: "Explain the stages of the nitrogen cycle and describe management practices in poultry and rabbit farming."
+    },
+    {
+      code: "B8.3.1.1.1",
+      strand: "Systems",
+      subStrand: "Human Nervous and Endocrine Systems",
+      contentStandard: "Understand the nervous system, reflex actions, and hormones",
+      indicator: "Brain, spinal cord, neurons, reflex arc, and endocrine glands",
+      objectives: "Describe reflex actions (knee-jerk, withdrawing hand from hot object) and functions of key hormones (insulin, adrenaline)."
+    },
+    {
+      code: "B8.3.2.1.1",
+      strand: "Systems",
+      subStrand: "Ecosystems and Feeding Relationships",
+      contentStandard: "Analyze ecological pyramids, energy loss, and carbon footprint",
+      indicator: "Trophic levels, energy loss at each level, and ecological balance",
+      objectives: "Explain why energy decreases up a food chain (10% rule) and evaluate human impact on ecological balance."
+    },
+    {
+      code: "B8.4.1.1.2",
+      strand: "Forces and Energy",
+      subStrand: "Electrical Circuits and Ohm's Law",
+      contentStandard: "Demonstrate understanding of Ohm's Law, current, voltage, and resistance",
+      indicator: "Calculations using V = IR and electric power P = VI",
+      objectives: "Calculate electrical resistance, current, and power consumption of domestic electrical appliances."
+    },
+    {
+      code: "B8.4.2.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Magnetism and Electromagnetism",
+      contentStandard: "Explore magnetic fields, electromagnets, and electromagnetic induction",
+      indicator: "Magnetic field lines, solenoids, electric bells, and motors",
+      objectives: "Construct an electromagnet using an iron nail, insulated copper wire, and battery, and state applications in electric bells and motors."
+    },
+    {
+      code: "B8.5.1.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "Climate Change and Energy Crisis",
+      contentStandard: "Evaluate global warming, greenhouse gases, and renewable energy technologies",
+      indicator: "Greenhouse effect (CO₂, CH₄), solar energy, wind power, and biogas",
+      objectives: "Explain the greenhouse effect leading to global warming and evaluate advantages of renewable energy sources (solar, wind, hydro)."
+    },
+    {
       code: "J2.1.1.1.1",
       strand: "Diversity of Matter",
       subStrand: "Chemical Bonding and Periodic Table",
@@ -299,14 +531,6 @@ export const Science: Record<string, GESIndicator[]> = {
       objectives: "Explain why energy decreases up a food chain (10% rule) and evaluate human impact on ecological balance."
     },
     {
-      code: "J2.4.1.1.1",
-      strand: "Forces and Energy",
-      subStrand: "Electrical Circuits and Ohm's Law",
-      contentStandard: "Demonstrate understanding of Ohm's Law, current, voltage, and resistance",
-      indicator: "V = IR, series and parallel circuits, electrical safety",
-      objectives: "Calculate voltage, current, and resistance using V = IR and compare total resistance in series and parallel circuits."
-    },
-    {
       code: "J2.4.2.1.1",
       strand: "Forces and Energy",
       subStrand: "Magnetism and Electromagnetism",
@@ -324,6 +548,78 @@ export const Science: Record<string, GESIndicator[]> = {
     }
   ],
   "JHS 3": [
+    {
+      code: "B9.1.1.1.1",
+      strand: "Diversity of Matter",
+      subStrand: "Chemical Reactions and Balancing Equations",
+      contentStandard: "Master chemical equations, balancing equations, and types of chemical reactions",
+      indicator: "Writing and balancing chemical equations (synthesis, decomposition, neutralization)",
+      objectives: "Write word and balanced chemical equations for neutralization (Acid + Base → Salt + Water) and combustion reactions."
+    },
+    {
+      code: "B9.1.1.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Chemical Reactions and Balancing Equations",
+      contentStandard: "Master chemical equations, balancing equations, and types of chemical reactions",
+      indicator: "Law of Conservation of Mass in balanced chemical equations",
+      objectives: "Balance chemical equations ensuring equal numbers of atoms of each element on both reactants and products sides."
+    },
+    {
+      code: "B9.1.2.1.1",
+      strand: "Diversity of Matter",
+      subStrand: "Metals and Non-Metals",
+      contentStandard: "Compare reactivity, extraction, corrosion, and alloy formation of metals",
+      indicator: "Reactivity series of metals, rusting of iron, and alloys (brass, bronze, steel)",
+      objectives: "Describe conditions necessary for rusting (water and oxygen) and methods of preventing rusting (galvanizing, painting, oiling, alloying)."
+    },
+    {
+      code: "B9.2.1.1.1",
+      strand: "Cycles",
+      subStrand: "Agricultural Science & Crop Protection",
+      contentStandard: "Demonstrate understanding of crop pests, diseases, weed control, and post-harvest technology",
+      indicator: "Pest and disease control, cultural/chemical/biological methods, storage",
+      objectives: "Identify common crop pests (weevils, aphids) and diseases (cassava mosaic, cocoa swollen shoot) and describe integrated pest management."
+    },
+    {
+      code: "B9.3.1.1.1",
+      strand: "Systems",
+      subStrand: "Human Reproductive System & Genetics",
+      contentStandard: "Understand human reproduction, fertilization, heredity, and STI/HIV prevention",
+      indicator: "Male/female reproductive systems, menstrual cycle, chromosomes, DNA, and STIs",
+      objectives: "Explain fertilization, development of fetus, inheritance of traits (genes, chromosomes), and prevention of STIs and HIV/AIDS."
+    },
+    {
+      code: "B9.4.1.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Work, Power and Mechanical Advantage",
+      contentStandard: "Calculate work done, power, mechanical advantage (MA), velocity ratio (VR), and efficiency of machines",
+      indicator: "W = F × d, P = W/t, MA = L/E, Efficiency = (MA/VR) × 100%",
+      objectives: "Calculate work done, power output, mechanical advantage, and efficiency of simple machines (pulleys, inclined planes, levers)."
+    },
+    {
+      code: "B9.4.1.1.2",
+      strand: "Forces and Energy",
+      subStrand: "Work, Power and Mechanical Advantage",
+      contentStandard: "Calculate work done, power, mechanical advantage (MA), velocity ratio (VR), and efficiency of machines",
+      indicator: "Pulleys, gear systems, and inclined plane calculations",
+      objectives: "Calculate velocity ratio and mechanical advantage for single and moveable pulley systems."
+    },
+    {
+      code: "B9.4.2.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Electronics and Semiconductor Devices",
+      contentStandard: "Demonstrate understanding of p-n junction diodes, LEDs, transistors, and logic gates",
+      indicator: "Diodes, rectification, LEDs, resistors, and basic logic gates (AND, OR, NOT)",
+      objectives: "Explain rectification using p-n junction diodes and construct truth tables for basic logic gates (AND, OR, NOT gates)."
+    },
+    {
+      code: "B9.5.1.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "BECE Integrated Science Practical Revision & Sustainability",
+      contentStandard: "Apply scientific knowledge to solve environmental, agricultural, health, and technological challenges for BECE",
+      indicator: "Experimental design, variables, safety precautions, and BECE practical question analysis",
+      objectives: "Design scientific experiments identifying independent/dependent variables, controls, and safety precautions for BECE practical examinations."
+    },
     {
       code: "J3.1.1.1.1",
       strand: "Diversity of Matter",

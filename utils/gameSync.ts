@@ -6,6 +6,7 @@ const GAME_KEYS = [
   "@quiz_level",
   "@word_level",
   "@scramble_level",
+  "@math_level",
   "@writing_count",
   "@unlocked_stickers",
 ];

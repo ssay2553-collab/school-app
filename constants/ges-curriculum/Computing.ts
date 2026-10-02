@@ -11,6 +11,14 @@ export const Computing: Record<string, GESIndicator[]> = {
       objectives: "Identify and name primary hardware components (keyboard, mouse, monitor, system unit, speakers, printer) and categorize them as input or output."
     },
     {
+      code: "B4.1.1.1.2",
+      strand: "Introduction to Computing",
+      subStrand: "Components of Computers",
+      contentStandard: "Identify input, output, and storage hardware devices",
+      indicator: "Storage media (hard drive, flash drive, optical disc) identification",
+      objectives: "Differentiate between internal storage (Hard disk) and portable storage media (USB drive, memory card)."
+    },
+    {
       code: "B4.1.2.1.1",
       strand: "Introduction to Computing",
       subStrand: "Operating System Basics",
@@ -35,6 +43,14 @@ export const Computing: Record<string, GESIndicator[]> = {
       objectives: "Open a word processor, type a 3-sentence paragraph using the spacebar, enter key, and backspace key, and save the document."
     },
     {
+      code: "B4.2.1.1.2",
+      strand: "Word Processing",
+      subStrand: "Introduction to MS Word",
+      contentStandard: "Type simple text documents, format font size/color, and save files",
+      indicator: "Copy, cut, paste, and undo/redo operations",
+      objectives: "Use keyboard shortcuts (Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+Z) to copy, move, and edit text blocks."
+    },
+    {
       code: "B4.2.2.1.1",
       strand: "Productivity Software",
       subStrand: "Paint and Graphics",
@@ -44,11 +60,11 @@ export const Computing: Record<string, GESIndicator[]> = {
     },
     {
       code: "B4.3.1.1.1",
-      strand: "Communication and Networking",
-      subStrand: "Introduction to Internet",
-      contentStandard: "Understand what the internet is and its basic uses",
-      indicator: "Meaning of internet and web browsers",
-      objectives: "Explain the internet in simple terms and identify web browser icons (Chrome, Firefox, Edge)."
+      strand: "Internet and Communication",
+      subStrand: "Web Browsers and Searching",
+      contentStandard: "Understand the Internet, web browsers, and safe searching",
+      indicator: "Web browser address bar, searching topics, and online safety rules",
+      objectives: "Use a web browser (Chrome/Firefox) to search educational topics and state rules for online safety and privacy."
     },
     {
       code: "B4.4.1.1.1",
@@ -77,6 +93,14 @@ export const Computing: Record<string, GESIndicator[]> = {
       objectives: "Distinguish between primary storage (RAM, ROM) and secondary storage devices (Hard Disk, USB Flash Drive) and their capacities."
     },
     {
+      code: "B5.1.1.1.2",
+      strand: "Introduction to Computing",
+      subStrand: "Computer Memory and Storage",
+      contentStandard: "Differentiate between primary memory and secondary storage",
+      indicator: "Units of data storage: Bits, Bytes, KB, MB, GB, TB",
+      objectives: "Convert data storage measurements from Bytes to Kilobytes, Megabytes, and Gigabytes."
+    },
+    {
       code: "B5.1.2.1.1",
       strand: "Introduction to Computing",
       subStrand: "File Management",
@@ -91,6 +115,14 @@ export const Computing: Record<string, GESIndicator[]> = {
       contentStandard: "Apply text formatting features in word processing",
       indicator: "Font style, size, color, bold, italic, alignment, and bullet points",
       objectives: "Format a typed story by changing font type/size, applying bold/italics, aligning text (center/justify), and adding bulleted lists."
+    },
+    {
+      code: "B5.2.1.1.2",
+      strand: "Word Processing",
+      subStrand: "Document Editing and Graphics",
+      contentStandard: "Insert pictures, shapes, text boxes, and alignment in word processors",
+      indicator: "Inserting tables, rows, columns, and border formatting",
+      objectives: "Insert tables into word documents, merge cells, and format borders and shading."
     },
     {
       code: "B5.2.2.1.1",
@@ -129,18 +161,26 @@ export const Computing: Record<string, GESIndicator[]> = {
     {
       code: "B6.1.1.1.1",
       strand: "Introduction to Computing",
-      subStrand: "System Unit and CPU",
-      contentStandard: "Understand the internal components of the system unit and processing",
-      indicator: "CPU (Brain of computer), Motherboard, Power Supply, and Ports",
-      objectives: "Explain the role of the Central Processing Unit (ALU and Control Unit) in processing data into information."
+      subStrand: "Health, Safety and Ethics in ICT",
+      contentStandard: "Practice ergonomics, computer maintenance, and digital ethics",
+      indicator: "Correct posture, anti-virus scanning, copyright, and cyberbullying prevention",
+      objectives: "Demonstrate ergonomic seating posture, explain the purpose of anti-virus software, and discuss ethical internet behavior."
     },
     {
       code: "B6.2.1.1.1",
-      strand: "Productivity Software",
-      subStrand: "Tables and Editing in Word",
-      contentStandard: "Insert tables, headers, footers, and page numbers in word processors",
-      indicator: "Table insertion, merging cells, header/footer, and spell check",
-      objectives: "Construct a 4x4 data table in MS Word, format header rows, run spell check, and insert page numbers."
+      strand: "Presentation / Spreadsheet Software",
+      subStrand: "Introduction to MS Excel / Google Sheets",
+      contentStandard: "Understand spreadsheets, cells, rows, columns, and basic auto-sum formulas",
+      indicator: "Cell addresses (A1, B2), entering numbers, and SUM/AVERAGE formulas",
+      objectives: "Create a simple spreadsheet table, enter numeric data, and calculate totals using =SUM() and =AVERAGE() formulas."
+    },
+    {
+      code: "B6.2.1.1.2",
+      strand: "Presentation / Spreadsheet Software",
+      subStrand: "Introduction to MS Excel / Google Sheets",
+      contentStandard: "Understand spreadsheets, cells, rows, columns, and basic auto-sum formulas",
+      indicator: "Creating column charts and pie charts from spreadsheet tables",
+      objectives: "Select spreadsheet data ranges and insert column and pie charts with titles and legends."
     },
     {
       code: "B6.2.2.1.1",
@@ -152,11 +192,11 @@ export const Computing: Record<string, GESIndicator[]> = {
     },
     {
       code: "B6.3.1.1.1",
-      strand: "Communication and Networking",
-      subStrand: "Electronic Mail (Email)",
-      contentStandard: "Understand the structure and etiquette of email communication",
-      indicator: "Email address format, Subject, To, CC, BCC, and Attachments",
-      objectives: "Compose and send an email with a subject line and attachment (e.g. word document) following email etiquette."
+      strand: "Internet and Communication",
+      subStrand: "Search Engines and Online Collaboration",
+      contentStandard: "Use advanced search keywords and educational online platforms",
+      indicator: "Search operators, Google Drive / Cloud storage, and online safety",
+      objectives: "Utilize specific keyword search terms to locate educational resources and upload files to cloud storage folders."
     },
     {
       code: "B6.4.1.1.1",
@@ -176,6 +216,46 @@ export const Computing: Record<string, GESIndicator[]> = {
     }
   ],
   "JHS 1": [
+    {
+      code: "B7.1.1.1.1",
+      strand: "Computer Systems",
+      subStrand: "Hardware and System Software",
+      contentStandard: "Analyze the architecture of computer systems, CPU, motherboard, and system bus",
+      indicator: "CPU components (ALU, Control Unit, Registers), motherboard, and system buses",
+      objectives: "Explain the roles of ALU, Control Unit, and Registers inside the CPU and identify ports on a motherboard."
+    },
+    {
+      code: "B7.1.1.1.2",
+      strand: "Computer Systems",
+      subStrand: "Hardware and System Software",
+      contentStandard: "Analyze the architecture of computer systems, CPU, motherboard, and system bus",
+      indicator: "Operating Systems (Windows, Linux, macOS, Android) functions",
+      objectives: "Explain core functions of operating systems including file management, memory management, and user interface."
+    },
+    {
+      code: "B7.2.1.1.1",
+      strand: "Desktop Publishing & Word Processing",
+      subStrand: "MS Publisher & Page Design",
+      contentStandard: "Design flyers, banners, brochures, and certificates using DTP software",
+      indicator: "Page layout, text frames, images, master pages, and publication templates",
+      objectives: "Design a professional invitation card or flyer using Desktop Publishing templates and graphics formatting."
+    },
+    {
+      code: "B7.3.1.1.1",
+      strand: "Network Technologies & Web Design",
+      subStrand: "Computer Networks & HTML Basics",
+      contentStandard: "Understand LAN, WAN, Wi-Fi, IP addresses, and basic HTML tags",
+      indicator: "LAN vs. WAN, routers, HTML tags (<html>, <head>, <body>, <h1>, <p>)",
+      objectives: "Differentiate between LAN and WAN topologies and write simple HTML code to display a web page with headings and paragraphs."
+    },
+    {
+      code: "B7.4.1.1.1",
+      strand: "Programming and Algorithms",
+      subStrand: "Algorithms, Flowcharts and Python Syntax",
+      contentStandard: "Construct algorithm flowcharts and write basic Python statements",
+      indicator: "Flowchart symbols (oval, rectangle, diamond, parallelogram) and Python print/input statements",
+      objectives: "Draw flowcharts for daily algorithms (e.g. calculating average) and write Python code using print(), input(), and variables."
+    },
     {
       code: "J1.1.1.1.1",
       strand: "Introduction to Computing",
@@ -243,6 +323,46 @@ export const Computing: Record<string, GESIndicator[]> = {
   ],
   "JHS 2": [
     {
+      code: "B8.1.1.1.1",
+      strand: "Data Security and Privacy",
+      subStrand: "Cybersecurity and Malware Protection",
+      contentStandard: "Analyze cybersecurity threats, viruses, worms, malware, and data encryption",
+      indicator: "Viruses, spyware, phishing, firewalls, passwords, and data encryption",
+      objectives: "Identify types of malware (trojans, ransomware) and evaluate methods of protecting personal data using strong passwords and firewalls."
+    },
+    {
+      code: "B8.2.1.1.1",
+      strand: "Spreadsheet & Database Management",
+      subStrand: "Advanced Excel Charts & MS Access Databases",
+      contentStandard: "Construct Excel bar/pie charts and understand database tables and primary keys",
+      indicator: "Excel chart wizard, MS Access tables, fields, records, and primary keys",
+      objectives: "Generate column and pie charts from spreadsheet data and create a relational database table specifying primary key fields."
+    },
+    {
+      code: "B8.2.1.1.2",
+      strand: "Spreadsheet & Database Management",
+      subStrand: "Advanced Excel Charts & MS Access Databases",
+      contentStandard: "Construct Excel bar/pie charts and understand database tables and primary keys",
+      indicator: "Database data types (Text, Number, Date/Time, AutoNumber)",
+      objectives: "Define appropriate field data types when building database tables in MS Access."
+    },
+    {
+      code: "B8.3.1.1.1",
+      strand: "Web Technologies & Web Design",
+      subStrand: "HTML Hyperlinks, Images and CSS Styling",
+      contentStandard: "Create multi-page websites using HTML links, images, and CSS styles",
+      indicator: "HTML <a>, <img>, <table> tags and inline/internal CSS styling",
+      objectives: "Construct a 2-page website with hyperlinked pages, embedded images, tables, and styled CSS background colors and fonts."
+    },
+    {
+      code: "B8.4.1.1.1",
+      strand: "Programming and Algorithms",
+      subStrand: "Python Control Structures (If-Else & Loops)",
+      contentStandard: "Implement if-else conditional branches and for/while loops in Python",
+      indicator: "Python if/elif/else statements, for loops, and while loops",
+      objectives: "Write Python programs utilizing if-else conditional logic and for/while loops to solve numeric processing tasks."
+    },
+    {
       code: "J2.1.1.1.1",
       strand: "Introduction to Computing",
       subStrand: "Operating System Administration & Utility Tools",
@@ -300,6 +420,46 @@ export const Computing: Record<string, GESIndicator[]> = {
     }
   ],
   "JHS 3": [
+    {
+      code: "B9.1.1.1.1",
+      strand: "Artificial Intelligence & Emerging Tech",
+      subStrand: "AI, Machine Learning and Robotics",
+      contentStandard: "Demonstrate understanding of AI concepts, machine learning, sensors, and robotics",
+      indicator: "AI applications, machine learning datasets, sensors, and robotic automation",
+      objectives: "Explain how artificial intelligence and machine learning process data and list real-world applications (face recognition, autonomous vehicles)."
+    },
+    {
+      code: "B9.1.1.1.2",
+      strand: "Artificial Intelligence & Emerging Tech",
+      subStrand: "AI, Machine Learning and Robotics",
+      contentStandard: "Demonstrate understanding of AI concepts, machine learning, sensors, and robotics",
+      indicator: "Sensors (ultrasonic, infrared, light) and actuator control in robotics",
+      objectives: "Explain how sensors collect environmental data for robotic microcontrollers to trigger actuators."
+    },
+    {
+      code: "B9.2.1.1.1",
+      strand: "BECE ICT Practical Revision & Database Queries",
+      subStrand: "BECE Computer Practical & MS Access Queries/Forms",
+      contentStandard: "Master BECE ICT practical tasks: Database queries, formatting, and file management",
+      indicator: "Database queries, forms, reports, word processing formatting, and BECE past questions",
+      objectives: "Construct MS Access queries and forms to filter data records and execute BECE ICT practical examination assignments."
+    },
+    {
+      code: "B9.3.1.1.1",
+      strand: "Digital Citizenship and Cyber Ethics",
+      subStrand: "Intellectual Property, Copyright and Online Safety",
+      contentStandard: "Understand copyright laws, software licensing, creative commons, and digital footprint",
+      indicator: "Copyright laws, open-source vs. proprietary software, and digital footprints",
+      objectives: "Evaluate consequences of software piracy, distinguish between open-source and proprietary software, and manage online digital footprints."
+    },
+    {
+      code: "B9.4.1.1.1",
+      strand: "Programming Project",
+      subStrand: "Full Software Design and Problem Solving Project",
+      contentStandard: "Design and implement a complete software project or Python application",
+      indicator: "System design, algorithm flowchart, Python/Scratch code implementation, and testing",
+      objectives: "Design, write, test, and debug a complete Python or Scratch computer application to solve a practical real-world problem."
+    },
     {
       code: "J3.1.1.1.1",
       strand: "Introduction to Computing",

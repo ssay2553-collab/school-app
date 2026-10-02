@@ -22,10 +22,11 @@ import SVGIcon from "../../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import { getSchoolLogo } from "../../../constants/Logos";
 import { SHADOWS, COLORS } from "../../../constants/theme";
-import { auth, db } from "../../../firebaseConfig";
+import { auth } from "../../../firebaseConfig";
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import { useToast } from "../../../contexts/ToastContext";
+import { fetchUserDocAndData } from "../../../utils/authUnify";
 
 export default function ParentLoginScreen() {
   const router = useRouter();
@@ -65,21 +66,32 @@ export default function ParentLoginScreen() {
     
     setLoading(true);
     try {
-      const cred = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      const cleanEmail = email.trim().toLowerCase();
+      const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
       
-      const userDoc = await getDoc(doc(db, "users", cred.user.uid));
-      if (!userDoc.exists()) {
+      const { userData } = await fetchUserDocAndData(cred.user.uid, cleanEmail);
+      if (!userData) {
         await auth.signOut();
         throw new Error("User record not found. Please ensure your registration was completed.");
       }
 
-      const userData = userDoc.data();
-      const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
-      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
+      const role = (userData?.role || userData?.profile?.role || "").toLowerCase().trim();
+      const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase().trim();
+      const permissions = userData?.permissions || {};
 
-      const isParent = role === "parent";
-      const isAdmin = role === "admin" || adminRole !== "";
-      const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
+      const isParent = role === "parent" || !!(userData?.childrenIds?.length || userData?.profile?.childrenIds?.length);
+      const isAdmin =
+        role.includes("admin") ||
+        role.includes("super") ||
+        role === "manager" ||
+        adminRole !== "" ||
+        permissions['manage-users'] === 'full';
+
+      const isTeacher =
+        role === "teacher" ||
+        role === "staff" ||
+        !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf || userData?.profile?.classes?.length || userData?.profile?.subjects?.length || userData?.profile?.classTeacherOf);
+
       const isStudent = role === "student";
 
       if (isParent) {

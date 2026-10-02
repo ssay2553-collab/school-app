@@ -11,6 +11,14 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
       objectives: "Mix primary colors (red, yellow, blue) to produce secondary colors (orange, green, purple) and draw local objects using contour lines."
     },
     {
+      code: "B4.1.1.1.2",
+      strand: "Visual Arts",
+      subStrand: "Media and Techniques in Drawing and Painting",
+      contentStandard: "Explore elements of art through drawing and painting",
+      indicator: "Shading techniques (hatching, cross-hatching, stippling)",
+      objectives: "Apply hatching, cross-hatching, and stippling shading techniques to show form and 3D depth."
+    },
+    {
       code: "B4.1.2.1.1",
       strand: "Visual Arts",
       subStrand: "3D Modeling and Craft",
@@ -29,10 +37,10 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
     {
       code: "B4.2.1.1.1",
       strand: "Performing Arts",
-      subStrand: "Music and Rhythm",
-      contentStandard: "Demonstrate understanding of rhythm, beat, and pitch in Ghanaian folk songs",
-      indicator: "Singing folk songs and keeping steady rhythm",
-      objectives: "Sing traditional Ghanaian children's folk songs in tune while clapping or playing rhythm instruments (castanets, maracas)."
+      subStrand: "Music, Dance and Drama",
+      contentStandard: "Demonstrate understanding of rhythm, pitch, traditional songs, and dance moves",
+      indicator: "Sol-fa notation (do-re-mi), traditional songs, and basic dance steps",
+      objectives: "Sing local traditional folk songs in tune using basic sol-fa notation and execute rhythmic dance steps."
     },
     {
       code: "B4.2.2.1.1",
@@ -59,6 +67,14 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
       contentStandard: "Create paper collages and landscape paintings using warm/cool colors",
       indicator: "Tonal gradation, warm/cool colors, and paper collage",
       objectives: "Create a collage artwork using recycled paper and paint a landscape showing light and shade with warm and cool colors."
+    },
+    {
+      code: "B5.1.1.1.2",
+      strand: "Visual Arts",
+      subStrand: "Weaving, Modeling and Sculpting",
+      contentStandard: "Create 3D artworks using clay, paper-mâché, and local weaving fibers",
+      indicator: "Slab modeling techniques in clay work",
+      objectives: "Roll out uniform clay slabs to construct rectangular boxes or decorative relief tiles."
     },
     {
       code: "B5.1.2.1.1",
@@ -111,6 +127,14 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
       objectives: "Create 3D animal or human figures using papier-mâché (pulp/paper strips) and wire armature techniques."
     },
     {
+      code: "B6.1.1.1.2",
+      strand: "Visual Arts",
+      subStrand: "Graphic Design, Lettering and Pattern Making",
+      contentStandard: "Design posters, lettering, and block-printed fabric patterns",
+      indicator: "Gothic and Roman lettering styles for signs and posters",
+      objectives: "Construct uniform block Gothic letters to design clear public information banners."
+    },
+    {
       code: "B6.1.2.1.1",
       strand: "Visual Arts",
       subStrand: "Graphic Design and Lettering",
@@ -121,10 +145,10 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
     {
       code: "B6.2.1.1.1",
       strand: "Performing Arts",
-      subStrand: "Musical Notation and Composition",
-      contentStandard: "Read and write simple musical notes and staff notation",
-      indicator: "Treble clef, pitch notes (C, D, E, F, G, A, B), and rhythm values",
-      objectives: "Identify notes on the treble staff and compose a 4-bar melodic line using crotchets, quavers, and minims."
+      subStrand: "Composition, Dance Drama and Stagecraft",
+      contentStandard: "Compose short rhythmic patterns, dance-drama, and design stage props",
+      indicator: "Dance-drama production, stage costumes, props, and performance evaluation",
+      objectives: "Choreograph a short dance-drama addressing a social issue (e.g. sanitation/education) complete with costumes and props."
     },
     {
       code: "B6.2.2.1.1",
@@ -153,20 +177,20 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
       objectives: "Construct 3D buildings and objects showing depth using 1-point and 2-point perspective guidelines and cross-hatch shading."
     },
     {
+      code: "B7.1.1.1.2",
+      strand: "Visual Arts",
+      subStrand: "2D and 3D Art Studio Practice",
+      contentStandard: "Demonstrate principles of design in visual arts compositions",
+      indicator: "2-point perspective drawing of buildings and streets",
+      objectives: "Construct 2-point perspective drawings of buildings using horizon line and left/right vanishing points."
+    },
+    {
       code: "B7.1.2.1.1",
       strand: "Visual Arts",
       subStrand: "Pottery, Ceramics and Clay Glazing",
       contentStandard: "Apply advanced pottery techniques (slab building and surface decoration)",
       indicator: "Slab building, incising, stamping, and firing concepts",
       objectives: "Construct functional ceramic containers (e.g. mug, vase) using slab building techniques and decorate surfaces with incised patterns."
-    },
-    {
-      code: "B7.1.3.1.1",
-      strand: "Visual Arts",
-      subStrand: "Ghanaian Art History and Masters",
-      contentStandard: "Explore prominent Ghanaian visual artists and their works",
-      indicator: "Artworks of El Anatsui, Ablade Glover, Theblade, and Saka Acquaye",
-      objectives: "Analyze the artistic styles, materials, and themes of celebrated Ghanaian master artists (e.g. El Anatsui's bottle-cap tapestries, Ablade Glover's crowd paintings)."
     },
     {
       code: "B7.2.1.1.1",
@@ -197,10 +221,18 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
     {
       code: "B8.1.1.1.1",
       strand: "Visual Arts",
-      subStrand: "Human Figure Drawing and Proportion",
-      contentStandard: "Demonstrate understanding of human anatomy and proportion in figure drawing",
-      indicator: "8-head canon of human proportions, gesture drawing, and quick poses",
-      objectives: "Draw realistic human figures in action poses adhering to correct anatomical head-to-body proportion canons."
+      subStrand: "Textile Design, Printing and Exhibition",
+      contentStandard: "Design batik, tie-and-dye textiles, and organize art exhibitions",
+      indicator: "Tie-and-dye folding techniques, batik wax resist, and gallery exhibition layout",
+      objectives: "Produce multi-color tie-and-dye fabric using marble/pleating techniques and organize a school art display exhibition."
+    },
+    {
+      code: "B8.1.1.1.2",
+      strand: "Visual Arts",
+      subStrand: "Textile Design, Printing and Exhibition",
+      contentStandard: "Design batik, tie-and-dye textiles, and organize art exhibitions",
+      indicator: "Screen printing processes on t-shirts and fabrics",
+      objectives: "Expose photo-emulsion mesh screens and squeegee fabric ink to print custom t-shirt logos."
     },
     {
       code: "B8.1.2.1.1",
@@ -221,10 +253,10 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
     {
       code: "B8.2.1.1.1",
       strand: "Performing Arts",
-      subStrand: "Choral Singing and Harmony",
-      contentStandard: "Perform 2-part and 3-part vocal harmonies in choral music",
-      indicator: "Soprano, Alto, Tenor vocal balance and sight-singing",
-      objectives: "Sing in 2-part or 3-part harmony (Soprano, Alto, Tenor) in school choir or ensemble with accurate pitch and blend."
+      subStrand: "Playwriting, Musical Composition and Stage Directing",
+      contentStandard: "Write short play scripts, compose songs, and direct theatrical performances",
+      indicator: "Scriptwriting (dialogue/characterization), song melody composition, and stage directing",
+      objectives: "Write an original short play script, compose a background musical theme, and direct peers in a theatrical performance."
     },
     {
       code: "B8.2.2.1.1",
@@ -253,6 +285,14 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
       objectives: "Curate a comprehensive portfolio containing drawings, paintings, ceramic crafts, and textiles, accompanied by formal artist statements for BECE assessment."
     },
     {
+      code: "B9.1.1.1.2",
+      strand: "Visual and Performing Arts Portfolio",
+      subStrand: "Creative Arts Business, Copyright and BECE Portfolio",
+      contentStandard: "Develop a comprehensive Creative Arts portfolio",
+      indicator: "Monetization of creative works, digital art galleries, and copyright licensing",
+      objectives: "Formulate business marketing plans for selling visual art crafts and licensing original musical compositions."
+    },
+    {
       code: "B9.1.2.1.1",
       strand: "Visual Arts",
       subStrand: "Computer-Aided Graphic Design and Branding",
@@ -275,14 +315,6 @@ export const CreativeArts: Record<string, GESIndicator[]> = {
       contentStandard: "Produce and showcase a full-length school drama and dance production for BECE practical assessment",
       indicator: "Full stage production, sound effects, lighting, costume design, and audience engagement",
       objectives: "Execute a comprehensive theatrical and dance showcase managing acting, choreography, costume design, and stage management."
-    },
-    {
-      code: "B9.2.3.1.1",
-      strand: "Creative Arts & Enterprise",
-      subStrand: "Creative Industry & Entrepreneurship",
-      contentStandard: "Evaluate economic opportunities in Ghana's creative arts and entertainment industry",
-      indicator: "Monetizing creative arts, intellectual property, copyright, gallery sales, and performing arts careers",
-      objectives: "Analyze career pathways and business strategies in Ghana's creative industry (film, music production, fashion, visual art galleries, graphic design)."
     }
   ]
 };

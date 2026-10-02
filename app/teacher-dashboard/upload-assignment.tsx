@@ -24,6 +24,8 @@ import moment from "moment";
 import { useUploadAssignment, Question, AssignmentType } from "../../hooks/teacher-dashboard/useUploadAssignment";
 import PreschoolFields from "../../components/teacher-dashboard/upload-assignment/components/PreschoolFields";
 import MathematicsFields from "../../components/teacher-dashboard/upload-assignment/components/MathematicsFields";
+import FormattedText from "../../components/FormattedText";
+import SpecialCharToolbar from "../../components/teacher-dashboard/upload-assignment/components/SpecialCharToolbar";
 import { useRef } from "react";
 
 // Guarded import for native-only library
@@ -187,6 +189,98 @@ const AssignmentDetailsCard = memo(({
 const QuestionItem = memo(({
   q, qIndex, type, updateQuestion, removeQuestion, updateOption, addOption, updatePreschoolQuestion, updateMathematicsQuestion
 }: any) => {
+  const [activeInputTarget, setActiveInputTarget] = useState<{ type: 'question' | 'option'; index?: number }>({ type: 'question' });
+  const [questionSelection, setQuestionSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
+  const [optionSelections, setOptionSelections] = useState<{ [key: number]: { start: number; end: number } }>({});
+
+  const handleInsertChar = useCallback((char: string) => {
+    let text = "";
+    let selection = { start: 0, end: 0 };
+    let isOption = false;
+    let optIndex = 0;
+
+    if (activeInputTarget.type === 'option' && activeInputTarget.index !== undefined) {
+      isOption = true;
+      optIndex = activeInputTarget.index;
+      text = q.options?.[optIndex] || "";
+      const savedSel = optionSelections[optIndex];
+      selection = savedSel ?? { start: text.length, end: text.length };
+    } else {
+      text = q.text || "";
+      selection = questionSelection ?? { start: text.length, end: text.length };
+    }
+
+    const start = Math.min(selection.start, selection.end);
+    const end = Math.max(selection.start, selection.end);
+    const hasSelection = start !== end;
+    const selectedText = text.slice(start, end);
+
+    let newText = "";
+    let newCursorPos = start + char.length;
+
+    // Handle Brackets
+    if (char === "( )" || char === "[ ]" || char === "{ }" || char === "< >" || char === "“ ”" || char === "« »") {
+      const openBracket = char.charAt(0);
+      const closeBracket = char.charAt(char.length - 1);
+      if (hasSelection) {
+        const wrapped = `${openBracket}${selectedText}${closeBracket}`;
+        newText = text.slice(0, start) + wrapped + text.slice(end);
+        newCursorPos = start + wrapped.length;
+      } else {
+        const wrapped = `${openBracket}${closeBracket}`;
+        newText = text.slice(0, start) + wrapped + text.slice(end);
+        newCursorPos = start + 1; // position cursor inside brackets
+      }
+    }
+    // Handle Formatting
+    else if (char.includes("<b>") || char.includes("<u>")) {
+      const tag = char.includes("<b>") ? "b" : "u";
+      if (hasSelection) {
+        const wrapped = `<${tag}>${selectedText}</${tag}>`;
+        newText = text.slice(0, start) + wrapped + text.slice(end);
+        newCursorPos = start + wrapped.length;
+      } else {
+        const defaultWord = tag === "b" ? "bold" : "underlined";
+        const wrapped = `<${tag}>${defaultWord}</${tag}>`;
+        const prefix = start > 0 && text.charAt(start - 1) !== ' ' ? ' ' : '';
+        newText = text.slice(0, start) + prefix + wrapped + text.slice(end);
+        newCursorPos = start + prefix.length + wrapped.length;
+      }
+    }
+    // Handle Character or Accent
+    else {
+      const rawInserted = text.slice(0, start) + char + text.slice(end);
+      newText = rawInserted.normalize("NFC");
+      newCursorPos = start + char.length;
+    }
+
+    if (isOption) {
+      updateOption(qIndex, optIndex, newText);
+      setOptionSelections((prev) => ({
+        ...prev,
+        [optIndex]: { start: newCursorPos, end: newCursorPos },
+      }));
+    } else {
+      updateQuestion(qIndex, newText);
+      setQuestionSelection({ start: newCursorPos, end: newCursorPos });
+    }
+  }, [
+    activeInputTarget,
+    q.options,
+    q.text,
+    qIndex,
+    questionSelection,
+    optionSelections,
+    updateOption,
+    updateQuestion,
+  ]);
+
+  const targetLabel = activeInputTarget.type === 'option' && activeInputTarget.index !== undefined
+    ? `Option ${activeInputTarget.index + 1}`
+    : "Question Text";
+
+  const isSupportedType = type === "mcq" || type === "short_answer" || type === "rich-text";
+
   return (
     <View style={styles.questionCard}>
       <View style={styles.qHeader}>
@@ -209,13 +303,41 @@ const QuestionItem = memo(({
         />
       ) : (
         <>
-          <Text style={styles.inputLabel}>Question Text / Instructions</Text>
+          <View style={styles.questionLabelRow}>
+            <Text style={styles.inputLabel}>Question Text / Instructions</Text>
+          </View>
+
+          {isSupportedType && (
+            <SpecialCharToolbar
+              onInsertChar={handleInsertChar}
+              targetName={targetLabel}
+            />
+          )}
+
           <TextInput
             style={styles.input}
-            placeholder={type === 'preschool' ? "e.g. A _ C" : "Type question..."}
+            placeholder={
+              type === 'short_answer'
+                ? "e.g. State the capital of <b>Ghana</b> (Class 1) or identify <u>sukuu</u>."
+                : type === 'rich-text'
+                ? "Write essay prompt or instructions..."
+                : type === 'preschool'
+                ? "e.g. A _ C"
+                : "Type question..."
+            }
             value={q.text}
             onChangeText={(t) => updateQuestion(qIndex, t)}
+            onFocus={() => setActiveInputTarget({ type: 'question' })}
+            onSelectionChange={(e) => setQuestionSelection(e.nativeEvent.selection)}
+            multiline
           />
+
+          {q.text && (q.text.includes('<') || q.text.includes('*')) ? (
+            <View style={styles.previewBox}>
+              <Text style={styles.previewLabel}>Student View Preview:</Text>
+              <FormattedText text={q.text} style={styles.previewText} />
+            </View>
+          ) : null}
 
           {(type === "mcq") && (
             <View style={styles.optionsContainer}>
@@ -228,6 +350,8 @@ const QuestionItem = memo(({
                     placeholder={`Option ${oIndex + 1}`}
                     value={opt}
                     onChangeText={(t) => updateOption(qIndex, oIndex, t)}
+                    onFocus={() => setActiveInputTarget({ type: 'option', index: oIndex })}
+                    onSelectionChange={(e) => setOptionSelections((prev) => ({ ...prev, [oIndex]: e.nativeEvent.selection }))}
                   />
                 </View>
               ))}
@@ -437,5 +561,61 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     marginTop: 5,
+  },
+  questionLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  formatToolbar: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  formatChip: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  formatChipText: {
+    fontSize: 11,
+    color: COLORS.primary,
+  },
+  formatHintBox: {
+    backgroundColor: '#F0F9FF',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  formatHintText: {
+    fontSize: 12,
+    color: '#0369A1',
+    lineHeight: 16,
+  },
+  previewBox: {
+    marginTop: 8,
+    padding: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  previewLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  previewText: {
+    fontSize: 14,
+    color: '#1E293B',
+    lineHeight: 20,
   },
 });

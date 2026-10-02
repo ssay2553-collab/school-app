@@ -11,6 +11,14 @@ export const RME: Record<string, GESIndicator[]> = {
       objectives: "Describe key attributes of God in Christianity, Islam, and African Traditional Religion and explain how they guide human behavior."
     },
     {
+      code: "B4.1.1.1.2",
+      strand: "God, His Creation and Attributes",
+      subStrand: "God the Creator",
+      contentStandard: "Demonstrate understanding of the attributes of God in the three major religions",
+      indicator: "Names of God in indigenous Ghanaian languages (Nyame, Mawu, Mawu-Kitikata)",
+      objectives: "List indigenous Ghanaian names for God and explain their moral meanings."
+    },
+    {
       code: "B4.1.2.1.1",
       strand: "God, His Creation and Attributes",
       subStrand: "Caring for Creation",
@@ -38,9 +46,9 @@ export const RME: Record<string, GESIndicator[]> = {
       code: "B4.3.1.1.1",
       strand: "Religious Leaders",
       subStrand: "Early Life of Religious Leaders",
-      contentStandard: "Understand the early birth and childhood stories of major religious leaders",
-      indicator: "Early life of Jesus Christ and Prophet Muhammad (PBUH)",
-      objectives: "Narrate the birth and childhood stories of Jesus Christ and Prophet Muhammad (PBUH) highlighting exemplary virtues."
+      contentStandard: "Understand early birth and childhood stories of major religious leaders",
+      indicator: "Early life of Jesus Christ, Prophet Muhammad (PBUH), and Okomfo Anokye",
+      objectives: "Narrate birth and childhood stories of Jesus Christ, Prophet Muhammad (PBUH), and Okomfo Anokye highlighting virtues."
     },
     {
       code: "B4.4.1.1.1",
@@ -49,14 +57,6 @@ export const RME: Record<string, GESIndicator[]> = {
       contentStandard: "Demonstrate understanding of duties of children towards parents and elders",
       indicator: "Filial piety, respect, and assistance at home",
       objectives: "List responsibilities of children to parents and explain how respectful behavior promotes family harmony."
-    },
-    {
-      code: "B4.5.1.1.1",
-      strand: "Moral Life",
-      subStrand: "Manners and Good Conduct",
-      contentStandard: "Practice good manners and politeness in daily interactions",
-      indicator: "Greeting elders, saying 'please' and 'thank you', and humble posture",
-      objectives: "Demonstrate appropriate verbal greetings and gestures for different occasions and elders in Ghanaian society."
     },
     {
       code: "B4.5.2.1.1",
@@ -72,9 +72,9 @@ export const RME: Record<string, GESIndicator[]> = {
       code: "B5.1.1.1.1",
       strand: "God, His Creation and Attributes",
       subStrand: "Purpose of Creation",
-      contentStandard: "Understand the uniqueness of human beings among God's creation",
-      indicator: "Humans as stewards of the Earth",
-      objectives: "Explain why humans are unique (intellect, conscience, moral choice) and discuss human duty as caretakers of Earth."
+      contentStandard: "Understand the purpose of human creation according to major religions",
+      indicator: "Service to God, moral living, and stewardship of Earth",
+      objectives: "Explain that humans were created to worship God, live morally, and care for fellow human beings and nature."
     },
     {
       code: "B5.2.1.1.1",
@@ -83,6 +83,14 @@ export const RME: Record<string, GESIndicator[]> = {
       contentStandard: "Understand the importance and types of prayer and fasting in various religions",
       indicator: "Christian prayer/fasting, Islamic Salat/Sawm (Ramadan), and Traditional libation",
       objectives: "Explain the significance of prayer and fasting in Christianity and Islam, and the meaning of libation in Traditional Religion."
+    },
+    {
+      code: "B5.2.1.1.2",
+      strand: "Religious Practices",
+      subStrand: "Festivals and Celebrations",
+      contentStandard: "Identify major religious festivals celebrated in Ghana",
+      indicator: "Moral lessons and social unity promoted by traditional and religious festivals",
+      objectives: "Explain how festivals foster reconciliation, family reunions, and community development."
     },
     {
       code: "B5.2.2.1.1",
@@ -103,10 +111,10 @@ export const RME: Record<string, GESIndicator[]> = {
     {
       code: "B5.4.1.1.1",
       strand: "Family and Community",
-      subStrand: "Community Service",
-      contentStandard: "Demonstrate commitment to community development and communal labor",
-      indicator: "Voluntary work, keeping public places clean, and civic participation",
-      objectives: "Participate in school and community clean-up exercises and explain the benefits of voluntary community service."
+      subStrand: "Manners and Decency",
+      contentStandard: "Practice good manners, greetings, and decorum in public life",
+      indicator: "Greeting customs, polite language, table manners, and modesty",
+      objectives: "Demonstrate culturally acceptable modes of greeting elders, table etiquette, and polite language in daily interaction."
     },
     {
       code: "B5.5.1.1.1",
@@ -135,6 +143,14 @@ export const RME: Record<string, GESIndicator[]> = {
       objectives: "Describe traditional puberty rites for adolescents (e.g. Bragoro, Dipo) and explain their role in promoting chastity and maturity."
     },
     {
+      code: "B6.2.1.1.2",
+      strand: "Religious Practices",
+      subStrand: "Sacred Scriptures and Writings",
+      contentStandard: "Understand the Holy Bible, Holy Quran, and Oral Traditions",
+      indicator: "Key moral commandments in the Bible (Ten Commandments) and Quran (Moral Precepts)",
+      objectives: "Compare moral principles in the Ten Commandments and Quranic teachings."
+    },
+    {
       code: "B6.3.1.1.1",
       strand: "Religious Leaders",
       subStrand: "Traditional Leaders and Ancestors",
@@ -161,20 +177,36 @@ export const RME: Record<string, GESIndicator[]> = {
   ],
   "JHS 1": [
     {
-      code: "J1.1.1.1.1",
+      code: "B7.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand: "Creation Accounts",
-      contentStandard: "Compare creation accounts in Christianity, Islam, and African Traditional Religion",
-      indicator: "Biblical, Quranic, and Traditional creation narratives",
-      objectives: "Compare the creation story in Genesis (6 days), Quran (Surah Al-A'raf), and indigenous Ghanaian myths, identifying common themes."
+      subStrand: "Nature of God and Creation Stories",
+      contentStandard: "Compare creation stories in Christianity, Islam, and African Traditional Religion",
+      indicator: "Genesis creation, Quranic creation, and Traditional mythologies (Nyame/Odomankoma)",
+      objectives: "Compare creation narratives across the three main religions in Ghana and highlight common themes of divine sovereignty."
     },
     {
-      code: "J1.2.1.1.1",
+      code: "B7.2.1.1.2",
       strand: "Religious Practices",
-      subStrand: "Types and Importance of Worship",
-      contentStandard: "Demonstrate deep understanding of private and public worship in the 3 religions",
-      indicator: "Liturgy, Jum'ah prayers, libation pouring, and spiritual benefits",
-      objectives: "Explain the significance of Friday Jum'ah prayers in Islam, Sunday church services in Christianity, and libation prayers in Traditional Religion."
+      subStrand: "Prayer and Fasting",
+      contentStandard: "Analyze purpose, types, and importance of prayer and fasting in religions",
+      indicator: "Types of prayer: Thanksgiving, Confession, Intercession, Supplication",
+      objectives: "Differentiate between types of Christian, Islamic, and Traditional prayers."
+    },
+    {
+      code: "B7.3.1.1.1",
+      strand: "Religious Leaders",
+      subStrand: "Exemplary Qualities of Religious Leaders",
+      contentStandard: "Identify virtues of religious leaders and apply them to youth life",
+      indicator: "Honesty, humility, tolerance, forgiveness, and servant leadership",
+      objectives: "Evaluate leadership qualities of Jesus, Prophet Muhammad, and traditional ancestors, showing how youth can emulate them."
+    },
+    {
+      code: "B7.4.1.1.1",
+      strand: "Family, Community and Moral Life",
+      subStrand: "Substance Abuse and Moral Integrity",
+      contentStandard: "Evaluate religious stances on drug abuse, alcoholism, and moral corruption",
+      indicator: "Alcoholism, illicit drugs, gambling, and maintaining personal integrity",
+      objectives: "Discuss religious teachings prohibiting drug abuse, excessive drinking, and gambling, highlighting physical and social consequences."
     },
     {
       code: "J1.2.2.1.1",
@@ -211,6 +243,46 @@ export const RME: Record<string, GESIndicator[]> = {
   ],
   "JHS 2": [
     {
+      code: "B8.1.1.1.1",
+      strand: "God, His Creation and Attributes",
+      subStrand: "Sovereignty of God and Human Free Will",
+      contentStandard: "Understand divine providence, moral free will, and human choices",
+      indicator: "Free will, choices, moral consequences, and divine guidance",
+      objectives: "Explain that God gave humans free will to choose between good and evil, and that choices carry moral consequences."
+    },
+    {
+      code: "B8.2.1.1.1",
+      strand: "Religious Practices",
+      subStrand: "Marriage and Family Rites",
+      contentStandard: "Analyze religious marriage ceremonies and conditions for successful family life",
+      indicator: "Christian, Islamic (Nikah), and Traditional customary marriage rites",
+      objectives: "Compare procedures and conditions for customary, Christian, and Islamic marriages in Ghana."
+    },
+    {
+      code: "B8.2.1.1.2",
+      strand: "Religious Practices",
+      subStrand: "Marriage and Family Rites",
+      contentStandard: "Analyze religious marriage ceremonies and conditions for successful family life",
+      indicator: "Responsibilities of husband and wife in Christian, Islamic, and Customary marriages",
+      objectives: "Discuss duties of spouses in sustaining marital harmony and preventing divorce."
+    },
+    {
+      code: "B8.3.1.1.1",
+      strand: "Religious Leaders",
+      subStrand: "Patriarchs and Caliphs",
+      contentStandard: "Examine contributions of early Christian apostles and Rightly Guided Caliphs",
+      indicator: "Apostles Peter and Paul, and Caliphs Abu Bakr and Umar",
+      objectives: "Describe contributions of Apostles Peter and Paul and Caliphs Abu Bakr and Umar to the growth of their religions."
+    },
+    {
+      code: "B8.4.1.1.1",
+      strand: "Family, Community and Moral Life",
+      subStrand: "Chaste Living and Sexual Purity",
+      contentStandard: "Understand religious teachings on chastity, abstinence, and moral purity",
+      indicator: "Abstinence before marriage, fidelity in marriage, and avoiding STI risks",
+      objectives: "Examine religious teachings endorsing pre-marital sexual abstinence and post-marital fidelity."
+    },
+    {
       code: "J2.1.1.1.1",
       strand: "God, His Creation and Attributes",
       subStrand: "Environment and Stewardship",
@@ -235,14 +307,6 @@ export const RME: Record<string, GESIndicator[]> = {
       objectives: "Describe the contributions of Apostle Paul in spreading Christianity and Caliph Abu Bakr/Umar in consolidating Islam."
     },
     {
-      code: "J2.4.1.1.1",
-      strand: "Family and Community",
-      subStrand: "Civic Responsibilities and Taxation",
-      contentStandard: "Apply religious teachings to civic responsibilities and payment of taxes",
-      indicator: "'Give to Caesar what is Caesar's', Zakat, tax compliance, and civic duty",
-      objectives: "Explain religious imperatives supporting tax payment, respect for national symbols, and active participation in community development."
-    },
-    {
       code: "J2.5.1.1.1",
       strand: "Moral Life",
       subStrand: "Chastity, Sex Education and STI/HIV Prevention",
@@ -253,12 +317,36 @@ export const RME: Record<string, GESIndicator[]> = {
   ],
   "JHS 3": [
     {
-      code: "J3.1.1.1.1",
+      code: "B9.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand: "BECE God & Creation Mastery",
-      contentStandard: "Master BECE questions on God's nature, attributes, and human stewardship",
-      indicator: "Attributes of God, purpose of human life, and environmental accountability",
-      objectives: "Answer BECE-style essay and short-answer questions analyzing God's attributes and human moral accountability in creation."
+      subStrand: "Death, Afterlife and Ancestral Veneration",
+      contentStandard: "Analyze beliefs about death, judgment, heaven/hell, and ancestors",
+      indicator: "Christian resurrection/judgment, Islamic Akhirah/Jannah, and Traditional ancestral spirits",
+      objectives: "Compare beliefs regarding life after death, divine judgment, and ancestral veneration among the three religions."
+    },
+    {
+      code: "B9.1.1.1.2",
+      strand: "God, His Creation and Attributes",
+      subStrand: "Death, Afterlife and Ancestral Veneration",
+      contentStandard: "Analyze beliefs about death, judgment, heaven/hell, and ancestors",
+      indicator: "Qualifications for ancestral status in African Traditional Religion",
+      objectives: "State moral requirements for becoming an ancestor (dying at old age, upright living, natural death)."
+    },
+    {
+      code: "B9.2.1.1.1",
+      strand: "Religious Practices",
+      subStrand: "Funeral Rites and Commemoration",
+      contentStandard: "Analyze religious funeral practices and memorial observances in Ghana",
+      indicator: "Christian burial/memorial, Islamic Janazah burial, and Traditional funeral rites",
+      objectives: "Describe funeral rites in Christianity, Islam, and Traditional religion, highlighting emotional support for bereaved families."
+    },
+    {
+      code: "B9.3.1.1.1",
+      strand: "Family, Community and Moral Life",
+      subStrand: "Civic Responsibility, Peaceful Co-existence and BECE Revision",
+      contentStandard: "Master complete BECE RME curriculum topics, moral essay writing, and religious tolerance",
+      indicator: "Religious tolerance, inter-faith harmony, civic duties, and BECE RME exam preparation",
+      objectives: "Write structured BECE-standard essays on moral living, religious tolerance, civic duties, and life of religious leaders."
     },
     {
       code: "J3.2.1.1.1",

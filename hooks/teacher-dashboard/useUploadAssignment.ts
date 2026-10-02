@@ -278,6 +278,36 @@ export const useUploadAssignment = () => {
     [appUser?.classes, appUser?.classTeacherOf]
   );
 
+  /* ------------------------------------------------------------------------ */
+  /* Reset Form                                                               */
+  /* ------------------------------------------------------------------------ */
+
+  const resetForm = useCallback(() => {
+    setTitle("");
+    setDescription("");
+    setType("mcq");
+    setDueDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+    setFile(null);
+    setMcqQuestions([]);
+    setShortAnswerQuestions([]);
+    setPreschoolQuestions([]);
+    setMathematicsQuestions([]);
+    setEssayQuestions([]);
+  }, []);
+
+  const handleSelectClassId = useCallback(
+    (action: React.SetStateAction<string>) => {
+      setSelectedClassId((prev) => {
+        const next = typeof action === "function" ? action(prev) : action;
+        if (next !== prev && prev !== "") {
+          resetForm();
+        }
+        return next;
+      });
+    },
+    [resetForm]
+  );
+
   const teacherClassIdsKey = teacherClassIds.join(",");
 
   const subjectsKey = (appUser?.subjects || []).join(",");
@@ -933,6 +963,8 @@ export const useUploadAssignment = () => {
         type: "success",
       });
 
+      resetForm();
+
       return true;
     } catch (error) {
       console.error(
@@ -985,6 +1017,7 @@ export const useUploadAssignment = () => {
     selectedSubject,
     loading,
     uploadingFile,
+    resetForm,
   ]);
 
   /* ------------------------------------------------------------------------ */
@@ -1056,26 +1089,32 @@ export const useUploadAssignment = () => {
   /* ------------------------------------------------------------------------ */
 
   const hasUnsavedChanges = useMemo(() => {
+    const hasQuestionsEntered = (qList: Question[]) =>
+      qList.some(
+        (q) =>
+          (q.text && q.text.trim().length > 0) ||
+          (q.options && q.options.some((opt) => opt && opt.trim().length > 0)) ||
+          (q.visualGroup && q.visualGroup.length > 0)
+      );
+
     return (
       title.trim().length > 0 ||
       description.trim().length > 0 ||
-      selectedClassId.length > 0 ||
-      selectedSubject.length > 0 ||
-      mcqQuestions.length > 0 ||
-      shortAnswerQuestions.length > 0 ||
-      preschoolQuestions.length > 0 ||
-      mathematicsQuestions.length > 0 ||
-      file !== null
+      file !== null ||
+      hasQuestionsEntered(mcqQuestions) ||
+      hasQuestionsEntered(shortAnswerQuestions) ||
+      hasQuestionsEntered(preschoolQuestions) ||
+      hasQuestionsEntered(mathematicsQuestions) ||
+      hasQuestionsEntered(essayQuestions)
     );
   }, [
     title,
     description,
-    selectedClassId,
-    selectedSubject,
     mcqQuestions,
     shortAnswerQuestions,
     preschoolQuestions,
     mathematicsQuestions,
+    essayQuestions,
     file,
   ]);
 
@@ -1090,7 +1129,7 @@ export const useUploadAssignment = () => {
     teacherClasses,
 
     selectedClassId,
-    setSelectedClassId,
+    setSelectedClassId: handleSelectClassId,
 
     selectedSubject,
     setSelectedSubject,
@@ -1117,6 +1156,8 @@ export const useUploadAssignment = () => {
     questions,
 
     hasUnsavedChanges,
+
+    resetForm,
 
     addQuestion,
     updateQuestion,

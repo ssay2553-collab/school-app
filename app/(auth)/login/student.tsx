@@ -26,7 +26,7 @@ import { getSchoolLogo } from "../../../constants/Logos";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import { auth, db, functions } from "../../../firebaseConfig";
 import { useToast } from "../../../contexts/ToastContext";
-import { getStudentFinalEmail } from "../../../utils/authUnify";
+import { fetchUserDocAndData, getStudentFinalEmail } from "../../../utils/authUnify";
 
 export default function StudentLoginScreen() {
   const router = useRouter();
@@ -58,7 +58,7 @@ export default function StudentLoginScreen() {
     try {
       // 1. Try standard login
       const cred = await signInWithEmailAndPassword(auth, finalEmail, password);
-      await finishLogin(cred.user.uid);
+      await finishLogin(cred.user.uid, finalEmail);
     } catch (error: any) {
       console.log("Standard login failed, checking for Token Login...");
 
@@ -104,7 +104,7 @@ export default function StudentLoginScreen() {
 
             // Now sign in with the new password
             const cred = await signInWithEmailAndPassword(auth, finalEmail, password);
-            await finishLogin(cred.user.uid);
+            await finishLogin(cred.user.uid, finalEmail);
             return;
           }
         }
@@ -127,21 +127,32 @@ export default function StudentLoginScreen() {
     }
   };
 
-  const finishLogin = async (uid: string) => {
-    const userDoc = await getDoc(doc(db, "users", uid));
-    if (!userDoc.exists()) {
+  const finishLogin = async (uid: string, userEmail?: string) => {
+    const { userData } = await fetchUserDocAndData(uid, userEmail);
+
+    if (!userData) {
       await auth.signOut();
       throw new Error("User record not found. Please ensure your registration was completed.");
     }
 
-    const userData = userDoc.data();
-    const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
-    const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
+    const role = (userData?.role || userData?.profile?.role || "").toLowerCase().trim();
+    const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase().trim();
+    const permissions = userData?.permissions || {};
 
     const isStudent = role === "student";
-    const isAdmin = role === "admin" || adminRole !== "";
-    const isTeacher = role === "teacher" || !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf);
-    const isParent = role === "parent";
+    const isAdmin =
+      role.includes("admin") ||
+      role.includes("super") ||
+      role === "manager" ||
+      adminRole !== "" ||
+      permissions['manage-users'] === 'full';
+
+    const isTeacher =
+      role === "teacher" ||
+      role === "staff" ||
+      !!(userData?.classes?.length || userData?.subjects?.length || userData?.classTeacherOf || userData?.profile?.classes?.length || userData?.profile?.subjects?.length || userData?.profile?.classTeacherOf);
+
+    const isParent = role === "parent" || !!(userData?.childrenIds?.length || userData?.profile?.childrenIds?.length);
 
     if (isStudent) {
       router.replace("/student-dashboard");

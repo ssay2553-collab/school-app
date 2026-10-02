@@ -36,6 +36,7 @@ export const Scoreboard: React.FC<ScoreboardProps> = ({ onBack }) => {
     const quizLevel = await AsyncStorage.getItem("@quiz_level");
     const wordLevel = await AsyncStorage.getItem("@word_level");
     const scrambleLevel = await AsyncStorage.getItem("@scramble_level");
+    const mathLevel = await AsyncStorage.getItem("@math_level");
     const writingCount = await AsyncStorage.getItem("@writing_count");
     const unlockedStickers = await AsyncStorage.getItem("@unlocked_stickers");
 
@@ -43,6 +44,7 @@ export const Scoreboard: React.FC<ScoreboardProps> = ({ onBack }) => {
       quiz: quizLevel ? JSON.parse(quizLevel) : 1,
       word: wordLevel ? JSON.parse(wordLevel) : 1,
       scramble: scrambleLevel ? JSON.parse(scrambleLevel) : 1,
+      math: mathLevel ? JSON.parse(mathLevel) : 1,
       writing: writingCount ? JSON.parse(writingCount) : 0,
     });
 
@@ -118,7 +120,7 @@ export const Scoreboard: React.FC<ScoreboardProps> = ({ onBack }) => {
           <Text style={styles.classTag}>{item.classId || "N/A"}</Text>
         </View>
         <Text style={styles.rankLevels}>
-          Q:L{item.quiz_level || 1} | W:L{item.word_level || 1} | S:L{item.scramble_level || 1}
+          Q:L{item.quiz_level || 1} | W:L{item.word_level || 1} | M:L{item.math_level || 1} | S:L{item.scramble_level || 1}
         </Text>
       </View>
       <View style={styles.rankScoreBox}>
@@ -187,6 +189,13 @@ export const Scoreboard: React.FC<ScoreboardProps> = ({ onBack }) => {
             value={`Lvl ${scores.word}`}
             icon="search"
             color="#10B981"
+          />
+          <ScoreItem
+            title="Math Sprinter"
+            sub="Highest Level Reached"
+            value={`Lvl ${scores.math || 1}`}
+            icon="calculator"
+            color="#8B5CF6"
           />
           <ScoreItem
             title="Scramble Pro"

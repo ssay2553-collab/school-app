@@ -1,6 +1,84 @@
 import { GESIndicator } from "../GES_Curriculum";
 
 export const CareerTechnology: Record<string, GESIndicator[]> = {
+  "Basic 4": [
+    {
+      code: "B4.1.1.1.1",
+      strand: "Health and Safety",
+      subStrand: "Personal Hygiene and Safety at Work",
+      contentStandard: "Demonstrate basic safety rules in domestic and classroom activity areas",
+      indicator: "Personal protective clothing, cleanliness, and safe handling of tools",
+      objectives: "List personal safety rules when working with domestic tools and equipment (aprons, gloves, footwear)."
+    },
+    {
+      code: "B4.1.1.1.2",
+      strand: "Health and Safety",
+      subStrand: "Personal Hygiene and Safety at Work",
+      contentStandard: "Demonstrate basic safety rules in domestic and classroom activity areas",
+      indicator: "Proper handling and storage of sharp kitchen and workshop tools",
+      objectives: "Demonstrate safe carrying, passing, and storage of knives, shears, and woodworking chisels."
+    },
+    {
+      code: "B4.2.1.1.1",
+      strand: "Materials for Production",
+      subStrand: "Basic Materials and Uses",
+      contentStandard: "Identify local resistant and compliant materials",
+      indicator: "Paper, cardboard, fabric, wood, and plastic classification",
+      objectives: "Classify everyday materials into paper/card, textiles, timber, and plastics, and list their uses."
+    }
+  ],
+  "Basic 5": [
+    {
+      code: "B5.1.1.1.1",
+      strand: "Health and Safety",
+      subStrand: "First Aid and Workshop Rules",
+      contentStandard: "Understand First Aid procedures for minor injuries and workshop safety signs",
+      indicator: "First Aid box contents, treating minor cuts/burns, and safety warning signs",
+      objectives: "Identify First Aid items (antiseptic, bandage, cotton wool) and demonstrate treatment for minor cuts."
+    },
+    {
+      code: "B5.1.1.1.2",
+      strand: "Health and Safety",
+      subStrand: "First Aid and Workshop Rules",
+      contentStandard: "Understand First Aid procedures for minor injuries and workshop safety signs",
+      indicator: "Safety color codes (Red, Yellow, Green, Blue) and mandatory safety symbols",
+      objectives: "Interpret mandatory, prohibition, warning, and emergency safety signs used in technical environments."
+    },
+    {
+      code: "B5.2.1.1.1",
+      strand: "Food and Catering",
+      subStrand: "Food Commodities and Hygiene",
+      contentStandard: "Identify local food groups and kitchen hygiene practices",
+      indicator: "Cereals, roots, tubers, vegetables, fruits, and food preservation",
+      objectives: "Categorize local foods into energy-giving, body-building, and protective foods and practice kitchen hygiene."
+    }
+  ],
+  "Basic 6": [
+    {
+      code: "B6.1.1.1.1",
+      strand: "Designing and Prototyping",
+      subStrand: "Technical Drawing and Sketching",
+      contentStandard: "Draw basic geometric shapes, 2D planes, and freehand sketches",
+      indicator: "Freehand sketching of simple tools, horizontal/vertical lines, and 2D shapes",
+      objectives: "Use ruler, set-squares, and pencils to sketch geometric shapes and basic hand tools freehand."
+    },
+    {
+      code: "B6.1.1.1.2",
+      strand: "Designing and Prototyping",
+      subStrand: "Technical Drawing and Sketching",
+      contentStandard: "Draw basic geometric shapes, 2D planes, and freehand sketches",
+      indicator: "Constructing perpendicular, parallel, and bisected lines using drawing instruments",
+      objectives: "Construct perpendicular lines and bisect given straight line segments using compasses and set-squares."
+    },
+    {
+      code: "B6.2.1.1.1",
+      strand: "Sewing and Textiles",
+      subStrand: "Basic Sewing Stitches and Articles",
+      contentStandard: "Demonstrate temporary and permanent hand sewing stitches",
+      indicator: "Tacking, running stitch, back stitch, and hemming",
+      objectives: "Demonstrate temporary stitches (tacking) and permanent stitches (running stitch, back stitch) on fabric swatches."
+    }
+  ],
   "JHS 1": [
     {
       code: "B7.1.1.1.1",
@@ -9,6 +87,14 @@ export const CareerTechnology: Record<string, GESIndicator[]> = {
       contentStandard: "Demonstrate understanding of personal and workshop safety practices",
       indicator: "Workshop rules, Personal Protective Equipment (PPE), and hazard identification",
       objectives: "Identify workshop hazards, list safety rules in technical/catering workshops, and demonstrate proper use of PPE (goggles, gloves, apron, boots)."
+    },
+    {
+      code: "B7.1.1.1.2",
+      strand: "Health and Safety",
+      subStrand: "Personal Hygiene and Workshop Safety",
+      contentStandard: "Demonstrate understanding of personal and workshop safety practices",
+      indicator: "Causes and prevention of workshop accidents",
+      objectives: "Analyze common causes of accidents in metalwork, woodwork, and food laboratories and design prevention strategies."
     },
     {
       code: "B7.2.1.1.1",
@@ -77,6 +163,14 @@ export const CareerTechnology: Record<string, GESIndicator[]> = {
       objectives: "Demonstrate first aid procedures for workshop injuries (cuts, scalds, burns) and select appropriate fire extinguishers for Class A, B, and C fires."
     },
     {
+      code: "B8.1.1.1.2",
+      strand: "Health and Safety",
+      subStrand: "First Aid and Environmental Safety",
+      contentStandard: "Demonstrate procedures for First Aid and fire safety in workshops",
+      indicator: "Class A, B, C, and D fires and fire triangle principles",
+      objectives: "Explain fuel, heat, and oxygen fire triangle components and choose appropriate extinguishing agents."
+    },
+    {
       code: "B8.2.1.1.1",
       strand: "Materials for Production",
       subStrand: "Metals and Smart Materials",
@@ -136,11 +230,19 @@ export const CareerTechnology: Record<string, GESIndicator[]> = {
   "JHS 3": [
     {
       code: "B9.1.1.1.1",
-      strand: "Health and Safety",
-      subStrand: "BECE Workshop Safety & Environmental Auditing",
-      contentStandard: "Evaluate workplace safety compliance, risk assessment, and environmental sustainability for BECE",
-      indicator: "Risk assessment matrix, waste disposal laws, and BECE safety scenarios",
-      objectives: "Conduct a safety audit of a school workshop/kitchen, identify potential hazards, and formulate mitigation strategies."
+      strand: "Designing and Prototyping",
+      subStrand: "Design Process and Artifact Construction",
+      contentStandard: "Apply the full design process (situation, brief, research, specifications, ideas, artifact, evaluation)",
+      indicator: "Design brief, specifications, working drawing, mock-up model, and artifact creation",
+      objectives: "Follow the design process to create a functional prototype/artifact (wood, metal, plastic, or fabric) solving a community problem."
+    },
+    {
+      code: "B9.1.1.1.2",
+      strand: "Designing and Prototyping",
+      subStrand: "Design Process and Artifact Construction",
+      contentStandard: "Apply the full design process",
+      indicator: "Testing, evaluating, and writing modification reports for finished artifacts",
+      objectives: "Test completed products against original design specifications and write evaluation reports proposing design improvements."
     },
     {
       code: "B9.2.1.1.1",

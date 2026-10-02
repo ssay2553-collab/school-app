@@ -30,21 +30,21 @@ const MathematicsFields = memo(({
         onChangeText={(t) => updateMathematicsQuestion(qIndex, { text: t })}
       />
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 15, backgroundColor: '#F0F9FF', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#BAE6FD' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, backgroundColor: '#F0F9FF', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: '#BAE6FD' }}>
         <TouchableOpacity
           onPress={() => updateMathematicsQuestion(qIndex, { showWorking: !q.showWorking })}
-          style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: q.showWorking ? COLORS.primary : 'transparent' }}
+          style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', backgroundColor: q.showWorking ? COLORS.primary : 'transparent' }}
         >
-          {q.showWorking && <SVGIcon name="checkmark" size={16} color="#FFF" />}
+          {q.showWorking && <SVGIcon name="checkmark" size={14} color="#FFF" />}
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 14, fontWeight: '700', color: '#0369A1' }}>Require Students to Show Working</Text>
+          <Text style={{ fontSize: 13, fontWeight: '700', color: '#0369A1' }}>Require Students to Show Working</Text>
           <Text style={{ fontSize: 11, color: '#0EA5E9' }}>Students will see an additional area to type their step-by-step solution.</Text>
         </View>
       </View>
 
       {/* Multiple Choice Options */}
-      <View style={[styles.optionsContainer, { marginTop: 20 }]}>
+      <View style={[styles.optionsContainer, { marginTop: 10 }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
           <Text style={styles.inputLabel}>Options (Multiple Choice - Optional)</Text>
           {q.options && q.options.length > 0 && (

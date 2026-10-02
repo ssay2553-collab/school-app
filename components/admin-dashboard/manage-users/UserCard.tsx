@@ -15,6 +15,7 @@ interface UserCardProps {
   onToggleSelection: (uid: string) => void;
   onPress: (user: User) => void;
   onLongPress: (user: User) => void;
+  onToggleArchive?: (user: User) => void;
 }
 
 export const UserCard = React.memo(({
@@ -25,6 +26,7 @@ export const UserCard = React.memo(({
   onToggleSelection,
   onPress,
   onLongPress,
+  onToggleArchive,
 }: UserCardProps) => {
   const teacherClasses = ["teacher", "staff", "admin"].includes(user.role)
     ? getTeacherClasses(user as any)
@@ -136,6 +138,22 @@ export const UserCard = React.memo(({
             )}
         </View>
       </View>
+      {user.role === "student" && onToggleArchive && (
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation?.();
+            onToggleArchive(user);
+          }}
+          style={{ padding: 10, marginRight: 4 }}
+          activeOpacity={0.7}
+        >
+          <SVGIcon
+            name={user.status === "archived" ? "people" : "archive"}
+            size={22}
+            color={user.status === "archived" ? (COLORS.success || "#10B981") : (COLORS.secondary || "#c53b59")}
+          />
+        </TouchableOpacity>
+      )}
       <SVGIcon
         name="chevron-forward"
         size={20}
@@ -147,7 +165,8 @@ export const UserCard = React.memo(({
   return prev.isSelected === next.isSelected &&
          prev.isSelectionActive === next.isSelectionActive &&
          prev.user === next.user &&
-         prev.allClasses === next.allClasses;
+         prev.allClasses === next.allClasses &&
+         prev.onToggleArchive === next.onToggleArchive;
 });
 
 const styles = StyleSheet.create({

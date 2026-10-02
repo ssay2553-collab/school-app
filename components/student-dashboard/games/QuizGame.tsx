@@ -37,9 +37,22 @@ export const QuizGame: React.FC<QuizGameProps> = ({ onExit }) => {
 
   const startStage = useCallback(() => {
     let pool = QUIZ_DATA.filter((q) => q.level === level);
-    if (pool.length === 0) pool = QUIZ_DATA;
+    if (pool.length === 0) {
+      pool = QUIZ_DATA.filter((q) => q.level <= level);
+    }
+    if (pool.length === 0) {
+      pool = QUIZ_DATA;
+    }
 
-    setQuestions([...pool].sort(() => 0.5 - Math.random()).slice(0, 5));
+    const selectedQuestions = [...pool]
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 5)
+      .map((q) => ({
+        ...q,
+        options: [...q.options].sort(() => 0.5 - Math.random()),
+      }));
+
+    setQuestions(selectedQuestions);
     setIndex(0);
     setScore(0);
     setSelected(null);
@@ -124,7 +137,7 @@ export const QuizGame: React.FC<QuizGameProps> = ({ onExit }) => {
         <TouchableOpacity onPress={() => { safeStop(); onExit(); }}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
-        <Text style={styles.levelText}>Quiz Fun!</Text>
+        <Text style={styles.levelText}>Quiz Fun! • Lvl {level}</Text>
         <TouchableOpacity onPress={() => safeSpeak(q.question)}>
           <SVGIcon name="volume-high" color="#fff" size={28} />
         </TouchableOpacity>

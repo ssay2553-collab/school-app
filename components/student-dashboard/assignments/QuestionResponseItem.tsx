@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -11,6 +11,8 @@ import { COLORS } from "../../../constants/theme";
 import SVGIcon from "../../SVGIcon";
 import { Question, VisualItem } from "../../../types/assignments";
 import MathCanvas from "../../MathCanvas";
+import FormattedText from "../../FormattedText";
+import SpecialCharToolbar from "../../teacher-dashboard/upload-assignment/components/SpecialCharToolbar";
 
 interface QuestionResponseItemProps {
   q: Question;
@@ -29,6 +31,59 @@ const QuestionResponseItem = memo(({
   setAnswer,
   readOnly = false
 }: QuestionResponseItemProps) => {
+  const [answerSelection, setAnswerSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
+
+  const handleInsertChar = useCallback((char: string) => {
+    const text = typeof answer === 'string' ? answer : (answer ? String(answer) : "");
+    const selection = answerSelection ?? { start: text.length, end: text.length };
+    const start = Math.min(selection.start, selection.end);
+    const end = Math.max(selection.start, selection.end);
+    const hasSelection = start !== end;
+    const selectedText = text.slice(start, end);
+
+    let newText = "";
+    let newCursorPos = start + char.length;
+
+    // Handle Brackets
+    if (char === "( )" || char === "[ ]" || char === "{ }" || char === "< >" || char === "“ ”" || char === "« »") {
+      const openBracket = char.charAt(0);
+      const closeBracket = char.charAt(char.length - 1);
+      if (hasSelection) {
+        const wrapped = `${openBracket}${selectedText}${closeBracket}`;
+        newText = text.slice(0, start) + wrapped + text.slice(end);
+        newCursorPos = start + wrapped.length;
+      } else {
+        const wrapped = `${openBracket}${closeBracket}`;
+        newText = text.slice(0, start) + wrapped + text.slice(end);
+        newCursorPos = start + 1;
+      }
+    }
+    // Handle Formatting
+    else if (char.includes("<b>") || char.includes("<u>")) {
+      const tag = char.includes("<b>") ? "b" : "u";
+      if (hasSelection) {
+        const wrapped = `<${tag}>${selectedText}</${tag}>`;
+        newText = text.slice(0, start) + wrapped + text.slice(end);
+        newCursorPos = start + wrapped.length;
+      } else {
+        const defaultWord = tag === "b" ? "bold" : "underlined";
+        const wrapped = `<${tag}>${defaultWord}</${tag}>`;
+        const prefix = start > 0 && text.charAt(start - 1) !== ' ' ? ' ' : '';
+        newText = text.slice(0, start) + prefix + wrapped + text.slice(end);
+        newCursorPos = start + prefix.length + wrapped.length;
+      }
+    }
+    // Handle Character or Accent
+    else {
+      const rawInserted = text.slice(0, start) + char + text.slice(end);
+      newText = rawInserted.normalize("NFC");
+      newCursorPos = start + char.length;
+    }
+
+    setAnswer(newText);
+    setAnswerSelection({ start: newCursorPos, end: newCursorPos });
+  }, [answer, answerSelection, setAnswer]);
+
   const isPreschool = type === "preschool";
   const isMathematics = type === "mathematics";
   const isPreschoolOptions = isPreschool && ![
@@ -140,12 +195,16 @@ const QuestionResponseItem = memo(({
         </View>
       )}
 
-      <Text style={[
-        styles.questionText,
-        isPreschool ? { fontSize: 26, lineHeight: 34, fontWeight: '800' } :
-        isMathematics ? { fontSize: 18, lineHeight: 26, fontWeight: '600' } :
-        { fontSize: 15, lineHeight: 22, fontWeight: '600' }
-      ]}>{qIdx + 1}. {q.text}</Text>
+      <FormattedText
+        style={[
+          styles.questionText,
+          isPreschool ? { fontSize: 26, lineHeight: 34, fontWeight: '800' } :
+          isMathematics ? { fontSize: 18, lineHeight: 26, fontWeight: '600' } :
+          { fontSize: 15, lineHeight: 22, fontWeight: '600' }
+        ]}
+        prefix={`${qIdx + 1}. `}
+        text={q.text}
+      />
 
       {q.visualGroup && q.visualGroup.length > 0 && (
         <View style={[styles.visualContainer, isMathematics && { padding: 10 }]}>
@@ -365,7 +424,7 @@ const QuestionResponseItem = memo(({
               onChange={handleWorkingChange}
               label="Step-by-Step Working"
               placeholder="Show your working steps here..."
-              minHeight={150}
+              minHeight={100}
               readOnly={readOnly}
             />
           )}
@@ -376,7 +435,7 @@ const QuestionResponseItem = memo(({
               onChange={handleAnswerChange}
               label="Solution"
               placeholder="Enter solution..."
-              minHeight={100}
+              minHeight={60}
               readOnly={readOnly}
             />
           )}
@@ -417,18 +476,35 @@ const QuestionResponseItem = memo(({
           </View>
         ) : (
           !isMathematics && (
-            <TextInput
-              style={[
-                styles.answerInput,
-                isPreschool && { fontSize: 22, minHeight: 80, fontWeight: '800' }
-              ]}
-              placeholder={readOnly ? "No answer provided" : "Type your answer here..."}
-              placeholderTextColor="#94A3B8"
-              multiline={type !== "preschool"}
-              value={answer}
-              onChangeText={setAnswer}
-              editable={!readOnly}
-            />
+            <View style={{ gap: 8 }}>
+              {!readOnly && (
+                <SpecialCharToolbar
+                  onInsertChar={handleInsertChar}
+                  targetName="Your Answer"
+                />
+              )}
+
+              <TextInput
+                style={[
+                  styles.answerInput,
+                  isPreschool && { fontSize: 22, minHeight: 80, fontWeight: '800' }
+                ]}
+                placeholder={readOnly ? "No answer provided" : "Type your answer here..."}
+                placeholderTextColor="#94A3B8"
+                multiline={type !== "preschool"}
+                value={typeof answer === 'string' ? answer : (answer ? String(answer) : "")}
+                onChangeText={setAnswer}
+                onSelectionChange={(e) => setAnswerSelection(e.nativeEvent.selection)}
+                editable={!readOnly}
+              />
+
+              {answer && typeof answer === 'string' && (answer.includes('<') || answer.includes('*')) ? (
+                <View style={styles.previewBox}>
+                  <Text style={styles.previewLabel}>Answer Formatting Preview:</Text>
+                  <FormattedText text={answer} style={styles.previewText} />
+                </View>
+              ) : null}
+            </View>
           )
         )}
       </View>
@@ -449,6 +525,25 @@ const styles = StyleSheet.create({
   optionLabel: { fontSize: 14, color: '#475569', fontWeight: '600' },
   optionLabelSelected: { color: COLORS.success, fontWeight: '800' },
   answerInput: { backgroundColor: '#fff', borderRadius: 12, padding: 15, fontSize: 15, minHeight: 100, textAlignVertical: 'top', borderWidth: 1, borderColor: '#E2E8F0' },
+  previewBox: {
+    padding: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  previewLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  previewText: {
+    fontSize: 14,
+    color: '#1E293B',
+    lineHeight: 20,
+  },
   mathCanvasWrapper: {
     gap: 15,
     marginBottom: 10

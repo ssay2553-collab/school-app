@@ -166,44 +166,64 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         userRef,
         async (snap) => {
           if (snap.exists()) {
-            processSnap(snap);
-          } else {
-            // Fallback: Check for staff with legacy IDs mapped via authUid
-            try {
-              const q = query(
+            const data = snap.data() || {};
+            const hasRoleInfo = !!(data.role || data.profile?.role || data.adminRole);
+            if (hasRoleInfo) {
+              processSnap(snap);
+              return;
+            }
+          }
+
+          // Fallback: Check for staff/users with legacy or generated IDs mapped via uid or authUid
+          try {
+            let q = query(
+              collection(db, "users"),
+              where("uid", "==", user.uid),
+              limit(1)
+            );
+            let querySnap = await getDocs(q);
+
+            if (querySnap.empty) {
+              q = query(
                 collection(db, "users"),
                 where("authUid", "==", user.uid),
-                limit(1),
+                limit(1)
               );
-              const querySnap = await getDocs(q);
-              if (!querySnap.empty && isMounted) {
-                // Document found by authUid field
-                const staffDoc = querySnap.docs[0];
-                if (unsubscribeProfile) {
-                  unsubscribeProfile();
-                  unsubscribeProfile = null;
-                }
-                // Create a mapping from auth UID to the actual user document ID
-                try {
-                  await setDoc(
-                    doc(db, "userAuthMappings", user.uid),
-                    {
-                      userDocId: staffDoc.id,
-                    },
-                    { merge: true },
-                  );
-                } catch (mapErr) {
-                  console.warn("Failed to create auth mapping doc:", mapErr);
-                }
-                // Setup persistent listener on the actual document
-                unsubscribeProfile = onSnapshot(staffDoc.ref, (innerSnap) => {
-                  processSnap(innerSnap);
-                });
-              } else {
-                setLoading(false);
+              querySnap = await getDocs(q);
+            }
+
+            if (!querySnap.empty && isMounted) {
+              const staffDoc = querySnap.docs[0];
+              if (unsubscribeProfile) {
+                unsubscribeProfile();
+                unsubscribeProfile = null;
               }
-            } catch (err) {
-              console.error("Auth fallback error:", err);
+              // Create a mapping from auth UID to the actual user document ID
+              try {
+                await setDoc(
+                  doc(db, "userAuthMappings", user.uid),
+                  {
+                    userDocId: staffDoc.id,
+                  },
+                  { merge: true },
+                );
+              } catch (mapErr) {
+                console.warn("Failed to create auth mapping doc:", mapErr);
+              }
+              // Setup persistent listener on the actual document
+              unsubscribeProfile = onSnapshot(staffDoc.ref, (innerSnap) => {
+                processSnap(innerSnap);
+              });
+            } else if (snap.exists()) {
+              processSnap(snap);
+            } else {
+              setLoading(false);
+            }
+          } catch (err) {
+            console.error("Auth fallback error:", err);
+            if (snap.exists()) {
+              processSnap(snap);
+            } else {
               setLoading(false);
             }
           }

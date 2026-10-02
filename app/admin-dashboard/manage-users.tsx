@@ -377,6 +377,7 @@ export default function ManageUsers() {
                     toggleUserSelection(u.uid);
                   }
                 }}
+                onToggleArchive={handleToggleArchiveStatus}
               />
             </View>
           )}

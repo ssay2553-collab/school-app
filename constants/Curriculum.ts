@@ -153,8 +153,26 @@ export const normalizeClassLevel = (classLevel: string): string => {
   const found = Object.keys(CLASS_LEVELS).find(
     (key) => key.toLowerCase() === cleaned.toLowerCase(),
   );
+  if (found) return found;
 
-  return found || cleaned;
+  const low = cleaned.toLowerCase();
+
+  if (/\b(b1|basic 1|class 1|primary 1|grade 1)\b/i.test(low)) return "Basic 1";
+  if (/\b(b2|basic 2|class 2|primary 2|grade 2)\b/i.test(low)) return "Basic 2";
+  if (/\b(b3|basic 3|class 3|primary 3|grade 3)\b/i.test(low)) return "Basic 3";
+  if (/\b(b4|basic 4|class 4|primary 4|grade 4)\b/i.test(low)) return "Basic 4";
+  if (/\b(b5|basic 5|class 5|primary 5|grade 5)\b/i.test(low)) return "Basic 5";
+  if (/\b(b6|basic 6|class 6|primary 6|grade 6)\b/i.test(low)) return "Basic 6";
+
+  if (/\b(b7|basic 7|jhs 1|jhs1|j\.h\.s 1)\b/i.test(low)) return "JHS 1";
+  if (/\b(b8|basic 8|jhs 2|jhs2|j\.h\.s 2)\b/i.test(low)) return "JHS 2";
+  if (/\b(b9|basic 9|jhs 3|jhs3|j\.h\.s 3)\b/i.test(low)) return "JHS 3";
+
+  if (/\b(shs 1|shs1)\b/i.test(low)) return "SHS 1";
+  if (/\b(shs 2|shs2)\b/i.test(low)) return "SHS 2";
+  if (/\b(shs 3|shs3)\b/i.test(low)) return "SHS 3";
+
+  return cleaned;
 };
 
 /**

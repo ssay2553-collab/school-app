@@ -41,7 +41,7 @@ export const PEN_COLORS = [
 ];
 
 export const QUIZ_DATA = [
-  // Level 1
+  // ================= Level 1 =================
   {
     topic: "Science 🧪",
     question: "Which organ pumps blood through the body?",
@@ -77,7 +77,57 @@ export const QUIZ_DATA = [
     answer: "Earth",
     level: 1,
   },
-  // Level 2
+  {
+    topic: "Math 🔢",
+    question: "What is 20 - 9?",
+    options: ["11", "10", "12", "9"],
+    answer: "11",
+    level: 1,
+  },
+  {
+    topic: "Science 🌿",
+    question: "What gas do plants absorb from the air?",
+    options: ["Oxygen", "Carbon Dioxide", "Nitrogen", "Hydrogen"],
+    answer: "Carbon Dioxide",
+    level: 1,
+  },
+  {
+    topic: "English 🔤",
+    question: "Which word is an adjective?",
+    options: ["Beautiful", "Quickly", "Sing", "House"],
+    answer: "Beautiful",
+    level: 1,
+  },
+  {
+    topic: "Geography 🇬🇭",
+    question: "Which ocean borders Ghana to the south?",
+    options: ["Atlantic Ocean", "Pacific Ocean", "Indian Ocean", "Arctic Ocean"],
+    answer: "Atlantic Ocean",
+    level: 1,
+  },
+  {
+    topic: "ICT 💻",
+    question: "Which part of a computer displays images?",
+    options: ["Monitor", "Keyboard", "Mouse", "CPU"],
+    answer: "Monitor",
+    level: 1,
+  },
+  {
+    topic: "General 💡",
+    question: "How many days are in a week?",
+    options: ["5", "6", "7", "8"],
+    answer: "7",
+    level: 1,
+  },
+  {
+    topic: "Math ➗",
+    question: "What is half of 12?",
+    options: ["4", "5", "6", "7"],
+    answer: "6",
+    level: 1,
+  },
+
+  // ================= Level 2 =================
   {
     topic: "Science 🧬",
     question: "What is the hardest natural substance on Earth?",
@@ -86,7 +136,7 @@ export const QUIZ_DATA = [
     level: 2,
   },
   {
-    topic: "Math ➗",
+    topic: "Math ✖️",
     question: "What is 12 x 12?",
     options: ["124", "144", "164", "134"],
     answer: "144",
@@ -113,7 +163,57 @@ export const QUIZ_DATA = [
     answer: "Author",
     level: 2,
   },
-  // Level 3
+  {
+    topic: "Science 🍃",
+    question: "What process do green plants use to make food?",
+    options: ["Respiration", "Photosynthesis", "Evaporation", "Digestion"],
+    answer: "Photosynthesis",
+    level: 2,
+  },
+  {
+    topic: "Math ➗",
+    question: "What is 100 divided by 4?",
+    options: ["20", "25", "30", "40"],
+    answer: "25",
+    level: 2,
+  },
+  {
+    topic: "ICT 🖥️",
+    question: "What does CPU stand for?",
+    options: ["Central Processing Unit", "Computer Power Unit", "Central Program User", "Control Panel Unit"],
+    answer: "Central Processing Unit",
+    level: 2,
+  },
+  {
+    topic: "Geography 🌊",
+    question: "What is the largest lake in Ghana?",
+    options: ["Lake Bosomtwe", "Lake Volta", "Lake Victoria", "Lake Tanganyika"],
+    answer: "Lake Volta",
+    level: 2,
+  },
+  {
+    topic: "English 📖",
+    question: "What is the opposite (antonym) of 'Ancient'?",
+    options: ["Old", "Modern", "Historic", "Giant"],
+    answer: "Modern",
+    level: 2,
+  },
+  {
+    topic: "General 🦁",
+    question: "Which animal is known as the King of the Jungle?",
+    options: ["Tiger", "Elephant", "Lion", "Giraffe"],
+    answer: "Lion",
+    level: 2,
+  },
+  {
+    topic: "Math 📐",
+    question: "How many sides does a hexagon have?",
+    options: ["5", "6", "7", "8"],
+    answer: "6",
+    level: 2,
+  },
+
+  // ================= Level 3 =================
   {
     topic: "Science 🌡️",
     question: "At what temperature does water boil?",
@@ -149,7 +249,57 @@ export const QUIZ_DATA = [
     answer: "Happy",
     level: 3,
   },
-  // Level 4
+  {
+    topic: "Science 🪴",
+    question: "Which part of a plant absorbs water and minerals from the soil?",
+    options: ["Leaves", "Stem", "Roots", "Flowers"],
+    answer: "Roots",
+    level: 3,
+  },
+  {
+    topic: "Math 📊",
+    question: "What is 3/4 expressed as a percentage?",
+    options: ["50%", "60%", "75%", "80%"],
+    answer: "75%",
+    level: 3,
+  },
+  {
+    topic: "ICT ⌨️",
+    question: "Which of the following is a computer input device?",
+    options: ["Keyboard", "Monitor", "Printer", "Speaker"],
+    answer: "Keyboard",
+    level: 3,
+  },
+  {
+    topic: "History 👑",
+    question: "The Golden Stool is a sacred symbol of which kingdom?",
+    options: ["Ga", "Ashanti", "Ewe", "Dagbon"],
+    answer: "Ashanti",
+    level: 3,
+  },
+  {
+    topic: "English 🔤",
+    question: "What is the correct plural form of 'Child'?",
+    options: ["Childs", "Children", "Childrens", "Childes"],
+    answer: "Children",
+    level: 3,
+  },
+  {
+    topic: "General 🦷",
+    question: "How many teeth does a healthy adult human usually have?",
+    options: ["28", "30", "32", "36"],
+    answer: "32",
+    level: 3,
+  },
+  {
+    topic: "Science 🪐",
+    question: "Which planet is known as the Red Planet?",
+    options: ["Venus", "Jupiter", "Mars", "Saturn"],
+    answer: "Mars",
+    level: 3,
+  },
+
+  // ================= Level 4 =================
   {
     topic: "Science 🌬️",
     question: "Which gas do humans need to breathe in to survive?",
@@ -172,7 +322,7 @@ export const QUIZ_DATA = [
     level: 4,
   },
   {
-    topic: "ICT 💻",
+    topic: "ICT 🌐",
     question: "What does 'WWW' stand for?",
     options: ["World Wide Web", "World Word Web", "Western Wide Web", "World Wide Win"],
     answer: "World Wide Web",
@@ -185,24 +335,665 @@ export const QUIZ_DATA = [
     answer: "Asia",
     level: 4,
   },
+  {
+    topic: "Math 📐",
+    question: "If two angles of a triangle are 60° and 70°, what is the third angle?",
+    options: ["40°", "50°", "60°", "70°"],
+    answer: "50°",
+    level: 4,
+  },
+  {
+    topic: "Science 🍎",
+    question: "What force pulls objects toward the center of Earth?",
+    options: ["Friction", "Magnetism", "Gravity", "Tension"],
+    answer: "Gravity",
+    level: 4,
+  },
+  {
+    topic: "English ✍️",
+    question: "What part of speech is the word 'Quickly'?",
+    options: ["Verb", "Adjective", "Adverb", "Preposition"],
+    answer: "Adverb",
+    level: 4,
+  },
+  {
+    topic: "History 🇬🇭",
+    question: "What was Ghana called before gaining independence in 1957?",
+    options: ["Gold Coast", "Ivory Coast", "Slave Coast", "Grain Coast"],
+    answer: "Gold Coast",
+    level: 4,
+  },
+  {
+    topic: "Geography 🏞️",
+    question: "Kakum National Park is located in which region of Ghana?",
+    options: ["Ashanti Region", "Central Region", "Greater Accra Region", "Western Region"],
+    answer: "Central Region",
+    level: 4,
+  },
+  {
+    topic: "Science 🦴",
+    question: "How many bones are in the adult human body?",
+    options: ["106", "206", "306", "406"],
+    answer: "206",
+    level: 4,
+  },
+  {
+    topic: "ICT 💾",
+    question: "Which component stores temporary data currently being used by the computer?",
+    options: ["Hard Drive", "RAM", "ROM", "Flash Drive"],
+    answer: "RAM",
+    level: 4,
+  },
+
+  // ================= Level 5 =================
+  {
+    topic: "Science ⚛️",
+    question: "What is the center of an atom called?",
+    options: ["Electron", "Proton", "Nucleus", "Neutron"],
+    answer: "Nucleus",
+    level: 5,
+  },
+  {
+    topic: "Math 🔢",
+    question: "Solve for x: 2x + 5 = 15",
+    options: ["3", "5", "7", "10"],
+    answer: "5",
+    level: 5,
+  },
+  {
+    topic: "History 🇬🇭",
+    question: "Who designed the National Flag of Ghana?",
+    options: ["Theodosia Okoh", "Efua Sutherland", "Ama Ata Aidoo", "Yaa Asantewaa"],
+    answer: "Theodosia Okoh",
+    level: 5,
+  },
+  {
+    topic: "Geography 🗼",
+    question: "What is the capital city of France?",
+    options: ["London", "Berlin", "Rome", "Paris"],
+    answer: "Paris",
+    level: 5,
+  },
+  {
+    topic: "English 💬",
+    question: "Which figure of speech compares two things using 'like' or 'as'?",
+    options: ["Metaphor", "Simile", "Personification", "Hyperbole"],
+    answer: "Simile",
+    level: 5,
+  },
+  {
+    topic: "ICT 💻",
+    question: "What is the primary role of an Operating System?",
+    options: ["Playing music", "Managing hardware and software resources", "Printing documents", "Browsing websites"],
+    answer: "Managing hardware and software resources",
+    level: 5,
+  },
+  {
+    topic: "Science 🔋",
+    question: "What form of energy is stored in a battery?",
+    options: ["Thermal energy", "Chemical energy", "Nuclear energy", "Sound energy"],
+    answer: "Chemical energy",
+    level: 5,
+  },
+  {
+    topic: "Math 📊",
+    question: "What is 15% of 200?",
+    options: ["20", "25", "30", "35"],
+    answer: "30",
+    level: 5,
+  },
+  {
+    topic: "General 💵",
+    question: "What is the official currency of Ghana?",
+    options: ["Naira", "Dollar", "Ghana Cedi", "CFA Franc"],
+    answer: "Ghana Cedi",
+    level: 5,
+  },
+  {
+    topic: "Geography 🐪",
+    question: "Which is the largest hot desert in the world?",
+    options: ["Gobi Desert", "Kalahari Desert", "Sahara Desert", "Atacama Desert"],
+    answer: "Sahara Desert",
+    level: 5,
+  },
+  {
+    topic: "English 📖",
+    question: "Identify the antonym of 'Generous':",
+    options: ["Kind", "Stingy", "Helpful", "Polite"],
+    answer: "Stingy",
+    level: 5,
+  },
+  {
+    topic: "Science 🩸",
+    question: "Which type of blood cell defends the body against infections?",
+    options: ["Red blood cells", "White blood cells", "Platelets", "Plasma"],
+    answer: "White blood cells",
+    level: 5,
+  },
+
+  // ================= Level 6 =================
+  {
+    topic: "Science 💧",
+    question: "What is the chemical formula for water?",
+    options: ["CO2", "H2O", "O2", "NaCl"],
+    answer: "H2O",
+    level: 6,
+  },
+  {
+    topic: "Math ➗",
+    question: "What is the prime factorisation of 12?",
+    options: ["2 x 6", "3 x 4", "2 x 2 x 3", "2 x 3 x 3"],
+    answer: "2 x 2 x 3",
+    level: 6,
+  },
+  {
+    topic: "History 🏛️",
+    question: "In which year did Ghana become a Republic?",
+    options: ["1957", "1960", "1966", "1972"],
+    answer: "1960",
+    level: 6,
+  },
+  {
+    topic: "ICT 🐧",
+    question: "Which of the following is an open-source operating system?",
+    options: ["Windows", "macOS", "Linux", "iOS"],
+    answer: "Linux",
+    level: 6,
+  },
+  {
+    topic: "Geography 🏔️",
+    question: "What is the highest mountain peak in Ghana?",
+    options: ["Mount Everest", "Mount Afadjato", "Mount Kilimanjaro", "Mount Nimba"],
+    answer: "Mount Afadjato",
+    level: 6,
+  },
+  {
+    topic: "English 🗣️",
+    question: "Which sentence is written in the passive voice?",
+    options: ["Kofi kicked the ball", "The ball was kicked by Kofi", "Kofi is kicking the ball", "The ball will roll"],
+    answer: "The ball was kicked by Kofi",
+    level: 6,
+  },
+  {
+    topic: "Science ☀️",
+    question: "Approximately how long does Earth take to orbit the Sun once?",
+    options: ["24 hours", "30 days", "365 days", "10 years"],
+    answer: "365 days",
+    level: 6,
+  },
+  {
+    topic: "Math 📏",
+    question: "Calculate the perimeter of a rectangle with length 8cm and width 5cm:",
+    options: ["13cm", "26cm", "40cm", "50cm"],
+    answer: "26cm",
+    level: 6,
+  },
+  {
+    topic: "General ⚡",
+    question: "Which unit is used to measure electrical current?",
+    options: ["Volt", "Watt", "Ampere", "Ohm"],
+    answer: "Ampere",
+    level: 6,
+  },
+  {
+    topic: "Science 🫀",
+    question: "Which human organ filters waste from the blood to produce urine?",
+    options: ["Heart", "Liver", "Kidney", "Stomach"],
+    answer: "Kidney",
+    level: 6,
+  },
+  {
+    topic: "English ✍️",
+    question: "What is the past participle of the verb 'Drive'?",
+    options: ["Drove", "Driving", "Driven", "Drives"],
+    answer: "Driven",
+    level: 6,
+  },
+  {
+    topic: "Geography 🗺️",
+    question: "Which neighboring country borders Ghana to the West?",
+    options: ["Togo", "Burkina Faso", "Ivory Coast", "Nigeria"],
+    answer: "Ivory Coast",
+    level: 6,
+  },
+
+  // ================= Level 7 =================
+  {
+    topic: "Science 🚀",
+    question: "What minimum speed must an object reach to break free from Earth's gravity?",
+    options: ["Terminal velocity", "Speed of sound", "Escape velocity", "Light speed"],
+    answer: "Escape velocity",
+    level: 7,
+  },
+  {
+    topic: "Math ⭕",
+    question: "What is the area of a circle with a radius of 7cm? (Use π = 22/7)",
+    options: ["44 cm²", "154 cm²", "308 cm²", "49 cm²"],
+    answer: "154 cm²",
+    level: 7,
+  },
+  {
+    topic: "History 🎵",
+    question: "Who composed the National Anthem of Ghana ('God Bless Our Homeland Ghana')?",
+    options: ["Ephraim Amu", "Philip Gbeho", "Kwame Nkrumah", "J.H. Nketia"],
+    answer: "Philip Gbeho",
+    level: 7,
+  },
+  {
+    topic: "ICT 🔒",
+    question: "Which internet protocol secures data transmission using encryption?",
+    options: ["HTTP", "HTTPS", "FTP", "SMTP"],
+    answer: "HTTPS",
+    level: 7,
+  },
+  {
+    topic: "Geography 🦘",
+    question: "Which is the smallest continent by land area?",
+    options: ["Europe", "Antarctica", "Australia", "South America"],
+    answer: "Australia",
+    level: 7,
+  },
+  {
+    topic: "English 🎭",
+    question: "What literary term describes a figure of speech combining contradictory words (e.g. 'deafening silence')?",
+    options: ["Oxymoron", "Onomatopoeia", "Hyperbole", "Alliteration"],
+    answer: "Oxymoron",
+    level: 7,
+  },
+  {
+    topic: "Science 🛡️",
+    question: "Which atmospheric layer protects Earth by absorbing harmful ultraviolet (UV) radiation?",
+    options: ["Troposphere", "Ozone Layer", "Mesosphere", "Thermosphere"],
+    answer: "Ozone Layer",
+    level: 7,
+  },
+  {
+    topic: "Math 🔢",
+    question: "What is the value of 2 raised to the power of 6 (2⁶)?",
+    options: ["32", "64", "128", "256"],
+    answer: "64",
+    level: 7,
+  },
+  {
+    topic: "General 📜",
+    question: "Who wrote the renowned Ghanaian play 'The Marriage of Anansewa'?",
+    options: ["Ama Ata Aidoo", "Efua Sutherland", "Atukwei Okai", "Wole Soyinka"],
+    answer: "Efua Sutherland",
+    level: 7,
+  },
+  {
+    topic: "ICT 🤖",
+    question: "What decimal number is represented by the binary code '101'?",
+    options: ["3", "5", "6", "7"],
+    answer: "5",
+    level: 7,
+  },
+  {
+    topic: "Science 🌡️",
+    question: "Which instrument is used to measure atmospheric pressure?",
+    options: ["Thermometer", "Barometer", "Hygrometer", "Anemometer"],
+    answer: "Barometer",
+    level: 7,
+  },
+  {
+    topic: "History 🏛️",
+    question: "Which ancient West African empire was famed for its gold wealth before European arrival?",
+    options: ["Ancient Ghana Empire", "Songhai Empire", "Mali Empire", "Dahomey Kingdom"],
+    answer: "Ancient Ghana Empire",
+    level: 7,
+  },
+
+  // ================= Level 8 =================
+  {
+    topic: "Science 💡",
+    question: "What is the approximate speed of light in a vacuum?",
+    options: ["300,000 km/s", "150,000 km/s", "1,000,000 km/s", "30,000 km/s"],
+    answer: "300,000 km/s",
+    level: 8,
+  },
+  {
+    topic: "Math 🧮",
+    question: "Solve the linear equation for x: 3x - 7 = 2x + 8",
+    options: ["1", "15", "12", "5"],
+    answer: "15",
+    level: 8,
+  },
+  {
+    topic: "Geography 🌐",
+    question: "Which major line of longitude passes through Tema in Ghana?",
+    options: ["Equator (0°)", "Tropic of Cancer", "Prime Meridian (0°)", "Tropic of Capricorn"],
+    answer: "Prime Meridian (0°)",
+    level: 8,
+  },
+  {
+    topic: "ICT 📡",
+    question: "What is the primary role of a router in a computer network?",
+    options: ["Storing files", "Directing data packets between networks", "Scanning for viruses", "Displaying graphics"],
+    answer: "Directing data packets between networks",
+    level: 8,
+  },
+  {
+    topic: "English ✍️",
+    question: "Giving human feelings or actions to non-human objects is called...",
+    options: ["Personification", "Metaphor", "Simile", "Irony"],
+    answer: "Personification",
+    level: 8,
+  },
+  {
+    topic: "Science 🧪",
+    question: "Which element has the chemical symbol 'Fe'?",
+    options: ["Fluorine", "Iron", "Lead", "Zinc"],
+    answer: "Iron",
+    level: 8,
+  },
+  {
+    topic: "Math 🔢",
+    question: "What is the Least Common Multiple (LCM) of 6 and 8?",
+    options: ["12", "18", "24", "48"],
+    answer: "24",
+    level: 8,
+  },
+  {
+    topic: "History ✊",
+    question: "The 1948 shooting of three ex-servicemen occurred at which historic location?",
+    options: ["Christianborg Crossroads", "Independence Square", "Elmina Castle", "Jubilee House"],
+    answer: "Christianborg Crossroads",
+    level: 8,
+  },
+  {
+    topic: "General 🧬",
+    question: "Which organelle is known as the 'powerhouse of the cell'?",
+    options: ["Nucleus", "Ribosome", "Mitochondria", "Golgi apparatus"],
+    answer: "Mitochondria",
+    level: 8,
+  },
+  {
+    topic: "Science ⚙️",
+    question: "Newton's Third Law of Motion states that for every action, there is...",
+    options: ["An equal and opposite reaction", "A greater force created", "A change in mass", "An acceleration"],
+    answer: "An equal and opposite reaction",
+    level: 8,
+  },
+  {
+    topic: "English 🔤",
+    question: "What is the term for a word that reads the same forwards and backwards (e.g. 'MADAM')?",
+    options: ["Anagram", "Palindrome", "Acronym", "Homophone"],
+    answer: "Palindrome",
+    level: 8,
+  },
+  {
+    topic: "Geography 🚢",
+    question: "Which man-made waterway connects the Mediterranean Sea to the Red Sea?",
+    options: ["Panama Canal", "Suez Canal", "Erie Canal", "Kiel Canal"],
+    answer: "Suez Canal",
+    level: 8,
+  },
+
+  // ================= Level 9 =================
+  {
+    topic: "Science ⚛️",
+    question: "Which subatomic particle carries a negative electrical charge?",
+    options: ["Proton", "Neutron", "Electron", "Positron"],
+    answer: "Electron",
+    level: 9,
+  },
+  {
+    topic: "Math 📐",
+    question: "What is the sum of all interior angles in a regular pentagon?",
+    options: ["360°", "540°", "720°", "180°"],
+    answer: "540°",
+    level: 9,
+  },
+  {
+    topic: "History 🌐",
+    question: "In which year was the United Nations (UN) established?",
+    options: ["1918", "1939", "1945", "1957"],
+    answer: "1945",
+    level: 9,
+  },
+  {
+    topic: "ICT 🗄️",
+    question: "What does SQL stand for in software engineering?",
+    options: ["Structured Query Language", "Simple System Language", "Standard Queue Logic", "Sequential Query List"],
+    answer: "Structured Query Language",
+    level: 9,
+  },
+  {
+    topic: "Geography 🌍",
+    question: "Which African country has the largest population?",
+    options: ["Egypt", "Ethiopia", "South Africa", "Nigeria"],
+    answer: "Nigeria",
+    level: 9,
+  },
+  {
+    topic: "English 📖",
+    question: "In narrative structure, what is the turning point of highest tension called?",
+    options: ["Exposition", "Climax", "Resolution", "Falling action"],
+    answer: "Climax",
+    level: 9,
+  },
+  {
+    topic: "Science 🧪",
+    question: "What type of chemical bond involves the sharing of electron pairs between atoms?",
+    options: ["Ionic bond", "Covalent bond", "Metallic bond", "Hydrogen bond"],
+    answer: "Covalent bond",
+    level: 9,
+  },
+  {
+    topic: "Math 📈",
+    question: "What is the derivative of x² with respect to x?",
+    options: ["x", "2x", "x²", "2"],
+    answer: "2x",
+    level: 9,
+  },
+  {
+    topic: "General ⛩️",
+    question: "What is the capital city of Japan?",
+    options: ["Beijing", "Seoul", "Tokyo", "Bangkok"],
+    answer: "Tokyo",
+    level: 9,
+  },
+  {
+    topic: "Science 🩺",
+    question: "Which hormone produced by the pancreas regulates blood sugar levels?",
+    options: ["Adrenaline", "Insulin", "Thyroxine", "Estrogen"],
+    answer: "Insulin",
+    level: 9,
+  },
+  {
+    topic: "ICT 🌐",
+    question: "What is the main function of an IP address?",
+    options: ["Measuring internet speed", "Uniquely identifying a device on a network", "Encrypting passwords", "Formatting web text"],
+    answer: "Uniquely identifying a device on a network",
+    level: 9,
+  },
+  {
+    topic: "History 🇬🇭",
+    question: "The United Gold Coast Convention (UGCC) leaders formed in 1947 were popularly known as...",
+    options: ["The Big Six", "The Young Pioneers", "The Verandah Boys", "The CPP Council"],
+    answer: "The Big Six",
+    level: 9,
+  },
+
+  // ================= Level 10 =================
+  {
+    topic: "Science 🌌",
+    question: "What is the most abundant chemical element in the universe?",
+    options: ["Oxygen", "Carbon", "Hydrogen", "Helium"],
+    answer: "Hydrogen",
+    level: 10,
+  },
+  {
+    topic: "Math 🔢",
+    question: "What is the value of log₁₀(1000)?",
+    options: ["1", "2", "3", "10"],
+    answer: "3",
+    level: 10,
+  },
+  {
+    topic: "Geography 🌊",
+    question: "What is the deepest known location in Earth's oceans?",
+    options: ["Puerto Rico Trench", "Mariana Trench", "Java Trench", "Sunda Trench"],
+    answer: "Mariana Trench",
+    level: 10,
+  },
+  {
+    topic: "ICT ⚡",
+    question: "What algorithm paradigm breaks a problem down into smaller self-similar subproblems?",
+    options: ["Recursion", "Iteration", "Sorting", "Hashing"],
+    answer: "Recursion",
+    level: 10,
+  },
+  {
+    topic: "History 🕊️",
+    question: "Which Ghanaian diplomat served as UN Secretary-General and won a Nobel Peace Prize in 2001?",
+    options: ["Kofi Annan", "Alex Quaison-Sackey", "Robert Gardiner", "Mohamed Ibn Chambas"],
+    answer: "Kofi Annan",
+    level: 10,
+  },
+  {
+    topic: "English 🔤",
+    question: "Which word is an exact anagram of 'LISTEN'?",
+    options: ["SILENT", "INSECT", "STRING", "LENTIL"],
+    answer: "SILENT",
+    level: 10,
+  },
+  {
+    topic: "Science 🪐",
+    question: "Which fundamental force keeps planets in orbit around the Sun?",
+    options: ["Electromagnetic force", "Strong nuclear force", "Gravity", "Weak nuclear force"],
+    answer: "Gravity",
+    level: 10,
+  },
+  {
+    topic: "Math 📐",
+    question: "What is the length of the hypotenuse of a right triangle with legs 9cm and 12cm?",
+    options: ["13cm", "14cm", "15cm", "18cm"],
+    answer: "15cm",
+    level: 10,
+  },
+  {
+    topic: "General 🌤️",
+    question: "Which gas makes up approximately 78% of Earth's atmosphere?",
+    options: ["Oxygen", "Nitrogen", "Carbon Dioxide", "Argon"],
+    answer: "Nitrogen",
+    level: 10,
+  },
+  {
+    topic: "Science 🍃",
+    question: "What plant pigment captures light energy for photosynthesis?",
+    options: ["Carotene", "Chlorophyll", "Xanthophyll", "Anthocyanin"],
+    answer: "Chlorophyll",
+    level: 10,
+  },
+  {
+    topic: "Geography 🏔️",
+    question: "What is the highest mountain peak on the African continent?",
+    options: ["Mount Kenya", "Mount Kilimanjaro", "Mount Cameroon", "Ras Dashen"],
+    answer: "Mount Kilimanjaro",
+    level: 10,
+  },
+  {
+    topic: "ICT 🛡️",
+    question: "What term describes fraudulent attempts to obtain sensitive information by posing as a trustworthy entity?",
+    options: ["Phishing", "Spamming", "Debugging", "Caching"],
+    answer: "Phishing",
+    level: 10,
+  },
 ];
 
 export const WORD_DATA = [
-  { hint: "A common fruit that's also a color 🍎", word: "ORANGE", level: 1 },
-  { hint: "A device used to type ⌨️", word: "KEYBOARD", level: 1 },
-  { hint: "A large body of water 🌊", word: "OCEAN", level: 1 },
-  { hint: "Place where students learn 🏫", word: "SCHOOL", level: 1 },
-  { hint: "The capital of Ghana 🇬🇭", word: "ACCRA", level: 1 },
-  { hint: "King of the jungle 🦁", word: "LION", level: 2 },
-  { hint: "Opposite of cold ☀️", word: "HOT", level: 2 },
-  { hint: "Something you use to brush your teeth 🦷", word: "TOOTHBRUSH", level: 2 },
-  { hint: "The star at the center of our solar system ☀️", word: "SUN", level: 2 },
-  { hint: "A very tall animal with a long neck 🦒", word: "GIRAFFE", level: 2 },
-  { hint: "Earth's only natural satellite 🌙", word: "MOON", level: 3 },
-  { hint: "A person who treats sick people 🩺", word: "DOCTOR", level: 3 },
-  { hint: "The building where you live 🏠", word: "HOUSE", level: 3 },
-  { hint: "You use this to keep dry in rain ☂️", word: "UMBRELLA", level: 3 },
-  { hint: "A large animal with a trunk 🐘", word: "ELEPHANT", level: 3 },
+  // Level 1
+  { hint: "A common fruit that's also a color", word: "ORANGE", level: 1 },
+  { hint: "A device used to type on a computer", word: "KEYBOARD", level: 1 },
+  { hint: "A massive body of salt water", word: "OCEAN", level: 1 },
+  { hint: "Place where students learn from teachers", word: "SCHOOL", level: 1 },
+  { hint: "The capital city of Ghana", word: "ACCRA", level: 1 },
+  { hint: "The star at the center of our solar system", word: "SUN", level: 1 },
+  { hint: "Opposite of hot", word: "COLD", level: 1 },
+  { hint: "A creature that swims in water", word: "FISH", level: 1 },
+
+  // Level 2
+  { hint: "King of the jungle", word: "LION", level: 2 },
+  { hint: "Tool used to brush teeth", word: "TOOTHBRUSH", level: 2 },
+  { hint: "A tall animal with a very long neck", word: "GIRAFFE", level: 2 },
+  { hint: "Season when flowers bloom", word: "SPRING", level: 2 },
+  { hint: "Instrument used to write or draw", word: "PENCIL", level: 2 },
+  { hint: "Structure where birds lay eggs", word: "NEST", level: 2 },
+  { hint: "Natural flow of water into the ocean", word: "RIVER", level: 2 },
+  { hint: "The planet we live on", word: "EARTH", level: 2 },
+
+  // Level 3
+  { hint: "Earth's only natural satellite", word: "MOON", level: 3 },
+  { hint: "Medical professional who treats sick people", word: "DOCTOR", level: 3 },
+  { hint: "Canopy used to protect against rain", word: "UMBRELLA", level: 3 },
+  { hint: "A giant land mammal with a long trunk", word: "ELEPHANT", level: 3 },
+  { hint: "Organ that pumps blood through the body", word: "HEART", level: 3 },
+  { hint: "Science study of living organisms", word: "BIOLOGY", level: 3 },
+  { hint: "Machine used to compute and browse internet", word: "COMPUTER", level: 3 },
+
+  // Level 4
+  { hint: "Process green plants use to make food", word: "PHOTOSYNTHESIS", level: 4 },
+  { hint: "Gas that humans breathe in to live", word: "OXYGEN", level: 4 },
+  { hint: "Study of numbers, shapes, and patterns", word: "MATHEMATICS", level: 4 },
+  { hint: "Word that describes a noun", word: "ADJECTIVE", level: 4 },
+  { hint: "The hardest natural crystal on Earth", word: "DIAMOND", level: 4 },
+  { hint: "Physical force that attracts objects toward Earth", word: "GRAVITY", level: 4 },
+  { hint: "Device converting sunlight into electricity", word: "SOLAR", level: 4 },
+
+  // Level 5
+  { hint: "Person who operates an aircraft or airplane", word: "PILOT", level: 5 },
+  { hint: "Atmospheric gas absorbed by plants", word: "CARBONDIOXIDE", level: 5 },
+  { hint: "Shape with six straight sides", word: "HEXAGON", level: 5 },
+  { hint: "Sacred symbol of Ashanti Kingdom", word: "GOLDENSTOOL", level: 5 },
+  { hint: "Organ filtering waste from human blood", word: "KIDNEY", level: 5 },
+  { hint: "Device used to measure temperature", word: "THERMOMETER", level: 5 },
+  { hint: "Large dry area with very little rainfall", word: "DESERT", level: 5 },
+
+  // Level 6
+  { hint: "Grammar word replacing a noun", word: "PRONOUN", level: 6 },
+  { hint: "The highest mountain peak in Ghana", word: "AFADJATO", level: 6 },
+  { hint: "Tiny unit making up living organisms", word: "CELL", level: 6 },
+  { hint: "Word opposite in meaning to another", word: "ANTONYM", level: 6 },
+  { hint: "The central core of an atom", word: "NUCLEUS", level: 6 },
+  { hint: "High speed global computer network", word: "INTERNET", level: 6 },
+  { hint: "Organelle known as powerhouse of cell", word: "MITOCHONDRIA", level: 6 },
+
+  // Level 7
+  { hint: "Word with the same or similar meaning", word: "SYNONYM", level: 7 },
+  { hint: "Figure comparing using like or as", word: "SIMILE", level: 7 },
+  { hint: "Green pigment in plants capturing light", word: "CHLOROPHYLL", level: 7 },
+  { hint: "Speed required to break free from gravity", word: "ESCAPEVELOCITY", level: 7 },
+  { hint: "Instrument measuring atmospheric pressure", word: "BAROMETER", level: 7 },
+  { hint: "Line of longitude 0 degrees in Tema", word: "PRIMEMERIDIAN", level: 7 },
+  { hint: "Subatomic particle with negative charge", word: "ELECTRON", level: 7 },
+
+  // Level 8
+  { hint: "Figure combining contradictory terms", word: "OXYMORON", level: 8 },
+  { hint: "Attributing human traits to non-human things", word: "PERSONIFICATION", level: 8 },
+  { hint: "Word reading same forward and backward", word: "PALINDROME", level: 8 },
+  { hint: "Network device directing data traffic", word: "ROUTER", level: 8 },
+  { hint: "Hormone regulating blood glucose levels", word: "INSULIN", level: 8 },
+  { hint: "Element represented by symbol Fe", word: "IRON", level: 8 },
+  { hint: "Atmospheric layer absorbing UV rays", word: "OZONE", level: 8 },
+
+  // Level 9
+  { hint: "Turning point of highest tension in story", word: "CLIMAX", level: 9 },
+  { hint: "Chemical bond sharing electron pairs", word: "COVALENT", level: 9 },
+  { hint: "Deceptive online attempt to steal credentials", word: "PHISHING", level: 9 },
+  { hint: "The capital city of Japan", word: "TOKYO", level: 9 },
+  { hint: "Most abundant element in universe", word: "HYDROGEN", level: 9 },
+  { hint: "Five-sided geometric polygon", word: "PENTAGON", level: 9 },
+  { hint: "First President of independent Ghana", word: "NKRUMAH", level: 9 },
+
+  // Level 10
+  { hint: "Word formed by rearranging letters", word: "ANAGRAM", level: 10 },
+  { hint: "Algorithm technique of self-calling functions", word: "RECURSION", level: 10 },
+  { hint: "Deepest location in Earth oceans", word: "MARIANATRENCH", level: 10 },
+  { hint: "Highest mountain peak in Africa", word: "KILIMANJARO", level: 10 },
+  { hint: "Ghanaian UN Secretary-General and Nobel winner", word: "KOFIANNAN", level: 10 },
+  { hint: "Gas making up 78 percent of atmosphere", word: "NITROGEN", level: 10 },
+  { hint: "Longest side of right angled triangle", word: "HYPOTENUSE", level: 10 },
 ];
 
 export const SCRAMBLE_DATA = [
@@ -281,3 +1072,93 @@ export const WRITING_DATA = [
   { char: "19", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
   { char: "20", type: "number", startPos: { top: "15%", left: "35%" }, dir: "down" },
 ];
+
+export interface MathQuestion {
+  question: string;
+  options: string[];
+  answer: string;
+  level: number;
+}
+
+export const MATH_SPRINT_DATA: MathQuestion[] = [
+  // Level 1
+  { question: "5 + 3 =", options: ["7", "8", "9", "10"], answer: "8", level: 1 },
+  { question: "12 - 4 =", options: ["7", "8", "9", "6"], answer: "8", level: 1 },
+  { question: "6 + 7 =", options: ["12", "13", "14", "15"], answer: "13", level: 1 },
+  { question: "15 - 9 =", options: ["5", "6", "7", "8"], answer: "6", level: 1 },
+  { question: "9 + 8 =", options: ["16", "17", "18", "19"], answer: "17", level: 1 },
+  { question: "20 - 7 =", options: ["12", "13", "14", "15"], answer: "13", level: 1 },
+
+  // Level 2
+  { question: "25 + 18 =", options: ["41", "43", "45", "42"], answer: "43", level: 2 },
+  { question: "50 - 22 =", options: ["28", "26", "38", "24"], answer: "28", level: 2 },
+  { question: "6 x 8 =", options: ["42", "48", "54", "36"], answer: "48", level: 2 },
+  { question: "35 + 45 =", options: ["70", "80", "90", "85"], answer: "80", level: 2 },
+  { question: "7 x 5 =", options: ["30", "35", "40", "25"], answer: "35", level: 2 },
+  { question: "60 - 25 =", options: ["35", "45", "25", "30"], answer: "35", level: 2 },
+
+  // Level 3
+  { question: "12 x 8 =", options: ["86", "92", "96", "108"], answer: "96", level: 3 },
+  { question: "72 ÷ 9 =", options: ["6", "7", "8", "9"], answer: "8", level: 3 },
+  { question: "11 x 11 =", options: ["111", "121", "131", "141"], answer: "121", level: 3 },
+  { question: "84 ÷ 7 =", options: ["11", "12", "13", "14"], answer: "12", level: 3 },
+  { question: "9 x 7 =", options: ["56", "63", "72", "54"], answer: "63", level: 3 },
+  { question: "100 ÷ 5 =", options: ["15", "20", "25", "30"], answer: "20", level: 3 },
+
+  // Level 4
+  { question: "15 x 4 =", options: ["50", "60", "70", "55"], answer: "60", level: 4 },
+  { question: "? + 18 = 45", options: ["23", "27", "25", "37"], answer: "27", level: 4 },
+  { question: "144 ÷ 12 =", options: ["10", "11", "12", "14"], answer: "12", level: 4 },
+  { question: "75 - 38 =", options: ["37", "47", "33", "27"], answer: "37", level: 4 },
+  { question: "16 x 3 =", options: ["42", "46", "48", "52"], answer: "48", level: 4 },
+  { question: "90 ÷ 6 =", options: ["12", "15", "18", "20"], answer: "15", level: 4 },
+
+  // Level 5
+  { question: "3 + 4 x 5 =", options: ["35", "23", "20", "27"], answer: "23", level: 5 },
+  { question: "12² (12 x 12) =", options: ["124", "144", "164", "134"], answer: "144", level: 5 },
+  { question: "(15 + 25) ÷ 5 =", options: ["6", "8", "10", "12"], answer: "8", level: 5 },
+  { question: "25 x 4 - 20 =", options: ["60", "70", "80", "90"], answer: "80", level: 5 },
+  { question: "7² + 1 =", options: ["48", "49", "50", "51"], answer: "50", level: 5 },
+  { question: "50% of 160 =", options: ["60", "70", "80", "90"], answer: "80", level: 5 },
+
+  // Level 6
+  { question: "25% of 200 =", options: ["40", "50", "60", "75"], answer: "50", level: 6 },
+  { question: "1/2 + 1/4 =", options: ["2/4", "3/4", "1/6", "2/6"], answer: "3/4", level: 6 },
+  { question: "10% of 350 =", options: ["30", "35", "40", "45"], answer: "35", level: 6 },
+  { question: "3³ (3 x 3 x 3) =", options: ["9", "18", "27", "81"], answer: "27", level: 6 },
+  { question: "75% of 80 =", options: ["50", "55", "60", "65"], answer: "60", level: 6 },
+  { question: "0.5 x 40 =", options: ["15", "20", "25", "30"], answer: "20", level: 6 },
+
+  // Level 7
+  { question: "Solve for x: 2x = 18", options: ["7", "8", "9", "10"], answer: "9", level: 7 },
+  { question: "Solve for x: x + 15 = 42", options: ["27", "25", "32", "23"], answer: "27", level: 7 },
+  { question: "Solve for x: 3x - 5 = 10", options: ["3", "4", "5", "6"], answer: "5", level: 7 },
+  { question: "Solve for x: 4x / 2 = 12", options: ["4", "5", "6", "8"], answer: "6", level: 7 },
+  { question: "Solve for x: 5x + 10 = 35", options: ["4", "5", "6", "7"], answer: "5", level: 7 },
+  { question: "Solve for x: 100 - 2x = 60", options: ["15", "20", "25", "30"], answer: "20", level: 7 },
+
+  // Level 8
+  { question: "√144 =", options: ["10", "11", "12", "13"], answer: "12", level: 8 },
+  { question: "√169 =", options: ["11", "12", "13", "14"], answer: "13", level: 8 },
+  { question: "15% of 300 =", options: ["30", "40", "45", "50"], answer: "45", level: 8 },
+  { question: "Solve for x: 4x - 8 = 24", options: ["6", "7", "8", "9"], answer: "8", level: 8 },
+  { question: "√225 =", options: ["13", "14", "15", "16"], answer: "15", level: 8 },
+  { question: "2⁴ (2 x 2 x 2 x 2) =", options: ["8", "12", "16", "32"], answer: "16", level: 8 },
+
+  // Level 9
+  { question: "2⁵ =", options: ["16", "24", "32", "64"], answer: "32", level: 9 },
+  { question: "√400 =", options: ["15", "20", "25", "30"], answer: "20", level: 9 },
+  { question: "30% of 150 =", options: ["35", "40", "45", "50"], answer: "45", level: 9 },
+  { question: "Solve for x: 6x + 12 = 48", options: ["5", "6", "7", "8"], answer: "6", level: 9 },
+  { question: "3⁴ =", options: ["27", "64", "81", "243"], answer: "81", level: 9 },
+  { question: "(8 x 7) + (12 x 3) =", options: ["88", "92", "96", "100"], answer: "92", level: 9 },
+
+  // Level 10
+  { question: "log₁₀(100) =", options: ["1", "2", "3", "10"], answer: "2", level: 10 },
+  { question: "Solve for x: 5x - 12 = 38", options: ["8", "9", "10", "11"], answer: "10", level: 10 },
+  { question: "√169 + 15 =", options: ["25", "27", "28", "30"], answer: "28", level: 10 },
+  { question: "2⁶ =", options: ["32", "48", "64", "128"], answer: "64", level: 10 },
+  { question: "Solve for x: 3x / 4 = 15", options: ["15", "18", "20", "25"], answer: "20", level: 10 },
+  { question: "40% of 250 =", options: ["80", "90", "100", "110"], answer: "100", level: 10 },
+];
+

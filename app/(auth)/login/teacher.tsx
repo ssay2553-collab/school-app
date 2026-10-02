@@ -27,6 +27,7 @@ import { COLORS, SHADOWS } from "../../../constants/theme";
 import { auth, db, functions } from "../../../firebaseConfig";
 import { useToast } from "../../../contexts/ToastContext";
 import { getTeacherClasses } from "../../../lib/classHelpers";
+import { fetchUserDocAndData } from "../../../utils/authUnify";
 
 export default function TeacherLoginScreen() {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function TeacherLoginScreen() {
     try {
       // 1. Try standard login
       const cred = await signInWithEmailAndPassword(auth, finalEmail, password);
-      await finishLogin(cred.user.uid);
+      await finishLogin(cred.user.uid, finalEmail);
     } catch (error: any) {
       console.log("Standard login failed, checking for Token Login...");
 
@@ -94,7 +95,7 @@ export default function TeacherLoginScreen() {
 
             // Now sign in with the new password
             const cred = await signInWithEmailAndPassword(auth, finalEmail, password.trim());
-            await finishLogin(cred.user.uid);
+            await finishLogin(cred.user.uid, finalEmail);
             return;
           }
         }
@@ -113,38 +114,37 @@ export default function TeacherLoginScreen() {
     }
   };
 
-  const finishLogin = async (uid: string) => {
-    let userDoc = await getDoc(doc(db, "users", uid));
-    let userData = userDoc.data();
+  const finishLogin = async (uid: string, userEmail?: string) => {
+    const { userData } = await fetchUserDocAndData(uid, userEmail);
 
-    if (!userDoc.exists()) {
-      // Fallback: Check for staff with legacy IDs mapped via authUid
-      const q = query(
-        collection(db, "users"),
-        where("authUid", "==", uid),
-        limit(1)
-      );
-      const querySnap = await getDocs(q);
-      if (!querySnap.empty) {
-        userDoc = querySnap.docs[0];
-        userData = userDoc.data();
-      } else {
-        await auth.signOut();
-        throw new Error("User record not found. Please ensure your registration was completed successfully.");
-      }
+    if (!userData) {
+      await auth.signOut();
+      throw new Error("User record not found. Please ensure your registration was completed successfully.");
     }
 
-    const role = (userData?.role || userData?.profile?.role || "").toLowerCase();
-    const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase();
+    const role = (userData?.role || userData?.profile?.role || "").toLowerCase().trim();
+    const adminRole = (userData?.adminRole || userData?.profile?.adminRole || "").toLowerCase().trim();
+    const permissions = userData?.permissions || {};
 
-    // Hybrid logic: Allow if they are explicitly a teacher OR an admin with teaching duties
+    // Hybrid logic: Allow if explicitly a teacher, staff, or admin with teaching/academic attributes
     const isTeacher =
       role === "teacher" ||
+      role === "staff" ||
       getTeacherClasses(userData as any).length > 0 ||
       (userData?.subjects || []).length > 0 ||
-      (userData?.profile?.subjects || []).length > 0;
-    const isAdmin = role === "admin" || adminRole !== "";
-    const isParent = role === "parent";
+      (userData?.profile?.subjects || []).length > 0 ||
+      !!userData?.classTeacherOf ||
+      !!userData?.profile?.classTeacherOf;
+
+    const isAdmin =
+      role.includes("admin") ||
+      role.includes("super") ||
+      role === "manager" ||
+      adminRole !== "" ||
+      permissions['manage-users'] === 'full' ||
+      permissions['manage-fees'] === 'full';
+
+    const isParent = role === "parent" || !!(userData?.childrenIds?.length || userData?.profile?.childrenIds?.length);
     const isStudent = role === "student";
 
     if (isTeacher) {

@@ -11,6 +11,14 @@ export const History: Record<string, GESIndicator[]> = {
       objectives: "Explain the concept of history and state key reasons for studying local and national history (understanding identity, learning from past events)."
     },
     {
+      code: "B4.1.1.1.2",
+      strand: "History of Ghana",
+      subStrand: "Origins of Major Ethnic Groups",
+      contentStandard: "Demonstrate understanding of origins and migration stories of major ethnic groups in Ghana",
+      indicator: "Ancient settlements and push/pull factors of migration",
+      objectives: "Identify push factors (wars, famine) and pull factors (fertile land, trade) influencing ethnic migrations."
+    },
+    {
       code: "B4.1.2.1.1",
       strand: "History as a Subject",
       subStrand: "Sources of Historical Evidence",
@@ -35,36 +43,12 @@ export const History: Record<string, GESIndicator[]> = {
       objectives: "Describe the leadership roles and achievements of key pre-colonial traditional leaders in Ghana."
     },
     {
-      code: "B4.3.1.1.1",
-      strand: "Europeans in Ghana",
-      subStrand: "Arrival of Europeans",
-      contentStandard: "Understand early European contact with the Gold Coast",
-      indicator: "Arrival of the Portuguese (1471) and Don Diego d'Azambuja",
-      objectives: "State the reasons for European arrival (trade in gold, ivory, spices) and describe the construction of Elmina Castle (1482)."
-    },
-    {
-      code: "B4.3.2.1.1",
-      strand: "Europeans in Ghana",
-      subStrand: "Forts and Castles",
-      contentStandard: "Locate and appreciate significant forts and castles along the coast of Ghana",
-      indicator: "Forts and Castles in Ghana (Elmina Castle, Cape Coast Castle, Christiansborg Castle)",
-      objectives: "Identify major forts and castles along Ghana's coastline, their builders, and their historical uses (trade depots, slave dungeons)."
-    },
-    {
       code: "B4.4.1.1.1",
       strand: "Colonialism and Developments in Ghana",
       subStrand: "British Colonial Rule",
       contentStandard: "Understand the Bond of 1844 and its historical significance",
       indicator: "The Bond of 1844 and British influence",
       objectives: "Explain the reasons for signing the Bond of 1844 between southern chiefs and Commander Hill, and its impact on Gold Coast sovereignty."
-    },
-    {
-      code: "B4.5.1.1.1",
-      strand: "Journey to Independence",
-      subStrand: "National Heroes and Founders",
-      contentStandard: "Recognize early pioneers and founding figures in Ghana's history",
-      indicator: "Contributions of John Mensah Sarbah, J.E. Casely Hayford, and Yaa Asantewaa",
-      objectives: "Describe the roles played by early nationalists (Aborigines' Rights Protection Society) and Queen Mother Yaa Asantewaa in defending local rights."
     }
   ],
   "Basic 5": [
@@ -75,6 +59,22 @@ export const History: Record<string, GESIndicator[]> = {
       contentStandard: "Compare primary and secondary sources of history",
       indicator: "Primary vs. Secondary historical sources",
       objectives: "Classify historical evidence into primary sources (eyewitness accounts, photographs, letters) and secondary sources (textbooks, biographies)."
+    },
+    {
+      code: "B5.1.1.1.2",
+      strand: "European Arrival and Trade",
+      subStrand: "Arrival of Europeans in the Gold Coast",
+      contentStandard: "Understand European arrivals in the 15th century and early trading contacts",
+      indicator: "Items of trade between Europeans and Gold Coast indigenous people",
+      objectives: "List items brought by Europeans (guns, textiles, mirrors) and items traded by Africans (gold, ivory, spices)."
+    },
+    {
+      code: "B5.1.2.1.1",
+      strand: "European Arrival and Trade",
+      subStrand: "Trans-Saharan and Trans-Atlantic Slave Trade",
+      contentStandard: "Analyze Trans-Saharan trade routes and the Trans-Atlantic Slave Trade",
+      indicator: "Barter trade, silent trade, Trans-Atlantic slave trade, and human impact",
+      objectives: "Describe how Trans-Atlantic Slave Trade operated, forts/castles involved, and its devastating effects on West Africa."
     },
     {
       code: "B5.2.1.1.1",
@@ -109,28 +109,12 @@ export const History: Record<string, GESIndicator[]> = {
       objectives: "Evaluate the contributions of early missionaries (e.g. Andreas Riis, Thomas Birch Freeman) in establishing schools, hospitals, agriculture, and written local languages."
     },
     {
-      code: "B5.4.1.1.1",
-      strand: "Colonialism and Developments in Ghana",
-      subStrand: "Resistance to Colonial Rule",
-      contentStandard: "Understand major conflicts between Gold Coast states and the British",
-      indicator: "Anglo-Asante Wars (Sagrenti War of 1874, Yaa Asantewaa War of 1900)",
-      objectives: "Examine the causes, key events, and outcomes of the Anglo-Asante Wars and Yaa Asantewaa's resistance to protect the Golden Stool."
-    },
-    {
       code: "B5.4.2.1.1",
       strand: "Colonialism and Developments in Ghana",
       subStrand: "Economic and Social Infrastructure",
       contentStandard: "Analyze infrastructural developments under British colonial administration",
       indicator: "Railways, cocoa cultivation, Achimota School, and Korle-Bu Hospital under Governor Gordon Guggisberg",
       objectives: "Evaluate the infrastructural achievements of Governor Gordon Guggisberg (1919-1927) in railways, cocoa expansion, health, and education."
-    },
-    {
-      code: "B5.5.1.1.1",
-      strand: "Journey to Independence",
-      subStrand: "Formation of Early Political Parties",
-      contentStandard: "Demonstrate understanding of early political movements in Gold Coast",
-      indicator: "Formation of UGCC (1947) and CPP (1949)",
-      objectives: "Explain the formation, objectives, and leadership of the United Gold Coast Convention (UGCC) and Convention People's Party (CPP)."
     }
   ],
   "Basic 6": [
@@ -143,12 +127,12 @@ export const History: Record<string, GESIndicator[]> = {
       objectives: "Compare differing historical accounts of the same event and identify how bias or point of view shapes historical narratives."
     },
     {
-      code: "B6.2.1.1.1",
-      strand: "My Country Ghana",
-      subStrand: "Cultural Heritage and Symbols",
-      contentStandard: "Appreciate national symbols, monuments, and cultural heritage of Ghana",
-      indicator: "National Flag, Coat of Arms, Pledge, National Anthem, and Golden Stool",
-      objectives: "Explain the historical symbolism and meaning of Ghana's National Flag (Theodosia Okoh), Coat of Arms (Amon Kotei), and cultural emblems."
+      code: "B6.1.1.1.2",
+      strand: "Colonial Rule and Resistance",
+      subStrand: "British Colonial Rule and Agreements",
+      contentStandard: "Understand British colonization, Bond of 1844, and Poll Tax Ordinance",
+      indicator: "Causes and failure of the Poll Tax Ordinance of 1852",
+      objectives: "Explain why the British introduced the Poll Tax Ordinance of 1852 and reasons chiefs and people refused to pay."
     },
     {
       code: "B6.3.1.1.1",
@@ -167,36 +151,74 @@ export const History: Record<string, GESIndicator[]> = {
       objectives: "Describe the 28th February 1948 Christiansborg Crossroads shooting, the resulting nation-wide riots, and recommendations of the Watson Commission."
     },
     {
-      code: "B6.5.1.1.1",
-      strand: "Journey to Independence",
-      subStrand: "The Big Six and Self-Government",
-      contentStandard: "Recognize the Big Six and their contributions to Ghana's independence",
-      indicator: "The Big Six (Dr. Kwame Nkrumah, J.B. Danquah, Edward Akufo-Addo, Emmanuel Obetsebi-Lamptey, William Ofori Atta, Ako Adjei)",
-      objectives: "Identify members of 'The Big Six', explain their arrest in 1948, and detail their individual contributions to Gold Coast self-government."
-    },
-    {
       code: "B6.5.2.1.1",
       strand: "Journey to Independence",
       subStrand: "Independence Day (6th March 1957)",
       contentStandard: "Understand the events leading to Independence on 6th March 1957",
       indicator: "1951/1956 elections, motion of destiny, and midnight declaration at Old Polo Ground",
       objectives: "Detail the declaration of Independence on 6th March 1957 by Dr. Kwame Nkrumah at the Old Polo Ground in Accra and its national significance."
+    }
+  ],
+  "JHS 1": [
+    {
+      code: "B7.1.1.1.2",
+      strand: "Ancient African Civilizations",
+      subStrand: "Old Ghana, Mali and Songhai Empires",
+      contentStandard: "Analyze political, economic, and social structures of ancient West African empires",
+      indicator: "Trans-Saharan trade routes, gold-salt trade, and Timbuktu learning center",
+      objectives: "Describe the silent gold-salt trade across the Sahara desert and Timbuktu's role as an Islamic university city."
     },
     {
-      code: "B6.5.3.1.1",
-      strand: "Journey to Independence",
-      subStrand: "The First Republic (1st July 1960)",
-      contentStandard: "Understand Ghana's transition to a Republic status",
-      indicator: "Ghana becoming a Republic on 1st July 1960 and Dr. Kwame Nkrumah as first Executive President",
-      objectives: "Differentiate between Independence (1957) and Republic status (1960), when Dr. Kwame Nkrumah became the first Executive President."
+      code: "B7.2.1.1.1",
+      strand: "Pre-Colonial Ghana",
+      subStrand: "States and Kingdoms in Ghana",
+      contentStandard: "Examine governance and military systems of Ashanti, Denkyira, Fante, Dagbon, and Gonja kingdoms",
+      indicator: "Asante Kingdom, Golden Stool, Denkyira hegemony, Dagbon Kingdom, and Gonja state",
+      objectives: "Analyze military organization, political alliances, and trade strength of pre-colonial Ghanaian kingdoms."
+    }
+  ],
+  "JHS 2": [
+    {
+      code: "B8.1.1.1.1",
+      strand: "Colonialism and Indirect Rule",
+      subStrand: "British Indirect Rule System in Gold Coast",
+      contentStandard: "Evaluate the Indirect Rule system, Native Authorities, and Chiefly power under colonial rule",
+      indicator: "Indirect Rule, Native Authorities, Native Courts, and opposition by educated elites",
+      objectives: "Evaluate strengths and weaknesses of British Indirect Rule through Chiefs and reasons educated elites opposed it."
     },
     {
-      code: "B6.5.4.1.1",
-      strand: "Journey to Independence",
-      subStrand: "Ghana's Role in Pan-Africanism",
-      contentStandard: "Appreciate Ghana's role in the liberation of Africa and Pan-African movement",
-      indicator: "Pan-Africanism, OAU (African Union) formation, and support for African independence",
-      objectives: "Describe Dr. Kwame Nkrumah's vision of Pan-Africanism and Ghana's leadership in supporting liberation movements across the African continent."
+      code: "B8.1.1.1.2",
+      strand: "Colonialism and Indirect Rule",
+      subStrand: "British Indirect Rule System in Gold Coast",
+      contentStandard: "Evaluate the Indirect Rule system, Native Authorities, and Chiefly power under colonial rule",
+      indicator: "Role of Provincial Councils of Chiefs and Aborigines' Rights Protection Society (ARPS)",
+      objectives: "Explain how ARPS fought against the Crown Lands Bill of 1897 to protect indigenous land ownership."
+    },
+    {
+      code: "B8.2.1.1.1",
+      strand: "World Wars and Gold Coast",
+      subStrand: "Impact of First and Second World Wars on Gold Coast",
+      contentStandard: "Analyze participation of Gold Coast Regiment in WWI and WWII and political aftermath",
+      indicator: "Gold Coast Regiment in Burma/East Africa, 1948 Cross-Roads shooting (Ex-servicemen), and UGCC formation",
+      objectives: "Explain how returning WWII soldiers (Ex-servicemen) fueled political agitation culminating in the 1948 Accra Riots."
+    }
+  ],
+  "JHS 3": [
+    {
+      code: "B9.1.1.1.2",
+      strand: "Independent Ghana",
+      subStrand: "The First Republic to the Fourth Republic",
+      contentStandard: "Trace Ghana's political transitions from 1957 Independence through military coups to the 1992 Fourth Republic",
+      indicator: "Key developmental projects under Dr. Kwame Nkrumah's 1st Republic",
+      objectives: "List industrial and educational projects of the 1st Republic (Akosombo Dam, Tema Harbor, KNUST, UCC)."
+    },
+    {
+      code: "B9.2.1.1.1",
+      strand: "BECE History Revision",
+      subStrand: "BECE History Mastery and Essay Writing",
+      contentStandard: "Master complete BECE History curriculum topics, timeline analysis, and essay presentation",
+      indicator: "BECE past question analysis, cause-effect essay writing, and historical timeline analysis",
+      objectives: "Write well-structured BECE essays on pre-colonial kingdoms, European trade, colonial resistance, and independence heroes."
     }
   ]
 };

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import SVGIcon from '../SVGIcon';
 import { COLORS, SHADOWS } from '../../constants/theme';
-import { GES_CURRICULUM_DATA, GESIndicator } from '../../constants/GES_Curriculum';
+import { GES_CURRICULUM_DATA, GESIndicator, normalizeSubjectKey } from '../../constants/GES_Curriculum';
+import { normalizeClassLevel } from '../../constants/Curriculum';
 import * as Animatable from 'react-native-animatable';
 
 interface CurriculumBrowserModalProps {
@@ -29,11 +30,27 @@ export const CurriculumBrowserModal = ({
   initialSubject,
   initialClass
 }: CurriculumBrowserModalProps) => {
-  const [selectedSubject, setSelectedSubject] = useState(initialSubject || "");
-  const [selectedClass, setSelectedClass] = useState(initialClass || "");
+  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedClass, setSelectedClass] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
   const subjects = Object.keys(GES_CURRICULUM_DATA);
+
+  useEffect(() => {
+    if (visible) {
+      const normSubject = normalizeSubjectKey(initialSubject);
+      const matchedSub = subjects.find(s => s === normSubject) || subjects[0] || "";
+      setSelectedSubject(matchedSub);
+
+      if (initialClass) {
+        const normClass = normalizeClassLevel(initialClass);
+        setSelectedClass(normClass);
+      } else {
+        setSelectedClass("");
+      }
+      setSearchQuery("");
+    }
+  }, [visible, initialSubject, initialClass]);
 
   const classes = useMemo(() => {
     if (!selectedSubject) return [];
@@ -41,15 +58,27 @@ export const CurriculumBrowserModal = ({
   }, [selectedSubject]);
 
   const indicators = useMemo(() => {
-    if (!selectedSubject || !selectedClass) return [];
-    let list = GES_CURRICULUM_DATA[selectedSubject]?.[selectedClass] || [];
+    if (!selectedSubject) return [];
+
+    let list: GESIndicator[] = [];
+
+    if (selectedClass) {
+      list = GES_CURRICULUM_DATA[selectedSubject]?.[selectedClass] || [];
+    } else {
+      // If no class selected, aggregate all indicators for selected subject
+      const classMap = GES_CURRICULUM_DATA[selectedSubject] || {};
+      list = Object.values(classMap).flat();
+    }
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter(i =>
         i.code.toLowerCase().includes(q) ||
         i.indicator.toLowerCase().includes(q) ||
-        i.strand.toLowerCase().includes(q)
+        i.strand.toLowerCase().includes(q) ||
+        i.subStrand.toLowerCase().includes(q) ||
+        i.contentStandard.toLowerCase().includes(q) ||
+        i.objectives.toLowerCase().includes(q)
       );
     }
     return list;
@@ -75,10 +104,15 @@ export const CurriculumBrowserModal = ({
             <SVGIcon name="search" size={20} color="#94A3B8" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search by code or keyword..."
+              placeholder="Search by code, keyword or topic..."
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery("")}>
+                <SVGIcon name="close-circle" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <ScrollView style={styles.content}>
@@ -102,6 +136,12 @@ export const CurriculumBrowserModal = ({
               <Animatable.View animation="fadeIn" duration={300}>
                 <Text style={styles.sectionTitle}>2. Class Level</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+                  <TouchableOpacity
+                    onPress={() => setSelectedClass("")}
+                    style={[styles.chip, selectedClass === "" && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, selectedClass === "" && styles.chipTextActive]}>All Classes</Text>
+                  </TouchableOpacity>
                   {classes.map(c => (
                     <TouchableOpacity
                       key={c}
@@ -115,22 +155,25 @@ export const CurriculumBrowserModal = ({
               </Animatable.View>
             ) : null}
 
-            <Text style={styles.sectionTitle}>3. Indicators</Text>
-            {!selectedSubject || !selectedClass ? (
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionTitle}>3. Indicators ({indicators.length})</Text>
+            </View>
+
+            {!selectedSubject ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>Select a Subject and Class to view indicators</Text>
+                <Text style={styles.emptyText}>Select a Subject to view indicators</Text>
               </View>
             ) : indicators.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No indicators found matching your search</Text>
+                <Text style={styles.emptyText}>No indicators found matching your criteria</Text>
               </View>
             ) : (
               indicators.map((item, index) => (
                 <Animatable.View
-                  key={item.code}
+                  key={item.code + index}
                   animation="fadeInUp"
-                  delay={index * 50}
-                  duration={400}
+                  delay={Math.min(index * 30, 300)}
+                  duration={300}
                 >
                   <TouchableOpacity
                     style={styles.indicatorCard}
@@ -143,8 +186,9 @@ export const CurriculumBrowserModal = ({
                       <View style={styles.codeBadge}>
                         <Text style={styles.codeText}>{item.code}</Text>
                       </View>
-                      <Text style={styles.strandText}>{item.strand}</Text>
+                      <Text style={styles.strandText}>{item.strand} • {item.subStrand}</Text>
                     </View>
+                    <Text style={styles.contentStandardText}>{item.contentStandard}</Text>
                     <Text style={styles.indicatorTitle}>{item.indicator}</Text>
                     <Text style={styles.objectivesText} numberOfLines={2}>{item.objectives}</Text>
                   </TouchableOpacity>
@@ -162,7 +206,7 @@ export const CurriculumBrowserModal = ({
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContainer: {
-    height: '90%',
+    height: '92%',
     backgroundColor: '#F8FAFC',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
@@ -193,6 +237,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1E293B' },
   content: { flex: 1, paddingHorizontal: 20 },
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   sectionTitle: { fontSize: 12, fontWeight: '900', color: '#64748B', marginBottom: 12, marginTop: 10, textTransform: 'uppercase' },
   chipScroll: { marginBottom: 20 },
   chip: {
@@ -217,11 +262,12 @@ const styles = StyleSheet.create({
     borderColor: '#F1F5F9',
     ...SHADOWS.medium
   },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 10, flexWrap: 'wrap' },
   codeBadge: { backgroundColor: COLORS.primary + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  codeText: { fontSize: 10, fontWeight: '900', color: COLORS.primary },
-  strandText: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase' },
-  indicatorTitle: { fontSize: 16, fontWeight: '800', color: '#1E293B', marginBottom: 8 },
+  codeText: { fontSize: 11, fontWeight: '900', color: COLORS.primary },
+  strandText: { fontSize: 11, fontWeight: '800', color: '#94A3B8', textTransform: 'uppercase', flex: 1 },
+  contentStandardText: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 6 },
+  indicatorTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 6 },
   objectivesText: { fontSize: 13, color: '#64748B', lineHeight: 18 },
   emptyState: { padding: 40, alignItems: 'center' },
   emptyText: { textAlign: 'center', color: '#94A3B8', fontSize: 14, fontWeight: '600' }

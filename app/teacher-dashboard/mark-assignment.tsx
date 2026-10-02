@@ -25,6 +25,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useToast } from "../../contexts/ToastContext";
 import { useMarkAssignment, Submission, Assignment } from "../../hooks/teacher-dashboard/useMarkAssignment";
 import MathCanvas from "../../components/MathCanvas";
+import FormattedText from "../../components/FormattedText";
 import { useRef } from "react";
 
 /* ---------------- HELPERS ---------------- */
@@ -120,7 +121,7 @@ const SubmissionItem = React.memo(({
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 5 }}>
                     <SVGIcon name={q.type ? (q.type.includes('identify') ? 'eye' : 'star') : 'star'} size={14} color={COLORS.primary} />
-                    <Text style={[styles.qText, { marginBottom: 0 }]}>{q.text}</Text>
+                    <FormattedText style={[styles.qText, { marginBottom: 0 }]} text={q.text} />
                   </View>
                   <View style={styles.answerRow}>
                     <Text style={[styles.aText, { fontWeight: '700', color: COLORS.secondary }]}>
@@ -173,7 +174,7 @@ const SubmissionItem = React.memo(({
               <View key={idx} style={styles.responseItemContainer}>
                 <View style={styles.questionMain}>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.qText}>{`${idx + 1}. ${q.text}`}</Text>
+                    <FormattedText style={styles.qText} prefix={`${idx + 1}. `} text={q.text} />
 
                     {/* Visual Group for Math Questions */}
                     {(q.visualGroup && q.visualGroup.length > 0) ? (

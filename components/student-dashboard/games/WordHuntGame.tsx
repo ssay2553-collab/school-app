@@ -36,6 +36,9 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
 
   const startStage = useCallback(() => {
     let pool = WORD_DATA.filter((w) => w.level === level);
+    if (pool.length === 0) {
+      pool = WORD_DATA.filter((w) => w.level <= level);
+    }
     if (pool.length === 0) pool = WORD_DATA;
 
     setWords([...pool].sort(() => 0.5 - Math.random()).slice(0, 5));
@@ -117,13 +120,13 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
         <TouchableOpacity onPress={() => { safeStop(); onExit(); }}>
           <SVGIcon name="close-circle" color="#fff" size={32} />
         </TouchableOpacity>
-        <Text style={styles.levelText}>Word Hunt 🔍</Text>
+        <Text style={styles.levelText}>Word Hunt 🔍 • Lvl {level}</Text>
         <TouchableOpacity onPress={() => safeSpeak(words[index].hint)}>
           <SVGIcon name="volume-high" color="#fff" size={28} />
         </TouchableOpacity>
       </View>
       <View style={styles.scrambleContainer}>
-        <Text style={styles.hintLabel}>GUESS THE WORD:</Text>
+        <Text style={styles.hintLabel}>GUESS THE WORD ({words[index].word.length} LETTERS):</Text>
         <Text style={styles.hintValue}>{words[index].hint}</Text>
         <TextInput
           style={styles.textInput}

@@ -220,7 +220,7 @@ function hasScreenPermission(screen, level) {
         || (isTeacher() && resource.data.role == 'student')
         || (isParent() && resource.data.role == 'teacher')
         || (isParent() && userData() != null && (
-             (userId in userData().childrenIds) ||
+             (userId in userData().get('childrenIds', [])) ||
              (uid() in resource.data.get('parentUids', []))
            ))
         || (isTeacher() && resource.data.role == 'parent')
@@ -569,7 +569,7 @@ match /studentFeeRecords/{recordId} {
   // Allow read if Admin, or if the parent is linked to the student
   allow read: if isSignedIn() && (
     isAdmin() ||
-    (isParent() && recordId.split('_')[0] in userData().childrenIds)
+    (isParent() && recordId.split('_')[0] in userData().get('childrenIds', []))
   );
 
   // Only Admins or those with fee management permissions can write
@@ -584,7 +584,7 @@ match /feePayments/{paymentId} {
   // Allow read if Admin, or if the payment belongs to one of the parent's children
   allow read: if isSignedIn() && (
     isAdmin() ||
-    (isParent() && resource.data.studentUid in userData().childrenIds)
+    (isParent() && resource.data.studentUid in userData().get('childrenIds', []))
   );
 
   // Enforce valid academic metadata for all financial transactions
@@ -757,7 +757,7 @@ match /feePayments/{paymentId} {
         isAdmin()
         || (isTeacher() && ((resource.data.classId in userData().classes) || (getClassIdFromAttendanceId(id) in userData().classes)))
         || (isStudent() && resource.data.classId == userData().classId)
-        || (isParent() && exists(/databases/$(database)/documents/users/$(uid())) && (resource.data.students.keys().hasAny(userData().childrenIds)));
+        || (isParent() && exists(/databases/$(database)/documents/users/$(uid())) && (resource.data.students.keys().hasAny(userData().get('childrenIds', []))));
 
       allow write: if canManageAttendance() || isAdmin() || (isTeacher() && (isClassTeacher(request.resource.data.classId) || (request.resource.data.classId in userData().get('classes', []))));
       allow delete: if canManageAttendance() || isAdmin();
@@ -863,7 +863,7 @@ match /feePayments/{paymentId} {
        STUDENT GROUPS & MESSAGES
     =============================== */
     match /studentGroups/{groupId} {
-      allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == uid()) || (isStudent() && uid() in resource.data.studentIds) || (isParent() && userData().childrenIds.hasAny(resource.data.studentIds));
+      allow read: if isAdmin() || (isTeacher() && resource.data.teacherId == uid()) || (isStudent() && uid() in resource.data.studentIds) || (isParent() && userData().get('childrenIds', []).hasAny(resource.data.studentIds));
       allow create: if isTeacher() && request.resource.data.teacherId == uid();
       allow update: if isTeacher() && resource.data.teacherId == uid();
       allow delete: if isAdmin() || (isTeacher() && resource.data.teacherId == uid());
@@ -886,7 +886,7 @@ match /feePayments/{paymentId} {
         isAdmin()
         || (isTeacher() && resource.data.classId in userData().classes)
         || (isStudent() && uid() == resource.data.studentId)
-        || (isParent() && resource.data.studentId in userData().childrenIds &&
+        || (isParent() && resource.data.studentId in userData().get('childrenIds', []) &&
            (resource.data.get('reportType', 'End of Term') != 'End of Term' || hasNoDebt(resource.data.studentId)));
 
       allow write: if
@@ -903,7 +903,7 @@ match /feePayments/{paymentId} {
       allow read: if isAdmin()
         || (isTeacher() && (resource.data.classId in userData().classes || isClassTeacher(resource.data.classId)))
         || (isStudent() && resource.data.get('studentIds', []).hasAny([uid()]))
-        || (isParent() && userData().childrenIds.hasAny(resource.data.get('studentIds', [])));
+        || (isParent() && userData().get('childrenIds', []).hasAny(resource.data.get('studentIds', [])));
 
       // Admins have full access; Teachers (class teachers or subject teachers) can create/edit for classes they teach, with pending/draft/partially_approved status
       allow create: if isSignedIn() && (
@@ -947,7 +947,7 @@ match /feePayments/{paymentId} {
         isAdmin()
         || (isTeacher() && resource.data.classId in userData().classes)
         || (isStudent() && uid() == resource.data.studentId && resource.data.status == 'approved')
-        || (isParent() && resource.data.studentId in userData().childrenIds && resource.data.status == 'approved' &&
+        || (isParent() && resource.data.studentId in userData().get('childrenIds', []) && resource.data.status == 'approved' &&
            (resource.data.get('reportType', 'End of Term') != 'End of Term' || hasNoDebt(resource.data.studentId)));
 
       allow write: if isAdmin();
@@ -964,8 +964,8 @@ match /feePayments/{paymentId} {
         (isTeacher() && resource.data.classId in userData().classes) ||
         (isStudent() && (resource.data.get('studentId', '') == uid() || id.split('_')[0] == uid())) ||
         (isParent() && (
-          (resource.data.get('studentId', '') in userData().childrenIds) ||
-          (id.split('_')[0] in userData().childrenIds)
+          (resource.data.get('studentId', '') in userData().get('childrenIds', [])) ||
+          (id.split('_')[0] in userData().get('childrenIds', []))
         ))
       );
       allow write: if isAdmin() || (

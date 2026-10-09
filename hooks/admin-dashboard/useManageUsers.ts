@@ -943,6 +943,99 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     }
   };
 
+  const handleBulkDeleteUsers = () => {
+    const uidsArray = Array.from(selectedUserUids);
+    if (uidsArray.length === 0 || !hasManageUsersAccess) return;
+
+    const targetUsers = users.filter((u) => uidsArray.includes(u.uid));
+    const uidsToDelete = targetUsers.map((u) => u.uid).filter((uid) => uid !== appUser?.uid);
+
+    if (uidsToDelete.length === 0) {
+      showToast?.({ message: "No valid users to delete (you cannot delete your own account).", type: "error" });
+      return;
+    }
+
+    const performBulkDelete = async () => {
+      setUpdating(true);
+      try {
+        const batch = writeBatch(db);
+        let studentCountRemoved = 0;
+        let staffCountRemoved = 0;
+
+        for (const user of targetUsers) {
+          if (user.uid === appUser?.uid) continue;
+
+          if (user.role === "teacher" && user.classTeacherOf) {
+            batch.update(doc(db, "classes", user.classTeacherOf), { classTeacherId: null });
+          }
+          if (user.role === "student" && user.parentUids?.length) {
+            user.parentUids.forEach((pUid) =>
+              batch.update(doc(db, "users", pUid), { childrenIds: arrayRemove(user.uid) })
+            );
+          }
+          if (user.role === "parent" && user.childrenIds?.length) {
+            user.childrenIds.forEach((sUid) =>
+              batch.update(doc(db, "users", sUid), { parentUids: arrayRemove(user.uid) })
+            );
+          }
+          if (user.role === "student" && user.status !== "archived") {
+            studentCountRemoved++;
+          } else if (["admin", "teacher", "staff"].includes(user.role)) {
+            staffCountRemoved++;
+          }
+
+          batch.delete(doc(db, "users", user.uid));
+        }
+
+        const statsRef = doc(db, "stats", "global");
+        if (studentCountRemoved > 0 || staffCountRemoved > 0) {
+          batch.set(
+            statsRef,
+            {
+              totalStudents: increment(-studentCountRemoved),
+              totalStaff: increment(-staffCountRemoved),
+            },
+            { merge: true }
+          );
+        }
+
+        await batch.commit();
+
+        for (const uid of uidsToDelete) {
+          try {
+            await httpsCallable(functions, "deleteUserAccount")({ uid });
+          } catch (e) {
+            console.warn(`Auth deletion for ${uid} failed, database doc removed.`, e);
+          }
+        }
+
+        setUsers((prev) => prev.filter((u) => !uidsToDelete.includes(u.uid)));
+        setSelectedUserUids(new Set());
+        showToast?.({ message: `Successfully deleted ${uidsToDelete.length} account(s).`, type: "success" });
+      } catch (error: any) {
+        console.error("Bulk deletion failed:", error);
+        showToast?.({ message: "Failed to delete selected accounts: " + error.message, type: "error" });
+      } finally {
+        setUpdating(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Permanently delete ${uidsToDelete.length} selected user account(s)? This action cannot be undone.`)) {
+        performBulkDelete();
+      }
+    } else {
+      Alert.alert(
+        "Critical Bulk Action",
+        `Permanently delete ${uidsToDelete.length} selected user account(s)? This action cannot be undone.`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete Accounts", style: "destructive", onPress: performBulkDelete },
+        ]
+      );
+    }
+  };
+
   const handleUpdateProfile = async () => {
     if (!assignmentModal.target || !hasManageUsersAccess) return;
     if (!editForm.firstName.trim() || !editForm.lastName.trim()) {
@@ -1524,7 +1617,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     handleUpdateClasses, handleUpdateSubjects,
     handleAssignDeptHead, handleRemoveAssignedRole,
     handleAssignClassTeacher, handleToggleArchiveStatus,
-    handleGraduateClass, handleDeleteUser,
+    handleGraduateClass, handleDeleteUser, handleBulkDeleteUsers,
     handleUpdateProfile, handleUpgradeStaff,
     handleRegenerateSignupCode, handleShareCode,
     handleUpdateEmail, handleSaveNewBusLocation,

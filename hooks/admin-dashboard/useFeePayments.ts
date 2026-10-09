@@ -173,9 +173,9 @@ export const useFeePayments = ({
       }
 
       const hardcoded = [
-        { key: "admission", field: "admission" },
-        { key: "pta", field: "pta" },
         { key: "maintenance", field: "maintenance" },
+        { key: "pta", field: "pta" },
+        { key: "admission", field: "admission" },
         { key: "books", field: "books" },
         { key: "uniform", field: "uniform" }
       ];

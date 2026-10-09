@@ -68,7 +68,7 @@ export default function ReceiptViewScreen() {
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>
+          <Text style={[styles.headerTitle, { flex: 1, textAlign: "center" }]}>
             {type === "bill" ? "Fee Statement" : "Payment Receipt"}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
@@ -92,32 +92,30 @@ export default function ReceiptViewScreen() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <Animatable.View animation="fadeInUp" style={styles.receiptCard}>
-          <View style={[styles.cardHeader, { flexDirection: "row-reverse" }]}>
+          <View style={styles.cardHeaderCenter}>
             <Image
               source={schoolLogo}
-              style={[styles.logo, { marginRight: 0, marginLeft: 15 }]}
+              style={styles.logoCenter}
               resizeMode="contain"
             />
-            <View style={{ flex: 1, alignItems: "flex-end" }}>
-              <Text style={[styles.schoolName, { color: primary, textAlign: "right" }]}>
-                {SCHOOL_CONFIG.fullName.toUpperCase()}
-              </Text>
-              {SCHOOL_CONFIG.motto ? (
-                <Text style={[styles.schoolMotto, { textAlign: "right" }]}>"{SCHOOL_CONFIG.motto}"</Text>
-              ) : null}
-              <Text style={[styles.schoolContactText, { textAlign: "right" }]}>
-                {SCHOOL_CONFIG.address}
-              </Text>
-              <Text style={[styles.schoolContactText, { textAlign: "right" }]}>
-                {SCHOOL_CONFIG.hotline}{" "}
-                {SCHOOL_CONFIG.email ? ` | ${SCHOOL_CONFIG.email}` : ""}
+            <Text style={[styles.schoolName, { color: primary, textAlign: "center" }]}>
+              {SCHOOL_CONFIG.fullName.toUpperCase()}
+            </Text>
+            {SCHOOL_CONFIG.motto ? (
+              <Text style={[styles.schoolMotto, { textAlign: "center" }]}>"{SCHOOL_CONFIG.motto}"</Text>
+            ) : null}
+            <Text style={[styles.schoolContactText, { textAlign: "center" }]}>
+              {SCHOOL_CONFIG.address}
+            </Text>
+            <Text style={[styles.schoolContactText, { textAlign: "center" }]}>
+              {SCHOOL_CONFIG.hotline}{" "}
+              {SCHOOL_CONFIG.email ? ` | ${SCHOOL_CONFIG.email}` : ""}
+            </Text>
+            <View style={[styles.typeBadgeCenter, { backgroundColor: primary + "10" }]}>
+              <Text style={[styles.receiptType, { color: primary }]}>
+                {type === "bill" ? "OFFICIAL FEE STATEMENT" : "OFFICIAL PAYMENT RECEIPT"}
               </Text>
             </View>
-          </View>
-          <View style={[styles.typeBadge, { alignSelf: "flex-end", backgroundColor: primary + "10" }]}>
-            <Text style={[styles.receiptType, { color: primary }]}>
-              {type === "bill" ? "OFFICIAL FEE STATEMENT" : "OFFICIAL PAYMENT RECEIPT"}
-            </Text>
           </View>
 
           <View style={styles.divider} />
@@ -391,8 +389,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
-  logo: { width: 70, height: 70, marginRight: 15 },
+  cardHeaderCenter: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 15,
+  },
+  logoCenter: { width: 80, height: 80, marginBottom: 10 },
+  typeBadgeCenter: {
+    alignSelf: "center",
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 10,
+  },
   schoolName: { fontSize: 18, fontWeight: "900", marginBottom: 2 },
   schoolMotto: {
     fontSize: 10,

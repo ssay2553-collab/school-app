@@ -341,7 +341,7 @@ module.exports = ({ config }) => {
       package: "com.saysmanage.brain",
       scheme: "brain",
       logo: "./assets/icon-brain.png",
-      hotline: "0552530930",
+      hotline: "0500375283",
       fullName: "Bright Brains Montessori School",
       motto: "Let Their Light Shine",
       address: "Otukunor Street, Accra, Ghana",

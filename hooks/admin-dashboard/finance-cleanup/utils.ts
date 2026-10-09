@@ -18,19 +18,38 @@ export const normalizeCategory = (p: any): string => {
     );
   };
 
-  // Check explicit otherCategory or receivedFrom for custom/item categories (e.g., Abacus, Uniform, Maintenance)
-  const rawCustom = (p.otherCategory || "").trim();
-  const receivedFrom = (p.receivedFrom || "").trim();
+  const rawCustom = (p.otherCategory || p.categoryName || "").trim();
 
-  let customCat = "";
-  if (rawCustom && !isGenericOther(rawCustom)) {
-    customCat = rawCustom;
-  } else if (receivedFrom && !isGenericOther(receivedFrom)) {
-    customCat = receivedFrom;
+  // 1. Explicit payment type suffixes (e.g. "uniform_payment", "maintenance_payment", "pta_payment", "other_payment")
+  if (type.endsWith("_payment")) {
+    const cat = type.replace("_payment", "").trim();
+    if (isolatedKeys.includes(cat)) return cat;
+    if (cat === "tuition" || cat === "tuition_credit" || cat === "credit") return "tuition";
+    if (cat === "other" || cat === "other charges") {
+      if (rawCustom && !isGenericOther(rawCustom)) {
+        const customLower = rawCustom.toLowerCase().trim();
+        const cleanedCustom = customLower.replace(/[^a-z0-9]/g, "");
+        if (cleanedCustom.includes("pta")) return "pta";
+        if (cleanedCustom.includes("maintenance")) return "maintenance";
+        if (cleanedCustom.includes("admission")) return "admission";
+        if (cleanedCustom.includes("book")) return "books";
+        if (cleanedCustom.includes("uniform")) return "uniform";
+        return customLower;
+      }
+      return "other charges";
+    }
+    return cat;
   }
 
-  if (customCat) {
-    const customLower = customCat.toLowerCase().trim();
+  // 2. Explicit isolated keys (e.g. "maintenance", "pta", "admission", "books", "uniform")
+  if (isolatedKeys.includes(type)) return type;
+
+  // 3. Tuition / Tuition Credit
+  if (type.includes("tuition") || type === "credit") return "tuition";
+
+  // 4. Custom / Other category from rawCustom (otherCategory / categoryName)
+  if (rawCustom && !isGenericOther(rawCustom)) {
+    const customLower = rawCustom.toLowerCase().trim();
     const cleanedCustom = customLower.replace(/[^a-z0-9]/g, "");
 
     if (cleanedCustom.includes("pta")) return "pta";
@@ -42,18 +61,7 @@ export const normalizeCategory = (p: any): string => {
     return customLower;
   }
 
-  // Explicitly check for payment suffixes
-  if (type.endsWith("_payment")) {
-    const cat = type.replace("_payment", "").trim();
-    if (isolatedKeys.includes(cat)) return cat;
-    if (cat === "tuition" || cat === "tuition_credit" || cat === "credit") return "tuition";
-    if (cat === "other" || cat === "other charges") return "other charges";
-    return cat;
-  }
-
-  if (type.includes("tuition")) return "tuition";
-  if (isolatedKeys.includes(type)) return type;
-
+  // 5. Fallback checks on candidate strings (type, category, purpose, memo) EXCLUDING receivedFrom/paidBy
   const cand = (p.type || p.category || p.purpose || p.memo || "tuition")
     .toString()
     .toLowerCase()
@@ -66,7 +74,13 @@ export const normalizeCategory = (p: any): string => {
   if (cleaned.includes("book")) return "books";
   if (cleaned.includes("uniform")) return "uniform";
 
-  if (type === "other" || type === "other charges" || cleaned.includes("othercharges") || cleaned.includes("otherfees") || cleaned.includes("other")) {
+  if (
+    type === "other" ||
+    type === "other charges" ||
+    cleaned.includes("othercharges") ||
+    cleaned.includes("otherfees") ||
+    cleaned.includes("other")
+  ) {
     return "other charges";
   }
 
@@ -295,11 +309,7 @@ export const calculateFeeBreakdown = (
     }
 
     if (isPayment) {
-      if (category === "tuition") {
-        waterfallPool.push(amount);
-      } else {
-        summary[category].paid += amount;
-      }
+      waterfallPool.push(amount);
     } else {
       summary[category].billed += amount;
     }

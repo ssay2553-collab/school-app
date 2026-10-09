@@ -110,6 +110,7 @@ export default function ManageUsers() {
     handleToggleArchiveStatus,
     handleGraduateClass,
     handleDeleteUser,
+    handleBulkDeleteUsers,
     handleUpdateProfile,
     handleUpgradeStaff,
     handleRegenerateSignupCode,
@@ -474,6 +475,7 @@ export default function ManageUsers() {
           onBulkUpdate={handleBulkUpdate}
           onClearArrears={handleBulkClearArrears}
           onPromoteRepeat={() => openPromoteRepeat(null)}
+          onBulkDelete={handleBulkDeleteUsers}
         />
 
         <UserDetailModal

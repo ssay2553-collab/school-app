@@ -250,7 +250,12 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                 t.academicYear === selectedYear && t.term === selectedTerm
             );
 
-            if (record) {
+            // Check if there are real explicit payment transactions in feePayments collection for this term
+            const hasRealCollectionPayments = collectionTransactions.some((t: any) =>
+                t.academicYear === selectedYear && t.term === selectedTerm && isPaymentEntry(t)
+            );
+
+            if (record && !hasRealCollectionPayments) {
                 const categories = [
                     { key: 'tuition', paid: record.amountPaid || 0 },
                     { key: 'pta', paid: record.ptaPaid || 0 },

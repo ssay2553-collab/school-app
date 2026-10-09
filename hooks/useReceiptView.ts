@@ -51,9 +51,10 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
                     const cleanTerm = (term as string).replace(/\s/g, "");
                     const recordId = `${studentId}_${cleanYear}_${cleanTerm}`;
                     const rDoc = await getDoc(doc(db, "studentFeeRecords", recordId));
-                    if (rDoc.exists()) setRecord(rDoc.data());
+                    const recordData = rDoc.exists() ? rDoc.data() : null;
+                    if (recordData) setRecord(recordData);
 
-                    // Also fetch transactions for this period to ensure breakdown is accurate
+                    // Fetch transactions for this period from feePayments collection
                     const q = query(
                         collection(db, "feePayments"),
                         where("studentUid", "==", studentId),
@@ -61,9 +62,64 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
                         where("term", "==", term),
                     );
                     const tSnap = await getDocs(q);
-                    setAllTransactions(
-                        tSnap.docs.map((d) => ({ id: d.id, ...d.data() })),
+                    const collectionList = tSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+                    // Merge embedded payments from record.payments if not already present
+                    const recordList = recordData?.payments || [];
+                    const merged = [...collectionList];
+                    const existingIds = new Set<string>(collectionList.map((t: any) => String(t.receiptNo || t.id)));
+
+                    recordList.forEach((p: any) => {
+                        const id = String(p.receiptNo || p.id);
+                        if (id && id !== 'undefined' && !existingIds.has(id)) {
+                            merged.push({ ...p, id: id });
+                        }
+                    });
+
+                    // Strict filtering for this term/year
+                    const termTransactions = merged.filter((t: any) =>
+                        t.academicYear === year && t.term === term
                     );
+
+                    const hasRealCollectionPayments = collectionList.some((t: any) =>
+                        t.academicYear === year && t.term === term && isPaymentEntry(t)
+                    );
+
+                    if (recordData && !hasRealCollectionPayments) {
+                        const categories = [
+                            { key: 'tuition', paid: recordData.amountPaid || 0 },
+                            { key: 'pta', paid: recordData.ptaPaid || 0 },
+                            { key: 'maintenance', paid: recordData.maintenancePaid || 0 },
+                            { key: 'admission', paid: recordData.admissionPaid || 0 },
+                            { key: 'books', paid: recordData.booksPaid || 0 },
+                            { key: 'uniform', paid: recordData.uniformPaid || 0 },
+                        ];
+
+                        categories.forEach(cat => {
+                            const currentCatSum = termTransactions.reduce((sum: number, t: any) => {
+                                const isPayment = isPaymentEntry(t);
+                                const category = normalizeCategory(t);
+                                return (category === cat.key && isPayment) ? sum + (Number(t.amount) || 0) : sum;
+                            }, 0);
+
+                            if (cat.paid > currentCatSum + 0.01) {
+                                termTransactions.push({
+                                    id: `adjustment-${cat.key}`,
+                                    amount: cat.paid - currentCatSum,
+                                    type: cat.key === 'tuition' ? 'tuition' : `${cat.key}_payment`,
+                                    receiptNo: `ADJ-${cat.key.toUpperCase()}`,
+                                    date: recordData.createdAt || moment().format("YYYY-MM-DD"),
+                                    academicYear: year,
+                                    term: term,
+                                    receivedFrom: "Historical Record",
+                                    method: "Migration",
+                                    isAdjustment: true,
+                                });
+                            }
+                        });
+                    }
+
+                    setAllTransactions(termTransactions);
                 } else if (type === "payment" && paymentId) {
                     const pDoc = await getDoc(
                         doc(db, "feePayments", paymentId as string),

@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Platform } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Platform } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
@@ -10,6 +10,7 @@ interface BulkActionBarProps {
   onBulkUpdate: (field: string, value: any) => void;
   onClearArrears: () => void;
   onPromoteRepeat: () => void;
+  onBulkDelete?: () => void;
 }
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
@@ -18,6 +19,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   onBulkUpdate,
   onClearArrears,
   onPromoteRepeat,
+  onBulkDelete,
 }) => {
   if (selectedCount === 0) return null;
 
@@ -33,7 +35,11 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           <Text style={styles.bulkActionCancel}>Cancel</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.bulkActionButtons}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.bulkActionButtons}
+      >
         <TouchableOpacity
           style={styles.bulkActionBtn}
           onPress={() => onBulkUpdate("isFeeding", true)}
@@ -76,7 +82,16 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           <SVGIcon name="trending-up" size={20} color="#fff" />
           <Text style={styles.bulkActionText}>Promote</Text>
         </TouchableOpacity>
-      </View>
+        {onBulkDelete && (
+          <TouchableOpacity
+            style={[styles.bulkActionBtn, { backgroundColor: "#EF4444" }]}
+            onPress={onBulkDelete}
+          >
+            <SVGIcon name="trash" size={20} color="#fff" />
+            <Text style={styles.bulkActionText}>Delete</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
     </Animatable.View>
   );
 };
@@ -113,9 +128,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   bulkActionBtn: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
+    paddingHorizontal: 14,
     paddingVertical: 10,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",

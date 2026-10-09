@@ -15,7 +15,7 @@ import { db } from "../../../firebaseConfig";
 import SVGIcon from "../../SVGIcon";
 import { SHADOWS } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
-import { syncAchievementsToCloud, fetchAchievementsFromCloud } from "../../../utils/gameSync";
+import { syncAchievementsToCloud, fetchAchievementsFromCloud, getStudentNameFromUser, isUid } from "../../../utils/gameSync";
 
 const { width } = Dimensions.get("window");
 
@@ -81,7 +81,8 @@ export const Scoreboard: React.FC<ScoreboardProps> = ({ onBack }) => {
   const handleSync = async () => {
     if (!appUser?.uid) return;
     setSyncing(true);
-    await syncAchievementsToCloud(appUser.uid, appUser.displayName, appUser.classId);
+    const studentName = getStudentNameFromUser(appUser);
+    await syncAchievementsToCloud(appUser.uid, studentName, appUser.classId);
     await fetchLeaderboard();
     setSyncing(false);
   };
@@ -109,26 +110,46 @@ export const Scoreboard: React.FC<ScoreboardProps> = ({ onBack }) => {
     </View>
   );
 
-  const renderLeaderboardItem = ({ item, index }: any) => (
-    <View style={[styles.leaderboardItem, item.id === appUser?.uid && styles.myRank]}>
-      <View style={styles.rankBox}>
-        <Text style={styles.rankText}>{index + 1}</Text>
-      </View>
-      <View style={styles.rankInfo}>
-        <View style={styles.nameRow}>
-          <Text style={styles.rankName}>{item.studentName || "Super Student"}</Text>
-          <Text style={styles.classTag}>{item.classId || "N/A"}</Text>
+  const getLeaderboardDisplayName = (item: any) => {
+    const rawName = item.studentName || item.displayName || item.name;
+    if (!rawName || isUid(rawName)) {
+      if (item.id === appUser?.uid || item.studentId === appUser?.uid) {
+        return getStudentNameFromUser(appUser);
+      }
+      return "Super Student";
+    }
+    return rawName;
+  };
+
+  const renderLeaderboardItem = ({ item, index }: any) => {
+    const displayName = getLeaderboardDisplayName(item);
+    const isMe = item.id === appUser?.uid || item.studentId === appUser?.uid;
+
+    return (
+      <View style={[styles.leaderboardItem, isMe && styles.myRank]}>
+        <View style={styles.rankBox}>
+          <Text style={styles.rankText}>{index + 1}</Text>
         </View>
-        <Text style={styles.rankLevels}>
-          Q:L{item.quiz_level || 1} | W:L{item.word_level || 1} | M:L{item.math_level || 1} | S:L{item.scramble_level || 1}
-        </Text>
+        <View style={styles.rankInfo}>
+          <View style={styles.nameRow}>
+            <Text style={styles.rankName} numberOfLines={1} ellipsizeMode="tail">
+              {displayName}
+            </Text>
+            {item.classId && item.classId !== "N/A" && (
+              <Text style={styles.classTag}>{item.classId}</Text>
+            )}
+          </View>
+          <Text style={styles.rankLevels} numberOfLines={1}>
+            Q:L{item.quiz_level || 1} | W:L{item.word_level || 1} | M:L{item.math_level || 1} | S:L{item.scramble_level || 1}
+          </Text>
+        </View>
+        <View style={styles.rankScoreBox}>
+          <Text style={styles.rankScore}>{item.totalScore || 0}</Text>
+          <Text style={styles.rankPts}>pts</Text>
+        </View>
       </View>
-      <View style={styles.rankScoreBox}>
-        <Text style={styles.rankScore}>{item.totalScore || 0}</Text>
-        <Text style={styles.rankPts}>pts</Text>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -397,7 +418,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 15,
+    marginRight: 12,
+    flexShrink: 0,
   },
   rankText: {
     fontWeight: "900",
@@ -405,16 +427,20 @@ const styles = StyleSheet.create({
   },
   rankInfo: {
     flex: 1,
+    marginRight: 10,
+    minWidth: 0,
   },
   rankName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800",
     color: "#1E293B",
+    flexShrink: 1,
   },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
+    flexShrink: 1,
   },
   classTag: {
     fontSize: 10,
@@ -425,6 +451,7 @@ const styles = StyleSheet.create({
     color: "#475569",
     fontWeight: "700",
     overflow: "hidden",
+    flexShrink: 0,
   },
   rankLevels: {
     fontSize: 11,
@@ -434,6 +461,9 @@ const styles = StyleSheet.create({
   },
   rankScoreBox: {
     alignItems: "flex-end",
+    justifyContent: "center",
+    minWidth: 50,
+    flexShrink: 0,
   },
   rankScore: {
     fontSize: 18,

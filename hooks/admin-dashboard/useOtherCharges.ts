@@ -83,6 +83,35 @@ export const useOtherCharges = ({
   const [chargeType, setChargeType] = useState("");
   const [chargeAmount, setChargeAmount] = useState("");
 
+  // Selection state for multi-selection
+  const [selectedStudentUids, setSelectedStudentUids] = useState<Set<string>>(new Set());
+
+  const toggleStudentSelection = useCallback((uid: string) => {
+    setSelectedStudentUids((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) {
+        next.delete(uid);
+      } else {
+        next.add(uid);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedStudentUids((prev) => {
+      if (prev.size === students.length && students.length > 0) {
+        return new Set();
+      } else {
+        return new Set(students.map((s) => s.uid));
+      }
+    });
+  }, [students]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedStudentUids(new Set());
+  }, []);
+
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
   const isFetchingRef = useRef(false);
@@ -276,6 +305,7 @@ export const useOtherCharges = ({
         classId: student.classId,
         className: student.className,
         type: "other_payment",
+        otherCategory: chargeType.trim() || receivedFrom.trim(),
         academicYear: acadConfig.academicYear,
         term: acadConfig.currentTerm,
       };
@@ -348,43 +378,48 @@ export const useOtherCharges = ({
     }
     const val = parseFloat(chargeAmount);
     if (!chargeType.trim() || isNaN(val) || val <= 0) {
-      showToast({ message: "Invalid details", type: "error" });
+      showToast({ message: "Invalid details. Please enter item name and amount.", type: "error" });
       return false;
     }
-    if (selectedClassId === "all") {
-      showToast({ message: "Please select a specific class first", type: "error" });
+    if (selectedClassId === "all" && selectedStudentUids.size === 0) {
+      showToast({ message: "Please select a specific class or select individual students first", type: "error" });
       return false;
     }
 
-    // Check if this specific category already has a bill for this class/term
-    const qExisting = query(
+    // Check if this specific category already has a bill for this term
+    let qExisting = query(
       collection(db, "feePayments"),
       where("type", "==", "other"),
-      where("classId", "==", selectedClassId),
       where("academicYear", "==", acadConfig.academicYear),
       where("term", "==", acadConfig.currentTerm),
       where("otherCategory", "==", chargeType.trim())
     );
+    if (selectedClassId !== "all") {
+      qExisting = query(qExisting, where("classId", "==", selectedClassId));
+    }
     const existingSnap = await getDocsFromServer(qExisting);
-      const existingBillsMap = new Map<string, any>();
-      existingSnap.docs.forEach(d => {
-        existingBillsMap.set(d.data().studentUid, d.data());
-      });
+    const existingBillsMap = new Map<string, any>();
+    existingSnap.docs.forEach(d => {
+      existingBillsMap.set(d.data().studentUid, d.data());
+    });
 
     setSaving(true);
     try {
-      const q = query(
+      let q = query(
         collection(db, "users"),
         where("role", "==", "student"),
-        where("classId", "==", selectedClassId),
         where("status", "in", ["active", "pending_activation"])
       );
+      if (selectedClassId !== "all") {
+        q = query(q, where("classId", "==", selectedClassId));
+      }
       const snap = await getDocs(q);
 
-      // Filter out exempted students for this specific other charge category
+      // Filter out exempted students for this specific other charge category and unselected students if multi-selection is active
       const targetDocs = snap.docs.filter(d => {
         const exemptions = d.data().exemptions || [];
-        return !exemptions.includes(`other:${chargeType.trim()}`);
+        const isSelected = selectedStudentUids.size === 0 || selectedStudentUids.has(d.id);
+        return isSelected && !exemptions.includes(`other:${chargeType.trim()}`);
       });
 
       if (targetDocs.length === 0 && !snap.empty) {
@@ -520,6 +555,26 @@ export const useOtherCharges = ({
         exemptions: isExempted ? arrayUnion(type) : arrayRemove(type)
       }).commit();
 
+      setSelectedStudent(prev => {
+        if (!prev || prev.uid !== studentId) return prev;
+        const currentExemptions = prev.exemptions || [];
+        const updatedExemptions = isExempted
+          ? Array.from(new Set([...currentExemptions, type]))
+          : currentExemptions.filter(e => e !== type);
+        return { ...prev, exemptions: updatedExemptions };
+      });
+
+      setStudents(prev =>
+        prev.map(s => {
+          if (s.uid !== studentId) return s;
+          const currentExemptions = s.exemptions || [];
+          const updatedExemptions = isExempted
+            ? Array.from(new Set([...currentExemptions, type]))
+            : currentExemptions.filter(e => e !== type);
+          return { ...s, exemptions: updatedExemptions };
+        })
+      );
+
       showToast({
         message: isExempted ? `Student exempted` : `Exemption removed`,
         type: "success"
@@ -529,6 +584,74 @@ export const useOtherCharges = ({
     } catch (e) {
       console.error(e);
       showToast({ message: "Failed to update exemption", type: "error" });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const batchSetExemption = async (isExempted: boolean, categoryOverride?: string) => {
+    const category = (categoryOverride || chargeType).trim();
+    if (!category) {
+      showToast({ message: "Please enter item category description (e.g. Exam Fee) first", type: "warning" });
+      return false;
+    }
+    if (selectedStudentUids.size === 0) {
+      showToast({ message: "Please select at least one student first", type: "warning" });
+      return false;
+    }
+
+    setSaving(true);
+    const exType = `other:${category}`;
+    try {
+      const uids = Array.from(selectedStudentUids);
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < uids.length; i += CHUNK_SIZE) {
+        const chunk = uids.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach(uid => {
+          const studentRef = doc(db, "users", uid);
+          batch.update(studentRef, {
+            exemptions: isExempted ? arrayUnion(exType) : arrayRemove(exType)
+          });
+        });
+        await batch.commit();
+      }
+
+      setStudents(prev =>
+        prev.map(s => {
+          if (!selectedStudentUids.has(s.uid)) return s;
+          const current = s.exemptions || [];
+          const updated = isExempted
+            ? Array.from(new Set([...current, exType]))
+            : current.filter(e => e !== exType);
+          return { ...s, exemptions: updated };
+        })
+      );
+
+      if (selectedStudent && selectedStudentUids.has(selectedStudent.uid)) {
+        setSelectedStudent(prev => {
+          if (!prev) return prev;
+          const current = prev.exemptions || [];
+          const updated = isExempted
+            ? Array.from(new Set([...current, exType]))
+            : current.filter(e => e !== exType);
+          return { ...prev, exemptions: updated };
+        });
+      }
+
+      showToast({
+        message: isExempted
+          ? `Exempted ${selectedStudentUids.size} student(s) from '${category}'`
+          : `Removed '${category}' exemption for ${selectedStudentUids.size} student(s)`,
+        type: "success"
+      });
+      clearSelection();
+      fetchStudents(true);
+      return true;
+    } catch (e) {
+      console.error("Batch exemption error:", e);
+      showToast({ message: "Failed to update exemptions", type: "error" });
       return false;
     } finally {
       setSaving(false);
@@ -886,10 +1009,17 @@ export const useOtherCharges = ({
     handleLogPayment,
     applyOtherCharge,
     toggleExemption,
+    batchSetExemption,
     applyStudentOtherCharge,
     confirmDeleteCharge,
     confirmDeletePayment,
     handleRefresh,
+
+    // Selection States & Handlers
+    selectedStudentUids,
+    toggleStudentSelection,
+    toggleSelectAll,
+    clearSelection,
 
     // UI States & Handlers
     paymentModalVisible,

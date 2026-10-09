@@ -51,9 +51,12 @@ export interface AppUser {
   departments?: string[];
   classTeacherOf?: string;
   assignedRoles?: string[];
+  isTeacherOnDuty?: boolean;
+  teacherOnDutyExpiresAt?: any;
 
   // Student only
   classId?: string;
+  previousClassId?: string;
   parentUids?: string[];
   parentLinkCode?: string;
   takesBus?: boolean;

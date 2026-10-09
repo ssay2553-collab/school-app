@@ -70,7 +70,10 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
       try {
         let q;
         const userRole = (appUser.role || "").toLowerCase();
-        if (userRole === "admin" || userRole === "superadmin") {
+        const isTeacherOnDutyActive = (appUser as any).isTeacherOnDuty && (appUser as any).teacherOnDutyExpiresAt &&
+          ((appUser as any).teacherOnDutyExpiresAt.toMillis ? (appUser as any).teacherOnDutyExpiresAt.toMillis() : new Date((appUser as any).teacherOnDutyExpiresAt).getTime()) > Date.now();
+
+        if (userRole === "admin" || userRole === "superadmin" || isTeacherOnDutyActive) {
           q = query(collection(db, "classes"));
         } else {
           const teacherClasses = getTeacherClasses(appUser);
@@ -183,7 +186,26 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
       if (prev[studentId]?.status === status) return prev;
       return {
         ...prev,
-        [studentId]: { status, markedAt: new Date().toISOString() }
+        [studentId]: { ...prev[studentId], status, markedAt: new Date().toISOString() }
+      };
+    });
+  }, [isOfficialClassTeacher, showToast]);
+
+  const updateArrivalDetails = useCallback((studentId: string, arrivalMode: string, broughtBy: string) => {
+    if (!isOfficialClassTeacher) {
+      showToast({ message: "Only assigned Class Teacher/Admin can update arrival details.", type: "error" });
+      return;
+    }
+    setLocalAttendance(prev => {
+      const current = prev[studentId] || { status: "not_marked" };
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          arrivalMode,
+          broughtBy,
+          markedAt: current.markedAt || new Date().toISOString()
+        }
       };
     });
   }, [isOfficialClassTeacher, showToast]);
@@ -268,38 +290,43 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
         });
 
         for (const student of changedStudents) {
-          if (student.parentUids && Array.isArray(student.parentUids) && student.parentUids.length > 0) {
-            const status = attendanceToSave[student.uid]?.status;
-            const studentName = `${student.profile?.firstName || ''} ${student.profile?.lastName || ''}`.trim() || "Your ward";
+          const status = attendanceToSave[student.uid]?.status;
+          const studentName = `${student.profile?.firstName || ''} ${student.profile?.lastName || ''}`.trim() || "Your ward";
 
-            let title = "Attendance Update 📝";
-            let body = "";
+          let title = "Attendance Update 📝";
+          let body = "";
 
-            if (status === "present") {
-              title = "Attendance: In School 🏫";
-              body = `${studentName} has arrived and was marked PRESENT in school today, ${moment(selectedDate).format("MMM Do")}.`;
-            } else if (status === "absent") {
-              title = "Attendance Alert: ABSENT ❌";
-              body = `${studentName} was marked ABSENT today, ${moment(selectedDate).format("MMM Do")}. Please tap to provide a reason for the absence.`;
-            } else if (status === "late") {
-              title = "Attendance Alert: LATE ⏰";
-              body = `${studentName} arrived LATE today, ${moment(selectedDate).format("MMM Do")}.`;
-            } else {
-              title = `Attendance Status: ${status.toUpperCase()}`;
-              body = `${studentName}'s attendance status was updated to ${status} for ${moment(selectedDate).format("MMM Do")}.`;
-            }
+          if (status === "present") {
+            title = "Attendance: In School 🏫";
+            body = `${studentName} has arrived and was marked PRESENT in school today, ${moment(selectedDate).format("MMM Do")}.`;
+          } else if (status === "absent") {
+            title = "Attendance Alert: ABSENT ❌";
+            body = `${studentName} was marked ABSENT today, ${moment(selectedDate).format("MMM Do")}. Please tap to provide a reason for the absence.`;
+          } else if (status === "late") {
+            title = "Attendance Alert: LATE ⏰";
+            body = `${studentName} arrived LATE today, ${moment(selectedDate).format("MMM Do")}.`;
+          } else {
+            title = `Attendance Status: ${status.toUpperCase()}`;
+            body = `${studentName}'s attendance status was updated to ${status} for ${moment(selectedDate).format("MMM Do")}.`;
+          }
 
-            for (const parentId of student.parentUids) {
-              sendNotification({
-                recipientId: parentId,
-                senderId: appUser.uid,
-                senderName: staffName,
-                type: "attendance",
-                title,
-                body,
-                data: { studentId: student.uid, date: selectedDate, status }
-              });
-            }
+          // Send notification to BOTH the student and all associated parents.
+          // This ensures that even if a student is currently logged in on a shared phone
+          // without logging out, the attendance notification is still delivered to the device
+          // via the student's active session, while also notifying the parent's account.
+          const parentUids = Array.isArray(student.parentUids) ? student.parentUids : [];
+          const recipients = Array.from(new Set([student.uid, ...parentUids]));
+
+          for (const recipientId of recipients) {
+            sendNotification({
+              recipientId,
+              senderId: appUser.uid,
+              senderName: staffName,
+              type: "attendance",
+              title,
+              body,
+              data: { studentId: student.uid, date: selectedDate, status }
+            });
           }
         }
 
@@ -334,6 +361,7 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
     academicYear,
     term,
     markLocal,
+    updateArrivalDetails,
     saveToFirestore,
     refresh: fetchStudents,
   };

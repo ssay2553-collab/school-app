@@ -26,6 +26,10 @@ export const styles = StyleSheet.create({
   header: {
     backgroundColor: "transparent",
     zIndex: 1000,
+    ...Platform.select({
+      web: { pointerEvents: "box-none" } as any,
+      default: {},
+    }),
   },
   headerTop: {
     paddingHorizontal: 15,
@@ -128,6 +132,13 @@ export const styles = StyleSheet.create({
     fontWeight: "600",
     color: VIBE.text,
     paddingVertical: 10,
+    ...Platform.select({
+      web: {
+        userSelect: "text",
+        outlineStyle: "none",
+      } as any,
+      default: {},
+    }),
   },
   refreshRound: {
     width: 44,
@@ -211,6 +222,13 @@ export const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 20,
     ...SHADOWS.small,
+    ...Platform.select({
+      web: {
+        cursor: "text",
+        userSelect: "text",
+      } as any,
+      default: {},
+    }),
   },
   bulkSym: {
     fontSize: 18,
@@ -218,7 +236,19 @@ export const styles = StyleSheet.create({
     color: VIBE.primary,
     marginRight: 10,
   },
-  bulkInput: { flex: 1, fontSize: 16, fontWeight: "700", color: VIBE.text },
+  bulkInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "700",
+    color: VIBE.text,
+    ...Platform.select({
+      web: {
+        userSelect: "text",
+        outlineStyle: "none",
+      } as any,
+      default: {},
+    }),
+  },
   checkAllBtn: {
     alignItems: "center",
     gap: 4,
@@ -374,6 +404,13 @@ export const styles = StyleSheet.create({
     flexShrink: 1,
     padding: 0,
     ...(Platform.OS === "android" ? {} : { letterSpacing: 0.5 }),
+    ...Platform.select({
+      web: {
+        userSelect: "text",
+        outlineStyle: "none",
+      } as any,
+      default: {},
+    }),
   },
   actionIcons: { flexDirection: "row", alignItems: "center", gap: 12 },
   historyCircle: {
@@ -553,6 +590,13 @@ export const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "900",
     color: VIBE.text,
+    ...Platform.select({
+      web: {
+        userSelect: "text",
+        outlineStyle: "none",
+      } as any,
+      default: {},
+    }),
   },
   methodGrid: { flexDirection: "row", gap: 10, marginBottom: 30 },
   methodBtn: {
@@ -864,6 +908,13 @@ export const styles = StyleSheet.create({
     minWidth: 35,
     flexShrink: 1,
     padding: 0,
+    ...Platform.select({
+      web: {
+        userSelect: "text",
+        outlineStyle: "none",
+      } as any,
+      default: {},
+    }),
   },
   sectionLabel: {
     fontSize: 10,

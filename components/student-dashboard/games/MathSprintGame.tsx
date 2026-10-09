@@ -14,7 +14,7 @@ import { usePersistedState } from "../../../hooks/student-dashboard/usePersisted
 import { MATH_SPRINT_DATA, REMARKS, WRONG_REMARKS, MathQuestion } from "./GameConstants";
 import { SHADOWS } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
-import { syncAchievementsToCloud } from "../../../utils/gameSync";
+import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
 
 const getRandomRemark = (isCorrect: boolean = true) => {
   const list = isCorrect
@@ -144,7 +144,7 @@ export const MathSprintGame: React.FC<MathSprintGameProps> = ({ onExit }) => {
     if (score >= 4) {
       setLevel(level + 1);
       if (appUser?.uid) {
-        syncAchievementsToCloud(appUser.uid, appUser.displayName, appUser.classId);
+        syncAchievementsToCloud(appUser.uid, getStudentNameFromUser(appUser), appUser.classId);
       }
     } else {
       startStage();

@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -13,6 +14,7 @@ import {
 import React, { useEffect, useState, useMemo } from "react";
 import {
   ActivityIndicator,
+  Image,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -23,6 +25,9 @@ import {
   Dimensions,
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
+import { SCHOOL_CONFIG } from "../../constants/Config";
+import { getSchoolLogo } from "../../constants/Logos";
+import { getSchoolSignature } from "../../constants/Signatures";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
@@ -104,6 +109,13 @@ export default function PreschoolRemarksParent() {
   const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
   const { showToast } = useToast();
+
+  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#6366F1";
+  const schoolId = (
+    Constants.expoConfig?.extra?.schoolId || SCHOOL_CONFIG.schoolId || "afahjoy"
+  ).toLowerCase();
+  const schoolLogo = getSchoolLogo(schoolId);
+  const adminSig = getSchoolSignature(schoolId);
 
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(false);
@@ -193,12 +205,55 @@ export default function PreschoolRemarksParent() {
       const docId = `behavioral_${child.classId}_${yearSlug}_${selectedTerm.replace(/\s+/g, "")}`;
       const docSnap = await getDoc(doc(db, "behavioralRecords", docId));
 
+      let studentRemark: any = null;
+
       if (docSnap.exists()) {
         const data = docSnap.data();
-        const studentRemark = (data.students || []).find((s: any) => s.studentId === selectedChildId);
-        if (studentRemark) {
-          setRemarksData(studentRemark);
+        studentRemark = (data.students || []).find((s: any) => s.studentId === selectedChildId);
+      }
+
+      // Auto-fill attendance and TAS if missing or to ensure accuracy from marked records
+      let autoAttendance = studentRemark?.attendance || "";
+      let autoTas = studentRemark?.tas || "";
+
+      if (!autoAttendance || !autoTas) {
+        try {
+          const qAtt = query(
+            collection(db, "attendance"),
+            where("classId", "==", child.classId),
+            where("academicYear", "==", selectedYear),
+            where("term", "==", selectedTerm)
+          );
+          const attSnap = await getDocsFromServer(qAtt);
+          if (!attSnap.empty) {
+            const totalDays = attSnap.docs.length;
+            let presentCount = 0;
+            attSnap.docs.forEach((d) => {
+              if (d.data().students?.[selectedChildId]?.status === "present") {
+                presentCount++;
+              }
+            });
+            if (!autoAttendance) autoAttendance = `${presentCount} / ${totalDays}`;
+            if (!autoTas) autoTas = `${totalDays}`;
+          }
+        } catch (attErr) {
+          console.error("Error auto-filling attendance for parent remarks:", attErr);
         }
+      }
+
+      if (studentRemark) {
+        setRemarksData({
+          ...studentRemark,
+          attendance: autoAttendance || studentRemark.attendance,
+          tas: autoTas || studentRemark.tas,
+        });
+      } else if (autoAttendance || autoTas) {
+        setRemarksData({
+          studentId: selectedChildId,
+          attendance: autoAttendance,
+          tas: autoTas,
+          nextTermBegins: acadConfig.nextTermBegins || "",
+        });
       }
     } catch (err) {
       console.error("Fetch remarks error:", err);
@@ -304,6 +359,53 @@ export default function PreschoolRemarksParent() {
           </View>
         ) : remarksData ? (
           <AnimatableView animation="fadeIn" style={styles.reportContainer}>
+            {(selectedChild?.isPreschool ?? true) && (
+              <View style={styles.letterheadCard}>
+                <View style={styles.paperLetterhead}>
+                  {schoolLogo && (
+                    <Image
+                      source={schoolLogo}
+                      style={styles.paperLogo}
+                      resizeMode="contain"
+                    />
+                  )}
+                  <View style={styles.paperSchoolInfoContainer}>
+                    <Text style={[styles.paperSchoolName, { color: primary }]}>
+                      {(SCHOOL_CONFIG.fullName || SCHOOL_CONFIG.name || "SCHOOL").toUpperCase()}
+                    </Text>
+                    {SCHOOL_CONFIG.motto ? (
+                      <Text style={styles.paperSchoolMotto}>
+                        "{SCHOOL_CONFIG.motto}"
+                      </Text>
+                    ) : null}
+                    {SCHOOL_CONFIG.address ? (
+                      <Text style={styles.paperSchoolInfo}>{SCHOOL_CONFIG.address}</Text>
+                    ) : null}
+                    <Text style={styles.paperSchoolContact}>
+                      {SCHOOL_CONFIG.hotline ? `Tel: ${SCHOOL_CONFIG.hotline}` : ""}
+                      {SCHOOL_CONFIG.hotline && SCHOOL_CONFIG.email ? "  |  " : ""}
+                      {SCHOOL_CONFIG.email ? `Email: ${SCHOOL_CONFIG.email}` : ""}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.headerSeparatorContainer}>
+                  <View
+                    style={[
+                      styles.headerSeparatorPrimary,
+                      { backgroundColor: primary },
+                    ]}
+                  />
+                  <View
+                    style={[
+                      styles.headerSeparatorSecondary,
+                      { backgroundColor: "#fb7185" },
+                    ]}
+                  />
+                </View>
+              </View>
+            )}
+
             <View style={styles.studentInfoBar}>
               <Text style={styles.studentName}>{selectedChild?.name}</Text>
               <Text style={styles.className}>{selectedChild?.className}</Text>
@@ -311,20 +413,20 @@ export default function PreschoolRemarksParent() {
 
             <View style={styles.categoryBlock}>
               <View style={styles.categoryHeader}>
-                <Text style={styles.categoryTitle}>PHYSICAL DEVELOPMENT (H/W)</Text>
+                <Text style={styles.categoryTitle}>ATTENDANCE & TERM SCHEDULE</Text>
               </View>
               <View style={styles.hwInfoContainer}>
                 <View style={styles.hwInfoItem}>
-                  <Text style={styles.hwInfoLabel}>DATE</Text>
-                  <Text style={styles.hwInfoValue}>{remarksData.physicalDev?.date || "-"}</Text>
+                  <Text style={styles.hwInfoLabel}>ATTENDANCE COUNT</Text>
+                  <Text style={styles.hwInfoValue}>{remarksData.attendance || "-"}</Text>
                 </View>
                 <View style={styles.hwInfoItem}>
-                  <Text style={styles.hwInfoLabel}>HEIGHT (m)</Text>
-                  <Text style={styles.hwInfoValue}>{remarksData.physicalDev?.height || "-"}</Text>
+                  <Text style={styles.hwInfoLabel}>TAS (SESSIONS)</Text>
+                  <Text style={styles.hwInfoValue}>{remarksData.tas || "-"}</Text>
                 </View>
                 <View style={styles.hwInfoItem}>
-                  <Text style={styles.hwInfoLabel}>WEIGHT (kg)</Text>
-                  <Text style={styles.hwInfoValue}>{remarksData.physicalDev?.weight || "-"}</Text>
+                  <Text style={styles.hwInfoLabel}>NEXT TERM BEGINS</Text>
+                  <Text style={[styles.hwInfoValue, { color: primary }]}>{remarksData.nextTermBegins || acadConfig.nextTermBegins || "TBA"}</Text>
                 </View>
               </View>
             </View>
@@ -366,6 +468,24 @@ export default function PreschoolRemarksParent() {
                 <Text style={styles.legendItem}><Text style={{ fontWeight: '800', color: '#10b981' }}>VG:</Text> Very Good</Text>
                 <Text style={styles.legendItem}><Text style={{ fontWeight: '800', color: COLORS.primary }}>G:</Text> Good</Text>
                 <Text style={styles.legendItem}><Text style={{ fontWeight: '800', color: '#f43f5e' }}>NES:</Text> Needs Effort</Text>
+              </View>
+            </View>
+
+            <View style={styles.signatureSection}>
+              <Text style={styles.remarksLabel}>INSTITUTION'S OFFICIAL SIGNATURE</Text>
+              <View style={styles.sigCardContent}>
+                {adminSig ? (
+                  <Image
+                    source={typeof adminSig === "string" ? { uri: adminSig } : adminSig}
+                    style={styles.sigImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={styles.sigPlaceholder}>
+                    <Text style={styles.sigPlaceholderText}>Official Signature Verified</Text>
+                  </View>
+                )}
+                <Text style={styles.sigTitleText}>HEADTEACHER / ADMINISTRATOR SIGNATURE</Text>
               </View>
             </View>
           </AnimatableView>
@@ -543,4 +663,95 @@ const styles = StyleSheet.create({
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
   emptyStateTitle: { fontSize: 20, fontWeight: "900", color: "#1E293B", marginTop: 20 },
   emptyStateText: { fontSize: 14, color: "#64748B", textAlign: "center", marginTop: 10, lineHeight: 22 },
+  letterheadCard: {
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 15,
+    ...SHADOWS.small,
+  },
+  paperLetterhead: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  paperLogo: { width: 70, height: 70, marginBottom: 8 },
+  paperSchoolInfoContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paperSchoolName: { fontSize: 16, fontWeight: "900", textAlign: "center" },
+  paperSchoolMotto: {
+    fontSize: 10,
+    fontStyle: "italic",
+    color: "#64748B",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  paperSchoolInfo: {
+    fontSize: 10,
+    color: "#475569",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  paperSchoolContact: {
+    fontSize: 10,
+    color: "#475569",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  headerSeparatorContainer: {
+    marginTop: 10,
+    width: "100%",
+  },
+  headerSeparatorPrimary: {
+    height: 2,
+    width: "100%",
+  },
+  headerSeparatorSecondary: {
+    height: 1,
+    width: "100%",
+    marginTop: 2,
+  },
+  signatureSection: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    ...SHADOWS.small,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  sigCardContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+  },
+  sigImage: {
+    width: 200,
+    height: 70,
+    marginBottom: 8,
+  },
+  sigPlaceholder: {
+    width: 200,
+    height: 60,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  sigPlaceholderText: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  sigTitleText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#475569",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
 });

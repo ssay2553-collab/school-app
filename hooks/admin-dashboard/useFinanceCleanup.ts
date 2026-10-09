@@ -91,7 +91,7 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
       const userUpdates = new Map<string, any>();
 
       // 4. Data Harvesting
-      const { recordsByStudent, paymentsByStudent } = harvestStudentData(
+      const { recordsByStudent, paymentsByStudent, paymentDeletions } = harvestStudentData(
         recordsSnap,
         paymentsSnap,
         usersSnap,
@@ -146,6 +146,16 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
       }
 
       // 6. Batch Commit
+      let deletedPaymentsCount = 0;
+      if (paymentDeletions && paymentDeletions.size > 0) {
+        for (const id of paymentDeletions) {
+          currentBatch.delete(doc(db, "feePayments", id));
+          opCount++;
+          deletedPaymentsCount++;
+          if (opCount >= 450) await commitBatch();
+        }
+      }
+
       for (const [id, updates] of recordUpdates.entries()) {
         currentBatch.update(doc(db, "studentFeeRecords", id), updates);
         opCount++;
@@ -169,7 +179,7 @@ export const useFinanceCleanup = (showToast: (props: any) => void) => {
         orphanedRecords: 0,
         fixedRecords: recordUpdates.size,
         orphanedPayments: 0,
-        deletedPayments: 0,
+        deletedPayments: deletedPaymentsCount,
         reconciledBalances: reconciledBalancesCount,
         dailyFinancialsFixed: 0,
       });

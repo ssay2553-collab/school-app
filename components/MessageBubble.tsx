@@ -12,7 +12,8 @@ interface MessageBubbleProps {
     senderName?: string;
     fileUrl?: string;
     fileName?: string;
-    createdAt: any;
+    createdAt?: any;
+    timestamp?: any;
   };
   isYou: boolean;
   children?: React.ReactNode;
@@ -114,7 +115,7 @@ export default function MessageBubble({
               isYou ? styles.timestampSent : styles.timestampReceived,
             ]}
           >
-            {formatTimestamp(message.createdAt)}
+            {formatTimestamp(message.createdAt || message.timestamp)}
           </Text>
           {isYou && (
             <SVGIcon

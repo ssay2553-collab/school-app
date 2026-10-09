@@ -24,12 +24,12 @@ const schools = {
   },
   lilies: {
     appId: "com.saysmanage.lilies",
-    productName: "PHEC App",
-    icon: "assets/icon-phec.png",
+    productName: "Lillies App",
+    icon: "assets/icon-lillies.png",
   },
   perfect: {
     appId: "com.saysmanage.peiapp",
-    productName: "TAPM APP",
+    productName: "Angels Pride",
     icon: "assets/tapm-icon.jpg",
   },
   creation: {
@@ -79,8 +79,8 @@ const schools = {
   },
   clis: {
     appId: "com.saysmanage.clis",
-    productName: "CLIS App",
-    icon: "assets/icon-clis.png",
+    productName: "ASAPH APP",
+    icon: "assets/icon-asaph.png",
   },
   stone: {
     appId: "com.saysmanage.stone",

@@ -38,6 +38,7 @@ export default function ViewAcademicRecordDetails() {
     } else {
       router.replace("/admin-dashboard/view-academic-records");
     }
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   const {

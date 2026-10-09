@@ -104,6 +104,7 @@ export default function ViewAcademicRecords() {
     } else {
       router.replace("/admin-dashboard");
     }
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   const renderStudentItem = useCallback(

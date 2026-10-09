@@ -33,6 +33,9 @@ export default function StudentWeeklyTopicsScreen() {
     setSelectedWeek,
     weekRange,
     curriculum,
+    childrenList,
+    selectedChildId,
+    setSelectedChildId,
   } = useStudentWeeklyTopics();
 
   const getLabels = (topicCurriculum: string | undefined) => {
@@ -110,6 +113,29 @@ export default function StudentWeeklyTopicsScreen() {
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={[styles.scrollContent, isLargeScreen && styles.maxContent]}>
+        {childrenList && childrenList.length > 0 && (
+          <View style={styles.childPickerContainer}>
+            <Text style={styles.childPickerLabel}>SELECT CHILD:</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+              {childrenList.map((child) => {
+                const isActive = child.id === selectedChildId;
+                return (
+                  <TouchableOpacity
+                    key={child.id}
+                    onPress={() => setSelectedChildId(child.id)}
+                    style={[styles.childChip, isActive && { backgroundColor: brandColor, borderColor: brandColor }]}
+                  >
+                    <SVGIcon name="person" size={14} color={isActive ? "#fff" : brandColor} />
+                    <Text style={[styles.childChipText, isActive && { color: "#fff" }]}>
+                      {child.name} {child.className ? `(${child.className})` : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
         <View style={styles.weekPickerContainer}>
           <View style={styles.weekPicker}>
             <TouchableOpacity onPress={() => changeWeek(-1)} style={styles.weekNavBtn}>
@@ -201,26 +227,19 @@ export default function StudentWeeklyTopicsScreen() {
                       </View>
                     )}
 
-                    {(topic.indicator || (topic.subTopics && topic.subTopics !== topic.topic)) && (
+                    {topic.indicator ? (
                       <View style={styles.contentSection}>
                         <Text style={styles.sectionLabel}>{labels.indicatorItem}</Text>
-                        <Text style={styles.sectionText}>{topic.indicator || topic.subTopics}</Text>
+                        <Text style={styles.sectionText}>{topic.indicator}</Text>
                       </View>
-                    )}
+                    ) : null}
 
-                    {topic.subTopics && topic.indicator && topic.subTopics !== topic.indicator && (
-                      <View style={styles.contentSection}>
-                        <Text style={styles.sectionLabel}>{labels.subTopics}</Text>
-                        <Text style={styles.sectionText}>{topic.subTopics}</Text>
-                      </View>
-                    )}
-
-                    {topic.objectives && (
+                    {topic.objectives ? (
                       <View style={styles.contentSection}>
                         <Text style={styles.sectionLabel}>{labels.objectives}</Text>
                         <Text style={styles.sectionText}>{topic.objectives}</Text>
                       </View>
-                    )}
+                    ) : null}
                   </View>
                 </Animatable.View>
               );
@@ -244,6 +263,34 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: "900", color: "#1E293B" },
   subtitle: { fontSize: 12, color: "#64748B", fontWeight: "700", textTransform: "uppercase" },
   scrollContent: { padding: 20 },
+  childPickerContainer: {
+    marginBottom: 15,
+  },
+  childPickerLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  childChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginRight: 10,
+    ...SHADOWS.small,
+  },
+  childChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
   weekPickerContainer: { marginBottom: 25 },
   weekPicker: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 20, padding: 10, ...SHADOWS.medium, borderWidth: 1, borderColor: "#E2E8F0" },
   weekNavBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: "#F8FAFC", justifyContent: "center", alignItems: "center" },

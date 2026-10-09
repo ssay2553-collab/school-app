@@ -1,27 +1,58 @@
-export const normalizeCategory = (p: any) => {
+export const normalizeCategory = (p: any): string => {
   if (!p) return "tuition";
-  const type = (p.type || "").toLowerCase();
-  const otherCat = (p.otherCategory || "").toLowerCase().trim();
 
-  // Explicitly check for payment suffixes first
+  const type = (p.type || "").toLowerCase().trim();
+
+  const isGenericOther = (val: string) => {
+    const l = val.toLowerCase().trim();
+    return (
+      !l ||
+      l === "other" ||
+      l === "other charges" ||
+      l === "other fees" ||
+      l === "general" ||
+      l === "bulk charge" ||
+      l === "individual charge" ||
+      l === "system billing" ||
+      l === "school admin"
+    );
+  };
+
+  // Check explicit otherCategory or receivedFrom for custom/item categories (e.g., Abacus, Uniform, Maintenance)
+  const rawCustom = (p.otherCategory || "").trim();
+  const receivedFrom = (p.receivedFrom || "").trim();
+
+  let customCat = "";
+  if (rawCustom && !isGenericOther(rawCustom)) {
+    customCat = rawCustom;
+  } else if (receivedFrom && !isGenericOther(receivedFrom)) {
+    customCat = receivedFrom;
+  }
+
+  if (customCat) {
+    const customLower = customCat.toLowerCase().trim();
+    const cleanedCustom = customLower.replace(/[^a-z0-9]/g, "");
+
+    if (cleanedCustom.includes("pta")) return "pta";
+    if (cleanedCustom.includes("maintenance")) return "maintenance";
+    if (cleanedCustom.includes("admission")) return "admission";
+    if (cleanedCustom.includes("book")) return "books";
+    if (cleanedCustom.includes("uniform")) return "uniform";
+
+    return customLower;
+  }
+
+  // Explicitly check for payment suffixes
   if (type.endsWith("_payment")) {
-    const cat = type.replace("_payment", "");
+    const cat = type.replace("_payment", "").trim();
     if (isolatedKeys.includes(cat)) return cat;
-    if (otherCat) return otherCat;
     if (cat === "tuition" || cat === "tuition_credit" || cat === "credit") return "tuition";
-    if (cat === "other" || cat === "other charges") return "tuition";
+    if (cat === "other" || cat === "other charges") return "other charges";
     return cat;
   }
 
-  // Explicit check for tuition types
   if (type.includes("tuition")) return "tuition";
-
-  // If it's a known non-hardcoded bill, use otherCategory or type
-  if (type === "other" && otherCat) return otherCat;
-  if (type === "other charges") {
-    if (otherCat) return otherCat;
-    return "other charges";
-  }
+  if (isolatedKeys.includes(type)) return type;
 
   const cand = (p.type || p.category || p.purpose || p.memo || "tuition")
     .toString()
@@ -32,15 +63,14 @@ export const normalizeCategory = (p: any) => {
   if (cleaned.includes("pta")) return "pta";
   if (cleaned.includes("maintenance")) return "maintenance";
   if (cleaned.includes("admission")) return "admission";
-  if (cleaned.includes("book") || cleaned.includes("books")) return "books";
+  if (cleaned.includes("book")) return "books";
   if (cleaned.includes("uniform")) return "uniform";
 
-  if (otherCat) return otherCat;
-  if (cleaned.includes("othercharges") || cleaned.includes("otherfees")) return "other charges";
-  if (cleaned.includes("other")) return "tuition";
+  if (type === "other" || type === "other charges" || cleaned.includes("othercharges") || cleaned.includes("otherfees") || cleaned.includes("other")) {
+    return "other charges";
+  }
 
-  // Fallback for custom labels
-  if (type !== "" && type !== "tuition" && !isolatedKeys.includes(type)) return type;
+  if (type !== "" && type !== "tuition") return type;
 
   return "tuition";
 };
@@ -299,25 +329,18 @@ export const calculateFeeBreakdown = (
 
     const otherB = Math.max(0, Number(record.otherBill) || 0);
     if (otherB > 0) {
-      // Calculate total billed across explicit custom categories (e.g. examination, mock, bus, etc.)
-      const fixedKeys = [
-        "tuition",
-        "maintenance",
-        "pta",
-        "admission",
-        "books",
-        "uniform",
-        "arrears",
-        "surplus",
-        "other charges",
-        "other",
-      ];
-      const explicitCustomBilled = Object.keys(summary)
-        .filter((k) => !fixedKeys.includes(k.toLowerCase().trim()))
-        .reduce((sum, k) => sum + (summary[k].billed || 0), 0);
+      // Calculate total billed across all explicit charge transactions logged under 'other charges'
+      const explicitOtherChargesBilled = (transactions || [])
+        .filter((t: any) => !isPaymentEntry(t) && (
+          t.type === "other" ||
+          t.type === "other_charge" ||
+          t.type === "other charges" ||
+          (t.method || "").toLowerCase().includes("charge")
+        ))
+        .reduce((sum: number, t: any) => sum + Math.max(0, Number(t.amount ?? t.amountPaid ?? t.value) || 0), 0);
 
-      // Only bill unassigned difference to 'other charges' if record.otherBill exceeds explicit custom charges
-      const unassignedOtherBilled = Math.max(0, otherB - explicitCustomBilled);
+      // Only bill unassigned difference to 'other charges' if record.otherBill exceeds explicit charges
+      const unassignedOtherBilled = Math.max(0, otherB - explicitOtherChargesBilled);
       if (unassignedOtherBilled > 0) {
         if (!summary["other charges"]) summary["other charges"] = { billed: 0, paid: 0 };
         summary["other charges"].billed = Math.max(

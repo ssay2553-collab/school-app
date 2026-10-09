@@ -77,6 +77,8 @@ export default function ManageUsers() {
     setDeptText,
     newsPermission,
     setNewsPermission,
+    isTeacherOnDuty,
+    setIsTeacherOnDuty,
     selectedSubjects,
     setSelectedSubjects,
     selectedClasses,
@@ -120,6 +122,7 @@ export default function ManageUsers() {
     handleCopyAllCodes,
     clearServiceArrears,
     clearTermArrears,
+    handleBulkClearArrears,
     handleRegenerateParentLinkCode,
     isSuperAdmin,
     hasManageUsersAccess,
@@ -150,13 +153,21 @@ export default function ManageUsers() {
     );
   }
 
+  const handleSafeBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/admin-dashboard");
+    }
+  };
+
   if (!selectedRole) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleSafeBack}
             style={styles.backButton}
           >
             <SVGIcon name="chevron-back" size={24} color="#1E293B" />
@@ -238,8 +249,34 @@ export default function ManageUsers() {
                     value={searchQuery}
                     onChangeText={setSearchQuery}
                   />
+                  {searchQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setSearchQuery("")}
+                      style={{ padding: 6 }}
+                    >
+                      <SVGIcon name="close-circle" size={18} color="#94A3B8" />
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
+
+              {selectedRole === "student" && (
+                <View style={styles.studentStatsBar}>
+                  <View style={styles.statChip}>
+                    <SVGIcon name="people" size={14} color={COLORS.primary} />
+                    <Text style={styles.statChipText}>
+                      {filteredUsers.length} {filteredUsers.length === 1 ? 'Student' : 'Students'}
+                    </Text>
+                  </View>
+                  {selectedClassId !== "all" && (
+                    <View style={[styles.statChip, { backgroundColor: '#F1F5F9' }]}>
+                      <Text style={[styles.statChipText, { color: '#64748B' }]}>
+                        Class: {allClasses.find(c => c.id === selectedClassId)?.name || 'Filtered'}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
 
               {selectedRole === "student" && (
                 <ScrollView
@@ -255,7 +292,7 @@ export default function ManageUsers() {
                         backgroundColor: COLORS.primary,
                         flexDirection: "row",
                         gap: 8,
-                        paddingHorizontal: 15,
+                        paddingHorizontal: 16,
                       },
                     ]}
                     onPress={handleBulkImport}
@@ -264,7 +301,7 @@ export default function ManageUsers() {
                     <Text style={styles.graduateBtnText}>Bulk CSV</Text>
                   </TouchableOpacity>
 
-                  <View style={[styles.pickerContainer, { width: 160 }]}>
+                  <View style={[styles.pickerContainer, { width: 180 }]}>
                     <Text style={styles.miniLabel}>FILTER BY CLASS</Text>
                     <Picker
                       selectedValue={selectedClassId}
@@ -285,7 +322,7 @@ export default function ManageUsers() {
                           flexDirection: "row",
                           alignItems: "center",
                           gap: 8,
-                          paddingHorizontal: 15,
+                          paddingHorizontal: 16,
                         },
                       ]}
                       onPress={handleGraduateClass}
@@ -305,7 +342,7 @@ export default function ManageUsers() {
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 8,
-                            paddingHorizontal: 15,
+                            paddingHorizontal: 16,
                           },
                         ]}
                         onPress={() =>
@@ -397,11 +434,35 @@ export default function ManageUsers() {
               </View>
             ) : (
               <View style={styles.emptyState}>
-                <SVGIcon name="people-outline" size={60} color="#E2E8F0" />
+                <SVGIcon name="people-outline" size={64} color="#CBD5E1" />
                 <Text style={styles.emptyTitle}>No {selectedRole}s Found</Text>
                 <Text style={styles.emptySub}>
-                  Try adjusting your search or filters
+                  {searchQuery || selectedClassId !== "all"
+                    ? "Try adjusting your search or class filter"
+                    : "Get started by adding students or importing via CSV"}
                 </Text>
+                <View style={{ flexDirection: "row", gap: 12, marginTop: 20 }}>
+                  {(searchQuery || selectedClassId !== "all") && (
+                    <TouchableOpacity
+                      style={styles.emptyActionBtnSecondary}
+                      onPress={() => {
+                        setSearchQuery("");
+                        setSelectedClassId("all");
+                      }}
+                    >
+                      <Text style={styles.emptyActionBtnSecondaryText}>Clear Filters</Text>
+                    </TouchableOpacity>
+                  )}
+                  {selectedRole === "student" && (
+                    <TouchableOpacity
+                      style={styles.emptyActionBtnPrimary}
+                      onPress={handleBulkImport}
+                    >
+                      <SVGIcon name="cloud-upload" size={18} color="#fff" />
+                      <Text style={styles.emptyActionBtnPrimaryText}>Import CSV</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             )
           }
@@ -411,9 +472,7 @@ export default function ManageUsers() {
           selectedCount={selectedUserUids.size}
           onCancel={() => setSelectedUserUids(new Set())}
           onBulkUpdate={handleBulkUpdate}
-          onClearArrears={() => {
-            handleBulkUpdate("dailyArrears", 0);
-          }}
+          onClearArrears={handleBulkClearArrears}
           onPromoteRepeat={() => openPromoteRepeat(null)}
         />
 
@@ -472,6 +531,8 @@ export default function ManageUsers() {
           handleUploadProfileImage={handleUploadProfileImage}
           newsPermission={newsPermission}
           setNewsPermission={setNewsPermission}
+          isTeacherOnDuty={isTeacherOnDuty}
+          setIsTeacherOnDuty={setIsTeacherOnDuty}
           handleAssignRole={handleAssignRole}
           tempPermissions={tempPermissions}
           setTempPermissions={setTempPermissions}
@@ -591,36 +652,105 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     gap: 12,
   },
-  pickerContainer: {
-    flex: 1,
-    minHeight: 65,
+  studentStatsBar: {
+    flexDirection: "row",
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    backgroundColor: "#fff",
+    gap: 8,
+    alignItems: "center",
+  },
+  statChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: (COLORS.primary || "#2e86de") + "15",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  statChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
+  emptyActionBtnSecondary: {
     backgroundColor: "#F1F5F9",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 12,
     justifyContent: "center",
-    paddingTop: 12,
-  },
-  miniLabel: {
-    fontSize: 8,
-    fontWeight: "900",
-    color: "#94A3B8",
-    position: 'absolute',
-    top: 10,
-    left: 12,
-    zIndex: 1,
-    letterSpacing: 0.5
-  },
-  picker: { height: 45, marginLeft: -10 },
-  graduateBtn: {
-    backgroundColor: COLORS.secondary,
-    paddingHorizontal: 15,
-    borderRadius: 12,
-    justifyContent: "center",
+    alignItems: "center",
     ...Platform.select({
       web: { cursor: 'pointer' } as any,
       default: {}
     }),
   },
-  graduateBtnText: { color: "#fff", fontWeight: "800", fontSize: 12 },
+  emptyActionBtnSecondaryText: {
+    color: "#475569",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  emptyActionBtnPrimary: {
+    backgroundColor: COLORS.primary,
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
+  emptyActionBtnPrimaryText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
+  },
+  pickerContainer: {
+    flex: 1,
+    minHeight: 50,
+    height: 50,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 14,
+    justifyContent: "center",
+    paddingTop: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
+  miniLabel: {
+    fontSize: 9,
+    fontWeight: "800",
+    color: "#64748B",
+    position: 'absolute',
+    top: 6,
+    left: 12,
+    zIndex: 1,
+    letterSpacing: 0.5
+  },
+  picker: { height: 40, marginLeft: -8, color: '#1E293B' },
+  graduateBtn: {
+    height: 50,
+    backgroundColor: COLORS.secondary,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
+    ...SHADOWS.small,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
+  graduateBtnText: { color: "#fff", fontWeight: "800", fontSize: 13 },
   listContent: { flexGrow: 1, paddingBottom: 100 },
   loadingState: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 10, color: "#64748B", fontWeight: "600" },

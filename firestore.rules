@@ -161,11 +161,13 @@ function hasScreenPermission(screen, level) {
     && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher';
 }
 
-    // Helper: Check if teacher is the official class teacher for a specific class
+    // Helper: Check if teacher is the official class teacher for a specific class or Teacher on Duty
     function isClassTeacher(classId) {
       return (get(/databases/$(database)/documents/classes/$(classId)).data.classTeacherId == request.auth.uid) ||
              (classId in userData().get('classes', [])) ||
-             (userData().get('classTeacherOf', '') == classId);
+             (userData().get('classTeacherOf', '') == classId) ||
+             (userData().get('isTeacherOnDuty', false) == true &&
+              userData().get('teacherOnDutyExpiresAt', request.time) > request.time);
     }
 
     function isStaff() {
@@ -752,25 +754,40 @@ match /feePayments/{paymentId} {
         return attendanceId.split('_')[0];
       }
 
+      function isTeacherOnDutyActive() {
+        return userData() != null &&
+               userData().get('isTeacherOnDuty', false) == true &&
+               userData().get('teacherOnDutyExpiresAt', request.time) > request.time;
+      }
+
       allow read: if
       canViewAttendance() ||
         isAdmin()
+        || isTeacherOnDutyActive()
         || (isTeacher() && ((resource.data.classId in userData().classes) || (getClassIdFromAttendanceId(id) in userData().classes)))
         || (isStudent() && resource.data.classId == userData().classId)
         || (isParent() && exists(/databases/$(database)/documents/users/$(uid())) && (resource.data.students.keys().hasAny(userData().get('childrenIds', []))));
 
-      allow write: if canManageAttendance() || isAdmin() || (isTeacher() && (isClassTeacher(request.resource.data.classId) || (request.resource.data.classId in userData().get('classes', []))));
+      allow write: if canManageAttendance() || isAdmin() || isTeacherOnDutyActive() || (isTeacher() && (isClassTeacher(request.resource.data.classId) || (request.resource.data.classId in userData().get('classes', []))));
       allow delete: if canManageAttendance() || isAdmin();
     }
 
     match /attendanceSummary/{id} {
+      function isTeacherOnDutyActive() {
+        return userData() != null &&
+               userData().get('isTeacherOnDuty', false) == true &&
+               userData().get('teacherOnDutyExpiresAt', request.time) > request.time;
+      }
+
       allow read: if isSignedIn() && (
         isAdmin() ||
+        isTeacherOnDutyActive() ||
         (isTeacher() && (resource == null || (resource.data.classId in userData().get('classes', [])))) ||
         (isStudent() && (id.split('_')[0] == uid() || (resource != null && resource.data.studentId == uid()))) ||
         (isParent() && (id.split('_')[0] in userData().get('childrenIds', []) || (resource != null && resource.data.studentId in userData().get('childrenIds', []))))
       );
       allow write: if isAdmin() ||
+        isTeacherOnDutyActive() ||
         (isSignedIn() && (isTeacher() || isStaff()) &&
         (
           // Allow if they are the teacher for the class being updated

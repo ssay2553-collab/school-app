@@ -172,15 +172,15 @@ export const EndOfTermPreview: React.FC<Props> = ({
             <View style={styles.behaviorGrid}>
               <View style={styles.behaviorItem}>
                 <Text style={styles.behaviorLabel}>CONDUCT</Text>
-                <Text style={styles.behaviorValue}>{conduct.toUpperCase()}</Text>
+                <Text style={styles.behaviorValue}>{(conduct || "GOOD").toUpperCase()}</Text>
               </View>
               <View style={styles.behaviorItem}>
                 <Text style={styles.behaviorLabel}>ATTITUDE</Text>
-                <Text style={styles.behaviorValue}>{attitude.toUpperCase()}</Text>
+                <Text style={styles.behaviorValue}>{(attitude || "POSITIVE").toUpperCase()}</Text>
               </View>
               <View style={styles.behaviorItem}>
                 <Text style={styles.behaviorLabel}>INTEREST</Text>
-                <Text style={styles.behaviorValue}>{interest.toUpperCase()}</Text>
+                <Text style={styles.behaviorValue}>{(interest || "N/A").toUpperCase()}</Text>
               </View>
             </View>
           </View>
@@ -203,12 +203,12 @@ export const EndOfTermPreview: React.FC<Props> = ({
         <View style={styles.statusBox}>
           <View style={styles.statusItem}>
             <Text style={styles.statusLabel}>NEXT TERM BEGINS:</Text>
-            <Text style={styles.statusValue}>{nextTermBegins.toUpperCase() || "TBA"}</Text>
+            <Text style={styles.statusValue}>{(nextTermBegins || "TBA").toUpperCase()}</Text>
           </View>
           {promotedTo ? (
             <View style={[styles.statusItem, { alignItems: "flex-end" }]}>
               <Text style={styles.statusLabel}>PROMOTED TO:</Text>
-              <Text style={[styles.statusValue, { color: "#059669" }]}>{promotedTo.toUpperCase()}</Text>
+              <Text style={[styles.statusValue, { color: "#059669" }]}>{(promotedTo || "").toUpperCase()}</Text>
             </View>
           ) : null}
         </View>

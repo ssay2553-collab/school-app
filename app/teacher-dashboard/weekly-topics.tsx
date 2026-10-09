@@ -24,6 +24,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useWeeklyTopics } from "../../hooks/teacher-dashboard/useWeeklyTopics";
 import { CurriculumBrowserModal } from "../../components/teacher-dashboard/CurriculumBrowserModal";
+import { getPedagogySuggestions } from "../../constants/Pedagogy";
 import { useRef } from "react";
 
 export default function WeeklyTopicsScreen() {
@@ -60,6 +61,23 @@ export default function WeeklyTopicsScreen() {
     setIsBrowserVisible,
     handleBrowserSelect,
   } = useWeeklyTopics();
+
+  const selectedClassName = useMemo(() => {
+    return teacherClasses.find(c => c.id === selectedClassId)?.name || "";
+  }, [teacherClasses, selectedClassId]);
+
+  const pedagogyTier = useMemo(() => {
+    return getPedagogySuggestions(selectedClassName);
+  }, [selectedClassName]);
+
+  const addChipValue = (field: keyof typeof topicData, value: string) => {
+    const current = (topicData[field] as string) || "";
+    if (!current.trim()) {
+      setTopicData(prev => ({ ...prev, [field]: value }));
+    } else if (!current.includes(value)) {
+      setTopicData(prev => ({ ...prev, [field]: `${current}, ${value}` }));
+    }
+  };
 
   const labels = useMemo(() => {
     switch (curriculum) {
@@ -224,12 +242,7 @@ export default function WeeklyTopicsScreen() {
                 {teacherClasses.map((c) => (
                   <TouchableOpacity
                     key={c.id}
-                    onPress={() => {
-                      if (isNavigating.current) return;
-                      isNavigating.current = true;
-                      setSelectedClassId(c.id);
-                      setTimeout(() => { isNavigating.current = false; }, 500);
-                    }}
+                    onPress={() => setSelectedClassId(c.id)}
                     style={[styles.chip, selectedClassId === c.id && styles.chipActive]}
                   >
                     <Text style={[styles.chipText, selectedClassId === c.id && styles.chipTextActive]}>
@@ -492,10 +505,139 @@ export default function WeeklyTopicsScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>{labels.objectives}</Text>
                 <TextInput
-                  style={[styles.input, { minHeight: 100 }]}
+                  style={[styles.input, { minHeight: 90 }]}
                   placeholder="Expected outcomes for students..."
                   value={topicData.objectives}
                   onChangeText={(text) => setTopicData({ ...topicData, objectives: text })}
+                  multiline
+                />
+              </View>
+
+              {/* --- PEDAGOGICAL & LESSON DELIVERY SECTIONS --- */}
+              <View style={styles.pedagogyHeaderContainer}>
+                <View style={styles.pedagogyBadge}>
+                  <SVGIcon name="bulb-outline" size={14} color={COLORS.primary} />
+                  <Text style={styles.pedagogyBadgeText}>PEDAGOGY & LESSON DELIVERY</Text>
+                </View>
+                <Text style={styles.pedagogyTierText}>{pedagogyTier.tierName}</Text>
+              </View>
+
+              {/* 1. Teaching Method */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>TEACHING METHOD / PEDAGOGY</Text>
+                <Text style={styles.suggestionTitle}>Tap suggestion to add:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionScroll}>
+                  {pedagogyTier.teachingMethods.map((m, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionChip}
+                      onPress={() => addChipValue('teachingMethod', m)}
+                    >
+                      <Text style={styles.suggestionChipText}>+ {m}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TextInput
+                  style={[styles.input, { minHeight: 70 }]}
+                  placeholder="e.g. Demonstration, Group Discussion, Play-Based..."
+                  value={topicData.teachingMethod}
+                  onChangeText={(text) => setTopicData({ ...topicData, teachingMethod: text })}
+                  multiline
+                />
+              </View>
+
+              {/* 2. Required TLMs */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>REQUIRED TLM (TEACHING & LEARNING MATERIALS)</Text>
+                <Text style={styles.suggestionTitle}>Tap suggestion to add:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionScroll}>
+                  {pedagogyTier.tlms.map((t, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionChip}
+                      onPress={() => addChipValue('tlmRequired', t)}
+                    >
+                      <Text style={styles.suggestionChipText}>+ {t}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TextInput
+                  style={[styles.input, { minHeight: 70 }]}
+                  placeholder="e.g. Wall Charts, Realia, Counters, Flashcards..."
+                  value={topicData.tlmRequired}
+                  onChangeText={(text) => setTopicData({ ...topicData, tlmRequired: text })}
+                  multiline
+                />
+              </View>
+
+              {/* 3. Starter Activity (Phase 1) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>PHASE 1: LESSON STARTER / RPK ACTIVITY</Text>
+                <Text style={styles.suggestionTitle}>Tap suggestion to add:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionScroll}>
+                  {pedagogyTier.starterActivities.map((s, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionChip}
+                      onPress={() => addChipValue('starterActivity', s)}
+                    >
+                      <Text style={styles.suggestionChipText}>+ {s}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TextInput
+                  style={[styles.input, { minHeight: 80 }]}
+                  placeholder="How to introduce the lesson and test Relevant Previous Knowledge..."
+                  value={topicData.starterActivity}
+                  onChangeText={(text) => setTopicData({ ...topicData, starterActivity: text })}
+                  multiline
+                />
+              </View>
+
+              {/* 4. Core Delivery (Phase 2) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>PHASE 2: CORE LESSON ACTIVITIES</Text>
+                <Text style={styles.suggestionTitle}>Tap suggestion to add:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionScroll}>
+                  {pedagogyTier.coreActivities.map((c, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionChip}
+                      onPress={() => addChipValue('coreActivities', c)}
+                    >
+                      <Text style={styles.suggestionChipText}>+ {c}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TextInput
+                  style={[styles.input, { minHeight: 100 }]}
+                  placeholder="Step-by-step core teacher and learner activities during main delivery..."
+                  value={topicData.coreActivities}
+                  onChangeText={(text) => setTopicData({ ...topicData, coreActivities: text })}
+                  multiline
+                />
+              </View>
+
+              {/* 5. Assessment & Reflection (Phase 3) */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>PHASE 3: ASSESSMENT & REFLECTION</Text>
+                <Text style={styles.suggestionTitle}>Tap suggestion to add:</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionScroll}>
+                  {pedagogyTier.assessmentMethods.map((a, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionChip}
+                      onPress={() => addChipValue('assessmentMethod', a)}
+                    >
+                      <Text style={styles.suggestionChipText}>+ {a}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                <TextInput
+                  style={[styles.input, { minHeight: 80 }]}
+                  placeholder="Class exercise, oral questions, peer review, homework..."
+                  value={topicData.assessmentMethod}
+                  onChangeText={(text) => setTopicData({ ...topicData, assessmentMethod: text })}
                   multiline
                 />
               </View>
@@ -636,6 +778,59 @@ const styles = StyleSheet.create({
   browseCurriculumBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: COLORS.primary + '10', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   browseCurriculumText: { fontSize: 9, fontWeight: '900', color: COLORS.primary },
   hintText: { fontSize: 10, color: '#94A3B8', marginTop: 8, fontWeight: '600', fontStyle: 'italic' },
+  pedagogyHeaderContainer: {
+    marginTop: 15,
+    marginBottom: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  pedagogyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  pedagogyBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+  pedagogyTierText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  suggestionTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#94A3B8',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  suggestionScroll: {
+    marginBottom: 10,
+  },
+  suggestionChip: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  suggestionChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
   footer: { position: "absolute", bottom: 25, left: 20, right: 20, alignItems: "center" },
   saveBtn: { backgroundColor: COLORS.primary, height: 65, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, width: "100%", maxWidth: 450, ...SHADOWS.large },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "900", letterSpacing: 0.5 },

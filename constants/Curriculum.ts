@@ -60,50 +60,70 @@ export type CurriculumType = "GES" | "Cambridge" | "Montessori";
  * GES/NaCCA Class Levels with age ranges and curriculum descriptions
  */
 export const CLASS_LEVELS = {
+  "Creche": {
+    ageRange: "1-3 years",
+    level: "creche",
+    description: "Creche (Level A)",
+  },
+  "Nursery 2": {
+    ageRange: "3-4 years",
+    level: "creche",
+    description: "Nursery 1 and 2 (Level B)",
+  },
+  "KG 1": {
+    ageRange: "4-5 years",
+    level: "creche",
+    description: "Kindergarten 1 (Level C)",
+  },
+  "KG 2": {
+    ageRange: "5-6 years",
+    level: "creche",
+    description: "Kindergarten 2 (Level D)",
+  },
   "Basic 1": {
     ageRange: "6-7 years",
     level: "early_grade",
-    description: "Lower Primary - Foundation literacy and numeracy",
+    description: "Lower Primary - Foundation literacy and numeracy (Level 1)",
   },
   "Basic 2": {
     ageRange: "7-8 years",
     level: "early_grade",
-    description: "Lower Primary - Building foundational skills",
+    description: "Lower Primary - Building foundational skills (Level 2)",
   },
   "Basic 3": {
     ageRange: "8-9 years",
     level: "early_grade",
-    description: "Lower Primary - Transition to intermediate",
+    description: "Lower Primary - Transition to intermediate (Level 3)",
   },
   "Basic 4": {
     ageRange: "9-10 years",
     level: "upper_primary",
-    description: "Upper Primary - Intermediate concepts",
+    description: "Upper Primary - Intermediate concepts (Level 4)",
   },
   "Basic 5": {
     ageRange: "10-11 years",
     level: "upper_primary",
-    description: "Upper Primary - Advanced foundational skills",
+    description: "Upper Primary - Advanced foundational skills (Level 5)",
   },
   "Basic 6": {
     ageRange: "11-12 years",
     level: "upper_primary",
-    description: "Upper Primary - Preparation for JHS",
+    description: "Upper Primary - Preparation for JHS (Level 6)",
   },
   "JHS 1": {
     ageRange: "12-13 years",
     level: "jhs",
-    description: "Junior High - Beginning of secondary education",
+    description: "Junior High 1 - Beginning of secondary education (Level 7)",
   },
   "JHS 2": {
     ageRange: "13-14 years",
     level: "jhs",
-    description: "Junior High - Intermediate secondary concepts",
+    description: "Junior High 2 - Intermediate secondary concepts (Level 8)",
   },
   "JHS 3": {
     ageRange: "14-15 years",
     level: "jhs",
-    description: "Junior High - BECE preparation year",
+    description: "Junior High 3 - BECE preparation year (Level 9)",
   },
   "SHS 1": {
     ageRange: "15-16 years",
@@ -134,12 +154,40 @@ export const ASSESSMENT_CRITERIA = {
 };
 
 /**
- * Centralized normalization for class levels (e.g., "basic-1" -> "Basic 1")
+ * Centralized normalization for class levels (e.g., level A->Creche, level 5->Basic 5, custom name + level -> standard class)
  */
-export const normalizeClassLevel = (classLevel: string): string => {
-  if (!classLevel) return classLevel;
+export const normalizeClassLevel = (classInput: string | number | { level?: any; name?: string }): string => {
+  if (!classInput) return "";
 
-  const cleaned = classLevel
+  let raw = "";
+  if (typeof classInput === "object" && classInput !== null) {
+    if (classInput.level !== undefined && classInput.level !== null && classInput.level !== "") {
+      raw = String(classInput.level);
+    } else if (classInput.name) {
+      raw = String(classInput.name);
+    }
+  } else {
+    raw = String(classInput);
+  }
+
+  const str = raw.trim().toUpperCase();
+
+  // Direct Level Mapping (A-D, 1-9)
+  if (str === "A") return "Creche";
+  if (str === "B") return "Nursery 2";
+  if (str === "C") return "KG 1";
+  if (str === "D") return "KG 2";
+  if (str === "1") return "Basic 1";
+  if (str === "2") return "Basic 2";
+  if (str === "3") return "Basic 3";
+  if (str === "4") return "Basic 4";
+  if (str === "5") return "Basic 5";
+  if (str === "6") return "Basic 6";
+  if (str === "7") return "JHS 1";
+  if (str === "8") return "JHS 2";
+  if (str === "9") return "JHS 3";
+
+  const cleaned = raw
     .replace(/-/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -178,26 +226,26 @@ export const normalizeClassLevel = (classLevel: string): string => {
 /**
  * Get class level info with fallback
  */
-export const getClassLevelInfo = (classLevel: string) => {
-  const normalizedLevel = normalizeClassLevel(classLevel);
+export const getClassLevelInfo = (classInput: string | number | { level?: any; name?: string }) => {
+  const normalizedLevel = normalizeClassLevel(classInput);
   if (CLASS_LEVELS[normalizedLevel as keyof typeof CLASS_LEVELS]) {
     return CLASS_LEVELS[normalizedLevel as keyof typeof CLASS_LEVELS];
   }
 
   const lower = normalizedLevel.toLowerCase();
-  if (lower.includes("nursery"))
+  if (lower.includes("nursery") || lower.includes("creche"))
     return {
-      ageRange: "3-4 years",
+      ageRange: "1-4 years",
       level: "creche",
       description: "Early Childhood Education",
     };
-  if (lower.includes("kg1"))
+  if (lower.includes("kg1") || lower.includes("kg 1"))
     return {
       ageRange: "4-5 years",
       level: "creche",
       description: "Kindergarten 1",
     };
-  if (lower.includes("kg2"))
+  if (lower.includes("kg2") || lower.includes("kg 2"))
     return {
       ageRange: "5-6 years",
       level: "creche",
@@ -213,8 +261,8 @@ export const getClassLevelInfo = (classLevel: string) => {
 /**
  * Format class level for display
  */
-export const formatClassLevel = (classLevel: string): string => {
-  const normalized = normalizeClassLevel(classLevel);
+export const formatClassLevel = (classInput: string | number | { level?: any; name?: string }): string => {
+  const normalized = normalizeClassLevel(classInput);
   const info = getClassLevelInfo(normalized);
   return `${normalized} (${info.ageRange})`;
 };

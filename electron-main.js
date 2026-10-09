@@ -34,7 +34,7 @@ const schools = {
     authDomain: "morgis-app.firebaseapp.com",
   },
   perfect: {
-    name: "TAPM APP",
+    name: "Angels Pride",
     backgroundColor: "#b9b9b9ff",
     authDomain: "clis-app-f89b8.firebaseapp.com",
   },
@@ -74,7 +74,7 @@ const schools = {
     authDomain: "jewels-app-17a30.firebaseapp.com",
   },
   clis: {
-    name: "CLIS App",
+    name: "ASAPH App",
     backgroundColor: "#96d494ff",
     authDomain: "clis-app-e39e8.firebaseapp.com",
   },
@@ -94,7 +94,7 @@ const schools = {
     authDomain: "bright-brains-ed4d7.firebaseapp.com",
   },
   lilies: {
-    name: "PHEC App",
+    name: "Lillies App",
     backgroundColor: "#FDF7FF",
     authDomain: "bright-lilies.firebaseapp.com",
   },

@@ -33,6 +33,11 @@ export interface WeeklyTopic {
   indicator?: string; // Dedicated Indicator Item Statement
   subTopics?: string;
   objectives?: string;
+  teachingMethod?: string;
+  tlmRequired?: string;
+  starterActivity?: string;
+  coreActivities?: string;
+  assessmentMethod?: string;
   teacherId: string;
   academicYear: string;
   term: string;
@@ -64,6 +69,11 @@ export const useWeeklyTopics = () => {
     indicator: '',
     subTopics: '',
     objectives: '',
+    teachingMethod: '',
+    tlmRequired: '',
+    starterActivity: '',
+    coreActivities: '',
+    assessmentMethod: '',
   });
   const [serverTopicData, setServerTopicData] = useState<Partial<WeeklyTopic>>({});
   const [isLookingUp, setIsLookingUp] = useState(false);
@@ -139,6 +149,11 @@ export const useWeeklyTopics = () => {
             indicator: data.indicator || '',
             subTopics: data.subTopics || '',
             objectives: data.objectives || '',
+            teachingMethod: data.teachingMethod || '',
+            tlmRequired: data.tlmRequired || '',
+            starterActivity: data.starterActivity || '',
+            coreActivities: data.coreActivities || '',
+            assessmentMethod: data.assessmentMethod || '',
           });
           setEndDate(data.endDate || moment(startDate).add(4, 'days').format('YYYY-MM-DD'));
           setWeekNumber(data.weekNumber || "");
@@ -150,6 +165,11 @@ export const useWeeklyTopics = () => {
             indicator: data.indicator || '',
             subTopics: data.subTopics || '',
             objectives: data.objectives || '',
+            teachingMethod: data.teachingMethod || '',
+            tlmRequired: data.tlmRequired || '',
+            starterActivity: data.starterActivity || '',
+            coreActivities: data.coreActivities || '',
+            assessmentMethod: data.assessmentMethod || '',
             endDate: data.endDate || '',
             weekNumber: data.weekNumber || "",
           });
@@ -161,7 +181,12 @@ export const useWeeklyTopics = () => {
             indicatorCode: '',
             indicator: '',
             subTopics: '',
-            objectives: ''
+            objectives: '',
+            teachingMethod: '',
+            tlmRequired: '',
+            starterActivity: '',
+            coreActivities: '',
+            assessmentMethod: '',
           });
           setWeekNumber("");
           setServerTopicData({});
@@ -201,6 +226,9 @@ export const useWeeklyTopics = () => {
         topic: match.contentStandard || prev.topic,
         subTopics: prev.subTopics || '', // Keep custom subTopics or default
         objectives: match.objectives || prev.objectives,
+        starterActivity: prev.starterActivity || `Review Relevant Previous Knowledge (RPK) related to ${match.strand || 'topic'}.`,
+        coreActivities: prev.coreActivities || `Guide learners step-by-step through ${match.indicator || match.contentStandard}. Engage class in interactive activities to achieve: ${match.objectives || match.indicator}.`,
+        assessmentMethod: prev.assessmentMethod || 'Class exercise and oral questioning based on indicator.',
       }));
       setLookupStatus('success');
       showToast({ message: `Auto-populated from NaCCA: ${match.code}`, type: "success" });
@@ -255,6 +283,11 @@ export const useWeeklyTopics = () => {
         indicator: topicData.indicator || '',
         subTopics: topicData.subTopics || '',
         objectives: topicData.objectives || '',
+        teachingMethod: topicData.teachingMethod || '',
+        tlmRequired: topicData.tlmRequired || '',
+        starterActivity: topicData.starterActivity || '',
+        coreActivities: topicData.coreActivities || '',
+        assessmentMethod: topicData.assessmentMethod || '',
         teacherId: firebaseUser?.uid,
         curriculum: userCurriculum,
         updatedAt: serverTimestamp(),
@@ -289,7 +322,12 @@ export const useWeeklyTopics = () => {
       indicatorCode: '',
       indicator: '',
       subTopics: '',
-      objectives: ''
+      objectives: '',
+      teachingMethod: '',
+      tlmRequired: '',
+      starterActivity: '',
+      coreActivities: '',
+      assessmentMethod: '',
     });
     setLookupStatus('idle');
   };

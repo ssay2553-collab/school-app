@@ -652,6 +652,41 @@ export default function TeacherStatistics() {
                     <Text style={styles.detailLabel}>LEARNING OBJECTIVES</Text>
                     <Text style={styles.detailValue}>{selectedTopicDetail?.objectives || "Not specified"}</Text>
 
+                    {selectedTopicDetail?.teachingMethod && (
+                      <>
+                        <Text style={styles.detailLabel}>TEACHING METHOD / PEDAGOGY</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail.teachingMethod}</Text>
+                      </>
+                    )}
+
+                    {selectedTopicDetail?.tlmRequired && (
+                      <>
+                        <Text style={styles.detailLabel}>REQUIRED TLM (TEACHING & LEARNING MATERIALS)</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail.tlmRequired}</Text>
+                      </>
+                    )}
+
+                    {selectedTopicDetail?.starterActivity && (
+                      <>
+                        <Text style={styles.detailLabel}>PHASE 1: LESSON STARTER / RPK ACTIVITY</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail.starterActivity}</Text>
+                      </>
+                    )}
+
+                    {selectedTopicDetail?.coreActivities && (
+                      <>
+                        <Text style={styles.detailLabel}>PHASE 2: CORE LESSON ACTIVITIES</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail.coreActivities}</Text>
+                      </>
+                    )}
+
+                    {selectedTopicDetail?.assessmentMethod && (
+                      <>
+                        <Text style={styles.detailLabel}>PHASE 3: ASSESSMENT & REFLECTION</Text>
+                        <Text style={styles.detailValue}>{selectedTopicDetail.assessmentMethod}</Text>
+                      </>
+                    )}
+
                     <Text style={styles.detailLabel}>DURATION</Text>
                     <Text style={styles.detailValue}>
                       {safeFormat(selectedTopicDetail?.startDate, "MMM D, YYYY")} - {safeFormat(selectedTopicDetail?.endDate, "MMM D, YYYY")}

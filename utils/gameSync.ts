@@ -11,14 +11,32 @@ const GAME_KEYS = [
   "@unlocked_stickers",
 ];
 
+export const isUid = (str?: string): boolean => {
+  if (!str) return true;
+  const s = str.trim();
+  return /^[a-zA-Z0-9_-]{20,36}$/.test(s);
+};
+
+export const getStudentNameFromUser = (user: any): string => {
+  if (!user) return "Super Student";
+  const fullName = user.fullName;
+  const profileName = `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim();
+  const name = (fullName || profileName || user.displayName || "").trim();
+  if (name && !isUid(name)) {
+    return name;
+  }
+  return "Super Student";
+};
+
 export const syncAchievementsToCloud = async (studentId: string, displayName?: string, classId?: string) => {
   if (!studentId) return;
 
   try {
+    const cleanName = (displayName && !isUid(displayName)) ? displayName.trim() : "Super Student";
     const data: Record<string, any> = {
       updatedAt: serverTimestamp(),
       studentId,
-      studentName: displayName || "Super Student",
+      studentName: cleanName,
       classId: classId || "N/A",
     };
 

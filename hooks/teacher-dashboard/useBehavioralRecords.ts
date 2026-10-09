@@ -23,6 +23,9 @@ export interface BehavioralRecord {
   attitude: string;
   teacherRemarks: string;
   promotedTo?: string;
+  attendance?: string;
+  tas?: string;
+  nextTermBegins?: string;
   physicalDev?: Record<string, string>;
   assessments?: Record<string, string>;
 }
@@ -95,8 +98,10 @@ export const useBehavioralRecords = () => {
 
         if (!isMounted.current) return;
 
+        let loadedStudents: BehavioralRecord[] = [];
+
         if (docSnap.exists()) {
-          setAllStudents(docSnap.data().students || []);
+          loadedStudents = docSnap.data().students || [];
         } else {
           const q = query(
             collection(db, "users"),
@@ -104,7 +109,7 @@ export const useBehavioralRecords = () => {
             where("classId", "==", selectedClassId)
           );
           const snap = await getDocsFromServer(q);
-          const mapped = snap.docs
+          loadedStudents = snap.docs
             .map((d: any) => ({ uid: d.id, ...d.data() }))
             .filter((data: any) => ["active", "pending_activation"].includes(data.status))
             .map((data: any) => ({
@@ -116,9 +121,49 @@ export const useBehavioralRecords = () => {
               teacherRemarks: "",
               promotedTo: "",
             }));
-          mapped.sort((a, b) => a.fullName.localeCompare(b.fullName));
-          if (isMounted.current) setAllStudents(mapped);
+          loadedStudents.sort((a, b) => a.fullName.localeCompare(b.fullName));
         }
+
+        // Auto-fill attendance and TAS from marked daily attendance
+        try {
+          const qAtt = query(
+            collection(db, "attendance"),
+            where("classId", "==", selectedClassId),
+            where("academicYear", "==", academicYear),
+            where("term", "==", term)
+          );
+          const attSnap = await getDocsFromServer(qAtt);
+          if (!attSnap.empty) {
+            const totalSchoolDays = attSnap.docs.length;
+            const attendanceMap: Record<string, number> = {};
+
+            attSnap.docs.forEach((d) => {
+              const dayData = d.data();
+              const studentsInDay = dayData.students || {};
+              Object.keys(studentsInDay).forEach((sId) => {
+                if (studentsInDay[sId]?.status === "present") {
+                  attendanceMap[sId] = (attendanceMap[sId] || 0) + 1;
+                }
+              });
+            });
+
+            loadedStudents = loadedStudents.map((s) => {
+              const presentCount = attendanceMap[s.studentId] || 0;
+              const calculatedAttendance = `${presentCount} / ${totalSchoolDays}`;
+              const calculatedTas = `${totalSchoolDays}`;
+
+              return {
+                ...s,
+                attendance: s.attendance && s.attendance.trim() !== "" ? s.attendance : calculatedAttendance,
+                tas: s.tas && s.tas.trim() !== "" ? s.tas : calculatedTas,
+              };
+            });
+          }
+        } catch (attErr) {
+          console.error("Error auto-filling attendance from marked records:", attErr);
+        }
+
+        if (isMounted.current) setAllStudents(loadedStudents);
       } catch (err) {
         if (isMounted.current) console.error("fetchRecords error:", err);
       } finally {

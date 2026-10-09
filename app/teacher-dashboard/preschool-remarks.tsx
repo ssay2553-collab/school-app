@@ -1,8 +1,10 @@
+import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -13,8 +15,12 @@ import {
   View,
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
+import { SCHOOL_CONFIG } from "../../constants/Config";
+import { getSchoolLogo } from "../../constants/Logos";
+import { getSchoolSignature } from "../../constants/Signatures";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useBehavioralRecords, BehavioralRecord } from "../../hooks/teacher-dashboard/useBehavioralRecords";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useRef, useEffect } from "react";
 
 const PRESCHOOL_ASSESSMENTS = [
@@ -85,6 +91,7 @@ const AssessmentItem = React.memo(({ item, student, onUpdate }: { item: any, stu
 
 export default function PreschoolRemarks() {
   const router = useRouter();
+  const acadConfig = useAcademicConfig();
   const {
     loading,
     syncing,
@@ -111,6 +118,13 @@ export default function PreschoolRemarks() {
   const selectedClass = myClasses.find(c => c.id === selectedClassId);
   const selectedClassName = selectedClass?.name || "";
   const isPreschool = selectedClass?.department === "Pre-School" || isPreschoolClass(selectedClassName);
+
+  const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary || "#6366F1";
+  const schoolId = (
+    Constants.expoConfig?.extra?.schoolId || SCHOOL_CONFIG.schoolId || "afahjoy"
+  ).toLowerCase();
+  const schoolLogo = getSchoolLogo(schoolId);
+  const adminSig = getSchoolSignature(schoolId);
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
@@ -177,6 +191,53 @@ export default function PreschoolRemarks() {
         <View style={styles.center}><ActivityIndicator color={COLORS.primary} /><Text style={styles.syncText}>Syncing records...</Text></View>
       ) : currentStudent ? (
         <ScrollView style={styles.mainScroll} contentContainerStyle={{ paddingBottom: 120 }} removeClippedSubviews={true}>
+          {isPreschool && (
+            <View style={styles.letterheadCard}>
+              <View style={styles.paperLetterhead}>
+                {schoolLogo && (
+                  <Image
+                    source={schoolLogo}
+                    style={styles.paperLogo}
+                    resizeMode="contain"
+                  />
+                )}
+                <View style={styles.paperSchoolInfoContainer}>
+                  <Text style={[styles.paperSchoolName, { color: primary }]}>
+                    {(SCHOOL_CONFIG.fullName || SCHOOL_CONFIG.name || "SCHOOL").toUpperCase()}
+                  </Text>
+                  {SCHOOL_CONFIG.motto ? (
+                    <Text style={styles.paperSchoolMotto}>
+                      "{SCHOOL_CONFIG.motto}"
+                    </Text>
+                  ) : null}
+                  {SCHOOL_CONFIG.address ? (
+                    <Text style={styles.paperSchoolInfo}>{SCHOOL_CONFIG.address}</Text>
+                  ) : null}
+                  <Text style={styles.paperSchoolContact}>
+                    {SCHOOL_CONFIG.hotline ? `Tel: ${SCHOOL_CONFIG.hotline}` : ""}
+                    {SCHOOL_CONFIG.hotline && SCHOOL_CONFIG.email ? "  |  " : ""}
+                    {SCHOOL_CONFIG.email ? `Email: ${SCHOOL_CONFIG.email}` : ""}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.headerSeparatorContainer}>
+                <View
+                  style={[
+                    styles.headerSeparatorPrimary,
+                    { backgroundColor: primary },
+                  ]}
+                />
+                <View
+                  style={[
+                    styles.headerSeparatorSecondary,
+                    { backgroundColor: "#fb7185" },
+                  ]}
+                />
+              </View>
+            </View>
+          )}
+
           <View style={styles.studentHeader}>
             <Text style={styles.studentFullName}>{currentStudent.fullName}</Text>
             {isPreschool && (
@@ -199,20 +260,20 @@ export default function PreschoolRemarks() {
             </View>
           ) : (
             <View style={styles.preschoolContent}>
-              <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>PHYSICAL DEVELOPMENT (H/W)</Text></View>
+              <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>ATTENDANCE & NEXT TERM SCHEDULE</Text></View>
               <View style={styles.hwGrid}>
                 <View style={styles.hwRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.hwLabel}>ATTENDANCE COUNT</Text>
+                    <TextInput style={styles.hwInputSingle} placeholder="e.g. 58 / 60" value={currentStudent.attendance} onChangeText={(v) => updateRecord(currentStudent.studentId, "attendance", v)} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.hwLabel}>TAS (SESSIONS)</Text>
+                    <TextInput style={styles.hwInputSingle} placeholder="e.g. 60" value={currentStudent.tas} onChangeText={(v) => updateRecord(currentStudent.studentId, "tas", v)} keyboardType="numeric" />
+                  </View>
                   <View style={{ flex: 1.5 }}>
-                    <Text style={styles.hwLabel}>DATE</Text>
-                    <TextInput style={styles.hwInputSingle} placeholder="Date" value={currentStudent.physicalDev?.date} onChangeText={(v) => updatePhysical("date", v)} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.hwLabel}>HEIGHT (m)</Text>
-                    <TextInput style={styles.hwInputSingle} placeholder="Height" value={currentStudent.physicalDev?.height} onChangeText={(v) => updatePhysical("height", v)} keyboardType="numeric" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.hwLabel}>WEIGHT (kg)</Text>
-                    <TextInput style={styles.hwInputSingle} placeholder="Weight" value={currentStudent.physicalDev?.weight} onChangeText={(v) => updatePhysical("weight", v)} keyboardType="numeric" />
+                    <Text style={styles.hwLabel}>NEXT TERM BEGINS</Text>
+                    <TextInput style={styles.hwInputSingle} placeholder="Next Term Date" value={currentStudent.nextTermBegins !== undefined ? currentStudent.nextTermBegins : (academicYear ? acadConfig.nextTermBegins : "")} onChangeText={(v) => updateRecord(currentStudent.studentId, "nextTermBegins", v)} />
                   </View>
                 </View>
               </View>
@@ -231,6 +292,24 @@ export default function PreschoolRemarks() {
           <View style={styles.remarksSection}>
             <Text style={styles.remarksLabel}>TEACHER'S GENERAL REMARKS</Text>
             <TextInput style={styles.remarksInput} multiline placeholder="General comments on conduct and performance..." value={currentStudent.teacherRemarks} onChangeText={(t) => updateRecord(currentStudent.studentId, "teacherRemarks", t)} />
+          </View>
+
+          <View style={styles.signatureSection}>
+            <Text style={styles.remarksLabel}>INSTITUTION'S OFFICIAL SIGNATURE</Text>
+            <View style={styles.sigCardContent}>
+              {adminSig ? (
+                <Image
+                  source={typeof adminSig === "string" ? { uri: adminSig } : adminSig}
+                  style={styles.sigImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={styles.sigPlaceholder}>
+                  <Text style={styles.sigPlaceholderText}>Official Signature Verified</Text>
+                </View>
+              )}
+              <Text style={styles.sigTitleText}>HEADTEACHER / ADMINISTRATOR SIGNATURE</Text>
+            </View>
           </View>
         </ScrollView>
       ) : (
@@ -306,4 +385,93 @@ const styles = StyleSheet.create({
   syncText: { marginTop: 10, color: "#64748B", fontWeight: "700" },
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
   emptyStateText: { fontSize: 14, color: "#64748B", textAlign: "center", marginTop: 10 },
+  letterheadCard: {
+    backgroundColor: "#fff",
+    padding: 20,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  paperLetterhead: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  paperLogo: { width: 70, height: 70, marginBottom: 8 },
+  paperSchoolInfoContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  paperSchoolName: { fontSize: 16, fontWeight: "900", textAlign: "center" },
+  paperSchoolMotto: {
+    fontSize: 10,
+    fontStyle: "italic",
+    color: "#64748B",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  paperSchoolInfo: {
+    fontSize: 10,
+    color: "#475569",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  paperSchoolContact: {
+    fontSize: 10,
+    color: "#475569",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  headerSeparatorContainer: {
+    marginTop: 10,
+    width: "100%",
+  },
+  headerSeparatorPrimary: {
+    height: 2,
+    width: "100%",
+  },
+  headerSeparatorSecondary: {
+    height: 1,
+    width: "100%",
+    marginTop: 2,
+  },
+  signatureSection: {
+    backgroundColor: "#fff",
+    padding: 20,
+    marginTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+  },
+  sigCardContent: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+  },
+  sigImage: {
+    width: 200,
+    height: 70,
+    marginBottom: 8,
+  },
+  sigPlaceholder: {
+    width: 200,
+    height: 60,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
+  sigPlaceholderText: {
+    fontSize: 11,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  sigTitleText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#475569",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
 });

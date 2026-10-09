@@ -121,7 +121,7 @@ export default function DashboardLayout() {
       {/* HEADER */}
       <LinearGradient
         colors={[primary, secondary]}
-        style={[styles.headerGradient, { paddingTop: insets.top + 10 }]}
+        style={[styles.headerGradient, { backgroundColor: primary, paddingTop: insets.top + 10 }]}
       >
         <View style={styles.header}>
           <View style={styles.schoolInfo}>

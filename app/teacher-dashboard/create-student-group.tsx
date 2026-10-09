@@ -220,7 +220,10 @@ const GroupChatView = ({
         data={messages}
         keyExtractor={(m) => m.id}
         renderItem={({ item }) => (
-          <MessageBubble message={item} isYou={item.from === appUser?.uid} />
+          <MessageBubble
+            message={{ ...item, createdAt: item.timestamp }}
+            isYou={item.from === appUser?.uid}
+          />
         )}
         contentContainerStyle={{ padding: 16 }}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}

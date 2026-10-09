@@ -28,6 +28,8 @@ interface StudentAttendance {
   status: string;
   date: string;
   classId: string;
+  arrivalMode?: string;
+  broughtBy?: string;
 }
 
 export default function AttendanceScreen() {
@@ -87,8 +89,13 @@ export default function AttendanceScreen() {
           }
 
           let status = "not_marked";
+          let arrivalMode = "";
+          let broughtBy = "";
           if (attendanceSnap.exists()) {
-            status = (attendanceSnap.data() as any).students?.[studentId]?.status ?? "not_marked";
+            const studentRecord = (attendanceSnap.data() as any).students?.[studentId] || {};
+            status = studentRecord.status ?? "not_marked";
+            arrivalMode = studentRecord.arrivalMode || "";
+            broughtBy = studentRecord.broughtBy || "";
           }
 
           return {
@@ -97,6 +104,8 @@ export default function AttendanceScreen() {
             status,
             date: todayKey,
             classId,
+            arrivalMode,
+            broughtBy,
           };
         });
 
@@ -207,7 +216,9 @@ export default function AttendanceScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.presentInfoTitle}>{item.name.split(' ')[0]} is in school</Text>
                   <Text style={styles.presentInfoSub}>
-                    Attendance was marked today. Learning and fun are underway!
+                    {item.arrivalMode
+                      ? `Arrived via ${item.arrivalMode.replace('_', ' ')}${item.broughtBy ? ` (Brought by: ${item.broughtBy})` : ''}.`
+                      : 'Attendance marked today. Learning and fun are underway!'}
                   </Text>
                 </View>
               </Animatable.View>

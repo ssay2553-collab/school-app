@@ -1,6 +1,16 @@
 import { StudentPayment, StudentRecord } from "./types";
 import { normalizeCategory, isolatedKeys, mergeFinancialData } from "./utils";
 
+const isArrearsClearancePseudoPayment = (p: any, docId?: string): boolean => {
+  if (!p) return false;
+  const idStr = String(docId || p.id || p.receiptNo || "");
+  if (idStr.startsWith("RC-ADJ-")) return true;
+  if (p.method === "Arrears Clearance") return true;
+  const receivedFrom = String(p.receivedFrom || "").toLowerCase();
+  if (receivedFrom.includes("arrears cleared")) return true;
+  return false;
+};
+
 export const harvestStudentData = (
   recordsSnap: any,
   paymentsSnap: any,
@@ -44,6 +54,7 @@ export const harvestStudentData = (
 
   const paymentsByStudent: Record<string, StudentPayment[]> = {};
   const knownPaymentIdsByStudent: Record<string, Set<string>> = {};
+  const paymentDeletions = new Set<string>();
 
   const addPayment = (uid: string, p: any, sourceId?: string) => {
     if (!uid || uid === "undefined") return;
@@ -96,6 +107,12 @@ export const harvestStudentData = (
     const data = d.data();
     const fixed = paymentUpdates.get(d.id);
     const merged = { ...data, ...fixed };
+
+    if (isArrearsClearancePseudoPayment(merged, d.id)) {
+      paymentDeletions.add(d.id);
+      return;
+    }
+
     const uid = resolvePaymentUid(merged, undefined, d.id);
     if (uid) addPayment(uid, merged, d.id);
   });
@@ -109,11 +126,19 @@ export const harvestStudentData = (
     if (!recordUid) return;
 
     if (Array.isArray(merged.payments)) {
-      merged.payments.forEach((p: any) => {
+      const cleanPayments = merged.payments.filter((p: any) => {
         // Skip legacy-migration payments created by previous runs of this tool.
         // This allows the harvester to re-calculate the gap accurately on every scan.
-        if (p.receiptNo?.toString().startsWith("LEGACY-")) return;
+        if (p.receiptNo?.toString().startsWith("LEGACY-")) return false;
+        if (isArrearsClearancePseudoPayment(p, p.id)) return false;
+        return true;
+      });
 
+      if (cleanPayments.length !== merged.payments.length) {
+        recordUpdates.set(d.id, { ...(recordUpdates.get(d.id) || {}), payments: cleanPayments });
+      }
+
+      cleanPayments.forEach((p: any) => {
         const pUid = resolvePaymentUid(p, recordUid, d.id);
         if (pUid) {
           // If embedded payment lacks year/term, inherit from parent record
@@ -134,11 +159,12 @@ export const harvestStudentData = (
     const data = d.data();
     if (Array.isArray(data.payments)) {
       data.payments.forEach((p: any) => {
+        if (isArrearsClearancePseudoPayment(p, p.id)) return;
         const pUid = resolvePaymentUid(p, d.id);
         if (pUid) addPayment(pUid, p);
       });
     }
   });
 
-  return { recordsByStudent, paymentsByStudent };
+  return { recordsByStudent, paymentsByStudent, paymentDeletions };
 };

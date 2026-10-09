@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SentAssignment } from "./useSentAssignments";
 import {
   collection,
   documentId,
@@ -903,6 +905,33 @@ export const useUploadAssignment = () => {
 
       await batch.commit();
 
+      // Save to local sent assignments history (offline accessible)
+      if (appUser?.uid) {
+        try {
+          const historyKey = `@teacher_sent_assignments_${appUser.uid}`;
+          const raw = await AsyncStorage.getItem(historyKey);
+          const existing = raw ? JSON.parse(raw) : [];
+          const newSentItem: SentAssignment = {
+            id: `sent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            title: title.trim(),
+            description: description.trim(),
+            type,
+            classId: selectedClassId,
+            className: teacherClasses.find(c => c.id === selectedClassId)?.name || selectedClassId,
+            subjectId: selectedSubject,
+            questions,
+            dueDate: dueDate.toISOString(),
+            createdAt: new Date().toISOString(),
+            fileName,
+            fileUrl,
+            code,
+          };
+          await AsyncStorage.setItem(historyKey, JSON.stringify([newSentItem, ...existing]));
+        } catch (historyErr) {
+          console.warn("Failed to save assignment to local history:", historyErr);
+        }
+      }
+
       // Send notifications to students & parents if auto-approved
       if (isAdmin) {
         try {
@@ -1084,6 +1113,91 @@ export const useUploadAssignment = () => {
     []
   );
 
+  const reuploadSentAssignment = useCallback(
+    async (assignment: SentAssignment, targetClassId: string): Promise<boolean> => {
+      if (!appUser?.uid) {
+        showToast({ message: "You must be signed in as a teacher.", type: "error" });
+        return false;
+      }
+
+      setLoading(true);
+      try {
+        const code = await generateUniqueCode();
+        const publicQuestions = stripAnswers(assignment.questions || []);
+        const answerKey = extractAnswers(assignment.questions || []);
+
+        const batch = writeBatch(db);
+        const assignmentRef = doc(collection(db, "assignments"));
+        const answerKeyRef = doc(db, "assignmentAnswerKeys", assignmentRef.id);
+
+        const role = appUser?.role?.toLowerCase();
+        const isAdmin = role === "admin" || role === "superadmin" || role === "super admin" || !!appUser.adminRole;
+
+        const assignmentData = {
+          title: assignment.title.trim(),
+          description: assignment.description?.trim() || "",
+          type: assignment.type,
+          classId: targetClassId,
+          subjectId: assignment.subjectId,
+          teacherId: appUser.uid,
+          fileUrl: assignment.fileUrl || "",
+          fileName: assignment.fileName || "",
+          fileSize: 0,
+          fileType: "",
+          questions: publicQuestions,
+          dueDate: new Date(assignment.dueDate || Date.now() + 7 * 24 * 60 * 60 * 1000),
+          code,
+          status: isAdmin ? "approved" : "pending",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        const answerKeyData = {
+          assignmentId: assignmentRef.id,
+          teacherId: appUser.uid,
+          answers: answerKey,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        batch.set(assignmentRef, assignmentData);
+        batch.set(answerKeyRef, answerKeyData);
+        await batch.commit();
+
+        // Save to local history
+        const historyKey = `@teacher_sent_assignments_${appUser.uid}`;
+        const raw = await AsyncStorage.getItem(historyKey);
+        const existing = raw ? JSON.parse(raw) : [];
+        const newSentItem = {
+          ...assignment,
+          id: `sent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+          classId: targetClassId,
+          className: teacherClasses.find(c => c.id === targetClassId)?.name || targetClassId,
+          createdAt: new Date().toISOString(),
+          code,
+        };
+        await AsyncStorage.setItem(historyKey, JSON.stringify([newSentItem, ...existing]));
+
+        showToast({
+          message: "Assignment re-uploaded successfully!",
+          type: "success",
+        });
+
+        return true;
+      } catch (error) {
+        console.error("Failed to re-upload assignment:", error);
+        showToast({
+          message: error instanceof Error ? error.message : "Failed to re-upload assignment.",
+          type: "error",
+        });
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [appUser, generateUniqueCode, showToast, teacherClasses]
+  );
+
   /* ------------------------------------------------------------------------ */
   /* Unsaved changes                                                          */
   /* ------------------------------------------------------------------------ */
@@ -1169,6 +1283,7 @@ export const useUploadAssignment = () => {
     updateMathematicsQuestion,
 
     handleUpload,
+    reuploadSentAssignment,
 
     handleWebDateChange,
     handleWebTimeChange,

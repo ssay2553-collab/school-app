@@ -234,6 +234,7 @@ export default function TeacherStudentAcademicReport() {
     } else {
       router.replace("/teacher-dashboard");
     }
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   return (
@@ -438,7 +439,7 @@ export default function TeacherStudentAcademicReport() {
         </View>
 
         {/* Loading Report State */}
-        {fetchingReport && selectedStudentId && (
+        {Boolean(fetchingReport && selectedStudentId) && (
           <View style={styles.loadingBox}>
             <ActivityIndicator color={primary} size="large" />
             <Text style={styles.loadingText}>Fetching Exam Report...</Text>
@@ -446,7 +447,7 @@ export default function TeacherStudentAcademicReport() {
         )}
 
         {/* Empty State when no student selected or no records found */}
-        {!fetchingReport && selectedStudentId && subjectsData.length === 0 && (
+        {Boolean(!fetchingReport && selectedStudentId && subjectsData.length === 0) && (
           <View style={styles.emptyBox}>
             <SVGIcon name="document-text" size={48} color="#CBD5E1" />
             <Text style={styles.emptyText}>
@@ -456,7 +457,7 @@ export default function TeacherStudentAcademicReport() {
         )}
 
         {/* RESTRICTED: Admin Approval Pending */}
-        {!fetchingReport && selectedStudentId && subjectsData.length > 0 && !isReportApproved && (
+        {Boolean(!fetchingReport && selectedStudentId && subjectsData.length > 0 && !isReportApproved) && (
           <View style={styles.pendingApprovalCard}>
             <View style={styles.pendingIconBox}>
               <SVGIcon name="lock-closed" size={44} color="#D97706" />
@@ -470,13 +471,13 @@ export default function TeacherStudentAcademicReport() {
             </Text>
             <View style={styles.statusBadgePending}>
               <SVGIcon name="time-outline" size={16} color="#D97706" />
-              <Text style={styles.statusBadgeTextPending}>STATUS: {reportStatus.toUpperCase()}</Text>
+              <Text style={styles.statusBadgeTextPending}>STATUS: {(reportStatus || "PENDING").toUpperCase()}</Text>
             </View>
           </View>
         )}
 
         {/* APPROVED REPORT VIEW (NO Printing, Sharing or PDF Download) */}
-        {!fetchingReport && selectedStudentId && subjectsData.length > 0 && isReportApproved && (
+        {Boolean(!fetchingReport && selectedStudentId && subjectsData.length > 0 && isReportApproved) && (
           <AcademicReportPreview
             primary={primary}
             schoolLogo={schoolLogo}

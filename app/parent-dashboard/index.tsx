@@ -161,6 +161,13 @@ export default function ParentDashboard() {
           color: "#10b981",
           path: "/parent-dashboard/attendance",
         },
+        {
+          title: "Weekly Topics",
+          subtitle: "Class learning plan",
+          icon: "book-outline",
+          color: "#8b5cf6",
+          path: "/student-dashboard/weekly-topics",
+        },
       ],
     },
     {

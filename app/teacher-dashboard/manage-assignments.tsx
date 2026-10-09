@@ -50,15 +50,18 @@ export default function ManageAssignments() {
 
     const q = query(
       collection(db, "assignments"),
-      where("teacherId", "==", appUser.uid),
-      orderBy("createdAt", "desc")
+      where("teacherId", "==", appUser.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const list = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })).sort((a: any, b: any) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : new Date(a.createdAt || 0).getTime();
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
       setAssignments(list);
       setLoading(false);
       setRefreshing(false);

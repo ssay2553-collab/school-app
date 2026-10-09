@@ -104,6 +104,7 @@ export default function StudentAcademicRecords() {
     isNavigating.current = true;
     if (router.canGoBack()) router.back();
     else router.replace("/teacher-dashboard");
+    setTimeout(() => { isNavigating.current = false; }, 500);
   }, [router]);
 
   useEffect(() => {

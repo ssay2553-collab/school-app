@@ -17,7 +17,7 @@ import SVGIcon from "../../SVGIcon";
 import { WRITING_DATA, REMARKS, PEN_COLORS } from "./GameConstants";
 import { SHADOWS } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
-import { syncAchievementsToCloud } from "../../../utils/gameSync";
+import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
 
 const { width } = Dimensions.get("window");
 const CANVAS_SIZE = width * 0.85;
@@ -205,7 +205,7 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
 
       // Sync to cloud if user is logged in
       if (appUser?.uid) {
-        syncAchievementsToCloud(appUser.uid, appUser.displayName, appUser.classId);
+        syncAchievementsToCloud(appUser.uid, getStudentNameFromUser(appUser), appUser.classId);
       }
     } catch (e) {
       console.error("Failed to update writing count", e);

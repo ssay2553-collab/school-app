@@ -110,10 +110,17 @@ export const reconcileStudentBalances = (
     settlementOrder.forEach(k => prevPaidPool[k] = cumulativePaidPool[k]);
 
     // 1. Calculate Arrears from previous terms before adding current bills
+    const isArrearsCleared = data.arrearsCleared === true || (data.arrears === 0 && data.clearedArrearsAmount !== undefined);
     const currentArrearsPool: Record<string, number> = {};
     let totalTermArrears = 0;
+
     settlementOrder.forEach(k => {
-      const arr = Math.max(0, cumulativeBillPool[k] - cumulativePaidPool[k]);
+      let arr = Math.max(0, cumulativeBillPool[k] - cumulativePaidPool[k]);
+      if (isArrearsCleared) {
+        // Explicitly cleared by admin: mark cumulative bill as settled for carried-forward arrears
+        cumulativePaidPool[k] = cumulativeBillPool[k];
+        arr = 0;
+      }
       currentArrearsPool[k] = arr;
       totalTermArrears += arr;
     });
@@ -151,11 +158,11 @@ export const reconcileStudentBalances = (
       currentTermBills[k] = isHardcoded ? Math.max(safeNum(data[`${k}Bill`]), totalChargesInTerm) : totalChargesInTerm;
     });
 
-    // If data.otherBill exceeds explicit custom charges, assign the unassigned difference to 'other charges'
-    const totalCustomCharges = settlementOrder
-      .filter(k => k !== 'tuition' && !isolatedKeys.includes(k) && k !== 'other charges' && k !== 'other')
-      .reduce((sum, k) => sum + (currentTermBills[k] || 0), 0);
-    const unassignedOtherBill = Math.max(0, safeNum(data.otherBill) - totalCustomCharges);
+    // If data.otherBill exceeds explicit charges logged under 'other charges', assign difference to 'other charges'
+    const totalExplicitOtherChargesInTerm = termSpecificCharges
+      .filter(c => c.type === "other" || (c.method || "").toLowerCase().includes("charge"))
+      .reduce((sum, c) => sum + Number(c.amount ?? 0), 0);
+    const unassignedOtherBill = Math.max(0, safeNum(data.otherBill) - totalExplicitOtherChargesInTerm);
     if (unassignedOtherBill > 0) {
       currentTermBills['other charges'] = Math.max(currentTermBills['other charges'] || 0, unassignedOtherBill);
     }

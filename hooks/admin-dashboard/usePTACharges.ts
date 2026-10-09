@@ -78,6 +78,35 @@ export const usePTACharges = ({
   const [paymentMethod, setPaymentMethod] = useState<"Cash" | "Cheque" | "E-cash" | "Momo">("Cash");
   const [chargeAmount, setChargeAmount] = useState("");
 
+  // Selection state for multi-selection
+  const [selectedStudentUids, setSelectedStudentUids] = useState<Set<string>>(new Set());
+
+  const toggleStudentSelection = useCallback((uid: string) => {
+    setSelectedStudentUids((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) {
+        next.delete(uid);
+      } else {
+        next.add(uid);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedStudentUids((prev) => {
+      if (prev.size === students.length && students.length > 0) {
+        return new Set();
+      } else {
+        return new Set(students.map((s) => s.uid));
+      }
+    });
+  }, [students]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedStudentUids(new Set());
+  }, []);
+
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
   const isFetchingRef = useRef(false);
@@ -312,50 +341,60 @@ export const usePTACharges = ({
       showToast({ message: "Invalid amount", type: "error" });
       return false;
     }
-    if (selectedClassId === "all") {
-      showToast({ message: "Please select a specific class first", type: "error" });
+    if (selectedClassId === "all" && selectedStudentUids.size === 0) {
+      showToast({ message: "Please select a specific class or select individual students first", type: "error" });
       return false;
     }
 
     setSaving(true);
     try {
       // Fetch existing bills for this class/term
-      const qExisting = query(
+      let qExisting = query(
         collection(db, "feePayments"),
         where("type", "==", "pta"),
-        where("classId", "==", selectedClassId),
         where("academicYear", "==", acadConfig.academicYear),
         where("term", "==", acadConfig.currentTerm)
       );
+      if (selectedClassId !== "all") {
+        qExisting = query(qExisting, where("classId", "==", selectedClassId));
+      }
       const existingSnap = await getDocs(qExisting);
       const existingBillsMap = new Map<string, any>();
       existingSnap.docs.forEach(d => {
         existingBillsMap.set(d.data().studentUid, { id: d.id, ...d.data() });
       });
 
-      const q = query(
+      let q = query(
         collection(db, "users"),
         where("role", "==", "student"),
-        where("classId", "==", selectedClassId),
         where("status", "in", ["active", "pending_activation"])
       );
+      if (selectedClassId !== "all") {
+        q = query(q, where("classId", "==", selectedClassId));
+      }
       const snap = await getDocs(q);
 
       if (snap.empty) {
         setSaving(false);
-        showToast({ message: "No active students in this class", type: "warning" });
+        showToast({ message: "No active students found", type: "warning" });
         return false;
       }
 
-      // Filter out exempted students
+      // Filter out exempted students and unselected students if multi-selection is active
       const targetDocs = snap.docs.filter(d => {
         const exemptions = d.data().exemptions || [];
-        return !exemptions.includes('pta');
+        const isSelected = selectedStudentUids.size === 0 || selectedStudentUids.has(d.id);
+        return isSelected && !exemptions.includes('pta');
       });
 
       if (targetDocs.length === 0) {
         setSaving(false);
-        showToast({ message: "All students in this class are exempted from PTA dues", type: "info" });
+        showToast({
+          message: selectedStudentUids.size > 0
+            ? "Selected student(s) are exempted from PTA dues"
+            : "All students in this class are exempted from PTA dues",
+          type: "info"
+        });
         return true;
       }
 
@@ -544,6 +583,26 @@ export const usePTACharges = ({
         exemptions: isExempted ? arrayUnion(type) : arrayRemove(type)
       }).commit();
 
+      setSelectedStudent(prev => {
+        if (!prev || prev.uid !== studentId) return prev;
+        const currentExemptions = prev.exemptions || [];
+        const updatedExemptions = isExempted
+          ? Array.from(new Set([...currentExemptions, type]))
+          : currentExemptions.filter(e => e !== type);
+        return { ...prev, exemptions: updatedExemptions };
+      });
+
+      setStudents(prev =>
+        prev.map(s => {
+          if (s.uid !== studentId) return s;
+          const currentExemptions = s.exemptions || [];
+          const updatedExemptions = isExempted
+            ? Array.from(new Set([...currentExemptions, type]))
+            : currentExemptions.filter(e => e !== type);
+          return { ...s, exemptions: updatedExemptions };
+        })
+      );
+
       showToast({
         message: isExempted ? `Student exempted from ${type.toUpperCase()}` : `Exemption removed for ${type.toUpperCase()}`,
         type: "success"
@@ -553,6 +612,68 @@ export const usePTACharges = ({
     } catch (e) {
       console.error(e);
       showToast({ message: "Failed to update exemption", type: "error" });
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const batchSetExemption = async (isExempted: boolean) => {
+    if (selectedStudentUids.size === 0) {
+      showToast({ message: "Please select at least one student first", type: "warning" });
+      return false;
+    }
+
+    setSaving(true);
+    try {
+      const uids = Array.from(selectedStudentUids);
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < uids.length; i += CHUNK_SIZE) {
+        const chunk = uids.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach(uid => {
+          const studentRef = doc(db, "users", uid);
+          batch.update(studentRef, {
+            exemptions: isExempted ? arrayUnion('pta') : arrayRemove('pta')
+          });
+        });
+        await batch.commit();
+      }
+
+      setStudents(prev =>
+        prev.map(s => {
+          if (!selectedStudentUids.has(s.uid)) return s;
+          const current = s.exemptions || [];
+          const updated = isExempted
+            ? Array.from(new Set([...current, 'pta']))
+            : current.filter(e => e !== 'pta');
+          return { ...s, exemptions: updated };
+        })
+      );
+
+      if (selectedStudent && selectedStudentUids.has(selectedStudent.uid)) {
+        setSelectedStudent(prev => {
+          if (!prev) return prev;
+          const current = prev.exemptions || [];
+          const updated = isExempted
+            ? Array.from(new Set([...current, 'pta']))
+            : current.filter(e => e !== 'pta');
+          return { ...prev, exemptions: updated };
+        });
+      }
+
+      showToast({
+        message: isExempted
+          ? `Exempted ${selectedStudentUids.size} selected student(s) from PTA dues`
+          : `Removed PTA exemption for ${selectedStudentUids.size} selected student(s)`,
+        type: "success"
+      });
+      clearSelection();
+      fetchStudents(true);
+      return true;
+    } catch (e) {
+      console.error("Batch exemption error:", e);
+      showToast({ message: "Failed to update exemptions", type: "error" });
       return false;
     } finally {
       setSaving(false);
@@ -704,8 +825,15 @@ export const usePTACharges = ({
     handleLogPayment,
     applyBulkCharge,
     toggleExemption,
+    batchSetExemption,
     handleDeletePayment,
     handleRefresh,
+
+    // Selection State & Functions
+    selectedStudentUids,
+    toggleStudentSelection,
+    toggleSelectAll,
+    clearSelection,
 
     // UI state & handlers
     paymentModalVisible,

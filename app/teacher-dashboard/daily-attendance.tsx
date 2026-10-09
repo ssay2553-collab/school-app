@@ -6,6 +6,7 @@ import {
   FlatList,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   SafeAreaView,
@@ -28,24 +29,115 @@ import { useRef } from "react";
 
 const CONTENT_MAX_WIDTH = 1200;
 
+const ArrivalModeModal = ({
+  visible,
+  student,
+  currentMode,
+  currentBroughtBy,
+  onClose,
+  onSave
+}: {
+  visible: boolean;
+  student: AppUser | null;
+  currentMode?: string;
+  currentBroughtBy?: string;
+  onClose: () => void;
+  onSave: (mode: string, broughtBy: string) => void;
+}) => {
+  const [mode, setMode] = useState(currentMode || "school_bus");
+  const [broughtBy, setBroughtBy] = useState(currentBroughtBy || "");
+
+  useEffect(() => {
+    if (visible) {
+      setMode(currentMode || "school_bus");
+      setBroughtBy(currentBroughtBy || "");
+    }
+  }, [visible, currentMode, currentBroughtBy]);
+
+  if (!visible || !student) return null;
+
+  return (
+    <View style={styles.modalOverlay}>
+      <View style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>Arrival & Transport Details</Text>
+          <TouchableOpacity onPress={onClose}>
+            <SVGIcon name="close" size={22} color="#64748B" />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.modalSub}>
+          How did {student.profile?.firstName} arrive at school today?
+        </Text>
+
+        <View style={styles.modeGrid}>
+          {[
+            { id: "school_bus", label: "School Bus", icon: "bus" },
+            { id: "parent", label: "Parent / Guardian", icon: "people" },
+            { id: "walk", label: "Walking", icon: "walk" },
+            { id: "public_transit", label: "Public Transit", icon: "car" },
+            { id: "other", label: "Other", icon: "ellipsis-horizontal" },
+          ].map((m) => (
+            <TouchableOpacity
+              key={m.id}
+              style={[styles.modeCard, mode === m.id && styles.modeCardActive]}
+              onPress={() => setMode(m.id)}
+            >
+              <SVGIcon name={m.icon as any} size={20} color={mode === m.id ? "#fff" : COLORS.primary} />
+              <Text style={[styles.modeCardText, mode === m.id && styles.modeCardTextActive]}>{m.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.inputLabel}>Brought By / Driver / Details (Optional)</Text>
+        <TextInput
+          style={styles.textInput}
+          placeholder="e.g. Father, Mother, Driver Uncle John"
+          placeholderTextColor="#94A3B8"
+          value={broughtBy}
+          onChangeText={setBroughtBy}
+        />
+
+        <View style={styles.modalActions}>
+          <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+            <Text style={styles.cancelBtnText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.saveModalBtn}
+            onPress={() => {
+              onSave(mode, broughtBy);
+              onClose();
+            }}
+          >
+            <Text style={styles.saveModalBtnText}>Save Details</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+};
+
 const AttendanceStudentCard = React.memo(({
   item,
   index,
-  status,
+  statusData,
   isUnsaved,
   isOfficialClassTeacher,
-  markLocal
+  markLocal,
+  onOpenArrivalModal
 }: {
   item: AppUser,
   index: number,
-  status: string,
+  statusData: { status?: string; arrivalMode?: string; broughtBy?: string },
   isUnsaved: boolean,
   isOfficialClassTeacher: boolean,
-  markLocal: (id: string, status: "present" | "absent" | "late") => void
+  markLocal: (id: string, status: "present" | "absent" | "late") => void,
+  onOpenArrivalModal: (student: AppUser) => void
 }) => {
+  const status = statusData.status || "not_marked";
+  const arrivalMode = statusData.arrivalMode;
+  const broughtBy = statusData.broughtBy;
   const cardStatusStyle = status === "present" ? styles.presentCard : status === "absent" ? styles.absentCard : status === "late" ? styles.lateCard : {};
 
-  // Use a simpler animation approach to avoid re-triggering during rapid updates
   return (
     <Animatable.View
       animation="fadeInUp"
@@ -62,10 +154,24 @@ const AttendanceStudentCard = React.memo(({
         </View>
         <View style={{ flex: 1, marginLeft: 15 }}>
           <Text style={styles.name} numberOfLines={1}>{item.profile?.firstName || "Student"} {item.profile?.lastName || ""}</Text>
-          <View style={styles.statusBadge}>
-             <View style={[styles.statusDot, { backgroundColor: status === "present" ? "#10B981" : status === "absent" ? "#EF4444" : status === "late" ? "#F59E0B" : "#94A3B8" }]} />
-             <Text style={styles.statusLabel}>{(status || "NOT_MARKED").toUpperCase()}</Text>
-             {isUnsaved && <Text style={styles.unsavedTag}> • Unsaved</Text>}
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+            <View style={styles.statusBadge}>
+               <View style={[styles.statusDot, { backgroundColor: status === "present" ? "#10B981" : status === "absent" ? "#EF4444" : status === "late" ? "#F59E0B" : "#94A3B8" }]} />
+               <Text style={styles.statusLabel}>{status.toUpperCase()}</Text>
+               {isUnsaved && <Text style={styles.unsavedTag}> • Unsaved</Text>}
+            </View>
+
+            <TouchableOpacity
+              style={styles.transportTag}
+              onPress={() => onOpenArrivalModal(item)}
+              activeOpacity={0.7}
+            >
+              <SVGIcon name={arrivalMode === 'school_bus' ? 'bus' : arrivalMode === 'parent' ? 'people' : 'car'} size={12} color={COLORS.primary} />
+              <Text style={styles.transportTagText}>
+                {arrivalMode === 'school_bus' ? 'Bus' : arrivalMode === 'parent' ? 'Parent' : arrivalMode === 'walk' ? 'Walk' : arrivalMode === 'public_transit' ? 'Public' : arrivalMode === 'other' ? 'Other' : 'Set Transport'}
+                {broughtBy ? ` (${broughtBy})` : ''}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -147,10 +253,14 @@ export default function DailyAttendanceScreen() {
     academicYear,
     term,
     markLocal,
+    updateArrivalDetails,
     saveToFirestore,
   } = useDailyAttendance(params.classId || null, params.date || moment().format("YYYY-MM-DD"));
 
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [arrivalModalVisible, setArrivalModalVisible] = useState(false);
+  const [activeStudentForArrival, setActiveStudentForArrival] = useState<AppUser | null>(null);
+
   const isMounted = useRef(true);
   const isNavigating = useRef(false);
 
@@ -231,17 +341,24 @@ export default function DailyAttendanceScreen() {
   const isToday = useMemo(() => moment(selectedDate).isSame(moment(), 'day'), [selectedDate]);
 
   const renderStudentItem = useCallback(({ item, index }: { item: AppUser, index: number }) => {
-    const studentStatus = localAttendance[item.uid]?.status ?? "not_marked";
-    const studentIsUnsaved = studentStatus !== serverAttendance[item.uid]?.status;
+    const studentRecord = localAttendance[item.uid] || {};
+    const studentStatus = studentRecord.status ?? "not_marked";
+    const studentIsUnsaved = studentStatus !== (serverAttendance[item.uid]?.status ?? "not_marked") ||
+                             studentRecord.arrivalMode !== (serverAttendance[item.uid]?.arrivalMode ?? undefined) ||
+                             studentRecord.broughtBy !== (serverAttendance[item.uid]?.broughtBy ?? undefined);
 
     return (
       <AttendanceStudentCard
         item={item}
         index={index}
-        status={studentStatus}
+        statusData={studentRecord}
         isUnsaved={studentIsUnsaved}
         isOfficialClassTeacher={isOfficialClassTeacher}
         markLocal={markLocal}
+        onOpenArrivalModal={(student) => {
+          setActiveStudentForArrival(student);
+          setArrivalModalVisible(true);
+        }}
       />
     );
   }, [localAttendance, serverAttendance, isOfficialClassTeacher, markLocal]);
@@ -303,55 +420,18 @@ export default function DailyAttendanceScreen() {
         </TouchableOpacity>
       </View>
 
-      {showDatePicker && (
-        Platform.OS === 'web' ? (
-          <View style={styles.webDatePickerContainer}>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => {
-                setSelectedDate(e.target.value);
-                setShowDatePicker(false);
-              }}
-              style={webInputStyle}
-              max={new Date().toISOString().split('T')[0]}
-            />
-            <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.webCloseBtn}>
-              <Text style={styles.webCloseBtnText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <DateTimePicker
-            value={moment(selectedDate).toDate()}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            maximumDate={new Date()}
-            onChange={(event: any, date?: Date) => {
-              setShowDatePicker(false);
-              if (date) {
-                setSelectedDate(moment(date).format("YYYY-MM-DD"));
-              }
-            }}
-          />
-        )
-      )}
-
       <View style={styles.filterArea}>
-        <ScrollView
-          horizontal={!isLargeScreen}
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.classScroll, isLargeScreen && styles.classScrollWrap]}
-        >
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.classScroll}>
           {availableClasses.map(c => (
             <TouchableOpacity
               key={c.id}
+              style={[styles.classChip, classId === c.id && styles.classChipActive]}
               onPress={() => {
                 if (isNavigating.current) return;
                 isNavigating.current = true;
                 setClassId(c.id);
                 setTimeout(() => { isNavigating.current = false; }, 500);
               }}
-              style={[styles.classChip, classId === c.id && styles.classChipActive]}
             >
               <Text style={[styles.classChipText, classId === c.id && styles.classChipTextActive]}>{c.name}</Text>
             </TouchableOpacity>
@@ -361,114 +441,77 @@ export default function DailyAttendanceScreen() {
     </View>
   );
 
-  const noClassesAssigned = availableClasses.length === 0 && !loading;
-
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <View style={styles.headerInner}>
-          <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
-            <SVGIcon name="arrow-back" size={24} color="#1E293B" />
+          <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+            <Text style={styles.backBtnText}>←</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>Daily Attendance</Text>
             <Text style={styles.subtitle}>
-              {academicYear} • {term} {students.length > 0 ? `• ${students.length} Students` : ""}
+              {availableClasses.find(c => c.id === classId)?.name || "Select Class"} • {academicYear} ({term})
             </Text>
           </View>
         </View>
       </View>
 
-      {noClassesAssigned ? (
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={{ flexGrow: 1, alignItems: 'center', justifyContent: 'center' }}
-        >
-          <View style={styles.mainContent}>
-            <View style={styles.center}>
-              <SVGIcon name="alert-circle-outline" size={64} color="#94A3B8" />
-              <Text style={[styles.emptyText, { marginTop: 16, textAlign: 'center', paddingHorizontal: 40 }]}>
-                No classes assigned to you for {SCHOOL_CONFIG.name}. Please contact your administrator to assign your classes.
-              </Text>
-              <TouchableOpacity
-                style={[styles.backBtn, { marginTop: 20, width: 'auto', paddingHorizontal: 20 }]}
-                onPress={handleBack}
-              >
-                <Text style={styles.backBtnText}>Go Back</Text>
-              </TouchableOpacity>
-            </View>
+      <FlatList
+        data={students}
+        keyExtractor={item => item.uid}
+        renderItem={renderStudentItem}
+        contentContainerStyle={styles.list}
+        numColumns={numColumns}
+        key={numColumns}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={styles.emptyText}>No students found in this class.</Text>
           </View>
-        </ScrollView>
-      ) : (
-        <FlatList
-          style={{ flex: 1 }}
-          contentContainerStyle={[
-            styles.list,
-            { alignSelf: 'center', width: '100%', maxWidth: CONTENT_MAX_WIDTH }
-          ]}
-          key={numColumns}
-          data={students}
-          renderItem={renderStudentItem}
-          keyExtractor={item => item.uid}
-          numColumns={numColumns}
-          columnWrapperStyle={numColumns > 1 ? { gap: 16 } : null}
-          ListHeaderComponent={renderHeader}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyText}>No students found in this class.</Text>
-            </View>
-          }
-          showsVerticalScrollIndicator={true}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
-          removeClippedSubviews={Platform.OS === "android"}
-          extraData={localAttendance} // Ensure FlatList knows when to check items for updates
-        />
-      )}
+        }
+      />
 
-      {hasUnsavedChanges && (
-        <Animatable.View animation="slideInUp" duration={400} style={styles.footerAction}>
-          <TouchableOpacity style={styles.saveBtn} onPress={saveToFirestore} disabled={saving}>
+      {isOfficialClassTeacher && (
+        <View style={styles.footerAction}>
+          <TouchableOpacity
+            style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+            onPress={saveToFirestore}
+            disabled={saving}
+          >
             {saving ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <SVGIcon name="cloud-upload" size={20} color="#fff" />
-                <Text style={styles.saveBtnText}>Save Changes Now</Text>
+                <SVGIcon name="save" size={20} color="#fff" />
+                <Text style={styles.saveBtnText}>Save Attendance & Transport</Text>
               </>
             )}
           </TouchableOpacity>
-        </Animatable.View>
+        </View>
       )}
+
+      <ArrivalModeModal
+        visible={arrivalModalVisible}
+        student={activeStudentForArrival}
+        currentMode={activeStudentForArrival ? localAttendance[activeStudentForArrival.uid]?.arrivalMode : undefined}
+        currentBroughtBy={activeStudentForArrival ? localAttendance[activeStudentForArrival.uid]?.broughtBy : undefined}
+        onClose={() => {
+          setArrivalModalVisible(false);
+          setActiveStudentForArrival(null);
+        }}
+        onSave={(mode, broughtBy) => {
+          if (activeStudentForArrival) {
+            updateArrivalDetails(activeStudentForArrival.uid, mode, broughtBy);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  webDatePickerContainer: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 12,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...SHADOWS.medium,
-    alignItems: 'center',
-    gap: 10,
-  },
-  webCloseBtn: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  webCloseBtnText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 12,
-  },
   container: { flex: 1, backgroundColor: "#F8FAFC" },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 300 },
   header: { backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9', zIndex: 10 },
@@ -484,7 +527,6 @@ const styles = StyleSheet.create({
   dateText: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
   filterArea: { paddingBottom: 15, width: '100%' },
   classScroll: { paddingHorizontal: 20, gap: 12 },
-  classScrollWrap: { flexWrap: 'wrap', flexDirection: 'row', justifyContent: 'center' },
   classChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 15, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0' },
   classChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   classChipText: { fontSize: 13, fontWeight: '800', color: '#64748B' },
@@ -503,6 +545,22 @@ const styles = StyleSheet.create({
   statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   statusLabel: { fontSize: 10, fontWeight: '900', color: '#64748B', letterSpacing: 0.5 },
   unsavedTag: { fontSize: 10, fontWeight: '900', color: COLORS.primary },
+  transportTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  transportTagText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
   actions: { flexDirection: 'row', marginTop: 15, gap: 10 },
   actionBtn: { flex: 1, height: 48, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: '#F8FAFC' },
   actionBtnText: { fontSize: 12, fontWeight: '800' },
@@ -513,5 +571,119 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: COLORS.primary, height: 65, borderRadius: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, width: '100%', maxWidth: 400 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
   empty: { padding: 40, alignItems: 'center' },
-  emptyText: { color: '#94A3B8', fontWeight: '600' }
+  emptyText: { color: '#94A3B8', fontWeight: '600' },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    padding: 20,
+  },
+  modalContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 450,
+    ...SHADOWS.large,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#1E293B',
+  },
+  modalSub: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 20,
+    fontWeight: '600',
+  },
+  modeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  modeCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 6,
+  },
+  modeCardActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  modeCardText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  modeCardTextActive: {
+    color: '#fff',
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#475569',
+    marginBottom: 6,
+  },
+  textInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 15,
+    height: 50,
+    fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '600',
+    marginBottom: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    height: 50,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#475569',
+  },
+  saveModalBtn: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    height: 50,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  saveModalBtnText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#fff',
+  },
 });

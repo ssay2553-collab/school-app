@@ -17,6 +17,7 @@ import { db } from "../../firebaseConfig";
 import { StudentDraft } from "../../constants/admin-dashboard/ManageFeesTypes";
 import { sendNotification, notifyStudentAndParentsPayment } from "../../src/services/notificationService";
 import { propagateArrears } from "../../utils/financeUtils";
+import { isPaymentEntry, normalizeCategory } from "./finance-cleanup/utils";
 
 interface UseFeePaymentsProps {
   appUser: any;
@@ -211,26 +212,18 @@ export const useFeePayments = ({
         const categoryMap: Record<string, { billed: number; paid: number }> = {};
 
         history.forEach((p: any) => {
-          const type = (p.type || "other").toLowerCase();
-          const isPayment = type.endsWith("_payment") || type === "tuition_credit";
-          let category = type.replace("_payment", "").replace("_credit", "");
-
-          if (category === "other" && p.otherCategory) {
-            category = p.otherCategory.trim();
-          }
+          const isPayment = isPaymentEntry(p);
+          const category = normalizeCategory(p);
 
           if (!categoryMap[category]) categoryMap[category] = { billed: 0, paid: 0 };
           if (isPayment) {
             categoryMap[category].paid += Number(p.amount) || 0;
           } else {
-            const isHardcoded = ['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other'].includes(type);
-            if (!isHardcoded || (type === "other" && p.otherCategory)) {
-              categoryMap[category].billed += Number(p.amount) || 0;
-            }
+            categoryMap[category].billed += Number(p.amount) || 0;
           }
         });
 
-        const customCats = Object.keys(categoryMap).filter(c => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other', 'other charges'].includes(c.toLowerCase()));
+        const customCats = Object.keys(categoryMap).filter(c => !['tuition', 'pta', 'maintenance', 'admission', 'books', 'uniform', 'other', 'other charges', 'arrears', 'surplus'].includes(c.toLowerCase()));
         for (const cat of customCats) {
           if (remainingPayment <= 0) break;
           const due = categoryMap[cat].billed - categoryMap[cat].paid;

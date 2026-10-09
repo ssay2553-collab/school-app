@@ -39,9 +39,15 @@ const THEME = {
 const PTAStudentCard = React.memo(({
   item,
   onPress,
+  isSelected,
+  onToggleSelect,
+  isSelectionActive,
 }: {
   item: Student;
   onPress: (student: Student) => void;
+  isSelected: boolean;
+  onToggleSelect: (student: Student) => void;
+  isSelectionActive: boolean;
 }) => {
   const isolatedTotal = (item.ptaBalance || 0) + (item.admissionBalance || 0) +
                         (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
@@ -51,12 +57,44 @@ const PTAStudentCard = React.memo(({
   return (
     <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper} useNativeDriver={false}>
       <TouchableOpacity
-        style={[styles.financeCard, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
+        style={[
+          styles.financeCard,
+          isSelected && { borderColor: THEME.primary, borderWidth: 1.5, backgroundColor: THEME.primary + "0A" },
+          Platform.OS === 'web' && { cursor: 'pointer' } as any
+        ]}
         activeOpacity={0.7}
-        onPress={() => onPress(item)}
+        onPress={() => {
+          if (isSelectionActive) {
+            onToggleSelect(item);
+          } else {
+            onPress(item);
+          }
+        }}
+        onLongPress={() => onToggleSelect(item)}
       >
         <View style={styles.cardContent}>
           <View style={styles.leftSection}>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                onToggleSelect(item);
+              }}
+              style={{ paddingRight: 8, justifyContent: 'center' }}
+            >
+              <View style={{
+                width: 22,
+                height: 22,
+                borderRadius: 6,
+                borderWidth: 2,
+                borderColor: isSelected ? THEME.primary : "#CBD5E1",
+                backgroundColor: isSelected ? THEME.primary : "#fff",
+                justifyContent: "center",
+                alignItems: "center"
+              }}>
+                {isSelected && <SVGIcon name="checkmark" size={14} color="#fff" />}
+              </View>
+            </TouchableOpacity>
+
             <View style={[styles.avatar, { backgroundColor: THEME.primary + "15" }]}>
               <SVGIcon name="people-outline" size={24} color={THEME.primary} />
             </View>
@@ -136,6 +174,13 @@ export default function PTACharges() {
     fetchStudents,
     handleRefresh,
     toggleExemption,
+    batchSetExemption,
+
+    // Selection State & Handlers
+    selectedStudentUids,
+    toggleStudentSelection,
+    toggleSelectAll,
+    clearSelection,
 
     // UI state & handlers
     paymentModalVisible,
@@ -169,8 +214,14 @@ export default function PTACharges() {
   }, [students, searchQuery]);
 
   const renderStudentItem = useCallback(({ item }: { item: Student }) => (
-    <PTAStudentCard item={item} onPress={openPaymentModal} />
-  ), [openPaymentModal]);
+    <PTAStudentCard
+      item={item}
+      onPress={openPaymentModal}
+      isSelected={selectedStudentUids.has(item.uid)}
+      onToggleSelect={(s) => toggleStudentSelection(s.uid)}
+      isSelectionActive={selectedStudentUids.size > 0}
+    />
+  ), [openPaymentModal, selectedStudentUids, toggleStudentSelection]);
 
   const ListHeader = useMemo(() => (
     <>
@@ -188,7 +239,11 @@ export default function PTACharges() {
       </View>
 
       <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
-        <Text style={styles.listTitle}>APPLY PTA DUE (CLASS BULK)</Text>
+        <Text style={styles.listTitle}>
+          {selectedStudentUids.size > 0
+            ? `APPLY PTA DUE (${selectedStudentUids.size} SELECTED)`
+            : "APPLY PTA DUE (CLASS BULK)"}
+        </Text>
         <View style={{ marginTop: 10 }}>
           <View style={[styles.bulkInputContainer, { paddingHorizontal: 12, height: 54 }]}>
             <TextInput
@@ -198,6 +253,7 @@ export default function PTACharges() {
               value={chargeAmount}
               onChangeText={setChargeAmount}
               placeholderTextColor={VIBE.muted}
+
             />
           </View>
           <TouchableOpacity
@@ -222,26 +278,39 @@ export default function PTACharges() {
             ) : (
               <>
                 <SVGIcon name="add-circle-outline" size={20} color="#fff" />
-                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 }}>APPLY BULK PTA DUE</Text>
+                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 }}>
+                  {selectedStudentUids.size > 0
+                    ? `APPLY BILL TO ${selectedStudentUids.size} STUDENT(S)`
+                    : "APPLY BULK PTA DUE"}
+                </Text>
               </>
             )}
           </TouchableOpacity>
         </View>
-        {selectedClassId === "all" && (
+        {selectedClassId === "all" && selectedStudentUids.size === 0 && (
           <Text style={{ fontSize: 10, color: VIBE.danger, marginTop: 8, fontWeight: "700" }}>
-            * Select a specific class to enable bulk billing
+            * Select a specific class or select individual students to enable bulk billing
           </Text>
         )}
       </View>
 
-      <Text style={[styles.listTitle, { marginHorizontal: 20, marginBottom: 15 }]}>STUDENT DIRECTORY</Text>
+      <View style={{ marginHorizontal: 20, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={styles.listTitle}>STUDENT DIRECTORY</Text>
+        {filteredStudents.length > 0 && (
+          <TouchableOpacity onPress={toggleSelectAll} activeOpacity={0.7}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: THEME.primary }}>
+              {selectedStudentUids.size === filteredStudents.length ? 'Deselect All' : 'Select All'}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </>
-  ), [stats, chargeAmount, setChargeAmount, handleApplyBulkCharge, saving, selectedClassId, THEME, width]);
+  ), [stats, chargeAmount, setChargeAmount, handleApplyBulkCharge, saving, selectedClassId, THEME, width, selectedStudentUids, toggleSelectAll, filteredStudents.length]);
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
+      <View style={styles.header} pointerEvents="box-none">
         <LinearGradient
           colors={[THEME.primary, THEME.secondary]}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -292,12 +361,100 @@ export default function PTACharges() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor={VIBE.muted}
+
             />
           </View>
           <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound} activeOpacity={0.7}>
             <SVGIcon name="refresh" size={18} color={THEME.primary} />
           </TouchableOpacity>
         </View>
+
+        {selectedStudentUids.size > 0 && (
+          <Animatable.View animation="fadeInDown" duration={250} style={{
+            backgroundColor: '#FFFBEB',
+            borderBottomWidth: 1,
+            borderBottomColor: '#FDE68A',
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{
+                backgroundColor: THEME.primary,
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 10,
+              }}>
+                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 11 }}>
+                  {selectedStudentUids.size} Selected
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                onPress={toggleSelectAll}
+                style={{
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 6,
+                  backgroundColor: '#fff',
+                  borderWidth: 1,
+                  borderColor: VIBE.border
+                }}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '800', color: VIBE.dark }}>
+                  {selectedStudentUids.size === filteredStudents.length ? 'Clear All' : 'Select All'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity
+                onPress={() => batchSetExemption(true)}
+                disabled={saving}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: VIBE.warning + '20',
+                  paddingHorizontal: 9,
+                  paddingVertical: 5,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: VIBE.warning + '40'
+                }}
+              >
+                <SVGIcon name="shield-outline" size={13} color={VIBE.warning} />
+                <Text style={{ fontSize: 10, fontWeight: '900', color: VIBE.warning }}>Exempt</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => batchSetExemption(false)}
+                disabled={saving}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 4,
+                  backgroundColor: '#fff',
+                  paddingHorizontal: 9,
+                  paddingVertical: 5,
+                  borderRadius: 6,
+                  borderWidth: 1,
+                  borderColor: VIBE.border
+                }}
+              >
+                <SVGIcon name="close-circle-outline" size={13} color={VIBE.muted} />
+                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>Unexempt</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={clearSelection} style={{ padding: 4 }}>
+                <SVGIcon name="close" size={18} color={VIBE.muted} />
+              </TouchableOpacity>
+            </View>
+          </Animatable.View>
+        )}
       </View>
 
       <FlatList
@@ -353,6 +510,7 @@ export default function PTACharges() {
                   keyboardType="numeric"
                   value={paymentAmount}
                   onChangeText={setPaymentAmount}
+
                 />
 
                 <Text style={styles.breakdownLabel}>RECEIVED FROM</Text>
@@ -361,6 +519,7 @@ export default function PTACharges() {
                   placeholder="Payer Name"
                   value={receivedFrom}
                   onChangeText={setReceivedFrom}
+
                 />
               </View>
 
@@ -437,6 +596,7 @@ export default function PTACharges() {
                     keyboardType="numeric"
                     value={individualChargeAmount}
                     onChangeText={setIndividualChargeAmount}
+
                   />
                   <TouchableOpacity
                     style={{

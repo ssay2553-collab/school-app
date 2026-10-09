@@ -99,7 +99,7 @@ export default function ParentDashboardLayout() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={[primary, secondary]} style={styles.headerGradient}>
+      <LinearGradient colors={[primary, secondary]} style={[styles.headerGradient, { backgroundColor: primary }]}>
         <SafeAreaView>
           <View style={styles.header}>
             <View style={styles.schoolInfo}>

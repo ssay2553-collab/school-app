@@ -101,7 +101,7 @@ export default function TeacherDashboardLayout() {
       {/* HEADER */}
       <LinearGradient
         colors={[primary, secondary]}
-        style={[styles.headerGradient, { paddingTop: insets.top + 10 }]}
+        style={[styles.headerGradient, { backgroundColor: primary, paddingTop: insets.top + 10 }]}
       >
         <View style={styles.header}>
           <View style={styles.schoolInfo}>
@@ -171,12 +171,11 @@ export default function TeacherDashboardLayout() {
           <Tabs.Screen name="upload-assignment" options={{ href: null }} />
           <Tabs.Screen name="mark-assignment" options={{ href: null }} />
           <Tabs.Screen name="create-student-group" options={{ href: null }} />
-          <Tabs.Screen name="pedagogy-vault" options={{ href: null }} />
-          <Tabs.Screen name="generate-student-code" options={{ href: null }} />
+          <Tabs.Screen name="manage-assignments" options={{ href: null }} />
+          <Tabs.Screen name="weekly-topics" options={{ href: null }} />
           <Tabs.Screen name="manage-timetable" options={{ href: null }} />
           <Tabs.Screen name="profile-edit" options={{ href: null }} />
           <Tabs.Screen name="review-document" options={{ href: null }} />
-          <Tabs.Screen name="tlm-hub" options={{ href: null }} />
           <Tabs.Screen name="preschool-remarks" options={{ href: null }} />
         </Tabs>
       </View>

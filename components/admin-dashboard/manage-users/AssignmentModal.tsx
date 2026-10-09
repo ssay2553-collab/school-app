@@ -39,6 +39,8 @@ interface AssignmentModalProps {
   // Forms and their setters/handlers
   newsPermission: boolean;
   setNewsPermission: (val: boolean) => void;
+  isTeacherOnDuty: boolean;
+  setIsTeacherOnDuty: (val: boolean) => void;
   handleAssignRole: (role: string) => void;
   tempPermissions: Record<string, PermissionLevel>;
   setTempPermissions: React.Dispatch<React.SetStateAction<Record<string, PermissionLevel>>>;
@@ -83,6 +85,8 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   handleUploadProfileImage,
   newsPermission,
   setNewsPermission,
+  isTeacherOnDuty,
+  setIsTeacherOnDuty,
   handleAssignRole,
   tempPermissions,
   setTempPermissions,
@@ -196,6 +200,20 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                     trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
                   />
                 </View>
+
+                {(state.target?.role === "teacher" || state.target?.role === "staff") && (
+                  <View style={[styles.switchRow, { marginTop: 15 }]}>
+                    <View style={styles.switchInfo}>
+                      <Text style={styles.switchLabel}>Teacher on Duty (TOD)</Text>
+                      <Text style={styles.switchSub}>Grants permission to mark attendance for ALL classes (Auto-revokes in 6 days)</Text>
+                    </View>
+                    <Switch
+                      value={isTeacherOnDuty}
+                      onValueChange={setIsTeacherOnDuty}
+                      trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                    />
+                  </View>
+                )}
 
                 {PERMISSION_KEYS.map((pk) => (
                   <View key={pk.key} style={styles.permItem}>

@@ -20,12 +20,15 @@ import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useToast } from "../../contexts/ToastContext";
+import { useAuth } from "../../contexts/AuthContext";
 import moment from "moment";
 import { useUploadAssignment, Question, AssignmentType } from "../../hooks/teacher-dashboard/useUploadAssignment";
+import { useSentAssignments } from "../../hooks/teacher-dashboard/useSentAssignments";
 import PreschoolFields from "../../components/teacher-dashboard/upload-assignment/components/PreschoolFields";
 import MathematicsFields from "../../components/teacher-dashboard/upload-assignment/components/MathematicsFields";
 import FormattedText from "../../components/FormattedText";
 import SpecialCharToolbar from "../../components/teacher-dashboard/upload-assignment/components/SpecialCharToolbar";
+import SentAssignmentsModal from "../../components/teacher-dashboard/upload-assignment/SentAssignmentsModal";
 import { useRef } from "react";
 
 // Guarded import for native-only library
@@ -46,14 +49,19 @@ const webInputStyle = Platform.OS === 'web' ? {
 /* =========================================================
    SUB-COMPONENT: HEADER
    ========================================================= */
-const Header = memo(({ onBack }: { onBack: () => void }) => (
+const Header = memo(({ onBack, onOpenArchive }: { onBack: () => void; onOpenArchive: () => void }) => (
   <LinearGradient colors={[COLORS.primary, "#1E293B"]} style={styles.headerGradient}>
     <View style={styles.headerTitleRow}>
       <TouchableOpacity onPress={onBack} style={styles.backBtn}>
         <SVGIcon name="arrow-back" size={24} color="#fff" />
       </TouchableOpacity>
       <Text style={styles.headerTitle}>Post Assignment</Text>
-      <SVGIcon name="cloud-upload" size={24} color={COLORS.secondary} />
+      <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+        <TouchableOpacity onPress={onOpenArchive} style={styles.archiveBtn} accessibilityLabel="Sent Assignments Archive">
+          <SVGIcon name="list" size={24} color={COLORS.secondary} />
+        </TouchableOpacity>
+        <SVGIcon name="cloud-upload" size={24} color={COLORS.secondary} />
+      </View>
     </View>
   </LinearGradient>
 ));
@@ -372,17 +380,21 @@ const QuestionItem = memo(({
 export default function UploadAssignment() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { appUser } = useAuth();
 
   const {
     loading, fetchingMetadata, teacherClasses, selectedClassId, setSelectedClassId,
     selectedSubject, setSelectedSubject, title, setTitle, description, setDescription,
     type, setType, dueDate, setDueDate, file, setFile, uploadingFile, questions,
     hasUnsavedChanges, addQuestion, updateQuestion, updateOption, addOption,
-    removeQuestion, handleUpload, handleWebDateChange, handleWebTimeChange,
+    removeQuestion, handleUpload, reuploadSentAssignment, handleWebDateChange, handleWebTimeChange,
     subjects, updatePreschoolQuestion, updateMathematicsQuestion
   } = useUploadAssignment();
 
+  const { sentAssignments, deleteAssignmentFromHistory, deleteBulkAssignments } = useSentAssignments(appUser?.uid);
+
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showSentModal, setShowSentModal] = useState(false);
   const [pickerMode, setPickerMode] = useState<"date" | "time">("date");
   const [backPressCount, setBackPressCount] = useState(0);
   const isNavigating = useRef(false);
@@ -443,7 +455,7 @@ export default function UploadAssignment() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <Header onBack={handleBack} />
+      <Header onBack={handleBack} onOpenArchive={() => setShowSentModal(true)} />
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 12, paddingBottom: 100 }}>
@@ -499,6 +511,16 @@ export default function UploadAssignment() {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      <SentAssignmentsModal
+        visible={showSentModal}
+        onClose={() => setShowSentModal(false)}
+        sentAssignments={sentAssignments}
+        teacherClasses={teacherClasses}
+        onDelete={deleteAssignmentFromHistory}
+        onDeleteBulk={deleteBulkAssignments}
+        onReupload={reuploadSentAssignment}
+      />
     </SafeAreaView>
   );
 }
@@ -509,6 +531,7 @@ const styles = StyleSheet.create({
   headerGradient: { paddingTop: 20, paddingHorizontal: 20, paddingBottom: 30, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, ...SHADOWS.medium },
   headerTitleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   backBtn: { padding: 5 },
+  archiveBtn: { padding: 6, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8 },
   headerTitle: { fontSize: 24, fontWeight: "900", color: "#fff" },
   card: { backgroundColor: "#fff", borderRadius: 20, padding: 12, marginBottom: 20, ...SHADOWS.small },
   sectionLabel: { fontSize: 14, fontWeight: "900", color: COLORS.primary, marginBottom: 15, letterSpacing: 0.5 },

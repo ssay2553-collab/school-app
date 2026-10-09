@@ -126,6 +126,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   const [customRoleText, setCustomRoleText] = useState("");
   const [deptText, setDeptText] = useState("");
   const [newsPermission, setNewsPermission] = useState(false);
+  const [isTeacherOnDuty, setIsTeacherOnDuty] = useState(false);
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [busLocations, setBusLocations] = useState<string[]>([]);
@@ -577,14 +578,19 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         },
         {} as Record<string, PermissionLevel>,
       );
+      const dutyExpiresAt = isTeacherOnDuty ? Timestamp.fromMillis(Date.now() + 6 * 24 * 60 * 60 * 1000) : null;
       await updateDoc(doc(db, "users", assignmentModal.target.uid), {
         permissions: sanitized,
-        canCreateNews: newsPermission
+        canCreateNews: newsPermission,
+        isTeacherOnDuty: isTeacherOnDuty,
+        teacherOnDutyExpiresAt: dutyExpiresAt,
       });
       const updatedUser = {
         ...assignmentModal.target,
         permissions: sanitized,
-        canCreateNews: newsPermission
+        canCreateNews: newsPermission,
+        isTeacherOnDuty: isTeacherOnDuty,
+        teacherOnDutyExpiresAt: dutyExpiresAt,
       };
       if (viewingUser?.uid === updatedUser.uid) setViewingUser(updatedUser);
       setAssignmentModal({ type: "none", target: null });
@@ -771,8 +777,8 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   };
 
   const handleToggleArchiveStatus = async (user: User) => {
-    if (!isSuperAdmin) {
-      showToast?.({ message: "Denied: Only super admins can archive students.", type: "error" });
+    if (!hasManageUsersAccess) {
+      showToast?.({ message: "Denied: You do not have permissions to modify archive status.", type: "error" });
       return;
     }
     const displayName = `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() || "Student";
@@ -793,16 +799,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           updates.previousClassId = user.classId;
           updates.classId = "archived";
         }
-
-        // Keep parent links for historical record access
-        // if (!isArchived && user.role === "student" && user.parentUids?.length) {
-        //   user.parentUids.forEach((pUid) => {
-        //     batch.update(doc(db, "users", pUid), {
-        //       childrenIds: arrayRemove(user.uid),
-        //     });
-        //   });
-        //   updates.parentUids = [];
-        // }
+        if (isArchived) {
+          updates.classId = user.previousClassId || (selectedClassId !== "all" ? selectedClassId : allClasses[0]?.id || "");
+          updates.previousClassId = null;
+        }
 
         batch.update(doc(db, "users", user.uid), updates);
         if (user.role === "student") {
@@ -1149,6 +1149,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     }, {} as Record<string, PermissionLevel>);
     setTempPermissions(merged);
     setNewsPermission(!!user.canCreateNews);
+    const isDutyActive = !!user.isTeacherOnDuty && user.teacherOnDutyExpiresAt &&
+      (user.teacherOnDutyExpiresAt.toMillis ? user.teacherOnDutyExpiresAt.toMillis() : new Date(user.teacherOnDutyExpiresAt).getTime()) > Date.now();
+    setIsTeacherOnDuty(isDutyActive);
     setAssignmentModal({ type: "permissions", target: user });
   };
 
@@ -1184,21 +1187,132 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     showToast?.({ message: `Codes for ${pendingStudents.length} students copied.`, type: "success" });
   };
 
+  const clearStudentArrearsCore = async (studentUid: string, studentUser?: User, termKeyToClear?: string) => {
+    let userData = studentUser;
+    if (!userData) {
+      const uDoc = await getDoc(doc(db, "users", studentUid));
+      if (uDoc.exists()) {
+        userData = { uid: uDoc.id, ...uDoc.data() } as User;
+      }
+    }
+
+    const qRecords = query(
+      collection(db, "studentFeeRecords"),
+      where("studentUid", "==", studentUid)
+    );
+    const recordsSnap = await getDocsFromServer(qRecords);
+
+    const batch = writeBatch(db);
+    let totalClearedAcrossRecords = 0;
+
+    if (termKeyToClear) {
+      let clearedAmt = 0;
+      let targetRecordDoc: any = null;
+
+      recordsSnap.docs.forEach((rDoc) => {
+        const rData = rDoc.data();
+        const key1 = `${rData.academicYear}_${rData.term}`.replace(/[\/\s]/g, "_");
+        const key2 = rData.term ? rData.term.replace(/[\/\s]/g, "_") : "";
+        const cleanTermKey = termKeyToClear.replace(/[\/\s]/g, "_");
+
+        if (key1 === cleanTermKey || key2 === cleanTermKey || rDoc.id.includes(cleanTermKey)) {
+          targetRecordDoc = rDoc;
+        }
+      });
+
+      if (targetRecordDoc) {
+        const rData = targetRecordDoc.data();
+        const recArrears = Number(rData.arrears || 0);
+        clearedAmt = recArrears > 0 ? recArrears : Number(userData?.termArrears?.[termKeyToClear] || 0);
+
+        if (clearedAmt > 0) {
+          batch.update(doc(db, "studentFeeRecords", targetRecordDoc.id), {
+            arrears: 0,
+            arrearsCleared: true,
+            clearedArrearsAmount: clearedAmt,
+            balance: Math.max(0, Number(rData.balance || 0) - clearedAmt),
+            totalPayable: Math.max(0, Number(rData.totalPayable || 0) - clearedAmt),
+            lastUpdated: serverTimestamp(),
+          });
+        }
+      } else {
+        clearedAmt = Number(userData?.termArrears?.[termKeyToClear] || 0);
+      }
+
+      const currentDaily = Number(userData?.dailyArrears || 0);
+      const currentWallet = Number(userData?.walletBalance || 0);
+      const newDaily = Math.max(0, currentDaily - clearedAmt);
+      const newWallet = Math.max(0, currentWallet - clearedAmt);
+
+      batch.update(doc(db, "users", studentUid), {
+        dailyArrears: newDaily,
+        [`termArrears.${termKeyToClear}`]: 0,
+        walletBalance: newWallet,
+      });
+
+    } else {
+      // Clear ALL arrears for student
+      recordsSnap.docs.forEach((rDoc) => {
+        const rData = rDoc.data();
+        const recArrears = Number(rData.arrears || 0);
+
+        if (recArrears > 0 || rData.arrearsCleared) {
+          totalClearedAcrossRecords += recArrears;
+          batch.update(doc(db, "studentFeeRecords", rDoc.id), {
+            arrears: 0,
+            arrearsCleared: true,
+            clearedArrearsAmount: recArrears || Number(rData.clearedArrearsAmount || 0),
+            balance: Math.max(0, Number(rData.balance || 0) - recArrears),
+            totalPayable: Math.max(0, Number(rData.totalPayable || 0) - recArrears),
+            lastUpdated: serverTimestamp(),
+          });
+        }
+      });
+
+      const userDailyArrears = Number(userData?.dailyArrears || 0);
+      const userTermArrearsSum = Object.values(userData?.termArrears || {}).reduce(
+        (sum: number, val: any) => sum + Number(val || 0),
+        0
+      );
+      const totalCleared = Math.max(totalClearedAcrossRecords, userDailyArrears, userTermArrearsSum);
+
+      const currentWallet = Number(userData?.walletBalance || 0);
+      const newWallet = Math.max(0, currentWallet - totalCleared);
+
+      batch.update(doc(db, "users", studentUid), {
+        dailyArrears: 0,
+        termArrears: {},
+        walletBalance: newWallet,
+      });
+    }
+
+    await batch.commit();
+  };
+
   const clearServiceArrears = async (user: User) => {
     const performClear = async () => {
+      setUpdating(true);
       try {
-        await updateDoc(doc(db, "users", user.uid), {
-          dailyArrears: 0,
-          termArrears: {}
-        });
-        if (viewingUser?.uid === user.uid) setViewingUser({
-          ...viewingUser,
-          dailyArrears: 0,
-          termArrears: {}
-        });
+        await clearStudentArrearsCore(user.uid, user);
+        if (viewingUser?.uid === user.uid) {
+          const termArrearsSum = Object.values(user.termArrears || {}).reduce(
+            (sum: number, val: any) => sum + Number(val || 0),
+            0
+          );
+          const clearedAmount = Math.max(Number(user.dailyArrears || 0), termArrearsSum);
+          setViewingUser({
+            ...viewingUser,
+            dailyArrears: 0,
+            termArrears: {},
+            walletBalance: Math.max(0, Number(viewingUser.walletBalance || 0) - clearedAmount),
+          });
+        }
         showToast?.({ message: "All service arrears cleared.", type: "success" });
       } catch (err) {
+        console.error("Clear arrears error:", err);
         showToast?.({ message: "Failed to clear arrears.", type: "error" });
+      } finally {
+        setUpdating(false);
       }
     };
     if (Platform.OS === "web") {
@@ -1213,25 +1327,27 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
   const clearTermArrears = async (termKey: string, user: User) => {
     const performClear = async () => {
+      setUpdating(true);
       try {
         const amount = user.termArrears?.[termKey] || 0;
-        await updateDoc(doc(db, "users", user.uid), {
-          dailyArrears: increment(-amount),
-          [`termArrears.${termKey}`]: 0
-        });
+        await clearStudentArrearsCore(user.uid, user, termKey);
 
         if (viewingUser?.uid === user.uid) {
            const newTermArrears = { ...(viewingUser.termArrears || {}) };
-           newTermArrears[termKey] = 0;
+           delete newTermArrears[termKey];
            setViewingUser({
              ...viewingUser,
-             dailyArrears: (viewingUser.dailyArrears || 0) - amount,
-             termArrears: newTermArrears
+             dailyArrears: Math.max(0, (viewingUser.dailyArrears || 0) - amount),
+             termArrears: newTermArrears,
+             walletBalance: Math.max(0, (viewingUser.walletBalance || 0) - amount),
            });
         }
         showToast?.({ message: `Arrears for ${termKey.replace(/_/g, ' ')} cleared.`, type: "success" });
       } catch (err) {
+        console.error("Clear term arrears error:", err);
         showToast?.({ message: "Failed to clear term arrears.", type: "error" });
+      } finally {
+        setUpdating(false);
       }
     };
 
@@ -1243,6 +1359,40 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         { text: "Cancel", style: "cancel" },
         { text: "Clear", style: "destructive", onPress: performClear }
       ]);
+    }
+  };
+
+  const handleBulkClearArrears = async () => {
+    if (selectedUserUids.size === 0) return;
+    const performClear = async () => {
+      setUpdating(true);
+      try {
+        const uids = Array.from(selectedUserUids);
+        for (const uid of uids) {
+          const u = users.find((item) => item.uid === uid);
+          await clearStudentArrearsCore(uid, u);
+        }
+        setSelectedUserUids(new Set());
+        showToast?.({ message: `Arrears cleared for ${uids.length} student(s).`, type: "success" });
+      } catch (err) {
+        console.error(err);
+        showToast?.({ message: "Bulk clear arrears failed.", type: "error" });
+      } finally {
+        setUpdating(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (window.confirm(`Clear arrears for ${selectedUserUids.size} selected student(s)?`)) performClear();
+    } else {
+      Alert.alert(
+        "Clear Bulk Arrears",
+        `Clear arrears for ${selectedUserUids.size} selected student(s)?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Clear Arrears", style: "destructive", onPress: performClear },
+        ]
+      );
     }
   };
 
@@ -1358,6 +1508,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     customRoleText, setCustomRoleText,
     deptText, setDeptText,
     newsPermission, setNewsPermission,
+    isTeacherOnDuty, setIsTeacherOnDuty,
     selectedSubjects, setSelectedSubjects,
     selectedClasses, setSelectedClasses,
     busLocations,
@@ -1380,7 +1531,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     openPermissionModal, openEditProfile,
     handleUploadProfileImage,
     handleCopyAllCodes, clearServiceArrears,
-    clearTermArrears,
+    clearTermArrears, handleBulkClearArrears,
     handleRegenerateParentLinkCode,
     isSuperAdmin, hasManageUsersAccess,
     handlePromoteRepeat,

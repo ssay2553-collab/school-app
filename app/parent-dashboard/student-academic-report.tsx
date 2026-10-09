@@ -44,6 +44,17 @@ export default function StudentAcademicReport() {
   const router = useRouter();
   const isNavigating = useRef(false);
 
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/parent-dashboard");
+    }
+    setTimeout(() => { isNavigating.current = false; }, 500);
+  };
+
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChildId, setSelectedChildId] = useState("");
   const [selectedTerm, setSelectedTerm] = useState("Term 1");
@@ -212,6 +223,9 @@ export default function StudentAcademicReport() {
               alignItems: "center",
             }}
           >
+            <TouchableOpacity onPress={handleBack} style={{ marginRight: 12, padding: 4 }}>
+              <SVGIcon name="arrow-back" size={24} color="#1E293B" />
+            </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle}>Academic Reports</Text>
               <Text style={styles.headerSubtitle}>

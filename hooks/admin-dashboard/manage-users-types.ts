@@ -22,8 +22,11 @@ export interface User {
   subjects?: string[];
   classTeacherOf?: string;
   classId?: string;
+  previousClassId?: string;
   assignedRoles?: string[];
   departmentHeadOf?: string;
+  isTeacherOnDuty?: boolean;
+  teacherOnDutyExpiresAt?: any;
   childrenIds?: string[];
   parentUids?: string[];
   parentLinkCode?: string;

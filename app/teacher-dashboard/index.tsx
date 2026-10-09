@@ -200,14 +200,6 @@ export default function TeacherDashboard() {
           color: "#f59e0b",
         },
         {
-          title: "Tokens",
-          subtitle: "Student codes",
-          route: "/teacher-dashboard/generate-student-code",
-          icon: "key",
-          color: "#ec4899",
-        },
-
-        {
           title: "My Notes",
           subtitle: "Scratchpad",
           route: "/teacher-dashboard/note",
@@ -268,13 +260,6 @@ export default function TeacherDashboard() {
           route: "/teacher-dashboard/create-student-group",
           icon: "chatbubbles",
           color: "#06b6d4",
-        },
-        {
-          title: "TLM Hub",
-          subtitle: "Materials",
-          route: "/teacher-dashboard/tlm-hub",
-          icon: "library",
-          color: "#f59e0b",
         },
         {
           title: "Coding & Robotics",

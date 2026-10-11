@@ -32,6 +32,28 @@ export const getStudentFinalEmail = (input: string): string => {
 };
 
 /**
+ * Standardizes email construction for parent handles (phone, username, or name).
+ * Ensures consistent domain for parents logging in without personal emails.
+ */
+export const getParentFinalEmail = (input: string): string => {
+  const cleanInput = (input || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  if (!cleanInput) return "";
+
+  if ((input || "").includes("@")) {
+    return (input || "").trim().toLowerCase();
+  }
+
+  const domainSlug = (SCHOOL_CONFIG.schoolId || 'school')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
+  return `${cleanInput}@parents.${domainSlug}.edueaz.com`;
+};
+
+/**
  * Validates basic email format.
  */
 export const isValidEmail = (email: string): boolean => {

@@ -302,18 +302,22 @@ export default function ManageUsers() {
                     <Text style={styles.graduateBtnText}>Bulk CSV</Text>
                   </TouchableOpacity>
 
-                  <View style={[styles.pickerContainer, { width: 180 }]}>
-                    <Text style={styles.miniLabel}>FILTER BY CLASS</Text>
-                    <Picker
-                      selectedValue={selectedClassId}
-                      onValueChange={setSelectedClassId}
-                      style={styles.picker}
-                    >
-                      <Picker.Item label="All Classes" value="all" />
-                      {allClasses.map((c) => (
-                        <Picker.Item key={c.id} label={c.name} value={c.id} />
-                      ))}
-                    </Picker>
+                  <View style={[styles.pickerContainer, { width: 220, flexDirection: 'row', alignItems: 'center', backgroundColor: selectedClassId !== 'all' ? '#EEF2FF' : '#F8FAFC', borderColor: selectedClassId !== 'all' ? '#C7D2FE' : '#E2E8F0' }]}>
+                    <SVGIcon name="filter-outline" size={16} color={selectedClassId !== 'all' ? COLORS.primary : "#64748B"} style={{ marginRight: 6, marginTop: 10 }} />
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
+                      <Text style={[styles.miniLabel, selectedClassId !== 'all' && { color: COLORS.primary }]}>FILTER BY CLASS</Text>
+                      <Picker
+                        selectedValue={selectedClassId}
+                        onValueChange={setSelectedClassId}
+                        style={styles.picker}
+                      >
+                        <Picker.Item label="All Classes" value="all" />
+                        {allClasses.map((c) => (
+                          <Picker.Item key={c.id} label={c.name} value={c.id} />
+                        ))}
+                      </Picker>
+                    </View>
+                    <SVGIcon name="chevron-down" size={14} color="#94A3B8" style={{ marginTop: 10 }} />
                   </View>
                   {isHighestClassView && !showArchived && (
                     <TouchableOpacity

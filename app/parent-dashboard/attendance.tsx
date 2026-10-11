@@ -153,13 +153,13 @@ export default function AttendanceScreen() {
               activeOpacity={0.7}
               style={styles.card}
               onPress={() => router.push({
-                  pathname: "/attendance/summary",
+                  pathname: "/admin-dashboard/student-attendance-details",
                   params: {
                       studentId: item.id,
                       classId: item.classId,
                       studentName: item.name,
-                      initialYear: currentYear,
-                      initialTerm: currentTerm,
+                      academicYear: currentYear,
+                      term: currentTerm,
                   }
               })}
             >

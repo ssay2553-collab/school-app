@@ -137,25 +137,48 @@ export default function WeeklyTopicsScreen() {
   const handleBack = useCallback(() => {
     if (isNavigating.current) return true;
     isNavigating.current = true;
+
+    const performBack = () => {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/teacher-dashboard");
+      }
+      setTimeout(() => {
+        isNavigating.current = false;
+      }, 500);
+    };
+
     if (hasUnsavedChanges) {
-      Alert.alert(
-        "Discard Changes?",
-        "You have unsaved changes in your planning. Do you want to discard them?",
-        [
-          { text: "Keep Editing", style: "cancel" },
-          {
-            text: "Discard",
-            style: "destructive",
-            onPress: () => {
-              isNavigating.current = false;
-              router.back();
+      if (Platform.OS === "web") {
+        if (window.confirm("You have unsaved changes in your planning. Do you want to discard them?")) {
+          performBack();
+        } else {
+          isNavigating.current = false;
+        }
+      } else {
+        Alert.alert(
+          "Discard Changes?",
+          "You have unsaved changes in your planning. Do you want to discard them?",
+          [
+            {
+              text: "Keep Editing",
+              style: "cancel",
+              onPress: () => {
+                isNavigating.current = false;
+              }
             },
-          },
-        ]
-      );
-      return true;
+            {
+              text: "Discard",
+              style: "destructive",
+              onPress: performBack,
+            },
+          ]
+        );
+      }
+    } else {
+      performBack();
     }
-    router.back();
     return true;
   }, [hasUnsavedChanges, router]);
 

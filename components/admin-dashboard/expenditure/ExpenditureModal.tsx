@@ -117,10 +117,10 @@ export const ExpenditureModal: React.FC<ExpenditureModalProps> = ({
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : Platform.OS === "android" ? "height" : undefined}
         style={styles.modalOverlay}
       >
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, Platform.OS === "web" && ({ zIndex: 10, pointerEvents: "auto" } as any)]}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Add Expense</Text>
             <TouchableOpacity onPress={onClose}>
@@ -219,9 +219,17 @@ export const ExpenditureModal: React.FC<ExpenditureModalProps> = ({
               <TextInput
                 style={styles.modalInput}
                 placeholder="0.00"
-                keyboardType="numeric"
+                keyboardType={Platform.OS === "web" ? "default" : "numeric"}
                 value={amount}
-                onChangeText={setAmount}
+                onChangeText={(val) => {
+                  if (Platform.OS === "web") {
+                    const cleaned = val.replace(/[^0-9.]/g, "");
+                    const parts = cleaned.split(".");
+                    setAmount(parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : cleaned);
+                  } else {
+                    setAmount(val);
+                  }
+                }}
                 placeholderTextColor="#94A3B8"
               />
             </View>

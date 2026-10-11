@@ -26,7 +26,7 @@ import { auth } from "../../../firebaseConfig";
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import { useToast } from "../../../contexts/ToastContext";
-import { fetchUserDocAndData } from "../../../utils/authUnify";
+import { fetchUserDocAndData, getParentFinalEmail } from "../../../utils/authUnify";
 
 export default function ParentLoginScreen() {
   const router = useRouter();
@@ -66,7 +66,11 @@ export default function ParentLoginScreen() {
     
     setLoading(true);
     try {
-      const cleanEmail = email.trim().toLowerCase();
+      const inputClean = email.trim().toLowerCase();
+      const cleanEmail = inputClean.includes("@")
+        ? inputClean
+        : getParentFinalEmail(inputClean);
+
       const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
       
       const { userData } = await fetchUserDocAndData(cred.user.uid, cleanEmail);
@@ -171,18 +175,17 @@ export default function ParentLoginScreen() {
 
             <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>PARENT EMAIL</Text>
+                <Text style={styles.label}>EMAIL OR PHONE / USERNAME</Text>
                 <TextInput 
                   ref={emailInputRef}
                   style={styles.input} 
-                  placeholder="parent@school.com" 
+                  placeholder="Email, Phone, or Username"
                   placeholderTextColor="#94A3B8" 
                   autoCapitalize="none" 
                   value={email} 
                   onChangeText={setEmail} 
-                  keyboardType="email-address" 
+                  keyboardType="default"
                   editable={!loading} 
-                  autoComplete="email"
                 />
               </View>
 

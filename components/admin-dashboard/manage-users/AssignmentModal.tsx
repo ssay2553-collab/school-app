@@ -522,18 +522,20 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                 <View style={styles.formSection}>
                   <Text style={styles.sectionHeader}>Contact Information</Text>
 
-                  <View style={styles.inputGroup}>
-                    <View style={styles.inputWrapper}>
-                      <Text style={styles.pickerLabel}>Phone Number</Text>
-                      <TextInput
-                        style={styles.textInput}
-                        value={editForm.phone}
-                        onChangeText={(t) => setEditForm((p: any) => ({ ...p, phone: t }))}
-                        keyboardType="phone-pad"
-                        placeholder="User's phone number"
-                      />
+                  {state.target?.role !== "student" && (
+                    <View style={styles.inputGroup}>
+                      <View style={styles.inputWrapper}>
+                        <Text style={styles.pickerLabel}>Phone Number</Text>
+                        <TextInput
+                          style={styles.textInput}
+                          value={editForm.phone}
+                          onChangeText={(t) => setEditForm((p: any) => ({ ...p, phone: t }))}
+                          keyboardType="phone-pad"
+                          placeholder="User's phone number"
+                        />
+                      </View>
                     </View>
-                  </View>
+                  )}
 
                   {state.target?.role === "student" && (
                     <>
@@ -552,13 +554,50 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                       <View style={styles.inputGroup}>
                         <View style={styles.inputWrapper}>
-                          <Text style={styles.pickerLabel}>Parent Number</Text>
+                          <Text style={styles.pickerLabel}>Parent 1 Full Name</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={editForm.parentName}
+                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, parentName: t }))}
+                            placeholder="Primary parent full name"
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.inputGroup}>
+                        <View style={styles.inputWrapper}>
+                          <Text style={styles.pickerLabel}>Parent 1 Phone Number</Text>
                           <TextInput
                             style={styles.textInput}
                             value={editForm.parentPhone}
                             onChangeText={(t) => setEditForm((p: any) => ({ ...p, parentPhone: t }))}
                             keyboardType="phone-pad"
-                            placeholder="Parent contact number"
+                            placeholder="Primary parent phone number"
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.inputGroup}>
+                        <View style={styles.inputWrapper}>
+                          <Text style={styles.pickerLabel}>Parent 2 Full Name (Optional)</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={editForm.parent2Name}
+                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, parent2Name: t }))}
+                            placeholder="Secondary parent full name"
+                          />
+                        </View>
+                      </View>
+
+                      <View style={styles.inputGroup}>
+                        <View style={styles.inputWrapper}>
+                          <Text style={styles.pickerLabel}>Parent 2 Phone Number (Optional)</Text>
+                          <TextInput
+                            style={styles.textInput}
+                            value={editForm.parent2Phone}
+                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, parent22Phone: t, parent2Phone: t }))}
+                            keyboardType="phone-pad"
+                            placeholder="Secondary parent phone number"
                           />
                         </View>
                       </View>

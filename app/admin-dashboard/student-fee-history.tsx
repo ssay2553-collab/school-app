@@ -374,10 +374,10 @@ export default function StudentFeeHistoryScreen() {
       {/* Payment Modal */}
       <Modal visible={paymentModalVisible} transparent animationType="slide">
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          behavior={Platform.OS === "ios" ? "padding" : Platform.OS === "android" ? "height" : undefined}
           style={styles.overlay}
         >
-          <View style={styles.paymentModal}>
+          <View style={[styles.paymentModal, Platform.OS === "web" && ({ zIndex: 10, pointerEvents: "auto" } as any)]}>
             <View style={styles.modalTopRow}>
               <Text style={styles.modalStudentName}>Record Payment</Text>
               <TouchableOpacity
@@ -396,9 +396,17 @@ export default function StudentFeeHistoryScreen() {
                 <TextInput
                   style={styles.pillInput}
                   placeholder={`Amount (${SCHOOL_CONFIG.currencySymbol})`}
-                  keyboardType="numeric"
+                  keyboardType={Platform.OS === "web" ? "default" : "numeric"}
                   value={paymentAmount}
-                  onChangeText={setPaymentAmount}
+                  onChangeText={(val) => {
+                    if (Platform.OS === "web") {
+                      const cleaned = val.replace(/[^0-9.]/g, "");
+                      const parts = cleaned.split(".");
+                      setPaymentAmount(parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : cleaned);
+                    } else {
+                      setPaymentAmount(val);
+                    }
+                  }}
                   placeholderTextColor="#64748B"
                 />
                 <TextInput

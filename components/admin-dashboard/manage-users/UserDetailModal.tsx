@@ -277,9 +277,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     ]}
                   >
                     <Text style={[styles.financeLabel, { color: "#b45309" }]}>
-                      {user.status === "pending_activation"
-                        ? "SIGNUP CODE"
-                        : user.role === 'student' ? "PARENT LINK CODE" : "RESET/SECRET TOKEN"}
+                      {user.role === 'student' ? "PARENT LINK CODE" : (user.status === "pending_activation" ? "SIGNUP CODE" : "RESET/SECRET TOKEN")}
                     </Text>
                     <View
                       style={{
@@ -299,7 +297,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                           },
                         ]}
                       >
-                        {user.signupCode || user.parentLinkCode || user.secretCode || "N/A"}
+                        {user.role === 'student' ? (user.parentLinkCode || user.signupCode || "N/A") : (user.signupCode || user.parentLinkCode || user.secretCode || "N/A")}
                       </Text>
                       <View style={{ flexDirection: "row", gap: 8 }}>
                         <TouchableOpacity
@@ -473,22 +471,55 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                       </Text>
                     </View>
                   )}
-                  {user.role === "student" && (
-                    <>
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoKey}>Emergency #:</Text>
-                        <Text style={styles.infoValue}>
-                          {user.profile?.emergencyPhone || "N/A"}
-                        </Text>
-                      </View>
-                      <View style={styles.infoRow}>
-                        <Text style={styles.infoKey}>Parent #:</Text>
-                        <Text style={styles.infoValue}>
-                          {user.profile?.parentPhone || "N/A"}
-                        </Text>
-                      </View>
-                    </>
-                  )}
+                  {user.role === "student" && (() => {
+                    const parent1 = linkedUsers.length > 0 ? linkedUsers[0] : null;
+                    const parent2 = linkedUsers.length > 1 ? linkedUsers[1] : null;
+
+                    const displayParent1Name = user.profile?.parentName || (parent1 ? `${parent1.profile?.firstName || ""} ${parent1.profile?.lastName || ""}`.trim() : "N/A");
+                    const displayParent1Phone = user.profile?.parentPhone || parent1?.profile?.phone || "N/A";
+
+                    const displayParent2Name = user.profile?.parent2Name || (parent2 ? `${parent2.profile?.firstName || ""} ${parent2.profile?.lastName || ""}`.trim() : "");
+                    const displayParent2Phone = user.profile?.parent2Phone || parent2?.profile?.phone || "";
+
+                    return (
+                      <>
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoKey}>Emergency #:</Text>
+                          <Text style={styles.infoValue}>
+                            {user.profile?.emergencyPhone || "N/A"}
+                          </Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoKey}>Parent 1 Name:</Text>
+                          <Text style={styles.infoValue}>
+                            {displayParent1Name}
+                          </Text>
+                        </View>
+                        <View style={styles.infoRow}>
+                          <Text style={styles.infoKey}>Parent 1 #:</Text>
+                          <Text style={styles.infoValue}>
+                            {displayParent1Phone}
+                          </Text>
+                        </View>
+                        {(displayParent2Name || displayParent2Phone) && displayParent2Name !== "N/A" && (
+                          <>
+                            <View style={styles.infoRow}>
+                              <Text style={styles.infoKey}>Parent 2 Name:</Text>
+                              <Text style={styles.infoValue}>
+                                {displayParent2Name}
+                              </Text>
+                            </View>
+                            <View style={styles.infoRow}>
+                              <Text style={styles.infoKey}>Parent 2 #:</Text>
+                              <Text style={styles.infoValue}>
+                                {displayParent2Phone}
+                              </Text>
+                            </View>
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
                   <View style={styles.infoRow}>
                     <Text style={styles.infoKey}>Gender:</Text>
                     <Text style={styles.infoValue}>

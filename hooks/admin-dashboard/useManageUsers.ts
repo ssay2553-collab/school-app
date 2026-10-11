@@ -106,6 +106,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     gender: "",
     emergencyPhone: "",
     parentPhone: "",
+    parentName: "",
+    parent2Phone: "",
+    parent2Name: "",
     dob: null as Date | null,
     busLocation: "",
     takesBus: false,
@@ -413,7 +416,16 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
             };
 
             if (selectedRole === "student") {
-               newUserDoc.parentLinkCode = generateCode();
+               const familyKey = parentPhone || `${lastName.toLowerCase()}`;
+               let linkCode = "";
+               if (familyKey && (secondaryApp as any)._familyCodeMap?.has(familyKey)) {
+                 linkCode = (secondaryApp as any)._familyCodeMap.get(familyKey);
+               } else {
+                 linkCode = generateCode();
+                 if (!(secondaryApp as any)._familyCodeMap) (secondaryApp as any)._familyCodeMap = new Map<string, string>();
+                 if (familyKey) (secondaryApp as any)._familyCodeMap.set(familyKey, linkCode);
+               }
+               newUserDoc.parentLinkCode = linkCode;
             }
 
             if (email) {
@@ -1055,6 +1067,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         "profile.gender": editForm.gender,
         "profile.emergencyPhone": editForm.emergencyPhone.trim(),
         "profile.parentPhone": editForm.parentPhone.trim(),
+        "profile.parentName": editForm.parentName.trim(),
+        "profile.parent2Phone": editForm.parent2Phone.trim(),
+        "profile.parent2Name": editForm.parent2Name.trim(),
         busLocation: editForm.busLocation.trim(),
         takesBus: editForm.takesBus,
         onScholarship: editForm.onScholarship,
@@ -1248,7 +1263,36 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     setAssignmentModal({ type: "permissions", target: user });
   };
 
-  const openEditProfile = (user: User) => {
+  const openEditProfile = async (user: User) => {
+    let pName = user.profile?.parentName || "";
+    let pPhone = user.profile?.parentPhone || "";
+    let p2Name = user.profile?.parent2Name || "";
+    let p2Phone = user.profile?.parent2Phone || "";
+
+    if (user.role === "student" && user.parentUids?.length && (!pName || !pPhone)) {
+      try {
+        const q = query(collection(db, "users"), where(documentId(), "in", user.parentUids));
+        const snap = await getDocsFromServer(q as any);
+        const parentDocs = snap.docs.map(d => d.data());
+
+        if (parentDocs.length > 0) {
+          const parent1 = parentDocs[0];
+          const p1FullName = `${parent1.profile?.firstName || ""} ${parent1.profile?.lastName || ""}`.trim();
+          if (!pName && p1FullName) pName = p1FullName;
+          if (!pPhone && parent1.profile?.phone) pPhone = parent1.profile.phone;
+
+          if (parentDocs.length > 1) {
+            const parent2 = parentDocs[1];
+            const p2FullName = `${parent2.profile?.firstName || ""} ${parent2.profile?.lastName || ""}`.trim();
+            if (!p2Name && p2FullName) p2Name = p2FullName;
+            if (!p2Phone && parent2.profile?.phone) p2Phone = parent2.profile.phone;
+          }
+        }
+      } catch (err) {
+        console.error("Error auto-filling parent info from linked parents:", err);
+      }
+    }
+
     setEditForm({
       firstName: user.profile?.firstName || "",
       lastName: user.profile?.lastName || "",
@@ -1256,7 +1300,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       phone: user.profile?.phone || "",
       gender: user.profile?.gender || "",
       emergencyPhone: user.profile?.emergencyPhone || "",
-      parentPhone: user.profile?.parentPhone || "",
+      parentPhone: pPhone,
+      parentName: pName,
+      parent2Phone: p2Phone,
+      parent2Name: p2Name,
       busLocation: user.busLocation || "",
       takesBus: !!user.takesBus,
       onScholarship: !!user.onScholarship,

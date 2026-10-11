@@ -64,11 +64,11 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
       statusBarTranslucent={Platform.OS === "android"}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : Platform.OS === "android" ? "height" : undefined}
         style={styles.overlay}
       >
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={styles.paymentModal}>
+        <View style={[styles.paymentModal, Platform.OS === "web" && ({ zIndex: 10, pointerEvents: "auto" } as any)]}>
           <View style={styles.sheetHandle} />
           <View style={styles.modalTopRow}>
             <Text style={styles.modalStudentName}>
@@ -87,10 +87,18 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
               <TextInput
                 style={styles.pillInput}
                 placeholder="Amount (₵)"
-                keyboardType="numeric"
+                keyboardType={Platform.OS === "web" ? "default" : "numeric"}
                 value={paymentAmount}
-                onChangeText={setPaymentAmount}
-                editable={canEdit}
+                onChangeText={(val) => {
+                  if (Platform.OS === "web") {
+                    const cleaned = val.replace(/[^0-9.]/g, "");
+                    const parts = cleaned.split(".");
+                    setPaymentAmount(parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : cleaned);
+                  } else {
+                    setPaymentAmount(val);
+                  }
+                }}
+                editable={canEdit !== false}
                 placeholderTextColor={VIBE.muted}
               />
               <TextInput
@@ -98,7 +106,7 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
                 placeholder="Received From"
                 value={receivedFrom}
                 onChangeText={setReceivedFrom}
-                editable={canEdit}
+                editable={canEdit !== false}
                 placeholderTextColor={VIBE.muted}
               />
               {Platform.OS === "web" ? (

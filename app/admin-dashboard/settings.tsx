@@ -22,6 +22,7 @@ export default function AdminSettingsScreen() {
 
   const [isCleaning, setIsCleaning] = React.useState(false);
   const [repairLoading, setRepairLoading] = useState(false);
+  const [unifyLoading, setUnifyLoading] = useState(false);
   const [cfLoading, setCfLoading] = useState<Record<string, boolean>>({});
   const isMounted = useRef(true);
   const isNavigating = useRef(false);
@@ -48,6 +49,102 @@ export default function AdminSettingsScreen() {
     } finally {
       if (isMounted.current) {
         setRepairLoading(false);
+      }
+    }
+  };
+
+  const handleUnifySiblingLinkCodes = async () => {
+    setUnifyLoading(true);
+    try {
+      const q = query(collection(db, "users"), where("role", "==", "student"));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        showToast({ message: "No student accounts found.", type: "info" });
+        return;
+      }
+
+      const familyMap = new Map<string, Array<{ id: string; code: string }>>();
+
+      snap.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        const profile = data.profile || {};
+        const parentPhone = (profile.parentPhone || "").trim();
+        const parentName = (profile.parentName || "").trim().toLowerCase();
+        const lastName = (profile.lastName || "").trim().toLowerCase();
+
+        let familyKey = "";
+        if (parentPhone.length >= 7) {
+          familyKey = `phone_${parentPhone}`;
+        } else if (parentName) {
+          familyKey = `name_${parentName}_${lastName}`;
+        }
+
+        if (familyKey) {
+          const current = familyMap.get(familyKey) || [];
+          current.push({
+            id: docSnap.id,
+            code: data.parentLinkCode || "",
+          });
+          familyMap.set(familyKey, current);
+        }
+      });
+
+      let updatedStudentsCount = 0;
+      let unifiedFamiliesCount = 0;
+      const batch = writeBatch(db);
+
+      familyMap.forEach((students) => {
+        if (students.length >= 2) {
+          let masterCode = students.find((s) => s.code)?.code;
+          if (!masterCode) {
+            masterCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+          }
+
+          let familyHasUpdates = false;
+          students.forEach((student) => {
+            if (student.code !== masterCode) {
+              batch.update(doc(db, "users", student.id), {
+                parentLinkCode: masterCode,
+              });
+              updatedStudentsCount++;
+              familyHasUpdates = true;
+            }
+          });
+
+          if (familyHasUpdates) {
+            unifiedFamiliesCount++;
+          }
+        }
+      });
+
+      if (updatedStudentsCount > 0) {
+        await batch.commit();
+        if (isMounted.current) {
+          showToast({
+            message: `Unified link codes for ${updatedStudentsCount} students across ${unifiedFamiliesCount} families!`,
+            type: "success",
+          });
+        }
+      } else {
+        if (isMounted.current) {
+          showToast({
+            message: "All sibling link codes are already synchronized!",
+            type: "info",
+          });
+        }
+      }
+    } catch (err: any) {
+      if (isMounted.current) {
+        console.error("Error unifying sibling link codes:", err);
+        showToast({
+          message: err.message || "Failed to unify sibling link codes.",
+          type: "error",
+        });
+      }
+    } finally {
+      if (isMounted.current) {
+        setUnifyLoading(false);
       }
     }
   };
@@ -272,6 +369,25 @@ export default function AdminSettingsScreen() {
       },
       color: "#6366F1",
       loading: repairLoading,
+    },
+    {
+      title: "Unify Sibling Parent Link Codes",
+      icon: "people-circle-outline",
+      action: () => {
+        const confirmMsg = "Scan all students and assign siblings (sharing parent phone/name) the exact same Parent Link Code?";
+        if (Platform.OS === "web") {
+          if (window.confirm(confirmMsg)) {
+            handleUnifySiblingLinkCodes();
+          }
+        } else {
+          Alert.alert("Unify Sibling Codes", confirmMsg, [
+            { text: "Cancel", style: "cancel" },
+            { text: "Unify Now", style: "default", onPress: handleUnifySiblingLinkCodes }
+          ]);
+        }
+      },
+      color: "#10B981",
+      loading: unifyLoading,
     },
     {
       title: "Logout",

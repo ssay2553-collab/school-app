@@ -34,6 +34,7 @@ import { useToast } from "../../../contexts/ToastContext";
 import { auth, db } from "../../../firebaseConfig";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
 import SVGIcon from "../../../components/SVGIcon";
+import { getParentFinalEmail } from "../../../utils/authUnify";
 
 interface ChildDetail {
   linkCode: string;
@@ -53,6 +54,7 @@ export default function ParentSignup() {
   const schoolName = SCHOOL_CONFIG.name;
   const primary = SCHOOL_CONFIG.primaryColor;
 
+  const [signupMode, setSignupMode] = useState<"no_email" | "email">("no_email");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
@@ -162,7 +164,7 @@ export default function ParentSignup() {
       showToast({ message: "Please enter a valid phone number.", type: "error" });
       return;
     }
-    if (!email.trim()) {
+    if (signupMode === "email" && !email.trim()) {
       showToast({ message: "Please enter an email address.", type: "error" });
       return;
     }
@@ -183,7 +185,11 @@ export default function ParentSignup() {
 
     setIsLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+      const finalEmail = signupMode === "email" && email.trim()
+        ? email.trim().toLowerCase()
+        : getParentFinalEmail(phone.trim() || `${firstName.trim()}${lastName.trim()}`);
+
+      const userCredential = await createUserWithEmailAndPassword(auth, finalEmail, password);
       const parentId = userCredential.user.uid;
 
       // Ensure session is fresh for Firestore rules
@@ -204,13 +210,17 @@ export default function ParentSignup() {
           }
       }
 
+      const parentFullName = `${firstName.trim()} ${lastName.trim()}`;
+
       batch.set(doc(db, "users", parentId), {
         uid: parentId,
         role: "parent",
-        profile: { 
+        username: phone.trim() || `${firstName.trim()}${lastName.trim()}`,
+        hasEmail: signupMode === "email" && !!email.trim(),
+        profile: {
           firstName: firstName.trim(), 
           lastName: lastName.trim(), 
-          email: email.trim().toLowerCase(),
+          email: finalEmail,
           phone: phone.trim()
         },
         childrenIds: childrenUids,
@@ -222,7 +232,9 @@ export default function ParentSignup() {
       for (const child of linkedChildren) {
           if (child.uid) {
             batch.update(doc(db, "users", child.uid), {
-              parentUids: arrayUnion(parentId)
+              parentUids: arrayUnion(parentId),
+              "profile.parentName": parentFullName,
+              "profile.parentPhone": phone.trim()
             });
           }
       }
@@ -234,7 +246,7 @@ export default function ParentSignup() {
     } catch (err: any) {
       console.error("Signup error:", err);
       let msg = err.message || "An unexpected error occurred.";
-      if (err.code === 'auth/email-already-in-use') msg = "This email is already registered. Try signing in instead!";
+      if (err.code === 'auth/email-already-in-use') msg = signupMode === "email" ? "This email is already registered. Try signing in instead!" : "This phone number/username is already registered. Try logging in!";
       if (err.code === 'auth/invalid-email') msg = "The email address is not valid.";
       if (err.code === 'auth/weak-password') msg = "The password is too weak (min 6 characters).";
       if (err.code === 'auth/network-request-failed') msg = "Network error. Please check your internet connection.";
@@ -264,6 +276,42 @@ export default function ParentSignup() {
           </Animatable.View>
 
           <Animatable.View animation="fadeInUp" duration={800} style={styles.card}>
+            {/* Registration Mode Switcher */}
+            <View style={styles.modeContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.modeTab,
+                  signupMode === "no_email" && { backgroundColor: primary },
+                ]}
+                onPress={() => setSignupMode("no_email")}
+              >
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    signupMode === "no_email" && styles.modeTabTextActive,
+                  ]}
+                >
+                  Phone / Username
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.modeTab,
+                  signupMode === "email" && { backgroundColor: primary },
+                ]}
+                onPress={() => setSignupMode("email")}
+              >
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    signupMode === "email" && styles.modeTabTextActive,
+                  ]}
+                >
+                  With Email
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <Text style={[styles.sectionTitle, { color: primary }]}>Profile Details</Text>
             <View style={styles.row}>
                 <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
@@ -298,17 +346,19 @@ export default function ParentSignup() {
               />
             </View>
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>EMAIL ADDRESS</Text>
-              <TextInput 
-                style={styles.inputField} 
-                value={email} 
-                onChangeText={setEmail} 
-                placeholder="parent@example.com" 
-                keyboardType="email-address" 
-                autoCapitalize="none" 
-              />
-            </View>
+            {signupMode === "email" && (
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>EMAIL ADDRESS</Text>
+                <TextInput
+                  style={styles.inputField}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="parent@example.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+            )}
             
             <View style={styles.inputGroup}>
               <Text style={styles.label}>PASSWORD</Text>
@@ -427,6 +477,10 @@ const styles = StyleSheet.create({
   schoolName: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
   portalTag: { fontSize: 13, fontWeight: "800", textTransform: 'uppercase', letterSpacing: 0.5 },
   card: { backgroundColor: "#fff", borderRadius: 30, padding: 24, ...SHADOWS.medium, borderWidth: 1, borderColor: '#F1F5F9' },
+  modeContainer: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 16, padding: 4, marginBottom: 20 },
+  modeTab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
+  modeTabText: { fontSize: 12, fontWeight: '800', color: '#64748B' },
+  modeTabTextActive: { color: '#FFFFFF' },
   sectionTitle: { fontSize: 16, fontWeight: "900", marginBottom: 20, textTransform: 'uppercase', letterSpacing: 1 },
   row: { flexDirection: 'row' },
   inputGroup: { marginBottom: 16 },

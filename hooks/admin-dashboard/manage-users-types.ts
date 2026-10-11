@@ -15,6 +15,9 @@ export interface User {
     profileImage?: string;
     emergencyPhone?: string;
     parentPhone?: string;
+    parentName?: string;
+    parent2Name?: string;
+    parent2Phone?: string;
   };
   role: UserRole;
   adminRole?: string;

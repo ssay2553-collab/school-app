@@ -182,7 +182,7 @@ export default function ParentDashboard() {
           path: "/academic-calendar",
         },
         {
-          title: "Fee Ledger",
+          title: "School Fees",
           subtitle: "Balance breakdown",
           icon: "wallet",
           color: "#f59e0b",

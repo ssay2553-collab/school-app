@@ -1,6 +1,7 @@
 // /screens/student/NewsScreen.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, StyleSheet, View, Text, SafeAreaView, StatusBar, TouchableOpacity } from "react-native";
+import { ActivityIndicator, FlatList, StyleSheet, View, Text, StatusBar, TouchableOpacity } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import CategoryTabs from "../../components/news/CategoryTabs";
 import NewsCard from "../../components/news/NewsCard";
 import SearchBar from "../../components/news/SearchBar";

@@ -1,32 +1,29 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SentAssignment } from "./useSentAssignments";
+import * as DocumentPicker from "expo-document-picker";
 import {
-  collection,
-  documentId,
-  getDocs,
-  getDocsFromServer,
-  query,
-  serverTimestamp,
-  where,
-  addDoc,
-  setDoc,
-  doc,
-  writeBatch,
-  limit,
+    collection,
+    doc,
+    documentId,
+    getDocs,
+    limit,
+    query,
+    serverTimestamp,
+    where,
+    writeBatch
 } from "firebase/firestore";
 import {
-  getDownloadURL,
-  ref,
-  uploadBytes,
-  deleteObject,
+    deleteObject,
+    getDownloadURL,
+    ref,
+    uploadBytes,
 } from "firebase/storage";
-import * as DocumentPicker from "expo-document-picker";
-import { Alert, Platform } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Platform } from "react-native";
+import { SentAssignment } from "./useSentAssignments";
 
-import { db, storage } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import { db, storage } from "../../firebaseConfig";
 import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 import { sendNotification } from "../../src/services/notificationService";
 
@@ -34,7 +31,12 @@ import { sendNotification } from "../../src/services/notificationService";
 /* Types                                                                      */
 /* -------------------------------------------------------------------------- */
 
-import { AssignmentType, Question, VisualItem, PreschoolQuestionType, PublicQuestion } from "../../types/assignments";
+import {
+    AssignmentType,
+    PreschoolQuestionType,
+    PublicQuestion,
+    Question
+} from "../../types/assignments";
 
 export type { AssignmentType, Question };
 
@@ -88,20 +90,22 @@ const sanitizeFileName = (name: string) => {
 
 const getQuestionValidationError = (
   question: Question,
-  type: AssignmentType
+  type: AssignmentType,
 ): string | null => {
   if (type === "rich-text") return null; // Essays don't strictly require structured questions here
 
-  if (!question.text.trim() && type !== 'mathematics') {
+  if (!question.text.trim() && type !== "mathematics") {
     return "Question text or instructions are missing.";
   }
 
   if (type === "mathematics") {
-    const hasOptions = question.options && question.options.filter(opt => opt.trim() !== "").length > 0;
+    const hasOptions =
+      question.options &&
+      question.options.filter((opt) => opt.trim() !== "").length > 0;
 
     if (hasOptions) {
       const validOptions = (question.options || []).filter(
-        (option) => option.trim().length > 0
+        (option) => option.trim().length > 0,
       );
       if (validOptions.length < 2) {
         return "Mathematics MCQ questions require at least 2 options.";
@@ -116,16 +120,25 @@ const getQuestionValidationError = (
       const item = question.visualGroup[j];
       const partName = `Part ${j + 1}`;
 
-      if (item.type === 'fraction' || item.type === 'mapping' || item.type === 'vector') {
+      if (
+        item.type === "fraction" ||
+        item.type === "mapping" ||
+        item.type === "vector"
+      ) {
         const hasNum = item.numerator?.[0]?.value?.trim();
         const hasDen = item.denominator?.[0]?.value?.trim();
         if (!hasNum || !hasDen) {
-          const typeLabel = item.type === 'fraction' ? 'Fraction' : item.type === 'mapping' ? 'Mapping' : 'Vector';
+          const typeLabel =
+            item.type === "fraction"
+              ? "Fraction"
+              : item.type === "mapping"
+                ? "Mapping"
+                : "Vector";
           return `${partName}: ${typeLabel} must have both top and bottom values.`;
         }
       }
 
-      if (item.type === 'mixed_fraction') {
+      if (item.type === "mixed_fraction") {
         const hasWhole = item.whole?.trim();
         const hasNum = item.numerator?.[0]?.value?.trim();
         const hasDen = item.denominator?.[0]?.value?.trim();
@@ -134,25 +147,33 @@ const getQuestionValidationError = (
         }
       }
 
-      if (item.type === 'sqrt' || item.type === 'bar') {
+      if (item.type === "sqrt" || item.type === "bar") {
         const hasContent = item.content?.[0]?.value?.trim();
         if (!hasContent) {
-          return `${partName}: ${item.type === 'sqrt' ? 'Square root' : 'Bar notation'} content cannot be empty.`;
+          return `${partName}: ${item.type === "sqrt" ? "Square root" : "Bar notation"} content cannot be empty.`;
         }
       }
 
-      if (item.type === 'matrix') {
-        const allFilled = item.cells?.every(cell => cell.value?.trim());
+      if (item.type === "matrix") {
+        const allFilled = item.cells?.every((cell) => cell.value?.trim());
         if (!allFilled) {
           return `${partName}: All matrix cells must be filled.`;
         }
       }
 
-      if ((item.type === 'superscript' || item.type === 'subscript') && !item.value?.trim()) {
-        return `${partName}: The ${item.type === 'superscript' ? 'exponent' : 'index'} value is missing.`;
+      if (
+        (item.type === "superscript" || item.type === "subscript") &&
+        !item.value?.trim()
+      ) {
+        return `${partName}: The ${item.type === "superscript" ? "exponent" : "index"} value is missing.`;
       }
 
-      if ((item.type === 'text' || item.type === 'variable' || item.type === 'number') && !item.value?.trim()) {
+      if (
+        (item.type === "text" ||
+          item.type === "variable" ||
+          item.type === "number") &&
+        !item.value?.trim()
+      ) {
         return `${partName}: Content is missing.`;
       }
     }
@@ -164,11 +185,13 @@ const getQuestionValidationError = (
     if (!question.type) return "Activity type is not selected.";
 
     // Text-based tasks like simple addition and fill missing don't require multiple choice options
-    const isTextBased = ["simple_addition", "fill_missing"].includes(question.type);
+    const isTextBased = ["simple_addition", "fill_missing"].includes(
+      question.type,
+    );
 
     if (!isTextBased) {
       const validOptions = (question.options || []).filter(
-        (option) => option.trim().length > 0
+        (option) => option.trim().length > 0,
       );
 
       if (validOptions.length < 2) {
@@ -189,7 +212,10 @@ const getQuestionValidationError = (
       "ordering",
     ].includes(question.type);
 
-    if (needsVisual && (!question.visualGroup || question.visualGroup.length === 0)) {
+    if (
+      needsVisual &&
+      (!question.visualGroup || question.visualGroup.length === 0)
+    ) {
       return "This activity requires at least one learning material selected from the library.";
     }
 
@@ -198,7 +224,7 @@ const getQuestionValidationError = (
 
   if (type === "mcq") {
     const validOptions = (question.options || []).filter(
-      (option) => option.trim().length > 0
+      (option) => option.trim().length > 0,
     );
     if (validOptions.length < 2) {
       return "Multiple choice questions require at least 2 options.";
@@ -249,27 +275,27 @@ export const useUploadAssignment = () => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
-  const [type, setType] =
-    useState<AssignmentType>("mcq");
+  const [type, setType] = useState<AssignmentType>("mcq");
 
   const [dueDate, setDueDate] = useState(
-    () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
   );
 
-  const [file, setFile] =
-    useState<DocumentPicker.DocumentPickerResult | null>(null);
+  const [file, setFile] = useState<DocumentPicker.DocumentPickerResult | null>(
+    null,
+  );
 
   const [uploadingFile, setUploadingFile] = useState(false);
 
   const [mcqQuestions, setMcqQuestions] = useState<Question[]>([]);
-  const [shortAnswerQuestions, setShortAnswerQuestions] =
-    useState<Question[]>([]);
-  const [preschoolQuestions, setPreschoolQuestions] =
-    useState<Question[]>([]);
-  const [mathematicsQuestions, setMathematicsQuestions] =
-    useState<Question[]>([]);
-  const [essayQuestions, setEssayQuestions] =
-    useState<Question[]>([]);
+  const [shortAnswerQuestions, setShortAnswerQuestions] = useState<Question[]>(
+    [],
+  );
+  const [preschoolQuestions, setPreschoolQuestions] = useState<Question[]>([]);
+  const [mathematicsQuestions, setMathematicsQuestions] = useState<Question[]>(
+    [],
+  );
+  const [essayQuestions, setEssayQuestions] = useState<Question[]>([]);
 
   /* ------------------------------------------------------------------------ */
   /* Teacher metadata                                                         */
@@ -277,7 +303,7 @@ export const useUploadAssignment = () => {
 
   const teacherClassIds = useMemo(
     () => getTeacherClasses(appUser),
-    [appUser?.classes, appUser?.classTeacherOf]
+    [appUser?.classes, appUser?.classTeacherOf],
   );
 
   /* ------------------------------------------------------------------------ */
@@ -307,7 +333,7 @@ export const useUploadAssignment = () => {
         return next;
       });
     },
-    [resetForm]
+    [resetForm],
   );
 
   const teacherClassIdsKey = teacherClassIds.join(",");
@@ -325,8 +351,18 @@ export const useUploadAssignment = () => {
     const userRole = appUser?.role?.toLowerCase() || "";
     const adminRole = appUser?.adminRole?.toLowerCase() || "";
     const isManagerOrAdmin =
-        userRole === "admin" ||
-        ["manager", "headmaster", "headmistress", "administrator", "director", "proprietor", "proprietress", "accountant", "bursar"].includes(adminRole);
+      userRole === "admin" ||
+      [
+        "manager",
+        "headmaster",
+        "headmistress",
+        "administrator",
+        "director",
+        "proprietor",
+        "proprietress",
+        "accountant",
+        "bursar",
+      ].includes(adminRole);
 
     const fetchMetadata = async () => {
       if (teacherClasses.length === 0) {
@@ -341,28 +377,38 @@ export const useUploadAssignment = () => {
           // Fetch ALL classes for managers/admins
           const q = query(collection(db, "classes"));
           const snap = await getDocs(q);
-          const results = snap.docs.map(item => ({
+          const results = snap.docs.map((item) => ({
             id: item.id,
-            name: (item.data() as any).name || item.id
+            name: (item.data() as any).name || item.id,
           }));
           sortedClasses = sortClasses(results);
 
           // Fetch ALL subjects for managers/admins
           const subQ = query(collection(db, "subjects"));
           const subSnap = await getDocs(subQ);
-          subjectList = Array.from(new Set([...subSnap.docs.map(d => d.id), ...(appUser.subjects || [])]));
+          subjectList = Array.from(
+            new Set([
+              ...subSnap.docs.map((d) => d.id),
+              ...(appUser.subjects || []),
+            ]),
+          );
         } else {
           // Fetch assigned classes for teachers
           if (teacherClassIds.length > 0) {
             const results: ClassData[] = [];
             for (let i = 0; i < teacherClassIds.length; i += 10) {
               const chunk = teacherClassIds.slice(i, i + 10);
-              const q = query(collection(db, "classes"), where(documentId(), "in", chunk));
+              const q = query(
+                collection(db, "classes"),
+                where(documentId(), "in", chunk),
+              );
               const snap = await getDocs(q);
-              results.push(...snap.docs.map(item => ({
-                id: item.id,
-                name: (item.data() as any).name || item.id
-              })));
+              results.push(
+                ...snap.docs.map((item) => ({
+                  id: item.id,
+                  name: (item.data() as any).name || item.id,
+                })),
+              );
             }
             sortedClasses = sortClasses(results);
           }
@@ -380,12 +426,12 @@ export const useUploadAssignment = () => {
         if (subjectList.length > 0 && !selectedSubject) {
           setSelectedSubject(subjectList[0]);
         }
-
       } catch (error) {
         console.error("Failed to load assignment metadata:", error);
         if (mounted) {
           showToast({
-            message: "Unable to load your classes or subjects. Please try again.",
+            message:
+              "Unable to load your classes or subjects. Please try again.",
             type: "error",
           });
         }
@@ -401,11 +447,7 @@ export const useUploadAssignment = () => {
     return () => {
       mounted = false;
     };
-  }, [
-    appUser?.uid,
-    teacherClassIdsKey,
-    subjectsKey,
-  ]);
+  }, [appUser?.uid, teacherClassIdsKey, subjectsKey]);
 
   /* ------------------------------------------------------------------------ */
   /* Current questions                                                        */
@@ -471,7 +513,7 @@ export const useUploadAssignment = () => {
           break;
       }
     },
-    [type]
+    [type],
   );
 
   /* ------------------------------------------------------------------------ */
@@ -486,10 +528,7 @@ export const useUploadAssignment = () => {
       points: 1,
     };
 
-    setQuestions((previous) => [
-      ...previous,
-      newQuestion,
-    ]);
+    setQuestions((previous) => [...previous, newQuestion]);
   }, [setQuestions]);
 
   const updateQuestion = useCallback(
@@ -501,19 +540,15 @@ export const useUploadAssignment = () => {
                 ...question,
                 text,
               }
-            : question
-        )
+            : question,
+        ),
       );
     },
-    [setQuestions]
+    [setQuestions],
   );
 
   const updateOption = useCallback(
-    (
-      questionIndex: number,
-      optionIndex: number,
-      text: string
-    ) => {
+    (questionIndex: number, optionIndex: number, text: string) => {
       setQuestions((previous) =>
         previous.map((question, index) => {
           if (index !== questionIndex) {
@@ -532,10 +567,10 @@ export const useUploadAssignment = () => {
             ...question,
             options,
           };
-        })
+        }),
       );
     },
-    [setQuestions]
+    [setQuestions],
   );
 
   const addOption = useCallback(
@@ -545,28 +580,22 @@ export const useUploadAssignment = () => {
           index === questionIndex
             ? {
                 ...question,
-                options: [
-                  ...(question.options || []),
-                  "",
-                ],
+                options: [...(question.options || []), ""],
               }
-            : question
-        )
+            : question,
+        ),
       );
     },
-    [setQuestions]
+    [setQuestions],
   );
 
   const removeQuestion = useCallback(
     (index: number) => {
       setQuestions((previous) =>
-        previous.filter(
-          (_, questionIndex) =>
-            questionIndex !== index
-        )
+        previous.filter((_, questionIndex) => questionIndex !== index),
       );
     },
-    [setQuestions]
+    [setQuestions],
   );
 
   const updatePreschoolQuestion = useCallback(
@@ -579,11 +608,11 @@ export const useUploadAssignment = () => {
                 ...updates,
                 options: updates.options ?? question.options ?? [],
               }
-            : question
-        )
+            : question,
+        ),
       );
     },
-    []
+    [],
   );
 
   const updateMathematicsQuestion = useCallback(
@@ -595,11 +624,11 @@ export const useUploadAssignment = () => {
                 ...question,
                 ...updates,
               }
-            : question
-        )
+            : question,
+        ),
       );
     },
-    []
+    [],
   );
 
   /* ------------------------------------------------------------------------ */
@@ -617,25 +646,17 @@ export const useUploadAssignment = () => {
 
       const asset = result.assets[0];
 
-      if (
-        asset.size &&
-        asset.size > MAX_FILE_SIZE
-      ) {
+      if (asset.size && asset.size > MAX_FILE_SIZE) {
         return {
           valid: false,
-          message:
-            "The assignment file must be 10 MB or smaller.",
+          message: "The assignment file must be 10 MB or smaller.",
         };
       }
 
-      if (
-        asset.mimeType &&
-        !ALLOWED_FILE_TYPES.includes(asset.mimeType)
-      ) {
+      if (asset.mimeType && !ALLOWED_FILE_TYPES.includes(asset.mimeType)) {
         return {
           valid: false,
-          message:
-            "This file type is not supported.",
+          message: "This file type is not supported.",
         };
       }
 
@@ -644,7 +665,7 @@ export const useUploadAssignment = () => {
         message: "",
       };
     },
-    []
+    [],
   );
 
   /* ------------------------------------------------------------------------ */
@@ -706,30 +727,25 @@ export const useUploadAssignment = () => {
   /* Generate unique assignment code                                         */
   /* ------------------------------------------------------------------------ */
 
-  const generateUniqueCode = useCallback(
-    async (): Promise<string> => {
-      for (let attempt = 0; attempt < 5; attempt++) {
-        const code = createAssignmentCode();
+  const generateUniqueCode = useCallback(async (): Promise<string> => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = createAssignmentCode();
 
-        const existing = await getDocs(
-          query(
-            collection(db, "assignments"),
-            where("code", "==", code),
-            limit(1)
-          )
-        );
-
-        if (existing.empty) {
-          return code;
-        }
-      }
-
-      throw new Error(
-        "Unable to generate a unique assignment code."
+      const existing = await getDocs(
+        query(
+          collection(db, "assignments"),
+          where("code", "==", code),
+          limit(1),
+        ),
       );
-    },
-    []
-  );
+
+      if (existing.empty) {
+        return code;
+      }
+    }
+
+    throw new Error("Unable to generate a unique assignment code.");
+  }, []);
 
   /* ------------------------------------------------------------------------ */
   /* Upload assignment                                                        */
@@ -755,8 +771,7 @@ export const useUploadAssignment = () => {
 
     setLoading(true);
 
-    let uploadedStorageRef: ReturnType<typeof ref> | null =
-      null;
+    let uploadedStorageRef: ReturnType<typeof ref> | null = null;
 
     try {
       let fileUrl = "";
@@ -768,11 +783,7 @@ export const useUploadAssignment = () => {
       /* Upload file                                                           */
       /* -------------------------------------------------------------------- */
 
-      if (
-        file &&
-        !file.canceled &&
-        file.assets?.[0]
-      ) {
+      if (file && !file.canceled && file.assets?.[0]) {
         const fileValidation = validateFile(file);
 
         if (!fileValidation.valid) {
@@ -789,7 +800,7 @@ export const useUploadAssignment = () => {
         const asset = file.assets[0];
 
         let blob;
-        if (Platform.OS === 'web' && (asset as any).file) {
+        if (Platform.OS === "web" && (asset as any).file) {
           blob = (asset as any).file;
         } else {
           const response = await fetch(asset.uri);
@@ -800,49 +811,30 @@ export const useUploadAssignment = () => {
         }
 
         if (blob.size > MAX_FILE_SIZE) {
-          throw new Error(
-            "The selected file is larger than 10 MB."
-          );
+          throw new Error("The selected file is larger than 10 MB.");
         }
 
-        const safeName = sanitizeFileName(
-          asset.name || "assignment"
-        );
+        const safeName = sanitizeFileName(asset.name || "assignment");
 
         const storagePath =
-          `assignments/${appUser.uid}/` +
-          `${Date.now()}_${safeName}`;
+          `assignments/${appUser.uid}/` + `${Date.now()}_${safeName}`;
 
-        uploadedStorageRef = ref(
-          storage,
-          storagePath
-        );
+        uploadedStorageRef = ref(storage, storagePath);
 
-        await uploadBytes(
-          uploadedStorageRef,
-          blob,
-          {
-            contentType:
-              asset.mimeType ||
-              blob.type ||
-              "application/octet-stream",
-            customMetadata: {
-              uploadedBy: appUser.uid,
-              purpose: "assignment",
-            },
-          }
-        );
+        await uploadBytes(uploadedStorageRef, blob, {
+          contentType:
+            asset.mimeType || blob.type || "application/octet-stream",
+          customMetadata: {
+            uploadedBy: appUser.uid,
+            purpose: "assignment",
+          },
+        });
 
-        fileUrl = await getDownloadURL(
-          uploadedStorageRef
-        );
+        fileUrl = await getDownloadURL(uploadedStorageRef);
 
         fileName = safeName;
         fileSize = blob.size;
-        fileType =
-          asset.mimeType ||
-          blob.type ||
-          "";
+        fileType = asset.mimeType || blob.type || "";
 
         setUploadingFile(false);
       }
@@ -851,8 +843,7 @@ export const useUploadAssignment = () => {
       /* Generate code                                                        */
       /* -------------------------------------------------------------------- */
 
-      const code =
-        await generateUniqueCode();
+      const code = await generateUniqueCode();
 
       /* -------------------------------------------------------------------- */
       /* Prepare questions                                                    */
@@ -871,7 +862,11 @@ export const useUploadAssignment = () => {
       const answerKeyRef = doc(db, "assignmentAnswerKeys", assignmentRef.id);
 
       const role = appUser?.role?.toLowerCase();
-      const isAdmin = role === "admin" || role === "superadmin" || role === "super admin" || !!appUser.adminRole;
+      const isAdmin =
+        role === "admin" ||
+        role === "superadmin" ||
+        role === "super admin" ||
+        !!appUser.adminRole;
 
       const assignmentData = {
         title: title.trim(),
@@ -905,6 +900,72 @@ export const useUploadAssignment = () => {
 
       await batch.commit();
 
+      // Notify admins when a teacher submits an assignment that must be approved first.
+      if (!isAdmin) {
+        try {
+          const adminQuery = query(
+            collection(db, "users"),
+            where("role", "in", [
+              "admin",
+              "superadmin",
+              "super admin",
+              "staff",
+            ]),
+          );
+          const adminSnap = await getDocs(adminQuery);
+          const teacherName =
+            [appUser?.profile?.firstName, appUser?.profile?.lastName]
+              .filter(Boolean)
+              .join(" ") ||
+            appUser?.displayName ||
+            "Teacher";
+
+          for (const adminDoc of adminSnap.docs) {
+            const adminData = adminDoc.data();
+            const adminRole = String(adminData?.adminRole || "").toLowerCase();
+            const adminRoleNormalized = adminRole.trim();
+            const role = String(adminData?.role || "").toLowerCase();
+            const isAdminRecipient =
+              ["admin", "superadmin", "super admin"].includes(role) ||
+              (!!adminRoleNormalized &&
+                [
+                  "manager",
+                  "headmaster",
+                  "headmistress",
+                  "administrator",
+                  "director",
+                  "proprietor",
+                  "proprietress",
+                  "accountant",
+                  "bursar",
+                ].includes(adminRoleNormalized)) ||
+              (role === "staff" && !!adminRoleNormalized);
+
+            if (!isAdminRecipient || adminDoc.id === appUser.uid) continue;
+
+            await sendNotification({
+              recipientId: adminDoc.id,
+              senderId: appUser.uid,
+              senderName: teacherName,
+              type: "assignment",
+              title: "Assignment Awaiting Approval",
+              body: `${teacherName} submitted "${title.trim()}" for ${selectedSubject}. Please review and approve it before students receive it.`,
+              data: {
+                assignmentId: assignmentRef.id,
+                classId: selectedClassId,
+                teacherId: appUser.uid,
+                status: "pending",
+              },
+            });
+          }
+        } catch (notifError) {
+          console.error(
+            "Failed to send assignment approval notifications:",
+            notifError,
+          );
+        }
+      }
+
       // Save to local sent assignments history (offline accessible)
       if (appUser?.uid) {
         try {
@@ -917,7 +978,9 @@ export const useUploadAssignment = () => {
             description: description.trim(),
             type,
             classId: selectedClassId,
-            className: teacherClasses.find(c => c.id === selectedClassId)?.name || selectedClassId,
+            className:
+              teacherClasses.find((c) => c.id === selectedClassId)?.name ||
+              selectedClassId,
             subjectId: selectedSubject,
             questions,
             dueDate: dueDate.toISOString(),
@@ -926,9 +989,15 @@ export const useUploadAssignment = () => {
             fileUrl,
             code,
           };
-          await AsyncStorage.setItem(historyKey, JSON.stringify([newSentItem, ...existing]));
+          await AsyncStorage.setItem(
+            historyKey,
+            JSON.stringify([newSentItem, ...existing]),
+          );
         } catch (historyErr) {
-          console.warn("Failed to save assignment to local history:", historyErr);
+          console.warn(
+            "Failed to save assignment to local history:",
+            historyErr,
+          );
         }
       }
 
@@ -938,13 +1007,15 @@ export const useUploadAssignment = () => {
           const studentsQuery = query(
             collection(db, "users"),
             where("role", "==", "student"),
-            where("classId", "==", selectedClassId)
+            where("classId", "==", selectedClassId),
           );
           const studentsSnap = await getDocs(studentsQuery);
 
           for (const studentDoc of studentsSnap.docs) {
             const sData = studentDoc.data();
-            const studentName = `${sData.profile?.firstName || ''} ${sData.profile?.lastName || ''}`.trim() || "Your ward";
+            const studentName =
+              `${sData.profile?.firstName || ""} ${sData.profile?.lastName || ""}`.trim() ||
+              "Your ward";
 
             // Notify Student
             sendNotification({
@@ -963,7 +1034,7 @@ export const useUploadAssignment = () => {
             // Notify Parents
             const parentUids = sData.parentUids;
             if (Array.isArray(parentUids) && parentUids.length > 0) {
-              parentUids.forEach(parentId => {
+              parentUids.forEach((parentId) => {
                 sendNotification({
                   recipientId: parentId,
                   senderId: appUser.uid,
@@ -974,7 +1045,7 @@ export const useUploadAssignment = () => {
                   data: {
                     assignmentId: assignmentRef.id,
                     classId: selectedClassId,
-                    studentId: studentDoc.id
+                    studentId: studentDoc.id,
                   },
                 });
               });
@@ -996,10 +1067,7 @@ export const useUploadAssignment = () => {
 
       return true;
     } catch (error) {
-      console.error(
-        "Failed to create assignment:",
-        error
-      );
+      console.error("Failed to create assignment:", error);
 
       /* -------------------------------------------------------------------- */
       /* Cleanup orphaned upload                                              */
@@ -1007,14 +1075,9 @@ export const useUploadAssignment = () => {
 
       if (uploadedStorageRef) {
         try {
-          await deleteObject(
-            uploadedStorageRef
-          );
+          await deleteObject(uploadedStorageRef);
         } catch (cleanupError) {
-          console.warn(
-            "Failed to clean up uploaded file:",
-            cleanupError
-          );
+          console.warn("Failed to clean up uploaded file:", cleanupError);
         }
       }
 
@@ -1053,70 +1116,52 @@ export const useUploadAssignment = () => {
   /* Date handling                                                            */
   /* ------------------------------------------------------------------------ */
 
-  const handleWebDateChange = useCallback(
-    (value: string) => {
-      if (!value) return;
+  const handleWebDateChange = useCallback((value: string) => {
+    if (!value) return;
 
-      const [year, month, day] =
-        value.split("-").map(Number);
+    const [year, month, day] = value.split("-").map(Number);
 
-      if (
-        !year ||
-        !month ||
-        !day
-      ) {
-        return;
-      }
+    if (!year || !month || !day) {
+      return;
+    }
 
-      setDueDate((previous) => {
-        const next = new Date(previous);
+    setDueDate((previous) => {
+      const next = new Date(previous);
 
-        next.setFullYear(
-          year,
-          month - 1,
-          day
-        );
+      next.setFullYear(year, month - 1, day);
 
-        return next;
-      });
-    },
-    []
-  );
+      return next;
+    });
+  }, []);
 
-  const handleWebTimeChange = useCallback(
-    (value: string) => {
-      if (!value) return;
+  const handleWebTimeChange = useCallback((value: string) => {
+    if (!value) return;
 
-      const [hours, minutes] =
-        value.split(":").map(Number);
+    const [hours, minutes] = value.split(":").map(Number);
 
-      if (
-        Number.isNaN(hours) ||
-        Number.isNaN(minutes)
-      ) {
-        return;
-      }
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return;
+    }
 
-      setDueDate((previous) => {
-        const next = new Date(previous);
+    setDueDate((previous) => {
+      const next = new Date(previous);
 
-        next.setHours(
-          hours,
-          minutes,
-          0,
-          0
-        );
+      next.setHours(hours, minutes, 0, 0);
 
-        return next;
-      });
-    },
-    []
-  );
+      return next;
+    });
+  }, []);
 
   const reuploadSentAssignment = useCallback(
-    async (assignment: SentAssignment, targetClassId: string): Promise<boolean> => {
+    async (
+      assignment: SentAssignment,
+      targetClassId: string,
+    ): Promise<boolean> => {
       if (!appUser?.uid) {
-        showToast({ message: "You must be signed in as a teacher.", type: "error" });
+        showToast({
+          message: "You must be signed in as a teacher.",
+          type: "error",
+        });
         return false;
       }
 
@@ -1131,7 +1176,11 @@ export const useUploadAssignment = () => {
         const answerKeyRef = doc(db, "assignmentAnswerKeys", assignmentRef.id);
 
         const role = appUser?.role?.toLowerCase();
-        const isAdmin = role === "admin" || role === "superadmin" || role === "super admin" || !!appUser.adminRole;
+        const isAdmin =
+          role === "admin" ||
+          role === "superadmin" ||
+          role === "super admin" ||
+          !!appUser.adminRole;
 
         const assignmentData = {
           title: assignment.title.trim(),
@@ -1145,7 +1194,9 @@ export const useUploadAssignment = () => {
           fileSize: 0,
           fileType: "",
           questions: publicQuestions,
-          dueDate: new Date(assignment.dueDate || Date.now() + 7 * 24 * 60 * 60 * 1000),
+          dueDate: new Date(
+            assignment.dueDate || Date.now() + 7 * 24 * 60 * 60 * 1000,
+          ),
           code,
           status: isAdmin ? "approved" : "pending",
           createdAt: serverTimestamp(),
@@ -1172,11 +1223,16 @@ export const useUploadAssignment = () => {
           ...assignment,
           id: `sent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
           classId: targetClassId,
-          className: teacherClasses.find(c => c.id === targetClassId)?.name || targetClassId,
+          className:
+            teacherClasses.find((c) => c.id === targetClassId)?.name ||
+            targetClassId,
           createdAt: new Date().toISOString(),
           code,
         };
-        await AsyncStorage.setItem(historyKey, JSON.stringify([newSentItem, ...existing]));
+        await AsyncStorage.setItem(
+          historyKey,
+          JSON.stringify([newSentItem, ...existing]),
+        );
 
         showToast({
           message: "Assignment re-uploaded successfully!",
@@ -1187,7 +1243,10 @@ export const useUploadAssignment = () => {
       } catch (error) {
         console.error("Failed to re-upload assignment:", error);
         showToast({
-          message: error instanceof Error ? error.message : "Failed to re-upload assignment.",
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to re-upload assignment.",
           type: "error",
         });
         return false;
@@ -1195,7 +1254,7 @@ export const useUploadAssignment = () => {
         setLoading(false);
       }
     },
-    [appUser, generateUniqueCode, showToast, teacherClasses]
+    [appUser, generateUniqueCode, showToast, teacherClasses],
   );
 
   /* ------------------------------------------------------------------------ */
@@ -1207,8 +1266,9 @@ export const useUploadAssignment = () => {
       qList.some(
         (q) =>
           (q.text && q.text.trim().length > 0) ||
-          (q.options && q.options.some((opt) => opt && opt.trim().length > 0)) ||
-          (q.visualGroup && q.visualGroup.length > 0)
+          (q.options &&
+            q.options.some((opt) => opt && opt.trim().length > 0)) ||
+          (q.visualGroup && q.visualGroup.length > 0),
       );
 
     return (

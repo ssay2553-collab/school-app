@@ -1,1192 +1,1611 @@
 import { GESIndicator } from "../GES_Curriculum";
 
 export const Mathematics: Record<string, GESIndicator[]> = {
+  "Basic 1": [
+    {
+      code: "B1.1.1.1.1",
+      strand: "Number",
+      subStrand: "Counting, Representation and Cardinality",
+      contentStandard:
+        "Demonstrate understanding of counting, reading and writing numbers up to 100",
+      indicator:
+        "Count forward and backward up to 100 using concrete materials and visual aids",
+      objectives:
+        "Count reliably forward and backward starting from any number up to 100 using objects, number lines, and hundred charts.",
+    },
+    {
+      code: "B1.1.1.1.2",
+      strand: "Number",
+      subStrand: "Counting, Representation and Cardinality",
+      contentStandard:
+        "Demonstrate understanding of counting, reading and writing numbers up to 100",
+      indicator: "Read and write number names and numerals from 0 to 100",
+      objectives:
+        "Read, write, and represent numbers from 0 to 100 using numerals, word names, and base-ten representations.",
+    },
+    {
+      code: "B1.1.1.1.3",
+      strand: "Number",
+      subStrand: "Counting, Representation and Cardinality",
+      contentStandard:
+        "Demonstrate understanding of counting, reading and writing numbers up to 100",
+      indicator: "Compare and order whole numbers up to 100",
+      objectives:
+        "Compare and order numbers up to 100 using place value charts and vocabulary such as 'more than', 'less than', or 'equal to'.",
+    },
+    {
+      code: "B1.1.2.1.1",
+      strand: "Number",
+      subStrand: "Number Operations",
+      contentStandard:
+        "Demonstrate understanding of addition and subtraction of numbers up to 20",
+      indicator:
+        "Addition as combining sets and subtraction as taking away or comparing",
+      objectives:
+        "Model addition and subtraction concepts up to 20 using concrete objects, drawings, and number sentences.",
+    },
+    {
+      code: "B1.1.2.1.2",
+      strand: "Number",
+      subStrand: "Number Operations",
+      contentStandard:
+        "Demonstrate understanding of addition and subtraction of numbers up to 20",
+      indicator:
+        "Solve word problems involving addition and subtraction up to 20",
+      objectives:
+        "Solve contextual real-life story problems involving addition and subtraction with answers up to 20.",
+    },
+    {
+      code: "B1.1.3.1.1",
+      strand: "Number",
+      subStrand: "Fractions",
+      contentStandard:
+        "Demonstrate understanding of equal parts of a whole (halves and quarters)",
+      indicator:
+        "Identify and partition shapes and objects into two equal parts (halves)",
+      objectives:
+        "Partition shapes and concrete objects into two equal parts and recognize each part as one half (1/2).",
+    },
+    {
+      code: "B1.2.1.1.1",
+      strand: "Algebra",
+      subStrand: "Patterns and Relationships",
+      contentStandard:
+        "Recognize, describe, extend and create repeating patterns",
+      indicator:
+        "Identify repeating patterns using colors, shapes, sounds and numbers",
+      objectives:
+        "Observe, describe, and extend simple repeating patterns using physical objects and drawings.",
+    },
+    {
+      code: "B1.3.1.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Lines and Shapes",
+      contentStandard:
+        "Identify and describe 2D shapes (circles, triangles, squares, rectangles)",
+      indicator: "Sort and classify 2D shapes according to attributes",
+      objectives:
+        "Identify, name, and trace common 2D shapes in the classroom and immediate environment.",
+    },
+    {
+      code: "B1.3.2.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Measurement",
+      contentStandard:
+        "Compare lengths, masses and capacities using non-standard units",
+      indicator:
+        "Compare two objects directly or using non-standard units (e.g. hand spans, sticks)",
+      objectives:
+        "Estimate and measure length and height using non-standard units like paperclips or hand spans.",
+    },
+    {
+      code: "B1.4.1.1.1",
+      strand: "Data",
+      subStrand: "Data Collection and Organization",
+      contentStandard:
+        "Collect, sort and represent data using concrete objects and tallies",
+      indicator:
+        "Organize objects into categories and count items in each category",
+      objectives:
+        "Gather data about classroom items or preferences and present findings in simple object graphs.",
+    },
+  ],
+  "Basic 2": [
+    {
+      code: "B2.1.1.1.1",
+      strand: "Number",
+      subStrand: "Counting, Representation and Cardinality",
+      contentStandard: "Demonstrate understanding of numbers up to 500",
+      indicator:
+        "Count forward and backward in 1s, 2s, 5s, 10s and 100s up to 500",
+      objectives:
+        "Count fluently up to 500 starting from any multiple using place value models.",
+    },
+    {
+      code: "B2.1.1.1.2",
+      strand: "Number",
+      subStrand: "Counting, Representation and Cardinality",
+      contentStandard: "Demonstrate understanding of numbers up to 500",
+      indicator:
+        "Identify place value of 3-digit numbers (hundreds, tens, ones)",
+      objectives:
+        "Decompose 3-digit numbers into hundreds, tens, and ones using abacus and expanded notation.",
+    },
+    {
+      code: "B2.1.2.1.1",
+      strand: "Number",
+      subStrand: "Number Operations",
+      contentStandard:
+        "Add and subtract 2-digit numbers with and without regrouping",
+      indicator:
+        "Apply mental and written strategies for 2-digit addition and subtraction",
+      objectives:
+        "Perform column addition and subtraction of 2-digit numbers accurately.",
+    },
+    {
+      code: "B2.1.2.2.1",
+      strand: "Number",
+      subStrand: "Number Operations",
+      contentStandard:
+        "Understand multiplication as repeated addition and equal groups",
+      indicator:
+        "Model multiplication concepts up to 5x5 using arrays and equal groupings",
+      objectives:
+        "Represent multiplication word problems using equal groups, arrays, and repeated addition.",
+    },
+    {
+      code: "B2.1.3.1.1",
+      strand: "Number",
+      subStrand: "Fractions",
+      contentStandard: "Understand unit fractions (1/2, 1/3, 1/4)",
+      indicator: "Identify and represent unit fractions of shapes and sets",
+      objectives:
+        "Shade and label 1/2, 1/3, and 1/4 of given shapes and sets of objects.",
+    },
+    {
+      code: "B2.2.1.1.1",
+      strand: "Algebra",
+      subStrand: "Patterns and Relationships",
+      contentStandard: "Identify and complete numerical patterns",
+      indicator: "Describe rules for growing and repeating number patterns",
+      objectives:
+        "Determine missing terms in number sequences adding or subtracting 2, 5, or 10.",
+    },
+    {
+      code: "B2.3.1.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Lines and Shapes",
+      contentStandard:
+        "Identify and describe 3D solids (spheres, cubes, cylinders, cones)",
+      indicator:
+        "Distinguish between 2D shapes and 3D solids based on faces, edges, and vertices",
+      objectives:
+        "Sort 3D objects according to whether they roll, slide, or stack.",
+    },
+    {
+      code: "B2.3.2.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Measurement",
+      contentStandard:
+        "Tell time to the half-hour and quarter-hour and measure length in standard units (cm)",
+      indicator:
+        "Read analogue and digital clocks and measure short lengths using centimetre rulers",
+      objectives:
+        "Tell time on analogue clock faces and measure lengths of classroom objects using cm rulers.",
+    },
+    {
+      code: "B2.4.1.1.1",
+      strand: "Data",
+      subStrand: "Data Presentation and Analysis",
+      contentStandard:
+        "Construct and interpret simple pictographs and block graphs",
+      indicator:
+        "Read and draw pictographs with one symbol representing one unit",
+      objectives:
+        "Answer simple questions by reading data presented in pictographs.",
+    },
+  ],
+  "Basic 3": [
+    {
+      code: "B3.1.1.1.1",
+      strand: "Number",
+      subStrand: "Counting, Representation and Cardinality",
+      contentStandard: "Demonstrate understanding of numbers up to 10,000",
+      indicator: "Count, read, write and model numbers up to 10,000",
+      objectives:
+        "Express 4-digit numbers in numerals, words, and expanded form (thousands, hundreds, tens, ones).",
+    },
+    {
+      code: "B3.1.1.1.2",
+      strand: "Number",
+      subStrand: "Counting, Representation and Cardinality",
+      contentStandard: "Compare and order numbers up to 10,000",
+      indicator: "Use symbols (>, <, =) to compare 4-digit numbers",
+      objectives:
+        "Order sets of 4-digit numbers in ascending and descending order.",
+    },
+    {
+      code: "B3.1.2.1.1",
+      strand: "Number",
+      subStrand: "Number Operations",
+      contentStandard: "Add and subtract 3-digit numbers with regrouping",
+      indicator:
+        "Solve addition and subtraction problems involving up to 3-digit numbers",
+      objectives:
+        "Execute standard column algorithm for 3-digit addition and subtraction.",
+    },
+    {
+      code: "B3.1.2.2.1",
+      strand: "Number",
+      subStrand: "Number Operations",
+      contentStandard:
+        "Demonstrate multiplication facts up to 10x10 and basic division",
+      indicator:
+        "Recall multiplication tables (2, 3, 4, 5, 10) and relate multiplication to division",
+      objectives:
+        "Solve multiplication and division story problems within 100.",
+    },
+    {
+      code: "B3.1.3.1.1",
+      strand: "Number",
+      subStrand: "Fractions",
+      contentStandard:
+        "Understand equivalent fractions and simple fraction addition with like denominators",
+      indicator:
+        "Compare fractions with like denominators and add simple fractions",
+      objectives:
+        "Add fractions with same denominator (e.g., 2/8 + 3/8 = 5/8) using fraction strips.",
+    },
+    {
+      code: "B3.2.1.1.1",
+      strand: "Algebra",
+      subStrand: "Algebraic Expressions",
+      contentStandard:
+        "Demonstrate understanding of equality and unknown numbers",
+      indicator: "Solve simple open number sentences (e.g. 15 + ___ = 32)",
+      objectives: "Find missing numbers in addition and subtraction equations.",
+    },
+    {
+      code: "B3.3.1.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Lines and Shapes",
+      contentStandard:
+        "Identify parallel, perpendicular and intersecting lines",
+      indicator: "Distinguish between types of lines in geometric figures",
+      objectives:
+        "Identify horizontal, vertical, parallel, and perpendicular lines in everyday objects.",
+    },
+    {
+      code: "B3.3.2.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Measurement",
+      contentStandard:
+        "Measure perimeter of simple 2D shapes and calculate elapsed time",
+      indicator:
+        "Calculate perimeter of rectangles and polygons by adding side lengths",
+      objectives:
+        "Determine perimeter of 2D shapes using grid paper or standard measurement.",
+    },
+    {
+      code: "B3.4.1.1.1",
+      strand: "Data",
+      subStrand: "Data Presentation and Analysis",
+      contentStandard: "Construct bar graphs and frequency tables",
+      indicator:
+        "Represent categorical data using bar graphs with single-unit scales",
+      objectives:
+        "Draw and interpret bar graphs representing class survey data.",
+    },
+  ],
   "Basic 4": [
     {
       code: "B4.1.1.1.1",
       strand: "Number",
       subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of numbers up to 100,000",
-      indicator: "Reading, writing and modeling numbers up to 100,000",
-      objectives: "Model, read, and write numbers in figures and words up to 100,000 using place value charts and base-ten materials."
-    },
-    {
-      code: "B4.1.1.1.2",
-      strand: "Number",
-      subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of numbers up to 100,000",
-      indicator: "Comparing and ordering whole numbers up to 100,000",
-      objectives: "Compare and order numbers up to 100,000 using symbols (<, >, =) and place value reasoning."
-    },
-    {
-      code: "B4.1.1.1.3",
-      strand: "Number",
-      subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of numbers up to 100,000",
-      indicator: "Rounding numbers up to 100,000",
-      objectives: "Round whole numbers up to 100,000 to the nearest 10, 100, and 1,000."
-    },
-    {
-      code: "B4.1.1.1.4",
-      strand: "Number",
-      subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of numbers up to 100,000",
-      indicator: "Expanded form and place value decomposition up to 100,000",
-      objectives: "Decompose numbers up to 100,000 into ten-thousands, thousands, hundreds, tens, and ones."
-    },
-    {
-      code: "B4.1.1.2.1",
-      strand: "Number",
-      subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate skip counting and number patterns",
-      indicator: "Skip counting by 50s, 100s, 500s, and 1,000s up to 100,000",
-      objectives: "Skip count forward and backward starting from any given 4-digit or 5-digit number."
+      contentStandard: "Demonstrate understanding of place value up to 100,000",
+      indicator:
+        "Read, write, compare and round numbers up to 100,000 to nearest 10, 100, or 1000",
+      objectives:
+        "Round whole numbers to the nearest ten, hundred, or thousand in context.",
     },
     {
       code: "B4.1.2.1.1",
       strand: "Number",
       subStrand: "Number Operations",
-      contentStandard: "Demonstrate understanding of addition and subtraction of 4-digit numbers",
-      indicator: "Addition and subtraction with regrouping",
-      objectives: "Use standard algorithm and mental strategies to add and subtract 4-digit numbers with or without regrouping."
-    },
-    {
-      code: "B4.1.2.1.2",
-      strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Demonstrate understanding of addition and subtraction word problems",
-      indicator: "Solving multi-step word problems involving addition and subtraction",
-      objectives: "Solve real-world multi-step contextual problems involving addition and subtraction up to 100,000."
-    },
-    {
-      code: "B4.1.2.1.3",
-      strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Demonstrate understanding of addition and subtraction of 4-digit and 5-digit numbers",
-      indicator: "Mental addition and subtraction strategies up to 10,000",
-      objectives: "Use compensation, landmark numbers, and decomposition for mental addition and subtraction."
+      contentStandard: "Add and subtract whole numbers up to 5-digits",
+      indicator:
+        "Solve multi-step word problems involving 4-digit and 5-digit addition and subtraction",
+      objectives:
+        "Apply multi-digit addition and subtraction algorithms to practical financial calculations.",
     },
     {
       code: "B4.1.2.2.1",
       strand: "Number",
       subStrand: "Number Operations",
-      contentStandard: "Demonstrate understanding of multiplication and division up to 10,000",
-      indicator: "Multiplication by 10, 100 and single-digit numbers",
-      objectives: "Multiply 2-digit and 3-digit numbers by 1-digit numbers and multiples of 10 and 100 using place value patterns."
-    },
-    {
-      code: "B4.1.2.2.2",
-      strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Demonstrate understanding of division of 2-digit and 3-digit numbers",
-      indicator: "Division by 1-digit divisors with or without remainders",
-      objectives: "Divide 2-digit and 3-digit numbers by 1-digit divisors using repeated subtraction and long division algorithms."
-    },
-    {
-      code: "B4.1.2.2.3",
-      strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Demonstrate understanding of multiplication and division up to 10,000",
-      indicator: "Multiplication word problems and lattice/area model algorithms",
-      objectives: "Solve real-world word problems using 2-digit by 2-digit multiplication models."
+      contentStandard:
+        "Multiply 2-digit and 3-digit numbers by 1-digit and 2-digit numbers and divide up to 3-digit numbers",
+      indicator:
+        "Perform multi-digit multiplication and long division with remainders",
+      objectives:
+        "Execute standard algorithm for multiplying 2-digit numbers and division with remainders.",
     },
     {
       code: "B4.1.3.1.1",
       strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of equivalent fractions and decimals",
-      indicator: "Comparing and ordering simple fractions",
-      objectives: "Compare and order proper fractions with like and unlike denominators using fraction strips and number lines."
-    },
-    {
-      code: "B4.1.3.1.2",
-      strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of equivalent fractions",
-      indicator: "Finding equivalent fractions using visual models and multiplication",
-      objectives: "Generate equivalent fractions by multiplying or dividing numerator and denominator by the same number."
-    },
-    {
-      code: "B4.1.3.1.3",
-      strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of equivalent fractions and ordering",
-      indicator: "Addition and subtraction of proper fractions with like denominators",
-      objectives: "Add and subtract fractions with common denominators using visual models and symbolic algorithms."
-    },
-    {
-      code: "B4.1.3.2.1",
-      strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of decimals up to hundredths",
-      indicator: "Reading, writing, and modeling decimals up to hundredths",
-      objectives: "Model, read, and write decimals (tenths and hundredths) and convert between fractions and decimals."
+      subStrand: "Fractions and Decimals",
+      contentStandard:
+        "Demonstrate understanding of decimal fractions (tenths and hundredths)",
+      indicator:
+        "Convert between common fractions and decimals (tenths and hundredths)",
+      objectives:
+        "Represent fractions with denominators 10 and 100 as decimal numbers.",
     },
     {
       code: "B4.2.1.1.1",
       strand: "Algebra",
-      subStrand: "Patterns and Relationships",
-      contentStandard: "Identify, extend, and create numeric and non-numeric patterns",
-      indicator: "Pattern rules and sequence completion",
-      objectives: "Determine pattern rules to extend sequences involving addition, subtraction, and multiplication."
-    },
-    {
-      code: "B4.2.2.1.1",
-      strand: "Algebra",
-      subStrand: "Algebraic Expressions and Equations",
-      contentStandard: "Demonstrate understanding of simple open sentences",
-      indicator: "Solving single-step addition and subtraction open sentences",
-      objectives: "Find unknown values in open sentences of the form x + a = b or x - a = b."
+      subStrand: "Patterns and Algebra",
+      contentStandard:
+        "Model algebraic relationships using variables and tables",
+      indicator:
+        "Write and evaluate simple algebraic expressions with one variable",
+      objectives:
+        "Evaluate algebraic expressions when given a numerical value for the letter variable.",
     },
     {
       code: "B4.3.1.1.1",
       strand: "Geometry and Measurement",
       subStrand: "Lines and Shapes",
-      contentStandard: "Identify and classify 2D shapes based on properties",
-      indicator: "Properties of quadrilaterals and triangles",
-      objectives: "Differentiate between various quadrilaterals (squares, rectangles, parallelograms) and triangles based on sides and angles."
-    },
-    {
-      code: "B4.3.1.1.2",
-      strand: "Geometry and Measurement",
-      subStrand: "Lines and Shapes",
-      contentStandard: "Identify and classify 2D shapes based on properties",
-      indicator: "Symmetry lines and 3D solid faces, edges, and vertices",
-      objectives: "Identify line symmetry in 2D shapes and count faces, edges, and vertices of 3D prisms and pyramids."
+      contentStandard: "Classify angles (acute, right, obtuse) and polygons",
+      indicator:
+        "Identify, measure and classify angles using right angle benchmarks and protractors",
+      objectives:
+        "Categorize angles as acute (<90°), right (90°), or obtuse (>90°).",
     },
     {
       code: "B4.3.2.1.1",
       strand: "Geometry and Measurement",
       subStrand: "Measurement",
-      contentStandard: "Demonstrate understanding of perimeter and area of 2D shapes",
-      indicator: "Perimeter and area of rectangles and squares",
-      objectives: "Calculate the perimeter and area of rectangles and squares using standard units (cm, m)."
-    },
-    {
-      code: "B4.3.2.2.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Measurement",
-      contentStandard: "Demonstrate understanding of time measurement",
-      indicator: "Reading time to nearest minute and time unit conversions",
-      objectives: "Read time on 12-hour and 24-hour clocks to the nearest minute and convert hours to minutes and minutes to seconds."
+      contentStandard: "Calculate area and perimeter of rectangles and squares",
+      indicator: "Apply formulas for perimeter (2l + 2w) and area (l x w)",
+      objectives:
+        "Determine area of rectangular surfaces in square centimeters and square meters.",
     },
     {
       code: "B4.4.1.1.1",
       strand: "Data",
-      subStrand: "Data Collection, Presentation and Analysis",
-      contentStandard: "Collect, organize, and represent data using tables and graphs",
-      indicator: "Construction of bar graphs and pictographs",
-      objectives: "Construct and interpret bar graphs and pictographs with appropriate titles and scales."
-    }
+      subStrand: "Data and Probability",
+      contentStandard:
+        "Collect, organize and present data using tally charts, tables and double bar graphs",
+      indicator: "Draw and interpret scaled bar graphs and line plots",
+      objectives:
+        "Extract, analyze, and present statistical information using scaled bar graphs.",
+    },
   ],
   "Basic 5": [
     {
       code: "B5.1.1.1.1",
       strand: "Number",
       subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of numbers up to 1,000,000",
-      indicator: "Place value and ordering of large numbers",
-      objectives: "Compare, order, and represent whole numbers up to 1,000,000 in expanded notation and word forms."
-    },
-    {
-      code: "B5.1.1.1.2",
-      strand: "Number",
-      subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of whole numbers up to 1,000,000",
-      indicator: "Rounding numbers up to 1,000,000",
-      objectives: "Round multi-digit numbers up to 1,000,000 to the nearest 100, 1,000, and 10,000."
-    },
-    {
-      code: "B5.1.1.1.3",
-      strand: "Number",
-      subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of whole numbers up to 1,000,000",
-      indicator: "Number lines and ordering million-range numbers",
-      objectives: "Position and order large numbers up to 1,000,000 on labeled number line segments."
+      contentStandard:
+        "Demonstrate understanding of place value up to 1,000,000",
+      indicator: "Read, write, order and round numbers up to 1,000,000",
+      objectives:
+        "Express 6-digit and 7-digit numbers in expanded notation and round to nearest 10,000 or 100,000.",
     },
     {
       code: "B5.1.1.2.1",
       strand: "Number",
-      subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of prime numbers and factors",
-      indicator: "Prime numbers, factors, and multiples up to 100",
-      objectives: "Identify prime numbers, composite numbers, factors, and multiples of whole numbers up to 100."
+      subStrand: "Number Properties",
+      contentStandard:
+        "Identify prime numbers, composite numbers, factors and multiples",
+      indicator:
+        "Determine prime factors, Highest Common Factor (HCF) and Least Common Multiple (LCM)",
+      objectives:
+        "Find HCF and LCM of two numbers up to 50 using prime factorization.",
     },
     {
       code: "B5.1.2.1.1",
       strand: "Number",
       subStrand: "Number Operations",
-      contentStandard: "Demonstrate fluency in multiplication and long division",
-      indicator: "Multi-digit multiplication and long division",
-      objectives: "Multiply 3-digit numbers by 2-digit numbers and divide 4-digit numbers by 1-digit or 2-digit divisors."
-    },
-    {
-      code: "B5.1.2.2.1",
-      strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Demonstrate fluency in multi-digit multiplication and long division",
-      indicator: "Multiplication of 3-digit by 2-digit numbers and 4-digit division",
-      objectives: "Multiply 3-digit numbers by 2-digit numbers and divide 4-digit numbers by 1-digit or 2-digit divisors."
-    },
-    {
-      code: "B5.1.2.2.2",
-      strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Demonstrate understanding of multi-step operations",
-      indicator: "Solving 3-step word problems with whole numbers and estimation",
-      objectives: "Formulate and solve multi-step numeric word problems involving all four fundamental operations."
-    },
-    {
-      code: "B5.1.2.2.3",
-      strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Demonstrate fluency in multi-digit multiplication and long division",
-      indicator: "Long division algorithms with 2-digit divisors and remainders",
-      objectives: "Execute 4-digit by 2-digit division problems expressing remainders as whole numbers or fractions."
+      contentStandard: "Multiply and divide multi-digit whole numbers",
+      indicator: "Perform long division of 4-digit numbers by 2-digit divisors",
+      objectives:
+        "Execute division algorithm yielding quotient and remainder for contextual problems.",
     },
     {
       code: "B5.1.3.1.1",
       strand: "Number",
       subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of addition and subtraction of fractions and decimals",
-      indicator: "Operations with fractions and decimals up to hundredths",
-      objectives: "Add and subtract mixed numbers and decimals up to two decimal places in real-world problem contexts."
-    },
-    {
-      code: "B5.1.3.1.2",
-      strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of fraction multiplication",
-      indicator: "Multiplying proper fractions by whole numbers and fractions",
-      objectives: "Multiply proper fractions by whole numbers and proper fractions using visual area models."
-    },
-    {
-      code: "B5.1.3.1.3",
-      strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of addition and subtraction of fractions",
-      indicator: "Word problems involving addition and subtraction of mixed numbers",
-      objectives: "Solve real-life word problems requiring addition or subtraction of mixed fractions."
-    },
-    {
-      code: "B5.1.3.2.1",
-      strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of operations with decimals",
-      indicator: "Addition, subtraction, and multiplication of decimals up to thousandths",
-      objectives: "Add, subtract, and multiply decimals up to thousandths in contextual problem scenarios."
-    },
-    {
-      code: "B5.1.3.3.1",
-      strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of percentages",
-      indicator: "Converting between fractions, decimals, and percentages",
-      objectives: "Understand percentage as hundredths and convert fluently between fractions, decimals, and percentages."
+      contentStandard:
+        "Add, subtract, and multiply fractions and convert to percentages",
+      indicator:
+        "Add and subtract unlike fractions and convert fractions to decimals and percentages",
+      objectives:
+        "Find common denominators to add/subtract fractions and express tenths/hundredths as percentages.",
     },
     {
       code: "B5.2.1.1.1",
       strand: "Algebra",
-      subStrand: "Algebraic Expressions",
-      contentStandard: "Translate simple verbal phrases into algebraic expressions",
-      indicator: "Simple algebraic expressions with variables",
-      objectives: "Represent unknown quantities using variables and evaluate algebraic expressions for given numeric values."
-    },
-    {
-      code: "B5.2.2.1.1",
-      strand: "Algebra",
-      subStrand: "Equations and Inequalities",
-      contentStandard: "Formulate and solve 1-step linear equations",
-      indicator: "Solving 1-step linear equations involving whole numbers",
-      objectives: "Solve linear equations of the form x + a = b, ax = b, and x/a = b."
+      subStrand: "Algebraic Equations",
+      contentStandard: "Solve 1-step linear equations",
+      indicator:
+        "Solve simple linear equations involving addition, subtraction, multiplication and division",
+      objectives: "Find solution to x + a = b and ax = b for whole numbers.",
     },
     {
       code: "B5.3.1.1.1",
       strand: "Geometry and Measurement",
       subStrand: "Lines and Shapes",
-      contentStandard: "Identify, classify, and construct 3D objects and 2D nets",
-      indicator: "Nets of prisms, pyramids, and cylinders",
-      objectives: "Identify properties of 3D solids (vertices, edges, faces) and construct nets for cubes, cuboids, and pyramids."
-    },
-    {
-      code: "B5.3.1.1.2",
-      strand: "Geometry and Measurement",
-      subStrand: "Lines and Shapes",
-      contentStandard: "Construct nets for 3D solids",
-      indicator: "Nets of prisms, pyramids, and cylinders",
-      objectives: "Identify properties of 3D solids (faces, edges, vertices) and construct nets for cubes, cuboids, and pyramids."
-    },
-    {
-      code: "B5.3.1.1.3",
-      strand: "Geometry and Measurement",
-      subStrand: "Lines and Shapes",
-      contentStandard: "Identify, classify, and measure angles with protractors",
-      indicator: "Complementary and supplementary angle calculations",
-      objectives: "Find unknown missing angles using complementary (90°) and supplementary (180°) angle properties."
+      contentStandard: "Identify properties of triangles and quadrilaterals",
+      indicator:
+        "Classify triangles (equilateral, isosceles, scalene) and quadrilaterals (parallelogram, rhombus, trapezium)",
+      objectives:
+        "Analyze side lengths, equal sides, and angle measures of quadrilaterals.",
     },
     {
       code: "B5.3.2.1.1",
       strand: "Geometry and Measurement",
       subStrand: "Measurement",
-      contentStandard: "Demonstrate understanding of volume and capacity",
-      indicator: "Volume of rectangular prisms (cuboids)",
-      objectives: "Calculate the volume of cuboids using Length x Width x Height in cubic units (cm³, m³)."
-    },
-    {
-      code: "B5.3.3.1.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Position and Transformation",
-      contentStandard: "Identify types of angles and measure angles with protractors",
-      indicator: "Measuring and classifying acute, right, obtuse, and reflex angles",
-      objectives: "Measure angles using a protractor and classify them into acute, right, obtuse, and straight angles."
+      contentStandard: "Calculate volume of rectangular prisms and cubes",
+      indicator: "Apply formula V = length x width x height (V = lwh)",
+      objectives:
+        "Determine volume of cuboids in cubic centimeters (cm³) and cubic meters (m³).",
     },
     {
       code: "B5.4.1.1.1",
       strand: "Data",
-      subStrand: "Data Collection, Presentation and Analysis",
-      contentStandard: "Calculate and interpret basic measures of central tendency",
-      indicator: "Finding mode and mean of discrete data",
-      objectives: "Determine the mode, median, and arithmetic mean for small discrete data sets."
+      subStrand: "Data and Probability",
+      contentStandard:
+        "Calculate mean, median, mode and range for a set of data",
+      indicator: "Determine measures of central tendency for small datasets",
+      objectives:
+        "Calculate mean average, identify modal frequency, and determine range of simple dataset.",
     },
-    {
-      code: "B5.4.1.1.2",
-      strand: "Data",
-      subStrand: "Data Collection, Presentation and Analysis",
-      contentStandard: "Construct and interpret line graphs and double bar graphs",
-      indicator: "Double bar graphs and line graphs for continuous/discrete data",
-      objectives: "Draw and interpret line graphs and double bar graphs to solve comparative data questions."
-    }
   ],
   "Basic 6": [
     {
       code: "B6.1.1.1.1",
       strand: "Number",
       subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of prime factorisation, HCF, and LCM",
-      indicator: "Prime factorisation, HCF and LCM using prime trees and index form",
-      objectives: "Express composite numbers as products of prime factors and determine Highest Common Factor (HCF) and Lowest Common Multiple (LCM)."
-    },
-    {
-      code: "B6.1.1.1.2",
-      strand: "Number",
-      subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of large numbers up to 10,000,000",
-      indicator: "Reading, writing, comparing, and ordering numbers up to 10,000,000",
-      objectives: "Read, write, compare, and order whole numbers up to 10,000,000 in place value notation."
-    },
-    {
-      code: "B6.1.1.1.3",
-      strand: "Number",
-      subStrand: "Counting, Representation and Cardinality",
-      contentStandard: "Demonstrate understanding of prime factorisation, HCF, and LCM",
-      indicator: "Applications of HCF and LCM in real-world problems",
-      objectives: "Solve real-life word problems involving recurring events (LCM) and equal grouping (HCF)."
+      contentStandard:
+        "Demonstrate understanding of place value up to 10,000,000 and integers",
+      indicator: "Read, write, compare integers and numbers up to 10 million",
+      objectives:
+        "Represent positive and negative integers on a number line and compare their absolute values.",
     },
     {
       code: "B6.1.2.1.1",
       strand: "Number",
       subStrand: "Number Operations",
-      contentStandard: "Solve multi-step numeric expressions using order of operations",
-      indicator: "Order of operations (BODMAS / PEMDAS)",
-      objectives: "Apply BODMAS rules correctly to evaluate multi-step numeric expressions involving brackets and exponents."
+      contentStandard: "Apply order of operations (BODMAS / PEMDAS)",
+      indicator:
+        "Evaluate numerical expressions involving brackets, exponents, multiplication, division, addition, subtraction",
+      objectives:
+        "Solve multi-operation calculations correctly adhering to BODMAS precedence rules.",
     },
     {
       code: "B6.1.3.1.1",
       strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of percentages and conversions",
-      indicator: "Converting between fractions, decimals and percentages",
-      objectives: "Convert fluently between fractions, decimals, and percentages, and calculate percentages of quantities (e.g. discount, interest)."
-    },
-    {
-      code: "B6.1.3.2.1",
-      strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of percentage of quantities and applications",
-      indicator: "Calculating percentage increase, decrease, discount, and simple tax",
-      objectives: "Calculate percentage discounts, profit, loss, and simple tax on given financial amounts."
-    },
-    {
-      code: "B6.1.3.2.2",
-      strand: "Number",
-      subStrand: "Fractions, Decimals and Percentages",
-      contentStandard: "Demonstrate understanding of percentage of quantities and applications",
-      indicator: "Simple interest and percentage profit/loss calculations",
-      objectives: "Calculate simple interest earned on deposits and percentage profit or loss on sales items."
-    },
-    {
-      code: "B6.1.4.1.1",
-      strand: "Number",
-      subStrand: "Ratios, Rates and Proportions",
-      contentStandard: "Demonstrate understanding of ratios and direct proportion",
-      indicator: "Simplifying ratios, sharing in given ratios, and direct proportion word problems",
-      objectives: "Express ratios in simplest form, share amounts in given ratios, and solve direct proportion problems."
+      subStrand: "Fractions, Decimals, Percentages and Ratio",
+      contentStandard:
+        "Solve real-world problems involving ratio, proportion and percentage increase/decrease",
+      indicator:
+        "Apply concepts of ratio, direct proportion and percentage calculations",
+      objectives:
+        "Calculate ratio shares, scale quantities, and compute simple interest, discount, and profit percentage.",
     },
     {
       code: "B6.2.1.1.1",
       strand: "Algebra",
-      subStrand: "Patterns and Relations",
-      contentStandard: "Formulate rules for linear numerical patterns and tables",
-      indicator: "Formulating algebraic rules for input-output pattern tables",
-      objectives: "Determine the linear rule (y = mx + c) for input-output tables and extend pattern sequences."
-    },
-    {
-      code: "B6.2.2.1.1",
-      strand: "Algebra",
-      subStrand: "Equations and Inequalities",
-      contentStandard: "Solve linear equations with one variable",
-      indicator: "Solving 1-step and 2-step linear equations",
-      objectives: "Formulate and solve linear equations of the form ax + b = c using inverse operations."
-    },
-    {
-      code: "B6.2.2.1.2",
-      strand: "Algebra",
-      subStrand: "Equations and Inequalities",
-      contentStandard: "Solve simple linear inequalities",
-      indicator: "Solving linear inequalities in one variable and plotting on number line",
-      objectives: "Solve inequalities of the form x + a < b or ax > b and display solution sets on a number line."
+      subStrand: "Algebraic Expressions and Equations",
+      contentStandard:
+        "Simplify algebraic expressions and solve 2-step linear equations",
+      indicator:
+        "Combine like terms and solve linear equations of the form ax + b = c",
+      objectives:
+        "Simplify linear expressions by combining like terms and solve 2-step algebraic equations.",
     },
     {
       code: "B6.3.1.1.1",
       strand: "Geometry and Measurement",
-      subStrand: "Lines and Shapes",
-      contentStandard: "Classify and analyze geometric shapes and angle properties",
-      indicator: "Angles in triangles and quadrilaterals",
-      objectives: "Apply the rule that interior angles of a triangle sum to 180° and quadrilaterals sum to 360° to find missing angles."
+      subStrand: "Lines, Shapes and Transformation",
+      contentStandard:
+        "Understand transformation (reflection, translation, rotation) on a Cartesian plane",
+      indicator:
+        "Plot coordinates in 4 quadrants and perform basic geometric transformations",
+      objectives:
+        "Plot point coordinates (x, y) and draw images under translation and reflection.",
     },
     {
       code: "B6.3.2.1.1",
       strand: "Geometry and Measurement",
       subStrand: "Measurement",
       contentStandard: "Calculate circumference and area of circles",
-      indicator: "Circle formulas (C = 2πr, A = πr²)",
-      objectives: "Apply circle formulas to calculate the circumference and area of circular regions."
-    },
-    {
-      code: "B6.3.2.1.2",
-      strand: "Geometry and Measurement",
-      subStrand: "Measurement",
-      contentStandard: "Calculate circumference and area of circles",
-      indicator: "Area of composite shapes involving semicircles and rectangles",
-      objectives: "Calculate total perimeter and area of composite shapes formed by combining rectangles, triangles, and semicircles."
-    },
-    {
-      code: "B6.3.2.2.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Measurement",
-      contentStandard: "Calculate surface area and volume of prisms and cylinders",
-      indicator: "Surface area and volume of cuboids, triangular prisms, and cylinders",
-      objectives: "Calculate surface area using nets and volume using base area x height."
-    },
-    {
-      code: "B6.3.3.1.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Position and Transformation",
-      contentStandard: "Plot coordinates and perform reflection on Cartesian plane",
-      indicator: "Plotting in all 4 quadrants and reflection across x-axis and y-axis",
-      objectives: "Plot coordinates in all 4 quadrants of the Cartesian plane and determine image coordinates under reflection across axes."
+      indicator:
+        "Apply formulas for circle circumference (C = 2πr) and area (A = πr²)",
+      objectives:
+        "Calculate radius, diameter, circumference, and area of circles using π = 22/7 or 3.14.",
     },
     {
       code: "B6.4.1.1.1",
       strand: "Data",
-      subStrand: "Data Collection and Analysis",
-      contentStandard: "Construct and interpret pie charts",
-      indicator: "Pie charts for categorical data",
-      objectives: "Calculate sector angles and draw pie charts using protractors, and interpret pie chart data."
+      subStrand: "Data and Probability",
+      contentStandard:
+        "Construct and interpret pie charts and determine experimental probability",
+      indicator:
+        "Draw pie charts using central angles and describe likelihood of events",
+      objectives:
+        "Convert frequency data to sector angles and construct pie charts using protractor.",
     },
-    {
-      code: "B6.4.1.1.2",
-      strand: "Data",
-      subStrand: "Data Collection and Analysis",
-      contentStandard: "Calculate measures of central tendency and dispersion",
-      indicator: "Mean, median, mode, and range for frequency distributions",
-      objectives: "Determine mean, median, mode, and range from frequency distribution tables."
-    },
-    {
-      code: "B6.4.2.1.1",
-      strand: "Data",
-      subStrand: "Chance and Probability",
-      contentStandard: "Demonstrate understanding of basic probability concepts",
-      indicator: "Experimental and theoretical probability",
-      objectives: "Express the probability of simple events as a fraction, decimal, or percentage."
-    }
   ],
   "JHS 1": [
     {
       code: "B7.1.1.1.1",
       strand: "Number",
-      subStrand: "Real Number System",
-      contentStandard: "Apply place value to write numbers in standard form and scientific notation",
-      indicator: "Standard form / scientific notation (a × 10ⁿ)",
-      objectives: "Express large numbers and small decimals in standard form a × 10ⁿ (1 ≤ a < 10) and convert back to ordinary form."
+      subStrand: "Number and Numeration Systems",
+      contentStandard:
+        "Demonstrate understanding of sets and real numbers, including prime factors, HCF, LCM, and number representation",
+      indicator:
+        "Classify sets and perform union, intersection, and complement operations using Venn diagrams",
+      objectives:
+        "Identify types of sets, represent set relationships using Venn diagrams, and solve practical set problems involving two sets.",
     },
     {
       code: "B7.1.1.1.2",
       strand: "Number",
-      subStrand: "Real Number System",
-      contentStandard: "Apply rounding and significant figures",
-      indicator: "Rounding off to specified decimal places and significant figures",
-      objectives: "Round off calculated figures to 1, 2, or 3 decimal places and significant figures accurately."
-    },
-    {
-      code: "B7.1.1.1.3",
-      strand: "Number",
-      subStrand: "Real Number System",
-      contentStandard: "Apply place value to write numbers in standard form and scientific notation",
-      indicator: "Scientific notation operations (multiplication/division in standard form)",
-      objectives: "Multiply and divide numbers expressed in standard form (a × 10ⁿ) using laws of indices."
+      subStrand: "Number and Numeration Systems",
+      contentStandard:
+        "Demonstrate understanding of numbers, place value, and number bases",
+      indicator:
+        "Read, write, compare and order integers, decimals, and numbers in standard form",
+      objectives:
+        "Use place value charts and number lines to represent and compare whole numbers, decimals, and numbers in standard form.",
     },
     {
       code: "B7.1.1.2.1",
       strand: "Number",
-      subStrand: "Real Number System",
-      contentStandard: "Demonstrate understanding of directed integer operations",
-      indicator: "Addition, subtraction, multiplication, and division of directed integers",
-      objectives: "Perform arithmetic operations on positive and negative integers using number lines and sign rules."
+      subStrand: "Number Operations",
+      contentStandard:
+        "Perform operations on integers, fractions, decimals and numbers expressed in scientific notation",
+      indicator:
+        "Apply integer operations and index laws to evaluate numerical and algebraic expressions",
+      objectives:
+        "Add, subtract, multiply and divide integers correctly, and simplify expressions using index laws and standard form.",
     },
     {
       code: "B7.1.1.2.2",
       strand: "Number",
-      subStrand: "Real Number System",
-      contentStandard: "Perform operations on rational numbers (fractions, decimals)",
-      indicator: "Combined operations on fractions and decimals with order of operations",
-      objectives: "Evaluate numeric expressions combining mixed fractions and decimals using BODMAS."
+      subStrand: "Number Operations",
+      contentStandard:
+        "Understand prime factorization and its use in finding HCF and LCM",
+      indicator:
+        "Find the prime factors of numbers and use them to determine HCF and LCM",
+      objectives:
+        "Write numbers in prime factor form and solve contextual problems involving greatest common factors and least common multiples.",
     },
     {
       code: "B7.1.2.1.1",
       strand: "Number",
-      subStrand: "Ratios, Rates and Proportions",
-      contentStandard: "Apply ratio, rate, and proportion to real-world context",
-      indicator: "Rate problems involving speed, density, unit price, and scale factor",
-      objectives: "Calculate speed (d/t), unit prices, and scale dimensions using direct proportions."
+      subStrand: "Ratios, Proportions and Percentages",
+      contentStandard:
+        "Demonstrate understanding of ratio, rate, proportion and financial mathematics",
+      indicator:
+        "Solve problems involving ratios, direct proportion, percentages, profit, loss and tax",
+      objectives:
+        "Interpret ratios and proportions in realistic situations and calculate simple interest, discount, profit and loss.",
     },
     {
-      code: "B7.1.2.2.1",
+      code: "B7.1.2.1.2",
       strand: "Number",
-      subStrand: "Financial Arithmetic",
-      contentStandard: "Apply financial formulas for simple interest and taxes",
-      indicator: "Simple Interest (I = PTR/100), total amount, profit/loss percentage, and VAT",
-      objectives: "Solve real-life financial problems involving simple interest, profit or loss percentage, discount, and Value Added Tax (VAT)."
+      subStrand: "Ratios, Proportions and Percentages",
+      contentStandard:
+        "Apply percentages and financial calculations in everyday contexts",
+      indicator:
+        "Use percentages to solve problems on commission, simple interest, and change in quantity",
+      objectives:
+        "Compute percentage increase and decrease and apply the results to budgeting, buying and selling situations.",
+    },
+    {
+      code: "B7.1.3.1.1",
+      strand: "Number",
+      subStrand: "Fractions and Decimals",
+      contentStandard:
+        "Demonstrate understanding of fractions, decimals and equivalence",
+      indicator:
+        "Convert between fractions, decimals and percentages and carry out operations on them",
+      objectives:
+        "Compare equivalent fractions, convert common fractions to decimals and percentages, and solve related real-life problems.",
     },
     {
       code: "B7.2.1.1.1",
       strand: "Algebra",
-      subStrand: "Algebraic Expressions",
-      contentStandard: "Perform operations on algebraic expressions and simplification",
-      indicator: "Combining like terms and expanding single bracket expressions",
-      objectives: "Simplify algebraic expressions by grouping like terms and expanding a(bx + c)."
+      subStrand: "Patterns and Relations",
+      contentStandard:
+        "Demonstrate understanding of algebraic expressions and linear patterns",
+      indicator:
+        "Generate, describe and continue number and shape patterns using algebraic rules",
+      objectives:
+        "Identify rules of sequences, write general terms, and extend patterns in tables and diagrams.",
     },
     {
       code: "B7.2.1.1.2",
       strand: "Algebra",
       subStrand: "Algebraic Expressions",
-      contentStandard: "Perform binomial expansion and factorization",
-      indicator: "Expanding binomials (a + b)(c + d) and linear factorization by common terms",
-      objectives: "Expand products of linear binomials and factorize expressions by pulling out Highest Common Factors."
+      contentStandard:
+        "Use algebraic language to represent mathematical situations",
+      indicator:
+        "Simplify algebraic expressions and expand products in one variable",
+      objectives:
+        "Collect like terms, expand expressions such as a(b + c), and apply algebraic notation correctly.",
+    },
+    {
+      code: "B7.2.2.1.1",
+      strand: "Algebra",
+      subStrand: "Linear Equations",
+      contentStandard: "Solve linear equations in one variable",
+      indicator: "Form and solve linear equations from statements and diagrams",
+      objectives:
+        "Use inverse operations to solve equations such as ax + b = c and translate real-life situations into algebraic equations.",
+    },
+    {
+      code: "B7.3.1.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Plane Figures and Angles",
+      contentStandard:
+        "Demonstrate understanding of angles, parallel lines, polygons and triangles",
+      indicator:
+        "Identify, classify and calculate unknown angles using angle relationships",
+      objectives:
+        "Use vertically opposite, corresponding, alternate and interior angle theorems to find missing angles in geometric figures.",
+    },
+    {
+      code: "B7.3.1.1.2",
+      strand: "Geometry and Measurement",
+      subStrand: "Constructions",
+      contentStandard:
+        "Construct basic geometric figures accurately using instruments",
+      indicator:
+        "Construct perpendicular lines, angle bisectors, and triangles from given conditions",
+      objectives:
+        "Use ruler and compasses to construct perpendicular bisectors, angle bisectors and triangles with specified dimensions.",
+    },
+    {
+      code: "B7.3.2.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Perimeter and Area",
+      contentStandard:
+        "Calculate perimeter and area of plane figures and composite shapes",
+      indicator:
+        "Determine the perimeter and area of rectangles, triangles, trapezia and composite figures",
+      objectives:
+        "Apply formulas for perimeter and area to solve real-life measurement problems and estimate areas of irregular shapes.",
+    },
+    {
+      code: "B7.3.2.2.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Surface Area and Volume",
+      contentStandard:
+        "Demonstrate understanding of 3D shapes and measurement of solids",
+      indicator: "Find the surface area and volume of cuboids and prisms",
+      objectives:
+        "Use nets, formulas and measuring units to calculate total surface area and the capacity of solid shapes.",
+    },
+    {
+      code: "B7.3.2.2.2",
+      strand: "Geometry and Measurement",
+      subStrand: "Measurement and Units",
+      contentStandard:
+        "Choose appropriate units and tools for measuring length, mass, capacity and time",
+      indicator:
+        "Convert between metric units and solve problems involving time, distance and speed",
+      objectives:
+        "Apply conversion tables to solve practical problems involving measurements, elapsed time, and average speed.",
+    },
+    {
+      code: "B7.4.1.1.1",
+      strand: "Data",
+      subStrand: "Data Collection and Representation",
+      contentStandard:
+        "Collect, organise and present data from real situations",
+      indicator:
+        "Construct frequency tables, bar graphs and line graphs from raw data",
+      objectives:
+        "Tabulate data systematically and represent it clearly using suitable charts and graphs for comparison.",
+    },
+    {
+      code: "B7.4.1.1.2",
+      strand: "Data",
+      subStrand: "Data and Probability",
+      contentStandard:
+        "Interpret and analyse data represented in charts and tables",
+      indicator:
+        "Read and interpret graphs, tables and statistical summaries to answer questions",
+      objectives:
+        "Identify trends, compare categories, and draw conclusions from class, school and local data sets.",
+    },
+    {
+      code: "B7.4.2.1.1",
+      strand: "Data",
+      subStrand: "Measures of Central Tendency",
+      contentStandard:
+        "Compute and explain measures of central tendency for small data sets",
+      indicator:
+        "Determine the mean, median, mode and range of grouped and ungrouped data",
+      objectives:
+        "Organise data, calculate central tendency values, and explain their meaning in real-life contexts.",
+    },
+    {
+      code: "B7.4.2.1.2",
+      strand: "Data",
+      subStrand: "Probability",
+      contentStandard:
+        "Understand basic probability and chance in everyday life",
+      indicator:
+        "Describe and calculate the probability of simple events using fractions and percentages",
+      objectives:
+        "List possible outcomes, determine favourable outcomes, and explain the likelihood of events using simple ratios.",
+    },
+  ],
+  "Basic 7": [
+    {
+      code: "B7.1.1.1.1",
+      strand: "Number",
+      subStrand: "Number and Numeration Systems",
+      contentStandard:
+        "Demonstrate understanding of sets and real numbers, including prime factors, HCF, LCM, and number representation",
+      indicator:
+        "Classify sets and perform union, intersection, and complement operations using Venn diagrams",
+      objectives:
+        "Identify types of sets, represent set relationships using Venn diagrams, and solve practical set problems involving two sets.",
+    },
+    {
+      code: "B7.1.1.1.2",
+      strand: "Number",
+      subStrand: "Number and Numeration Systems",
+      contentStandard:
+        "Demonstrate understanding of numbers, place value, and number bases",
+      indicator:
+        "Read, write, compare and order integers, decimals, and numbers in standard form",
+      objectives:
+        "Use place value charts and number lines to represent and compare whole numbers, decimals, and numbers in standard form.",
+    },
+    {
+      code: "B7.1.1.1.3",
+      strand: "Number",
+      subStrand: "Number and Numeration Systems",
+      contentStandard:
+        "Demonstrate understanding of place value and number comparison in real-life contexts",
+      indicator:
+        "Round numbers to the nearest 10, 100, 1000 and estimate answers to numerical problems",
+      objectives:
+        "Use rounding and estimation to check the reasonableness of answers in buying, selling, and measurement situations.",
+    },
+    {
+      code: "B7.1.1.2.1",
+      strand: "Number",
+      subStrand: "Number Operations",
+      contentStandard:
+        "Perform operations on integers, fractions, decimals and numbers expressed in scientific notation",
+      indicator:
+        "Apply integer operations and index laws to evaluate numerical and algebraic expressions",
+      objectives:
+        "Add, subtract, multiply and divide integers correctly, and simplify expressions using index laws and standard form.",
+    },
+    {
+      code: "B7.1.1.2.2",
+      strand: "Number",
+      subStrand: "Number Operations",
+      contentStandard:
+        "Understand prime factorization and its use in finding HCF and LCM",
+      indicator:
+        "Find the prime factors of numbers and use them to determine HCF and LCM",
+      objectives:
+        "Write numbers in prime factor form and solve contextual problems involving greatest common factors and least common multiples.",
+    },
+    {
+      code: "B7.1.1.2.3",
+      strand: "Number",
+      subStrand: "Number Operations",
+      contentStandard:
+        "Apply number operations to solve everyday financial and measurement problems",
+      indicator:
+        "Use estimation, inverse operations, and written methods to check addition, subtraction, multiplication, and division results",
+      objectives:
+        "Verify calculations in classroom and real-life situations by using approximation and inverse operations.",
+    },
+    {
+      code: "B7.1.2.1.1",
+      strand: "Number",
+      subStrand: "Ratios, Proportions and Percentages",
+      contentStandard:
+        "Demonstrate understanding of ratio, rate, proportion and financial mathematics",
+      indicator:
+        "Solve problems involving ratios, direct proportion, percentages, profit, loss and tax",
+      objectives:
+        "Interpret ratios and proportions in realistic situations and calculate simple interest, discount, profit and loss.",
+    },
+    {
+      code: "B7.1.2.1.2",
+      strand: "Number",
+      subStrand: "Ratios, Proportions and Percentages",
+      contentStandard:
+        "Apply percentages and financial calculations in everyday contexts",
+      indicator:
+        "Use percentages to solve problems on commission, simple interest, and change in quantity",
+      objectives:
+        "Compute percentage increase and decrease and apply the results to budgeting, buying and selling situations.",
+    },
+    {
+      code: "B7.1.2.1.3",
+      strand: "Number",
+      subStrand: "Ratios, Proportions and Percentages",
+      contentStandard:
+        "Use ratio and proportion to share quantities and compare quantities fairly",
+      indicator:
+        "Partition a quantity in a given ratio and solve direct proportion problems in practical contexts",
+      objectives:
+        "Divide resources, money, and materials proportionally in sharing, mixture, and scale problems.",
+    },
+    {
+      code: "B7.1.3.1.1",
+      strand: "Number",
+      subStrand: "Fractions and Decimals",
+      contentStandard:
+        "Demonstrate understanding of fractions, decimals and equivalence",
+      indicator:
+        "Convert between fractions, decimals and percentages and carry out operations on them",
+      objectives:
+        "Compare equivalent fractions, convert common fractions to decimals and percentages, and solve related real-life problems.",
+    },
+    {
+      code: "B7.1.3.1.2",
+      strand: "Number",
+      subStrand: "Fractions and Decimals",
+      contentStandard:
+        "Add, subtract, multiply and divide fractions and decimals efficiently",
+      indicator:
+        "Perform calculations involving mixed numbers, decimal places, and fraction operations in word problems",
+      objectives:
+        "Solve contextual problems involving recipes, measurement, and money using fractions and decimals.",
+    },
+    {
+      code: "B7.2.1.1.1",
+      strand: "Algebra",
+      subStrand: "Patterns and Relations",
+      contentStandard:
+        "Demonstrate understanding of algebraic expressions and linear patterns",
+      indicator:
+        "Generate, describe and continue number and shape patterns using algebraic rules",
+      objectives:
+        "Identify rules of sequences, write general terms, and extend patterns in tables and diagrams.",
+    },
+    {
+      code: "B7.2.1.1.2",
+      strand: "Algebra",
+      subStrand: "Algebraic Expressions",
+      contentStandard:
+        "Use algebraic language to represent mathematical situations",
+      indicator:
+        "Simplify algebraic expressions and expand products in one variable",
+      objectives:
+        "Collect like terms, expand expressions such as a(b + c), and apply algebraic notation correctly.",
     },
     {
       code: "B7.2.1.1.3",
       strand: "Algebra",
       subStrand: "Algebraic Expressions",
-      contentStandard: "Perform operations on algebraic expressions and simplification",
-      indicator: "Factorization by grouping four-term algebraic expressions",
-      objectives: "Factorize algebraic expressions with 4 terms by grouping terms in pairs."
+      contentStandard:
+        "Substitute values into algebraic expressions and evaluate them",
+      indicator:
+        "Evaluate expressions by substituting given numeric values for variables",
+      objectives:
+        "Use substitution to calculate values of expressions in formulae and real-life situations.",
     },
     {
       code: "B7.2.2.1.1",
       strand: "Algebra",
-      subStrand: "Equations and Inequalities",
+      subStrand: "Linear Equations",
       contentStandard: "Solve linear equations in one variable",
-      indicator: "Solving linear equations involving brackets and simple fractional coefficients",
-      objectives: "Solve linear equations of the form a(x + b) / c = d using algebraic steps."
+      indicator: "Form and solve linear equations from statements and diagrams",
+      objectives:
+        "Use inverse operations to solve equations such as ax + b = c and translate real-life situations into algebraic equations.",
     },
     {
       code: "B7.2.2.1.2",
       strand: "Algebra",
-      subStrand: "Equations and Inequalities",
-      contentStandard: "Solve linear inequalities in one variable",
-      indicator: "Solving linear inequalities and graphing solution set on number line",
-      objectives: "Solve linear inequalities ax + b < c or ax + b ≥ c and graph solution sets on a number line."
-    },
-    {
-      code: "B7.2.2.2.1",
-      strand: "Algebra",
-      subStrand: "Relations and Functions",
-      contentStandard: "Plot linear graphs of y = mx + c on Cartesian coordinate plane",
-      indicator: "Mapping rules, table of values, and linear graphs",
-      objectives: "Construct table of values for linear function y = mx + c and plot straight-line graphs on Cartesian plane."
+      subStrand: "Linear Equations",
+      contentStandard: "Apply linear equations to solve practical problems",
+      indicator:
+        "Translate word problems into linear equations and solve for unknown quantities",
+      objectives:
+        "Use algebra to model age, distance, and money problems and interpret the solutions correctly.",
     },
     {
       code: "B7.3.1.1.1",
       strand: "Geometry and Measurement",
-      subStrand: "Geometric Constructions",
-      contentStandard: "Construct geometric figures using ruler and compasses",
-      indicator: "Perpendicular bisectors, angle bisectors, and standard angles (60°, 90°, 45°, 30°)",
-      objectives: "Construct line bisectors, angle bisectors, and special angles (30°, 45°, 60°, 90°) accurately using ruler and pair of compasses."
+      subStrand: "Plane Figures and Angles",
+      contentStandard:
+        "Demonstrate understanding of angles, parallel lines, polygons and triangles",
+      indicator:
+        "Identify, classify and calculate unknown angles using angle relationships",
+      objectives:
+        "Use vertically opposite, corresponding, alternate and interior angle theorems to find missing angles in geometric figures.",
     },
     {
       code: "B7.3.1.1.2",
       strand: "Geometry and Measurement",
-      subStrand: "Geometric Constructions",
-      contentStandard: "Construct triangles and quadrilaterals",
-      indicator: "Construction of triangles (SSS, SAS, ASA) and quadrilaterals",
-      objectives: "Construct triangles given side lengths and angles, and construct rectangles and parallelograms."
+      subStrand: "Constructions",
+      contentStandard:
+        "Construct basic geometric figures accurately using instruments",
+      indicator:
+        "Construct perpendicular lines, angle bisectors, and triangles from given conditions",
+      objectives:
+        "Use ruler and compasses to construct perpendicular bisectors, angle bisectors and triangles with specified dimensions.",
     },
     {
       code: "B7.3.1.1.3",
       strand: "Geometry and Measurement",
-      subStrand: "Geometric Constructions",
-      contentStandard: "Construct geometric figures using ruler and compasses",
-      indicator: "Locus of points equidistant from two fixed points or lines",
-      objectives: "Construct the locus of points equidistant from two given points (perpendicular bisector) and two intersecting lines (angle bisector)."
+      subStrand: "Plane Figures and Angles",
+      contentStandard:
+        "Identify and classify polygons and angle properties in geometric figures",
+      indicator:
+        "Classify triangles and quadrilaterals by sides and angles and identify lines of symmetry",
+      objectives:
+        "Use geometric properties to sort, compare, and reason about common shapes in everyday objects.",
     },
     {
       code: "B7.3.2.1.1",
       strand: "Geometry and Measurement",
-      subStrand: "Measurement",
-      contentStandard: "Calculate area of 2D composite shapes",
-      indicator: "Area of triangles, parallelograms, trapeziums, and kites",
-      objectives: "Apply formulas to calculate area of parallelograms (A = bh), trapeziums (A = ½(a+b)h), and kites."
+      subStrand: "Perimeter and Area",
+      contentStandard:
+        "Calculate perimeter and area of plane figures and composite shapes",
+      indicator:
+        "Determine the perimeter and area of rectangles, triangles, trapezia and composite figures",
+      objectives:
+        "Apply formulas for perimeter and area to solve real-life measurement problems and estimate areas of irregular shapes.",
     },
     {
-      code: "B7.3.2.1.2",
+      code: "B7.3.2.2.1",
       strand: "Geometry and Measurement",
-      subStrand: "Measurement",
-      contentStandard: "Calculate surface area and volume of 3D prisms",
-      indicator: "Total surface area and volume of cubes, cuboids, and triangular prisms",
-      objectives: "Calculate surface area using 2D face nets and volume using V = Base Area × Height."
+      subStrand: "Surface Area and Volume",
+      contentStandard:
+        "Demonstrate understanding of 3D shapes and measurement of solids",
+      indicator: "Find the surface area and volume of cuboids and prisms",
+      objectives:
+        "Use nets, formulas and measuring units to calculate total surface area and the capacity of solid shapes.",
     },
     {
-      code: "B7.3.3.1.1",
+      code: "B7.3.2.2.2",
       strand: "Geometry and Measurement",
-      subStrand: "Position and Transformations",
-      contentStandard: "Perform reflection and translation on Cartesian plane",
-      indicator: "Reflection across axes and lines y = x, and translation by column vector (x, y)",
-      objectives: "Find image coordinates under reflection across x-axis, y-axis, or line y = x and translation by vector (x, y)."
+      subStrand: "Measurement and Units",
+      contentStandard:
+        "Choose appropriate units and tools for measuring length, mass, capacity and time",
+      indicator:
+        "Convert between metric units and solve problems involving time, distance and speed",
+      objectives:
+        "Apply conversion tables to solve practical problems involving measurements, elapsed time, and average speed.",
+    },
+    {
+      code: "B7.3.2.2.3",
+      strand: "Geometry and Measurement",
+      subStrand: "Measurement and Units",
+      contentStandard:
+        "Use measurement in solving real-life tasks such as travel and construction",
+      indicator:
+        "Apply scale, distance, and speed relationships to answer practical measurement questions",
+      objectives:
+        "Estimate and calculate quantities needed for planning local trips, routing, and simple practical projects.",
     },
     {
       code: "B7.4.1.1.1",
       strand: "Data",
-      subStrand: "Data Collection, Presentation and Analysis",
-      contentStandard: "Construct frequency tables, stem-and-leaf plots, and pie charts",
-      indicator: "Frequency distribution tables, stem-and-leaf plots, and pie chart construction",
-      objectives: "Organize raw data into frequency tables and stem-and-leaf plots, and construct pie charts using protractors."
+      subStrand: "Data Collection and Representation",
+      contentStandard:
+        "Collect, organise and present data from real situations",
+      indicator:
+        "Construct frequency tables, bar graphs and line graphs from raw data",
+      objectives:
+        "Tabulate data systematically and represent it clearly using suitable charts and graphs for comparison.",
+    },
+    {
+      code: "B7.4.1.1.2",
+      strand: "Data",
+      subStrand: "Data and Probability",
+      contentStandard:
+        "Interpret and analyse data represented in charts and tables",
+      indicator:
+        "Read and interpret graphs, tables and statistical summaries to answer questions",
+      objectives:
+        "Identify trends, compare categories, and draw conclusions from class, school and local data sets.",
+    },
+    {
+      code: "B7.4.1.1.3",
+      strand: "Data",
+      subStrand: "Data Collection and Representation",
+      contentStandard:
+        "Represent data using suitable graphical forms and compare information clearly",
+      indicator:
+        "Use pictographs, bar charts, and frequency tables to present information collected from class surveys",
+      objectives:
+        "Choose the most appropriate graph for a data set and explain what the display shows.",
     },
     {
       code: "B7.4.2.1.1",
       strand: "Data",
-      subStrand: "Probability",
-      contentStandard: "Demonstrate understanding of experimental and theoretical probability",
-      indicator: "Sample space diagrams and theoretical probability of single events",
-      objectives: "List sample spaces for rolling dice or tossing coins and calculate theoretical probability of single events."
+      subStrand: "Measures of Central Tendency",
+      contentStandard:
+        "Compute and explain measures of central tendency for small data sets",
+      indicator:
+        "Determine the mean, median, mode and range of grouped and ungrouped data",
+      objectives:
+        "Organise data, calculate central tendency values, and explain their meaning in real-life contexts.",
     },
     {
-      code: "J1.1.1.1.1",
-      strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Apply the understanding of place value to write and read large numbers and scientific notation",
-      indicator: "Standard form and scientific notation",
-      objectives: "Express large numbers and decimals in standard form a × 10ⁿ (1 ≤ a < 10)."
-    },
-    {
-      code: "J1.1.2.1.1",
-      strand: "Number",
-      subStrand: "Real Number System",
-      contentStandard: "Demonstrate understanding of rational numbers, integers, and operations",
-      indicator: "Addition, subtraction, multiplication, division of positive and negative integers",
-      objectives: "Perform fundamental arithmetic operations on directed integers using number lines and rules of signs."
-    },
-    {
-      code: "J1.1.3.1.1",
-      strand: "Number",
-      subStrand: "Ratios, Rates and Proportions",
-      contentStandard: "Apply ratios, rates, and proportions to financial arithmetic problems",
-      indicator: "Simple interest, profit and loss, taxes",
-      objectives: "Solve real-life financial mathematics problems involving simple interest (I = PTR/100), profit percentage, and sales tax."
-    },
-    {
-      code: "J1.2.1.1.1",
-      strand: "Algebra",
-      subStrand: "Algebraic Expressions",
-      contentStandard: "Perform operations on algebraic expressions and simplification",
-      indicator: "Expanding binomials and factoring linear expressions",
-      objectives: "Expand simple algebraic expressions a(bx + c) and factorize expressions by grouping or common terms."
-    },
-    {
-      code: "J1.2.2.1.1",
-      strand: "Algebra",
-      subStrand: "Equations and Inequalities",
-      contentStandard: "Solve linear inequalities in one variable and plot solution sets",
-      indicator: "Solving and graphing linear inequalities",
-      objectives: "Solve linear inequalities ax + b < c and display the solution set on a number line."
-    },
-    {
-      code: "J1.3.1.1.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Lines, Angles and Shapes",
-      contentStandard: "Construct angles, perpendicular bisectors, and triangles using compasses",
-      indicator: "Geometric constructions with ruler and compass",
-      objectives: "Construct 60°, 90°, 45°, and 30° angles and perpendicular bisectors using a pair of compasses and ruler."
-    },
-    {
-      code: "J1.3.2.1.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Position and Transformation",
-      contentStandard: "Demonstrate understanding of Cartesian coordinate plane and transformations",
-      indicator: "Plotting points and reflection across axes",
-      objectives: "Plot coordinates in all 4 quadrants of the Cartesian plane and determine image coordinates under reflection across x-axis or y-axis."
-    },
-    {
-      code: "J1.4.1.1.1",
+      code: "B7.4.2.1.2",
       strand: "Data",
-      subStrand: "Data Collection, Presentation and Analysis",
-      contentStandard: "Construct and interpret pie charts and frequency tables",
-      indicator: "Frequency tables and pie charts",
-      objectives: "Convert raw data into grouped frequency tables and draw accurately calculated pie charts using protractors."
-    }
+      subStrand: "Probability",
+      contentStandard:
+        "Understand basic probability and chance in everyday life",
+      indicator:
+        "Describe and calculate the probability of simple events using fractions and percentages",
+      objectives:
+        "List possible outcomes, determine favourable outcomes, and explain the likelihood of events using simple ratios.",
+    },
+    {
+      code: "B7.4.2.1.3",
+      strand: "Data",
+      subStrand: "Probability",
+      contentStandard:
+        "Use probability to make simple predictions from event outcomes",
+      indicator:
+        "Predict likely outcomes and compare the chance of events using words such as impossible, unlikely, equally likely, likely, and certain",
+      objectives:
+        "Explain everyday chance events using simple probability language and reasoning.",
+    },
   ],
   "JHS 2": [
     {
       code: "B8.1.1.1.1",
       strand: "Number",
-      subStrand: "Number Operations & Indices",
-      contentStandard: "Apply laws of indices to numeric and algebraic expressions",
-      indicator: "Laws of Indices (aᵐ × aⁿ, aᵐ/aⁿ, (aᵐ)ⁿ, a⁰ = 1, a⁻ⁿ = 1/aⁿ)",
-      objectives: "Simplify complex numeric and algebraic exponential expressions using fundamental laws of indices."
+      subStrand: "Number Operations and Indices",
+      contentStandard:
+        "Demonstrate understanding of rational numbers, indices, surds and rounding/estimation",
+      indicator:
+        "Apply laws of indices and simplify simple radical/surd expressions",
+      objectives:
+        "Simplify expressions with fractional/negative indices and perform operations on numbers in standard form.",
     },
     {
       code: "B8.1.1.1.2",
       strand: "Number",
-      subStrand: "Number Operations & Indices",
-      contentStandard: "Solve exponential equations with common bases",
-      indicator: "Solving simple exponential equations (e.g. 2ˣ = 32, 3²ˣ⁺¹ = 27)",
-      objectives: "Equate exponents of equal bases to solve linear exponential equations."
+      subStrand: "Number Operations and Indices",
+      contentStandard:
+        "Use powers, roots, and standard form to represent large and small quantities",
+      indicator:
+        "Write numbers in standard form and simplify expressions involving negative and fractional indices",
+      objectives:
+        "Convert between ordinary form and standard form, and use index rules to compare magnitudes in scientific contexts.",
     },
     {
       code: "B8.1.1.1.3",
       strand: "Number",
-      subStrand: "Number Operations & Indices",
-      contentStandard: "Apply laws of indices to numeric and algebraic expressions",
-      indicator: "Fractional and negative indices evaluation",
-      objectives: "Evaluate numeric expressions with fractional exponents (e.g., 27^(2/3)) and negative powers."
+      subStrand: "Number Operations and Indices",
+      contentStandard:
+        "Apply approximation and surd simplification in quantitative reasoning",
+      indicator:
+        "Round numbers to given decimal places and simplify simple surd expressions",
+      objectives:
+        "Estimate answers and simplify expressions such as √12, √18, and √50 in practical measurement problems.",
     },
     {
       code: "B8.1.2.1.1",
       strand: "Number",
-      subStrand: "Ratios, Rates and Proportions",
-      contentStandard: "Demonstrate understanding of inverse proportion",
-      indicator: "Inverse / indirect proportion word problems (workers-days, speed-time)",
-      objectives: "Formulate and solve inverse proportion equations (y = k/x) in real-life practical contexts."
+      subStrand: "Financial Mathematics",
+      contentStandard:
+        "Solve real-world financial problems involving compound interest, depreciation, discount and commission",
+      indicator:
+        "Compute compound interest, hire purchase, VAT and personal tax calculations",
+      objectives:
+        "Apply formula A = P(1 + r/100)^n for compound interest and calculate hire purchase deposit and installments.",
     },
     {
       code: "B8.1.2.1.2",
       strand: "Number",
-      subStrand: "Ratios, Rates and Proportions",
-      contentStandard: "Apply map scale factors to calculate ground dimensions",
-      indicator: "Map scale drawings and actual ground distance calculation",
-      objectives: "Convert map measurements to ground distances using ratio scale factors (e.g. 1:50,000)."
+      subStrand: "Financial Mathematics",
+      contentStandard:
+        "Use percentage-based financial reasoning to compare offers and value changes",
+      indicator:
+        "Calculate discounts, commission, simple and compound depreciation, and percentage profit or loss",
+      objectives:
+        "Compare payment plans, discount offers, and business profit/loss situations using percentage methods.",
     },
     {
       code: "B8.2.1.1.1",
       strand: "Algebra",
-      subStrand: "Simultaneous Linear Equations",
-      contentStandard: "Solve simultaneous linear equations in two variables algebraically",
-      indicator: "Substitution method and Elimination method for simultaneous equations",
-      objectives: "Solve pairs of simultaneous linear equations ax + by = c and dx + ey = f using substitution and elimination methods."
+      subStrand: "Algebraic Expressions and Inequalities",
+      contentStandard:
+        "Factorize quadratic expressions and solve linear inequalities in 1 variable",
+      indicator:
+        "Factorize quadratic expressions (ax² + bx + c) and solve linear inequalities",
+      objectives:
+        "Solve linear inequalities like 3x - 5 <= 7 and represent solution set on number lines.",
     },
     {
       code: "B8.2.1.1.2",
       strand: "Algebra",
-      subStrand: "Simultaneous Linear Equations",
-      contentStandard: "Solve simultaneous linear equations graphically",
-      indicator: "Plotting simultaneous linear graphs and reading point of intersection (x, y)",
-      objectives: "Plot two straight-line graphs on the Cartesian coordinate plane and determine the exact solution from the intersection point."
-    },
-    {
-      code: "B8.2.1.1.3",
-      strand: "Algebra",
-      subStrand: "Simultaneous Linear Equations",
-      contentStandard: "Solve simultaneous linear equations in two variables",
-      indicator: "Contextual word problems leading to simultaneous linear equations",
-      objectives: "Formulate and solve pairs of simultaneous equations derived from real-world word problems."
+      subStrand: "Algebraic Expressions and Inequalities",
+      contentStandard:
+        "Manipulate algebraic expressions accurately and justify equivalent forms",
+      indicator:
+        "Expand, factorize, and simplify algebraic expressions involving common factors and products",
+      objectives:
+        "Rewrite expressions and explain how equivalent forms help solve equations and model real situations.",
     },
     {
       code: "B8.2.2.1.1",
       strand: "Algebra",
-      subStrand: "Quadratic Expressions",
-      contentStandard: "Expand products of linear binomials",
-      indicator: "Expanding quadratic binomials (ax + b)(cx + d)",
-      objectives: "Expand and simplify products of binomials to obtain quadratic expressions ax² + bx + c."
+      subStrand: "Linear Functions and Coordinate Geometry",
+      contentStandard:
+        "Find gradient, midpoint and equation of a straight line",
+      indicator:
+        "Calculate gradient m = (y2 - y1)/(x2 - x1), midpoint, and plot linear graphs",
+      objectives:
+        "Plot linear equations y = mx + c on Cartesian coordinate plane and determine gradient and intercepts.",
     },
     {
       code: "B8.2.2.1.2",
       strand: "Algebra",
-      subStrand: "Relations and Functions",
-      contentStandard: "Determine gradient and intercept of linear graphs",
-      indicator: "Gradient formula m = (y₂ - y₁)/(x₂ - x₁) and equation of line y = mx + c",
-      objectives: "Calculate slope/gradient of a line passing through two points and write equation of line."
+      subStrand: "Linear Functions and Coordinate Geometry",
+      contentStandard:
+        "Use coordinate geometry to describe linear relationships and compare graphs",
+      indicator:
+        "Find the equation of a straight line from two points and interpret intercepts and gradients",
+      objectives:
+        "Model movement, cost, and rate situations on number planes using graph equations and slope.",
     },
     {
       code: "B8.3.1.1.1",
       strand: "Geometry and Measurement",
-      subStrand: "Pythagoras Theorem & Trigonometry",
-      contentStandard: "Apply Pythagoras Theorem to right-angled triangles",
-      indicator: "Pythagoras Theorem formula (a² + b² = c²)",
-      objectives: "Calculate missing hypotenuse or leg length of right-angled triangles using a² + b² = c²."
+      subStrand: "Geometric Theorems and Transformations",
+      contentStandard:
+        "Demonstrate understanding of Pythagoras' Theorem and rigid transformations",
+      indicator:
+        "Apply Pythagoras' Theorem (a² + b² = c²) and describe enlargement/scale factors",
+      objectives:
+        "Solve right-angled triangle side lengths using Pythagoras' theorem and perform scale drawing.",
     },
     {
       code: "B8.3.1.1.2",
       strand: "Geometry and Measurement",
-      subStrand: "Pythagoras Theorem & Trigonometry",
-      contentStandard: "Apply Pythagorean triples in real-life problems",
-      indicator: "Pythagorean triples (3-4-5, 5-12-13, 8-15-17) and practical applications",
-      objectives: "Recognize common Pythagorean triples and solve practical distance and height problems."
-    },
-    {
-      code: "B8.3.1.1.3",
-      strand: "Geometry and Measurement",
-      subStrand: "Pythagoras Theorem & Trigonometry",
-      contentStandard: "Apply Pythagoras Theorem to right-angled triangles",
-      indicator: "3D applications of Pythagoras Theorem in cuboids and pyramids",
-      objectives: "Calculate diagonal lengths in 3D cuboids and slant heights in pyramids using Pythagoras Theorem."
+      subStrand: "Geometric Theorems and Transformations",
+      contentStandard:
+        "Use similarity, congruence and transformation properties in geometric reasoning",
+      indicator:
+        "Identify similar and congruent figures, describe reflection, rotation, and enlargement, and solve related problems",
+      objectives:
+        "Use transformation rules and scale factors to reason about shapes in design, maps, and patterns.",
     },
     {
       code: "B8.3.2.1.1",
       strand: "Geometry and Measurement",
       subStrand: "Measurement",
-      contentStandard: "Calculate surface area and volume of cylinders",
-      indicator: "Surface area of cylinders (TSA = 2πrh + 2πr²) and volume (V = πr²h)",
-      objectives: "Apply formulas to calculate total surface area and volume/capacity of closed and open cylindrical containers."
+      contentStandard:
+        "Calculate volume and total surface area of cylinders and triangular prisms",
+      indicator:
+        "Apply formulas for cylinder volume (V = πr²h) and surface area (TSA = 2πr² + 2πrh)",
+      objectives:
+        "Calculate surface area and capacity of cylindrical containers and prisms.",
     },
     {
-      code: "B8.3.3.1.1",
+      code: "B8.3.2.1.2",
       strand: "Geometry and Measurement",
-      subStrand: "Position and Transformations",
-      contentStandard: "Perform rotation on Cartesian coordinate plane",
-      indicator: "Rotation of points and 2D shapes about origin through 90°, 180°, and 270°",
-      objectives: "Determine image coordinates after rotation about origin through 90°, 180°, or 270° clockwise and anticlockwise."
-    },
-    {
-      code: "B8.3.3.1.2",
-      strand: "Geometry and Measurement",
-      subStrand: "Position and Transformations",
-      contentStandard: "Combine transformations on Cartesian plane",
-      indicator: "Combined translation, reflection, and rotation transformations",
-      objectives: "Find image coordinates under composite transformations (e.g., reflection followed by translation)."
+      subStrand: "Measurement",
+      contentStandard:
+        "Use circumference, area, and capacity formulas to solve practical measurement problems",
+      indicator:
+        "Determine circumference, area of circles, and volume of composite solids",
+      objectives:
+        "Solve problems involving circular objects, tank capacity, and combined solid shapes in context.",
     },
     {
       code: "B8.4.1.1.1",
       strand: "Data",
-      subStrand: "Data Presentation and Analysis",
-      contentStandard: "Construct and interpret histograms for grouped frequency distributions",
-      indicator: "Grouped frequency tables and histograms with continuous class intervals",
-      objectives: "Construct grouped frequency tables with equal class intervals and draw histograms."
+      subStrand: "Data and Probability",
+      contentStandard:
+        "Understand theoretical probability and expected frequency",
+      indicator:
+        "Calculate theoretical probability P(E) = n(E)/n(S) for single and combined events",
+      objectives:
+        "Construct sample space diagrams for rolling dice or tossing coins and calculate event probabilities.",
     },
     {
       code: "B8.4.1.1.2",
       strand: "Data",
-      subStrand: "Data Presentation and Analysis",
-      contentStandard: "Calculate estimated mean and modal class for grouped data",
-      indicator: "Estimated mean, modal class, and class midpoints",
-      objectives: "Determine class midpoints, modal class, and calculate estimated mean for grouped data."
+      subStrand: "Data and Probability",
+      contentStandard:
+        "Represent and interpret data for comparison and inference",
+      indicator:
+        "Construct and interpret bar charts, pie charts, and line graphs from statistical data",
+      objectives:
+        "Choose suitable data displays and derive conclusions from school and community datasets.",
     },
+  ],
+  "Basic 8": [
     {
-      code: "B8.4.2.1.1",
-      strand: "Data",
-      subStrand: "Probability",
-      contentStandard: "Calculate probability of combined independent events",
-      indicator: "Outcome tables and tree diagrams for combined independent events",
-      objectives: "Draw probability tree diagrams and outcome tables to calculate combined probability of independent events."
-    },
-    {
-      code: "J2.1.1.1.1",
+      code: "B8.1.1.1.1",
       strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Apply laws of indices to simplify exponential expressions",
-      indicator: "Laws of Indices (aᵐ × aⁿ, aᵐ/aⁿ, (aᵐ)ⁿ)",
-      objectives: "Simplify numeric and algebraic expressions using the fundamental laws of indices."
+      subStrand: "Number Operations and Indices",
+      contentStandard:
+        "Demonstrate understanding of rational numbers, indices, surds and rounding/estimation",
+      indicator:
+        "Apply laws of indices and simplify simple radical/surd expressions",
+      objectives:
+        "Simplify expressions with fractional/negative indices and perform operations on numbers in standard form.",
     },
     {
-      code: "J2.1.2.1.1",
+      code: "B8.1.1.1.2",
       strand: "Number",
-      subStrand: "Ratios, Rates and Proportions",
-      contentStandard: "Apply scale factors and indirect/inverse proportion to problem solving",
-      indicator: "Inverse proportion and scale drawing",
-      objectives: "Solve problems involving inverse proportion and calculate actual ground distances using map scale factors."
+      subStrand: "Number Operations and Indices",
+      contentStandard:
+        "Use powers, roots, and standard form to represent large and small quantities",
+      indicator:
+        "Write numbers in standard form and simplify expressions involving negative and fractional indices",
+      objectives:
+        "Convert between ordinary form and standard form, and use index rules to compare magnitudes in scientific contexts.",
     },
     {
-      code: "J2.2.1.1.1",
+      code: "B8.1.1.1.3",
+      strand: "Number",
+      subStrand: "Number Operations and Indices",
+      contentStandard:
+        "Apply approximation and surd simplification in quantitative reasoning",
+      indicator:
+        "Round numbers to given decimal places and simplify simple surd expressions",
+      objectives:
+        "Estimate answers and simplify expressions such as √12, √18, and √50 in practical measurement problems.",
+    },
+    {
+      code: "B8.1.2.1.1",
+      strand: "Number",
+      subStrand: "Financial Mathematics",
+      contentStandard:
+        "Solve real-world financial problems involving compound interest, depreciation, discount and commission",
+      indicator:
+        "Compute compound interest, hire purchase, VAT and personal tax calculations",
+      objectives:
+        "Apply formula A = P(1 + r/100)^n for compound interest and calculate hire purchase deposit and installments.",
+    },
+    {
+      code: "B8.1.2.1.2",
+      strand: "Number",
+      subStrand: "Financial Mathematics",
+      contentStandard:
+        "Use percentage-based financial reasoning to compare offers and value changes",
+      indicator:
+        "Calculate discounts, commission, simple and compound depreciation, and percentage profit or loss",
+      objectives:
+        "Compare payment plans, discount offers, and business profit/loss situations using percentage methods.",
+    },
+    {
+      code: "B8.2.1.1.1",
       strand: "Algebra",
-      subStrand: "Variables and Equations",
-      contentStandard: "Solve simultaneous linear equations in two variables",
-      indicator: "Substitution and elimination methods",
-      objectives: "Solve pairs of simultaneous linear equations using substitution, elimination, and graphical methods."
+      subStrand: "Algebraic Expressions and Inequalities",
+      contentStandard:
+        "Factorize quadratic expressions and solve linear inequalities in 1 variable",
+      indicator:
+        "Factorize quadratic expressions (ax² + bx + c) and solve linear inequalities",
+      objectives:
+        "Solve linear inequalities like 3x - 5 <= 7 and represent solution set on number lines.",
     },
     {
-      code: "J2.2.2.1.1",
+      code: "B8.2.1.1.2",
       strand: "Algebra",
-      subStrand: "Relations and Functions",
-      contentStandard: "Demonstrate understanding of mapping, relations, and linear functions",
-      indicator: "Rule of mapping and linear graphs",
-      objectives: "Determine the rule for linear mappings and plot y = mx + c on the Cartesian plane."
+      subStrand: "Algebraic Expressions and Inequalities",
+      contentStandard:
+        "Manipulate algebraic expressions accurately and justify equivalent forms",
+      indicator:
+        "Expand, factorize, and simplify algebraic expressions involving common factors and products",
+      objectives:
+        "Rewrite expressions and explain how equivalent forms help solve equations and model real situations.",
     },
     {
-      code: "J2.3.1.1.1",
+      code: "B8.2.2.1.1",
+      strand: "Algebra",
+      subStrand: "Linear Functions and Coordinate Geometry",
+      contentStandard:
+        "Find gradient, midpoint and equation of a straight line",
+      indicator:
+        "Calculate gradient m = (y2 - y1)/(x2 - x1), midpoint, and plot linear graphs",
+      objectives:
+        "Plot linear equations y = mx + c on Cartesian coordinate plane and determine gradient and intercepts.",
+    },
+    {
+      code: "B8.2.2.1.2",
+      strand: "Algebra",
+      subStrand: "Linear Functions and Coordinate Geometry",
+      contentStandard:
+        "Use coordinate geometry to describe linear relationships and compare graphs",
+      indicator:
+        "Find the equation of a straight line from two points and interpret intercepts and gradients",
+      objectives:
+        "Model movement, cost, and rate situations on number planes using graph equations and slope.",
+    },
+    {
+      code: "B8.3.1.1.1",
       strand: "Geometry and Measurement",
-      subStrand: "Pythagoras Theorem and Trigonometry",
-      contentStandard: "Apply Pythagoras theorem to right-angled triangles",
-      indicator: "Pythagoras theorem (a² + b² = c²)",
-      objectives: "Calculate unknown side lengths of right-angled triangles using the Pythagorean theorem."
+      subStrand: "Geometric Theorems and Transformations",
+      contentStandard:
+        "Demonstrate understanding of Pythagoras' Theorem and rigid transformations",
+      indicator:
+        "Apply Pythagoras' Theorem (a² + b² = c²) and describe enlargement/scale factors",
+      objectives:
+        "Solve right-angled triangle side lengths using Pythagoras' theorem and perform scale drawing.",
     },
     {
-      code: "J2.3.2.1.1",
+      code: "B8.3.1.1.2",
+      strand: "Geometry and Measurement",
+      subStrand: "Geometric Theorems and Transformations",
+      contentStandard:
+        "Use similarity, congruence and transformation properties in geometric reasoning",
+      indicator:
+        "Identify similar and congruent figures, describe reflection, rotation, and enlargement, and solve related problems",
+      objectives:
+        "Use transformation rules and scale factors to reason about shapes in design, maps, and patterns.",
+    },
+    {
+      code: "B8.3.2.1.1",
       strand: "Geometry and Measurement",
       subStrand: "Measurement",
-      contentStandard: "Calculate surface area and volume of 3D cylinders and triangular prisms",
-      indicator: "Total surface area and volume formulas",
-      objectives: "Calculate the total surface area and volume of cylinders (V = πr²h) and prisms."
+      contentStandard:
+        "Calculate volume and total surface area of cylinders and triangular prisms",
+      indicator:
+        "Apply formulas for cylinder volume (V = πr²h) and surface area (TSA = 2πr² + 2πrh)",
+      objectives:
+        "Calculate surface area and capacity of cylindrical containers and prisms.",
     },
     {
-      code: "J2.3.3.1.1",
+      code: "B8.3.2.1.2",
       strand: "Geometry and Measurement",
-      subStrand: "Position and Transformation",
-      contentStandard: "Perform rotation and translation on the Cartesian plane",
-      indicator: "Rotation about origin and translation vectors",
-      objectives: "Find image coordinates after rotation through 90° or 180° and translation by a vector (x, y)."
+      subStrand: "Measurement",
+      contentStandard:
+        "Use circumference, area, and capacity formulas to solve practical measurement problems",
+      indicator:
+        "Determine circumference, area of circles, and volume of composite solids",
+      objectives:
+        "Solve problems involving circular objects, tank capacity, and combined solid shapes in context.",
     },
     {
-      code: "J2.4.1.1.1",
+      code: "B8.4.1.1.1",
       strand: "Data",
-      subStrand: "Data Collection and Analysis",
-      contentStandard: "Calculate mean, median, mode, and range for frequency distributions",
-      indicator: "Measures of central tendency and dispersion",
-      objectives: "Determine the mean, median, mode, and range from frequency distribution tables."
-    }
+      subStrand: "Data and Probability",
+      contentStandard:
+        "Understand theoretical probability and expected frequency",
+      indicator:
+        "Calculate theoretical probability P(E) = n(E)/n(S) for single and combined events",
+      objectives:
+        "Construct sample space diagrams for rolling dice or tossing coins and calculate event probabilities.",
+    },
+    {
+      code: "B8.4.1.1.2",
+      strand: "Data",
+      subStrand: "Data and Probability",
+      contentStandard:
+        "Represent and interpret data for comparison and inference",
+      indicator:
+        "Construct and interpret bar charts, pie charts, and line graphs from statistical data",
+      objectives:
+        "Choose suitable data displays and derive conclusions from school and community datasets.",
+    },
   ],
   "JHS 3": [
     {
       code: "B9.1.1.1.1",
       strand: "Number",
-      subStrand: "Real Number System & Surds",
-      contentStandard: "Simplify simple surds and exact radical expressions",
-      indicator: "Surd simplification (√a × √b = √(ab)) and rationalizing simple denominators",
-      objectives: "Simplify surds into basic form a√b and rationalize denominators of the form c / √a."
-    },
-    {
-      code: "B9.1.1.1.2",
-      strand: "Number",
-      subStrand: "Real Number System",
-      contentStandard: "Apply estimation and degree of accuracy",
-      indicator: "Estimation in calculations and rounding to required degree of accuracy",
-      objectives: "Use estimation strategies to check reasonableness of calculations and round answers to specified significant figures."
-    },
-    {
-      code: "B9.1.1.1.3",
-      strand: "Number",
-      subStrand: "Real Number System & Surds",
-      contentStandard: "Simplify simple surds and exact radical expressions",
-      indicator: "Expansion of binomial surd expressions (a + √b)(c + √d)",
-      objectives: "Expand and simplify products of binomial surd expressions accurately."
-    },
-    {
-      code: "B9.1.2.1.1",
-      strand: "Number",
-      subStrand: "Financial Mathematics",
-      contentStandard: "Calculate Compound Interest",
-      indicator: "Compound Interest formula A = P(1 + r/100)ⁿ and interest earned",
-      objectives: "Apply compound interest formula to calculate accumulated total amount and compound interest earned over given period."
-    },
-    {
-      code: "B9.1.2.1.2",
-      strand: "Number",
-      subStrand: "Financial Mathematics",
-      contentStandard: "Calculate Depreciation and Hire Purchase",
-      indicator: "Reducing balance depreciation and Hire Purchase agreement calculations",
-      objectives: "Calculate annual depreciation value of assets and total hire purchase cost (deposit plus monthly installments)."
+      subStrand: "Real Number System and Operations",
+      contentStandard:
+        "Demonstrate mastery of real numbers, surds, matrices and vectors",
+      indicator:
+        "Perform matrix addition, scalar multiplication and vector operations",
+      objectives:
+        "Add and subtract 2x2 matrices, multiply matrix by scalar, and calculate vector magnitude |v| = sqrt(x² + y²).",
     },
     {
       code: "B9.2.1.1.1",
       strand: "Algebra",
-      subStrand: "Quadratic Expressions and Equations",
-      contentStandard: "Factorize quadratic expressions ax² + bx + c",
-      indicator: "Factorization of quadratic expressions (where a = 1 or a ≠ 1)",
-      objectives: "Factorize quadratic expressions by splitting the middle term or grouping method."
-    },
-    {
-      code: "B9.2.1.1.2",
-      strand: "Algebra",
-      subStrand: "Quadratic Expressions and Equations",
-      contentStandard: "Solve quadratic equations ax² + bx + c = 0",
-      indicator: "Solving quadratic equations by factorization and quadratic formula x = [-b ± √(b² - 4ac)] / 2a",
-      objectives: "Solve quadratic equations using factorization method and standard quadratic formula."
-    },
-    {
-      code: "B9.2.1.1.3",
-      strand: "Algebra",
-      subStrand: "Quadratic Expressions and Equations",
-      contentStandard: "Draw graphs of quadratic functions y = ax² + bx + c",
-      indicator: "Table of values, parabolic quadratic curves, roots, turning point, and line of symmetry",
-      objectives: "Plot smooth parabolic quadratic curves, determine roots from x-intercepts, and read minimum/maximum turning point."
-    },
-    {
-      code: "B9.2.1.1.4",
-      strand: "Algebra",
-      subStrand: "Quadratic Expressions and Equations",
-      contentStandard: "Solve quadratic equations ax² + bx + c = 0",
-      indicator: "Completing the square method for solving quadratic equations",
-      objectives: "Solve quadratic equations by rewriting expressions into perfect square form (x + p)² = q."
+      subStrand: "Simultaneous Equations and Quadratic Functions",
+      contentStandard:
+        "Solve simultaneous linear equations in two variables algebraically and graphically",
+      indicator:
+        "Apply elimination, substitution and graphical methods to solve 2-variable linear equations",
+      objectives:
+        "Solve simultaneous equations like 2x + y = 7 and x - y = 2 algebraically and locate point of intersection.",
     },
     {
       code: "B9.2.2.1.1",
       strand: "Algebra",
-      subStrand: "Simultaneous Equations & Word Problems",
-      contentStandard: "Solve contextual word problems leading to simultaneous linear equations",
-      indicator: "Formulating and solving real-world simultaneous linear equations",
-      objectives: "Translate word problems into pairs of linear equations and solve for unknown quantities."
+      subStrand: "Change of Subject of Formula",
+      contentStandard:
+        "Change subject of formula involving powers, roots and fractions",
+      indicator: "Rearrange formulas to make a specified variable the subject",
+      objectives:
+        "Make specified variable x the subject in formulas like T = 2π sqrt(L/g) or Y = (ax + b)/c.",
     },
     {
       code: "B9.3.1.1.1",
       strand: "Geometry and Measurement",
-      subStrand: "Trigonometry",
-      contentStandard: "Apply primary trigonometric ratios (sin, cos, tan) in right-angled triangles",
-      indicator: "Sine, Cosine, and Tangent ratios (SOH CAH TOA)",
-      objectives: "Calculate unknown side lengths and acute angles of right-angled triangles using sin θ = opp/hyp, cos θ = adj/hyp, tan θ = opp/adj."
-    },
-    {
-      code: "B9.3.1.1.2",
-      strand: "Geometry and Measurement",
-      subStrand: "Trigonometry",
-      contentStandard: "Solve problems involving angles of elevation and depression",
-      indicator: "Word problems on angles of elevation and depression",
-      objectives: "Draw clear diagrams from word problems and calculate heights and distances using SOH CAH TOA."
+      subStrand: "Trigonometry and Circle Theorems",
+      contentStandard:
+        "Apply basic trigonometric ratios (sine, cosine, tangent) to right-angled triangles",
+      indicator:
+        "Calculate lengths and angles using SOH CAH TOA and solve bearing/elevation problems",
+      objectives:
+        "Use sin θ = opp/hyp, cos θ = adj/hyp, tan θ = opp/adj to solve practical bearing and height/distance problems.",
     },
     {
       code: "B9.3.2.1.1",
       strand: "Geometry and Measurement",
-      subStrand: "Vectors and Bearings",
-      contentStandard: "Perform operations on 2D column vectors",
-      indicator: "Vector addition, subtraction, scalar multiplication, and magnitude |v| = √(x² + y²)",
-      objectives: "Add, subtract, and multiply 2D vectors by scalars and calculate vector magnitude |v|."
-    },
-    {
-      code: "B9.3.2.1.2",
-      strand: "Geometry and Measurement",
-      subStrand: "Vectors and Bearings",
-      contentStandard: "Solve 3-figure compass bearings and distance problems",
-      indicator: "Three-figure bearings (000° to 360°) and reverse bearings",
-      objectives: "Measure and calculate 3-figure bearings (e.g. 045°, 120°, 225°) and determine back/reverse bearings."
-    },
-    {
-      code: "B9.3.2.1.3",
-      strand: "Geometry and Measurement",
-      subStrand: "Vectors and Bearings",
-      contentStandard: "Solve 3-figure compass bearings and distance problems",
-      indicator: "Combining bearings, trigonometry, and vector displacement",
-      objectives: "Solve multi-step bearing problems using scale drawing, right-angled trigonometry, and vector addition."
-    },
-    {
-      code: "B9.3.3.1.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Enlargement and Similarity",
-      contentStandard: "Construct scale factor enlargements on Cartesian plane",
-      indicator: "Enlargement given center of enlargement and scale factor k",
-      objectives: "Construct enlarged images on a grid given center of enlargement (x, y) and scale factor k (positive, negative, or fractional)."
-    },
-    {
-      code: "B9.3.3.1.2",
-      strand: "Geometry and Measurement",
-      subStrand: "Enlargement and Similarity",
-      contentStandard: "Apply properties of similar figures",
-      indicator: "Length ratio (k), Area ratio (k²), and Volume ratio (k³) for similar figures",
-      objectives: "Calculate missing lengths, areas, and volumes of mathematically similar 2D shapes and 3D solids."
+      subStrand: "Measurement and Mensuration",
+      contentStandard:
+        "Calculate surface area and volume of cones, spheres and pyramids",
+      indicator:
+        "Apply formulas for cone volume (1/3 πr²h) and sphere volume (4/3 πr³)",
+      objectives:
+        "Compute volume and surface area of cones, spheres, and pyramids in BECE word problems.",
     },
     {
       code: "B9.4.1.1.1",
       strand: "Data",
-      subStrand: "Statistics and Data Analysis",
-      contentStandard: "Construct cumulative frequency tables and curves (ogive)",
-      indicator: "Cumulative frequency tables and Ogive curves",
-      objectives: "Construct cumulative frequency tables and plot smooth cumulative frequency curves (ogive)."
+      subStrand: "Data Analysis and Probability",
+      contentStandard:
+        "Master BECE statistical analysis, cumulative frequency curves and compound probability",
+      indicator:
+        "Construct cumulative frequency tables, estimate median/quartiles, and solve compound probability",
+      objectives:
+        "Read ogives/cumulative frequency curves to find median and interquartile range for examination prep.",
+    },
+  ],
+  "Basic 9": [
+    {
+      code: "B9.1.1.1.1",
+      strand: "Number",
+      subStrand: "Real Number System and Operations",
+      contentStandard:
+        "Demonstrate mastery of real numbers, surds, matrices and vectors",
+      indicator:
+        "Perform matrix addition, scalar multiplication and vector operations",
+      objectives:
+        "Add and subtract 2x2 matrices, multiply matrix by scalar, and calculate vector magnitude |v| = sqrt(x² + y²).",
+    },
+    {
+      code: "B9.1.1.1.2",
+      strand: "Number",
+      subStrand: "Real Number System and Operations",
+      contentStandard:
+        "Use real-number operations confidently in advanced numeracy and algebraic contexts",
+      indicator:
+        "Perform arithmetic on rational and irrational numbers, including surd simplification, estimation, and approximation",
+      objectives:
+        "Simplify surds, estimate values, and justify numerical answers in solving high-level classroom and real-life problems.",
+    },
+    {
+      code: "B9.1.1.1.3",
+      strand: "Number",
+      subStrand: "Real Number System and Operations",
+      contentStandard:
+        "Represent and interpret vector and matrix quantities accurately",
+      indicator:
+        "Add, subtract, and multiply vectors and matrices in 2D and solve basic system-based problems",
+      objectives:
+        "Use algebraic and geometric representations of vectors and matrices to model movement and transformation situations.",
+    },
+    {
+      code: "B9.2.1.1.1",
+      strand: "Algebra",
+      subStrand: "Simultaneous Equations and Quadratic Functions",
+      contentStandard:
+        "Solve simultaneous linear equations in two variables algebraically and graphically",
+      indicator:
+        "Apply elimination, substitution and graphical methods to solve 2-variable linear equations",
+      objectives:
+        "Solve simultaneous equations like 2x + y = 7 and x - y = 2 algebraically and locate point of intersection.",
+    },
+    {
+      code: "B9.2.1.1.2",
+      strand: "Algebra",
+      subStrand: "Simultaneous Equations and Quadratic Functions",
+      contentStandard:
+        "Model and solve quadratic relationships and non-linear systems",
+      indicator:
+        "Solve quadratic equations by factorization, completing the square, and using the quadratic formula",
+      objectives:
+        "Interpret the roots of quadratic equations and relate them to intersections of graphs and practical situations.",
+    },
+    {
+      code: "B9.2.2.1.1",
+      strand: "Algebra",
+      subStrand: "Change of Subject of Formula",
+      contentStandard:
+        "Change subject of formula involving powers, roots and fractions",
+      indicator: "Rearrange formulas to make a specified variable the subject",
+      objectives:
+        "Make specified variable x the subject in formulas like T = 2π sqrt(L/g) or Y = (ax + b)/c.",
+    },
+    {
+      code: "B9.2.2.1.2",
+      strand: "Algebra",
+      subStrand: "Change of Subject of Formula",
+      contentStandard:
+        "Use algebraic manipulation to model and solve formula-based problems",
+      indicator:
+        "Transform formulas involving fractions, radicals, and powers to isolate selected variables",
+      objectives:
+        "Apply formula rearrangement in science, finance, and geometry contexts to solve unknown quantities.",
+    },
+    {
+      code: "B9.3.1.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Trigonometry and Circle Theorems",
+      contentStandard:
+        "Apply basic trigonometric ratios (sine, cosine, tangent) to right-angled triangles",
+      indicator:
+        "Calculate lengths and angles using SOH CAH TOA and solve bearing/elevation problems",
+      objectives:
+        "Use sin θ = opp/hyp, cos θ = adj/hyp, tan θ = opp/adj to solve practical bearing and height/distance problems.",
+    },
+    {
+      code: "B9.3.1.1.2",
+      strand: "Geometry and Measurement",
+      subStrand: "Trigonometry and Circle Theorems",
+      contentStandard:
+        "Apply geometric reasoning to circles and triangle relationships",
+      indicator:
+        "Use angle properties of circles, chords, tangents, and cyclic quadrilaterals to solve problems",
+      objectives:
+        "Reason with arc, angle, and tangent relationships to calculate missing measures in circular figures.",
+    },
+    {
+      code: "B9.3.2.1.1",
+      strand: "Geometry and Measurement",
+      subStrand: "Measurement and Mensuration",
+      contentStandard:
+        "Calculate surface area and volume of cones, spheres and pyramids",
+      indicator:
+        "Apply formulas for cone volume (1/3 πr²h) and sphere volume (4/3 πr³)",
+      objectives:
+        "Compute volume and surface area of cones, spheres, and pyramids in BECE word problems.",
+    },
+    {
+      code: "B9.3.2.1.2",
+      strand: "Geometry and Measurement",
+      subStrand: "Measurement and Mensuration",
+      contentStandard:
+        "Solve regular and compound mensuration problems using accurate formula application",
+      indicator:
+        "Calculate area, volume, and surface area of composite solids and prisms in context",
+      objectives:
+        "Model real-world containers, packaging, and building situations using mensuration formulae.",
+    },
+    {
+      code: "B9.4.1.1.1",
+      strand: "Data",
+      subStrand: "Data Analysis and Probability",
+      contentStandard:
+        "Master BECE statistical analysis, cumulative frequency curves and compound probability",
+      indicator:
+        "Construct cumulative frequency tables, estimate median/quartiles, and solve compound probability",
+      objectives:
+        "Read ogives/cumulative frequency curves to find median and interquartile range for examination prep.",
     },
     {
       code: "B9.4.1.1.2",
       strand: "Data",
-      subStrand: "Statistics and Data Analysis",
-      contentStandard: "Estimate median, quartiles, and interquartile range from Ogive",
-      indicator: "Median (Q₂), Lower Quartile (Q₁), Upper Quartile (Q₃), and Interquartile Range (IQR)",
-      objectives: "Read median, lower quartile Q₁, upper quartile Q₃, and calculate IQR from cumulative frequency curves."
+      subStrand: "Data Analysis and Probability",
+      contentStandard:
+        "Interpret and critique statistical summaries and probability models",
+      indicator:
+        "Analyse measures of spread and compute compound probability for dependent and independent events",
+      objectives:
+        "Draw conclusions from grouped data and explain how probability changes across different event combinations.",
     },
-    {
-      code: "B9.4.2.1.1",
-      strand: "Data",
-      subStrand: "Probability",
-      contentStandard: "Calculate probability of dependent events without replacement",
-      indicator: "Tree diagrams and probability calculations for dependent events",
-      objectives: "Construct probability tree diagrams for dependent events without replacement and calculate conditional probabilities."
-    },
-    {
-      code: "J3.1.1.1.1",
-      strand: "Number",
-      subStrand: "Number Operations",
-      contentStandard: "Demonstrate understanding of surds, significant figures, and approximations",
-      indicator: "Rounding to significant figures and decimal places",
-      objectives: "Round off calculations to specified significant figures and decimal places accurately."
-    },
-    {
-      code: "J3.1.2.1.1",
-      strand: "Number",
-      subStrand: "Financial Mathematics",
-      contentStandard: "Solve complex business and financial arithmetic problems",
-      indicator: "Compound interest, depreciation, hire purchase",
-      objectives: "Calculate compound interest, annual depreciation, and hire purchase agreements."
-    },
-    {
-      code: "J3.2.1.1.1",
-      strand: "Algebra",
-      subStrand: "Quadratic Expressions and Equations",
-      contentStandard: "Factorize quadratic expressions and solve quadratic equations",
-      indicator: "Quadratic factorization and solving ax² + bx + c = 0",
-      objectives: "Factorize quadratic expressions (x+p)(x+q) and solve quadratic equations by factorization."
-    },
-    {
-      code: "J3.2.2.1.1",
-      strand: "Algebra",
-      subStrand: "Linear Inequalities and Linear Graphs",
-      contentStandard: "Plot linear graphs and solve simultaneous equations graphically",
-      indicator: "Gradient, y-intercept, and intersection points",
-      objectives: "Determine gradient m = (y₂ - y₁)/(x₂ - x₁) and read intersection points of simultaneous lines from graphs."
-    },
-    {
-      code: "J3.3.1.1.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Trigonometry",
-      contentStandard: "Apply trigonometric ratios (sin, cos, tan) in right-angled triangles",
-      indicator: "Sine, Cosine, and Tangent ratios",
-      objectives: "Calculate unknown sides and angles of right-angled triangles using SOH-CAH-TOA and solve angles of elevation and depression."
-    },
-    {
-      code: "J3.3.2.1.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Vectors and Bearing",
-      contentStandard: "Demonstrate understanding of 2D vectors and 3-figure bearings",
-      indicator: "Vector addition, magnitude, and compass/three-figure bearings",
-      objectives: "Calculate vector magnitude |v| = √(x² + y²), scalar multiplication, and solve bearing problems."
-    },
-    {
-      code: "J3.3.3.1.1",
-      strand: "Geometry and Measurement",
-      subStrand: "Enlargement and Similarity",
-      contentStandard: "Apply scale factor enlargement and similarity properties",
-      indicator: "Enlargement with center at origin and scale factor k",
-      objectives: "Construct enlarged images using center of enlargement and scale factor k, and calculate areas of similar figures."
-    },
-    {
-      code: "J3.4.1.1.1",
-      strand: "Data",
-      subStrand: "Probability and Statistics",
-      contentStandard: "Analyze, interpret, and evaluate probability and statistical data sets",
-      indicator: "Theoretical probability of combined events and stem-and-leaf plots",
-      objectives: "Construct stem-and-leaf plots, sample space diagrams, and calculate combined probability of two independent events."
-    }
-  ]
+  ],
 };

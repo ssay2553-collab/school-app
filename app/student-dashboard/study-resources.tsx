@@ -51,13 +51,12 @@ const RESOURCES = [
     image: 'https://cdn.kastatic.org/images/khan-logo-vertical-transparent.png'
   },
   {
-    title: 'Passco GH',
-    description: 'Large collection of past questions for all levels.',
-    url: 'https://passco.org',
-    icon: 'cloud-download',
+    title: 'GES Official Portal',
+    description: 'Ghana Education Service official news, resources, and announcements.',
+    url: 'https://ges.gov.gh',
+    icon: 'library',
     color: '#FFD93D',
-    tag: 'PAST QUESTIONS',
-    image: 'https://passco.org/img/logo.png'
+    tag: 'GES PORTAL',
   }
 ];
 
@@ -70,16 +69,12 @@ export default function StudyResources() {
 
   const handleOpenLink = async (url: string, title?: string) => {
     try {
-      if (Platform.OS === 'web') {
-        window.open(url, '_blank');
-      } else {
-        router.push({
-          pathname: '/shared/web-view',
-          params: { url, title: title || 'Study Resource' },
-        });
-      }
+      router.push({
+        pathname: '/shared/web-view',
+        params: { url, title: title || 'Study Resource' },
+      });
     } catch (error) {
-      console.error('Error opening browser:', error);
+      console.error('Error opening in-app web view:', error);
       showToast({ message: "Could not open the study resource.", type: "error" });
     }
   };

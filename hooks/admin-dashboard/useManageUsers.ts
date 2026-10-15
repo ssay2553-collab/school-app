@@ -1276,13 +1276,13 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         const parentDocs = snap.docs.map(d => d.data());
 
         if (parentDocs.length > 0) {
-          const parent1 = parentDocs[0];
+          const parent1: any = parentDocs[0];
           const p1FullName = `${parent1.profile?.firstName || ""} ${parent1.profile?.lastName || ""}`.trim();
           if (!pName && p1FullName) pName = p1FullName;
           if (!pPhone && parent1.profile?.phone) pPhone = parent1.profile.phone;
 
           if (parentDocs.length > 1) {
-            const parent2 = parentDocs[1];
+            const parent2: any = parentDocs[1];
             const p2FullName = `${parent2.profile?.firstName || ""} ${parent2.profile?.lastName || ""}`.trim();
             if (!p2Name && p2FullName) p2Name = p2FullName;
             if (!p2Phone && parent2.profile?.phone) p2Phone = parent2.profile.phone;

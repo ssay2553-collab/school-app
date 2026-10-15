@@ -6,8 +6,9 @@ import {
   Image,
   StyleSheet,
   Platform,
+  StatusBar as RNStatusBar,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import SVGIcon from "./SVGIcon";
 import { SHADOWS } from "../constants/theme";
@@ -43,6 +44,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   roleTag,
   children,
 }) => {
+  const insets = useSafeAreaInsets();
+  const topInset = Math.max(insets.top, Platform.OS === "android" ? (RNStatusBar.currentHeight || 0) : 0);
+
   return (
     <LinearGradient
       colors={[brandPrimary, brandSecondary]}
@@ -52,7 +56,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       <View style={styles.blob2} />
 
       <SafeAreaView edges={["top"]}>
-        <View style={styles.headerRow}>
+        <View style={[styles.headerRow, { paddingTop: Platform.OS === "web" ? 20 : (topInset > 0 ? 10 : 0) }]}>
           <View style={styles.userInfo}>
             <TouchableOpacity
               onPress={onProfilePress}
@@ -79,7 +83,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                       { fontSize: isSmallScreen ? 24 : 32 },
                     ]}
                   >
-                    {appUser?.profile?.firstName?.[0] || roleTag.charAt(0)}
+                    {appUser?.profile?.firstName?.[0] || (roleTag ? roleTag.charAt(0) : "U")}
                   </Text>
                 </View>
               )}
@@ -94,13 +98,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
-                {appUser?.profile?.firstName || roleTag}
+                {appUser?.profile?.firstName || roleTag || "User"}
               </Text>
 
               <View style={styles.roleBadge}>
                 <SVGIcon name="checkmark-seal" size={12} color="#fff" />
                 <Text style={styles.roleBadgeText}>
-                  {appUser?.adminRole || roleTag.toUpperCase()}
+                  {appUser?.adminRole || (roleTag ? roleTag.toUpperCase() : "USER")}
                 </Text>
               </View>
             </View>

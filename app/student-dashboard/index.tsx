@@ -252,7 +252,7 @@ export default function StudentDashboard() {
   return (
     <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
       <StationaryBackground />
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={{ flex: 1 }}

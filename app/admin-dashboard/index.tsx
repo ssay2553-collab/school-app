@@ -95,6 +95,20 @@ export default function AdminDashboard() {
           icon: "analytics",
           color: "#f59e0b",
         },
+        {
+          title: "Staff Att. Setup",
+          subtitle: "QR & GPS config",
+          route: "/admin-dashboard/teacher-attendance-config",
+          icon: "qr-code",
+          color: "#3b82f6",
+        },
+        {
+          title: "Staff Attendance",
+          subtitle: "GPS Check-In / Out",
+          route: "/teacher-dashboard/scan-attendance",
+          icon: "checkmark-done-circle",
+          color: "#10b981",
+        },
       ],
     },
     {

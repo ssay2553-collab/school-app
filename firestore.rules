@@ -756,6 +756,21 @@ match /feePayments/{paymentId} {
     }
 
     /* ===============================
+       TEACHER ATTENDANCE COLLECTION & CONFIG
+    =============================== */
+    match /teacherAttendanceConfig/{configId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() || canManageAttendance();
+    }
+
+    match /teacherAttendance/{recordId} {
+      // Admins can read, write, and manage all teacher attendance records; teachers can read and update/create their own records
+      allow read: if isSignedIn() && (isAdmin() || canManageAttendance() || resource.data.teacherId == uid());
+      allow create, update: if isSignedIn() && (isAdmin() || canManageAttendance() || request.resource.data.teacherId == uid());
+      allow delete: if isAdmin() || canManageAttendance();
+    }
+
+    /* ===============================
        ASSIGNMENTS COLLECTION
     =============================== */
    match /assignments/{id} {
@@ -986,6 +1001,14 @@ match /feePayments/{paymentId} {
         ))
       );
       allow delete: if isAdmin();
+    }
+
+    /* ===============================
+       CURRICULUMS COLLECTION
+    =============================== */
+    match /curriculums/{curriculumId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn() && (isAdmin() || isTeacher());
     }
 
     /* ===============================

@@ -1,304 +1,256 @@
 import { GESIndicator } from "../GES_Curriculum";
 
 export const CareerTechnology: Record<string, GESIndicator[]> = {
-  "Basic 4": [
-    {
-      code: "B4.1.1.1.1",
-      strand: "Health and Safety",
-      subStrand: "Personal Hygiene and Safety at Work",
-      contentStandard: "Demonstrate basic safety rules in domestic and classroom activity areas",
-      indicator: "Personal protective clothing, cleanliness, and safe handling of tools",
-      objectives: "List personal safety rules when working with domestic tools and equipment (aprons, gloves, footwear)."
-    },
-    {
-      code: "B4.1.1.1.2",
-      strand: "Health and Safety",
-      subStrand: "Personal Hygiene and Safety at Work",
-      contentStandard: "Demonstrate basic safety rules in domestic and classroom activity areas",
-      indicator: "Proper handling and storage of sharp kitchen and workshop tools",
-      objectives: "Demonstrate safe carrying, passing, and storage of knives, shears, and woodworking chisels."
-    },
-    {
-      code: "B4.2.1.1.1",
-      strand: "Materials for Production",
-      subStrand: "Basic Materials and Uses",
-      contentStandard: "Identify local resistant and compliant materials",
-      indicator: "Paper, cardboard, fabric, wood, and plastic classification",
-      objectives: "Classify everyday materials into paper/card, textiles, timber, and plastics, and list their uses."
-    }
-  ],
-  "Basic 5": [
-    {
-      code: "B5.1.1.1.1",
-      strand: "Health and Safety",
-      subStrand: "First Aid and Workshop Rules",
-      contentStandard: "Understand First Aid procedures for minor injuries and workshop safety signs",
-      indicator: "First Aid box contents, treating minor cuts/burns, and safety warning signs",
-      objectives: "Identify First Aid items (antiseptic, bandage, cotton wool) and demonstrate treatment for minor cuts."
-    },
-    {
-      code: "B5.1.1.1.2",
-      strand: "Health and Safety",
-      subStrand: "First Aid and Workshop Rules",
-      contentStandard: "Understand First Aid procedures for minor injuries and workshop safety signs",
-      indicator: "Safety color codes (Red, Yellow, Green, Blue) and mandatory safety symbols",
-      objectives: "Interpret mandatory, prohibition, warning, and emergency safety signs used in technical environments."
-    },
-    {
-      code: "B5.2.1.1.1",
-      strand: "Food and Catering",
-      subStrand: "Food Commodities and Hygiene",
-      contentStandard: "Identify local food groups and kitchen hygiene practices",
-      indicator: "Cereals, roots, tubers, vegetables, fruits, and food preservation",
-      objectives: "Categorize local foods into energy-giving, body-building, and protective foods and practice kitchen hygiene."
-    }
-  ],
-  "Basic 6": [
-    {
-      code: "B6.1.1.1.1",
-      strand: "Designing and Prototyping",
-      subStrand: "Technical Drawing and Sketching",
-      contentStandard: "Draw basic geometric shapes, 2D planes, and freehand sketches",
-      indicator: "Freehand sketching of simple tools, horizontal/vertical lines, and 2D shapes",
-      objectives: "Use ruler, set-squares, and pencils to sketch geometric shapes and basic hand tools freehand."
-    },
-    {
-      code: "B6.1.1.1.2",
-      strand: "Designing and Prototyping",
-      subStrand: "Technical Drawing and Sketching",
-      contentStandard: "Draw basic geometric shapes, 2D planes, and freehand sketches",
-      indicator: "Constructing perpendicular, parallel, and bisected lines using drawing instruments",
-      objectives: "Construct perpendicular lines and bisect given straight line segments using compasses and set-squares."
-    },
-    {
-      code: "B6.2.1.1.1",
-      strand: "Sewing and Textiles",
-      subStrand: "Basic Sewing Stitches and Articles",
-      contentStandard: "Demonstrate temporary and permanent hand sewing stitches",
-      indicator: "Tacking, running stitch, back stitch, and hemming",
-      objectives: "Demonstrate temporary stitches (tacking) and permanent stitches (running stitch, back stitch) on fabric swatches."
-    }
-  ],
   "JHS 1": [
     {
       code: "B7.1.1.1.1",
       strand: "Health and Safety",
-      subStrand: "Personal Hygiene and Safety",
-      contentStandard: "Demonstrate understanding of personal and workshop safety practices",
-      indicator: "Workshop rules, Personal Protective Equipment (PPE), and hazard identification",
-      objectives: "Identify workshop hazards, list safety rules in technical/catering workshops, and demonstrate proper use of PPE (goggles, gloves, apron, boots)."
-    },
-    {
-      code: "B7.1.1.1.2",
-      strand: "Health and Safety",
-      subStrand: "Personal Hygiene and Workshop Safety",
-      contentStandard: "Demonstrate understanding of personal and workshop safety practices",
-      indicator: "Causes and prevention of workshop accidents",
-      objectives: "Analyze common causes of accidents in metalwork, woodwork, and food laboratories and design prevention strategies."
+      subStrand: "Workshop and Kitchen Safety Practices",
+      contentStandard: "Demonstrate understanding of personal hygiene, safety rules, and hazard prevention in technical workshops and kitchens",
+      indicator: "Identify personal protective equipment (PPE), workshop safety signs, and first aid procedures for cuts/burns",
+      objectives: "Demonstrate use of PPE (goggles, aprons, boots) and execute first aid for minor cuts and burns."
     },
     {
       code: "B7.2.1.1.1",
       strand: "Materials for Production",
-      subStrand: "Compliant and Resistant Materials",
-      contentStandard: "Classify materials used in designing and making products",
-      indicator: "Properties and uses of paper, card, timber (hardwood/softwood), and plastics",
-      objectives: "Differentiate between hardwoods and softwoods, thermoplastic and thermosetting plastics, and state their physical properties and applications."
-    },
-    {
-      code: "B7.2.2.1.1",
-      strand: "Materials for Production",
-      subStrand: "Food Commodities",
-      contentStandard: "Classify local food commodities based on nutrients and food groups",
-      indicator: "Nutritive value and selection of cereals, pulses, and tubers",
-      objectives: "Categorize local food commodities (yam, cassava, maize, beans) according to major nutrient components and criteria for selecting fresh produce."
+      subStrand: "Classification of Materials (Wood, Metal, Plastics, Food, Fabrics)",
+      contentStandard: "Classify hard/soft woods, ferrous/non-ferrous metals, plastics, food nutrients, and textile fibers",
+      indicator: "Distinguish between hardwoods (Mahogany, Odum) and softwoods, natural and synthetic fibers, and food groups",
+      objectives: "Classify wood species, metal samples, natural fibers (cotton, silk), and essential food nutrients."
     },
     {
       code: "B7.3.1.1.1",
-      strand: "Design and Communicating Ideas",
-      subStrand: "Technical Drawing",
-      contentStandard: "Demonstrate basic technical drawing skills using drawing instruments",
-      indicator: "Drawing board setup, line types, title block, and lettering",
-      objectives: "Use drawing instruments (T-square, set-squares, compass) to construct standard line types (border, hidden, center lines) and title blocks."
-    },
-    {
-      code: "B7.3.2.1.1",
-      strand: "Design and Communicating Ideas",
-      subStrand: "Plane Geometry",
-      contentStandard: "Construct geometric figures, angles, and regular polygons",
-      indicator: "Construction of triangles, quadrilaterals, and regular hexagons/pentagons",
-      objectives: "Construct regular polygons (pentagon, hexagon, octagon) using ruler and compasses based on specified side lengths."
+      strand: "Tools, Equipment and Processes",
+      subStrand: "Hand Tools and Food Preparation Techniques",
+      contentStandard: "Identify and use measuring, marking out, cutting tools and basic cooking equipment",
+      indicator: "Use measuring tapes, try squares, handsaws, chisels, sewing tools, and kitchen utensils safely",
+      objectives: "Execute accurate timber marking out with try square and practice basic food moist heat cooking methods."
     },
     {
       code: "B7.4.1.1.1",
-      strand: "Tools, Equipment and Processes",
-      subStrand: "Wood and Metalwork Tools",
-      contentStandard: "Identify, select, and use measuring, marking out, and cutting tools",
-      indicator: "Measuring tape, try-square, marking gauge, handsaws, and chisels",
-      objectives: "Select and demonstrate proper handling and maintenance of marking out, measuring, and cutting tools used in woodwork and metalwork."
-    },
-    {
-      code: "B7.4.2.1.1",
-      strand: "Tools, Equipment and Processes",
-      subStrand: "Food Preparation Methods",
-      contentStandard: "Demonstrate basic moist and dry heat cooking methods",
-      indicator: "Boiling, steaming, baking, and frying techniques",
-      objectives: "Prepare simple local dishes using moist heat (boiling, steaming) and dry heat (baking, frying) methods observing hygiene standards."
+      strand: "Design and Technology",
+      subStrand: "Freehand Sketching and Design Process",
+      contentStandard: "Demonstrate freehand pictorial drawing, 2D shapes, and design problem-solving steps",
+      indicator: "Sketch 3D objects in isometric and oblique projection and identify design steps (situation, brief, specification)",
+      objectives: "Produce 3D freehand sketches of furniture/tools and state the 6 steps of design process."
     },
     {
       code: "B7.5.1.1.1",
-      strand: "Technology and Entrepreneurship",
-      subStrand: "Career Pathways",
-      contentStandard: "Explore career opportunities in Career Technology disciplines",
-      indicator: "Careers in Engineering, Carpentry, Fashion Design, Catering, and Architecture",
-      objectives: "Identify vocational and technical career opportunities in local and global industries and state required educational pathways."
+      strand: "Entrepreneurship",
+      subStrand: "Small Scale Business and Career Opportunities",
+      contentStandard: "Identify career paths in food processing, garment making, woodworking, metalwork, and building",
+      indicator: "Examine entrepreneurial opportunities in Career Technology sectors in Ghana",
+      objectives: "Investigate local vocational career prospects and small business startup requirements."
+    }
+  ],
+  "Basic 7": [
+    {
+      code: "B7.1.1.1.1",
+      strand: "Health and Safety",
+      subStrand: "Workshop and Kitchen Safety Practices",
+      contentStandard: "Demonstrate understanding of personal hygiene, safety rules, and hazard prevention in technical workshops and kitchens",
+      indicator: "Identify personal protective equipment (PPE), workshop safety signs, and first aid procedures for cuts/burns",
+      objectives: "Demonstrate use of PPE (goggles, aprons, boots) and execute first aid for minor cuts and burns."
+    },
+    {
+      code: "B7.2.1.1.1",
+      strand: "Materials for Production",
+      subStrand: "Classification of Materials (Wood, Metal, Plastics, Food, Fabrics)",
+      contentStandard: "Classify hard/soft woods, ferrous/non-ferrous metals, plastics, food nutrients, and textile fibers",
+      indicator: "Distinguish between hardwoods (Mahogany, Odum) and softwoods, natural and synthetic fibers, and food groups",
+      objectives: "Classify wood species, metal samples, natural fibers (cotton, silk), and essential food nutrients."
+    },
+    {
+      code: "B7.3.1.1.1",
+      strand: "Tools, Equipment and Processes",
+      subStrand: "Hand Tools and Food Preparation Techniques",
+      contentStandard: "Identify and use measuring, marking out, cutting tools and basic cooking equipment",
+      indicator: "Use measuring tapes, try squares, handsaws, chisels, sewing tools, and kitchen utensils safely",
+      objectives: "Execute accurate timber marking out with try square and practice basic food moist heat cooking methods."
+    },
+    {
+      code: "B7.4.1.1.1",
+      strand: "Design and Technology",
+      subStrand: "Freehand Sketching and Design Process",
+      contentStandard: "Demonstrate freehand pictorial drawing, 2D shapes, and design problem-solving steps",
+      indicator: "Sketch 3D objects in isometric and oblique projection and identify design steps (situation, brief, specification)",
+      objectives: "Produce 3D freehand sketches of furniture/tools and state the 6 steps of design process."
+    },
+    {
+      code: "B7.5.1.1.1",
+      strand: "Entrepreneurship",
+      subStrand: "Small Scale Business and Career Opportunities",
+      contentStandard: "Identify career paths in food processing, garment making, woodworking, metalwork, and building",
+      indicator: "Examine entrepreneurial opportunities in Career Technology sectors in Ghana",
+      objectives: "Investigate local vocational career prospects and small business startup requirements."
     }
   ],
   "JHS 2": [
     {
       code: "B8.1.1.1.1",
       strand: "Health and Safety",
-      subStrand: "First Aid and Fire Safety",
-      contentStandard: "Apply first aid procedures and operate fire fighting equipment",
-      indicator: "Treatment of minor burns, cuts, fainting, and fire extinguisher usage",
-      objectives: "Demonstrate first aid procedures for workshop injuries (cuts, scalds, burns) and select appropriate fire extinguishers for Class A, B, and C fires."
-    },
-    {
-      code: "B8.1.1.1.2",
-      strand: "Health and Safety",
-      subStrand: "First Aid and Environmental Safety",
-      contentStandard: "Demonstrate procedures for First Aid and fire safety in workshops",
-      indicator: "Class A, B, C, and D fires and fire triangle principles",
-      objectives: "Explain fuel, heat, and oxygen fire triangle components and choose appropriate extinguishing agents."
+      subStrand: "Environmental Sanitation and Food Hygiene",
+      contentStandard: "Understand food preservation, kitchen sanitation, and waste management in production",
+      indicator: "Demonstrate food preservation methods (smoking, drying, refrigeration) and kitchen hygiene",
+      objectives: "Preserve perishable food items using smoking, salting, or drying and maintain sterile food preparation surfaces."
     },
     {
       code: "B8.2.1.1.1",
       strand: "Materials for Production",
-      subStrand: "Metals and Smart Materials",
-      contentStandard: "Classify ferrous/non-ferrous metals, alloys, and smart materials",
-      indicator: "Ferrous metals (mild steel, cast iron), non-ferrous metals (copper, aluminum), and alloys (brass, bronze)",
-      objectives: "Distinguish between ferrous and non-ferrous metals based on magnetic properties and corrosion resistance, and list common industrial alloys."
-    },
-    {
-      code: "B8.2.2.1.1",
-      strand: "Materials for Production",
-      subStrand: "Textiles and Fibers",
-      contentStandard: "Classify natural and synthetic textile fibers",
-      indicator: "Natural fibers (cotton, silk, wool) vs. synthetic fibers (nylon, polyester)",
-      objectives: "Test and classify textile fibers using burning tests and feel tests, describing properties like absorbency, strength, and elasticity."
+      subStrand: "Properties and Testing of Technical Materials",
+      contentStandard: "Test physical, mechanical, and chemical properties of timber, metals, ceramics, and fabrics",
+      indicator: "Test grain structure, hardness, malleability, tensile strength, absorbency, and food spoilage",
+      objectives: "Perform hardness and moisture tests on wood and metal samples and observe food spoilage signs."
     },
     {
       code: "B8.3.1.1.1",
-      strand: "Design and Communicating Ideas",
-      subStrand: "Pictorial Drawing",
-      contentStandard: "Construct Isometric and Oblique pictorial drawings",
-      indicator: "Isometric drawing (30°) and Oblique projection (45°)",
-      objectives: "Construct 3D blocks and simple artifacts in Isometric projection showing true dimensions along 30° isometric axes."
-    },
-    {
-      code: "B8.3.2.1.1",
-      strand: "Design and Communicating Ideas",
-      subStrand: "Design Process",
-      contentStandard: "Apply the design process to solve practical everyday problems",
-      indicator: "Design brief, specification, generating 3 ideas, and choosing best solution",
-      objectives: "Develop a comprehensive design portfolio including problem statement, design specification, annotated sketches, and final working drawing."
+      strand: "Tools, Equipment and Processes",
+      subStrand: "Joints, Fasteners, Sewing Techniques and Meal Planning",
+      contentStandard: "Construct wood joints (halving, mortise & tenon), metal joints, garment seams, and balanced meal planning",
+      indicator: "Make lap/mortise wood joints, execute temporary/permanent sewing stitches, and plan balanced family meals",
+      objectives: "Construct a wooden lap joint using chisel/tenon saw and sew neat garment seams."
     },
     {
       code: "B8.4.1.1.1",
-      strand: "Tools, Equipment and Processes",
-      subStrand: "Joining and Assembly Processes",
-      contentStandard: "Demonstrate temporary and permanent joining methods in materials",
-      indicator: "Wood joints (mortise & tenon, lap joint), soldering, riveting, and sewing seams",
-      objectives: "Construct common woodworking joints (halving joint, mortise and tenon) and execute temporary/permanent garment seams (open seam, French seam)."
-    },
-    {
-      code: "B8.4.2.1.1",
-      strand: "Tools, Equipment and Processes",
-      subStrand: "Food Preservation and Meal Planning",
-      contentStandard: "Apply principles of food preservation and balanced meal planning",
-      indicator: "Preservation techniques (drying, smoking, salting, refrigeration) and meal planning for special groups",
-      objectives: "Demonstrate food preservation methods for perishable local foods and plan balanced meals for adolescents, manual workers, and invalids."
+      strand: "Design and Technology",
+      subStrand: "Orthographic Projection and Pattern Making",
+      contentStandard: "Draw 1st angle orthographic projections (front, plan, side elevations) and garment pattern drafting",
+      indicator: "Construct 1st angle orthographic views of 3D blocks and draft simple skirt/shirt patterns",
+      objectives: "Draw front, plan, and side elevations of a shaped wooden block in 1st angle orthographic projection."
     },
     {
       code: "B8.5.1.1.1",
-      strand: "Technology and Entrepreneurship",
-      subStrand: "Costing and Business Planning",
-      contentStandard: "Calculate production costs, selling price, and profit margin for crafted products",
-      indicator: "Direct/indirect costs, overheads, unit cost calculation, and profit margin",
-      objectives: "Calculate cost of materials, labor, overheads, and establish competitive selling prices and profit margins for produced items."
+      strand: "Entrepreneurship",
+      subStrand: "Costing, Pricing and Marketing of Artifacts/Foods",
+      contentStandard: "Calculate prime cost, overheads, profit margins, and selling price for items and meals",
+      indicator: "Compute raw material costs, labor costs, overheads, and set competitive retail prices",
+      objectives: "Develop cost sheets for a woodwork artifact or catering dish determining unit profit margin."
+    }
+  ],
+  "Basic 8": [
+    {
+      code: "B8.1.1.1.1",
+      strand: "Health and Safety",
+      subStrand: "Environmental Sanitation and Food Hygiene",
+      contentStandard: "Understand food preservation, kitchen sanitation, and waste management in production",
+      indicator: "Demonstrate food preservation methods (smoking, drying, refrigeration) and kitchen hygiene",
+      objectives: "Preserve perishable food items using smoking, salting, or drying and maintain sterile food preparation surfaces."
+    },
+    {
+      code: "B8.2.1.1.1",
+      strand: "Materials for Production",
+      subStrand: "Properties and Testing of Technical Materials",
+      contentStandard: "Test physical, mechanical, and chemical properties of timber, metals, ceramics, and fabrics",
+      indicator: "Test grain structure, hardness, malleability, tensile strength, absorbency, and food spoilage",
+      objectives: "Perform hardness and moisture tests on wood and metal samples and observe food spoilage signs."
+    },
+    {
+      code: "B8.3.1.1.1",
+      strand: "Tools, Equipment and Processes",
+      subStrand: "Joints, Fasteners, Sewing Techniques and Meal Planning",
+      contentStandard: "Construct wood joints (halving, mortise & tenon), metal joints, garment seams, and balanced meal planning",
+      indicator: "Make lap/mortise wood joints, execute temporary/permanent sewing stitches, and plan balanced family meals",
+      objectives: "Construct a wooden lap joint using chisel/tenon saw and sew neat garment seams."
+    },
+    {
+      code: "B8.4.1.1.1",
+      strand: "Design and Technology",
+      subStrand: "Orthographic Projection and Pattern Making",
+      contentStandard: "Draw 1st angle orthographic projections (front, plan, side elevations) and garment pattern drafting",
+      indicator: "Construct 1st angle orthographic views of 3D blocks and draft simple skirt/shirt patterns",
+      objectives: "Draw front, plan, and side elevations of a shaped wooden block in 1st angle orthographic projection."
+    },
+    {
+      code: "B8.5.1.1.1",
+      strand: "Entrepreneurship",
+      subStrand: "Costing, Pricing and Marketing of Artifacts/Foods",
+      contentStandard: "Calculate prime cost, overheads, profit margins, and selling price for items and meals",
+      indicator: "Compute raw material costs, labor costs, overheads, and set competitive retail prices",
+      objectives: "Develop cost sheets for a woodwork artifact or catering dish determining unit profit margin."
     }
   ],
   "JHS 3": [
     {
       code: "B9.1.1.1.1",
-      strand: "Designing and Prototyping",
-      subStrand: "Design Process and Artifact Construction",
-      contentStandard: "Apply the full design process (situation, brief, research, specifications, ideas, artifact, evaluation)",
-      indicator: "Design brief, specifications, working drawing, mock-up model, and artifact creation",
-      objectives: "Follow the design process to create a functional prototype/artifact (wood, metal, plastic, or fabric) solving a community problem."
-    },
-    {
-      code: "B9.1.1.1.2",
-      strand: "Designing and Prototyping",
-      subStrand: "Design Process and Artifact Construction",
-      contentStandard: "Apply the full design process",
-      indicator: "Testing, evaluating, and writing modification reports for finished artifacts",
-      objectives: "Test completed products against original design specifications and write evaluation reports proposing design improvements."
+      strand: "Health and Safety",
+      subStrand: "BECE Career Technology Safety and Production Standards",
+      contentStandard: "Master workshop safety regulations, risk assessment, and environmental standards",
+      indicator: "Analyze safety hazards, emergency response protocols, and quality control in production",
+      objectives: "Identify hazard mitigation steps and quality assurance protocols for technical products."
     },
     {
       code: "B9.2.1.1.1",
       strand: "Materials for Production",
-      subStrand: "BECE Material Selection & Testing",
-      contentStandard: "Select appropriate materials based on mechanical, thermal, and aesthetic requirements",
-      indicator: "Tensile strength, hardness, malleability, ductility, and grain structure tests",
-      objectives: "Compare material properties (toughness, ductility, malleability, elasticity) to select optimal materials for specific engineering and domestic products."
+      subStrand: "Composite Materials, Smart Textiles and Food Technology",
+      contentStandard: "Demonstrate understanding of composite materials (plywood, fiberglass), smart fabrics, and food processing",
+      indicator: "Examine plywood manufacturing, metal alloys (brass, bronze), food fortification, and garment care",
+      objectives: "Analyze properties of composite materials and food fortification techniques."
     },
     {
       code: "B9.3.1.1.1",
-      strand: "Design and Communicating Ideas",
-      subStrand: "Orthographic Projection (1st & 3rd Angle)",
-      contentStandard: "Construct 1st Angle and 3rd Angle Orthographic Projections from 3D pictorial models",
-      indicator: "Front elevation, Plan, and End elevation layout with dimensions",
-      objectives: "Draw complete 1st Angle or 3rd Angle Orthographic Projection views showing Front Elevation, End Elevation, and Plan with standard dimensioning conventions."
-    },
-    {
-      code: "B9.3.2.1.1",
-      strand: "Design and Communicating Ideas",
-      subStrand: "Surface Development & CAD Modeling",
-      contentStandard: "Construct surface developments (patterns) for 3D shapes",
-      indicator: "Parallel line development for prisms/cylinders and radial line development for cones/pyramids",
-      objectives: "Construct flat patterns/developments for sheet metal or cardboard containers (boxes, funnels, cylinders)."
+      strand: "Tools, Equipment and Processes",
+      subStrand: "Finishing Techniques, Machine Operations and Meal Service",
+      contentStandard: "Apply surface finishing (varnishing, painting, polishing), machine sewing, and catering service",
+      indicator: "Prepare surfaces and apply wood stains, paints, lacquer, operate sewing machines, and set dining tables",
+      objectives: "Apply sandpapering, staining, and varnish finishing to woodwork projects and execute machine stitching."
     },
     {
       code: "B9.4.1.1.1",
-      strand: "Tools, Equipment and Processes",
-      subStrand: "Finishing and Surface Treatment",
-      contentStandard: "Apply appropriate surface finishes to wood, metal, and fabric products",
-      indicator: "Sanding, varnishing, painting, lacquering, polishing, dyeing, and batik printing",
-      objectives: "Demonstrate surface preparation and application of wood finishes (stain, varnish), metal rust-proofing (priming, enamel paint), and fabric decoration (tie-and-dye)."
-    },
-    {
-      code: "B9.4.2.1.1",
-      strand: "Tools, Equipment and Processes",
-      subStrand: "Garment Construction & Fasteners",
-      contentStandard: "Construct complete simple garments using patterns, darts, gathers, and closures",
-      indicator: "Pattern drafting, cutting, stitching darts, gathers, zips, buttons, and buttonholes",
-      objectives: "Draft simple garment patterns, transfer markings to fabric, construct darts/gathers, and insert zippers or buttons cleanly."
-    },
-    {
-      code: "B9.4.3.1.1",
-      strand: "Tools, Equipment and Processes",
-      subStrand: "Basic Building Construction & Masonry",
-      contentStandard: "Understand foundation types, blocklaying bond patterns, and mortar mixes",
-      indicator: "Stretcher bond, header bond, concrete mix ratios (1:2:4), and wall construction",
-      objectives: "Describe blocklaying bond patterns (stretcher bond) and calculate quantities of cement, sand, and aggregate for standard mortar/concrete mixes."
+      strand: "Design and Technology",
+      subStrand: "BECE Design Realization, Working Drawings and Portfolio",
+      contentStandard: "Develop complete design portfolio: working drawings, cutting lists, step-by-step realization",
+      indicator: "Construct working drawings with dimensions, detailed cutting lists, and prototypes for BECE assessment",
+      objectives: "Produce fully dimensioned orthographic working drawings and material cutting lists."
     },
     {
       code: "B9.5.1.1.1",
-      strand: "Technology and Entrepreneurship",
-      subStrand: "BECE Entrepreneurship, Marketing & Enterprise Realization",
-      contentStandard: "Formulate comprehensive business plans, product packaging, and branding for BECE enterprise projects",
-      indicator: "Brand logo, packaging design, marketing mix (4 Ps), and enterprise pitch",
-      objectives: "Prepare a complete business proposal including product design drawings, cost estimate, target market analysis, packaging design, and promotional strategy for BECE Career Technology projects."
+      strand: "Entrepreneurship",
+      subStrand: "Business Plan Development and BECE Exam Preparation",
+      contentStandard: "Draft business plans, marketing strategies, packaging, and master BECE Career Technology theory/practical exams",
+      indicator: "Formulate 1-page business plans, product packaging designs, and execute BECE exam questions",
+      objectives: "Formulate business plans and answer BECE Career Technology theory and practical design questions."
+    }
+  ],
+  "Basic 9": [
+    {
+      code: "B9.1.1.1.1",
+      strand: "Health and Safety",
+      subStrand: "BECE Career Technology Safety and Production Standards",
+      contentStandard: "Master workshop safety regulations, risk assessment, and environmental standards",
+      indicator: "Analyze safety hazards, emergency response protocols, and quality control in production",
+      objectives: "Identify hazard mitigation steps and quality assurance protocols for technical products."
+    },
+    {
+      code: "B9.2.1.1.1",
+      strand: "Materials for Production",
+      subStrand: "Composite Materials, Smart Textiles and Food Technology",
+      contentStandard: "Demonstrate understanding of composite materials (plywood, fiberglass), smart fabrics, and food processing",
+      indicator: "Examine plywood manufacturing, metal alloys (brass, bronze), food fortification, and garment care",
+      objectives: "Analyze properties of composite materials and food fortification techniques."
+    },
+    {
+      code: "B9.3.1.1.1",
+      strand: "Tools, Equipment and Processes",
+      subStrand: "Finishing Techniques, Machine Operations and Meal Service",
+      contentStandard: "Apply surface finishing (varnishing, painting, polishing), machine sewing, and catering service",
+      indicator: "Prepare surfaces and apply wood stains, paints, lacquer, operate sewing machines, and set dining tables",
+      objectives: "Apply sandpapering, staining, and varnish finishing to woodwork projects and execute machine stitching."
+    },
+    {
+      code: "B9.4.1.1.1",
+      strand: "Design and Technology",
+      subStrand: "BECE Design Realization, Working Drawings and Portfolio",
+      contentStandard: "Develop complete design portfolio: working drawings, cutting lists, step-by-step realization",
+      indicator: "Construct working drawings with dimensions, detailed cutting lists, and prototypes for BECE assessment",
+      objectives: "Produce fully dimensioned orthographic working drawings and material cutting lists."
+    },
+    {
+      code: "B9.5.1.1.1",
+      strand: "Entrepreneurship",
+      subStrand: "Business Plan Development and BECE Exam Preparation",
+      contentStandard: "Draft business plans, marketing strategies, packaging, and master BECE Career Technology theory/practical exams",
+      indicator: "Formulate 1-page business plans, product packaging designs, and execute BECE exam questions",
+      objectives: "Formulate business plans and answer BECE Career Technology theory and practical design questions."
     }
   ]
 };

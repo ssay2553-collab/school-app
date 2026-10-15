@@ -1,12 +1,22 @@
 import { Tabs } from "expo-router";
 import React, { useRef } from "react";
 import { Platform, View, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 
 export default function StudentLayout() {
   const primary = SCHOOL_CONFIG.primaryColor || "#6366F1";
+  const insets = useSafeAreaInsets();
+
+  const bottomInset = insets.bottom;
+  const tabHeight = Platform.OS === 'ios'
+    ? (bottomInset > 0 ? 55 + bottomInset : 80)
+    : (55 + (bottomInset > 0 ? bottomInset : 10));
+  const paddingBottom = bottomInset > 0
+    ? bottomInset
+    : (Platform.OS === 'ios' ? 20 : 8);
 
   return (
     <Tabs
@@ -18,9 +28,9 @@ export default function StudentLayout() {
           backgroundColor: "#FFFFFF",
           borderTopWidth: 0,
           elevation: 10,
-          height: Platform.OS === 'ios' ? 88 : 65,
-          paddingBottom: Platform.OS === 'ios' ? 30 : 10,
-          paddingTop: 10,
+          height: tabHeight,
+          paddingBottom: paddingBottom,
+          paddingTop: 8,
           ...SHADOWS.medium,
         },
         tabBarLabelStyle: {

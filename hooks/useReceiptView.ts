@@ -114,7 +114,7 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
                                     receivedFrom: "Historical Record",
                                     method: "Migration",
                                     isAdjustment: true,
-                                });
+                                } as any);
                             }
                         });
                     }

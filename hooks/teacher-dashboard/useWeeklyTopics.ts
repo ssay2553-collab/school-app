@@ -240,21 +240,6 @@ export const useWeeklyTopics = () => {
     return false;
   }, [topicData.indicatorCode, selectedSubject, selectedClassId, userCurriculum, teacherClasses, showToast]);
 
-  useEffect(() => {
-    // Fast debounced auto-lookup
-    const code = topicData.indicatorCode?.trim();
-    if (!code || code.length < 4) {
-      if (lookupStatus !== 'idle') setLookupStatus('idle');
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      performLookup(code);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [topicData.indicatorCode, selectedSubject, selectedClassId, performLookup]);
-
   const saveTopic = async () => {
     if (!selectedClassId || !selectedSubject || !startDate || !endDate || !academicYear || !term) {
       showToast({ message: "Missing required information", type: "error" });

@@ -1,384 +1,305 @@
 import { GESIndicator } from "../GES_Curriculum";
 
 export const RME: Record<string, GESIndicator[]> = {
+  "Basic 1": [
+    {
+      code: "B1.1.1.1.1",
+      strand: "God, His Creation and Attributes",
+      subStrand: "God the Creator",
+      contentStandard:
+        "Recognize God as the Creator of the universe, nature, and human beings",
+      indicator:
+        "Name things created by God (sun, stars, animals, plants, humans) and care for nature",
+      objectives:
+        "Identify natural creations and explain why caring for environment shows gratitude to God.",
+    },
+    {
+      code: "B1.2.1.1.1",
+      strand: "Religious Practices and Observances",
+      subStrand: "Prayer and Worship",
+      contentStandard:
+        "Understand prayer in Christianity, Islam, and Traditional Religion",
+      indicator:
+        "Demonstrate prayer postures and recite simple prayers in Christian, Islamic, or Traditional faith",
+      objectives:
+        "Demonstrate respectful prayer postures (bowing, prostration, hands folded) and quiet reverence.",
+    },
+    {
+      code: "B1.3.1.1.1",
+      strand: "Family and Community",
+      subStrand: "Roles in the Family",
+      contentStandard:
+        "Identify family duties and show respect to parents and siblings",
+      indicator:
+        "Perform age-appropriate home chores and show obedience to family members",
+      objectives:
+        "List household duties and practice helpfulness and respect towards parents and elders.",
+    },
+    {
+      code: "B1.4.1.1.1",
+      strand: "Religious Leaders and Moral Life",
+      subStrand: "Good Moral Behavior",
+      contentStandard:
+        "Demonstrate honesty, truthfulness, and kindness in daily interactions",
+      indicator:
+        "Identify good moral behaviors (telling truth, sharing, helping) vs bad behaviors (lying, stealing)",
+      objectives:
+        "Explain why honesty and kindness bring peace and trust at home and school.",
+    },
+  ],
   "Basic 4": [
     {
       code: "B4.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand: "God the Creator",
-      contentStandard: "Demonstrate understanding of the attributes of God in the three major religions",
-      indicator: "Attributes of God (Love, Omnipotence, Omnipresence, Mercy, Justice)",
-      objectives: "Describe key attributes of God in Christianity, Islam, and African Traditional Religion and explain how they guide human behavior."
-    },
-    {
-      code: "B4.1.1.1.2",
-      strand: "God, His Creation and Attributes",
-      subStrand: "God the Creator",
-      contentStandard: "Demonstrate understanding of the attributes of God in the three major religions",
-      indicator: "Names of God in indigenous Ghanaian languages (Nyame, Mawu, Mawu-Kitikata)",
-      objectives: "List indigenous Ghanaian names for God and explain their moral meanings."
-    },
-    {
-      code: "B4.1.2.1.1",
-      strand: "God, His Creation and Attributes",
-      subStrand: "Caring for Creation",
-      contentStandard: "Appreciate human responsibility towards protecting environment and nature",
-      indicator: "Environmental protection as a religious duty",
-      objectives: "Explain why caring for plants, animals, and water bodies is an act of religious stewardship."
+      subStrand: "Attributes of God",
+      contentStandard:
+        "Understand attributes of God in Christianity, Islam, and Traditional Religion",
+      indicator:
+        "Describe attributes of God (Omnipotent, Omniscient, Omnipresent, Loving, Merciful) in the 3 religions",
+      objectives:
+        "Compare local names and attributes of God in Ghanaian languages and major religions.",
     },
     {
       code: "B4.2.1.1.1",
-      strand: "Religious Practices",
-      subStrand: "Religious Worship",
-      contentStandard: "Identify types and modes of worship in the three main religions",
-      indicator: "Christian, Islamic, and Traditional worship practices",
-      objectives: "Describe how Christians, Muslims, and Traditionalists conduct worship services and list sacred objects used."
-    },
-    {
-      code: "B4.2.2.1.1",
-      strand: "Religious Practices",
-      subStrand: "Rites of Passage",
-      contentStandard: "Understand naming ceremonies and birth rites in Ghana",
-      indicator: "Christian, Islamic (Aqiqa), and Traditional naming ceremonies",
-      objectives: "Compare naming and outdooring ceremonies in Christianity, Islam, and Traditional Ghanaian society."
+      strand: "Religious Practices and Observances",
+      subStrand: "Religious Festivals",
+      contentStandard:
+        "Examine significance of major religious festivals in Ghana",
+      indicator:
+        "Describe Christmas, Easter, Eid-ul-Fitr, Eid-ul-Adha, and Traditional festivals (Odwira, Homowo)",
+      objectives:
+        "Analyze religious and social significance of major national religious celebrations.",
     },
     {
       code: "B4.3.1.1.1",
-      strand: "Religious Leaders",
-      subStrand: "Early Life of Religious Leaders",
-      contentStandard: "Understand early birth and childhood stories of major religious leaders",
-      indicator: "Early life of Jesus Christ, Prophet Muhammad (PBUH), and Okomfo Anokye",
-      objectives: "Narrate birth and childhood stories of Jesus Christ, Prophet Muhammad (PBUH), and Okomfo Anokye highlighting virtues."
+      strand: "Family and Community",
+      subStrand: "Authority and Obedience",
+      contentStandard:
+        "Demonstrate respect for constituted authority in school, community, and nation",
+      indicator:
+        "Explain reasons for obeying school rules, traffic laws, and national leaders",
+      objectives:
+        "Discuss benefits of obedience to authority and consequences of lawlessness.",
     },
     {
       code: "B4.4.1.1.1",
-      strand: "Family and Community",
-      subStrand: "Family Roles and Relationships",
-      contentStandard: "Demonstrate understanding of duties of children towards parents and elders",
-      indicator: "Filial piety, respect, and assistance at home",
-      objectives: "List responsibilities of children to parents and explain how respectful behavior promotes family harmony."
+      strand: "Religious Leaders and Moral Life",
+      subStrand: "Lives of Religious Leaders",
+      contentStandard: "Study early life and call of key religious figures",
+      indicator:
+        "Narrate call of Moses/Jesus (Christianity), Prophet Muhammad (Islam), and Traditional leaders (Okomfo Anokye)",
+      objectives:
+        "Examine virtues of obedience, humility, and faith in the call of religious leaders.",
     },
-    {
-      code: "B4.5.2.1.1",
-      strand: "Moral Life",
-      subStrand: "Moral Virtues",
-      contentStandard: "Apply the values of honesty and truthfulness in daily living",
-      indicator: "Honesty in school and home dealings",
-      objectives: "Explain the importance of telling the truth, avoiding cheating in exams, and returning lost property."
-    }
-  ],
-  "Basic 5": [
-    {
-      code: "B5.1.1.1.1",
-      strand: "God, His Creation and Attributes",
-      subStrand: "Purpose of Creation",
-      contentStandard: "Understand the purpose of human creation according to major religions",
-      indicator: "Service to God, moral living, and stewardship of Earth",
-      objectives: "Explain that humans were created to worship God, live morally, and care for fellow human beings and nature."
-    },
-    {
-      code: "B5.2.1.1.1",
-      strand: "Religious Practices",
-      subStrand: "Prayer and Fasting",
-      contentStandard: "Understand the importance and types of prayer and fasting in various religions",
-      indicator: "Christian prayer/fasting, Islamic Salat/Sawm (Ramadan), and Traditional libation",
-      objectives: "Explain the significance of prayer and fasting in Christianity and Islam, and the meaning of libation in Traditional Religion."
-    },
-    {
-      code: "B5.2.1.1.2",
-      strand: "Religious Practices",
-      subStrand: "Festivals and Celebrations",
-      contentStandard: "Identify major religious festivals celebrated in Ghana",
-      indicator: "Moral lessons and social unity promoted by traditional and religious festivals",
-      objectives: "Explain how festivals foster reconciliation, family reunions, and community development."
-    },
-    {
-      code: "B5.2.2.1.1",
-      strand: "Religious Practices",
-      subStrand: "Religious Festivals",
-      contentStandard: "Appreciate major religious festivals celebrated in Ghana",
-      indicator: "Christmas, Easter, Eid-ul-Fitr, Eid-ul-Adha, and Traditional festivals (Odwira, Homowo)",
-      objectives: "Explain the historical and moral significance of major Christian, Islamic, and Traditional festivals."
-    },
-    {
-      code: "B5.3.1.1.1",
-      strand: "Religious Leaders",
-      subStrand: "Call and Ministry of Religious Leaders",
-      contentStandard: "Understand the ministry and teachings of Jesus Christ and Prophet Muhammad (PBUH)",
-      indicator: "Parables of Jesus and Hadith teachings of Prophet Muhammad (PBUH)",
-      objectives: "Explain moral lessons from selected parables of Jesus (e.g. Good Samaritan, Prodigal Son) and Hadiths on kindness and charity."
-    },
-    {
-      code: "B5.4.1.1.1",
-      strand: "Family and Community",
-      subStrand: "Manners and Decency",
-      contentStandard: "Practice good manners, greetings, and decorum in public life",
-      indicator: "Greeting customs, polite language, table manners, and modesty",
-      objectives: "Demonstrate culturally acceptable modes of greeting elders, table etiquette, and polite language in daily interaction."
-    },
-    {
-      code: "B5.5.1.1.1",
-      strand: "Moral Life",
-      subStrand: "Reward and Punishment",
-      contentStandard: "Understand the concept of reward for good deeds and consequences of bad deeds",
-      indicator: "Good deeds, bad deeds, societal sanctions, and divine justice",
-      objectives: "Discuss societal and spiritual rewards for good behavior (praise, trust, blessings) and consequences of immoral actions (punishment, shame)."
-    }
-  ],
-  "Basic 6": [
-    {
-      code: "B6.1.1.1.1",
-      strand: "God, His Creation and Attributes",
-      subStrand: "Names and Attributes of God in Local Languages",
-      contentStandard: "Know indigenous names and titles of God across Ghanaian languages",
-      indicator: "Mawu, Onyame, Borebore, Oseadeeyo, Naawuni, Tuma",
-      objectives: "Identify local names and praise titles for God in various Ghanaian languages (e.g., Onyankopon, Mawu-Ga, Naawuni) and their meanings."
-    },
-    {
-      code: "B6.2.1.1.1",
-      strand: "Religious Practices",
-      subStrand: "Puberty and Marriage Rites",
-      contentStandard: "Demonstrate understanding of puberty and marriage rites in Ghana",
-      indicator: "Dipo, Bragoro, Baatseri puberty rites and marriage processes",
-      objectives: "Describe traditional puberty rites for adolescents (e.g. Bragoro, Dipo) and explain their role in promoting chastity and maturity."
-    },
-    {
-      code: "B6.2.1.1.2",
-      strand: "Religious Practices",
-      subStrand: "Sacred Scriptures and Writings",
-      contentStandard: "Understand the Holy Bible, Holy Quran, and Oral Traditions",
-      indicator: "Key moral commandments in the Bible (Ten Commandments) and Quran (Moral Precepts)",
-      objectives: "Compare moral principles in the Ten Commandments and Quranic teachings."
-    },
-    {
-      code: "B6.3.1.1.1",
-      strand: "Religious Leaders",
-      subStrand: "Traditional Leaders and Ancestors",
-      contentStandard: "Appreciate the role of ancestors and traditional heroes/heroines as moral exemplars",
-      indicator: "Ancestor veneration, qualification for ancestorhood, and moral lessons",
-      objectives: "Explain the criteria for becoming an ancestor (good moral life, ripe age, natural death) and how ancestor veneration encourages morality."
-    },
-    {
-      code: "B6.4.1.1.1",
-      strand: "Family and Community",
-      subStrand: "Obedience and Respect for Authority",
-      contentStandard: "Understand the importance of obedience to civil, school, and religious laws",
-      indicator: "Respect for law enforcement, school rules, and national leaders",
-      objectives: "Evaluate the consequences of lawlessness, vandalism, and disobedience in schools and wider society."
-    },
-    {
-      code: "B6.5.1.1.1",
-      strand: "Moral Life",
-      subStrand: "Substance Abuse and Moral Integrity",
-      contentStandard: "Recognize the dangers of drug abuse, alcoholism, and negative peer influences",
-      indicator: "Prevention of drug abuse (tramadol, alcohol, tobacco, marijuana)",
-      objectives: "Identify common abused substances, analyze their physical/mental health dangers, and demonstrate strategies to resist drug pressure."
-    }
   ],
   "JHS 1": [
     {
       code: "B7.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand: "Nature of God and Creation Stories",
-      contentStandard: "Compare creation stories in Christianity, Islam, and African Traditional Religion",
-      indicator: "Genesis creation, Quranic creation, and Traditional mythologies (Nyame/Odomankoma)",
-      objectives: "Compare creation narratives across the three main religions in Ghana and highlight common themes of divine sovereignty."
+      subStrand: "Purpose of Creation and Stewardship",
+      contentStandard:
+        "Demonstrate understanding of human responsibility as stewards of God's creation",
+      indicator:
+        "Analyze human misuse of environment (galamsey, deforestation) and moral obligation to preserve nature",
+      objectives:
+        "Evaluate religious mandates on environmental preservation and community sanitation.",
     },
     {
-      code: "B7.2.1.1.2",
-      strand: "Religious Practices",
-      subStrand: "Prayer and Fasting",
-      contentStandard: "Analyze purpose, types, and importance of prayer and fasting in religions",
-      indicator: "Types of prayer: Thanksgiving, Confession, Intercession, Supplication",
-      objectives: "Differentiate between types of Christian, Islamic, and Traditional prayers."
+      code: "B7.2.1.1.1",
+      strand: "Religious Practices and Observances",
+      subStrand: "Rites of Passage",
+      contentStandard:
+        "Examine birth, naming, puberty, marriage, and death rites in 3 main religions in Ghana",
+      indicator:
+        "Compare naming ceremonies (Outdooring/Aqeeqah), puberty rites (Dipo/Bragoro), marriage, and funeral rites",
+      objectives:
+        "Analyze moral and cultural significance of traditional, Christian, and Islamic rites of passage.",
     },
     {
       code: "B7.3.1.1.1",
-      strand: "Religious Leaders",
-      subStrand: "Exemplary Qualities of Religious Leaders",
-      contentStandard: "Identify virtues of religious leaders and apply them to youth life",
-      indicator: "Honesty, humility, tolerance, forgiveness, and servant leadership",
-      objectives: "Evaluate leadership qualities of Jesus, Prophet Muhammad, and traditional ancestors, showing how youth can emulate them."
+      strand: "Family and Community",
+      subStrand: "Communal Living and Social Cohesion",
+      contentStandard:
+        "Demonstrate commitment to communal work, volunteerism, and peaceful coexistence",
+      indicator:
+        "Participate in community cleanup, communal projects, and promote inter-faith harmony",
+      objectives:
+        "Design community service initiatives and foster inter-religious dialogue.",
     },
     {
       code: "B7.4.1.1.1",
-      strand: "Family, Community and Moral Life",
-      subStrand: "Substance Abuse and Moral Integrity",
-      contentStandard: "Evaluate religious stances on drug abuse, alcoholism, and moral corruption",
-      indicator: "Alcoholism, illicit drugs, gambling, and maintaining personal integrity",
-      objectives: "Discuss religious teachings prohibiting drug abuse, excessive drinking, and gambling, highlighting physical and social consequences."
+      strand: "Religious Leaders and Moral Life",
+      subStrand: "Moral Values, Chastity and Anti-Corruption",
+      contentStandard:
+        "Examine moral teachings on chastity, honesty, anti-bribery, and avoiding drug abuse",
+      indicator:
+        "Apply moral principles to resist peer pressure, teenage pregnancy, examination malpractice, and corruption",
+      objectives:
+        "Formulate personal moral commitment code rejecting examination dishonesty and substance abuse.",
+    },
+  ],
+  "Basic 7": [
+    {
+      code: "B7.1.1.1.1",
+      strand: "God, His Creation and Attributes",
+      subStrand: "Purpose of Creation and Stewardship",
+      contentStandard:
+        "Demonstrate understanding of human responsibility as stewards of God's creation",
+      indicator:
+        "Analyze human misuse of environment (galamsey, deforestation) and moral obligation to preserve nature",
+      objectives:
+        "Evaluate religious mandates on environmental preservation and community sanitation.",
     },
     {
-      code: "J1.2.2.1.1",
-      strand: "Religious Practices",
-      subStrand: "Religious Festivals & Community Cohesion",
-      contentStandard: "Analyze the social, moral, and economic impact of religious and traditional festivals in Ghana",
-      indicator: "Festival activities, reconciliation, developmental fundraising, and tourism",
-      objectives: "Evaluate how Ghanaian festivals promote family reunions, conflict reconciliation, community fundraising, and cultural preservation."
+      code: "B7.2.1.1.1",
+      strand: "Religious Practices and Observances",
+      subStrand: "Rites of Passage",
+      contentStandard:
+        "Examine birth, naming, puberty, marriage, and death rites in 3 main religions in Ghana",
+      indicator:
+        "Compare naming ceremonies (Outdooring/Aqeeqah), puberty rites (Dipo/Bragoro), marriage, and funeral rites",
+      objectives:
+        "Analyze moral and cultural significance of traditional, Christian, and Islamic rites of passage.",
     },
     {
-      code: "J1.3.1.1.1",
-      strand: "Religious Leaders",
-      subStrand: "Patriarchs and Prophets",
-      contentStandard: "Analyze the faith and obedience of Abraham, Moses, and Prophet Ibrahim (AS)",
-      indicator: "Covenant with God, Sacrifice of Isaac/Ismail, and the 10 Commandments",
-      objectives: "Discuss the exemplary faith of Abraham/Ibrahim (AS) and the moral significance of the Ten Commandments given through Moses."
-    },
-    {
-      code: "J1.4.1.1.1",
+      code: "B7.3.1.1.1",
       strand: "Family and Community",
-      subStrand: "Family Systems and Inheritance",
-      contentStandard: "Compare patrilineal and matrilineal family systems and inheritance laws in Ghana",
-      indicator: "Patrilineal vs. Matrilineal inheritance and PNDC Law 111 (Intestate Succession Law)",
-      objectives: "Explain patrilineal and matrilineal inheritance systems in Ghana and discuss the benefits of PNDC Law 111 in protecting widows and children."
+      subStrand: "Communal Living and Social Cohesion",
+      contentStandard:
+        "Demonstrate commitment to communal work, volunteerism, and peaceful coexistence",
+      indicator:
+        "Participate in community cleanup, communal projects, and promote inter-faith harmony",
+      objectives:
+        "Design community service initiatives and foster inter-religious dialogue.",
     },
     {
-      code: "J1.5.1.1.1",
-      strand: "Moral Life",
-      subStrand: "Moral Virtues and Character Building",
-      contentStandard: "Demonstrate commitment to core moral virtues: humility, patience, forgiveness, and hard work",
-      indicator: "Cultivating moral virtues and overcoming vices",
-      objectives: "Analyze how virtues like humility, patience, hard work, and forgiveness build individual integrity and peaceful coexistence."
-    }
+      code: "B7.4.1.1.1",
+      strand: "Religious Leaders and Moral Life",
+      subStrand: "Moral Values, Chastity and Anti-Corruption",
+      contentStandard:
+        "Examine moral teachings on chastity, honesty, anti-bribery, and avoiding drug abuse",
+      indicator:
+        "Apply moral principles to resist peer pressure, teenage pregnancy, examination malpractice, and corruption",
+      objectives:
+        "Formulate personal moral commitment code rejecting examination dishonesty and substance abuse.",
+    },
   ],
   "JHS 2": [
     {
       code: "B8.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand: "Sovereignty of God and Human Free Will",
-      contentStandard: "Understand divine providence, moral free will, and human choices",
-      indicator: "Free will, choices, moral consequences, and divine guidance",
-      objectives: "Explain that God gave humans free will to choose between good and evil, and that choices carry moral consequences."
+      subStrand: "Stewardship and Environmental Care",
+      contentStandard:
+        "Demonstrate understanding of human responsibility to care for God's creation and the environment",
+      indicator:
+        "Evaluate the effects of deforestation, illegal mining, and pollution on communities and explain religious responsibilities toward nature",
+      objectives:
+        "Propose practical ways to protect forests, water bodies, and public spaces as stewardship of creation.",
     },
     {
       code: "B8.2.1.1.1",
-      strand: "Religious Practices",
-      subStrand: "Marriage and Family Rites",
-      contentStandard: "Analyze religious marriage ceremonies and conditions for successful family life",
-      indicator: "Christian, Islamic (Nikah), and Traditional customary marriage rites",
-      objectives: "Compare procedures and conditions for customary, Christian, and Islamic marriages in Ghana."
-    },
-    {
-      code: "B8.2.1.1.2",
-      strand: "Religious Practices",
-      subStrand: "Marriage and Family Rites",
-      contentStandard: "Analyze religious marriage ceremonies and conditions for successful family life",
-      indicator: "Responsibilities of husband and wife in Christian, Islamic, and Customary marriages",
-      objectives: "Discuss duties of spouses in sustaining marital harmony and preventing divorce."
+      strand: "Religious Practices and Observances",
+      subStrand: "Faith, Fasting and Charity",
+      contentStandard:
+        "Understand the role of fasting, almsgiving, prayer, and acts of charity in religious life",
+      indicator:
+        "Compare fasting, charity, and prayer practices in Christianity, Islam, and Traditional Religion",
+      objectives:
+        "Explain how acts of service and generosity strengthen community relationships and spiritual growth.",
     },
     {
       code: "B8.3.1.1.1",
-      strand: "Religious Leaders",
-      subStrand: "Patriarchs and Caliphs",
-      contentStandard: "Examine contributions of early Christian apostles and Rightly Guided Caliphs",
-      indicator: "Apostles Peter and Paul, and Caliphs Abu Bakr and Umar",
-      objectives: "Describe contributions of Apostles Peter and Paul and Caliphs Abu Bakr and Umar to the growth of their religions."
+      strand: "Family and Community",
+      subStrand: "Justice, Respect and Peaceful Coexistence",
+      contentStandard:
+        "Demonstrate understanding of justice, fairness, respect, and peaceful conflict resolution in communities",
+      indicator:
+        "Analyze how disrespect, dishonesty, and unfair treatment affect family and community life, and explain peaceful conflict resolution",
+      objectives:
+        "Use dialogue, apology, forgiveness, and reconciliation to resolve disputes in school and community contexts.",
     },
     {
       code: "B8.4.1.1.1",
-      strand: "Family, Community and Moral Life",
-      subStrand: "Chaste Living and Sexual Purity",
-      contentStandard: "Understand religious teachings on chastity, abstinence, and moral purity",
-      indicator: "Abstinence before marriage, fidelity in marriage, and avoiding STI risks",
-      objectives: "Examine religious teachings endorsing pre-marital sexual abstinence and post-marital fidelity."
+      strand: "Religious Leaders and Moral Life",
+      subStrand: "Role Models and Anti-Corruption",
+      contentStandard:
+        "Examine moral leadership, integrity, and the role of religious leaders in nation building",
+      indicator:
+        "Identify values of honesty, integrity, humility, and service shown by religious leaders and apply them to daily decisions",
+      objectives:
+        "Reflect on corruption, bribery and harmful practices and formulate personal values for responsible citizenship.",
     },
+  ],
+  "Basic 8": [
     {
-      code: "J2.1.1.1.1",
+      code: "B8.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand: "Environment and Stewardship",
-      contentStandard: "Evaluate religious perspectives on environmental degradation and climate change",
-      indicator: "Religious teachings on environmental conservation and anti-galamsey",
-      objectives: "Analyze Christian, Islamic, and Traditional religious teachings condemning environmental destruction (illegal mining, deforestation) and promoting conservation."
+      subStrand: "Stewardship and Environmental Care",
+      contentStandard:
+        "Demonstrate understanding of human responsibility to care for God's creation and the environment",
+      indicator:
+        "Evaluate the effects of deforestation, illegal mining, and pollution on communities and explain religious responsibilities toward nature",
+      objectives:
+        "Propose practical ways to protect forests, water bodies, and public spaces as stewardship of creation.",
     },
     {
-      code: "J2.2.1.1.1",
-      strand: "Religious Practices",
-      subStrand: "Rites of Passage (Death and Funeral Rites)",
-      contentStandard: "Demonstrate understanding of death and funeral rites in the 3 main religions",
-      indicator: "Christian burial, Islamic Janazah prayers/burial, and Traditional funeral rites",
-      objectives: "Compare Christian, Islamic, and Traditional concepts of death, afterlife, judgment, and funeral ceremonies in Ghana."
+      code: "B8.2.1.1.1",
+      strand: "Religious Practices and Observances",
+      subStrand: "Faith, Fasting and Charity",
+      contentStandard:
+        "Understand the role of fasting, almsgiving, prayer, and acts of charity in religious life",
+      indicator:
+        "Compare fasting, charity, and prayer practices in Christianity, Islam, and Traditional Religion",
+      objectives:
+        "Explain how acts of service and generosity strengthen community relationships and spiritual growth.",
     },
     {
-      code: "J2.3.1.1.1",
-      strand: "Religious Leaders",
-      subStrand: "Ministry and Caliphate",
-      contentStandard: "Examine the leadership of the Apostles of Jesus and the Rightly Guided Caliphs of Islam",
-      indicator: "Peter, Paul, Abu Bakr, Umar, Uthman, and Ali",
-      objectives: "Describe the contributions of Apostle Paul in spreading Christianity and Caliph Abu Bakr/Umar in consolidating Islam."
+      code: "B8.3.1.1.1",
+      strand: "Family and Community",
+      subStrand: "Justice, Respect and Peaceful Coexistence",
+      contentStandard:
+        "Demonstrate understanding of justice, fairness, respect, and peaceful conflict resolution in communities",
+      indicator:
+        "Analyze how disrespect, dishonesty, and unfair treatment affect family and community life, and explain peaceful conflict resolution",
+      objectives:
+        "Use dialogue, apology, forgiveness, and reconciliation to resolve disputes in school and community contexts.",
     },
     {
-      code: "J2.5.1.1.1",
-      strand: "Moral Life",
-      subStrand: "Chastity, Sex Education and STI/HIV Prevention",
-      contentStandard: "Demonstrate decision-making skills regarding sexual purity and avoiding pre-marital sex",
-      indicator: "Chastity, abstinence, STI/HIV prevention, and moral boundaries",
-      objectives: "Discuss religious and moral teachings advocating sexual abstinence before marriage and the dangers of pre-marital sex."
-    }
+      code: "B8.4.1.1.1",
+      strand: "Religious Leaders and Moral Life",
+      subStrand: "Role Models and Anti-Corruption",
+      contentStandard:
+        "Examine moral leadership, integrity, and the role of religious leaders in nation building",
+      indicator:
+        "Identify values of honesty, integrity, humility, and service shown by religious leaders and apply them to daily decisions",
+      objectives:
+        "Reflect on corruption, bribery and harmful practices and formulate personal values for responsible citizenship.",
+    },
   ],
   "JHS 3": [
     {
       code: "B9.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand: "Death, Afterlife and Ancestral Veneration",
-      contentStandard: "Analyze beliefs about death, judgment, heaven/hell, and ancestors",
-      indicator: "Christian resurrection/judgment, Islamic Akhirah/Jannah, and Traditional ancestral spirits",
-      objectives: "Compare beliefs regarding life after death, divine judgment, and ancestral veneration among the three religions."
+      subStrand: "BECE RME Comprehensive Review and Moral Reflection",
+      contentStandard:
+        "Master BECE RME theory topics: God's creation, religious leaders, moral life, and civic responsibilities",
+      indicator:
+        "Execute high-scoring BECE RME essay answers demonstrating moral reasoning and factual accuracy",
+      objectives:
+        "Formulate clear, well-structured essay responses for BECE RME examinations.",
     },
+  ],
+  "Basic 9": [
     {
-      code: "B9.1.1.1.2",
+      code: "B9.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand: "Death, Afterlife and Ancestral Veneration",
-      contentStandard: "Analyze beliefs about death, judgment, heaven/hell, and ancestors",
-      indicator: "Qualifications for ancestral status in African Traditional Religion",
-      objectives: "State moral requirements for becoming an ancestor (dying at old age, upright living, natural death)."
+      subStrand: "BECE RME Comprehensive Review and Moral Reflection",
+      contentStandard:
+        "Master BECE RME theory topics: God's creation, religious leaders, moral life, and civic responsibilities",
+      indicator:
+        "Execute high-scoring BECE RME essay answers demonstrating moral reasoning and factual accuracy",
+      objectives:
+        "Formulate clear, well-structured essay responses for BECE RME examinations.",
     },
-    {
-      code: "B9.2.1.1.1",
-      strand: "Religious Practices",
-      subStrand: "Funeral Rites and Commemoration",
-      contentStandard: "Analyze religious funeral practices and memorial observances in Ghana",
-      indicator: "Christian burial/memorial, Islamic Janazah burial, and Traditional funeral rites",
-      objectives: "Describe funeral rites in Christianity, Islam, and Traditional religion, highlighting emotional support for bereaved families."
-    },
-    {
-      code: "B9.3.1.1.1",
-      strand: "Family, Community and Moral Life",
-      subStrand: "Civic Responsibility, Peaceful Co-existence and BECE Revision",
-      contentStandard: "Master complete BECE RME curriculum topics, moral essay writing, and religious tolerance",
-      indicator: "Religious tolerance, inter-faith harmony, civic duties, and BECE RME exam preparation",
-      objectives: "Write structured BECE-standard essays on moral living, religious tolerance, civic duties, and life of religious leaders."
-    },
-    {
-      code: "J3.2.1.1.1",
-      strand: "Religious Practices",
-      subStrand: "BECE Rites of Passage & Worship",
-      contentStandard: "Critically compare rites of passage, worship, and festivals across the 3 religions for BECE",
-      indicator: "Comparative analysis of Birth, Puberty, Marriage, Death rites, and Festivals",
-      objectives: "Formulate structured BECE essay answers comparing birth, puberty, marriage, and death rites in Christianity, Islam, and ATR."
-    },
-    {
-      code: "J3.3.1.1.1",
-      strand: "Religious Leaders",
-      subStrand: "BECE Exemplary Personalities & Moral Lessons",
-      contentStandard: "Synthesize moral lessons from lives of Jesus, Prophet Muhammad (PBUH), Caliphs, and Ancestors",
-      indicator: "Moral virtues of religious leaders and applications to modern Ghanaian youth",
-      objectives: "Analyze the leadership qualities, humility, perseverance, and forgiveness shown by major religious figures in BECE scenarios."
-    },
-    {
-      code: "J3.4.1.1.1",
-      strand: "Family and Community",
-      subStrand: "BECE Social Order, Corruption & Anti-Social Behaviors",
-      contentStandard: "Evaluate religious solutions to social vices, corruption, crime, and bribery in Ghana",
-      indicator: "Bribery, corruption, cybercrime (sakawa), armed robbery, and religious ethics",
-      objectives: "Evaluate how religious moral education counters social vices like corruption, examination malpractice, and cybercrime in Ghana."
-    },
-    {
-      code: "J3.5.1.1.1",
-      strand: "Moral Life",
-      subStrand: "BECE Ethical Values, Manners & Essay Revision",
-      contentStandard: "Master structured essay writing and ethical decision-making for BECE RME",
-      indicator: "BECE Section A & B exam techniques, moral case studies, and essay structure",
-      objectives: "Compose well-structured, high-scoring BECE RME essay answers demonstrating sound moral reasoning, religious textual references, and practical application."
-    }
-  ]
+  ],
 };

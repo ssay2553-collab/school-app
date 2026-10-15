@@ -21,9 +21,7 @@ import {
   View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
-import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
-import UnreadBadge from "../../components/UnreadBadge";
 import { useSchoolConfig } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -33,7 +31,7 @@ import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { getTeacherClasses } from "../../lib/classHelpers";
 import moment from "moment";
 import { AdminEventStats } from "../../components/admin-dashboard/AdminEventStats";
-import { AdminMenuCard } from "../../components/admin-dashboard/AdminMenuCard";
+import { MetroTile } from "../../components/teacher-dashboard/MetroTile";
 import DashboardHeader from "../../components/DashboardHeader";
 import StationaryBackground from "../../components/StationaryBackground";
 import { useUpcomingEvents } from "../../hooks/useUpcomingEvents";
@@ -46,7 +44,7 @@ export default function TeacherDashboard() {
 
   const [assignmentCount, setAssignmentCount] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const { totalUnread, submissionUnread } = useUnreadCounts();
+  const { totalUnread } = useUnreadCounts();
   const { upcomingEvents, loading: eventsLoading } = useUpcomingEvents(2);
 
   // Attendance Alert Logic
@@ -76,7 +74,6 @@ export default function TeacherDashboard() {
       const markedClassIds = snap.docs.map(d => d.data().classId);
       const unmarked = teacherClasses.filter(id => !markedClassIds.includes(id));
 
-      // Check time window (6 AM - 10 AM)
       const now = new Date();
       const hour = now.getHours();
       const inTimeWindow = hour >= 6 && hour < 10;
@@ -84,7 +81,6 @@ export default function TeacherDashboard() {
       setMissingAttendance(unmarked);
       setIsAlertVisible(unmarked.length > 0 && inTimeWindow);
     }, (err) => {
-      // Ignore permission errors during sign-out
       if (err.code === 'permission-denied') return;
       console.error("Attendance alert listener error:", err);
     });
@@ -132,20 +128,18 @@ export default function TeacherDashboard() {
         setAssignmentCount(snap.data().count);
       }
     } catch (e: any) {
-      // Ignore permission errors during sign-out
       if (e.code === 'permission-denied') return;
       console.error("Error fetching teacher stats:", e);
     }
   }, [appUser?.uid, firebaseUser]);
 
-  // Use data freshness hook to refresh on focus/visibility change
-  const { refresh } = useDataFreshness(
+  useDataFreshness(
     useCallback(async () => {
       await fetchStats();
     }, [fetchStats]),
     {
       refreshOnFocus: true,
-      minRefreshInterval: 10000, // 10 seconds
+      minRefreshInterval: 10000,
       clearMemoryCache: true,
     },
   );
@@ -162,33 +156,35 @@ export default function TeacherDashboard() {
 
   const isAssignedTeacher = getTeacherClasses(appUser).length > 0;
 
+  // Rich Warm Windows 8 Metro Palette & Sections
   const sections = [
     {
-      title: "CLASSROOM HUB 🏫",
-      color: brandPrimary,
+      title: "CLASSROOM HUB",
+      color: "#00838F", // Warm Deep Teal
       items: [
         {
           title: "Attendance",
           subtitle: "Daily tracking",
           route: "/teacher-dashboard/daily-attendance",
           icon: "checkmark-done-circle",
-          color: "#10b981",
+          color: "#2E7D32", // Warm Emerald Green
+          isWide: true,
         },
         {
           title: "My Classes",
           subtitle: "Set subjects",
           route: "/teacher-dashboard/profile-edit?focus=work",
           icon: "book",
-          color: "#F59E0B",
+          color: "#E65100", // Warm Terracotta
         },
         ...(isAssignedTeacher && (hasFinancialAccess || canEditFinancials)
           ? [
               {
                 title: "Daily Financials",
-                subtitle: "Feeding, Bus & Extra fees",
+                subtitle: "Feeding, Bus & Extra",
                 route: "/shared/daily-financials",
                 icon: "receipt",
-                color: "#10b981",
+                color: "#00838F", // Warm Teal
               },
             ]
           : []),
@@ -197,110 +193,135 @@ export default function TeacherDashboard() {
           subtitle: "My schedule",
           route: "/teacher-dashboard/teacher-timetable",
           icon: "calendar",
-          color: "#f59e0b",
+          color: "#1565C0", // Warm Royal Sapphire
         },
         {
           title: "My Notes",
           subtitle: "Scratchpad",
           route: "/teacher-dashboard/note",
           icon: "document-text",
-          color: "#6366f1",
+          color: "#6A1B9A", // Warm Plum
         },
         {
           title: "Weekly Topics",
           subtitle: "Lesson Planning",
           route: "/teacher-dashboard/weekly-topics",
           icon: "book",
-          color: "#f59e0b",
+          color: "#C62828", // Warm Crimson
+          isWide: true,
         },
       ],
     },
     {
-      title: "TEACHING TOOLS 🍎",
-      color: "#A55EEA",
+      title: "TEACHING TOOLS",
+      color: "#D84315", // Warm Coral
       items: [
         {
           title: "Term Records",
           subtitle: "Manage grades",
           route: "/teacher-dashboard/student-academic-records",
           icon: "library",
-          color: "#8b5cf6",
+          color: "#4527A0", // Warm Deep Violet
         },
         {
           title: "Exam Reports",
-          subtitle: "View approved reports",
+          subtitle: "Approved reports",
           route: "/teacher-dashboard/student-academic-report",
           icon: "document-text",
-          color: "#10b981",
+          color: "#2E7D32", // Warm Emerald
         },
         {
           title: "Behavioral Remarks",
-          subtitle: "Child conduct logs",
+          subtitle: "Conduct logs",
           route: "/teacher-dashboard/preschool-remarks",
           icon: "chatbubble-ellipses",
-          color: "#10b981",
+          color: "#0277BD", // Warm Ocean Blue
         },
         {
           title: "Assignments",
           subtitle: "Manage & Upload",
           route: "/teacher-dashboard/manage-assignments",
           icon: "document-text",
-          color: "#a855f7",
+          color: "#AD1457", // Warm Mulberry
+          isWide: true,
         },
         {
           title: "Grading",
           subtitle: "Mark work",
           route: "/teacher-dashboard/mark-assignment",
           icon: "create",
-          color: "#ef4444",
+          color: "#C62828", // Warm Crimson
         },
         {
           title: "Study Groups",
           subtitle: "Collaborations",
           route: "/teacher-dashboard/create-student-group",
           icon: "chatbubbles",
-          color: "#06b6d4",
+          color: "#00838F", // Warm Deep Teal
+        },
+        {
+          title: "Staff Attendance",
+          subtitle: "GPS Check-In",
+          route: "/teacher-dashboard/scan-attendance",
+          icon: "checkmark-done-circle",
+          color: "#388E3C", // Warm Forest Green
         },
         {
           title: "Coding & Robotics",
           subtitle: "Robotics & Projects",
           route: "/coding-robotics",
           icon: "code-slash",
-          color: "#6366f1",
+          color: "#5E35B1", // Warm Violet
+        },
+        {
+          title: "Curriculum PDFs",
+          subtitle: "Offline library",
+          route: "/teacher-dashboard/curriculum-pdf-viewer",
+          icon: "document-text",
+          color: "#1565C0", // Warm Royal Blue
+        },
+        {
+          title: "Pedagogy & Resources",
+          subtitle: "Exam links & guides",
+          route: "/teacher-dashboard/pedagogy",
+          icon: "bulb",
+          color: "#E65100", // Warm Terracotta
+          isWide: true,
         },
       ],
     },
     {
-      title: "CAMPUS LIFE 📣",
-      color: "#FFD93D",
+      title: "CAMPUS LIFE",
+      color: "#F57F17", // Warm Gold
       items: [
         {
           title: "Calendar",
           subtitle: "Events & Terms",
           route: "/academic-calendar",
           icon: "calendar-outline",
-          color: "#f97316",
+          color: "#E65100", // Warm Terracotta
         },
         {
           title: "Broadcasts",
           subtitle: "School news",
           route: "/teacher-dashboard/news-screen",
           icon: "megaphone",
-          color: "#f43f5e",
+          color: "#C62828", // Warm Crimson
         },
         {
           title: "Staff Chat",
           subtitle: "Staff Messaging",
           route: "/teacher-dashboard/staff-chat",
           icon: "chatbubbles",
-          color: "#6366f1",
+          color: "#1565C0", // Warm Royal Blue
+          isWide: true,
         },
         {
           title: "Parent Chat",
           subtitle: "Direct comms",
           route: "/teacher-dashboard/chat-with-parent",
           icon: "chatbubble-ellipses",
-          color: "#3b82f6",
+          color: "#00838F", // Warm Teal
         },
       ],
     },
@@ -314,23 +335,25 @@ export default function TeacherDashboard() {
     );
   }
 
+  // Calculate Windows 8 Tile Dimensions
   const getColumns = () => {
-    if (windowWidth >= 1200) return 5;
+    if (windowWidth >= 1200) return 6;
     if (windowWidth >= 900) return 4;
-    if (windowWidth >= 600) return 3;
+    if (windowWidth >= 600) return 4;
     return 2;
   };
 
   const numColumns = getColumns();
-  const gap = 12;
+  const gap = 10;
   const sidePadding = 20;
   const totalGapSpace = (numColumns - 1) * gap;
   const availableWidth = Math.min(1200, windowWidth) - sidePadding * 2;
-  const cardWidth = (availableWidth - totalGapSpace) / numColumns;
+  const unitTileWidth = (availableWidth - totalGapSpace) / numColumns;
+  const tileHeight = 105;
   const isSmallScreen = windowWidth < 380;
 
   return (
-    <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
+    <View style={[styles.container, { backgroundColor: "#FFFDF5" }]}>
       <StationaryBackground />
       <StatusBar barStyle="light-content" />
       <ScrollView
@@ -386,36 +409,42 @@ export default function TeacherDashboard() {
           />
         </DashboardHeader>
 
+        {/* WINDOWS 8 WARM METRO START TILES GRID */}
         <View style={styles.contentContainer}>
           <View style={styles.content}>
             {sections.map((section, sIndex) => (
-              <View key={section.title} style={{ marginBottom: 40 }}>
+              <View key={section.title} style={{ marginBottom: 35 }}>
                 <View style={styles.sectionHeader}>
-                  <View
-                    style={[styles.dot, { backgroundColor: section.color }]}
-                  />
-                  <Text style={[styles.sectionTitle, { color: section.color }]}>
+                  <View style={[styles.sectionBar, { backgroundColor: section.color }]} />
+                  <Text style={styles.sectionTitle}>
                     {section.title}
                   </Text>
                 </View>
-                <View style={styles.grid}>
-                  {section.items.map((item, iIndex) =>
-                    <AdminMenuCard
-                      key={item.title}
-                      item={item}
-                      index={sIndex * 4 + iIndex}
-                      cardWidth={cardWidth}
-                      isSmallScreen={isSmallScreen}
-                      numColumns={numColumns}
-                      totalUnread={totalUnread}
-                      onPress={() => {
-                        if (isNavigating.current || !item.route) return;
-                        isNavigating.current = true;
-                        router.push(item.route as any);
-                        setTimeout(() => { isNavigating.current = false; }, 500);
-                      }}
-                    />
-                  )}
+
+                <View style={styles.metroGrid}>
+                  {section.items.map((item, iIndex) => {
+                    const isWideTile = Boolean(item.isWide && numColumns > 1);
+                    const calcWidth = isWideTile
+                      ? unitTileWidth * 2 + gap
+                      : unitTileWidth;
+
+                    return (
+                      <MetroTile
+                        key={item.title}
+                        item={item}
+                        index={sIndex * 4 + iIndex}
+                        tileWidth={calcWidth}
+                        tileHeight={tileHeight}
+                        totalUnread={totalUnread}
+                        onPress={() => {
+                          if (isNavigating.current || !item.route) return;
+                          isNavigating.current = true;
+                          router.push(item.route as any);
+                          setTimeout(() => { isNavigating.current = false; }, 500);
+                        }}
+                      />
+                    );
+                  })}
                 </View>
               </View>
             ))}
@@ -434,36 +463,44 @@ const styles = StyleSheet.create({
   contentContainer: { alignItems: "center", width: "100%" },
   content: {
     paddingHorizontal: 20,
-    marginTop: 25,
+    marginTop: 20,
     width: "100%",
-    maxWidth: 1100,
+    maxWidth: 1200,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
-    gap: 12,
-    paddingHorizontal: 10,
+    marginBottom: 14,
+    gap: 10,
   },
-  dot: { width: 12, height: 12, borderRadius: 6 },
-  sectionTitle: { fontSize: 18, fontWeight: "900", letterSpacing: 0.5 },
-  grid: {
+  sectionBar: {
+    width: 4,
+    height: 18,
+    borderRadius: 2,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: "#2D3748",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+  },
+  metroGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 12,
+    gap: 10,
   },
   attendanceAlertBanner: {
-    backgroundColor: "rgba(255, 217, 61, 0.3)", // Soft yellow/gold semi-transparent
-    borderRadius: 18,
+    backgroundColor: "rgba(229, 20, 0, 0.85)",
+    borderRadius: 8,
     padding: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.4)",
-    ...SHADOWS.small,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+    ...SHADOWS.medium,
   },
   alertLeft: {
     flexDirection: "row",
@@ -474,21 +511,23 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "900",
+    textTransform: "uppercase",
   },
   alertSubtitle: {
     color: "rgba(255,255,255,0.9)",
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
   alertActionBtn: {
-    backgroundColor: "#FFD93D",
+    backgroundColor: "#FFFFFF",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 10,
+    borderRadius: 6,
   },
   alertActionText: {
-    color: "#4338ca",
-    fontSize: 10,
+    color: "#E51400",
+    fontSize: 11,
     fontWeight: "900",
+    textTransform: "uppercase",
   },
 });

@@ -13,6 +13,7 @@ import {
   useWindowDimensions,
   Alert,
   BackHandler,
+  Modal,
 } from "react-native";
 // Conditional import for DateTimePicker to support Web/Electron
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
@@ -25,13 +26,18 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useWeeklyTopics } from "../../hooks/teacher-dashboard/useWeeklyTopics";
 import { CurriculumBrowserModal } from "../../components/teacher-dashboard/CurriculumBrowserModal";
 import { getPedagogySuggestions } from "../../constants/Pedagogy";
+import { useToast } from "../../contexts/ToastContext";
+import { copyToClipboard } from "../../utils/copyToClipboard";
 import { useRef } from "react";
 
 export default function WeeklyTopicsScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
+  const { showToast } = useToast();
   const isWeb = Platform.OS === "web";
   const isLargeScreen = width > 768;
+
+  const [isViewMode, setIsViewMode] = useState(false);
 
   const {
     loading,
@@ -114,6 +120,55 @@ export default function WeeklyTopicsScreen() {
         };
     }
   }, [curriculum]);
+
+  const handleCopyText = async () => {
+    const text = `
+========================================
+LESSON PLAN: ${selectedClassName || "Class"} - ${selectedSubject || "Subject"}
+========================================
+Week ${weekNumber || "N/A"}: ${moment(startDate).format("MMM D, YYYY")} - ${moment(endDate).format("MMM D, YYYY")}
+Curriculum: ${curriculum}
+
+1. CURRICULUM STANDARDS
+----------------------------------------
+• ${labels.topic}: ${topicData.topic || "N/A"}
+• ${labels.strand}: ${topicData.strand || "N/A"}
+• ${labels.subStrand}: ${topicData.subStrand || "N/A"}
+• ${labels.indicator}: ${topicData.indicatorCode || "N/A"} - ${topicData.indicator || "N/A"}
+
+2. SCOPE & LEARNING OBJECTIVES
+----------------------------------------
+• ${labels.subTopics}:
+  ${topicData.subTopics || "N/A"}
+
+• ${labels.objectives}:
+  ${topicData.objectives || "N/A"}
+
+3. PEDAGOGY & MATERIALS
+----------------------------------------
+• Teaching Method: ${topicData.teachingMethod || "N/A"}
+• Required TLMs: ${topicData.tlmRequired || "N/A"}
+
+4. LESSON DELIVERY PHASES
+----------------------------------------
+• Phase 1 (Lesson Starter / RPK):
+  ${topicData.starterActivity || "N/A"}
+
+• Phase 2 (Core Lesson Activities):
+  ${topicData.coreActivities || "N/A"}
+
+• Phase 3 (Assessment & Reflection):
+  ${topicData.assessmentMethod || "N/A"}
+========================================
+`.trim();
+
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      showToast({ message: "Lesson plan copied to clipboard! 📋", type: "success" });
+    } else {
+      showToast({ message: "Failed to copy text", type: "error" });
+    }
+  };
 
   const webInputStyle = Platform.OS === 'web' ? {
     padding: '10px',
@@ -235,19 +290,29 @@ export default function WeeklyTopicsScreen() {
             <Text style={styles.title}>Weekly Planning</Text>
             <Text style={styles.subtitle}>Subject-Based Lesson Topics</Text>
           </View>
-          {hasUnsavedChanges && (
+          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
             <TouchableOpacity
-              style={[styles.headerSaveBtn, saving && styles.disabledBtn]}
-              onPress={saveTopic}
-              disabled={saving}
+              style={styles.headerViewPlanBtn}
+              onPress={() => setIsViewMode(true)}
             >
-              {saving ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.headerSaveText}>Save</Text>
-              )}
+              <SVGIcon name="eye-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.headerViewPlanText}>View Plan</Text>
             </TouchableOpacity>
-          )}
+
+            {hasUnsavedChanges && (
+              <TouchableOpacity
+                style={[styles.headerSaveBtn, saving && styles.disabledBtn]}
+                onPress={saveTopic}
+                disabled={saving}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.headerSaveText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
 
@@ -391,8 +456,17 @@ export default function WeeklyTopicsScreen() {
             </View>
 
             <Animatable.View animation="fadeInUp" duration={600} style={styles.formCard}>
-              <View style={styles.curriculumBadge}>
-                <Text style={styles.curriculumBadgeText}>{curriculum} CURRICULUM</Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <View style={styles.curriculumBadge}>
+                  <Text style={styles.curriculumBadgeText}>{curriculum} CURRICULUM</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setIsViewMode(true)}
+                  style={styles.cardViewBtn}
+                >
+                  <SVGIcon name="document-text-outline" size={15} color={COLORS.primary} />
+                  <Text style={styles.cardViewBtnText}>View Lesson Plan</Text>
+                </TouchableOpacity>
               </View>
 
               <View style={styles.inputGroup}>
@@ -465,6 +539,13 @@ export default function WeeklyTopicsScreen() {
                     placeholder="e.g. B1.1.1.1.1"
                     value={topicData.indicatorCode}
                     onChangeText={(text) => setTopicData({ ...topicData, indicatorCode: text })}
+                    onSubmitEditing={() => performLookup()}
+                    onBlur={() => {
+                      if (topicData.indicatorCode && topicData.indicatorCode.trim().length >= 4) {
+                        performLookup();
+                      }
+                    }}
+                    returnKeyType="search"
                   />
 
                   {topicData.indicatorCode !== "" && (
@@ -664,12 +745,251 @@ export default function WeeklyTopicsScreen() {
                   multiline
                 />
               </View>
+
+              {/* Bottom Actions Row */}
+              <View style={styles.bottomActionsRow}>
+                <TouchableOpacity
+                  style={styles.viewPlanMainBtn}
+                  onPress={() => setIsViewMode(true)}
+                >
+                  <SVGIcon name="eye" size={20} color={COLORS.primary} />
+                  <Text style={styles.viewPlanMainBtnText}>View Full Lesson Plan</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.savePlanMainBtn, saving && styles.disabledBtn]}
+                  onPress={saveTopic}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <SVGIcon name="checkmark-circle" size={20} color="#fff" />
+                      <Text style={styles.savePlanMainBtnText}>
+                        {hasUnsavedChanges ? "Save Changes" : "Saved"}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </Animatable.View>
           </View>
         </View>
 
         <View style={{ height: 120 }} />
       </ScrollView>
+
+      {/* --- READ-ONLY LESSON PLAN VIEW MODAL --- */}
+      <Modal
+        visible={isViewMode}
+        animationType="slide"
+        onRequestClose={() => setIsViewMode(false)}
+      >
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+          <StatusBar barStyle="dark-content" />
+
+          {/* Modal Header */}
+          <View style={styles.modalHeader}>
+            <View style={[styles.modalHeaderInner, isLargeScreen && styles.maxContent]}>
+              <TouchableOpacity
+                onPress={() => setIsViewMode(false)}
+                style={styles.backBtn}
+              >
+                <SVGIcon name="close" size={24} color="#1E293B" />
+              </TouchableOpacity>
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.title}>Lesson Plan View</Text>
+                <Text style={styles.subtitle}>Read-Only Document</Text>
+              </View>
+
+              <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                <TouchableOpacity
+                  onPress={handleCopyText}
+                  style={styles.iconActionBtn}
+                >
+                  <SVGIcon name="copy-outline" size={20} color="#1E293B" />
+                </TouchableOpacity>
+
+                {Platform.OS === "web" && (
+                  <TouchableOpacity
+                    onPress={() => window.print()}
+                    style={styles.iconActionBtn}
+                  >
+                    <SVGIcon name="print-outline" size={20} color="#1E293B" />
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  onPress={() => setIsViewMode(false)}
+                  style={styles.modalEditBtn}
+                >
+                  <SVGIcon name="create-outline" size={18} color="#fff" />
+                  <Text style={styles.modalEditBtnText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Modal Body */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={[
+              styles.scrollContent,
+              isLargeScreen && styles.maxContent,
+            ]}
+          >
+            <View style={styles.readOnlyDocument}>
+              {/* Document Title Header */}
+              <View style={styles.docHeader}>
+                <View style={styles.docCurriculumBadge}>
+                  <Text style={styles.docCurriculumText}>
+                    {curriculum} CURRICULUM
+                  </Text>
+                </View>
+
+                <Text style={styles.docTitle}>
+                  {selectedClassName || "Class"} – {selectedSubject || "Subject"}
+                </Text>
+
+                <View style={styles.docMetaRow}>
+                  <View style={styles.docMetaItem}>
+                    <SVGIcon name="calendar-outline" size={14} color="#64748B" />
+                    <Text style={styles.docMetaText}>
+                      Week {weekNumber || "–"}: {moment(startDate).format("MMM D")} – {moment(endDate).format("MMM D, YYYY")}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.docDivider} />
+
+              {/* Section 1: Curriculum & Standard Reference */}
+              <View style={styles.docSection}>
+                <Text style={styles.docSectionTitle}>1. CURRICULUM STANDARDS</Text>
+
+                <View style={styles.docGrid}>
+                  <View style={styles.docGridItem}>
+                    <Text style={styles.docLabel}>{labels.topic}</Text>
+                    <Text style={styles.docValue}>{topicData.topic || "Not specified"}</Text>
+                  </View>
+
+                  <View style={{ flexDirection: "row", gap: 15 }}>
+                    <View style={[styles.docGridItem, { flex: 1 }]}>
+                      <Text style={styles.docLabel}>{labels.strand}</Text>
+                      <Text style={styles.docValue}>{topicData.strand || "Not specified"}</Text>
+                    </View>
+                    <View style={[styles.docGridItem, { flex: 1 }]}>
+                      <Text style={styles.docLabel}>{labels.subStrand}</Text>
+                      <Text style={styles.docValue}>{topicData.subStrand || "Not specified"}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.docGridItem}>
+                    <Text style={styles.docLabel}>{labels.indicator}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      {topicData.indicatorCode ? (
+                        <View style={styles.codeTag}>
+                          <Text style={styles.codeTagText}>{topicData.indicatorCode}</Text>
+                        </View>
+                      ) : null}
+                      <Text style={[styles.docValue, { flex: 1 }]}>
+                        {topicData.indicator || "Not specified"}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Section 2: Scope & Objectives */}
+              <View style={styles.docSection}>
+                <Text style={styles.docSectionTitle}>2. SCOPE & LEARNING OBJECTIVES</Text>
+
+                <View style={styles.docCardBlock}>
+                  <Text style={styles.docLabel}>{labels.subTopics}</Text>
+                  <Text style={styles.docBodyText}>{topicData.subTopics || "Not specified"}</Text>
+                </View>
+
+                <View style={styles.docCardBlock}>
+                  <Text style={styles.docLabel}>{labels.objectives}</Text>
+                  <Text style={styles.docBodyText}>{topicData.objectives || "Not specified"}</Text>
+                </View>
+              </View>
+
+              {/* Section 3: Pedagogy & Materials */}
+              <View style={styles.docSection}>
+                <Text style={styles.docSectionTitle}>3. PEDAGOGY & TEACHING MATERIALS</Text>
+
+                <View style={{ flexDirection: isLargeScreen ? "row" : "column", gap: 15 }}>
+                  <View style={[styles.docCardBlock, { flex: 1 }]}>
+                    <Text style={styles.docLabel}>TEACHING METHOD / PEDAGOGY</Text>
+                    <Text style={styles.docBodyText}>{topicData.teachingMethod || "Not specified"}</Text>
+                  </View>
+
+                  <View style={[styles.docCardBlock, { flex: 1 }]}>
+                    <Text style={styles.docLabel}>REQUIRED TLM (MATERIALS)</Text>
+                    <Text style={styles.docBodyText}>{topicData.tlmRequired || "Not specified"}</Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* Section 4: 3-Phase Lesson Delivery */}
+              <View style={styles.docSection}>
+                <Text style={styles.docSectionTitle}>4. LESSON DELIVERY PHASES</Text>
+
+                <View style={styles.phaseCard}>
+                  <View style={styles.phaseHeader}>
+                    <View style={[styles.phaseDot, { backgroundColor: "#FF6B6B" }]} />
+                    <Text style={styles.phaseTitle}>PHASE 1: LESSON STARTER / RPK</Text>
+                  </View>
+                  <Text style={styles.docBodyText}>{topicData.starterActivity || "Not specified"}</Text>
+                </View>
+
+                <View style={styles.phaseCard}>
+                  <View style={styles.phaseHeader}>
+                    <View style={[styles.phaseDot, { backgroundColor: "#4D96FF" }]} />
+                    <Text style={styles.phaseTitle}>PHASE 2: CORE LESSON ACTIVITIES</Text>
+                  </View>
+                  <Text style={styles.docBodyText}>{topicData.coreActivities || "Not specified"}</Text>
+                </View>
+
+                <View style={styles.phaseCard}>
+                  <View style={styles.phaseHeader}>
+                    <View style={[styles.phaseDot, { backgroundColor: "#6BCB77" }]} />
+                    <Text style={styles.phaseTitle}>PHASE 3: ASSESSMENT & REFLECTION</Text>
+                  </View>
+                  <Text style={styles.docBodyText}>{topicData.assessmentMethod || "Not specified"}</Text>
+                </View>
+              </View>
+
+            </View>
+
+            <View style={{ height: 60 }} />
+          </ScrollView>
+
+          {/* Modal Bottom Bar */}
+          <View style={styles.modalFooter}>
+            <View style={[styles.modalFooterInner, isLargeScreen && styles.maxContent]}>
+              <TouchableOpacity
+                style={styles.modalSecondaryBtn}
+                onPress={handleCopyText}
+              >
+                <SVGIcon name="copy-outline" size={18} color="#1E293B" />
+                <Text style={styles.modalSecondaryBtnText}>Copy Plan Text</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.modalPrimaryBtn}
+                onPress={() => setIsViewMode(false)}
+              >
+                <SVGIcon name="create-outline" size={18} color="#fff" />
+                <Text style={styles.modalPrimaryBtnText}>Edit Lesson Plan</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
 
       <CurriculumBrowserModal
         visible={isBrowserVisible}
@@ -857,4 +1177,289 @@ const styles = StyleSheet.create({
   footer: { position: "absolute", bottom: 25, left: 20, right: 20, alignItems: "center" },
   saveBtn: { backgroundColor: COLORS.primary, height: 65, borderRadius: 22, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 12, width: "100%", maxWidth: 450, ...SHADOWS.large },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "900", letterSpacing: 0.5 },
+
+  // View mode & Modal styles
+  headerViewPlanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: COLORS.primary + "15",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primary + "30",
+  },
+  headerViewPlanText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+  cardViewBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: COLORS.primary + "10",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  cardViewBtnText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+  bottomActionsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 25,
+    alignItems: "center",
+  },
+  viewPlanMainBtn: {
+    flex: 1,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary + "12",
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  viewPlanMainBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+  savePlanMainBtn: {
+    flex: 1,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    ...SHADOWS.medium,
+  },
+  savePlanMainBtnText: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#fff",
+  },
+
+  modalHeader: {
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    zIndex: 10,
+  },
+  modalHeaderInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 20,
+  },
+  iconActionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalEditBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    ...SHADOWS.small,
+  },
+  modalEditBtnText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  readOnlyDocument: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 25,
+    ...SHADOWS.medium,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  docHeader: {
+    marginBottom: 20,
+  },
+  docCurriculumBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.primary + "15",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  docCurriculumText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: COLORS.primary,
+    letterSpacing: 1,
+  },
+  docTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 8,
+  },
+  docMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 15,
+  },
+  docMetaItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  docMetaText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  docDivider: {
+    height: 1,
+    backgroundColor: "#E2E8F0",
+    marginVertical: 20,
+  },
+  docSection: {
+    marginBottom: 25,
+  },
+  docSectionTitle: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: COLORS.primary,
+    letterSpacing: 1,
+    marginBottom: 14,
+    textTransform: "uppercase",
+  },
+  docGrid: {
+    gap: 14,
+  },
+  docGridItem: {
+    backgroundColor: "#F8FAFC",
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  docLabel: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#94A3B8",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  docValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  codeTag: {
+    backgroundColor: COLORS.primary + "15",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  codeTagText: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: COLORS.primary,
+  },
+  docCardBlock: {
+    backgroundColor: "#F8FAFC",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    marginBottom: 12,
+  },
+  docBodyText: {
+    fontSize: 14,
+    color: "#334155",
+    lineHeight: 22,
+    fontWeight: "500",
+  },
+  phaseCard: {
+    backgroundColor: "#F8FAFC",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 12,
+  },
+  phaseHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  phaseDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  phaseTitle: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: "#1E293B",
+    letterSpacing: 0.5,
+  },
+  modalFooter: {
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  modalFooterInner: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+  },
+  modalSecondaryBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: "#F1F5F9",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  modalSecondaryBtnText: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  modalPrimaryBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    ...SHADOWS.small,
+  },
+  modalPrimaryBtnText: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#fff",
+  },
 });

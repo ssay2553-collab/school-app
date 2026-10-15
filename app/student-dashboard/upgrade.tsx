@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View, StatusBar } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View, StatusBar } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import SVGIcon from "../../components/SVGIcon";

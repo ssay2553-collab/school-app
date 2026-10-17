@@ -1,26 +1,27 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
 import {
     collection,
-    onSnapshot,
-    query,
-    where,
-    getDocsFromServer,
     doc,
     getDoc,
-    writeBatch,
+    getDocs,
+    getDocsFromServer,
     increment,
+    onSnapshot,
+    query,
     serverTimestamp,
     setDoc,
     Timestamp,
-    getDocs
+    where,
+    writeBatch,
 } from "firebase/firestore";
-import { db } from "../../firebaseConfig";
+import moment from "moment";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { useAcademicConfig } from "../useAcademicConfig";
+import { db } from "../../firebaseConfig";
 import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
-import { SCHOOL_CONFIG } from "../../constants/Config";
-import moment from "moment";
+import { useAcademicConfig } from "../useAcademicConfig";
+import { useSchoolOperations } from "../useSchoolOperations";
 
 export type DailyRecord = {
   id: string;
@@ -60,6 +61,7 @@ export const useExtraClassesFeeLogic = () => {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
+  const { getOperationalStatus } = useSchoolOperations();
 
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
   const isSuperAdmin = [
@@ -127,8 +129,12 @@ export const useExtraClassesFeeLogic = () => {
   const [attendanceMap, setAttendanceMap] = useState<Record<string, any>>({});
   const [extraClassesAmount, setExtraClassesAmount] = useState("");
   const [classRates, setClassRates] = useState<Record<string, number>>({});
-  const [overrideMap, setOverrideMap] = useState<Record<string, string | undefined>>({});
-  const [selectedStudentUids, setSelectedStudentUids] = useState<Set<string>>(new Set());
+  const [overrideMap, setOverrideMap] = useState<
+    Record<string, string | undefined>
+  >({});
+  const [selectedStudentUids, setSelectedStudentUids] = useState<Set<string>>(
+    new Set(),
+  );
   const [bulkBillAmount, setBulkBillAmount] = useState("");
 
   const currentClassRate = useMemo(() => {
@@ -205,6 +211,8 @@ export const useExtraClassesFeeLogic = () => {
             className:
               classes.find((c) => c.id === data.classId)?.name || "Class",
             takesExtraClasses: data.takesExtraClasses || false,
+            dailyArrears: data.dailyArrears || 0,
+            termArrears: data.termArrears || {},
           };
         });
 
@@ -329,7 +337,7 @@ export const useExtraClassesFeeLogic = () => {
     );
     const paidRecords = extraRecords.filter((r) => r.extraPaid === true);
     const totalExtraClasses = paidRecords.reduce(
-      (sum, r) => sum + (Number(r.extraClassesFee) || 0),
+      (sum, r) => sum + (r.extraPaidAmount ?? Number(r.extraClassesFee) ?? 0),
       0,
     );
     return {
@@ -340,16 +348,25 @@ export const useExtraClassesFeeLogic = () => {
 
   const handleSaveClassRate = async () => {
     if (!isSuperAdmin) {
-      showToast({ message: "Access Denied: Only admins can update rates.", type: "error" });
+      showToast({
+        message: "Access Denied: Only admins can update rates.",
+        type: "error",
+      });
       return;
     }
     const classAmount = parseFloat(extraClassesAmount);
     if (!classAmount || classAmount <= 0) {
-      showToast({ message: "Enter a valid extra classes rate.", type: "error" });
+      showToast({
+        message: "Enter a valid extra classes rate.",
+        type: "error",
+      });
       return;
     }
     if (selectedClassId === "all") {
-      showToast({ message: "Please select a specific class to update its rate.", type: "error" });
+      showToast({
+        message: "Please select a specific class to update its rate.",
+        type: "error",
+      });
       return;
     }
 
@@ -373,7 +390,10 @@ export const useExtraClassesFeeLogic = () => {
 
   const handleDisburseToStaff = async () => {
     if (!isSuperAdmin) {
-      showToast({ message: "Access Denied: Only super admins can disburse.", type: "error" });
+      showToast({
+        message: "Access Denied: Only super admins can disburse.",
+        type: "error",
+      });
       return;
     }
 
@@ -387,7 +407,10 @@ export const useExtraClassesFeeLogic = () => {
       const snap = await getDocs(q);
 
       if (snap.empty) {
-        showToast({ message: "No accumulated extra classes fees to disburse.", type: "info" });
+        showToast({
+          message: "No accumulated extra classes fees to disburse.",
+          type: "info",
+        });
         setSaving(false);
         return;
       }
@@ -450,7 +473,19 @@ export const useExtraClassesFeeLogic = () => {
       SCHOOL_CONFIG.defaultExtraClassesRate ||
       0;
     if (!classAmount || classAmount <= 0) {
-      showToast({ message: "Set extra classes fee amount first.", type: "error" });
+      showToast({
+        message: "Set extra classes fee amount first.",
+        type: "error",
+      });
+      return;
+    }
+    const existingRecord = getExistingRecord(uid);
+    if ((existingRecord as any)?.isAdvanceCovered) {
+      showToast({
+        message:
+          "Advance Paid: Auto-assigned advance records cannot be modified.",
+        type: "warning",
+      });
       return;
     }
     const dateStr = moment(selectedDate).format("YYYY-MM-DD");
@@ -459,11 +494,18 @@ export const useExtraClassesFeeLogic = () => {
     setSaving(true);
     try {
       const ops: Array<{ ref: any; data: any }> = [];
-      const totalPaid = overrideAmountStr ? parseFloat(overrideAmountStr) || 0 : classAmount;
+      const totalPaid = overrideAmountStr
+        ? parseFloat(overrideAmountStr) || 0
+        : classAmount;
       const paidToday = Math.min(classAmount, totalPaid);
 
       const existingRecord = getExistingRecord(uid);
       const oldExtraFee = existingRecord?.extraClassesFee || 0;
+      const wasUnpaid =
+        existingRecord &&
+        (existingRecord.extraClassesFee || 0) > 0 &&
+        !existingRecord.extraPaid;
+
       const todayRef = doc(db, "dailyFinancials", docId);
       const todayData: any = {
         studentUid: uid,
@@ -489,6 +531,39 @@ export const useExtraClassesFeeLogic = () => {
         todayData.otherFees = 0;
       }
       ops.push({ ref: todayRef, data: todayData });
+
+      if (wasUnpaid) {
+        const acadYear = (acadConfig.academicYear || "").replace(
+          /[\/\s]/g,
+          "_",
+        );
+        const currentTerm = (acadConfig.currentTerm || "").replace(
+          /[\/\s]/g,
+          "_",
+        );
+        const termKey = `${acadYear}_${currentTerm}`;
+        const userRef = doc(db, "users", uid);
+        const userUpdate: any = {
+          dailyArrears: increment(-classAmount),
+          updatedAt: serverTimestamp(),
+        };
+        if (termKey && termKey !== "_") {
+          userUpdate[`termArrears.${termKey}`] = increment(-classAmount);
+        }
+        ops.push({ ref: userRef, data: userUpdate });
+
+        setStudents((prev) =>
+          prev.map((s) => {
+            if (s.uid === uid) {
+              return {
+                ...s,
+                dailyArrears: Math.max(0, (s.dailyArrears || 0) - classAmount),
+              };
+            }
+            return s;
+          }),
+        );
+      }
 
       if (overrideAmountStr) {
         let extra = totalPaid - paidToday;
@@ -543,15 +618,28 @@ export const useExtraClassesFeeLogic = () => {
       SCHOOL_CONFIG.defaultExtraClassesRate ||
       0;
     if (!classAmount || classAmount <= 0) {
-      showToast({ message: "Set extra classes fee amount first.", type: "error" });
+      showToast({
+        message: "Set extra classes fee amount first.",
+        type: "error",
+      });
       return;
     }
 
     const existingRecord = getExistingRecord(uid);
+    if ((existingRecord as any)?.isAdvanceCovered) {
+      showToast({
+        message:
+          "Advance Paid: Auto-assigned advance records cannot be modified.",
+        type: "warning",
+      });
+      return;
+    }
+
     const isCurrentlyUnpaid =
       existingRecord &&
       (existingRecord.extraClassesFee || 0) > 0 &&
       !existingRecord.extraPaid;
+    const wasPaid = existingRecord && existingRecord.extraPaid === true;
 
     setSaving(true);
     try {
@@ -586,6 +674,48 @@ export const useExtraClassesFeeLogic = () => {
       }
       await setDoc(ref, data, { merge: true } as any);
 
+      let arrearsDelta = 0;
+      if (isCurrentlyUnpaid) {
+        arrearsDelta = -classAmount;
+      } else if (wasPaid) {
+        arrearsDelta = classAmount;
+      } else {
+        arrearsDelta = classAmount;
+      }
+
+      if (arrearsDelta !== 0) {
+        const acadYear = (acadConfig.academicYear || "").replace(
+          /[\/\s]/g,
+          "_",
+        );
+        const currentTerm = (acadConfig.currentTerm || "").replace(
+          /[\/\s]/g,
+          "_",
+        );
+        const termKey = `${acadYear}_${currentTerm}`;
+        const userRef = doc(db, "users", uid);
+        const userUpdate: any = {
+          dailyArrears: increment(arrearsDelta),
+          updatedAt: serverTimestamp(),
+        };
+        if (termKey && termKey !== "_") {
+          userUpdate[`termArrears.${termKey}`] = increment(arrearsDelta);
+        }
+        await setDoc(userRef, userUpdate, { merge: true } as any);
+
+        setStudents((prev) =>
+          prev.map((s) => {
+            if (s.uid === uid) {
+              return {
+                ...s,
+                dailyArrears: Math.max(0, (s.dailyArrears || 0) + arrearsDelta),
+              };
+            }
+            return s;
+          }),
+        );
+      }
+
       showToast({
         message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
         type: "success",
@@ -611,6 +741,12 @@ export const useExtraClassesFeeLogic = () => {
       const dateStr = moment(selectedDate).format("YYYY-MM-DD");
       const batch = writeBatch(db);
       const selectedUids = Array.from(selectedStudentUids);
+      const acadYear = (acadConfig.academicYear || "").replace(/[\/\s]/g, "_");
+      const currentTerm = (acadConfig.currentTerm || "").replace(
+        /[\/\s]/g,
+        "_",
+      );
+      const termKey = `${acadYear}_${currentTerm}`;
 
       for (const uid of selectedUids) {
         const student = students.find((s) => s.uid === uid);
@@ -646,10 +782,27 @@ export const useExtraClassesFeeLogic = () => {
         }
 
         batch.set(ref, data, { merge: true } as any);
+
+        const wasPaid = existingRecord?.extraPaid === true;
+        const arrearsDelta = wasPaid ? amount : amount - oldFee;
+        if (arrearsDelta !== 0) {
+          const userRef = doc(db, "users", uid);
+          const userUpdate: any = {
+            dailyArrears: increment(arrearsDelta),
+            updatedAt: serverTimestamp(),
+          };
+          if (termKey && termKey !== "_") {
+            userUpdate[`termArrears.${termKey}`] = increment(arrearsDelta);
+          }
+          batch.set(userRef, userUpdate, { merge: true } as any);
+        }
       }
 
       await batch.commit();
-      showToast({ message: `Billed ${selectedStudentUids.size} students successfully.`, type: "success" });
+      showToast({
+        message: `Billed ${selectedStudentUids.size} students successfully.`,
+        type: "success",
+      });
       setSelectedStudentUids(new Set());
       setBulkBillAmount("");
     } catch (e) {
@@ -670,11 +823,159 @@ export const useExtraClassesFeeLogic = () => {
   };
 
   const handleSelectAll = (filtered: StudentRecord[]) => {
-    const allSelected = filtered.length > 0 && filtered.every(s => selectedStudentUids.has(s.uid));
+    const allSelected =
+      filtered.length > 0 &&
+      filtered.every((s) => selectedStudentUids.has(s.uid));
     if (allSelected) {
       setSelectedStudentUids(new Set());
     } else {
-      setSelectedStudentUids(new Set(filtered.map(s => s.uid)));
+      setSelectedStudentUids(new Set(filtered.map((s) => s.uid)));
+    }
+  };
+
+  const handleAdvancePayment = async (studentUid: string, amount: number) => {
+    const student = students.find((s) => s.uid === studentUid);
+    const rate =
+      parseFloat(extraClassesAmount) ||
+      classRates[student?.classId || ""] ||
+      SCHOOL_CONFIG.defaultExtraClassesRate ||
+      10;
+
+    if (!student || !rate || rate <= 0 || amount <= 0) {
+      showToast({ message: "Invalid payment amount or rate.", type: "error" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const currentArrears = student.dailyArrears || 0;
+      const arrearsToClear = Math.min(currentArrears, amount);
+      const remainingForDays = amount - arrearsToClear;
+
+      const ops: Array<{ ref: any; data: any }> = [];
+      const acadYear = (acadConfig.academicYear || "").replace(/[\/\s]/g, "_");
+      const currentTerm = (acadConfig.currentTerm || "").replace(
+        /[\/\s]/g,
+        "_",
+      );
+      const termKey = `${acadYear}_${currentTerm}`;
+      const triggerDateStr = moment(selectedDate).format("YYYY-MM-DD");
+
+      if (arrearsToClear > 0) {
+        const userRef = doc(db, "users", studentUid);
+        const userUpdate: any = {
+          dailyArrears: increment(-arrearsToClear),
+          updatedAt: serverTimestamp(),
+        };
+        if (termKey && termKey !== "_") {
+          userUpdate[`termArrears.${termKey}`] = increment(-arrearsToClear);
+        }
+        ops.push({ ref: userRef, data: userUpdate });
+      }
+
+      let daysAssigned = 0;
+      if (remainingForDays > 0) {
+        let calendarOffset = 0;
+        const maxDaysToSearch = 120;
+        let unallocatedRemaining = remainingForDays;
+
+        while (unallocatedRemaining > 0 && calendarOffset < maxDaysToSearch) {
+          const targetMoment = moment(selectedDate).add(calendarOffset, "days");
+          const dayOfWeek = targetMoment.day();
+
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            const dateStr = targetMoment.format("YYYY-MM-DD");
+            const opStatus = getOperationalStatus(dateStr);
+
+            if (!opStatus.isBlocked) {
+              const docRef = doc(
+                db,
+                "dailyFinancials",
+                `${studentUid}_${dateStr}`,
+              );
+              const isTriggerDay = calendarOffset === 0;
+
+              const existingRecord = isTriggerDay
+                ? getExistingRecord(studentUid)
+                : null;
+              const oldFee = existingRecord?.extraClassesFee || 0;
+
+              const paidAmountForDay = isTriggerDay ? remainingForDays : 0;
+
+              const dayData: any = {
+                studentUid,
+                studentName: student.fullName || "Student",
+                classId: student.classId || "unknown",
+                className: student.className || "Class",
+                date: dateStr,
+                academicYear: acadConfig.academicYear,
+                term: acadConfig.currentTerm,
+                extraClassesFee: rate,
+                total: increment(
+                  isTriggerDay ? remainingForDays - oldFee : rate,
+                ),
+                extraPaid: true,
+                extraPaidAmount: paidAmountForDay,
+                extraPaidAt: serverTimestamp(),
+                recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
+                recordedByUid: appUser?.uid || "unknown",
+                updatedAt: serverTimestamp(),
+              };
+
+              if (isTriggerDay) {
+                dayData.isAdvancePaymentTrigger = true;
+                dayData.advanceTotalPaid = remainingForDays;
+              } else {
+                dayData.isAdvanceCovered = true;
+                dayData.advanceTriggerDate = triggerDateStr;
+              }
+
+              if (!existingRecord && isTriggerDay) {
+                dayData.createdAt = serverTimestamp();
+                dayData.feedingFee = 0;
+                dayData.busFee = 0;
+                dayData.otherFees = 0;
+                dayData.otherFeesDescription = "";
+              }
+
+              ops.push({ ref: docRef, data: dayData });
+              unallocatedRemaining -= rate;
+              daysAssigned++;
+            }
+          }
+          calendarOffset++;
+        }
+      }
+
+      await commitPaidSpreads(ops);
+
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.uid === studentUid) {
+            return {
+              ...s,
+              dailyArrears: Math.max(0, currentArrears - arrearsToClear),
+            };
+          }
+          return s;
+        }),
+      );
+
+      let msg = "";
+      if (arrearsToClear > 0 && daysAssigned > 0) {
+        msg = `Cleared ₵${arrearsToClear.toFixed(2)} arrears and auto-assigned ${daysAssigned} ${daysAssigned === 1 ? "day" : "days"} as PAID.`;
+      } else if (arrearsToClear > 0) {
+        msg = `Cleared ₵${arrearsToClear.toFixed(2)} towards student arrears. Remaining arrears: ₵${(currentArrears - arrearsToClear).toFixed(2)}.`;
+      } else {
+        msg = `Bulk payment of ₵${amount.toFixed(2)} recorded on today's total! Auto-assigned ${daysAssigned} ${daysAssigned === 1 ? "day" : "days"} as PAID.`;
+      }
+
+      showToast({ message: msg, type: "success" });
+    } catch (e) {
+      console.error("Error processing advance payment:", e);
+      showToast({ message: "Failed to process payment.", type: "error" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -721,5 +1022,6 @@ export const useExtraClassesFeeLogic = () => {
     handleBulkBill,
     toggleStudentSelection,
     handleSelectAll,
+    handleAdvancePayment,
   };
 };

@@ -62,7 +62,7 @@ export default function WebViewScreen() {
             <Text style={styles.title} numberOfLines={1}>{title || 'External Resource'}</Text>
             <Text style={styles.subtitle} numberOfLines={1}>{url}</Text>
           </View>
-          <TouchableOpacity onPress={handleOpenExternal} style={styles.externalBtn} title="Open in browser tab">
+          <TouchableOpacity onPress={handleOpenExternal} style={styles.externalBtn} accessibilityLabel="Open in browser tab">
             <SVGIcon name="open-outline" size={20} color={primary} />
           </TouchableOpacity>
         </View>
@@ -116,7 +116,7 @@ export default function WebViewScreen() {
           <Text style={styles.title} numberOfLines={1}>{title || 'In-App Web View'}</Text>
           <Text style={styles.subtitle} numberOfLines={1}>{url}</Text>
         </View>
-        <TouchableOpacity onPress={handleOpenExternal} style={styles.externalBtn} title="Open in browser">
+        <TouchableOpacity onPress={handleOpenExternal} style={styles.externalBtn} accessibilityLabel="Open in browser">
           <SVGIcon name="open-outline" size={20} color={primary} />
         </TouchableOpacity>
       </View>

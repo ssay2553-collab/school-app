@@ -18,6 +18,7 @@ interface StudentRowProps {
   isSelected: boolean;
   onToggleSelection: (uid: string) => void;
   isSelectionMode: boolean;
+  onOpenPaymentModal?: (item: StudentRecord) => void;
 }
 
 export const StudentRow = memo(({
@@ -33,10 +34,12 @@ export const StudentRow = memo(({
   isSelected,
   onToggleSelection,
   isSelectionMode,
+  onOpenPaymentModal,
 }: StudentRowProps) => {
   const { showToast } = useToast();
   const isPaid = existingRecord?.busPaid === true;
   const isAbsent = attendanceStatus === "absent";
+  const isAdvanceCovered = existingRecord?.isAdvanceCovered === true;
   const hasArrears = (item.dailyArrears || 0) > 0;
 
   return (
@@ -54,7 +57,11 @@ export const StudentRow = memo(({
       }}
       onLongPress={() => {
         if (canEdit && !isSelectionMode) {
-          onToggleSelection(item.uid);
+          if (onOpenPaymentModal) {
+            onOpenPaymentModal(item);
+          } else {
+            onToggleSelection(item.uid);
+          }
         }
       }}
       activeOpacity={0.7}
@@ -106,6 +113,10 @@ export const StudentRow = memo(({
               <View style={[styles.statusBadge, { backgroundColor: VIBE.danger + "15" }]}>
                 <Text style={[styles.statusBadgeText, { color: VIBE.danger }]}>Absent</Text>
               </View>
+            ) : isAdvanceCovered ? (
+              <View style={[styles.statusBadge, { backgroundColor: "#8B5CF615" }]}>
+                <Text style={[styles.statusBadgeText, { color: "#8B5CF6" }]}>Advance Paid</Text>
+              </View>
             ) : existingRecord && (existingRecord.busFee || 0) > 0 ? (
               <View
                 style={[
@@ -128,10 +139,14 @@ export const StudentRow = memo(({
             styles.actionBtn,
             styles.actionBtnPaid,
             isPaid && styles.actionBtnActivePaid,
-            (!canEdit || isAbsent) && { opacity: 0.5 },
+            (!canEdit || isAbsent || isAdvanceCovered) && { opacity: 0.5 },
           ]}
           onPress={async () => {
             if (!canEdit) return;
+            if (isAdvanceCovered) {
+              showToast({ message: "Advance Paid: Auto-assigned advance records cannot be modified.", type: "warning" });
+              return;
+            }
             if (isAbsent) {
               showToast({ message: "Student is absent.", type: "error" });
               return;
@@ -140,13 +155,15 @@ export const StudentRow = memo(({
             onSetOverride(item.uid, undefined);
           }}
           onLongPress={() => {
-            if (!canEdit) return;
+            if (!canEdit || isAdvanceCovered) return;
             onSetOverride(item.uid, overrideValue !== undefined ? undefined : "");
           }}
           disabled={!canEdit}
         >
           <SVGIcon name="checkmark" size={18} color={isPaid ? "#fff" : VIBE.success} />
-          <Text style={[styles.actionBtnText, { color: isPaid ? "#fff" : VIBE.success }]}>Paid</Text>
+          <Text style={[styles.actionBtnText, { color: isPaid ? "#fff" : VIBE.success }]}>
+            {isAdvanceCovered ? "Adv. Paid" : "Paid"}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -154,10 +171,14 @@ export const StudentRow = memo(({
             styles.actionBtn,
             styles.actionBtnUnpaid,
             existingRecord && (existingRecord.busFee || 0) > 0 && !isPaid && styles.actionBtnActiveUnpaid,
-            (!canEdit || isAbsent) && { opacity: 0.5 },
+            (!canEdit || isAbsent || isAdvanceCovered) && { opacity: 0.5 },
           ]}
           onPress={async () => {
             if (!canEdit) return;
+            if (isAdvanceCovered) {
+              showToast({ message: "Advance Paid: Auto-assigned advance records cannot be modified.", type: "warning" });
+              return;
+            }
             if (isAbsent) {
               showToast({ message: "Student is absent.", type: "error" });
               return;

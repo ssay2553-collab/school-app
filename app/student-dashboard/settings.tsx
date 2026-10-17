@@ -159,33 +159,32 @@ export default function StudentSettings() {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5,
+        quality: 0.3,
+        base64: true,
       });
 
-      if (!result.canceled) {
-        uploadProfileImage(result.assets[0].uri);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const base64DataUrl = asset.base64
+          ? `data:image/jpeg;base64,${asset.base64}`
+          : asset.uri;
+        uploadProfileImage(base64DataUrl);
       }
     } catch (e) {
       showToast({ message: "Failed to open library.", type: "error" });
     }
   };
 
-  const uploadProfileImage = async (uri: string) => {
+  const uploadProfileImage = async (base64OrUri: string) => {
     if (!appUser) return;
     setUpdating(true);
     try {
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const storageRef = ref(storage, `profiles/${appUser.uid}.jpg`);
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
-      
       await updateDoc(doc(db, "users", appUser.uid), {
-        "profile.profileImage": downloadURL
+        "profile.profileImage": base64OrUri
       });
       
       if (isMounted.current) {
-        showToast({ message: "Profile picture updated!", type: "success" });
+        showToast({ message: "Profile picture updated successfully!", type: "success" });
       }
     } catch (err) {
       if (isMounted.current) {

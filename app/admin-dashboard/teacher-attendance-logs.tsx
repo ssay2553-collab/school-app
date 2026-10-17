@@ -14,10 +14,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { collection, getDocs, doc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import moment from 'moment';
+import Constants from 'expo-constants';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { db } from '../../firebaseConfig';
 import { SCHOOL_CONFIG } from '../../constants/Config';
@@ -49,6 +50,7 @@ interface TeacherStats {
   absentCount: number;
   excusedCount: number;
   unexcusedCount: number;
+  holidayCount: number;
   totalDays: number;
 }
 
@@ -59,7 +61,7 @@ interface TeacherWeeklyDayStats {
   days: {
     name: string; // 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'
     date: string; // YYYY-MM-DD
-    status: 'Present' | 'Late' | 'Not Logged';
+    status: 'Present' | 'Late' | 'Holiday' | 'Not Logged';
   }[];
 }
 
@@ -72,6 +74,9 @@ export default function TeacherAttendanceLogsScreen() {
   const [selectedDate, setSelectedDate] = useState<string>(moment().format('YYYY-MM-DD'));
   const [viewMode, setViewMode] = useState<'daily' | 'summary'>('daily');
 
+  // Holidays state
+  const [holidays, setHolidays] = useState<{ date: string; title: string }[]>([]);
+
   // Permission Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<AttendanceRecord | null>(null);
@@ -79,6 +84,7 @@ export default function TeacherAttendanceLogsScreen() {
   const [permissionReason, setPermissionReason] = useState('');
   const [updating, setUpdating] = useState(false);
 
+  const schoolId = (Constants.expoConfig?.extra?.schoolId || SCHOOL_CONFIG.schoolId || 'school').toLowerCase();
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
 
   useEffect(() => {
@@ -88,6 +94,17 @@ export default function TeacherAttendanceLogsScreen() {
   const fetchAttendanceLogs = async () => {
     setLoading(true);
     try {
+      // 1. Fetch holidays from config
+      const configRef = doc(db, 'teacherAttendanceConfig', schoolId);
+      const configSnap = await getDoc(configRef);
+      if (configSnap.exists()) {
+        const cData = configSnap.data();
+        if (cData.holidays && Array.isArray(cData.holidays)) {
+          setHolidays(cData.holidays);
+        }
+      }
+
+      // 2. Fetch logs
       const q = query(collection(db, 'teacherAttendance'), orderBy('date', 'desc'));
       const snap = await getDocs(q);
       const list: AttendanceRecord[] = [];
@@ -121,6 +138,29 @@ export default function TeacherAttendanceLogsScreen() {
     }
   };
 
+  const isSelectedDateHoliday = holidays.some(h => h.date === selectedDate);
+  const selectedHolidayObj = holidays.find(h => h.date === selectedDate);
+
+  const handleToggleSelectedDateHoliday = async () => {
+    let updatedHolidays: { date: string; title: string }[];
+    if (isSelectedDateHoliday) {
+      updatedHolidays = holidays.filter(h => h.date !== selectedDate);
+      showToast({ message: `Removed holiday for ${selectedDate}`, type: 'success' });
+    } else {
+      updatedHolidays = [...holidays, { date: selectedDate, title: 'Official School Holiday' }];
+      showToast({ message: `Declared ${selectedDate} as an Official Holiday! 🎉`, type: 'success' });
+    }
+
+    try {
+      const configRef = doc(db, 'teacherAttendanceConfig', schoolId);
+      await setDoc(configRef, { holidays: updatedHolidays }, { merge: true });
+      setHolidays(updatedHolidays);
+    } catch (err) {
+      console.error('Error toggling holiday for selected date:', err);
+      showToast({ message: 'Failed to update holiday.', type: 'error' });
+    }
+  };
+
   const handleExportAttendancePDF = async () => {
     try {
       const statsMap = getTeacherStatsMap();
@@ -151,7 +191,7 @@ export default function TeacherAttendanceLogsScreen() {
               <thead>
                 <tr>
                   <th>Staff Name</th>
-                  <th>Total Days</th>
+                  <th>Working Days</th>
                   <th>On Time</th>
                   <th>Late</th>
                   <th>Absent</th>
@@ -291,6 +331,7 @@ export default function TeacherAttendanceLogsScreen() {
           absentCount: 0,
           excusedCount: 0,
           unexcusedCount: 0,
+          holidayCount: 0,
           totalDays: 0,
         };
       }
@@ -308,10 +349,14 @@ export default function TeacherAttendanceLogsScreen() {
       }
     });
 
-    const totalWorkingDays = uniqueDatesSet.size || 1;
+    const holidayDatesSet = new Set(holidays.map(h => h.date));
+    const nonHolidayDates = Array.from(uniqueDatesSet).filter(d => !holidayDatesSet.has(d));
+    const totalWorkingDays = nonHolidayDates.length || 1;
+
     Object.keys(statsMap).forEach((tid) => {
       const attended = statsMap[tid].onTimeCount + statsMap[tid].lateCount;
       statsMap[tid].totalDays = totalWorkingDays;
+      // Exclude holiday days from missing/absent calculations
       statsMap[tid].absentCount = Math.max(0, totalWorkingDays - attended);
     });
 
@@ -328,6 +373,7 @@ export default function TeacherAttendanceLogsScreen() {
       return { name, date: d.format('YYYY-MM-DD') };
     });
 
+    const holidayDatesSet = new Set(holidays.map(h => h.date));
     const teacherMap: Record<string, TeacherWeeklyDayStats> = {};
 
     const filtered = getFilteredRecordsForStats();
@@ -338,7 +384,11 @@ export default function TeacherAttendanceLogsScreen() {
           teacherId: tid,
           teacherName: r.teacherName,
           teacherEmail: r.teacherEmail,
-          days: weekDays.map(wd => ({ name: wd.name, date: wd.date, status: 'Not Logged' })),
+          days: weekDays.map(wd => ({
+            name: wd.name,
+            date: wd.date,
+            status: holidayDatesSet.has(wd.date) ? 'Holiday' : 'Not Logged',
+          })),
         };
       }
 
@@ -354,7 +404,11 @@ export default function TeacherAttendanceLogsScreen() {
           teacherId: stat.teacherId,
           teacherName: stat.teacherName,
           teacherEmail: stat.teacherEmail,
-          days: weekDays.map(wd => ({ name: wd.name, date: wd.date, status: 'Not Logged' })),
+          days: weekDays.map(wd => ({
+            name: wd.name,
+            date: wd.date,
+            status: holidayDatesSet.has(wd.date) ? 'Holiday' : 'Not Logged',
+          })),
         };
       }
     });
@@ -386,13 +440,13 @@ export default function TeacherAttendanceLogsScreen() {
         {isWeek && weeklyDays ? (
           <View style={styles.weeklyDaysRow}>
             {weeklyDays.map(wd => {
-              const bg = wd.status === 'Present' ? '#ecfdf5' : wd.status === 'Late' ? '#fffbeb' : '#f1f5f9';
-              const fg = wd.status === 'Present' ? '#059669' : wd.status === 'Late' ? '#d97706' : '#94a3b8';
+              const bg = wd.status === 'Present' ? '#ecfdf5' : wd.status === 'Late' ? '#fffbeb' : wd.status === 'Holiday' ? '#e0f2fe' : '#f1f5f9';
+              const fg = wd.status === 'Present' ? '#059669' : wd.status === 'Late' ? '#d97706' : wd.status === 'Holiday' ? '#0284c7' : '#94a3b8';
               return (
                 <View key={wd.name} style={[styles.dayBadge, { backgroundColor: bg }]}>
                   <Text style={[styles.dayBadgeName, { color: fg }]}>{wd.name}</Text>
                   <Text style={[styles.dayBadgeStatus, { color: fg }]}>
-                    {wd.status === 'Present' ? '✓' : wd.status === 'Late' ? '⏱' : '—'}
+                    {wd.status === 'Present' ? '✓' : wd.status === 'Late' ? '⏱' : wd.status === 'Holiday' ? '🎉' : '—'}
                   </Text>
                 </View>
               );
@@ -558,6 +612,18 @@ export default function TeacherAttendanceLogsScreen() {
           <TouchableOpacity style={styles.dateTab}>
             <Text style={styles.dateTabText}>Records: {dailyFilteredRecords.length}</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.holidayToggleBtn,
+              isSelectedDateHoliday && { backgroundColor: '#e0f2fe', borderColor: '#0284c7' },
+            ]}
+            onPress={handleToggleSelectedDateHoliday}
+          >
+            <SVGIcon name="calendar" size={14} color={isSelectedDateHoliday ? '#0284c7' : '#64748b'} />
+            <Text style={[styles.holidayToggleText, isSelectedDateHoliday && { color: '#0284c7' }]}>
+              {isSelectedDateHoliday ? `🎉 ${selectedHolidayObj?.title || 'Holiday'}` : '+ Declare Holiday'}
+            </Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -569,7 +635,12 @@ export default function TeacherAttendanceLogsScreen() {
         dailyFilteredRecords.length === 0 ? (
           <View style={styles.emptyContainer}>
             <SVGIcon name="checkmark-circle" size={48} color="#cbd5e1" />
-            <Text style={styles.emptyTitle}>No Attendance Records for {selectedDate}</Text>
+            <Text style={styles.emptyTitle}>
+              {isSelectedDateHoliday ? `🎉 Official Holiday: ${selectedHolidayObj?.title || 'School Closed'}` : `No Attendance Records for ${selectedDate}`}
+            </Text>
+            {isSelectedDateHoliday && (
+              <Text style={styles.emptySub}>Staff members are excused from attendance check-in on this day.</Text>
+            )}
           </View>
         ) : (
           <FlatList
@@ -746,17 +817,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 10,
     backgroundColor: '#F8FAFC',
-    gap: 10,
+    gap: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   dateTab: {
     paddingVertical: 6,
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     borderRadius: 6,
     backgroundColor: '#e2e8f0',
   },
   dateTabText: { fontSize: 12, fontWeight: '600', color: '#334155' },
+  holidayToggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    gap: 6,
+  },
+  holidayToggleText: { fontSize: 12, fontWeight: '700', color: '#475569' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { padding: 16, paddingBottom: 40 },
   recordCard: {
@@ -849,7 +933,8 @@ const styles = StyleSheet.create({
   dayBadgeName: { fontSize: 11, fontWeight: '700', marginBottom: 2 },
   dayBadgeStatus: { fontSize: 13, fontWeight: '800' },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#334155', marginTop: 12 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: '#334155', marginTop: 12, textAlign: 'center' },
+  emptySub: { fontSize: 13, color: '#64748b', marginTop: 6, textAlign: 'center' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

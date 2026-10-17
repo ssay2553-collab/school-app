@@ -17,6 +17,7 @@ interface StudentRowProps {
   isSelected: boolean;
   onToggleSelection: (uid: string) => void;
   isSelectionMode: boolean;
+  onOpenPaymentModal?: (item: any) => void;
 }
 
 const StudentRow = memo(({
@@ -32,8 +33,11 @@ const StudentRow = memo(({
   isSelected,
   onToggleSelection,
   isSelectionMode,
+  onOpenPaymentModal,
 }: StudentRowProps) => {
   const isPaid = existingRecord?.extraPaid === true;
+  const isAdvanceCovered = existingRecord?.isAdvanceCovered === true;
+  const hasArrears = (item.dailyArrears || 0) > 0;
 
   return (
     <TouchableOpacity
@@ -50,7 +54,11 @@ const StudentRow = memo(({
       }}
       onLongPress={() => {
         if (canEdit && !isSelectionMode) {
-          onToggleSelection(item.uid);
+          if (onOpenPaymentModal) {
+            onOpenPaymentModal(item);
+          } else {
+            onToggleSelection(item.uid);
+          }
         }
       }}
       activeOpacity={0.7}
@@ -87,6 +95,11 @@ const StudentRow = memo(({
             >
               {item.fullName}
             </Text>
+            {hasArrears && (
+              <View style={styles.arrearsBadge}>
+                <Text style={styles.arrearsText}>Arrears: ₵{item.dailyArrears}</Text>
+              </View>
+            )}
           </View>
           <View style={styles.studentMetaRow}>
             <Text style={styles.studentClass}>
@@ -106,6 +119,22 @@ const StudentRow = memo(({
                   ]}
                 >
                   Absent
+                </Text>
+              </View>
+            ) : isAdvanceCovered ? (
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: "#8B5CF615" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.statusBadgeText,
+                    { color: "#8B5CF6" },
+                  ]}
+                >
+                  Advance Paid
                 </Text>
               </View>
             ) : existingRecord &&
@@ -144,10 +173,17 @@ const StudentRow = memo(({
             styles.actionBtn,
             styles.actionBtnPaid,
             isPaid && styles.actionBtnActivePaid,
-            (!canEdit || isAbsent) && { opacity: 0.5 },
+            (!canEdit || isAbsent || isAdvanceCovered) && { opacity: 0.5 },
           ]}
           onPress={() => {
             if (!canEdit) return;
+            if (isAdvanceCovered) {
+              showToast({
+                message: "Advance Paid: Auto-assigned advance records cannot be modified.",
+                type: "warning",
+              });
+              return;
+            }
             if (isAbsent) {
               showToast({
                 message: "Student is absent.",
@@ -159,7 +195,7 @@ const StudentRow = memo(({
             onSetOverride(item.uid, undefined);
           }}
           onLongPress={() => {
-            if (!canEdit) return;
+            if (!canEdit || isAdvanceCovered) return;
             onSetOverride(item.uid, overrideAmount !== undefined ? undefined : "");
           }}
           disabled={!canEdit}
@@ -175,7 +211,7 @@ const StudentRow = memo(({
               { color: isPaid ? "#fff" : VIBE.success },
             ]}
           >
-            Paid
+            {isAdvanceCovered ? "Adv. Paid" : "Paid"}
           </Text>
         </TouchableOpacity>
 
@@ -187,10 +223,17 @@ const StudentRow = memo(({
               (existingRecord.extraClassesFee || 0) > 0 &&
               !isPaid &&
               styles.actionBtnActiveUnpaid,
-            (!canEdit || isAbsent) && { opacity: 0.5 },
+            (!canEdit || isAbsent || isAdvanceCovered) && { opacity: 0.5 },
           ]}
           onPress={() => {
             if (!canEdit) return;
+            if (isAdvanceCovered) {
+              showToast({
+                message: "Advance Paid: Auto-assigned advance records cannot be modified.",
+                type: "warning",
+              });
+              return;
+            }
             if (isAbsent) {
               showToast({
                 message: "Student is absent.",
@@ -291,6 +334,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8,
   },
+  arrearsBadge: {
+    backgroundColor: VIBE.danger + "10",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: VIBE.danger + "30",
+  },
+  arrearsText: { fontSize: 10, fontWeight: "800", color: VIBE.danger },
   studentMetaRow: {
     flexDirection: "row",
     alignItems: "center",

@@ -262,7 +262,7 @@ export default function TeacherDashboard() {
         {
           title: "Staff Attendance",
           subtitle: "GPS Check-In",
-          route: "/teacher-dashboard/scan-attendance",
+          route: "/shared/scan-attendance",
           icon: "checkmark-done-circle",
           color: "#388E3C", // Warm Forest Green
         },

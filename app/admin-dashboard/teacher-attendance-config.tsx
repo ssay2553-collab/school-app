@@ -14,6 +14,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 // @ts-ignore
 import * as Location from 'expo-location';
 import Constants from 'expo-constants';
+import moment from 'moment';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -43,6 +44,11 @@ export default function TeacherAttendanceConfigScreen() {
   const [configId, setConfigId] = useState<string>('');
   const [savedConfig, setSavedConfig] = useState<any>(null);
 
+  // Holidays state
+  const [holidays, setHolidays] = useState<{ date: string; title: string }[]>([]);
+  const [holidayDate, setHolidayDate] = useState<string>(moment().format('YYYY-MM-DD'));
+  const [holidayTitle, setHolidayTitle] = useState<string>('');
+
   const schoolId = (Constants.expoConfig?.extra?.schoolId || SCHOOL_CONFIG.schoolId || 'school').toLowerCase();
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
 
@@ -62,6 +68,7 @@ export default function TeacherAttendanceConfigScreen() {
         if (data.radius) setRadius(data.radius.toString());
         if (data.lateTime) setLateTime(data.lateTime);
         if (data.configId) setConfigId(data.configId);
+        if (data.holidays && Array.isArray(data.holidays)) setHolidays(data.holidays);
       }
     } catch (err) {
       console.error('Error fetching teacher attendance config:', err);
@@ -121,12 +128,13 @@ export default function TeacherAttendanceConfigScreen() {
         longitude: lngNum,
         radius: radiusNum,
         lateTime: lateTime || '08:15',
+        holidays,
         updatedBy: appUser?.uid || 'admin',
         updatedAt: serverTimestamp(),
         date: new Date().toISOString().split('T')[0],
       };
 
-      await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload);
+      await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload, { merge: true });
       setConfigId(newConfigId);
       setSavedConfig(payload);
       showToast({ message: 'Staff attendance GPS configuration saved successfully!', type: 'success' });
@@ -138,6 +146,40 @@ export default function TeacherAttendanceConfigScreen() {
     }
   };
 
+  const handleAddHoliday = async () => {
+    if (!holidayDate.trim() || !holidayTitle.trim()) {
+      showToast({ message: 'Please provide both a date (YYYY-MM-DD) and holiday title.', type: 'error' });
+      return;
+    }
+
+    const newHoliday = { date: holidayDate.trim(), title: holidayTitle.trim() };
+    const updatedHolidays = [...holidays.filter(h => h.date !== newHoliday.date), newHoliday];
+
+    try {
+      const docRef = doc(db, 'teacherAttendanceConfig', schoolId);
+      await setDoc(docRef, { holidays: updatedHolidays }, { merge: true });
+      setHolidays(updatedHolidays);
+      setHolidayTitle('');
+      showToast({ message: `Holiday "${newHoliday.title}" set for ${newHoliday.date}!`, type: 'success' });
+    } catch (err) {
+      console.error('Error declaring holiday:', err);
+      showToast({ message: 'Failed to declare holiday.', type: 'error' });
+    }
+  };
+
+  const handleRemoveHoliday = async (dateToRemove: string) => {
+    const updatedHolidays = holidays.filter(h => h.date !== dateToRemove);
+    try {
+      const docRef = doc(db, 'teacherAttendanceConfig', schoolId);
+      await setDoc(docRef, { holidays: updatedHolidays }, { merge: true });
+      setHolidays(updatedHolidays);
+      showToast({ message: 'Holiday removed successfully.', type: 'success' });
+    } catch (err) {
+      console.error('Error removing holiday:', err);
+      showToast({ message: 'Failed to remove holiday.', type: 'error' });
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={[styles.header, { backgroundColor: primary }]}>
@@ -146,7 +188,7 @@ export default function TeacherAttendanceConfigScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.headerTitle}>Staff Attendance Setup</Text>
-          <Text style={styles.headerSub}>GPS Geofencing & Late Threshold</Text>
+          <Text style={styles.headerSub}>GPS Geofencing, Late Threshold & Holidays</Text>
         </View>
       </View>
 
@@ -244,6 +286,67 @@ export default function TeacherAttendanceConfigScreen() {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* School Holidays & Off-Days Section */}
+        <View style={[styles.card, { marginTop: 20 }]}>
+          <Text style={styles.sectionTitle}>🎉 School Holidays & Off-Days Setup</Text>
+          <Text style={styles.sectionSub}>
+            Declare official school holidays. On declared holidays, staff members are exempt from attendance check-in and will NOT be logged as absent.
+          </Text>
+
+          <View style={styles.inputRow}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Holiday Date (YYYY-MM-DD)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor="#94a3b8"
+                value={holidayDate}
+                onChangeText={setHolidayDate}
+              />
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Holiday Reason / Title</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Independence Day"
+                placeholderTextColor="#94a3b8"
+                value={holidayTitle}
+                onChangeText={setHolidayTitle}
+              />
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.holidayBtn, { backgroundColor: primary }]}
+            onPress={handleAddHoliday}
+          >
+            <SVGIcon name="calendar" size={18} color="#fff" />
+            <Text style={styles.holidayBtnText}>Declare Holiday for Date 🎉</Text>
+          </TouchableOpacity>
+
+          {holidays.length > 0 ? (
+            <View style={styles.holidayList}>
+              <Text style={styles.holidayListTitle}>Declared Holidays ({holidays.length}):</Text>
+              {holidays.map((h) => (
+                <View key={h.date} style={styles.holidayItem}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.holidayItemDate}>📅 {h.date}</Text>
+                    <Text style={styles.holidayItemTitle}>{h.title}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.deleteHolidayBtn}
+                    onPress={() => handleRemoveHoliday(h.date)}
+                  >
+                    <SVGIcon name="close" size={18} color="#ef4444" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.emptyHolidayText}>No holidays declared yet.</Text>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -320,4 +423,30 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   logsBtnText: { fontSize: 14, fontWeight: '700' },
+  holidayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+    paddingVertical: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  holidayBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  holidayList: { marginTop: 12 },
+  holidayListTitle: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 8 },
+  holidayItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  holidayItemDate: { fontSize: 12, fontWeight: '800', color: '#0f172a' },
+  holidayItemTitle: { fontSize: 13, color: '#475569', marginTop: 2 },
+  deleteHolidayBtn: { padding: 6 },
+  emptyHolidayText: { fontSize: 12, color: '#94a3b8', fontStyle: 'italic', marginTop: 8 },
 });

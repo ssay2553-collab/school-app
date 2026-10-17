@@ -25,6 +25,7 @@ import SVGIcon from "../../components/SVGIcon";
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 import { AppUser } from "../../types/users";
 import { useDailyAttendance } from "../../hooks/teacher-dashboard/useDailyAttendance";
+import { useSchoolOperations } from "../../hooks/useSchoolOperations";
 import { useRef } from "react";
 
 const CONTENT_MAX_WIDTH = 1200;
@@ -122,6 +123,7 @@ const AttendanceStudentCard = React.memo(({
   statusData,
   isUnsaved,
   isOfficialClassTeacher,
+  isBlocked,
   markLocal,
   onOpenArrivalModal
 }: {
@@ -130,6 +132,7 @@ const AttendanceStudentCard = React.memo(({
   statusData: { status?: string; arrivalMode?: string; broughtBy?: string },
   isUnsaved: boolean,
   isOfficialClassTeacher: boolean,
+  isBlocked?: boolean,
   markLocal: (id: string, status: "present" | "absent" | "late") => void,
   onOpenArrivalModal: (student: AppUser) => void
 }) => {
@@ -144,7 +147,7 @@ const AttendanceStudentCard = React.memo(({
       delay={Math.min(index * 30, 300)}
       duration={400}
       useNativeDriver
-      style={[styles.card, cardStatusStyle, isUnsaved && styles.unsavedCard]}
+      style={[styles.card, cardStatusStyle, isUnsaved && styles.unsavedCard, isBlocked && { opacity: 0.6 }]}
     >
       <View style={styles.cardInfo}>
         <View style={styles.avatarPlaceholder}>
@@ -163,8 +166,9 @@ const AttendanceStudentCard = React.memo(({
 
             <TouchableOpacity
               style={styles.transportTag}
-              onPress={() => onOpenArrivalModal(item)}
+              onPress={() => !isBlocked && onOpenArrivalModal(item)}
               activeOpacity={0.7}
+              disabled={isBlocked}
             >
               <SVGIcon name={arrivalMode === 'school_bus' ? 'bus' : arrivalMode === 'parent' ? 'people' : 'car'} size={12} color={COLORS.primary} />
               <Text style={styles.transportTagText}>
@@ -179,27 +183,30 @@ const AttendanceStudentCard = React.memo(({
       {isOfficialClassTeacher && (
         <View style={styles.actions}>
           <TouchableOpacity
-            style={[styles.actionBtn, status === "present" && styles.presentActive]}
-            onPress={() => markLocal(item.uid, "present")}
+            style={[styles.actionBtn, status === "present" && styles.presentActive, isBlocked && { opacity: 0.5 }]}
+            onPress={() => !isBlocked && markLocal(item.uid, "present")}
             activeOpacity={0.6}
+            disabled={isBlocked}
           >
             <SVGIcon name="checkmark-circle" size={18} color={status === 'present' ? '#fff' : '#10B981'} />
             <Text style={[styles.actionBtnText, status === "present" && {color: "#fff"}]}>Present</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionBtn, status === "late" && styles.lateActive]}
-            onPress={() => markLocal(item.uid, "late")}
+            style={[styles.actionBtn, status === "late" && styles.lateActive, isBlocked && { opacity: 0.5 }]}
+            onPress={() => !isBlocked && markLocal(item.uid, "late")}
             activeOpacity={0.6}
+            disabled={isBlocked}
           >
             <SVGIcon name="time" size={18} color={status === 'late' ? '#fff' : '#F59E0B'} />
             <Text style={[styles.actionBtnText, status === "late" && {color: "#fff"}]}>Late</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionBtn, status === "absent" && styles.absentActive]}
-            onPress={() => markLocal(item.uid, "absent")}
+            style={[styles.actionBtn, status === "absent" && styles.absentActive, isBlocked && { opacity: 0.5 }]}
+            onPress={() => !isBlocked && markLocal(item.uid, "absent")}
             activeOpacity={0.6}
+            disabled={isBlocked}
           >
             <SVGIcon name="close-circle" size={18} color={status === 'absent' ? '#fff' : '#EF4444'} />
             <Text style={[styles.actionBtnText, status === "absent" && {color: "#fff"}]}>Absent</Text>
@@ -213,20 +220,12 @@ const AttendanceStudentCard = React.memo(({
 export default function DailyAttendanceScreen() {
   const { width } = useWindowDimensions();
 
-  const webInputStyle = Platform.OS === 'web' ? {
-    padding: '10px',
-    borderRadius: '8px',
-    border: '1px solid #E2E8F0',
-    fontSize: '16px',
-    width: '100%',
-    marginBottom: '10px'
-  } : {};
-
   const isLargeScreen = width > 768;
   const isExtraLargeScreen = width > 1100;
   const numColumns = isExtraLargeScreen ? 3 : isLargeScreen ? 2 : 1;
 
   const { appUser } = useAuth();
+  const { getOperationalStatus } = useSchoolOperations();
   const router = useRouter();
   const params = useLocalSearchParams<{
     classId?: string;
@@ -256,6 +255,8 @@ export default function DailyAttendanceScreen() {
     updateArrivalDetails,
     saveToFirestore,
   } = useDailyAttendance(params.classId || null, params.date || moment().format("YYYY-MM-DD"));
+
+  const opStatus = getOperationalStatus(selectedDate);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [arrivalModalVisible, setArrivalModalVisible] = useState(false);
@@ -354,6 +355,7 @@ export default function DailyAttendanceScreen() {
         statusData={studentRecord}
         isUnsaved={studentIsUnsaved}
         isOfficialClassTeacher={isOfficialClassTeacher}
+        isBlocked={opStatus.isBlocked}
         markLocal={markLocal}
         onOpenArrivalModal={(student) => {
           setActiveStudentForArrival(student);
@@ -361,7 +363,7 @@ export default function DailyAttendanceScreen() {
         }}
       />
     );
-  }, [localAttendance, serverAttendance, isOfficialClassTeacher, markLocal]);
+  }, [localAttendance, serverAttendance, isOfficialClassTeacher, isBlocked, markLocal]);
 
   if (loading && students.length === 0) {
     return (
@@ -374,6 +376,18 @@ export default function DailyAttendanceScreen() {
 
   const renderHeader = () => (
     <View style={styles.mainContent}>
+      {opStatus.isBlocked && (
+        <View style={styles.offDayLockBanner}>
+          <SVGIcon name="lock-closed" size={20} color="#d97706" />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={styles.offDayLockTitle}>🔒 ATTENDANCE MARKING PAUSED ({opStatus.statusTitle.toUpperCase()})</Text>
+            <Text style={styles.offDayLockSub}>
+              School operations are paused for {opStatus.statusTitle}. Student attendance marking is automatically disabled to preserve historical data.
+            </Text>
+          </View>
+        </View>
+      )}
+
       <View style={styles.dateBar}>
         <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateNavBtn}>
           <SVGIcon name="chevron-back" size={20} color="#64748B" />
@@ -476,16 +490,18 @@ export default function DailyAttendanceScreen() {
       {isOfficialClassTeacher && (
         <View style={styles.footerAction}>
           <TouchableOpacity
-            style={[styles.saveBtn, saving && { opacity: 0.7 }]}
+            style={[styles.saveBtn, (saving || opStatus.isBlocked) && { opacity: 0.6 }]}
             onPress={saveToFirestore}
-            disabled={saving}
+            disabled={saving || opStatus.isBlocked}
           >
             {saving ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <SVGIcon name="save" size={20} color="#fff" />
-                <Text style={styles.saveBtnText}>Save Attendance & Transport</Text>
+                <SVGIcon name={opStatus.isBlocked ? "lock-closed" : "save"} size={20} color="#fff" />
+                <Text style={styles.saveBtnText}>
+                  {opStatus.isBlocked ? `Attendance Paused (${opStatus.statusTitle})` : "Save Attendance & Transport"}
+                </Text>
               </>
             )}
           </TouchableOpacity>
@@ -521,6 +537,19 @@ const styles = StyleSheet.create({
   backBtnText: { color: '#1E293B', fontWeight: '800', fontSize: 14 },
   title: { fontSize: 20, fontWeight: '900', color: '#1E293B' },
   subtitle: { fontSize: 12, color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  offDayLockBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    marginHorizontal: 15,
+    marginTop: 15,
+  },
+  offDayLockTitle: { fontSize: 12, fontWeight: '800', color: '#d97706' },
+  offDayLockSub: { fontSize: 11, color: '#92400e', marginTop: 2, lineHeight: 15 },
   dateBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, backgroundColor: '#fff', margin: 15, borderRadius: 18, ...SHADOWS.small, maxWidth: 600, alignSelf: 'center', width: '92%' },
   dateNavBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F8FAFC', justifyContent: 'center', alignItems: 'center' },
   dateDisplay: { flexDirection: 'row', alignItems: 'center', gap: 10 },

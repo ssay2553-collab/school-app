@@ -24,6 +24,8 @@ import { useBusFeeLogic, DailyRecord, TabType } from "../../hooks/shared/useBusF
 import { VIBE } from "../../components/bus-fees/BusFeeConstants";
 import { BusFeeStats } from "../../components/bus-fees/BusFeeStats";
 import { StudentRow } from "../../components/bus-fees/StudentRow";
+import { AdvancePaymentModal } from "../../components/shared/AdvancePaymentModal";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 
 // Guarded import for native-only library
 const DateTimePicker =
@@ -85,7 +87,10 @@ export default function BusFees() {
     handleBulkBill,
     toggleStudentSelection,
     handleSelectAll,
+    handleAdvancePayment,
   } = useBusFeeLogic();
+
+  const [paymentModalStudent, setPaymentModalStudent] = useState<any | null>(null);
 
   const handleBack = () => {
     router.replace("/shared/daily-financials");
@@ -107,42 +112,50 @@ export default function BusFees() {
     setSelectedDate(moment(selectedDate).add(days, "days").toDate());
   };
 
-  const renderRecordItem = useCallback(({ item }: { item: DailyRecord }) => (
-    <Animatable.View animation="fadeInUp" duration={300}>
-      <View style={styles.recordCard}>
-        <View
-          style={[
-            styles.recordStatus,
-            {
-              backgroundColor:
-                item.busFee > 0 ? VIBE.info + "20" : VIBE.muted + "20",
-            },
-          ]}
-        />
-        <View style={styles.recordContent}>
-          <Text style={styles.recordStudentName} numberOfLines={1}>
-            {item.studentName}
-          </Text>
-          <Text style={styles.recordClass}>{item.className}</Text>
-          <View style={styles.recordDetails}>
-            <View style={styles.recordFeeItem}>
-              <SVGIcon name="bus" size={14} color={VIBE.info} />
-              <Text style={styles.recordFeeText}>₵{item.busFee}</Text>
+  const renderRecordItem = useCallback(({ item }: { item: DailyRecord }) => {
+    const isPaid = item.busPaid === true;
+    return (
+      <Animatable.View animation="fadeInUp" duration={300}>
+        <View style={styles.recordCard}>
+          <View
+            style={[
+              styles.recordStatus,
+              {
+                backgroundColor:
+                  isPaid ? VIBE.info + "20" : VIBE.danger + "20",
+              },
+            ]}
+          />
+          <View style={styles.recordContent}>
+            <Text style={styles.recordStudentName} numberOfLines={1}>
+              {item.studentName}
+            </Text>
+            <Text style={styles.recordClass}>{item.className}</Text>
+            <View style={styles.recordDetails}>
+              <View style={styles.recordFeeItem}>
+                <SVGIcon name="bus" size={14} color={isPaid ? VIBE.info : VIBE.danger} />
+                <Text style={styles.recordFeeText}>₵{item.busPaidAmount ?? item.busFee}</Text>
+              </View>
+              <View style={[styles.statusBadge, { backgroundColor: isPaid ? VIBE.success + "15" : VIBE.danger + "15" }]}>
+                <Text style={{ fontSize: 10, fontWeight: "800", color: isPaid ? VIBE.success : VIBE.danger }}>
+                  {isPaid ? "PAID" : "UNPAID"}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.recordTotal}>
+              <Text style={styles.recordTotalLabel}>Total:</Text>
+              <Text style={[styles.recordTotalValue, { color: VIBE.primary }]}>
+                ₵{item.total.toFixed(2)}
+              </Text>
             </View>
           </View>
-          <View style={styles.recordTotal}>
-            <Text style={styles.recordTotalLabel}>Total:</Text>
-            <Text style={[styles.recordTotalValue, { color: VIBE.primary }]}>
-              ₵{item.total.toFixed(2)}
-            </Text>
+          <View style={styles.recordMeta}>
+            <Text style={styles.recordRecordedBy}>{item.recordedBy}</Text>
           </View>
         </View>
-        <View style={styles.recordMeta}>
-          <Text style={styles.recordRecordedBy}>{item.recordedBy}</Text>
-        </View>
-      </View>
-    </Animatable.View>
-  ), []);
+      </Animatable.View>
+    );
+  }, []);
 
   if (!canView) {
     return (
@@ -541,7 +554,7 @@ export default function BusFees() {
                       item={item}
                       existingRecord={getExistingRecord(item.uid)}
                       attendanceStatus={attendanceMap[item.uid]?.status}
-                      rate={locationRates[item.busLocation || ""] || 0}
+                      rate={locationRates[item.busLocation || ""] || SCHOOL_CONFIG.defaultBusRate || 10}
                       canEdit={canEdit}
                       overrideValue={overrideMap[item.uid]}
                       onMarkPaid={markStudentPaid}
@@ -550,6 +563,7 @@ export default function BusFees() {
                       isSelected={selectedStudentUids.has(item.uid)}
                       onToggleSelection={toggleStudentSelection}
                       isSelectionMode={selectedStudentUids.size > 0}
+                      onOpenPaymentModal={(s) => setPaymentModalStudent(s)}
                     />
                   ))
                 ) : (
@@ -680,6 +694,22 @@ export default function BusFees() {
                 </TouchableOpacity>
             </View>
         </Animatable.View>
+      )}
+
+      {paymentModalStudent && (
+        <AdvancePaymentModal
+          visible={!!paymentModalStudent}
+          onClose={() => setPaymentModalStudent(null)}
+          studentName={paymentModalStudent.fullName}
+          className={paymentModalStudent.className}
+          feeType="Bus"
+          dailyRate={locationRates[paymentModalStudent.busLocation || ""] || SCHOOL_CONFIG.defaultBusRate || 10}
+          currentArrears={paymentModalStudent.dailyArrears || 0}
+          saving={saving}
+          onConfirmPayment={async (amt) => {
+            await handleAdvancePayment(paymentModalStudent.uid, amt);
+          }}
+        />
       )}
     </SafeAreaView>
   );
@@ -1053,6 +1083,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, justifyContent: "center" },
   recordFeeText: { fontSize: 13, fontWeight: "700", color: VIBE.text },
   recordTotal: {
     flexDirection: "row",

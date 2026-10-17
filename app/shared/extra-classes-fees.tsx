@@ -23,6 +23,8 @@ import { useExtraClassesFeeLogic, DailyRecord, TabType } from "../../hooks/share
 import ExtraClassesFeeStats from "../../components/extra-classes-fees/ExtraClassesFeeStats";
 import StudentRow from "../../components/extra-classes-fees/StudentRow";
 import { VIBE } from "../../components/extra-classes-fees/ExtraClassesFeeConstants";
+import { AdvancePaymentModal } from "../../components/shared/AdvancePaymentModal";
+import { SCHOOL_CONFIG } from "../../constants/Config";
 
 // Guarded import for native-only library
 const DateTimePicker =
@@ -74,7 +76,10 @@ export default function ExtraClassesFees() {
     handleBulkBill,
     toggleStudentSelection,
     handleSelectAll,
+    handleAdvancePayment,
   } = useExtraClassesFeeLogic();
+
+  const [paymentModalStudent, setPaymentModalStudent] = useState<any | null>(null);
 
   const handleBack = () => {
     router.replace("/shared/daily-financials");
@@ -97,44 +102,50 @@ export default function ExtraClassesFees() {
     setSelectedDate(moment(selectedDate).add(days, "days").toDate());
   };
 
-  const renderRecordItem = ({ item }: { item: DailyRecord }) => (
-    <Animatable.View animation="fadeInUp" duration={300}>
-      <View style={styles.recordCard}>
-        <View
-          style={[
-            styles.recordStatus,
-            {
-              backgroundColor:
-                item.extraClassesFee > 0
-                  ? VIBE.purple + "20"
-                  : VIBE.muted + "20",
-            },
-          ]}
-        />
-        <View style={styles.recordContent}>
-          <Text style={styles.recordStudentName} numberOfLines={1}>
-            {item.studentName}
-          </Text>
-          <Text style={styles.recordClass}>{item.className}</Text>
-          <View style={styles.recordDetails}>
-            <View style={styles.recordFeeItem}>
-              <SVGIcon name="book" size={14} color={VIBE.purple} />
-              <Text style={styles.recordFeeText}>₵{item.extraClassesFee}</Text>
+  const renderRecordItem = ({ item }: { item: DailyRecord }) => {
+    const isPaid = item.extraPaid === true;
+    return (
+      <Animatable.View animation="fadeInUp" duration={300}>
+        <View style={styles.recordCard}>
+          <View
+            style={[
+              styles.recordStatus,
+              {
+                backgroundColor:
+                  isPaid ? VIBE.purple + "20" : VIBE.danger + "20",
+              },
+            ]}
+          />
+          <View style={styles.recordContent}>
+            <Text style={styles.recordStudentName} numberOfLines={1}>
+              {item.studentName}
+            </Text>
+            <Text style={styles.recordClass}>{item.className}</Text>
+            <View style={styles.recordDetails}>
+              <View style={styles.recordFeeItem}>
+                <SVGIcon name="book" size={14} color={isPaid ? VIBE.purple : VIBE.danger} />
+                <Text style={styles.recordFeeText}>₵{item.extraPaidAmount ?? item.extraClassesFee}</Text>
+              </View>
+              <View style={[styles.statusBadge, { backgroundColor: isPaid ? VIBE.success + "15" : VIBE.danger + "15" }]}>
+                <Text style={{ fontSize: 10, fontWeight: "800", color: isPaid ? VIBE.success : VIBE.danger }}>
+                  {isPaid ? "PAID" : "UNPAID"}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.recordTotal}>
+              <Text style={styles.recordTotalLabel}>Total:</Text>
+              <Text style={[styles.recordTotalValue, { color: VIBE.primary }]}>
+                ₵{item.total.toFixed(2)}
+              </Text>
             </View>
           </View>
-          <View style={styles.recordTotal}>
-            <Text style={styles.recordTotalLabel}>Total:</Text>
-            <Text style={[styles.recordTotalValue, { color: VIBE.primary }]}>
-              ₵{item.total.toFixed(2)}
-            </Text>
+          <View style={styles.recordMeta}>
+            <Text style={styles.recordRecordedBy}>{item.recordedBy}</Text>
           </View>
         </View>
-        <View style={styles.recordMeta}>
-          <Text style={styles.recordRecordedBy}>{item.recordedBy}</Text>
-        </View>
-      </View>
-    </Animatable.View>
-  );
+      </Animatable.View>
+    );
+  };
 
   if (!canView && !loading) {
     return (
@@ -453,6 +464,7 @@ export default function ExtraClassesFees() {
                       isSelected={selectedStudentUids.has(item.uid)}
                       onToggleSelection={toggleStudentSelection}
                       isSelectionMode={selectedStudentUids.size > 0}
+                      onOpenPaymentModal={(s) => setPaymentModalStudent(s)}
                     />
                   ))
                 ) : (
@@ -590,6 +602,22 @@ export default function ExtraClassesFees() {
                 </TouchableOpacity>
             </View>
         </Animatable.View>
+      )}
+
+      {paymentModalStudent && (
+        <AdvancePaymentModal
+          visible={!!paymentModalStudent}
+          onClose={() => setPaymentModalStudent(null)}
+          studentName={paymentModalStudent.fullName}
+          className={paymentModalStudent.className}
+          feeType="Extra Classes"
+          dailyRate={currentClassRate || SCHOOL_CONFIG.defaultExtraClassesRate || 10}
+          currentArrears={paymentModalStudent.dailyArrears || 0}
+          saving={saving}
+          onConfirmPayment={async (amt) => {
+            await handleAdvancePayment(paymentModalStudent.uid, amt);
+          }}
+        />
       )}
     </SafeAreaView>
   );
@@ -937,6 +965,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, justifyContent: "center" },
   recordFeeText: { fontSize: 13, fontWeight: "700", color: VIBE.text },
   recordTotal: {
     flexDirection: "row",

@@ -17,6 +17,7 @@ import { db } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useAcademicConfig } from "../useAcademicConfig";
+import { useSchoolOperations } from "../useSchoolOperations";
 import { getTeacherClasses, isClassTeacher } from "../../lib/classHelpers";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import moment from "moment";
@@ -59,6 +60,7 @@ export const useFeedingFeeLogic = () => {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const acadConfig = useAcademicConfig();
+  const { getOperationalStatus } = useSchoolOperations();
 
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
   const isSuperAdmin = [
@@ -117,9 +119,14 @@ export const useFeedingFeeLogic = () => {
 
   const stats = useMemo(() => {
     const feedingRecords = dailyRecords.filter((r) => (r.feedingFee || 0) > 0);
+    const paidRecords = feedingRecords.filter((r) => r.feedingPaid === true);
+    const totalFeeding = paidRecords.reduce(
+      (sum, r) => sum + (r.feedingPaidAmount ?? r.feedingFee ?? 0),
+      0
+    );
     return {
-      totalFeeding: feedingRecords.reduce((acc, curr) => acc + (curr.feedingFee || 0), 0),
-      recordsCount: feedingRecords.length,
+      totalFeeding,
+      recordsCount: paidRecords.length,
     };
   }, [dailyRecords]);
 
@@ -198,6 +205,8 @@ export const useFeedingFeeLogic = () => {
             classId: data.classId || "unknown",
             className: classes.find((c) => c.id === data.classId)?.name || "Class",
             isFeeding: data.isFeeding || false,
+            dailyArrears: data.dailyArrears || 0,
+            termArrears: data.termArrears || {},
           };
         });
 
@@ -355,6 +364,11 @@ export const useFeedingFeeLogic = () => {
       showToast({ message: "No feeding rate set for this class.", type: "error" });
       return;
     }
+    const existingRecord = getExistingRecord(uid);
+    if ((existingRecord as any)?.isAdvanceCovered) {
+      showToast({ message: "Advance Paid: Auto-assigned advance records cannot be modified.", type: "warning" });
+      return;
+    }
     const dateStr = moment(selectedDate).format("YYYY-MM-DD");
     const docId = `${uid}_${dateStr}`;
 
@@ -366,6 +380,7 @@ export const useFeedingFeeLogic = () => {
       const existingRecord = dailyRecords.find((r) => r.studentUid === uid);
       const oldFee = existingRecord?.feedingFee || 0;
       const feeDiff = rate - oldFee;
+      const wasUnpaid = existingRecord && (existingRecord.feedingFee || 0) > 0 && !existingRecord.feedingPaid;
 
       const todayRef = doc(db, "dailyFinancials", docId);
       const todayData: any = {
@@ -394,6 +409,31 @@ export const useFeedingFeeLogic = () => {
         todayData.otherFeesDescription = "";
       }
       ops.push({ ref: todayRef, data: todayData });
+
+      // If student was previously marked unpaid, reverse that unpaid daily arrears
+      if (wasUnpaid) {
+        const acadYear = (acadConfig.academicYear || "").replace(/[\/\s]/g, "_");
+        const currentTerm = (acadConfig.currentTerm || "").replace(/[\/\s]/g, "_");
+        const termKey = `${acadYear}_${currentTerm}`;
+        const userRef = doc(db, "users", uid);
+        const userUpdate: any = {
+          dailyArrears: increment(-rate),
+          updatedAt: serverTimestamp(),
+        };
+        if (termKey && termKey !== "_") {
+          userUpdate[`termArrears.${termKey}`] = increment(-rate);
+        }
+        ops.push({ ref: userRef, data: userUpdate });
+
+        setStudents((prev) =>
+          prev.map((s) => {
+            if (s.uid === uid) {
+              return { ...s, dailyArrears: Math.max(0, (s.dailyArrears || 0) - rate) };
+            }
+            return s;
+          })
+        );
+      }
 
       if (overrideAmountStr) {
         let extra = overrideAmount - paidToday;
@@ -448,7 +488,13 @@ export const useFeedingFeeLogic = () => {
       return;
     }
     const existingRecord = getExistingRecord(uid);
+    if ((existingRecord as any)?.isAdvanceCovered) {
+      showToast({ message: "Advance Paid: Auto-assigned advance records cannot be modified.", type: "warning" });
+      return;
+    }
+
     const isCurrentlyUnpaid = existingRecord && existingRecord.feedingFee > 0 && !existingRecord.feedingPaid;
+    const wasPaid = existingRecord && existingRecord.feedingPaid === true;
 
     setSaving(true);
     try {
@@ -485,6 +531,44 @@ export const useFeedingFeeLogic = () => {
       data.feedingPaidAt = null;
 
       await setDoc(ref, data, { merge: true } as any);
+
+      // Trigger arrears update on user doc
+      let arrearsDelta = 0;
+      if (isCurrentlyUnpaid) {
+        // Toggled off unpaid back to 0
+        arrearsDelta = -rate;
+      } else if (wasPaid) {
+        // Changed from paid to unpaid
+        arrearsDelta = rate;
+      } else {
+        // Newly marked unpaid
+        arrearsDelta = rate;
+      }
+
+      if (arrearsDelta !== 0) {
+        const acadYear = (acadConfig.academicYear || "").replace(/[\/\s]/g, "_");
+        const currentTerm = (acadConfig.currentTerm || "").replace(/[\/\s]/g, "_");
+        const termKey = `${acadYear}_${currentTerm}`;
+        const userRef = doc(db, "users", uid);
+        const userUpdate: any = {
+          dailyArrears: increment(arrearsDelta),
+          updatedAt: serverTimestamp(),
+        };
+        if (termKey && termKey !== "_") {
+          userUpdate[`termArrears.${termKey}`] = increment(arrearsDelta);
+        }
+        await setDoc(userRef, userUpdate, { merge: true } as any);
+
+        setStudents((prev) =>
+          prev.map((s) => {
+            if (s.uid === uid) {
+              return { ...s, dailyArrears: Math.max(0, (s.dailyArrears || 0) + arrearsDelta) };
+            }
+            return s;
+          })
+        );
+      }
+
       showToast({
         message: isCurrentlyUnpaid ? "Record cleared." : "Marked Not Paid.",
         type: "success",
@@ -510,6 +594,9 @@ export const useFeedingFeeLogic = () => {
       const dateStr = moment(selectedDate).format("YYYY-MM-DD");
       const batch = writeBatch(db);
       const selectedUids = Array.from(selectedStudentUids);
+      const acadYear = (acadConfig.academicYear || "").replace(/[\/\s]/g, "_");
+      const currentTerm = (acadConfig.currentTerm || "").replace(/[\/\s]/g, "_");
+      const termKey = `${acadYear}_${currentTerm}`;
 
       for (const uid of selectedUids) {
         const student = students.find((s) => s.uid === uid);
@@ -545,6 +632,21 @@ export const useFeedingFeeLogic = () => {
         }
 
         batch.set(ref, data, { merge: true } as any);
+
+        // Update arrears on student user doc
+        const wasPaid = existingRecord?.feedingPaid === true;
+        const arrearsDelta = wasPaid ? amount : (amount - oldFee);
+        if (arrearsDelta !== 0) {
+          const userRef = doc(db, "users", uid);
+          const userUpdate: any = {
+            dailyArrears: increment(arrearsDelta),
+            updatedAt: serverTimestamp(),
+          };
+          if (termKey && termKey !== "_") {
+            userUpdate[`termArrears.${termKey}`] = increment(arrearsDelta);
+          }
+          batch.set(userRef, userUpdate, { merge: true } as any);
+        }
       }
 
       await batch.commit();
@@ -574,6 +676,141 @@ export const useFeedingFeeLogic = () => {
       setSelectedStudentUids(new Set());
     } else {
       setSelectedStudentUids(new Set(filtered.map(s => s.uid)));
+    }
+  };
+
+  const handleAdvancePayment = async (studentUid: string, amount: number) => {
+    const student = students.find((s) => s.uid === studentUid);
+    const rate = classRates[student?.classId || ""] || SCHOOL_CONFIG.defaultFeedingRate || 10;
+
+    if (!student || !rate || rate <= 0 || amount <= 0) {
+      showToast({ message: "Invalid payment amount or rate.", type: "error" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const currentArrears = student.dailyArrears || 0;
+      const arrearsToClear = Math.min(currentArrears, amount);
+      const remainingForDays = amount - arrearsToClear;
+
+      const ops: Array<{ ref: any; data: any }> = [];
+      const acadYear = (acadConfig.academicYear || "").replace(/[\/\s]/g, "_");
+      const currentTerm = (acadConfig.currentTerm || "").replace(/[\/\s]/g, "_");
+      const termKey = `${acadYear}_${currentTerm}`;
+      const triggerDateStr = moment(selectedDate).format("YYYY-MM-DD");
+
+      // Step 1: Clear arrears first if student has existing arrears
+      if (arrearsToClear > 0) {
+        const userRef = doc(db, "users", studentUid);
+        const userUpdate: any = {
+          dailyArrears: increment(-arrearsToClear),
+          updatedAt: serverTimestamp(),
+        };
+        if (termKey && termKey !== "_") {
+          userUpdate[`termArrears.${termKey}`] = increment(-arrearsToClear);
+        }
+        ops.push({ ref: userRef, data: userUpdate });
+      }
+
+      // Step 2: Auto-assign paid days for remaining amount
+      let daysAssigned = 0;
+      if (remainingForDays > 0) {
+        let calendarOffset = 0;
+        const maxDaysToSearch = 120;
+        let unallocatedRemaining = remainingForDays;
+
+        while (unallocatedRemaining > 0 && calendarOffset < maxDaysToSearch) {
+          const targetMoment = moment(selectedDate).add(calendarOffset, "days");
+          const dayOfWeek = targetMoment.day(); // 0 = Sun, 6 = Sat
+
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            const dateStr = targetMoment.format("YYYY-MM-DD");
+            const opStatus = getOperationalStatus(dateStr);
+
+            if (!opStatus.isBlocked) {
+              const docRef = doc(db, "dailyFinancials", `${studentUid}_${dateStr}`);
+              const isTriggerDay = calendarOffset === 0;
+
+              const existingRecord = isTriggerDay ? getExistingRecord(studentUid) : null;
+              const oldFee = existingRecord?.feedingFee || 0;
+
+              // Bulk advance amount is added in FULL to trigger day's total collected.
+              // Subsequent auto-paid days have feedingPaidAmount = 0 to prevent double-counting!
+              const paidAmountForDay = isTriggerDay ? remainingForDays : 0;
+
+              const dayData: any = {
+                studentUid,
+                studentName: student.fullName || "Student",
+                classId: student.classId || "unknown",
+                className: student.className || "Class",
+                date: dateStr,
+                academicYear: acadConfig.academicYear,
+                term: acadConfig.currentTerm,
+                feedingFee: rate,
+                total: increment(isTriggerDay ? (remainingForDays - oldFee) : rate),
+                feedingPaid: true,
+                feedingPaidAmount: paidAmountForDay,
+                feedingPaidAt: serverTimestamp(),
+                recordedBy: appUser?.fullName || appUser?.adminRole || "Admin",
+                recordedByUid: appUser?.uid || "unknown",
+                updatedAt: serverTimestamp(),
+              };
+
+              if (isTriggerDay) {
+                dayData.isAdvancePaymentTrigger = true;
+                dayData.advanceTotalPaid = remainingForDays;
+              } else {
+                dayData.isAdvanceCovered = true;
+                dayData.advanceTriggerDate = triggerDateStr;
+              }
+
+              if (!existingRecord && isTriggerDay) {
+                dayData.createdAt = serverTimestamp();
+                dayData.busFee = 0;
+                dayData.extraClassesFee = 0;
+                dayData.otherFees = 0;
+                dayData.otherFeesDescription = "";
+              }
+
+              ops.push({ ref: docRef, data: dayData });
+              unallocatedRemaining -= rate;
+              daysAssigned++;
+            }
+          }
+          calendarOffset++;
+        }
+      }
+
+      await commitPaidSpreads(ops);
+
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.uid === studentUid) {
+            return {
+              ...s,
+              dailyArrears: Math.max(0, currentArrears - arrearsToClear),
+            };
+          }
+          return s;
+        })
+      );
+
+      let msg = "";
+      if (arrearsToClear > 0 && daysAssigned > 0) {
+        msg = `Cleared ₵${arrearsToClear.toFixed(2)} arrears and auto-assigned ${daysAssigned} ${daysAssigned === 1 ? 'day' : 'days'} as PAID.`;
+      } else if (arrearsToClear > 0) {
+        msg = `Cleared ₵${arrearsToClear.toFixed(2)} towards student arrears. Remaining arrears: ₵${(currentArrears - arrearsToClear).toFixed(2)}.`;
+      } else {
+        msg = `Bulk payment of ₵${amount.toFixed(2)} recorded on today's total! Auto-assigned ${daysAssigned} ${daysAssigned === 1 ? 'day' : 'days'} as PAID.`;
+      }
+
+      showToast({ message: msg, type: "success" });
+    } catch (e) {
+      console.error("Error processing advance payment:", e);
+      showToast({ message: "Failed to process payment.", type: "error" });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -619,5 +856,6 @@ export const useFeedingFeeLogic = () => {
     handleBulkBill,
     toggleStudentSelection,
     handleSelectAll,
+    handleAdvancePayment,
   };
 };

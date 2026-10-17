@@ -26,6 +26,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { sortClasses, getTeacherClasses } from "../../lib/classHelpers";
+import { useSchoolOperations } from "../../hooks/useSchoolOperations";
 
 const { width } = Dimensions.get("window");
 
@@ -61,6 +62,7 @@ export default function DailyFinancials() {
   const router = useRouter();
   const { appUser } = useAuth();
   const { showToast } = useToast();
+  const { getOperationalStatus } = useSchoolOperations();
 
   const isTeacherRole = appUser?.role === "teacher";
 
@@ -127,6 +129,9 @@ export default function DailyFinancials() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  const dateStr = moment(selectedDate).format("YYYY-MM-DD");
+  const opStatus = getOperationalStatus(dateStr);
+
   // Determine initial class selection and assigned classes
   const teacherClasses = useMemo(() => {
     return getTeacherClasses(appUser);
@@ -142,7 +147,6 @@ export default function DailyFinancials() {
     if (isSuperAdmin) {
       return selectedClassId === "all" ? [] : [selectedClassId];
     }
-    // For teachers/staff, if "all" is selected, use all their assigned classes
     return selectedClassId === "all" ? teacherClasses : [selectedClassId];
   }, [isSuperAdmin, selectedClassId, teacherClasses]);
 
@@ -171,8 +175,6 @@ export default function DailyFinancials() {
   // Load stats for selected date
   const loadStats = useCallback(async () => {
     try {
-      const dateStr = moment(selectedDate).format("YYYY-MM-DD");
-
       // Build base query for students
       let studentQuery = query(
         collection(db, "users"),
@@ -193,7 +195,6 @@ export default function DailyFinancials() {
           );
         }
       } else if (!isSuperAdmin) {
-        // If not super admin and no classes assigned, stats are zero
         setStats({
           feeding: 0,
           bus: 0,
@@ -324,13 +325,24 @@ export default function DailyFinancials() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedDate, selectedClassId]);
+  }, [dateStr, effectiveClassIds, isSuperAdmin]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
   const canAccessStats = isSuperAdmin || teacherClasses.length > 0;
+
+  const handleCategoryPress = (route: string) => {
+    if (opStatus.isBlocked) {
+      showToast({
+        message: `Daily Financials Paused: ${opStatus.statusTitle}. Fee collection is disabled on off-days.`,
+        type: "error",
+      });
+      return;
+    }
+    router.push(route as any);
+  };
 
   const renderCategoryCard = (
     title: string,
@@ -342,8 +354,8 @@ export default function DailyFinancials() {
     canAccess: boolean,
   ) => (
     <TouchableOpacity
-      style={styles.categoryCard}
-      onPress={() => router.push(route as any)}
+      style={[styles.categoryCard, opStatus.isBlocked && { opacity: 0.6 }]}
+      onPress={() => handleCategoryPress(route)}
       activeOpacity={0.7}
     >
       <View style={[styles.categoryIconBox, { backgroundColor: color + "10" }]}>
@@ -364,23 +376,6 @@ export default function DailyFinancials() {
           <SVGIcon name="chevron-forward" size={18} color={VIBE.muted} />
         </View>
       </View>
-    </TouchableOpacity>
-  );
-
-  const renderBusLocationCard = (group: BusLocationGroup) => (
-    <TouchableOpacity
-      key={group.location}
-      style={styles.locationCard}
-      onPress={() => router.push("/shared/bus-fees" as any)}
-    >
-      <View style={styles.locationIconBox}>
-        <SVGIcon name="bus" size={20} color={VIBE.info} />
-      </View>
-      <View style={styles.locationInfo}>
-        <Text style={styles.locationName}>{group.location}</Text>
-        <Text style={styles.locationCount}>{group.count} students</Text>
-      </View>
-      <SVGIcon name="chevron-forward" size={18} color={VIBE.muted} />
     </TouchableOpacity>
   );
 
@@ -435,12 +430,6 @@ export default function DailyFinancials() {
         </TouchableOpacity>
       </View>
 
-      {showDatePicker && (
-        <View style={styles.datePickerContainer}>
-          {/* Simple date picker would go here - using platform default */}
-        </View>
-      )}
-
       {loading ? (
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -458,7 +447,20 @@ export default function DailyFinancials() {
             />
           }
         >
-          {/* Class Filter - Admin or assigned teacher */}
+          {/* Lock Banner for Off-Days */}
+          {opStatus.isBlocked && (
+            <View style={styles.offDayLockBanner}>
+              <SVGIcon name="lock-closed" size={20} color="#d97706" />
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.offDayLockTitle}>🔒 DAILY FINANCIAL TRANSACTIONS PAUSED ({opStatus.statusTitle.toUpperCase()})</Text>
+                <Text style={styles.offDayLockSub}>
+                  Financial transactions and daily fee collections are automatically paused today to preserve financial records during {opStatus.statusTitle}.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Class Filter */}
           {(isSuperAdmin || teacherClasses.length > 0) && (
             <View style={styles.filterSection}>
               <Text style={styles.filterLabel}>Filter by Class:</Text>
@@ -508,7 +510,7 @@ export default function DailyFinancials() {
             </View>
           )}
 
-          {/* Summary Stats - Admin or assigned teacher */}
+          {/* Summary Stats */}
           {canAccessStats && (
             <>
               <View style={styles.summaryRow}>
@@ -570,14 +572,13 @@ export default function DailyFinancials() {
             </>
           )}
 
-          {/* Category Cards - Only show categories user has permission for */}
+          {/* Category Cards */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Fee Categories</Text>
             <Text style={styles.sectionSubtitle}>
               Select a category to record fees
             </Text>
 
-            {/* Feeding Fees - only if user has permission */}
             {canViewFeeding &&
               renderCategoryCard(
                 "Feeding Fees",
@@ -589,7 +590,6 @@ export default function DailyFinancials() {
                 true,
               )}
 
-            {/* Bus Fees - only if user has permission */}
             {canViewBus &&
               renderCategoryCard(
                 "Bus Fees",
@@ -601,7 +601,6 @@ export default function DailyFinancials() {
                 true,
               )}
 
-            {/* Extra Classes - only if user has permission */}
             {canViewExtraClasses &&
               renderCategoryCard(
                 "Extra Classes",
@@ -613,7 +612,6 @@ export default function DailyFinancials() {
                 true,
               )}
 
-            {/* Daily Fees Ledger - Dedicated separate ledger */}
             {canView &&
               renderCategoryCard(
                 "Daily Fees Ledger",
@@ -626,22 +624,6 @@ export default function DailyFinancials() {
               )}
           </View>
 
-          {/* Quick Actions */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Quick Actions</Text>
-            <View style={styles.quickActionsRow}>
-              <TouchableOpacity
-                style={styles.quickActionBtn}
-                onPress={handleBack}
-              >
-                <SVGIcon name="arrow-back" size={20} color={VIBE.muted} />
-                <Text style={[styles.quickActionText, { color: VIBE.muted }]}>
-                  Go Back
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
           <View style={{ height: 40 }} />
         </ScrollView>
       )}
@@ -652,7 +634,6 @@ export default function DailyFinancials() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: VIBE.bg },
   centerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
-  centerText: { marginTop: 16, color: VIBE.muted, fontSize: 16 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -684,7 +665,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   dateButtonText: { fontSize: 13, fontWeight: "700", color: VIBE.primary },
-  datePickerContainer: { padding: 16 },
+  offDayLockBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    marginHorizontal: 20,
+    marginTop: 16,
+  },
+  offDayLockTitle: { fontSize: 12, fontWeight: '800', color: '#d97706' },
+  offDayLockSub: { fontSize: 11, color: '#92400e', marginTop: 2, lineHeight: 15 },
   filterSection: {
     paddingVertical: 16,
     paddingLeft: 20,
@@ -770,49 +763,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  locationsList: {
-    backgroundColor: VIBE.surface,
-    borderRadius: 20,
-    padding: 8,
-    ...SHADOWS.small,
-  },
-  locationCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 12,
-    backgroundColor: VIBE.bg,
-    borderRadius: 14,
-    marginBottom: 8,
-  },
-  locationIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: VIBE.info + "15",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  locationInfo: { flex: 1 },
-  locationName: { fontSize: 14, fontWeight: "700", color: VIBE.text },
-  locationCount: { fontSize: 12, color: VIBE.muted, marginTop: 2 },
-  quickActionsRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-  },
-  quickActionBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    backgroundColor: VIBE.surface,
-    padding: 16,
-    borderRadius: 18,
-    ...SHADOWS.medium,
-  },
-  quickActionText: { fontSize: 14, fontWeight: "700" },
   errorContainer: {
     flex: 1,
     justifyContent: "center",

@@ -250,7 +250,6 @@ export default function CurriculumPdfViewerScreen() {
         {isTeacher && (
           <TouchableOpacity
             style={styles.uploadHeaderBtn}
-            onPressed={() => setIsUploadModalOpen(true)}
             onPress={() => setIsUploadModalOpen(true)}
           >
             <SVGIcon name="add" size={20} color="#fff" />
@@ -384,7 +383,6 @@ export default function CurriculumPdfViewerScreen() {
         visible={isUploadModalOpen}
         animationType="slide"
         transparent={true}
-        onRequestClear={() => setIsUploadModalOpen(false)}
         onRequestClose={() => setIsUploadModalOpen(false)}
       >
         <View style={styles.modalOverlay}>

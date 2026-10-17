@@ -262,28 +262,31 @@ export const useFinancialData = (acadConfig: any, showToast: any) => {
           : isInRange(date, ranges.term);
 
         if (data.feedingFee > 0 && data.feedingPaid === true) {
+          const fAmt = data.feedingPaidAmount !== undefined ? data.feedingPaidAmount : data.feedingFee;
           const cat = catResults["Feeding Fees"];
-          if (isInRange(date, ranges.today)) { cat.today.total += data.feedingFee; cat.today.count++; }
-          if (isInRange(date, ranges.week)) { cat.week.total += data.feedingFee; cat.week.count++; }
-          if (isInRange(date, ranges.month)) { cat.month.total += data.feedingFee; cat.month.count++; }
-          if (matchesTerm) { cat.term.total += data.feedingFee; cat.term.count++; }
-          daily.feeding += data.feedingFee;
+          if (isInRange(date, ranges.today)) { cat.today.total += fAmt; cat.today.count++; }
+          if (isInRange(date, ranges.week)) { cat.week.total += fAmt; cat.week.count++; }
+          if (isInRange(date, ranges.month)) { cat.month.total += fAmt; cat.month.count++; }
+          if (matchesTerm) { cat.term.total += fAmt; cat.term.count++; }
+          daily.feeding += fAmt;
         }
         if (data.busFee > 0 && data.busPaid === true) {
+          const bAmt = data.busPaidAmount !== undefined ? data.busPaidAmount : data.busFee;
           const cat = catResults["Bus Fees"];
-          if (isInRange(date, ranges.today)) { cat.today.total += data.busFee; cat.today.count++; }
-          if (isInRange(date, ranges.week)) { cat.week.total += data.busFee; cat.week.count++; }
-          if (isInRange(date, ranges.month)) { cat.month.total += data.busFee; cat.month.count++; }
-          if (matchesTerm) { cat.term.total += data.busFee; cat.term.count++; }
-          daily.bus += data.busFee;
+          if (isInRange(date, ranges.today)) { cat.today.total += bAmt; cat.today.count++; }
+          if (isInRange(date, ranges.week)) { cat.week.total += bAmt; cat.week.count++; }
+          if (isInRange(date, ranges.month)) { cat.month.total += bAmt; cat.month.count++; }
+          if (matchesTerm) { cat.term.total += bAmt; cat.term.count++; }
+          daily.bus += bAmt;
         }
         if (data.extraClassesFee > 0 && data.extraPaid === true) {
+          const eAmt = data.extraPaidAmount !== undefined ? data.extraPaidAmount : data.extraClassesFee;
           const cat = catResults["Extra Classes"];
-          if (isInRange(date, ranges.today)) { cat.today.total += data.extraClassesFee; cat.today.count++; }
-          if (isInRange(date, ranges.week)) { cat.week.total += data.extraClassesFee; cat.week.count++; }
-          if (isInRange(date, ranges.month)) { cat.month.total += data.extraClassesFee; cat.month.count++; }
-          if (matchesTerm) { cat.term.total += data.extraClassesFee; cat.term.count++; }
-          daily.extra += data.extraClassesFee;
+          if (isInRange(date, ranges.today)) { cat.today.total += eAmt; cat.today.count++; }
+          if (isInRange(date, ranges.week)) { cat.week.total += eAmt; cat.week.count++; }
+          if (isInRange(date, ranges.month)) { cat.month.total += eAmt; cat.month.count++; }
+          if (matchesTerm) { cat.term.total += eAmt; cat.term.count++; }
+          daily.extra += eAmt;
         }
       });
 

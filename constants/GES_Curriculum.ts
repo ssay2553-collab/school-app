@@ -8,6 +8,8 @@ export interface GESIndicator {
   contentStandard: string;
   indicator: string;
   objectives: string;
+  exemplars?: string;
+  coreCompetencies?: string[];
 }
 
 /**

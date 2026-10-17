@@ -1,38 +1,286 @@
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, StatusBar, Alert, Platform, ActivityIndicator, ScrollView } from "react-native";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  StatusBar,
+  Alert,
+  Platform,
+  ActivityIndicator,
+  ScrollView,
+  TextInput,
+  Modal,
+} from "react-native";
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useToast } from "../../contexts/ToastContext";
 import { signOut } from "firebase/auth";
-import { auth, db, functions } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
 import SVGIcon from "../../components/SVGIcon";
-import { collection, query, where, getDocs, deleteDoc, doc, writeBatch } from "firebase/firestore";
-import { httpsCallable } from "firebase/functions";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  setDoc,
+  getDoc,
+  writeBatch,
+  serverTimestamp,
+} from "firebase/firestore";
 import moment from "moment";
 import { useFinanceCleanup } from "../../hooks/admin-dashboard/useFinanceCleanup";
 import { repairMissingSignupCodes } from "../../scratch/repair_signup_codes";
 import { broadcastFeeReminders } from "../../src/services/feeReminderService";
-import { useRef, useEffect } from "react";
+import { SCHOOL_CONFIG } from "../../constants/Config";
+import Constants from "expo-constants";
 
 export default function AdminSettingsScreen() {
   const { theme } = useTheme();
   const { showToast } = useToast();
   const router = useRouter();
 
-  const [isCleaning, setIsCleaning] = React.useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
   const [repairLoading, setRepairLoading] = useState(false);
   const [unifyLoading, setUnifyLoading] = useState(false);
   const [cfLoading, setCfLoading] = useState<Record<string, boolean>>({});
   const isMounted = useRef(true);
   const isNavigating = useRef(false);
 
+  // Operational Switches State
+  const [activeOverride, setActiveOverride] = useState<'open' | 'holiday' | 'mid_term' | 'vacation'>('open');
+  const [overrideTitle, setOverrideTitle] = useState('');
+  const [unlockDate, setUnlockDate] = useState('');
+  const [savingOperations, setSavingOperations] = useState(false);
+
+  // Modal states for Off-Day triggers
+  const [modalMode, setModalMode] = useState<'none' | 'holiday' | 'mid_term' | 'vacation'>('none');
+  const [vacationNextTermBegins, setVacationNextTermBegins] = useState('');
+  const [midTermStartDate, setMidTermStartDate] = useState(moment().format('YYYY-MM-DD'));
+  const [midTermEndDate, setMidTermEndDate] = useState(moment().add(5, 'days').format('YYYY-MM-DD'));
+  const [holidayDate, setHolidayDate] = useState(moment().format('YYYY-MM-DD'));
+  const [modalTitleInput, setModalTitleInput] = useState('');
+
+  const schoolId = (Constants.expoConfig?.extra?.schoolId || SCHOOL_CONFIG.schoolId || 'school').toLowerCase();
+
   useEffect(() => {
     isMounted.current = true;
     return () => { isMounted.current = false; };
   }, []);
 
+  useEffect(() => {
+    fetchOperationsConfig();
+  }, [schoolId]);
+
+  const fetchOperationsConfig = async () => {
+    try {
+      const snap = await getDoc(doc(db, 'teacherAttendanceConfig', schoolId));
+      if (snap.exists() && isMounted.current) {
+        const data = snap.data();
+        if (data.activeOverride) setActiveOverride(data.activeOverride);
+        if (data.overrideTitle) setOverrideTitle(data.overrideTitle);
+        if (data.unlockDate) setUnlockDate(data.unlockDate);
+      }
+
+      // Also fetch nextTermBegins from academic_config
+      const acadSnap = await getDoc(doc(db, 'school_settings', 'academic_config'));
+      if (acadSnap.exists() && isMounted.current) {
+        const aData = acadSnap.data();
+        if (aData.nextTermBegins) {
+          setVacationNextTermBegins(aData.nextTermBegins.toString().trim());
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching operations config in settings:', e);
+    }
+  };
+
   const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, report: financeReport } = useFinanceCleanup(showToast);
+
+  const openTriggerModal = async (type: 'holiday' | 'mid_term' | 'vacation') => {
+    setModalMode(type);
+    if (type === 'vacation') {
+      setModalTitleInput(overrideTitle || 'School Vacation / Term Break');
+      // Fetch latest nextTermBegins date
+      try {
+        const acadSnap = await getDoc(doc(db, 'school_settings', 'academic_config'));
+        if (acadSnap.exists() && acadSnap.data()?.nextTermBegins) {
+          setVacationNextTermBegins(acadSnap.data().nextTermBegins.toString().trim());
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    } else if (type === 'mid_term') {
+      setModalTitleInput(overrideTitle || 'Mid-Term Break');
+      setMidTermStartDate(moment().format('YYYY-MM-DD'));
+      setMidTermEndDate(moment().add(5, 'days').format('YYYY-MM-DD'));
+    } else if (type === 'holiday') {
+      setModalTitleInput(overrideTitle || 'Public / School Holiday');
+      setHolidayDate(moment().format('YYYY-MM-DD'));
+    }
+  };
+
+  const handleConfirmVacation = async () => {
+    if (!vacationNextTermBegins.trim()) {
+      showToast({ message: 'Please set the Next Term Begins date (YYYY-MM-DD).', type: 'error' });
+      return;
+    }
+
+    setSavingOperations(true);
+    try {
+      const nextTermDateStr = vacationNextTermBegins.trim();
+
+      // 1. Update academic_config in Firestore so Academic Calendar and app settings are synchronized
+      await setDoc(doc(db, 'school_settings', 'academic_config'), {
+        nextTermBegins: nextTermDateStr,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+
+      // 2. Update teacherAttendanceConfig operational status with unlockDate = nextTermDateStr
+      const payload = {
+        activeOverride: 'vacation',
+        overrideTitle: modalTitleInput.trim() || 'Vacation / End of Term Break',
+        startDate: moment().format('YYYY-MM-DD'),
+        unlockDate: nextTermDateStr,
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload, { merge: true });
+
+      if (isMounted.current) {
+        setActiveOverride('vacation');
+        setOverrideTitle(payload.overrideTitle);
+        setUnlockDate(nextTermDateStr);
+        setModalMode('none');
+        showToast({
+          message: `🌴 Vacation Mode Activated! Attendance & fees collection paused. App will auto-unlock on ${nextTermDateStr}.`,
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: 'Failed to activate Vacation mode.', type: 'error' });
+      }
+    } finally {
+      if (isMounted.current) setSavingOperations(false);
+    }
+  };
+
+  const handleConfirmMidTerm = async () => {
+    if (!midTermStartDate.trim() || !midTermEndDate.trim()) {
+      showToast({ message: 'Please enter both start and end dates.', type: 'error' });
+      return;
+    }
+
+    setSavingOperations(true);
+    try {
+      const startStr = midTermStartDate.trim();
+      const endStr = midTermEndDate.trim();
+      const calculatedUnlockDate = moment(endStr).add(1, 'day').format('YYYY-MM-DD');
+
+      const payload = {
+        activeOverride: 'mid_term',
+        overrideTitle: modalTitleInput.trim() || 'Mid-Term Break',
+        startDate: startStr,
+        endDate: endStr,
+        unlockDate: calculatedUnlockDate,
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload, { merge: true });
+
+      if (isMounted.current) {
+        setActiveOverride('mid_term');
+        setOverrideTitle(payload.overrideTitle);
+        setUnlockDate(calculatedUnlockDate);
+        setModalMode('none');
+        showToast({
+          message: `🏖️ Mid-Term Break Activated (${startStr} to ${endStr})! App will auto-unlock on ${calculatedUnlockDate}.`,
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: 'Failed to activate Mid-Term Break.', type: 'error' });
+      }
+    } finally {
+      if (isMounted.current) setSavingOperations(false);
+    }
+  };
+
+  const handleConfirmHoliday = async () => {
+    if (!holidayDate.trim()) {
+      showToast({ message: 'Please enter the holiday date (YYYY-MM-DD).', type: 'error' });
+      return;
+    }
+
+    setSavingOperations(true);
+    try {
+      const hDateStr = holidayDate.trim();
+      const calculatedUnlockDate = moment(hDateStr).add(1, 'day').format('YYYY-MM-DD');
+
+      const payload = {
+        activeOverride: 'holiday',
+        overrideTitle: modalTitleInput.trim() || 'Public / School Holiday',
+        startDate: hDateStr,
+        endDate: hDateStr,
+        unlockDate: calculatedUnlockDate,
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload, { merge: true });
+
+      if (isMounted.current) {
+        setActiveOverride('holiday');
+        setOverrideTitle(payload.overrideTitle);
+        setUnlockDate(calculatedUnlockDate);
+        setModalMode('none');
+        showToast({
+          message: `🎈 Holiday Activated for ${hDateStr}! App will auto-unlock on ${calculatedUnlockDate}.`,
+          type: 'success',
+        });
+      }
+    } catch (err) {
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: 'Failed to activate Holiday mode.', type: 'error' });
+      }
+    } finally {
+      if (isMounted.current) setSavingOperations(false);
+    }
+  };
+
+  const handleResetOperations = async () => {
+    setSavingOperations(true);
+    try {
+      const payload = {
+        activeOverride: 'open',
+        overrideTitle: '',
+        unlockDate: '',
+        updatedAt: serverTimestamp(),
+      };
+
+      await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload, { merge: true });
+
+      if (isMounted.current) {
+        setActiveOverride('open');
+        setOverrideTitle('');
+        setUnlockDate('');
+        showToast({ message: '🟢 Normal School Operations Activated! Attendance & daily fees unlocked.', type: 'success' });
+      }
+    } catch (err) {
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: 'Failed to reset operations.', type: 'error' });
+      }
+    } finally {
+      if (isMounted.current) setSavingOperations(false);
+    }
+  };
 
   const handleRepairSignupCodes = async () => {
     setRepairLoading(true);
@@ -121,26 +369,17 @@ export default function AdminSettingsScreen() {
       if (updatedStudentsCount > 0) {
         await batch.commit();
         if (isMounted.current) {
-          showToast({
-            message: `Unified link codes for ${updatedStudentsCount} students across ${unifiedFamiliesCount} families!`,
-            type: "success",
-          });
+          showToast({ message: `Unified ${updatedStudentsCount} students across ${unifiedFamiliesCount} families with matching parent link codes!`, type: "success" });
         }
       } else {
         if (isMounted.current) {
-          showToast({
-            message: "All sibling link codes are already synchronized!",
-            type: "info",
-          });
+          showToast({ message: "All sibling accounts are already correctly unified.", type: "info" });
         }
       }
     } catch (err: any) {
       if (isMounted.current) {
-        console.error("Error unifying sibling link codes:", err);
-        showToast({
-          message: err.message || "Failed to unify sibling link codes.",
-          type: "error",
-        });
+        console.error("Sibling unification error:", err);
+        showToast({ message: "Failed to unify sibling codes.", type: "error" });
       }
     } finally {
       if (isMounted.current) {
@@ -150,75 +389,28 @@ export default function AdminSettingsScreen() {
   };
 
   const handleFeeRemindersBroadcast = async () => {
-    const run = async () => {
-      setCfLoading(prev => ({ ...prev, triggerFeeReminders: true }));
-      try {
-        const result = await broadcastFeeReminders(auth.currentUser?.uid, "School Financial Office");
-        if (isMounted.current) {
-          showToast({
-            message: result.message,
-            type: "success"
-          });
-        }
-      } catch (err: any) {
-        if (isMounted.current) {
-          showToast({ message: err.message || "Failed to broadcast fee reminders.", type: "error" });
-        }
-      } finally {
-        if (isMounted.current) {
-          setCfLoading(prev => ({ ...prev, triggerFeeReminders: false }));
-        }
+    const fnName = "triggerFeeReminders";
+    setCfLoading(prev => ({ ...prev, [fnName]: true }));
+    try {
+      const result = await broadcastFeeReminders();
+      if (isMounted.current) {
+        showToast({ message: result.message, type: "success" });
       }
-    };
-
-    const confirmMessage = "Send push notification fee reminders to ALL parents with outstanding balances?";
-    if (Platform.OS === "web") {
-      if (window.confirm(confirmMessage)) run();
-    } else {
-      Alert.alert("Broadcast Fee Reminders", confirmMessage, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Send Reminders", style: "default", onPress: run }
-      ]);
-    }
-  };
-
-  const handleCloudFunctionTrigger = async (fnName: string, confirmMessage: string) => {
-    const run = async () => {
-      setCfLoading(prev => ({ ...prev, [fnName]: true }));
-      try {
-        const callable = httpsCallable(functions, fnName);
-        const result: any = await callable();
-        if (isMounted.current) {
-          showToast({
-            message: `Success: ${result.data.deletedMessages || result.data.count || result.data.deleted || result.data.notificationCount || 0} items processed.`,
-            type: "success"
-          });
-        }
-      } catch (err: any) {
-        if (isMounted.current) {
-          showToast({ message: err.message || "Execution failed", type: "error" });
-        }
-      } finally {
-        if (isMounted.current) {
-          setCfLoading(prev => ({ ...prev, [fnName]: false }));
-        }
+    } catch (err: any) {
+      if (isMounted.current) {
+        console.error(`Error in broadcastFeeReminders:`, err);
+        showToast({ message: "Broadcast failed. Check system logs.", type: "error" });
       }
-    };
-
-    if (Platform.OS === "web") {
-      if (window.confirm(confirmMessage)) run();
-    } else {
-      Alert.alert("System Task", confirmMessage, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Execute", style: "destructive", onPress: run }
-      ]);
+    } finally {
+      if (isMounted.current) {
+        setCfLoading(prev => ({ ...prev, [fnName]: false }));
+      }
     }
   };
 
   const performLogout = async () => {
     try {
       await signOut(auth);
-      // This is the key change: always go to the root on logout.
       if (!isNavigating.current) {
         isNavigating.current = true;
         router.replace("/");
@@ -325,27 +517,6 @@ export default function AdminSettingsScreen() {
       loading: isFinanceCleaning,
     },
     {
-        title: "Chat & Token Maintenance",
-        icon: "chatbubble-ellipses-outline",
-        action: () => handleCloudFunctionTrigger("runChatMaintenance", "Clear old messages and inactive tokens to optimize Firestore performance?"),
-        color: "#10B981",
-        loading: cfLoading["runChatMaintenance"],
-    },
-    {
-        title: "News Expiry Cleanup",
-        icon: "megaphone-outline",
-        action: () => handleCloudFunctionTrigger("runNewsMaintenance", "Permanently delete announcements that expired over 7 days ago?"),
-        color: "#EC4899",
-        loading: cfLoading["runNewsMaintenance"],
-    },
-    {
-        title: "Archive Purge (3+ Years)",
-        icon: "shield-checkmark-outline",
-        action: () => handleCloudFunctionTrigger("purgeOldArchivedUsers", "Hard-delete users who have been archived for more than 3 years? This action is irreversible."),
-        color: "#6366F1",
-        loading: cfLoading["purgeOldArchivedUsers"],
-    },
-    {
         title: "Broadcast Fee Reminders",
         icon: "notifications-outline",
         action: handleFeeRemindersBroadcast,
@@ -412,10 +583,91 @@ export default function AdminSettingsScreen() {
         >
            <SVGIcon name="arrow-back" size={24} color={theme.text} />
         </TouchableOpacity>
-        <Text style={[styles.header, { color: theme.text }]}>Settings</Text>
+        <Text style={[styles.header, { color: theme.text }]}>Admin System Settings</Text>
       </View>
       
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Academic Off-Day & Data Preservation Triggers Card */}
+        <View style={[styles.opCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <SVGIcon name="shield-checkmark" size={22} color={COLORS.primary} />
+            <Text style={[styles.opTitle, { color: theme.text }]}>Academic Off-Days & Auto-Unlock Controls</Text>
+          </View>
+          <Text style={styles.opSub}>
+            Trigger official school off-days (Holiday, Mid-Term Break, Vacation). Activating a trigger automatically pauses student/staff attendance marking and daily fees taking. Operations automatically resume/unlock on the set return date.
+          </Text>
+
+          <View style={styles.opBtnGrid}>
+            <TouchableOpacity
+              style={[
+                styles.opBtn,
+                activeOverride === 'open' && { backgroundColor: '#10b981', borderColor: '#059669' },
+              ]}
+              onPress={handleResetOperations}
+              disabled={savingOperations}
+            >
+              <Text style={[styles.opBtnText, activeOverride === 'open' && { color: '#fff' }]}>
+                🟢 Normal Operations (Unlocked)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.opBtn,
+                activeOverride === 'holiday' && { backgroundColor: '#f59e0b', borderColor: '#d97706' },
+              ]}
+              onPress={() => openTriggerModal('holiday')}
+              disabled={savingOperations}
+            >
+              <Text style={[styles.opBtnText, activeOverride === 'holiday' && { color: '#fff' }]}>
+                🎈 Public / School Holiday
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.opBtn,
+                activeOverride === 'mid_term' && { backgroundColor: '#0284c7', borderColor: '#0369a1' },
+              ]}
+              onPress={() => openTriggerModal('mid_term')}
+              disabled={savingOperations}
+            >
+              <Text style={[styles.opBtnText, activeOverride === 'mid_term' && { color: '#fff' }]}>
+                🏖️ Mid-Term Break (Select Dates)
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.opBtn,
+                activeOverride === 'vacation' && { backgroundColor: '#8b5cf6', borderColor: '#7c3aed' },
+              ]}
+              onPress={() => openTriggerModal('vacation')}
+              disabled={savingOperations}
+            >
+              <Text style={[styles.opBtnText, activeOverride === 'vacation' && { color: '#fff' }]}>
+                🌴 Vacation / Term Break (Next Term)
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {activeOverride !== 'open' && (
+            <View style={styles.activeOpBanner}>
+              <SVGIcon name="lock-closed" size={16} color="#d97706" />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.activeOpBannerText}>
+                  Active Mode: <Text style={{ fontWeight: '800' }}>{activeOverride.toUpperCase()}</Text> ({overrideTitle || 'Off-Day'})
+                </Text>
+                {unlockDate ? (
+                  <Text style={styles.activeOpUnlockText}>
+                    🔓 Auto-Unlocks On: <Text style={{ fontWeight: '800' }}>{unlockDate}</Text>
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          )}
+        </View>
+
         <View style={styles.list}>
           {settingsOptions.map((option, index) => (
             <TouchableOpacity
@@ -451,6 +703,129 @@ export default function AdminSettingsScreen() {
 
         <Text style={[styles.versionText, { color: theme.gray }]}>Version 2.2.0 • EduEaze Platform</Text>
       </ScrollView>
+
+      {/* Trigger Modals */}
+      <Modal visible={modalMode !== 'none'} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {modalMode === 'vacation' && '🌴 Trigger Vacation / Term Break'}
+                {modalMode === 'mid_term' && '🏖️ Trigger Mid-Term Break'}
+                {modalMode === 'holiday' && '🎈 Trigger Public / School Holiday'}
+              </Text>
+              <TouchableOpacity onPress={() => setModalMode('none')}>
+                <SVGIcon name="close" size={22} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSub}>
+              {modalMode === 'vacation' && 'Vacation mode pauses daily attendance & fee taking until the Next Term Begins.'}
+              {modalMode === 'mid_term' && 'Select the break start and end dates. The system automatically unlocks on the day after.'}
+              {modalMode === 'holiday' && 'Set the holiday date and title. Operations automatically resume the next day.'}
+            </Text>
+
+            <Text style={styles.inputLabel}>Reason / Title</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. Independence Day, Term 1 Mid-Term Break..."
+              placeholderTextColor="#94a3b8"
+              value={modalTitleInput}
+              onChangeText={setModalTitleInput}
+            />
+
+            {modalMode === 'vacation' && (
+              <View style={styles.fieldBox}>
+                <Text style={styles.inputLabel}>Next Term Begins Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="YYYY-MM-DD (e.g. 2025-05-05)"
+                  placeholderTextColor="#94a3b8"
+                  value={vacationNextTermBegins}
+                  onChangeText={setVacationNextTermBegins}
+                />
+                {!vacationNextTermBegins ? (
+                  <Text style={styles.warningNote}>
+                    ⚠️ Next Term Begins date is not set. Please set the date above so the app auto-unlocks when school resumes.
+                  </Text>
+                ) : (
+                  <Text style={styles.infoNote}>
+                    🔓 App will automatically unlock on <Text style={{ fontWeight: '800' }}>{vacationNextTermBegins}</Text>.
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {modalMode === 'mid_term' && (
+              <View style={styles.fieldBox}>
+                <Text style={styles.inputLabel}>Break Start Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94a3b8"
+                  value={midTermStartDate}
+                  onChangeText={setMidTermStartDate}
+                />
+                <Text style={styles.inputLabel}>Break End Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94a3b8"
+                  value={midTermEndDate}
+                  onChangeText={setMidTermEndDate}
+                />
+                <Text style={styles.infoNote}>
+                  🔓 App will automatically unlock on <Text style={{ fontWeight: '800' }}>{moment(midTermEndDate).add(1, 'day').format('YYYY-MM-DD')}</Text> after the break.
+                </Text>
+              </View>
+            )}
+
+            {modalMode === 'holiday' && (
+              <View style={styles.fieldBox}>
+                <Text style={styles.inputLabel}>Holiday Date (YYYY-MM-DD)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#94a3b8"
+                  value={holidayDate}
+                  onChangeText={setHolidayDate}
+                />
+                <Text style={styles.infoNote}>
+                  🔓 App will automatically unlock on <Text style={{ fontWeight: '800' }}>{moment(holidayDate).add(1, 'day').format('YYYY-MM-DD')}</Text>.
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setModalMode('none')}
+                disabled={savingOperations}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalSaveBtn, { backgroundColor: COLORS.primary }]}
+                onPress={
+                  modalMode === 'vacation'
+                    ? handleConfirmVacation
+                    : modalMode === 'mid_term'
+                    ? handleConfirmMidTerm
+                    : handleConfirmHoliday
+                }
+                disabled={savingOperations}
+              >
+                {savingOperations ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.modalSaveText}>Activate & Set Auto-Unlock</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -464,7 +839,7 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 20,
   },
   backBtn: {
     marginRight: 15,
@@ -474,9 +849,24 @@ const styles = StyleSheet.create({
     }),
   },
   header: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
   },
+  opCard: {
+    padding: 18,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 20,
+    ...SHADOWS.small,
+  },
+  opTitle: { fontSize: 16, fontWeight: '800', marginLeft: 8 },
+  opSub: { fontSize: 12, color: '#64748b', lineHeight: 17, marginBottom: 14 },
+  opBtnGrid: { gap: 8 },
+  opBtn: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 10, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#f8fafc', alignItems: 'center' },
+  opBtnText: { fontSize: 13, fontWeight: '700', color: '#334155' },
+  activeOpBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fffbeb', borderRadius: 10, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#fde68a' },
+  activeOpBannerText: { fontSize: 12, color: '#d97706', fontWeight: '600' },
+  activeOpUnlockText: { fontSize: 11, color: '#059669', marginTop: 2, fontWeight: '600' },
   list: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -506,7 +896,7 @@ const styles = StyleSheet.create({
   },
   versionText: {
     textAlign: 'center',
-    marginTop: 40,
+    marginTop: 30,
     marginBottom: 20,
     fontSize: 12,
     fontWeight: '500',
@@ -541,5 +931,21 @@ const styles = StyleSheet.create({
   reportValue: {
     fontSize: 18,
     fontWeight: '700',
-  }
+  },
+  // Modal styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContainer: { backgroundColor: '#fff', borderRadius: 20, padding: 20, width: '100%', maxWidth: 450 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#0f172a' },
+  modalSub: { fontSize: 12, color: '#64748b', lineHeight: 16, marginBottom: 16 },
+  inputLabel: { fontSize: 12, fontWeight: '700', color: '#334155', marginBottom: 6 },
+  modalInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 13, color: '#0f172a', marginBottom: 12 },
+  fieldBox: { marginTop: 8 },
+  warningNote: { fontSize: 11, color: '#dc2626', fontStyle: 'italic', marginBottom: 12 },
+  infoNote: { fontSize: 11, color: '#059669', marginBottom: 12 },
+  modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  modalCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#f1f5f9', alignItems: 'center' },
+  modalCancelText: { fontSize: 13, fontWeight: '700', color: '#475569' },
+  modalSaveBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  modalSaveText: { fontSize: 13, fontWeight: '700', color: '#fff' },
 });

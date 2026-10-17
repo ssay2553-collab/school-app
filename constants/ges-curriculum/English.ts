@@ -2445,676 +2445,2006 @@ export const English: Record<string, GESIndicator[]> = {
         "Compose 200-word book reviews evaluating character motivation and thematic relevance.",
     },
   ],
-  "JHS 1": [
-    {
-      code: "B7.1.1.1.1",
-      strand: "Oral Language",
-      subStrand: "Conversation, Debates and Public Speaking",
-      contentStandard:
-        "Demonstrate understanding of registers, tone, pitch, and formal communication",
-      indicator:
-        "Differentiate between formal, informal, and colloquial speech registers in various contexts",
-      objectives:
-        "Analyze communication contexts and select appropriate formal or informal language registers.",
-    },
-    {
-      code: "B7.1.2.1.1",
-      strand: "Oral Language",
-      subStrand: "Listening and Comprehension",
-      contentStandard:
-        "Listen actively and comprehend information from spoken texts and instructions",
-      indicator:
-        "Identify main ideas, sequence of ideas, and relevant details in oral presentations and announcements",
-      objectives:
-        "Summarize spoken information accurately and respond appropriately to oral instructions.",
-    },
-    {
-      code: "B7.2.1.1.1",
-      strand: "Reading",
-      subStrand: "Comprehension, Vocabulary Development and Literature",
-      contentStandard:
-        "Analyze prose, poetry, and drama texts, and deduce figurative language",
-      indicator:
-        "Examine narrative structure, theme, conflict, imagery, metaphor, hyperbole, and irony",
-      objectives:
-        "Identify literary devices (irony, hyperbole, imagery) in prescribed BECE literature set-books.",
-    },
-    {
-      code: "B7.2.2.1.1",
-      strand: "Reading",
-      subStrand: "Vocabulary and Context Clues",
-      contentStandard:
-        "Use contextual clues and word structure to infer meaning of unfamiliar words",
-      indicator:
-        "Infer word meanings from context, prefixes, suffixes, and word families in prose passages",
-      objectives:
-        "Expand vocabulary and use new words correctly in spoken and written contexts.",
-    },
-    {
-      code: "B7.3.1.1.1",
-      strand: "Writing",
-      subStrand: "Narrative, Descriptive, Expository and Article Writing",
-      contentStandard:
-        "Write structured multi-paragraph narrative, descriptive, and expository essays",
-      indicator:
-        "Write articles for school magazine and formal letters to government/school officials",
-      objectives:
-        "Structure compositions with engaging introduction, body paragraphs with topic sentences, and conclusion.",
-    },
-    {
-      code: "B7.3.2.1.1",
-      strand: "Writing",
-      subStrand: "Paragraphing and Organization",
-      contentStandard:
-        "Organize ideas logically in well-structured paragraphs and compositions",
-      indicator:
-        "Develop topic sentences, supporting details, and concluding sentences in paragraphs",
-      objectives:
-        "Write coherent diary entries, descriptive paragraphs, and short essays with clear flow.",
-    },
-    {
-      code: "B7.4.1.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Grammar, Tense, Phrasal Verbs and Prepositions",
-      contentStandard:
-        "Master complex grammatical structures, phrasal verbs, and prepositions",
-      indicator:
-        "Use prepositions, phrasal verbs, relative clauses (who, which, that), and modal auxiliaries correctly",
-      objectives:
-        "Incorporate relative clauses and appropriate phrasal verbs into academic writing.",
-    },
-    {
-      code: "B7.4.2.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Sentence Structure and Concord",
-      contentStandard:
-        "Apply grammatical agreement and sentence construction rules accurately",
-      indicator:
-        "Use subject-verb agreement, pronoun reference, and correct tense forms in sentences",
-      objectives:
-        "Construct grammatically sound sentences for both speech and formal writing.",
-    },
-    {
-      code: "B7.5.1.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Literary Appreciation and Set-Books",
-      contentStandard:
-        "Appreciate prescribed African literature prose, poetry, and drama",
-      indicator:
-        "Analyze character development, setting, and cultural themes in set prose and drama",
-      objectives:
-        "Write character sketches and analyze central themes in prescribed literature texts.",
-    },
-    {
-      code: "B7.5.2.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Drama and Poetry Analysis",
-      contentStandard:
-        "Interpret poetic devices and dramatic techniques in texts",
-      indicator:
-        "Identify rhyme, repetition, imagery, and mood in poems and dramatic extracts",
-      objectives:
-        "Explain how language choices create tone and emotion in literary texts.",
-    },
-  ],
   "Basic 7": [
     {
       code: "B7.1.1.1.1",
       strand: "Oral Language",
-      subStrand: "Conversation, Debates and Public Speaking",
-      contentStandard:
-        "Demonstrate understanding of registers, tone, pitch, and formal communication",
-      indicator:
-        "Differentiate between formal, informal, and colloquial speech registers in various contexts",
-      objectives:
-        "Analyze communication contexts and select appropriate formal or informal language registers.",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Use appropriate register in everyday communication (informal and formal) with diverse partners on grade-level topics/texts/issues",
+      objectives: "Identify formal and informal situations, use appropriate language without slang/jargon in formal settings, and participate in everyday conversations (greetings, requests, encouragements, partings)."
+    },
+    {
+      code: "B7.1.1.1.2",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Ask questions that elicit elaboration and respond to others’ questions in conversation",
+      objectives: "Identify words that help give elaborate responses (why, how, for what reason) and engage in conversation incorporating gender, equity, equality, and inclusion issues."
+    },
+    {
+      code: "B7.1.1.1.3",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Use appropriate language orally to describe experiences about oneself and others",
+      objectives: "Use tense structures, variety of sentences, figurative expressions, and vocabulary (nouns, adjectives, adverbs) to communicate about personal and others' experiences in specific situations (hospital, market, bus station)."
+    },
+    {
+      code: "B7.1.1.1.4",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Listen to and give accurate directions to familiar places",
+      objectives: "Use appropriate language (opposite, adjacent, a few metres away, turn left/right) and landmarks to give accurate directions to locations."
+    },
+    {
+      code: "B7.1.1.1.5",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Use techniques (voice modulation and eye contact) for effective oral communication",
+      objectives: "Converse using appropriate voice (pace, volume, tone, stress) and maintain eye contact, posture, and facial expression while showing non-interruptive verbal and non-verbal cues."
     },
     {
       code: "B7.1.2.1.1",
       strand: "Oral Language",
-      subStrand: "Listening and Comprehension",
-      contentStandard:
-        "Listen actively and comprehend information from spoken texts and instructions",
-      indicator:
-        "Identify main ideas, sequence of ideas, and relevant details in oral presentations and announcements",
-      objectives:
-        "Summarize spoken information accurately and respond appropriately to oral instructions.",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Listen to level-appropriate text attentively and identify key information",
+      objectives: "Identify intent/purpose, speaker's enthusiasm, main ideas, and supporting points, and cross-check written information."
+    },
+    {
+      code: "B7.1.2.1.2",
+      strand: "Oral Language",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Listen to, discuss ideas and share opinions from a level-appropriate text",
+      objectives: "Listen to and write key points from texts, speeches, and presentations, discuss them, and share informed opinions."
+    },
+    {
+      code: "B7.1.3.1.1",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce pure vowel sounds (short vowels) in context",
+      objectives: "Identify and produce short pure vowels e.g. /a/, /i/, /e/ in context clearly in speech."
+    },
+    {
+      code: "B7.1.3.1.2",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce pure vowel sounds (long vowels) in context",
+      objectives: "Identify and produce long vowels (e.g. part, peel, bloom), distinguish long and short vowels, and produce sounds in connected speech."
+    },
+    {
+      code: "B7.1.3.1.3",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce diphthongs in context (centring and closing)",
+      objectives: "Identify centring (/eǝ/, /iǝ/) and closing (/au/, /ai/) diphthongs, distinguish vowels and diphthongs, and use them accurately in connected speech."
     },
     {
       code: "B7.2.1.1.1",
       strand: "Reading",
-      subStrand: "Comprehension, Vocabulary Development and Literature",
-      contentStandard:
-        "Analyze prose, poetry, and drama texts, and deduce figurative language",
-      indicator:
-        "Examine narrative structure, theme, conflict, imagery, metaphor, hyperbole, and irony",
-      objectives:
-        "Identify literary devices (irony, hyperbole, imagery) in prescribed BECE literature set-books.",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading",
+      indicator: "Read and understand a range of texts using monitoring and mental visualisation strategies to interpret texts",
+      objectives: "Engage narrative texts, create mental pictures, read fluently, interact with peers, self-correct, and connect reading to personal experiences."
+    },
+    {
+      code: "B7.2.1.1.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading",
+      indicator: "Use prediction to assess and improve understanding of texts",
+      objectives: "Make predictions using prior knowledge, typographical, visual and text features, organisational patterns, and ask/answer questions to form ideas."
+    },
+    {
+      code: "B7.2.1.1.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading",
+      indicator: "Generate and answer questions to increase understanding and independent reading of fiction texts",
+      objectives: "Read closely for implicit meaning, write and look back at guiding questions, provide evidence, and identify the main idea."
+    },
+    {
+      code: "B7.2.1.1.4",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading",
+      indicator: "Use text structure to understand and read texts independently",
+      objectives: "Examine topic sentences and text structures (description, sequence, problem/solution, cause/effect, compare/contrast) using graphic organisers."
+    },
+    {
+      code: "B7.2.1.2.1",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend and interpret texts",
+      indicator: "Identify the main text features of a non-literary texts",
+      objectives: "Identify print features (title, headings, bold print, italics), graphic features (photographs, diagrams, maps, graphs), and organisational features (table of contents, index, glossary)."
+    },
+    {
+      code: "B7.2.1.2.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend and interpret texts",
+      indicator: "Interpret non-fiction texts pointing out attitudes, opinions, biases and facts",
+      objectives: "Make connections, distinguish between facts and opinions, and interpret attitudes exhibited by word choices in non-fiction texts."
+    },
+    {
+      code: "B7.2.1.2.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend and interpret texts",
+      indicator: "Interpret a non-literary text showing personal responses and supporting responses with textual evidences",
+      objectives: "Identify how word choices and intentions contribute to meaning, and differentiate viewpoints with textual evidence."
     },
     {
       code: "B7.2.2.1.1",
       strand: "Reading",
-      subStrand: "Vocabulary and Context Clues",
-      contentStandard:
-        "Use contextual clues and word structure to infer meaning of unfamiliar words",
-      indicator:
-        "Infer word meanings from context, prefixes, suffixes, and word families in prose passages",
-      objectives:
-        "Expand vocabulary and use new words correctly in spoken and written contexts.",
+      subStrand: "Summarising",
+      contentStandard: "Demonstrate an understanding in summarising",
+      indicator: "Use summarising to understand key ideas in a range of texts",
+      objectives: "Read passages, identify main ideas, write in own words without plagiarising, restate/map out gists, and defend answers."
+    },
+    {
+      code: "B7.2.2.2.1",
+      strand: "Reading",
+      subStrand: "Summarising",
+      contentStandard: "Demonstrate understanding of textual evidence that supports a writing piece",
+      indicator: "Determine and analyse central and supporting ideas of texts",
+      objectives: "Identify topic sentences and supporting details, and summarise main ideas in own words with peer editing."
     },
     {
       code: "B7.3.1.1.1",
-      strand: "Writing",
-      subStrand: "Narrative, Descriptive, Expository and Article Writing",
-      contentStandard:
-        "Write structured multi-paragraph narrative, descriptive, and expository essays",
-      indicator:
-        "Write articles for school magazine and formal letters to government/school officials",
-      objectives:
-        "Structure compositions with engaging introduction, body paragraphs with topic sentences, and conclusion.",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication.",
+      indicator: "Demonstrate command and application of nouns in speaking and texts",
+      objectives: "Identify noun types (common, proper, countable, uncountable, concrete), construct sentences, and categorise irregular plural noun forms (mouse/mice, child/children, sheep/sheep)."
+    },
+    {
+      code: "B7.3.1.1.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication.",
+      indicator: "Use types of pronouns accurately in speaking and texts",
+      objectives: "Explore and use personal, possessive, relative, reflexive, interrogative, and demonstrative pronouns in contextual sentences."
+    },
+    {
+      code: "B7.3.1.1.3",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication.",
+      indicator: "Explore accurate use of adjectives in texts",
+      objectives: "Recognise adjective use directly before nouns, with 'to be' verbs, and with sense verbs (sight, taste, smell, touch, hearing) or appearance verbs."
+    },
+    {
+      code: "B7.3.1.1.4",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication.",
+      indicator: "Relate forms of verbs to everyday activities (Tense & Aspects) in context, role play, radio, TV, films and narratives",
+      objectives: "Identify and use present tense aspects (simple, progressive, perfect, perfect progressive) and past tense aspects (simple, progressive, perfect, perfect progressive)."
+    },
+    {
+      code: "B7.3.1.1.5",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication.",
+      indicator: "Use adverbs to modify verbs accurately at the phrase and sentence level",
+      objectives: "Use adverbs to give more information about verbs, adjectives, and other adverbs in sentences."
+    },
+    {
+      code: "B7.3.1.1.6",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication.",
+      indicator: "Use conjunctions accurately to link ideas in everyday discourse",
+      objectives: "Construct sentences using coordinating conjunctions (for, and, nor, but, or, yet, so), correlative conjunctions (either...or, neither...nor, not only...but also), subordinating conjunctions, and adverbs functioning as conjunctions."
+    },
+    {
+      code: "B7.3.1.1.7",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication.",
+      indicator: "Demonstrate command of the use of prepositions in daily discourse",
+      objectives: "Use complex prepositions (in front of, on behalf of, due to, in spite of) to express place, time, reason, and concession."
+    },
+    {
+      code: "B7.3.1.1.8",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication.",
+      indicator: "Identify and use determiners in speaking and texts",
+      objectives: "Identify and use articles (the, a, an), possessive determiners (our, your, my, their, her, his), and demonstratives (that, this, these, those)."
+    },
+    {
+      code: "B7.3.1.2.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate command of structural and functional use of sentences",
+      indicator: "Identify and use subject and predicate in text",
+      objectives: "Distinguish sentence elements and use knowledge of subject and predicate composition."
+    },
+    {
+      code: "B7.3.1.3.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate command of structural and functional use of sentences.",
+      indicator: "Demonstrate command and use of compound sentences",
+      objectives: "Construct independent clauses, join them using coordinating conjunctions to form compound sentences, and analyse component clauses."
+    },
+    {
+      code: "B7.3.1.4.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply knowledge of clauses in communication",
+      indicator: "Use dependent and independent clauses appropriately in speaking and writing",
+      objectives: "Recognise independent and dependent clauses in texts and construct sentences by combining them."
+    },
+    {
+      code: "B7.3.1.5.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate understanding of the use of conditional tenses in communication",
+      indicator: "Use conditional sentences in communication to indicate a possible condition and its possible result",
+      objectives: "Construct future time sentences, complex sentences showing main and subordinate clauses, and Type 1 conditional sentences (simple present in if-clause, simple future in main clause)."
+    },
+    {
+      code: "B7.3.1.6.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate mastery of use of active and passive voice",
+      indicator: "Use passive sentences for a range of functions",
+      objectives: "Use passive voice to describe processes and past actions, construct active sentences, and convert active sentences to passive voice."
+    },
+    {
+      code: "B7.3.1.6.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate mastery of use of active and passive voice",
+      indicator: "Demonstrate use and command of reported speech",
+      objectives: "Compose direct speech sentences and convert them to reported speech for formal and informal situations, and compose news reports."
+    },
+    {
+      code: "B7.3.1.7.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Show understanding and use of question tags in communication",
+      indicator: "Use question tags accurately",
+      objectives: "Listen to dialogues, identify statements with question tags (e.g. 'You like tea, don’t you?'), and compose statements with correct question tags."
     },
     {
       code: "B7.3.2.1.1",
-      strand: "Writing",
-      subStrand: "Paragraphing and Organization",
-      contentStandard:
-        "Organize ideas logically in well-structured paragraphs and compositions",
-      indicator:
-        "Develop topic sentences, supporting details, and concluding sentences in paragraphs",
-      objectives:
-        "Write coherent diary entries, descriptive paragraphs, and short essays with clear flow.",
+      strand: "Grammar Usage",
+      subStrand: "Punctuation and Capitalisation",
+      contentStandard: "Demonstrate use and mastery of capitalisation and punctuation in communication",
+      indicator: "Identify and use punctuation marks (question, exclamation, full-stop, comma) in given texts",
+      objectives: "Identify, use, and correct punctuation marks and errors in paragraphs."
+    },
+    {
+      code: "B7.3.3.1.1",
+      strand: "Grammar Usage",
+      subStrand: "Vocabulary",
+      contentStandard: "Demonstrate appropriate use of vocabulary in communication",
+      indicator: "Apply vocabulary appropriately in specific contexts",
+      objectives: "Use appropriate vocabulary when asking for/giving advice, agreeing/disagreeing, ordering in a restaurant, speaking at events, and conversing with peers/adults."
+    },
+    {
+      code: "B7.3.4.1.1",
+      strand: "Grammar Usage",
+      subStrand: "Vocabulary",
+      contentStandard: "Demonstrate understanding of use of aesthetic language to enrich communication",
+      indicator: "Explore the use of proverbs to enrich communication",
+      objectives: "Identify and examine English proverbs, match them with Ghanaian proverbs, and use proverbs to construct meaningful sentences."
     },
     {
       code: "B7.4.1.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Grammar, Tense, Phrasal Verbs and Prepositions",
-      contentStandard:
-        "Master complex grammatical structures, phrasal verbs, and prepositions",
-      indicator:
-        "Use prepositions, phrasal verbs, relative clauses (who, which, that), and modal auxiliaries correctly",
-      objectives:
-        "Incorporate relative clauses and appropriate phrasal verbs into academic writing.",
+      strand: "Writing",
+      subStrand: "Production and Cohesion",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing",
+      indicator: "Use cohesive devices (pronouns, punctuations and conjunctions) to link sentences",
+      objectives: "Write compound and complex sentences using subordinating conjunctions (time, conditional, purpose, reason, result, concessive, place, manner), pronouns, and logical connectors."
+    },
+    {
+      code: "B7.4.1.2.1",
+      strand: "Writing",
+      subStrand: "Production and Cohesion",
+      contentStandard: "Create different paragraphs on a given topic",
+      indicator: "Organise information in a logical manner.",
+      objectives: "Write paragraphs with topic sentences and supporting details, sequence sentences logically, and use logical connectors (ordering, addition, similarity, contrast, cause/effect, time)."
     },
     {
       code: "B7.4.2.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Sentence Structure and Concord",
-      contentStandard:
-        "Apply grammatical agreement and sentence construction rules accurately",
-      indicator:
-        "Use subject-verb agreement, pronoun reference, and correct tense forms in sentences",
-      objectives:
-        "Construct grammatically sound sentences for both speech and formal writing.",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing for a variety of purposes (description, narration, exposition/information and persuasion), audiences and contexts",
+      indicator: "Write personal narratives using effective techniques incorporating descriptive details and logical event sequences.",
+      objectives: "Plan and record personal experiences using first-person point of view, descriptive details, adjectives, adverbs, prepositions, direct/indirect speech, and edit/publish."
+    },
+    {
+      code: "B7.4.2.1.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing for a variety of purposes (description, narration, exposition/information and persuasion), audiences and contexts",
+      indicator: "Use precise (technical) vocabulary, phrases and sensory language to convey a vivid mental picture of people and experiences",
+      objectives: "Describe people and experiences using precise words and sensory details, appropriate grammatical structures, and edit/proofread."
+    },
+    {
+      code: "B7.4.2.1.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing for a variety of purposes (description, narration, exposition/information and persuasion), audiences and contexts",
+      indicator: "Create advertisements to persuade a given audience to take decisions on products and services",
+      objectives: "Compose advertisements with titles, body information, target audience, selling points, simple present tense, modals, mental verbs, and rhetorical questions."
+    },
+    {
+      code: "B7.4.2.1.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing for a variety of purposes (description, narration, exposition/information and persuasion), audiences and contexts",
+      indicator: "Compose a paragraph to explain a process, social and natural phenomena (how to do or use something, how something works)",
+      objectives: "Write steps for processes, rules, recipes, or phenomena by listing aims, materials, sequencing, and using appropriate text features and quantifiers."
+    },
+    {
+      code: "B7.4.2.2.1",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose informal letters on varied topics using appropriate format",
+      objectives: "Identify features of informal letters (address, date, salutation, body, subscription, name) and write letters to friends/relatives on school life, excursions, and festivals."
+    },
+    {
+      code: "B7.4.2.2.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose formal writing (application, invitation, email, media texts) on given topics using appropriate format",
+      objectives: "Write formal letters to school/community officials, draft notices, and create media texts with appropriate conventions."
+    },
+    {
+      code: "B7.4.2.2.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Take notes for academic and other purposes",
+      objectives: "Record source information, headings, key points, examples, and mnemonics while listening, reading, or viewing videos, and represent notes in flow charts."
+    },
+    {
+      code: "B7.4.2.2.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Design notices and posters for different purposes and audiences",
+      objectives: "Create posters and notices for school events or community activities using appropriate forms, conventions, and ICT."
+    },
+    {
+      code: "B7.4.2.2.5",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Write articles on given issues for publication in class and club magazines.",
+      objectives: "Generate ideas, write articles (rap poems, jingles, community reports, autobiographies, gender/inclusion issues) for publication."
+    },
+    {
+      code: "B7.4.2.2.6",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Create dialogues between two interlocutors on different themes",
+      objectives: "Compose brief, impactful dialogues with unique character voices, appropriate slang, and correct punctuation (quotation marks, commas)."
+    },
+    {
+      code: "B7.4.3.1.1",
+      strand: "Writing",
+      subStrand: "Building and Presenting Knowledge",
+      contentStandard: "Research to build and present knowledge",
+      indicator: "Identify and record information from non-text sources (figures and tables), organise and present it in writing",
+      objectives: "Record source info, headings, and key points from graphical data, organise information, and describe simple graphical data in writing and presentations."
     },
     {
       code: "B7.5.1.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Literary Appreciation and Set-Books",
-      contentStandard:
-        "Appreciate prescribed African literature prose, poetry, and drama",
-      indicator:
-        "Analyze character development, setting, and cultural themes in set prose and drama",
-      objectives:
-        "Write character sketches and analyze central themes in prescribed literature texts.",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Demonstrate understanding of oral literature (narratives, poetry, drama) and how the different genres contribute to meaning",
+      objectives: "Distinguish oral narratives (folktales, myths, legends), African poems (dirges, lullabies, war/praise songs), and traditional drama, discussing their cultural/social significance."
     },
     {
-      code: "B7.5.2.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Drama and Poetry Analysis",
-      contentStandard:
-        "Interpret poetic devices and dramatic techniques in texts",
-      indicator:
-        "Identify rhyme, repetition, imagery, and mood in poems and dramatic extracts",
-      objectives:
-        "Explain how language choices create tone and emotion in literary texts.",
+      code: "B7.5.1.1.2",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Analyse the elements of written literature (narrative, drama, or poetry)",
+      objectives: "Identify plot, setting, and characters in narratives and drama, compare texts, and compose and perform poems illustrating core values."
     },
+    {
+      code: "B7.5.1.1.3",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Use basic literary devices in texts (e.g. metaphor, simile, personification, alliteration, assonance, consonance, etc.)",
+      objectives: "Identify and use basic literary devices (metaphor, simile, personification, alliteration, assonance, consonance) in selected literary genres."
+    }
   ],
   "JHS 2": [
     {
       code: "B8.1.1.1.1",
       strand: "Oral Language",
-      subStrand: "Debating, Intonation and Phonetics",
-      contentStandard:
-        "Master English vowel and consonant sounds, stress, and intonation patterns",
-      indicator:
-        "Identify silent letters, word stress (primary/secondary), and intonation (rising/falling tone)",
-      objectives:
-        "Distinguish minimal sound pairs and apply correct stress patterns in multi-syllabic words.",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Use appropriate register in everyday communication (informal and formal) with diverse partners on grade-level topics/texts/issues",
+      objectives: "Converse using appropriate informal register in everyday situations (e.g. football match, fast-food joint) and formal register in formal situations (e.g. making travel reservations, inviting District Chief Executive)."
+    },
+    {
+      code: "B8.1.1.1.2",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Ask and respond to specific questions with elaboration by making comments that contribute to texts, issues or topics under discussion",
+      objectives: "Use open-ended questions (why, how) in conversations on topics/issues such as cultural practices, peace, and patriotism."
+    },
+    {
+      code: "B8.1.1.1.3",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Use appropriate language orally to describe familiar places and events",
+      objectives: "Identify descriptive language (adjectives, sensory words like foggy, creepy, tingling, piercing, tantalising, stale, bumpy, staggering), figurative language (simile, metaphor), and adverbs to describe familiar places and events (tourist site, festival durbar)."
+    },
+    {
+      code: "B8.1.1.1.4",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Listen to and give accurate directions of complex routes to different locations",
+      objectives: "Use street names, complex prepositions, relative landmarks (high-rises, supermarkets, avenues, churches, hospitals) to give accurate directions to complex locations (e.g. from airport to Jubilee House)."
+    },
+    {
+      code: "B8.1.1.1.5",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Demonstrate appropriate turn taking for effective oral communication",
+      objectives: "View turn-taking in conversations, meetings, and round table conferences, use strategies (patient listening, eye contact, props), and use body language and gestures effectively."
     },
     {
       code: "B8.1.2.1.1",
       strand: "Oral Language",
-      subStrand: "Listening and Discussion",
-      contentStandard:
-        "Engage in focused discussion and respond critically to oral arguments",
-      indicator:
-        "Identify claims, supporting evidence, and persuasive language in debates and speeches",
-      objectives:
-        "Listen critically, ask relevant questions, and construct reasoned responses in discussion.",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Listen to a level-appropriate dialogue/discussion by more than one speaker attentively and identify key information",
+      objectives: "Note important issues (message, mood, tone) in dialogues, compare with first listening, and identify implicit meaning based on vocabulary/language used."
+    },
+    {
+      code: "B8.1.2.1.2",
+      strand: "Oral Language",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Listen to and discuss ideas and share opinions from a level-appropriate text",
+      objectives: "Write down key information from texts, talk shows, and news, discuss key information, and add personal opinions."
+    },
+    {
+      code: "B8.1.3.1.1",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce consonant sounds in context (plosives)",
+      objectives: "Listen to, identify, and distinguish voiced/voiceless plosives (e.g. /p/, /t/, /g/, /b/) in context and use them in connected speech."
+    },
+    {
+      code: "B8.1.3.1.2",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce consonant sounds (fricatives) in context",
+      objectives: "Identify and distinguish voiced/voiceless fricatives (e.g. /f/, /v/, /Ө/, /ð/) in context and use them in connected speech."
+    },
+    {
+      code: "B8.1.3.1.3",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce consonant sounds (nasals and affricates) in context",
+      objectives: "Distinguish between nasal sounds (/m/, /n/) and affricates (/ʧ/, /ʤ/) in context and use them in connected speech."
     },
     {
       code: "B8.2.1.1.1",
       strand: "Reading",
-      subStrand: "Critical Comprehension and Summary Skills",
-      contentStandard:
-        "Apply summary strategies to compress lengthy expository passages",
-      indicator:
-        "Identify topic sentences, eliminate redundant illustrations, and write concise summaries",
-      objectives:
-        "Summarize a 300-word passage into a 60-word summary adhering to examination instructions.",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Use Monitoring and mental visualisation to engage and understand non-fictional texts",
+      objectives: "Read narrative texts, create mental pictures, progress from basic to complex information, underline main ideas, and interact meaningfully with text and peers."
+    },
+    {
+      code: "B8.2.1.1.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Use prediction to assess and improve engagement and understanding of non-fiction texts",
+      objectives: "Connect with prior knowledge, ask questions, skim/re-read, restate gists, monitor understanding, support personal responses with textual evidence, and generate thought-provoking questions."
+    },
+    {
+      code: "B8.2.1.1.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Generate and answer questions to increase confidence and independent reading through a variety of non-fiction texts",
+      objectives: "Read closely with a specified purpose, monitor comprehension, connect with prior experience, identify sequence of events, and answer right-there, think-and-search, author-and-you, and on-your-own questions."
+    },
+    {
+      code: "B8.2.1.2.1",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Identify the main text features of non-fiction texts",
+      objectives: "Read closely for interpretation, make connections with prior experience, and generate relevant answers to questions."
+    },
+    {
+      code: "B8.2.1.2.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Use contextual clues (topic sentence, vocabulary knowledge, cohesive devices, text features) to analyse text",
+      objectives: "Use contextual cues, date of writing, author background, and culture to understand age-appropriate texts."
+    },
+    {
+      code: "B8.2.1.2.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Read silently and answer more complex comprehension questions on texts /passages",
+      objectives: "Read texts closely, connect with prior experience, read silently for comprehension, and answer questions appropriately."
+    },
+    {
+      code: "B8.2.1.2.4",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Provide evidence and show mastery to support understanding of texts",
+      objectives: "Interpret texts, cite evidence to support ideas helping with implicit meaning, and generate relevant answers."
+    },
+    {
+      code: "B8.2.1.2.5",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Generate simple themes from a text and apply to different situations",
+      objectives: "Identify main ideas, generate simple themes, gather supporting details, and apply themes to relevant situations."
+    },
+    {
+      code: "B8.2.1.2.6",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Examine the connections between a text and other points of view",
+      objectives: "Make connections between text and prior experiences, connect with different viewpoints, and provide evidence for answers."
+    },
+    {
+      code: "B8.2.1.2.7",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Use derivation to expand vocabulary to new contexts (historical, cultural, political)",
+      objectives: "Use word formation strategies and appropriate vocabulary in context."
+    },
+    {
+      code: "B8.2.1.2.8",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Integrate appropriate grade level vocabulary in different contexts",
+      objectives: "Identify and integrate grade-level vocabulary in meaningful sentences and contexts."
     },
     {
       code: "B8.2.2.1.1",
       strand: "Reading",
-      subStrand: "Vocabulary and Expression",
-      contentStandard:
-        "Use technical and contextual vocabulary in reading and speaking",
-      indicator:
-        "Infer the meaning of domain-specific words and explain their function in context",
-      objectives:
-        "Expand academic vocabulary and use it accurately in summary and discussion tasks.",
+      subStrand: "Summarising",
+      contentStandard: "Cite the textual evidence that supports an analysis of a text to determine the central idea and provide an objective summary",
+      indicator: "Determine the central idea in paragraphs and analyse to identify supporting ideas",
+      objectives: "Identify central ideas in paragraphs, eliminate unnecessary information, state details in own words, and summarise ideas in specific detail."
     },
     {
       code: "B8.3.1.1.1",
-      strand: "Writing",
-      subStrand: "Formal Correspondence, Speech Writing and Reports",
-      contentStandard:
-        "Write formal reports, official letters, and speeches for school events",
-      indicator:
-        "Draft official letters of application, complaint, and formal committee reports",
-      objectives:
-        "Compose formal letters using appropriate salutations, formal tone, and subscriptions.",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Use an increasing range of singular and plural forms of compound nouns correctly and appropriately in sentences",
+      objectives: "Identify and use plural forms of compound nouns correctly in a variety of communication."
+    },
+    {
+      code: "B8.3.1.1.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Demonstrate use of relative pronouns (who/whom, which/that, whose) correctly in speaking and writing",
+      objectives: "Construct sentences with relative pronouns relating to human beings (who/whom/whose/that) and non-human entities (which/that), and join independent clauses."
+    },
+    {
+      code: "B8.3.1.1.3",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Demonstrate command of the use of adjectives in discourse",
+      objectives: "Use adjectives to provide vivid descriptions of participants (e.g. football team), settings (urban, rural), materials, and objects."
+    },
+    {
+      code: "B8.3.1.1.4",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Use verb forms correctly when talking about future events",
+      objectives: "Use future tense aspects (simple future, future progressive, future perfect, future perfect progressive) to talk/write about future events."
+    },
+    {
+      code: "B8.3.1.1.5",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Demonstrate command of the knowledge of adverbs",
+      objectives: "Use adverbs to modify adjectives, pre-modify other adverbs, and pre-modify prepositions or prepositional phrases."
+    },
+    {
+      code: "B8.3.1.1.6",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Demonstrate command of use of prepositions in speaking and writing",
+      objectives: "Use different types of prepositions to convey time, place, movement, agent, direction, and instrument."
+    },
+    {
+      code: "B8.3.1.5.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate command of the use of reported speech",
+      indicator: "Demonstrate command of the use of reported speech",
+      objectives: "Compose text using reported speech, report questions in different situations (direct to reported speech), talk about past events, and write news reports."
+    },
+    {
+      code: "B8.3.1.6.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Show understanding and use of question tags in communication",
+      indicator: "Demonstrate command of question tags",
+      objectives: "Use question tags accurately in everyday expressions."
     },
     {
       code: "B8.3.2.1.1",
-      strand: "Writing",
-      subStrand: "Paragraph Development and Persuasion",
-      contentStandard:
-        "Develop persuasive and analytical paragraphs with evidence and clarity",
-      indicator:
-        "Structure argument paragraphs using topic sentences, evidence, examples, and conclusion",
-      objectives:
-        "Write reasoned, audience-aware paragraphs for debates and arguments.",
+      strand: "Grammar Usage",
+      subStrand: "Punctuation and Capitalisation",
+      contentStandard: "Demonstrate mastery of capitalisation and punctuation in communication",
+      indicator: "Use punctuation marks (colon, semi-colon, apostrophe) in context",
+      objectives: "Use colon (intro lists, speech in plays, chapters/verses, hours/minutes), semi-colon (independent clauses without conjunctions, complex lists), and apostrophe (possession, pronouns, compound nouns, business names, contractions)."
+    },
+    {
+      code: "B8.3.3.1.1",
+      strand: "Grammar Usage",
+      subStrand: "Vocabulary",
+      contentStandard: "Demonstrate appropriate use of vocabulary in communication",
+      indicator: "Use vocabulary appropriately in speaking and writing",
+      objectives: "Use word relationships (synonyms, antonyms, analogy) and connotations of words with similar denotations."
     },
     {
       code: "B8.4.1.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Grammar, Conditionals and Idioms",
-      contentStandard:
-        "Master conditional sentences (1st, 2nd, 3rd conditionals) and idiomatic expressions",
-      indicator:
-        "Apply conditional clauses (If + present -> will; If + past -> would) and common idioms",
-      objectives:
-        "Construct accurate conditional sentences and explain meanings of common English idioms.",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing",
+      indicator: "Demonstrate understanding of how different sentences relate within a paragraph using appropriate cohesive devices (connectors, pronouns, repetition, relative clauses, phrase expansion)",
+      objectives: "Use logical connectors, pronouns, repetition, defining/non-defining relative clauses, and noun/adjective/adverbial phrases to create cohesive paragraphs."
+    },
+    {
+      code: "B8.4.1.2.1",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Create different paragraphs within a composition on a given topic",
+      indicator: "Record and use different techniques to capture the reader’s attention in introductory paragraphs",
+      objectives: "Write introductory paragraphs using techniques like anecdotes and facts, logical sequence, and logical connectors (contrast, cause/effect, conditions)."
     },
     {
       code: "B8.4.2.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Punctuation and Sentence Transformation",
-      contentStandard:
-        "Use punctuation and sentence transformation confidently in extended writing",
-      indicator:
-        "Apply commas, semicolons, apostrophes, and sentence transformation techniques in formal writing",
-      objectives:
-        "Edit writing for clarity, punctuation accuracy, and sentence variety.",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational, persuasive and argumentative texts",
+      indicator: "Write personal narratives using effective techniques incorporating descriptive details and logical event sequences.",
+      objectives: "Plan and record personal experiences using first-person point of view, descriptive details, adjectives, adverbs, prepositions, direct/indirect speech, and edit/publish."
+    },
+    {
+      code: "B8.4.2.1.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational, persuasive and argumentative texts",
+      indicator: "Use precise words phrases and sensory language to convey a vivid mental picture of places and events",
+      objectives: "Describe places and events using adjectives (ancient, beautiful, bustling) and event words (ultimate, rare, historical), appropriate grammatical structures, and edit/proofread."
+    },
+    {
+      code: "B8.4.2.1.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational, persuasive and argumentative texts",
+      indicator: "Create shorter transactional texts to convince an audience to accept an opinion",
+      objectives: "Compose advertisements, diary entries, postcards, invitation cards using simple present, modals, mental verbs, phrasal verbs, and persuasive devices."
+    },
+    {
+      code: "B8.4.2.1.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational, persuasive and argumentative texts",
+      indicator: "Compose paragraphs that identify an issue, give details about it and suggest solutions",
+      objectives: "Write problem/solution texts explaining clear solutions, costs, feasibility, and supporting evidence (expert opinion, statistics)."
+    },
+    {
+      code: "B8.4.2.2.1",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose formal writing (business letters, email) on given topics using the appropriate format",
+      objectives: "Write formal letters (request, complaint, application, thanks, congratulations), notices, and media texts (emails to news editors) with proper editing and publishing."
+    },
+    {
+      code: "B8.4.2.2.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose notes, brochures and flyers for different purposes and audiences",
+      objectives: "Compose flyers (A5 size, eye-catching headline, product description, benefits, contact info) and notices/posters."
+    },
+    {
+      code: "B8.4.2.2.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Write articles on given issues for publication in school magazines",
+      objectives: "Generate ideas, sort information, organise main ideas and supporting details, and write articles (rap poems, jingles, community reports, autobiographies, web pages) for publication."
+    },
+    {
+      code: "B8.4.2.2.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Create dialogues among multiple interlocutors on different themes",
+      objectives: "Compose dialogues using character names on left, colons, new lines, stage directions in brackets, and scenario sketching."
+    },
+    {
+      code: "B8.4.2.2.5",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose speeches for different purposes and occasions.",
+      objectives: "Write speeches combining narrative, descriptive, explanatory, and persuasive skills (introduction, body, conclusion)."
+    },
+    {
+      code: "B8.4.3.1.1",
+      strand: "Writing",
+      subStrand: "Building and Presenting Knowledge",
+      contentStandard: "Research to build and present knowledge",
+      indicator: "Use information from non-text sources (figures, tables graphs, and maps) to support ideas in writing",
+      objectives: "Interpret non-textual elements (figures, tables, graphs, maps) and use retrieved information to support ideas/opinions in writing."
     },
     {
       code: "B8.5.1.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Literary Criticism and Analysis",
-      contentStandard:
-        "Compare themes and style across different literary set-books",
-      indicator:
-        "Examine symbolism, dramatic irony, foil characters, and rhyme schemes in drama and poetry",
-      objectives:
-        "Analyze how symbolism and dramatic irony enhance plot development in prescribed set-books.",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Analyse the types of characters in texts",
+      objectives: "Examine round/dynamic and flat/static characters in narratives and drama, compare them across texts, and create/perform related texts."
     },
     {
-      code: "B8.5.2.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Literary Response and Interpretation",
-      contentStandard:
-        "Respond personally and analytically to set texts and drama extracts",
-      indicator:
-        "Interpret character motives, setting, conflict, and message in prose and poetry",
-      objectives:
-        "Write literary responses that demonstrate close reading and inference.",
+      code: "B8.5.1.1.2",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Examine the features of different types of poems",
+      objectives: "Identify, recognise, compose, and perform different types of poems (sonnet, acrostic, haiku)."
     },
+    {
+      code: "B8.5.1.1.3",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Examine how monologues and dialogues are used to convey characters in narratives and play scripts (drama)",
+      objectives: "Identify monologues and dialogues in texts and create them using appropriate punctuation."
+    },
+    {
+      code: "B8.5.1.1.4",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Use literary devices (euphemism, hyperbole, onomatopoeia, etc.) in texts",
+      objectives: "Identify and use euphemism, hyperbole, and onomatopoeia in selected narrative, poetry, drama, speech, and writing."
+    },
+    {
+      code: "B8.5.1.1.5",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Analyse the sequence of events in film/media, narratives and play scripts (drama)",
+      objectives: "Identify, narrate, and analyse events in film/media, narratives, and drama, and create original film/media or play scripts."
+    }
   ],
   "Basic 8": [
     {
       code: "B8.1.1.1.1",
       strand: "Oral Language",
-      subStrand: "Debating, Intonation and Phonetics",
-      contentStandard:
-        "Master English vowel and consonant sounds, stress, and intonation patterns",
-      indicator:
-        "Identify silent letters, word stress (primary/secondary), and intonation (rising/falling tone)",
-      objectives:
-        "Distinguish minimal sound pairs and apply correct stress patterns in multi-syllabic words.",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Use appropriate register in everyday communication (informal and formal) with diverse partners on grade-level topics/texts/issues",
+      objectives: "Converse using appropriate informal register in everyday situations (e.g. football match, fast-food joint) and formal register in formal situations (e.g. making travel reservations, inviting District Chief Executive)."
+    },
+    {
+      code: "B8.1.1.1.2",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Ask and respond to specific questions with elaboration by making comments that contribute to texts, issues or topics under discussion",
+      objectives: "Use open-ended questions (why, how) in conversations on topics/issues such as cultural practices, peace, and patriotism."
+    },
+    {
+      code: "B8.1.1.1.3",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Use appropriate language orally to describe familiar places and events",
+      objectives: "Identify descriptive language (adjectives, sensory words like foggy, creepy, tingling, piercing, tantalising, stale, bumpy, staggering), figurative language (simile, metaphor), and adverbs to describe familiar places and events (tourist site, festival durbar)."
+    },
+    {
+      code: "B8.1.1.1.4",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Listen to and give accurate directions of complex routes to different locations",
+      objectives: "Use street names, complex prepositions, relative landmarks (high-rises, supermarkets, avenues, churches, hospitals) to give accurate directions to complex locations (e.g. from airport to Jubilee House)."
+    },
+    {
+      code: "B8.1.1.1.5",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate use of appropriate language orally in specific situations",
+      indicator: "Demonstrate appropriate turn taking for effective oral communication",
+      objectives: "View turn-taking in conversations, meetings, and round table conferences, use strategies (patient listening, eye contact, props), and use body language and gestures effectively."
     },
     {
       code: "B8.1.2.1.1",
       strand: "Oral Language",
-      subStrand: "Listening and Discussion",
-      contentStandard:
-        "Engage in focused discussion and respond critically to oral arguments",
-      indicator:
-        "Identify claims, supporting evidence, and persuasive language in debates and speeches",
-      objectives:
-        "Listen critically, ask relevant questions, and construct reasoned responses in discussion.",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Listen to a level-appropriate dialogue/discussion by more than one speaker attentively and identify key information",
+      objectives: "Note important issues (message, mood, tone) in dialogues, compare with first listening, and identify implicit meaning based on vocabulary/language used."
+    },
+    {
+      code: "B8.1.2.1.2",
+      strand: "Oral Language",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Listen to and discuss ideas and share opinions from a level-appropriate text",
+      objectives: "Write down key information from texts, talk shows, and news, discuss key information, and add personal opinions."
+    },
+    {
+      code: "B8.1.3.1.1",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce consonant sounds in context (plosives)",
+      objectives: "Listen to, identify, and distinguish voiced/voiceless plosives (e.g. /p/, /t/, /g/, /b/) in context and use them in connected speech."
+    },
+    {
+      code: "B8.1.3.1.2",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce consonant sounds (fricatives) in context",
+      objectives: "Identify and distinguish voiced/voiceless fricatives (e.g. /f/, /v/, /Ө/, /ð/) in context and use them in connected speech."
+    },
+    {
+      code: "B8.1.3.1.3",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce consonant sounds (nasals and affricates) in context",
+      objectives: "Distinguish between nasal sounds (/m/, /n/) and affricates (/ʧ/, /ʤ/) in context and use them in connected speech."
     },
     {
       code: "B8.2.1.1.1",
       strand: "Reading",
-      subStrand: "Critical Comprehension and Summary Skills",
-      contentStandard:
-        "Apply summary strategies to compress lengthy expository passages",
-      indicator:
-        "Identify topic sentences, eliminate redundant illustrations, and write concise summaries",
-      objectives:
-        "Summarize a 300-word passage into a 60-word summary adhering to examination instructions.",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Use Monitoring and mental visualisation to engage and understand non-fictional texts",
+      objectives: "Read narrative texts, create mental pictures, progress from basic to complex information, underline main ideas, and interact meaningfully with text and peers."
+    },
+    {
+      code: "B8.2.1.1.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Use prediction to assess and improve engagement and understanding of non-fiction texts",
+      objectives: "Connect with prior knowledge, ask questions, skim/re-read, restate gists, monitor understanding, support personal responses with textual evidence, and generate thought-provoking questions."
+    },
+    {
+      code: "B8.2.1.1.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Generate and answer questions to increase confidence and independent reading through a variety of non-fiction texts",
+      objectives: "Read closely with a specified purpose, monitor comprehension, connect with prior experience, identify sequence of events, and answer right-there, think-and-search, author-and-you, and on-your-own questions."
+    },
+    {
+      code: "B8.2.1.2.1",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Identify the main text features of non-fiction texts",
+      objectives: "Read closely for interpretation, make connections with prior experience, and generate relevant answers to questions."
+    },
+    {
+      code: "B8.2.1.2.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Use contextual clues (topic sentence, vocabulary knowledge, cohesive devices, text features) to analyse text",
+      objectives: "Use contextual cues, date of writing, author background, and culture to understand age-appropriate texts."
+    },
+    {
+      code: "B8.2.1.2.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Read silently and answer more complex comprehension questions on texts /passages",
+      objectives: "Read texts closely, connect with prior experience, read silently for comprehension, and answer questions appropriately."
+    },
+    {
+      code: "B8.2.1.2.4",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Provide evidence and show mastery to support understanding of texts",
+      objectives: "Interpret texts, cite evidence to support ideas helping with implicit meaning, and generate relevant answers."
+    },
+    {
+      code: "B8.2.1.2.5",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Generate simple themes from a text and apply to different situations",
+      objectives: "Identify main ideas, generate simple themes, gather supporting details, and apply themes to relevant situations."
+    },
+    {
+      code: "B8.2.1.2.6",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Examine the connections between a text and other points of view",
+      objectives: "Make connections between text and prior experiences, connect with different viewpoints, and provide evidence for answers."
+    },
+    {
+      code: "B8.2.1.2.7",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Use derivation to expand vocabulary to new contexts (historical, cultural, political)",
+      objectives: "Use word formation strategies and appropriate vocabulary in context."
+    },
+    {
+      code: "B8.2.1.2.8",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, interpret texts",
+      indicator: "Integrate appropriate grade level vocabulary in different contexts",
+      objectives: "Identify and integrate grade-level vocabulary in meaningful sentences and contexts."
     },
     {
       code: "B8.2.2.1.1",
       strand: "Reading",
-      subStrand: "Vocabulary and Expression",
-      contentStandard:
-        "Use technical and contextual vocabulary in reading and speaking",
-      indicator:
-        "Infer the meaning of domain-specific words and explain their function in context",
-      objectives:
-        "Expand academic vocabulary and use it accurately in summary and discussion tasks.",
+      subStrand: "Summarising",
+      contentStandard: "Cite the textual evidence that supports an analysis of a text to determine the central idea and provide an objective summary",
+      indicator: "Determine the central idea in paragraphs and analyse to identify supporting ideas",
+      objectives: "Identify central ideas in paragraphs, eliminate unnecessary information, state details in own words, and summarise ideas in specific detail."
     },
     {
       code: "B8.3.1.1.1",
-      strand: "Writing",
-      subStrand: "Formal Correspondence, Speech Writing and Reports",
-      contentStandard:
-        "Write formal reports, official letters, and speeches for school events",
-      indicator:
-        "Draft official letters of application, complaint, and formal committee reports",
-      objectives:
-        "Compose formal letters using appropriate salutations, formal tone, and subscriptions.",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Use an increasing range of singular and plural forms of compound nouns correctly and appropriately in sentences",
+      objectives: "Identify and use plural forms of compound nouns correctly in a variety of communication."
+    },
+    {
+      code: "B8.3.1.1.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Demonstrate use of relative pronouns (who/whom, which/that, whose) correctly in speaking and writing",
+      objectives: "Construct sentences with relative pronouns relating to human beings (who/whom/whose/that) and non-human entities (which/that), and join independent clauses."
+    },
+    {
+      code: "B8.3.1.1.3",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Demonstrate command of the use of adjectives in discourse",
+      objectives: "Use adjectives to provide vivid descriptions of participants (e.g. football team), settings (urban, rural), materials, and objects."
+    },
+    {
+      code: "B8.3.1.1.4",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Use verb forms correctly when talking about future events",
+      objectives: "Use future tense aspects (simple future, future progressive, future perfect, future perfect progressive) to talk/write about future events."
+    },
+    {
+      code: "B8.3.1.1.5",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Demonstrate command of the knowledge of adverbs",
+      objectives: "Use adverbs to modify adjectives, pre-modify other adverbs, and pre-modify prepositions or prepositional phrases."
+    },
+    {
+      code: "B8.3.1.1.6",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of word classes and their functions in Communication",
+      indicator: "Demonstrate command of use of prepositions in speaking and writing",
+      objectives: "Use different types of prepositions to convey time, place, movement, agent, direction, and instrument."
+    },
+    {
+      code: "B8.3.1.5.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate command of the use of reported speech",
+      indicator: "Demonstrate command of the use of reported speech",
+      objectives: "Compose text using reported speech, report questions in different situations (direct to reported speech), talk about past events, and write news reports."
+    },
+    {
+      code: "B8.3.1.6.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Show understanding and use of question tags in communication",
+      indicator: "Demonstrate command of question tags",
+      objectives: "Use question tags accurately in everyday expressions."
     },
     {
       code: "B8.3.2.1.1",
-      strand: "Writing",
-      subStrand: "Paragraph Development and Persuasion",
-      contentStandard:
-        "Develop persuasive and analytical paragraphs with evidence and clarity",
-      indicator:
-        "Structure argument paragraphs using topic sentences, evidence, examples, and conclusion",
-      objectives:
-        "Write reasoned, audience-aware paragraphs for debates and arguments.",
+      strand: "Grammar Usage",
+      subStrand: "Punctuation and Capitalisation",
+      contentStandard: "Demonstrate mastery of capitalisation and punctuation in communication",
+      indicator: "Use punctuation marks (colon, semi-colon, apostrophe) in context",
+      objectives: "Use colon (intro lists, speech in plays, chapters/verses, hours/minutes), semi-colon (independent clauses without conjunctions, complex lists), and apostrophe (possession, pronouns, compound nouns, business names, contractions)."
+    },
+    {
+      code: "B8.3.3.1.1",
+      strand: "Grammar Usage",
+      subStrand: "Vocabulary",
+      contentStandard: "Demonstrate appropriate use of vocabulary in communication",
+      indicator: "Use vocabulary appropriately in speaking and writing",
+      objectives: "Use word relationships (synonyms, antonyms, analogy) and connotations of words with similar denotations."
     },
     {
       code: "B8.4.1.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Grammar, Conditionals and Idioms",
-      contentStandard:
-        "Master conditional sentences (1st, 2nd, 3rd conditionals) and idiomatic expressions",
-      indicator:
-        "Apply conditional clauses (If + present -> will; If + past -> would) and common idioms",
-      objectives:
-        "Construct accurate conditional sentences and explain meanings of common English idioms.",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing",
+      indicator: "Demonstrate understanding of how different sentences relate within a paragraph using appropriate cohesive devices (connectors, pronouns, repetition, relative clauses, phrase expansion)",
+      objectives: "Use logical connectors, pronouns, repetition, defining/non-defining relative clauses, and noun/adjective/adverbial phrases to create cohesive paragraphs."
+    },
+    {
+      code: "B8.4.1.2.1",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Create different paragraphs within a composition on a given topic",
+      indicator: "Record and use different techniques to capture the reader’s attention in introductory paragraphs",
+      objectives: "Write introductory paragraphs using techniques like anecdotes and facts, logical sequence, and logical connectors (contrast, cause/effect, conditions)."
     },
     {
       code: "B8.4.2.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Punctuation and Sentence Transformation",
-      contentStandard:
-        "Use punctuation and sentence transformation confidently in extended writing",
-      indicator:
-        "Apply commas, semicolons, apostrophes, and sentence transformation techniques in formal writing",
-      objectives:
-        "Edit writing for clarity, punctuation accuracy, and sentence variety.",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational, persuasive and argumentative texts",
+      indicator: "Write personal narratives using effective techniques incorporating descriptive details and logical event sequences.",
+      objectives: "Plan and record personal experiences using first-person point of view, descriptive details, adjectives, adverbs, prepositions, direct/indirect speech, and edit/publish."
+    },
+    {
+      code: "B8.4.2.1.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational, persuasive and argumentative texts",
+      indicator: "Use precise words phrases and sensory language to convey a vivid mental picture of places and events",
+      objectives: "Describe places and events using adjectives (ancient, beautiful, bustling) and event words (ultimate, rare, historical), appropriate grammatical structures, and edit/proofread."
+    },
+    {
+      code: "B8.4.2.1.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational, persuasive and argumentative texts",
+      indicator: "Create shorter transactional texts to convince an audience to accept an opinion",
+      objectives: "Compose advertisements, diary entries, postcards, invitation cards using simple present, modals, mental verbs, phrasal verbs, and persuasive devices."
+    },
+    {
+      code: "B8.4.2.1.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational, persuasive and argumentative texts",
+      indicator: "Compose paragraphs that identify an issue, give details about it and suggest solutions",
+      objectives: "Write problem/solution texts explaining clear solutions, costs, feasibility, and supporting evidence (expert opinion, statistics)."
+    },
+    {
+      code: "B8.4.2.2.1",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose formal writing (business letters, email) on given topics using the appropriate format",
+      objectives: "Write formal letters (request, complaint, application, thanks, congratulations), notices, and media texts (emails to news editors) with proper editing and publishing."
+    },
+    {
+      code: "B8.4.2.2.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose notes, brochures and flyers for different purposes and audiences",
+      objectives: "Compose flyers (A5 size, eye-catching headline, product description, benefits, contact info) and notices/posters."
+    },
+    {
+      code: "B8.4.2.2.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Write articles on given issues for publication in school magazines",
+      objectives: "Generate ideas, sort information, organise main ideas and supporting details, and write articles (rap poems, jingles, community reports, autobiographies, web pages) for publication."
+    },
+    {
+      code: "B8.4.2.2.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Create dialogues among multiple interlocutors on different themes",
+      objectives: "Compose dialogues using character names on left, colons, new lines, stage directions in brackets, and scenario sketching."
+    },
+    {
+      code: "B8.4.2.2.5",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose speeches for different purposes and occasions.",
+      objectives: "Write speeches combining narrative, descriptive, explanatory, and persuasive skills (introduction, body, conclusion)."
+    },
+    {
+      code: "B8.4.3.1.1",
+      strand: "Writing",
+      subStrand: "Building and Presenting Knowledge",
+      contentStandard: "Research to build and present knowledge",
+      indicator: "Use information from non-text sources (figures, tables graphs, and maps) to support ideas in writing",
+      objectives: "Interpret non-textual elements (figures, tables, graphs, maps) and use retrieved information to support ideas/opinions in writing."
     },
     {
       code: "B8.5.1.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Literary Criticism and Analysis",
-      contentStandard:
-        "Compare themes and style across different literary set-books",
-      indicator:
-        "Examine symbolism, dramatic irony, foil characters, and rhyme schemes in drama and poetry",
-      objectives:
-        "Analyze how symbolism and dramatic irony enhance plot development in prescribed set-books.",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Analyse the types of characters in texts",
+      objectives: "Examine round/dynamic and flat/static characters in narratives and drama, compare them across texts, and create/perform related texts."
     },
     {
-      code: "B8.5.2.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Literary Response and Interpretation",
-      contentStandard:
-        "Respond personally and analytically to set texts and drama extracts",
-      indicator:
-        "Interpret character motives, setting, conflict, and message in prose and poetry",
-      objectives:
-        "Write literary responses that demonstrate close reading and inference.",
+      code: "B8.5.1.1.2",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Examine the features of different types of poems",
+      objectives: "Identify, recognise, compose, and perform different types of poems (sonnet, acrostic, haiku)."
     },
+    {
+      code: "B8.5.1.1.3",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Examine how monologues and dialogues are used to convey characters in narratives and play scripts (drama)",
+      objectives: "Identify monologues and dialogues in texts and create them using appropriate punctuation."
+    },
+    {
+      code: "B8.5.1.1.4",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Use literary devices (euphemism, hyperbole, onomatopoeia, etc.) in texts",
+      objectives: "Identify and use euphemism, hyperbole, and onomatopoeia in selected narrative, poetry, drama, speech, and writing."
+    },
+    {
+      code: "B8.5.1.1.5",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Analyse the sequence of events in film/media, narratives and play scripts (drama)",
+      objectives: "Identify, narrate, and analyse events in film/media, narratives, and drama, and create original film/media or play scripts."
+    }
   ],
   "JHS 3": [
     {
       code: "B9.1.1.1.1",
       strand: "Oral Language",
-      subStrand: "BECE Oral English, Phonetics and Speech Mastery",
-      contentStandard:
-        "Master BECE Oral English phonetics, stress, rhyming words, and conversational fluency",
-      indicator:
-        "Identify vowel/consonant sound distinctions, stressed syllables, and rhyming word patterns",
-      objectives:
-        "Execute BECE Oral English test items accurately identifying sound symbols and stress.",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate the use of appropriate language orally in specific situations",
+      indicator: "Use appropriate register in everyday communication (informal and formal) with diverse partners on grade-level topics/texts/issue",
+      objectives: "Identify slang and jargon accepted locally/internationally, use them in conversations (sports, hobbies, social media, poor academic performance), and create/act scenes or dialogues using formal and informal registers."
+    },
+    {
+      code: "B9.1.1.1.2",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate the use of appropriate language orally in specific situations",
+      indicator: "Ask questions that link the ideas of several speakers and respond to others’ questions in a discussion",
+      objectives: "Use open-ended questions to enable speakers to link ideas, listen attentively to viewpoints, and respond appropriately in conversations with several speakers."
+    },
+    {
+      code: "B9.1.1.1.3",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate the use of appropriate language orally in specific situations",
+      indicator: "Use appropriate language and open-ended questions to discuss grade-level national and global issues",
+      objectives: "Discuss national issues (youth in agriculture, sanitation, lifestyle diseases) and global issues (violence, gender and inclusion, kidnapping, terrorism, child trafficking) using appropriate register, phrasal verbs, and idioms."
+    },
+    {
+      code: "B9.1.1.1.4",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate the use of appropriate language orally in specific situations",
+      indicator: "Demonstrate appropriate turn taking and use techniques for effective argument (debating)",
+      objectives: "Engage in arguments and debates on topics/issues (e.g. children's decision-making) using appropriate register and turn-taking skills."
     },
     {
       code: "B9.1.2.1.1",
       strand: "Oral Language",
-      subStrand: "Listening, Summary and Response",
-      contentStandard:
-        "Listen, summarize and respond accurately to formal oral passages",
-      indicator:
-        "Take notes from oral passages and answer gist, inference, and attitude questions",
-      objectives:
-        "Demonstrate comprehension and critical listening in a timed oral exercise.",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Listen to audio-visual texts attentively and support ideas with vocabulary/ language/figures",
+      objectives: "Watch audio-visuals (films, TV programs, documentaries, music videos) and write key information (message, theme, tone, mood, character), making inferences and real-life connections."
+    },
+    {
+      code: "B9.1.2.1.2",
+      strand: "Oral Language",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Initiate and participate in meaningful and collaborative discussions using texts and related materials, building on others’ ideas and expressing their own clearly and persuasively",
+      objectives: "Listen to key issues in texts/speeches/dialogues, initiate discussions, share opinions, and engage in conferences to express ideas clearly and persuasively."
+    },
+    {
+      code: "B9.1.3.1.1",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce /r/ and /l/ sounds in different positions in word",
+      objectives: "Listen to and produce /r/ and /l/ in beginning, middle, and end positions in words, distinguishing between them in speech."
+    },
+    {
+      code: "B9.1.3.1.2",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce consonant clusters in context",
+      objectives: "Produce consonant clusters (pl, pr, cr, cl, tr, sm, sp, spl, spr, etc.) accurately in context and connected speech."
+    },
+    {
+      code: "B9.1.3.1.3",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce mono-syllabic and di-syllabic words with accurate stress in speech",
+      objectives: "Produce mono-syllabic and di-syllabic words (e.g. travel, visit) with accurate stress in speech and dialogues."
     },
     {
       code: "B9.2.1.1.1",
       strand: "Reading",
-      subStrand: "BECE Reading Comprehension and Summary Mastery",
-      contentStandard:
-        "Master BECE reading comprehension passage analysis and summary writing",
-      indicator:
-        "Answer complex inferential, vocabulary replacement, and precise summary questions under timed exam conditions",
-      objectives:
-        "Answer BECE comprehension questions and write flawless exam-standard summaries.",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Read a variety of grade level texts and demonstrate understanding",
+      objectives: "Read age-appropriate texts for enjoyment and knowledge, set specific learning purposes, and apply appropriate strategies to answer questions."
+    },
+    {
+      code: "B9.2.1.1.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Reflect on how reading impacts self and others see the world (contrasting viewpoints, evaluating reasoning, determining importance or credibility)",
+      objectives: "Identify viewpoints, compare views on achieving success, and peer edit information gathered."
+    },
+    {
+      code: "B9.2.1.1.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Evaluate ways that the media helps to disseminate information via different text types",
+      objectives: "Gather media messages from credible sources, critique them, suggest improvements, and create/publish original articles using ICT."
+    },
+    {
+      code: "B9.2.1.1.4",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Expand various ideas and perspectives in texts",
+      objectives: "Compare own ideas with writer's point of view, peer review, and synthesize perspectives."
+    },
+    {
+      code: "B9.2.1.2.1",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Read given text, within a specific time, for specific information",
+      objectives: "Read texts for main ideas within a specific time limit, answer simple questions, and peer review."
+    },
+    {
+      code: "B9.2.1.2.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Make predictions, identify patterns and relationships of ideas to analyse texts",
+      objectives: "Make predictions and summaries, find patterns and relationships between ideas, and peer edit."
+    },
+    {
+      code: "B9.2.1.2.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Make generalisations from text and link to real life situations",
+      objectives: "Identify patterns forming generalisations, link to real-life situations, and modify text portions to suit life realities."
+    },
+    {
+      code: "B9.2.1.2.4",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Compare the language, style, structure and purpose, as well as the ideas/information from different types of texts",
+      objectives: "Compare language, style, structure, purpose, and themes between narrative, expository, and procedural texts."
+    },
+    {
+      code: "B9.2.1.2.5",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Read silently and answer more complex comprehension questions on texts /passages",
+      objectives: "Skim for details, scan for main ideas, read for details, answer questions, and relate passages to personal experiences."
+    },
+    {
+      code: "B9.2.1.2.6",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Show the effect a text has on the reader",
+      objectives: "Identify literary devices, link their effect to text meaning, and evaluate their impact on the reader."
+    },
+    {
+      code: "B9.2.1.2.7",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Interpret use of words/ phases (figurative, symbolic, sensory) in complex texts",
+      objectives: "Interpret texts, identify sensory imagery, symbolism, and figurative language, and explain how language aids meaning."
+    },
+    {
+      code: "B9.2.1.2.8",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Demonstrate conceptual understanding of academic, domain-specific, and technical vocabulary in varied context",
+      objectives: "Identify registers for specific texts, read texts making distinctions in language use, and use correct vocabulary in complex sentences."
+    },
+    {
+      code: "B9.2.1.2.9",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Make conceptual connections between known and unknown words/phrases and analyse nuances of words/ phrases in texts",
+      objectives: "Connect known and unknown words meaningfully to texts and analyze word nuances and effects."
     },
     {
       code: "B9.2.2.1.1",
       strand: "Reading",
-      subStrand: "Reading for Theme and Tone",
-      contentStandard:
-        "Analyze theme, tone, purpose, and structure in prose and poetry passages",
-      indicator:
-        "Identify tone, mood, language effect, and implied meaning in extracts from literary texts",
-      objectives:
-        "Interpret author intention and literary craft in BECE-style questions.",
+      subStrand: "Summarising",
+      contentStandard: "Cite the textual evidence that supports an analysis of what the text says, determining the central idea of a text and provide an objective summary",
+      indicator: "Analyse critically a given text in entirety and provide an objective summary",
+      objectives: "Analyze text, identify main and supporting ideas, and provide an objective summary answering summary questions."
     },
     {
       code: "B9.3.1.1.1",
-      strand: "Writing",
-      subStrand:
-        "BECE Composition Writing (Narrative, Descriptive, Argumentative, Formal Letters)",
-      contentStandard:
-        "Master BECE English Language essay writing formats, paragraphing, and vocabulary",
-      indicator:
-        "Write 250-word examination essays adhering to strict rubrics for Content, Organization, Expression, Mechanical Accuracy",
-      objectives:
-        "Draft high-scoring BECE examination essays with excellent grammar, vocabulary, and paragraph structure.",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of phrases and clauses and their functions in Communication.",
+      indicator: "Use noun phrases accurately in context",
+      objectives: "Use noun phrases and discuss their functions in texts (subject of sentences, subject complement, direct object of transitive verbs, objects of prepositions, apposition)."
+    },
+    {
+      code: "B9.3.1.1.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of phrases and clauses and their functions in Communication.",
+      indicator: "Demonstrate command using multiple adjectives in the correct order, and using quantifiers effectively in speaking and writing",
+      objectives: "Use adjective phrases to provide vivid descriptions of participants, settings, materials, and objects."
+    },
+    {
+      code: "B9.3.1.1.3",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of phrases and clauses and their functions in Communication.",
+      indicator: "Use more complex phrasal verbs accurately in speech and writing",
+      objectives: "Identify phrasal verbs in texts, determine meanings in context (come after, make up, blow up), and use them in meaningful paragraphs."
+    },
+    {
+      code: "B9.3.1.1.4",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of phrases and clauses and their functions in Communication.",
+      indicator: "Use the knowledge of the adverbial phrase and its functions",
+      objectives: "Use adverb phrases to describe how, where, why, and when actions are carried out."
+    },
+    {
+      code: "B9.3.1.2.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate understanding of the use of conditional tenses in communication",
+      indicator: "Use conditional sentences in communication to indicate an impossible condition in the past and its probable result",
+      objectives: "Construct Type 3 conditional sentences referring to past impossible conditions and probable results, and analyze conditional sentences (1-3) into main and subordinate clauses."
+    },
+    {
+      code: "B9.3.1.2.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate understanding of the use of conditional tenses in communication",
+      indicator: "Use defining and non-defining relative clauses appropriately in speech and writing.",
+      objectives: "Apply the functions of dependent and independent clauses in sentences and texts."
+    },
+    {
+      code: "B9.3.1.3.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate command of structural and functional use of sentences",
+      indicator: "Identify and use subject and predicate in texts",
+      objectives: "Distinguish sentence elements and use knowledge of subject and predicate composition."
+    },
+    {
+      code: "B9.3.1.4.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate mastery of the use of active and passive voice",
+      indicator: "Use passive forms appropriately in speech and in writing",
+      objectives: "Change active to passive sentences and construct opinions using active and passive voices."
+    },
+    {
+      code: "B9.3.1.4.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate mastery of the use of active and passive voice",
+      indicator: "Demonstrate command of the use of reported speech",
+      objectives: "Use and compose text using reported speech in oral and written communication."
     },
     {
       code: "B9.3.2.1.1",
-      strand: "Writing",
-      subStrand: "Formal Letters and Reports",
-      contentStandard:
-        "Write clear formal letters, speeches, and reports with appropriate register and structure",
-      indicator:
-        "Compose complaint letters, application letters, and formal reports with salutation, body, and closing",
-      objectives:
-        "Use formal conventions and precise language in official communication.",
+      strand: "Grammar Usage",
+      subStrand: "Punctuation and Capitalisation",
+      contentStandard: "Demonstrate mastery of capitalisation and punctuation in communication",
+      indicator: "Identify and use punctuation marks (dash, hyphen, bracket) in context",
+      objectives: "Use dashes (interruptions, explanations, lists), hyphens (compound words, attributive compounds, prefixes, fractions, line breaks), and brackets (parenthetical information, cross references)."
+    },
+    {
+      code: "B9.3.3.1.1",
+      strand: "Grammar Usage",
+      subStrand: "Vocabulary",
+      contentStandard: "Demonstrate appropriate use of vocabulary and spelling conventions in communication",
+      indicator: "Interpret vocabulary appropriately in more complex texts",
+      objectives: "Demonstrate appropriate use of vocabulary in context."
     },
     {
       code: "B9.4.1.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "BECE Grammar, Concord, Vocabulary and Sentence Correction",
-      contentStandard:
-        "Master BECE grammar test items: concord, prepositions, tenses, question tags, antonyms/synonyms",
-      indicator:
-        "Complete sentence completion and error identification items correctly",
-      objectives:
-        "Solve BECE objective grammar questions with speed and precision.",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing",
+      indicator: "Compose logically connected paragraphs to show unity, completeness and coherence using appropriate cohesive devices",
+      objectives: "Use coordinating and subordinating conjunctions, defining/non-defining relative clauses, and phrase expansion to expand sentences into paragraphs."
+    },
+    {
+      code: "B9.4.1.1.2",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing",
+      indicator: "Develop a paragraph to show paragraph unity and completeness using supporting details (explanation, elaboration, definition, examples)",
+      objectives: "Write paragraphs showing topic sentences, minor/major supporting sentences using transitional devices for cohesion and coherence."
+    },
+    {
+      code: "B9.4.1.2.1",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Create different paragraphs a given topic",
+      indicator: "Compose more complex paragraphs using appropriate strategies",
+      objectives: "Write mixed and periodic paragraphs, organize sentences logically in introductory paragraphs, and use logical connectors."
     },
     {
       code: "B9.4.2.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Editing and Error Correction",
-      contentStandard:
-        "Edit and proofread writing for grammar, punctuation, and lexical accuracy",
-      indicator:
-        "Identify and correct grammatical errors involving concord, tense, punctuation, and word choice",
-      objectives: "Proofread and improve the quality of examination responses.",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational and persuasive, argumentative texts",
+      indicator: "Create effective descriptive sentences when describing characters, settings or mood.",
+      objectives: "Write descriptive essays using multiple powerful adjectives, sentence structure effects (frontloading, listing, climactic structure), and selective detail."
+    },
+    {
+      code: "B9.4.2.1.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational and persuasive, argumentative texts",
+      indicator: "Use different narrative techniques to manipulate time in a story. Compose narrative essays",
+      objectives: "Incorporate backstory, flashback, flash-forward, foreshadowing, and express feelings through free writing using emotive/sensory details."
+    },
+    {
+      code: "B9.4.2.1.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational and persuasive, argumentative texts",
+      indicator: "Write a well-organised persuasive piece (e.g. argumentative) that states and defends a position",
+      objectives: "Compose argumentative pieces and rejoinders with address, date, reference, and recipient's address using simple present, modals, and mental verbs."
+    },
+    {
+      code: "B9.4.2.1.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational and persuasive, argumentative texts",
+      indicator: "Write an informative, explanatory text on a familiar or unfamiliar topic",
+      objectives: "Write informational texts showing how/why situations occur, objective explanations, logical organization, and unbiased reporting."
+    },
+    {
+      code: "B9.4.2.2.1",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose formal writing (business letters, email, minutes, programme agenda reports) on given topics using appropriate format",
+      objectives: "Write formal letters, minutes, and reports using appropriate text features, formal language, editing, and publishing."
+    },
+    {
+      code: "B9.4.2.2.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose short text (flyers, posters, invitation cards, email, etc. ) for different purposes and audiences",
+      objectives: "Write flyers, posters, invitation cards, and professional emails with recipient addresses, CC, subject, message, and sender info."
+    },
+    {
+      code: "B9.4.2.2.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Write articles (short reports, letters and case studies) on given issues for publication",
+      objectives: "Write short reports, case studies, and letters to the editor for publication in newspapers, magazines, and journals."
+    },
+    {
+      code: "B9.4.2.2.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose speeches for different purposes and occasions.",
+      objectives: "Compose speeches using introductory, body, and concluding structure, emotive adjectives, tripling, repetition, parallel sentence structure, imagery, and inclusive language."
+    },
+    {
+      code: "B9.4.3.1.1",
+      strand: "Writing",
+      subStrand: "Building and Presenting Knowledge",
+      contentStandard: "Research to build and present knowledge",
+      indicator: "Conduct short research projects based on focused questions, and present key findings in writing",
+      objectives: "Conduct environment/school investigations based on focused questions, record/organise findings, list references to avoid plagiarism, and present findings."
     },
     {
       code: "B9.5.1.1.1",
-      strand: "Extensive Reading",
-      subStrand: "BECE Literature set-books (Prose, Poetry, Drama)",
-      contentStandard:
-        "Master prescribed BECE Literature-in-English set-texts and literary terms",
-      indicator:
-        "Critique themes, character motives, stylistic devices, and context questions in prescribed set-books",
-      objectives:
-        "Answer BECE literature questions analyzing characters, literary devices, and central themes.",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Analyse the use of language to convey characters in film/media, narratives and play scripts",
+      objectives: "Describe characters by appearance, actions, speech, and what others say."
     },
     {
-      code: "B9.5.2.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Literary Comparison and Evaluation",
-      contentStandard:
-        "Compare different texts and justify literary judgments using evidence",
-      indicator:
-        "Compare style, theme, and cultural relevance across set texts and provide reasoned commentary",
-      objectives:
-        "Support literary claims with textual evidence and structured evaluation.",
+      code: "B9.5.1.1.2",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Create monologues and dialogues narratives in play scripts",
+      objectives: "Identify monologues and dialogues in texts and create dialogues using appropriate punctuation."
     },
+    {
+      code: "B9.5.1.1.3",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Analyse the sequence of events across texts (descriptive, auto-biography, biography, narrative and play script/drama",
+      objectives: "Identify, explain, and compare key events across film/media, narratives, and play scripts, and create original scripts."
+    }
   ],
   "Basic 9": [
     {
       code: "B9.1.1.1.1",
       strand: "Oral Language",
-      subStrand: "BECE Oral English, Phonetics and Speech Mastery",
-      contentStandard:
-        "Master BECE Oral English phonetics, stress, rhyming words, and conversational fluency",
-      indicator:
-        "Identify vowel/consonant sound distinctions, stressed syllables, and rhyming word patterns",
-      objectives:
-        "Execute BECE Oral English test items accurately identifying sound symbols and stress.",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate the use of appropriate language orally in specific situations",
+      indicator: "Use appropriate register in everyday communication (informal and formal) with diverse partners on grade-level topics/texts/issue",
+      objectives: "Identify slang and jargon accepted locally/internationally, use them in conversations (sports, hobbies, social media, poor academic performance), and create/act scenes or dialogues using formal and informal registers."
+    },
+    {
+      code: "B9.1.1.1.2",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate the use of appropriate language orally in specific situations",
+      indicator: "Ask questions that link the ideas of several speakers and respond to others’ questions in a discussion",
+      objectives: "Use open-ended questions to enable speakers to link ideas, listen attentively to viewpoints, and respond appropriately in conversations with several speakers."
+    },
+    {
+      code: "B9.1.1.1.3",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate the use of appropriate language orally in specific situations",
+      indicator: "Use appropriate language and open-ended questions to discuss grade-level national and global issues",
+      objectives: "Discuss national issues (youth in agriculture, sanitation, lifestyle diseases) and global issues (violence, gender and inclusion, kidnapping, terrorism, child trafficking) using appropriate register, phrasal verbs, and idioms."
+    },
+    {
+      code: "B9.1.1.1.4",
+      strand: "Oral Language",
+      subStrand: "Conversation/Everyday Discourse",
+      contentStandard: "Demonstrate the use of appropriate language orally in specific situations",
+      indicator: "Demonstrate appropriate turn taking and use techniques for effective argument (debating)",
+      objectives: "Engage in arguments and debates on topics/issues (e.g. children's decision-making) using appropriate register and turn-taking skills."
     },
     {
       code: "B9.1.2.1.1",
       strand: "Oral Language",
-      subStrand: "Listening, Summary and Response",
-      contentStandard:
-        "Listen, summarize and respond accurately to formal oral passages",
-      indicator:
-        "Take notes from oral passages and answer gist, inference, and attitude questions",
-      objectives:
-        "Demonstrate comprehension and critical listening in a timed oral exercise.",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Listen to audio-visual texts attentively and support ideas with vocabulary/ language/figures",
+      objectives: "Watch audio-visuals (films, TV programs, documentaries, music videos) and write key information (message, theme, tone, mood, character), making inferences and real-life connections."
+    },
+    {
+      code: "B9.1.2.1.2",
+      strand: "Oral Language",
+      subStrand: "Listening Comprehension",
+      contentStandard: "Demonstrate the ability to listen to extended reading and identify key information",
+      indicator: "Initiate and participate in meaningful and collaborative discussions using texts and related materials, building on others’ ideas and expressing their own clearly and persuasively",
+      objectives: "Listen to key issues in texts/speeches/dialogues, initiate discussions, share opinions, and engage in conferences to express ideas clearly and persuasively."
+    },
+    {
+      code: "B9.1.3.1.1",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce /r/ and /l/ sounds in different positions in word",
+      objectives: "Listen to and produce /r/ and /l/ in beginning, middle, and end positions in words, distinguishing between them in speech."
+    },
+    {
+      code: "B9.1.3.1.2",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce consonant clusters in context",
+      objectives: "Produce consonant clusters (pl, pr, cr, cl, tr, sm, sp, spl, spr, etc.) accurately in context and connected speech."
+    },
+    {
+      code: "B9.1.3.1.3",
+      strand: "Oral Language",
+      subStrand: "English Sounds",
+      contentStandard: "Articulate English speech sounds to develop confidence and skills in listening and speaking",
+      indicator: "Produce mono-syllabic and di-syllabic words with accurate stress in speech",
+      objectives: "Produce mono-syllabic and di-syllabic words (e.g. travel, visit) with accurate stress in speech and dialogues."
     },
     {
       code: "B9.2.1.1.1",
       strand: "Reading",
-      subStrand: "BECE Reading Comprehension and Summary Mastery",
-      contentStandard:
-        "Master BECE reading comprehension passage analysis and summary writing",
-      indicator:
-        "Answer complex inferential, vocabulary replacement, and precise summary questions under timed exam conditions",
-      objectives:
-        "Answer BECE comprehension questions and write flawless exam-standard summaries.",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Read a variety of grade level texts and demonstrate understanding",
+      objectives: "Read age-appropriate texts for enjoyment and knowledge, set specific learning purposes, and apply appropriate strategies to answer questions."
+    },
+    {
+      code: "B9.2.1.1.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Reflect on how reading impacts self and others see the world (contrasting viewpoints, evaluating reasoning, determining importance or credibility)",
+      objectives: "Identify viewpoints, compare views on achieving success, and peer edit information gathered."
+    },
+    {
+      code: "B9.2.1.1.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Evaluate ways that the media helps to disseminate information via different text types",
+      objectives: "Gather media messages from credible sources, critique them, suggest improvements, and create/publish original articles using ICT."
+    },
+    {
+      code: "B9.2.1.1.4",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Demonstrate increasing confidence and enjoyment in independent reading.",
+      indicator: "Expand various ideas and perspectives in texts",
+      objectives: "Compare own ideas with writer's point of view, peer review, and synthesize perspectives."
+    },
+    {
+      code: "B9.2.1.2.1",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Read given text, within a specific time, for specific information",
+      objectives: "Read texts for main ideas within a specific time limit, answer simple questions, and peer review."
+    },
+    {
+      code: "B9.2.1.2.2",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Make predictions, identify patterns and relationships of ideas to analyse texts",
+      objectives: "Make predictions and summaries, find patterns and relationships between ideas, and peer edit."
+    },
+    {
+      code: "B9.2.1.2.3",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Make generalisations from text and link to real life situations",
+      objectives: "Identify patterns forming generalisations, link to real-life situations, and modify text portions to suit life realities."
+    },
+    {
+      code: "B9.2.1.2.4",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Compare the language, style, structure and purpose, as well as the ideas/information from different types of texts",
+      objectives: "Compare language, style, structure, purpose, and themes between narrative, expository, and procedural texts."
+    },
+    {
+      code: "B9.2.1.2.5",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Read silently and answer more complex comprehension questions on texts /passages",
+      objectives: "Skim for details, scan for main ideas, read for details, answer questions, and relate passages to personal experiences."
+    },
+    {
+      code: "B9.2.1.2.6",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Show the effect a text has on the reader",
+      objectives: "Identify literary devices, link their effect to text meaning, and evaluate their impact on the reader."
+    },
+    {
+      code: "B9.2.1.2.7",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Interpret use of words/ phases (figurative, symbolic, sensory) in complex texts",
+      objectives: "Interpret texts, identify sensory imagery, symbolism, and figurative language, and explain how language aids meaning."
+    },
+    {
+      code: "B9.2.1.2.8",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Demonstrate conceptual understanding of academic, domain-specific, and technical vocabulary in varied context",
+      objectives: "Identify registers for specific texts, read texts making distinctions in language use, and use correct vocabulary in complex sentences."
+    },
+    {
+      code: "B9.2.1.2.9",
+      strand: "Reading",
+      subStrand: "Comprehension",
+      contentStandard: "Read, comprehend, and analyse varieties of texts",
+      indicator: "Make conceptual connections between known and unknown words/phrases and analyse nuances of words/ phrases in texts",
+      objectives: "Connect known and unknown words meaningfully to texts and analyze word nuances and effects."
     },
     {
       code: "B9.2.2.1.1",
       strand: "Reading",
-      subStrand: "Reading for Theme and Tone",
-      contentStandard:
-        "Analyze theme, tone, purpose, and structure in prose and poetry passages",
-      indicator:
-        "Identify tone, mood, language effect, and implied meaning in extracts from literary texts",
-      objectives:
-        "Interpret author intention and literary craft in BECE-style questions.",
+      subStrand: "Summarising",
+      contentStandard: "Cite the textual evidence that supports an analysis of what the text says, determining the central idea of a text and provide an objective summary",
+      indicator: "Analyse critically a given text in entirety and provide an objective summary",
+      objectives: "Analyze text, identify main and supporting ideas, and provide an objective summary answering summary questions."
     },
     {
       code: "B9.3.1.1.1",
-      strand: "Writing",
-      subStrand:
-        "BECE Composition Writing (Narrative, Descriptive, Argumentative, Formal Letters)",
-      contentStandard:
-        "Master BECE English Language essay writing formats, paragraphing, and vocabulary",
-      indicator:
-        "Write 250-word examination essays adhering to strict rubrics for Content, Organization, Expression, Mechanical Accuracy",
-      objectives:
-        "Draft high-scoring BECE examination essays with excellent grammar, vocabulary, and paragraph structure.",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of phrases and clauses and their functions in Communication.",
+      indicator: "Use noun phrases accurately in context",
+      objectives: "Use noun phrases and discuss their functions in texts (subject of sentences, subject complement, direct object of transitive verbs, objects of prepositions, apposition)."
+    },
+    {
+      code: "B9.3.1.1.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of phrases and clauses and their functions in Communication.",
+      indicator: "Demonstrate command using multiple adjectives in the correct order, and using quantifiers effectively in speaking and writing",
+      objectives: "Use adjective phrases to provide vivid descriptions of participants, settings, materials, and objects."
+    },
+    {
+      code: "B9.3.1.1.3",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of phrases and clauses and their functions in Communication.",
+      indicator: "Use more complex phrasal verbs accurately in speech and writing",
+      objectives: "Identify phrasal verbs in texts, determine meanings in context (come after, make up, blow up), and use them in meaningful paragraphs."
+    },
+    {
+      code: "B9.3.1.1.4",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Apply the knowledge of phrases and clauses and their functions in Communication.",
+      indicator: "Use the knowledge of the adverbial phrase and its functions",
+      objectives: "Use adverb phrases to describe how, where, why, and when actions are carried out."
+    },
+    {
+      code: "B9.3.1.2.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate understanding of the use of conditional tenses in communication",
+      indicator: "Use conditional sentences in communication to indicate an impossible condition in the past and its probable result",
+      objectives: "Construct Type 3 conditional sentences referring to past impossible conditions and probable results, and analyze conditional sentences (1-3) into main and subordinate clauses."
+    },
+    {
+      code: "B9.3.1.2.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate understanding of the use of conditional tenses in communication",
+      indicator: "Use defining and non-defining relative clauses appropriately in speech and writing.",
+      objectives: "Apply the functions of dependent and independent clauses in sentences and texts."
+    },
+    {
+      code: "B9.3.1.3.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate command of structural and functional use of sentences",
+      indicator: "Identify and use subject and predicate in texts",
+      objectives: "Distinguish sentence elements and use knowledge of subject and predicate composition."
+    },
+    {
+      code: "B9.3.1.4.1",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate mastery of the use of active and passive voice",
+      indicator: "Use passive forms appropriately in speech and in writing",
+      objectives: "Change active to passive sentences and construct opinions using active and passive voices."
+    },
+    {
+      code: "B9.3.1.4.2",
+      strand: "Grammar Usage",
+      subStrand: "Grammar",
+      contentStandard: "Demonstrate mastery of the use of active and passive voice",
+      indicator: "Demonstrate command of the use of reported speech",
+      objectives: "Use and compose text using reported speech in oral and written communication."
     },
     {
       code: "B9.3.2.1.1",
-      strand: "Writing",
-      subStrand: "Formal Letters and Reports",
-      contentStandard:
-        "Write clear formal letters, speeches, and reports with appropriate register and structure",
-      indicator:
-        "Compose complaint letters, application letters, and formal reports with salutation, body, and closing",
-      objectives:
-        "Use formal conventions and precise language in official communication.",
+      strand: "Grammar Usage",
+      subStrand: "Punctuation and Capitalisation",
+      contentStandard: "Demonstrate mastery of capitalisation and punctuation in communication",
+      indicator: "Identify and use punctuation marks (dash, hyphen, bracket) in context",
+      objectives: "Use dashes (interruptions, explanations, lists), hyphens (compound words, attributive compounds, prefixes, fractions, line breaks), and brackets (parenthetical information, cross references)."
+    },
+    {
+      code: "B9.3.3.1.1",
+      strand: "Grammar Usage",
+      subStrand: "Vocabulary",
+      contentStandard: "Demonstrate appropriate use of vocabulary and spelling conventions in communication",
+      indicator: "Interpret vocabulary appropriately in more complex texts",
+      objectives: "Demonstrate appropriate use of vocabulary in context."
     },
     {
       code: "B9.4.1.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "BECE Grammar, Concord, Vocabulary and Sentence Correction",
-      contentStandard:
-        "Master BECE grammar test items: concord, prepositions, tenses, question tags, antonyms/synonyms",
-      indicator:
-        "Complete sentence completion and error identification items correctly",
-      objectives:
-        "Solve BECE objective grammar questions with speed and precision.",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing",
+      indicator: "Compose logically connected paragraphs to show unity, completeness and coherence using appropriate cohesive devices",
+      objectives: "Use coordinating and subordinating conjunctions, defining/non-defining relative clauses, and phrase expansion to expand sentences into paragraphs."
+    },
+    {
+      code: "B9.4.1.1.2",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Develop, organise and express ideas coherently and cohesively in writing",
+      indicator: "Develop a paragraph to show paragraph unity and completeness using supporting details (explanation, elaboration, definition, examples)",
+      objectives: "Write paragraphs showing topic sentences, minor/major supporting sentences using transitional devices for cohesion and coherence."
+    },
+    {
+      code: "B9.4.1.2.1",
+      strand: "Writing",
+      subStrand: "Production and Distribution of Writing",
+      contentStandard: "Create different paragraphs a given topic",
+      indicator: "Compose more complex paragraphs using appropriate strategies",
+      objectives: "Write mixed and periodic paragraphs, organize sentences logically in introductory paragraphs, and use logical connectors."
     },
     {
       code: "B9.4.2.1.1",
-      strand: "Using Writing Conventions",
-      subStrand: "Editing and Error Correction",
-      contentStandard:
-        "Edit and proofread writing for grammar, punctuation, and lexical accuracy",
-      indicator:
-        "Identify and correct grammatical errors involving concord, tense, punctuation, and word choice",
-      objectives: "Proofread and improve the quality of examination responses.",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational and persuasive, argumentative texts",
+      indicator: "Create effective descriptive sentences when describing characters, settings or mood.",
+      objectives: "Write descriptive essays using multiple powerful adjectives, sentence structure effects (frontloading, listing, climactic structure), and selective detail."
+    },
+    {
+      code: "B9.4.2.1.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational and persuasive, argumentative texts",
+      indicator: "Use different narrative techniques to manipulate time in a story. Compose narrative essays",
+      objectives: "Incorporate backstory, flashback, flash-forward, foreshadowing, and express feelings through free writing using emotive/sensory details."
+    },
+    {
+      code: "B9.4.2.1.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational and persuasive, argumentative texts",
+      indicator: "Write a well-organised persuasive piece (e.g. argumentative) that states and defends a position",
+      objectives: "Compose argumentative pieces and rejoinders with address, date, reference, and recipient's address using simple present, modals, and mental verbs."
+    },
+    {
+      code: "B9.4.2.1.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Use a process approach to compose descriptive, narrative/imaginative, informational and persuasive, argumentative texts",
+      indicator: "Write an informative, explanatory text on a familiar or unfamiliar topic",
+      objectives: "Write informational texts showing how/why situations occur, objective explanations, logical organization, and unbiased reporting."
+    },
+    {
+      code: "B9.4.2.2.1",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose formal writing (business letters, email, minutes, programme agenda reports) on given topics using appropriate format",
+      objectives: "Write formal letters, minutes, and reports using appropriate text features, formal language, editing, and publishing."
+    },
+    {
+      code: "B9.4.2.2.2",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose short text (flyers, posters, invitation cards, email, etc. ) for different purposes and audiences",
+      objectives: "Write flyers, posters, invitation cards, and professional emails with recipient addresses, CC, subject, message, and sender info."
+    },
+    {
+      code: "B9.4.2.2.3",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Write articles (short reports, letters and case studies) on given issues for publication",
+      objectives: "Write short reports, case studies, and letters to the editor for publication in newspapers, magazines, and journals."
+    },
+    {
+      code: "B9.4.2.2.4",
+      strand: "Writing",
+      subStrand: "Text Types and Purposes",
+      contentStandard: "Apply writing skills to specific life situations",
+      indicator: "Compose speeches for different purposes and occasions.",
+      objectives: "Compose speeches using introductory, body, and concluding structure, emotive adjectives, tripling, repetition, parallel sentence structure, imagery, and inclusive language."
+    },
+    {
+      code: "B9.4.3.1.1",
+      strand: "Writing",
+      subStrand: "Building and Presenting Knowledge",
+      contentStandard: "Research to build and present knowledge",
+      indicator: "Conduct short research projects based on focused questions, and present key findings in writing",
+      objectives: "Conduct environment/school investigations based on focused questions, record/organise findings, list references to avoid plagiarism, and present findings."
     },
     {
       code: "B9.5.1.1.1",
-      strand: "Extensive Reading",
-      subStrand: "BECE Literature set-books (Prose, Poetry, Drama)",
-      contentStandard:
-        "Master prescribed BECE Literature-in-English set-texts and literary terms",
-      indicator:
-        "Critique themes, character motives, stylistic devices, and context questions in prescribed set-books",
-      objectives:
-        "Answer BECE literature questions analyzing characters, literary devices, and central themes.",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Analyse the use of language to convey characters in film/media, narratives and play scripts",
+      objectives: "Describe characters by appearance, actions, speech, and what others say."
     },
     {
-      code: "B9.5.2.1.1",
-      strand: "Extensive Reading",
-      subStrand: "Literary Comparison and Evaluation",
-      contentStandard:
-        "Compare different texts and justify literary judgments using evidence",
-      indicator:
-        "Compare style, theme, and cultural relevance across set texts and provide reasoned commentary",
-      objectives:
-        "Support literary claims with textual evidence and structured evaluation.",
+      code: "B9.5.1.1.2",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Create monologues and dialogues narratives in play scripts",
+      objectives: "Identify monologues and dialogues in texts and create dialogues using appropriate punctuation."
     },
+    {
+      code: "B9.5.1.1.3",
+      strand: "Literature",
+      subStrand: "Narrative, Drama and Poetry",
+      contentStandard: "Demonstrate understanding of how various elements of literary genres contribute to meaning",
+      indicator: "Analyse the sequence of events across texts (descriptive, auto-biography, biography, narrative and play script/drama",
+      objectives: "Identify, explain, and compare key events across film/media, narratives, and play scripts, and create original scripts."
+    }
   ],
 };

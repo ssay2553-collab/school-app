@@ -3,6 +3,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     addDoc,
     collection,
+    doc,
+    getDoc,
     limit,
     onSnapshot,
     orderBy,
@@ -36,6 +38,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
+import { sendNotification } from "../../src/services/notificationService";
 
 export default function GroupChat() {
   const { groupId, groupName } = useLocalSearchParams();
@@ -197,6 +200,7 @@ export default function GroupChat() {
             timestamp: serverTimestamp(),
           },
         );
+        notifyGroupMembers("🎵 Voice message");
         if (isMounted.current) {
           playSound("sent");
           setRecording(null);
@@ -234,6 +238,7 @@ export default function GroupChat() {
           timestamp: serverTimestamp(),
         },
       );
+      notifyGroupMembers("🎵 Voice message");
       if (isMounted.current) playSound("sent");
     } catch (e) {
       if (isMounted.current) {
@@ -242,6 +247,41 @@ export default function GroupChat() {
       }
     } finally {
       if (isMounted.current) setUploading(false);
+    }
+  };
+
+  const notifyGroupMembers = async (messageText: string) => {
+    try {
+      if (!groupId || !appUser) return;
+      const groupDoc = await getDoc(doc(db, "studentGroups", groupId as string));
+      if (!groupDoc.exists()) return;
+      const groupData = groupDoc.data();
+      const members: string[] = Array.from(
+        new Set([
+          ...(groupData.studentIds || []),
+          ...(groupData.members || []),
+          groupData.teacherId,
+        ].filter(Boolean))
+      );
+
+      const senderName = appUser.fullName || `${appUser.profile?.firstName ?? ""} ${appUser.profile?.lastName ?? ""}`.trim() || "Student";
+      const gName = (groupName as string) || groupData.name || "Group";
+
+      for (const memberId of members) {
+        if (memberId !== appUser.uid) {
+          sendNotification({
+            recipientId: memberId,
+            senderId: appUser.uid,
+            senderName,
+            type: "chat",
+            title: `New Message in ${gName} 💬`,
+            body: `${senderName}: ${messageText}`,
+            data: { groupId, groupName: gName },
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error notifying group members:", err);
     }
   };
 
@@ -262,6 +302,7 @@ export default function GroupChat() {
         },
       );
       playSound("sent");
+      notifyGroupMembers(text);
     } catch (e) {
       console.error("Send Message Error:", e);
       showToast({ message: "Failed to send message.", type: "error" });

@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import SVGIcon from "../SVGIcon";
+import { NotificationBell } from "../NotificationBell";
 import { SHADOWS } from "../../constants/theme";
 
 interface AdminHeaderProps {
@@ -125,6 +126,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 </Text>
               </TouchableOpacity>
             )}
+            <NotificationBell color="#fff" size={22} />
             <TouchableOpacity onPress={onSettingsPress} style={styles.actionBtn} activeOpacity={0.7}>
               <SVGIcon name="settings-outline" size={22} color="#fff" />
             </TouchableOpacity>

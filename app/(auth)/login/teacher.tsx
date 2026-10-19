@@ -80,9 +80,9 @@ export default function TeacherLoginScreen() {
         if (!snap.empty) {
           const userDoc = snap.docs[0];
           const userData = userDoc.data();
-          const storedToken = userData.signupCode || userData.secretCode;
+          const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toUpperCase();
 
-          if (storedToken && (storedToken === cleanToken || storedToken === password.trim())) {
+          if (storedToken && (storedToken === cleanToken || storedToken === password.trim().toUpperCase())) {
             showToast({ message: "Token matched! Syncing access...", type: "info" });
 
             // Call Cloud Function to update password to match the token for future logins

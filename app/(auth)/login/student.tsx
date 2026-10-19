@@ -89,7 +89,7 @@ export default function StudentLoginScreen() {
             return;
           }
 
-          const storedToken = userData.signupCode || userData.secretCode;
+          const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toUpperCase();
 
           if (storedToken && storedToken === cleanToken) {
             showToast({ message: "Token matched! Syncing access...", type: "info" });

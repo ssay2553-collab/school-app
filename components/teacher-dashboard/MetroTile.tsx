@@ -1,10 +1,10 @@
 import React from "react";
 import {
-  TouchableOpacity,
-  View,
-  Text,
-  StyleSheet,
-  Platform,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../SVGIcon";
@@ -26,57 +26,66 @@ interface MetroTileProps {
   onPress: () => void;
 }
 
-export const MetroTile: React.FC<MetroTileProps> = ({
-  item,
-  index,
-  tileWidth,
-  tileHeight,
-  totalUnread = 0,
-  onPress,
-}) => {
-  return (
-    <Animatable.View
-      animation="fadeInUp"
-      duration={350}
-      delay={index * 30}
-      useNativeDriver={false}
-      style={[styles.tileWrapper, { width: tileWidth, height: tileHeight }]}
-    >
-      <TouchableOpacity
-        style={[styles.tile, { backgroundColor: item.color }]}
-        onPress={onPress}
-        activeOpacity={0.85}
+export const MetroTile: React.FC<MetroTileProps> = React.memo(
+  ({ item, index, tileWidth, tileHeight, totalUnread = 0, onPress }) => {
+    const shouldAnimate = Platform.OS !== "web";
+    const TileWrapper = shouldAnimate ? Animatable.View : View;
+
+    return (
+      <TileWrapper
+        animation={shouldAnimate ? "fadeInUp" : undefined}
+        duration={shouldAnimate ? 350 : undefined}
+        delay={shouldAnimate ? index * 30 : undefined}
+        useNativeDriver={shouldAnimate ? false : undefined}
+        style={[styles.tileWrapper, { width: tileWidth, height: tileHeight }]}
       >
-        {/* Windows 8 Accent Line */}
-        <View style={styles.tileTopHighlight} />
+        <TouchableOpacity
+          style={[styles.tile, { backgroundColor: item.color }]}
+          onPress={onPress}
+          activeOpacity={0.85}
+        >
+          {/* Windows 8 Accent Line */}
+          <View style={styles.tileTopHighlight} />
 
-        {/* Icon */}
-        <View style={item.isWide ? styles.wideIconContainer : styles.squareIconContainer}>
-          <SVGIcon name={item.icon} size={item.isWide ? 32 : 26} color="#FFFFFF" />
-        </View>
+          {/* Icon */}
+          <View
+            style={
+              item.isWide
+                ? styles.wideIconContainer
+                : styles.squareIconContainer
+            }
+          >
+            <SVGIcon
+              name={item.icon}
+              size={item.isWide ? 32 : 26}
+              color="#FFFFFF"
+            />
+          </View>
 
-        {/* Live Badge for Messages/Chats */}
-        {item.route &&
-          (String(item.route).includes("chat") || String(item.route).includes("group")) &&
+          {/* Live Badge for Messages/Chats */}
+          {item.route &&
+          (String(item.route).includes("chat") ||
+            String(item.route).includes("group")) &&
           totalUnread > 0 ? (
             <View style={styles.badgePos}>
               <UnreadBadge count={totalUnread} />
             </View>
           ) : null}
 
-        {/* Bottom Text Label */}
-        <View style={styles.textContainer}>
-          <Text style={styles.tileTitle} numberOfLines={1}>
-            {item.title}
-          </Text>
-          <Text style={styles.tileSubtitle} numberOfLines={1}>
-            {item.subtitle}
-          </Text>
-        </View>
-      </TouchableOpacity>
-    </Animatable.View>
-  );
-};
+          {/* Bottom Text Label */}
+          <View style={styles.textContainer}>
+            <Text style={styles.tileTitle} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={styles.tileSubtitle} numberOfLines={1}>
+              {item.subtitle}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </TileWrapper>
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   tileWrapper: {

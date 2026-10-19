@@ -1,6 +1,6 @@
 import { Audio } from "expo-av";
 import * as Notifications from "expo-notifications";
-import { arrayUnion, doc, onSnapshot, setDoc } from "firebase/firestore";
+import { arrayUnion, collection, doc, getDocs, onSnapshot, query, setDoc, where } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -26,6 +26,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
+import { sendNotification } from "../../src/services/notificationService";
 
 interface ChatMessage {
   id: string;
@@ -226,13 +227,27 @@ export default function ChatWithAdmin() {
         { merge: true },
       );
 
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "Message Sent",
-          body: type === "text" ? text : "🎤 Voice message sent",
-        },
-        trigger: null,
-      });
+      // Send real-time notification to all school admins
+      const parentName = appUser.fullName || `${appUser.profile?.firstName || ""} ${appUser.profile?.lastName || ""}`.trim() || "Parent";
+      const messagePreview = type === "audio" ? "🎵 Voice message" : text || "New message";
+
+      try {
+        const adminQuery = query(collection(db, "users"), where("role", "in", ["admin", "superadmin"]));
+        const adminSnap = await getDocs(adminQuery);
+        for (const adminDoc of adminSnap.docs) {
+          sendNotification({
+            recipientId: adminDoc.id,
+            senderId: appUser.uid,
+            senderName: parentName,
+            type: "chat",
+            title: `New Message from ${parentName} 💬`,
+            body: messagePreview,
+            data: { parentUid: appUser.uid },
+          });
+        }
+      } catch (notifErr) {
+        console.error("Error notifying admins:", notifErr);
+      }
     } catch (err) {
       if (type === "text") setInput(currentInput);
       showToast({ message: "Failed to send message.", type: "error" });

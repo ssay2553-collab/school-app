@@ -41,6 +41,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
+import { sendNotification } from "../../src/services/notificationService";
 
 interface ChatMessage {
   id: string;
@@ -418,6 +419,18 @@ export default function ChatWithParent() {
         { merge: true },
       );
       playSound("sent");
+
+      // Notify parent about new admin message
+      const messagePreview = type === "audio" ? "🎵 Voice message" : msg.text || "New message";
+      sendNotification({
+        recipientId: selected.uid,
+        senderId: appUser.uid,
+        senderName: appUser.fullName || "School Administration",
+        type: "chat",
+        title: "New Message from School Admin 💬",
+        body: messagePreview,
+        data: { chatWith: appUser.uid, parentUid: selected.uid },
+      });
     } catch (err) {
       if (isMounted.current) {
         console.error("Send error", err);

@@ -84,8 +84,8 @@ export default function TokenResetScreen() {
       const userDoc = snap.docs[0];
       const userData = userDoc.data();
 
-      // Verify token
-      const storedToken = userData.signupCode || userData.secretCode;
+      // Verify token (supports signupCode, secretCode, or student parentLinkCode)
+      const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toUpperCase();
       if (storedToken !== cleanToken) {
         throw new Error("Invalid reset token. Please contact your administrator.");
       }

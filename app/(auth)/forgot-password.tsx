@@ -160,7 +160,7 @@ export default function ForgotPasswordScreen() {
 
       const userDoc = snap.docs[0];
       const userData = userDoc.data();
-      const storedToken = (userData.signupCode || userData.secretCode || "").toUpperCase();
+      const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toUpperCase();
 
       if (!storedToken || storedToken !== cleanToken) {
         throw new Error("Invalid reset token. Please check your admin code.");

@@ -141,7 +141,12 @@ export const resetUserPasswordWithToken = onCall(async (req) => {
   }
 
   const userData = userDoc.data();
-  const storedToken = userData?.signupCode || userData?.secretCode;
+  const storedToken = (
+    userData?.signupCode ||
+    userData?.secretCode ||
+    userData?.parentLinkCode ||
+    ""
+  ).toUpperCase();
 
   if (!storedToken || storedToken !== token.toUpperCase()) {
     throw new HttpsError("permission-denied", "Invalid reset token.");

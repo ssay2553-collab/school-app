@@ -307,22 +307,95 @@ export const Science: Record<string, GESIndicator[]> = {
       strand: "Diversity of Matter",
       subStrand: "Living and Non-Living Things",
       contentStandard:
-        "Show an understanding of the physical characteristics and classification of animals and plants",
+        "Understand the physical features and life processes of living things and use this understanding to classify them",
       indicator:
-        "Classify animals into vertebrates and invertebrates based on presence or absence of backbones",
+        "Classify animals into insects, birds, mammals and reptiles",
       objectives:
-        "Examine animal specimens and group them into vertebrates (mammals, birds, reptiles, amphibians, fish) and invertebrates.",
+        "Embark on animal observation walks or watch videos/pictures, sort flashcards based on physical features (limbs, body covering, size, movement, diet), and produce animal classification tables or clay models.",
+      exemplars:
+        "E.g. 1. Learners embark on a walk to observe and record names of different kinds of animals in their community or show videos and pictures of different kinds of animals.\nE.g. 2. Provide flashcards to sort pictures into insects, birds, mammals and reptiles and produce animal classification tables.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Personal Development and Leadership",
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Creativity and Innovation",
+      ],
     },
     {
-      code: "B4.1.2.1.1",
+      code: "B4.1.1.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Living and Non-Living Things",
+      contentStandard:
+        "Understand the physical features and life processes of living things and use this understanding to classify them",
+      indicator:
+        "Know life processes of animals (movement, nutrition and reproduction)",
+      objectives:
+        "Observe videos/pictures depicting life processes in animals, describe how insects, birds, reptiles, and mammals move, feed, and reproduce, and role-play or pantomime these life processes.",
+      exemplars:
+        "E.g. 1. Learners observe videos and pictures depicting movement, nutrition and reproduction in animals.\nE.g. 2. Learners describe how various animals move, feed and reproduce and role-play or pantomime movement and nutrition.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Personal Development and Leadership",
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Creativity and Innovation",
+      ],
+    },
+    {
+      code: "B4.1.1.2.2",
+      strand: "Diversity of Matter",
+      subStrand: "Living and Non-Living Things",
+      contentStandard:
+        "Understand the differences between living things and things which have never been alive",
+      indicator:
+        "Describe the physical appearance of different types of plants (trees, shrubs, climbing, creeping)",
+      objectives:
+        "Observe and describe physical features of trees, shrubs, climbing, and creeping plants in structure and size, and create a plant album project.",
+      exemplars:
+        "E.g. 1. Take learners out to observe different types of plants and describe their physical features in terms of structure and size.\nE.g. 2. Project: Learners create a plant album of different types of plants (shrubs, trees, climbing and creeping plants).",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
+    },
+    {
+      code: "B4.1.1.2.3",
+      strand: "Diversity of Matter",
+      subStrand: "Living and Non-Living Things",
+      contentStandard:
+        "Understand the differences between living things and things which have never been alive",
+      indicator:
+        "Describe the physical features of mammals, reptiles, insects and amphibians",
+      objectives:
+        "Observe specimens, pictures, or videos of mammals, reptiles, insects, and amphibians, describe their physical features using think-pair-share, and match animals with features using flashcards.",
+      exemplars:
+        "E.g. 1. Learners observe mammals, reptiles, insects and amphibians through videos, pictures, or specimen (frogs, lizards, cockroaches).\nE.g. 2. Describe physical features (limbs, body covering, size, movement, diet) and match animals to features using flashcards.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B4.1.2.2.1",
       strand: "Diversity of Matter",
       subStrand: "Materials",
       contentStandard:
-        "Recognise materials as solids, liquids and gases based on their properties",
+        "Understand mixtures, their types, formation, uses and ways of separating them into their components",
       indicator:
-        "Describe the properties of solids, liquids, and gases (shape, volume, compressibility)",
+        "Identify a liquid-liquid mixture and describe how to separate its components",
       objectives:
-        "Compare particle arrangement and behavior in the three states of matter.",
+        "Mix different liquids (water, oil, kerosene, vinegar), distinguish miscible from immiscible liquid-liquid mixtures, and investigate separating immiscible mixtures using a separating funnel.",
+      exemplars:
+        "E.g. 1. Display different liquids and mix liquids of same and different kinds to distinguish miscible and immiscible mixtures.\nE.g. 2. Project: Investigate separating immiscible liquids (e.g. cooking oil and water) using a separating funnel or improvised version.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
     },
     {
       code: "B4.2.1.1.1",
@@ -333,7 +406,13 @@ export const Science: Record<string, GESIndicator[]> = {
       indicator:
         "Demonstrate understanding of cyclic movements in the environment",
       objectives:
-        "Guide learners to build a pendulum (a ball hanging on a string) and observe swinging motion, analogue clock hands, merry-go-round, and walking limbs. Project: Life Cycle of a Maize Plant.",
+        "Build a swinging pendulum, observe cyclic movements (analogue clock hands, merry-go-round, walking limbs), and conduct a project investigating the life cycle of a maize plant.",
+      exemplars:
+        "E.g. 1. Build a pendulum and observe swinging motion, analogue clock hands, merry-go-round, and walking limbs to identify common cyclic movement.\nE.g. 2. Project: Learners investigate the life cycle of a maize plant and report findings.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+      ],
     },
     {
       code: "B4.2.1.2.1",
@@ -341,9 +420,16 @@ export const Science: Record<string, GESIndicator[]> = {
       subStrand: "Earth Science",
       contentStandard:
         "Recognise the relationship between the earth and the sun",
-      indicator: "Identify the objects in the sky during day and night",
+      indicator:
+        "Identify the objects in the sky during day and night",
       objectives:
-        "Step outside to name daytime sky and nighttime sky objects; draw Venn diagrams showing similarities and differences in a 24-hour cycle.",
+        "Observe daytime and nighttime sky objects, draw overlapping Venn diagrams comparing day/night skies, and explain the importance of celestial objects in a 24-hour cycle.",
+      exemplars:
+        "E.g. 1. Step outside to identify objects in day and night skies and describe changes in the sky over 24 hours.\nE.g. 2. Draw Venn diagrams comparing day sky, night sky, and shared objects, and write about their importance.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B4.2.1.3.1",
@@ -351,79 +437,321 @@ export const Science: Record<string, GESIndicator[]> = {
       subStrand: "Earth Science",
       contentStandard:
         "Show understanding of the roles of condensation, evaporation, transpiration and precipitation in the hydrological (water) cycle",
-      indicator: "Demonstrate the process of evapotranspiration",
+      indicator:
+        "Demonstrate the process of evapotranspiration",
       objectives:
-        "Breathe out or blow air onto a transparent surface (glass or plastic bottle); use plastic wrap and rubber band on potted plants to observe water droplets.",
+        "Breathe onto transparent surfaces to observe condensation, and wrap potted plants with plastic wrap and rubber bands to collect and demonstrate plant transpiration.",
+      exemplars:
+        "E.g. 1. Exhale onto a transparent bottle to demonstrate moisture in breath, relating human respiration to plant transpiration.\nE.g. 2. Enclose potted plants in plastic wrap for an hour, mop and observe water droplets, and present reports.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
     },
     {
       code: "B4.2.1.5.1",
       strand: "Cycles",
       subStrand: "Earth Science",
-      contentStandard: "Recognise water and air as important natural resources",
-      indicator: "Demonstrate ways of making water safe for use",
+      contentStandard:
+        "Recognise water and air as important natural resources",
+      indicator:
+        "Demonstrate ways of making water safe for use",
       objectives:
-        "Identify sources of water in the community, discuss qualities of good drinking water, and test water treatment methods (boiling, filtering).",
+        "Identify community water sources, state qualities of good drinking water, demonstrate safe water treatments (filtering, boiling, chlorination, water filters, alum), and discuss risks of unsafe water.",
+      exemplars:
+        "E.g. 1. Examine water samples from rivers, wells, boreholes, and standpipes, and discuss qualities of good drinking water.\nE.g. 2. Demonstrate methods of making water safe (filtering, boiling, iodine tablets, chlorine, alum) and discuss hazards of drinking unsafe water.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B4.2.2.1.1",
+      strand: "Cycles",
+      subStrand: "Life Cycles of Organisms",
+      contentStandard:
+        "Demonstrate understanding of the life cycle of plants",
+      indicator:
+        "Observe, identify and give functions of the parts of a plant",
+      objectives:
+        "Examine uprooted young plants, identify and explain functions of roots, stem, leaves, and flowers, draw annotated diagrams, and relate functions to part positions on the plant.",
+      exemplars:
+        "E.g. 1. Uproot young plants from school surroundings, observe and state functions of roots, stem, leaves, and flowers.\nE.g. 2. Draw annotated diagrams of plants, display them in class, and relate part functions to their positions.",
+      coreCompetencies: [
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
+    },
+    {
+      code: "B4.2.2.1.2",
+      strand: "Cycles",
+      subStrand: "Life Cycles of Organisms",
+      contentStandard:
+        "Demonstrate understanding of the life cycle of plants",
+      indicator:
+        "Examine some common seeds and how they germinate",
+      objectives:
+        "Observe dry beans/maize seeds, track germination stages (water uptake, seed coat rupture, root and stem sprouting, seed leaves elongation), and record findings with stage diagrams.",
+      exemplars:
+        "E.g. 1. Observe dry seed coats absorbing water, swelling, seed coat rupturing, and root/stem sprouting over several days.\nE.g. 2. Write experimental reports on seed germination accompanied by labelled diagrams of each stage.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+        "Creativity and Innovation",
+      ],
     },
     {
       code: "B4.3.1.1.1",
       strand: "Systems",
-      subStrand: "The Solar System",
-      contentStandard: "Recognise the sun and the planets in the solar system",
+      subStrand: "The Human Body Systems",
+      contentStandard:
+        "Recognise that different parts of the human body work interdependently to perform a specific function",
       indicator:
-        "Identify the Sun and the eight planets in order of distance from the Sun",
+        "Know the organs of the digestive system and their functions",
       objectives:
-        "Model the solar system and describe the position and characteristics of the eight planets.",
+        "Examine digestive system models and diagrams, explain functions of digestive organs, arrange cut-out organ flashcards sequentially, and role-play digestive processes.",
+      exemplars:
+        "E.g. 1. Observe videos, pictures, and models of human digestive organs and explain their specific functions.\nE.g. 2. Build the digestive system sequentially using flashcards and role-play digestive organ functions.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
-      code: "B4.3.1.2.1",
+      code: "B4.3.2.1.1",
       strand: "Systems",
       subStrand: "The Solar System",
-      contentStandard: "Movements of the Earth",
+      contentStandard:
+        "Show an understanding of the orderliness of the sun, planets and satellites in the solar system, as well as the important role of the sun in the existence of the solar system",
       indicator:
-        "Explain rotation of the Earth on its axis and revolution around the Sun",
+        "Explain that the sun is at the centre of the solar system",
       objectives:
-        "Demonstrate how Earth's rotation causes day and night, and how its revolution causes seasons/years.",
+        "Observe solar system models, identify the Sun at the centre, role-play celestial bodies (Sun, Earth, planets), explain benefits of the Sun, and mould solar system models.",
+      exemplars:
+        "E.g. 1. Examine solar system charts or videos, identifying the Sun at the centre, and role-play planets orbiting the Sun.\nE.g. 2. Project: Mould stars, planets, and satellites in the solar system using suitable materials.",
+      coreCompetencies: [
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Critical Thinking and Problem-Solving",
+        "Creativity and Innovation",
+      ],
+    },
+    {
+      code: "B4.3.3.1.1",
+      strand: "Systems",
+      subStrand: "Ecosystem",
+      contentStandard:
+        "Show understanding and appreciation of the interactions and interdependencies of organisms in an ecosystem",
+      indicator:
+        "Explain the concept of ecosystem",
+      objectives:
+        "Role-play family interdependency, match organisms to habitats (forest, pond), explain organism and non-living interactions in an ecosystem, discuss impacts of species removal or illegal mining (galamsey), and suggest conservation practices.",
+      exemplars:
+        "E.g. 1. Role-play family setups and match organisms to habitats to understand interdependency in an ecosystem.\nE.g. 2. Discuss forest/pond ecosystem components, analyze consequences of habitat destruction (e.g. galamsey), and suggest preservation methods.",
+      coreCompetencies: [
+        "Cultural Identity and Global Citizenship",
+        "Personal Development and Leadership",
+        "Critical Thinking and Problem-Solving",
+        "Creativity and Innovation",
+      ],
     },
     {
       code: "B4.4.1.1.1",
       strand: "Forces and Energy",
-      subStrand: "Energy (Light and Sound)",
-      contentStandard: "Recognise sources and properties of light",
+      subStrand: "Sources and Forms of Energy",
+      contentStandard:
+        "Demonstrate understanding of the concept of energy, its various forms, sources and how to transform and conserve it",
       indicator:
-        "Investigate reflection, refraction, and shadow formation with transparent, translucent, and opaque materials",
+        "Identify the effect of heat on the change of state of substances",
       objectives:
-        "Distinguish transparent, translucent, and opaque objects and demonstrate light travels in straight lines.",
+        "Investigate heat effects on liquids and solids (water, shea butter, candle wax), measure water quantity before and after boiling to prove evaporation, and demonstrate condensation when vapour loses heat.",
+      exemplars:
+        "E.g. 1. Conduct activities heating water, shea butter, or candle wax to identify physical state changes.\nE.g. 2. Measure water before and after boiling to show evaporation and explain condensation of escaping vapour when cooled.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B4.4.2.1.1",
       strand: "Forces and Energy",
-      subStrand: "Force and Motion",
-      contentStandard: "Demonstrate understanding of friction and gravity",
-      indicator: "Explore effects of friction on moving objects and surfaces",
+      subStrand: "Electricity and Electronics",
+      contentStandard:
+        "Demonstrate knowledge of generation of electricity, its transmission and transformation into other forms",
+      indicator:
+        "Identify the uses of electricity",
       objectives:
-        "Investigate how smooth versus rough surfaces affect movement, sliding, and braking of objects.",
+        "List and draw everyday electrical uses in home and school (ironing, lighting, powering gadgets, cooking), and carry out a project generating electricity from fruit cells (citrus, tomato, potato).",
+      exemplars:
+        "E.g. 1. Identify and draw everyday household and school appliances that use electricity.\nE.g. 2. Project: Generate electricity in groups using fruit cells (orange, lime, tomato, potato, apple) or fuel cells.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
+    },
+    {
+      code: "B4.4.2.1.2",
+      strand: "Forces and Energy",
+      subStrand: "Electricity and Electronics",
+      contentStandard:
+        "Demonstrate knowledge of generation of electricity, its transmission and transformation into other forms",
+      indicator:
+        "Describe ways of conserving electricity",
+      objectives:
+        "Identify wasteful electricity practices, discuss risks of leaving appliances running, present electricity conservation methods, and record home/school electricity consumption over 3 months.",
+      exemplars:
+        "E.g. 1. Discuss why lights/appliances are turned off when leaving home and identify activities causing electricity wastage.\nE.g. 2. Project: Record and monitor electricity consumption in home or school over a period of three months.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Cultural Identity and Global Citizenship",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
+    },
+    {
+      code: "B4.4.2.2.1",
+      strand: "Forces and Energy",
+      subStrand: "Electricity and Electronics",
+      contentStandard:
+        "Know the functions and assemblage of basic electronics components",
+      indicator:
+        "Identify the basic components of electronic circuits",
+      objectives:
+        "Identify connecting wires, dry cells, switches, and LEDs, assemble a simple circuit to light an LED, draw connected circuit diagrams, explore wire alternatives, and role-play electron movement.",
+      exemplars:
+        "E.g. 1. Identify wires, dry cells, switches, and LEDs, and connect them to light up the LED.\nE.g. 2. Draw connected circuits, suggest wire substitutes, and role-play electrons flowing through circuit components.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+        "Creativity and Innovation",
+      ],
+    },
+    {
+      code: "B4.4.3.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Forces and Movement",
+      contentStandard:
+        "Know that movement is caused by applied forces due to the release of stored energy",
+      indicator:
+        "Demonstrate understanding of elastic and compressional forces and their everyday applications",
+      objectives:
+        "Demonstrate force effects (kicking, pushing, crumpling), manipulate catapults, rubber bands, springs, and bicycle pumps to show elastic and compressional forces, and discuss real-world applications.",
+      exemplars:
+        "E.g. 1. Demonstrate force effects by kicking balls, pushing tables, crumpling paper, or stopping moving toys.\nE.g. 2. Use catapults, rubber bands, springs, and bicycle pumps to demonstrate elastic and compressional forces and discuss everyday applications.",
+      coreCompetencies: [
+        "Cultural Identity and Global Citizenship",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B4.5.1.1.1",
       strand: "Humans and the Environment",
-      subStrand: "Health and Sanitation",
+      subStrand: "Personal Hygiene and Sanitation",
       contentStandard:
-        "Demonstrate understanding of personal hygiene and food safety",
+        "Recognise the importance of personal hygiene",
       indicator:
-        "Practice proper hygiene, dental care, and clean food handling to avoid foodborne infections",
+        "Know how to care for one’s self and the environment",
       objectives:
-        "Demonstrate sanitary food storage and personal hygiene routines to eliminate pathogenic germs.",
+        "Identify personal hygiene practices (bathing twice daily, oral care, trimming nails, washing towels, sweeping), evaluate consequences of poor personal care, and investigate items used for body hygiene.",
+      exemplars:
+        "E.g. 1. Brainstorm and record personal hygiene routines on flashcards (bathing twice daily, cleaning teeth, trimming nails, sweeping classrooms).\nE.g. 2. Discuss consequences of neglecting body care and investigate natural or commercial materials used to enhance personal hygiene.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+      ],
+    },
+    {
+      code: "B4.5.1.1.2",
+      strand: "Humans and the Environment",
+      subStrand: "Personal Hygiene and Sanitation",
+      contentStandard:
+        "Recognise the importance of personal hygiene",
+      indicator:
+        "Describe ways of sustaining the environment through waste management",
+      objectives:
+        "Watch media on environmental sustainability, categorize home and school waste (paper, rubber, plastic, bottles), discuss benefits of waste sorting, and mould/construct specialized waste bins.",
+      exemplars:
+        "E.g. 1. Observe videos on environmental sustainability, list waste types produced at home/school, and discuss waste separation.\nE.g. 2. Project: Design and mould/construct litterbins from suitable materials to hold different forms of waste.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B4.5.2.1.1",
       strand: "Humans and the Environment",
-      subStrand: "Diseases and Safe Environment",
+      subStrand: "Diseases",
       contentStandard:
-        "Recognise causes and prevention of common communicable diseases",
+        "Know common diseases of humans; causes, symptoms, effects and prevention",
       indicator:
-        "Explain transmission and prevention of water-borne diseases (cholera, typhoid, dysentery)",
+        "Identify causes, symptoms and prevention of measles",
       objectives:
-        "Promote safe drinking water treatment and proper sewage disposal to prevent water-borne infections.",
+        "Watch media/charts or attend health talks on measles, identify causes, symptoms, exposure protocols, and prevention methods, and develop concept maps and educational awareness posters.",
+      exemplars:
+        "E.g. 1. Analyze media/charts or host SHEP/health personnel to discuss measles causes, symptoms, and prevention.\nE.g. 2. Project: Develop concept maps and posters on causes, symptoms, and prevention of measles.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
+    {
+      code: "B4.5.2.1.2",
+      strand: "Humans and the Environment",
+      subStrand: "Diseases",
+      contentStandard:
+        "Know common diseases of humans; causes, symptoms, effects and prevention",
+      indicator:
+        "Demonstrate understanding of the causes, symptoms and prevention of food-borne diseases",
+      objectives:
+        "Examine causes, symptoms, and local examples of food-borne diseases (cholera, diarrhea, typhoid fever) through health talks/videos, predict disease outcomes, and create prevention posters.",
+      exemplars:
+        "E.g. 1. Watch videos or invite health/FDA personnel to explain food-borne diseases, their causes, and management.\nE.g. 2. Identify local food-borne diseases (cholera, diarrhea, typhoid fever), predict health effects, and prepare public prevention posters.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
+    {
+      code: "B4.5.4.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "Climate Change",
+      contentStandard:
+        "Know that climate change is one of the most important environmental issues facing the world today",
+      indicator:
+        "Explain that burning is one of the causes of climate change",
+      objectives:
+        "Observe media on fossil fuel and bush burning, analyze smoke and air pollution, evaluate bush fire impacts on humans, plants, and animals, and create climate change posters.",
+      exemplars:
+        "E.g. 1. View charts/videos showing fossil fuel burning and changing weather patterns, and analyze bush fire stories.\nE.g. 2. Discuss consequences of continuous vegetation/waste burning and design posters illustrating burning effects on climate change.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Creativity and Innovation",
+      ],
     },
   ],
   "Basic 5": [
@@ -431,180 +759,1066 @@ export const Science: Record<string, GESIndicator[]> = {
       code: "B5.1.1.1.1",
       strand: "Diversity of Matter",
       subStrand: "Living and Non-Living Things",
-      contentStandard: "Differentiate between flowering and non-flowering plants",
-      indicator: "Classify plants into flowering (mango, maize, rose) and non-flowering (ferns, mosses, conifers)",
-      objectives: "Examine plant reproductive structures (flowers vs. cones/spores) and classify local plant species."
+      contentStandard:
+        "Understand the physical features and life processes of living things and use this understanding to classify them",
+      indicator:
+        "Know the life processes of living things (growth, sensitivity to the environment, respiration and excretion)",
+      objectives:
+        "Observe living/non-living things outside, view videos of animals and plants, demonstrate sensitivity (mimosa plant), respiration (breathing), growth (seedling vs mature plant), and plant a seed to observe growth.",
+      exemplars:
+        "E.g. 1. Observe living and non-living things outside the classroom and watch animated videos of living things.\nE.g. 2. Demonstrate sensitivity using mimosa plants, growth by comparing seedlings to mature plants, respiration by breathing, and plant a seed to track growth.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
-      code: "B5.1.1.1.2",
+      code: "B5.1.1.2.1",
       strand: "Diversity of Matter",
       subStrand: "Living and Non-Living Things",
-      contentStandard: "Differentiate between flowering and non-flowering plants",
-      indicator: "Classify vertebrates into mammals, birds, reptiles, amphibians, and fish with specific external features",
-      objectives: "Examine physical and biological characteristics of vertebrate groups in local ecosystems."
+      contentStandard:
+        "Demonstrate understanding of the differences between living things, non-living things, and things which have never been alive",
+      indicator:
+        "Compare the differences among things that are living, dead and things that have never been alive",
+      objectives:
+        "Observe and classify specimens into things that are alive, once alive (firewood, paper, pencils), or never been alive (rocks, soil, water), and explain why humans are classified as living things.",
+      exemplars:
+        "E.g. 1. Observe assembled specimens and classify them into things alive, once alive (firewood, paper), and never alive (rocks, soil, water).\nE.g. 2. Compare differences among the three categories and explain why humans are living things.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B5.1.2.1.1",
       strand: "Diversity of Matter",
-      subStrand: "Mixtures and Solutions",
-      contentStandard: "Demonstrate understanding of mixtures, solute, solvent, and solution",
-      indicator: "Prepare aqueous solutions and distinguish between soluble and insoluble substances",
-      objectives: "Investigate how solutes dissolve in solvents to form solutions and suspensions."
+      subStrand: "Materials",
+      contentStandard:
+        "Recognise materials as important resources for providing human needs",
+      indicator:
+        "Classify everyday materials based on their properties (soft, hard, rough, smooth, opaque, transparent and bendable)",
+      objectives:
+        "Collect everyday materials, classify by texture, size, transparency, and flexibility, link properties to product making, and create handcrafted items (paper fans, toy cars, earthenware pots).",
+      exemplars:
+        "E.g. 1. Sort and group materials by texture (hard/soft), transparency (transparent/opaque), and flexibility (bendable/non-bendable).\nE.g. 2. Project: Use different materials to create new items (paper fans, toy cars, earthenware pots) and exhibit work.",
+      coreCompetencies: [
+        "Communication and Collaboration",
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
-      code: "B5.1.2.1.2",
+      code: "B5.1.2.2.1",
       strand: "Diversity of Matter",
-      subStrand: "Mixtures and Solutions",
-      contentStandard: "Demonstrate understanding of mixtures, solute, solvent, and solution",
-      indicator: "Separate solid-liquid mixtures using filtration, decantation, and evaporation",
-      objectives: "Perform separation experiments on sandy water and salt solutions."
+      subStrand: "Materials",
+      contentStandard:
+        "Know that substances can exist in different physical states (solid, liquid, gas). Many substances can be changed from one state to another by heating or cooling",
+      indicator:
+        "Know that some changes are reversible, while others cannot be reversed",
+      objectives:
+        "Heat and manipulate substances (wax, ice, shea butter, water, paper, wood) and classify changes as reversible (no new substance formed) or irreversible (new substance formed).",
+      exemplars:
+        "E.g. 1. Melt wax/ice/shea butter, heat water, crumple paper, and burn wood or paper in group activities.\nE.g. 2. Classify changes into reversible (no new substance formed) and irreversible (new substance formed).",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B5.1.2.3.1",
+      strand: "Diversity of Matter",
+      subStrand: "Materials",
+      contentStandard:
+        "Understand mixtures, the types, formation, uses and ways of separating them into their components",
+      indicator:
+        "Demonstrate formation and separation of mixtures (solid-liquid and liquid-liquid mixtures)",
+      objectives:
+        "Mix solids and liquids with water, distinguish mixtures/solutions (salt/water, sand/water, oil/water), and perform separation methods (filtration, evaporation, sieving, separating funnel).",
+      exemplars:
+        "E.g. 1. Add salt, sugar, sand, vinegar, and oil to water to observe solid-liquid and liquid-liquid mixtures and solutions.\nE.g. 2. Project: Separate sand and water, and recover salt from salt solution using filtration, evaporation, sieving, or separating funnels.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B5.2.1.1.1",
       strand: "Cycles",
-      subStrand: "Carbon and Nitrogen Cycles",
-      contentStandard: "Understand role of plants and animals in carbon-oxygen cycle",
-      indicator: "Describe photosynthesis (carbon dioxide uptake) and respiration (oxygen uptake)",
-      objectives: "Explain how photosynthesis and respiration balance atmospheric oxygen and carbon dioxide."
+      subStrand: "Earth Science",
+      contentStandard:
+        "Recognise that some events in our environment occur recurrently",
+      indicator:
+        "Know how day and night are formed",
+      objectives:
+        "Explain Earth's rotation on its axis using globes and light sources, demonstrate day and night using polystyrene balls and torches, and draw representative diagrams.",
+      exemplars:
+        "E.g. 1. Demonstrate Earth's rotation on its axis causing day and night using globes, torches, and polystyrene balls.\nE.g. 2. Explain the mechanism of day and night formation and draw representative diagrams.",
+      coreCompetencies: [
+        "Creativity and Innovation",
+        "Cultural Identity and Global Citizenship",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
     },
     {
-      code: "B5.2.1.1.2",
+      code: "B5.2.1.2.1",
       strand: "Cycles",
-      subStrand: "Carbon and Nitrogen Cycles",
-      contentStandard: "Understand role of plants and animals in carbon-oxygen cycle",
-      indicator: "Observe and describe the life cycles of flowering plants and amphibians (toad/frog)",
-      objectives: "Trace the developmental stages of a frog from egg to tadpole and adult."
+      subStrand: "Earth Science",
+      contentStandard:
+        "Recognise the relationship between the earth and the sun",
+      indicator:
+        "Describe the benefits of the sun to the earth",
+      objectives:
+        "Identify benefits of the sun (warmth, light for plant growth, day/night cycles, solar energy), analyze scenarios where the sun did not exist, and test sunlight importance to plant growth.",
+      exemplars:
+        "E.g. 1. Discuss benefits derived from the sun (warmth, photosynthesis light, day/night cycle, energy) and brainstorm life without the sun.\nE.g. 2. Project: Demonstrate the importance of sunlight to the growth of plants.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
+    },
+    {
+      code: "B5.2.1.3.1",
+      strand: "Cycles",
+      subStrand: "Earth Science",
+      contentStandard:
+        "Show understanding of the roles of condensation, evaporation, transpiration and precipitation in the hydrological (water) cycle",
+      indicator:
+        "Demonstrate evaporation and condensation as important processes of the hydrological (water) cycle",
+      objectives:
+        "Recite water rhymes, observe evaporation (drying hands, boiling water) and condensation (covered containers, transparent glass over steam), and explain cloud and rain formation.",
+      exemplars:
+        "E.g. 1. Demonstrate evaporation from wet hands/boiling water and condensation on container lids or glass plates.\nE.g. 2. Explain how evaporation and condensation lead to rain formation using simple water cycle diagrams.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B5.2.1.3.2",
+      strand: "Cycles",
+      subStrand: "Earth Science",
+      contentStandard:
+        "Show understanding of the roles of condensation, evaporation, transpiration and precipitation in the hydrological (water) cycle",
+      indicator:
+        "Know how clouds are formed",
+      objectives:
+        "Define clouds as condensed tiny water droplets/ice, explain atmospheric cooling during upward vertical air motion, demonstrate cloud formation in a bottle, and explain cloud altitudes.",
+      exemplars:
+        "E.g. 1. Define clouds as tiny water droplets resulting from water vapour condensation due to atmospheric cooling.\nE.g. 2. Demonstrate cloud formation in a bottle and explain why clouds form above ground level.",
+      coreCompetencies: [
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
+    },
+    {
+      code: "B5.2.1.4.1",
+      strand: "Cycles",
+      subStrand: "Earth Science",
+      contentStandard:
+        "Demonstrate understanding of how carbon and nitrogen are cycled in nature",
+      indicator:
+        "Describe the uses of carbon dioxide and its effects on humans and life on earth",
+      objectives:
+        "Identify carbon dioxide as an air constituent, state uses (fire extinguishers, carbonated drinks, plant photosynthesis), and discuss adverse health and environmental impacts of excess CO2.",
+      exemplars:
+        "E.g. 1. Identify carbon dioxide in air and describe uses in fire extinguishers, fizzy drinks, and photosynthesis.\nE.g. 2. Analyze adverse health and environmental effects of excessive carbon dioxide in the atmosphere.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
+    },
+    {
+      code: "B5.2.1.5.1",
+      strand: "Cycles",
+      subStrand: "Earth Science",
+      contentStandard:
+        "Recognise water and air as important natural resources",
+      indicator:
+        "Identify human activities that make water unsuitable for human use",
+      objectives:
+        "Identify human activities causing water pollution (toxic waste, sewage, mining, littering, fertilizers/pesticides), discuss pollution prevention, and create concept maps on water pollution.",
+      exemplars:
+        "E.g. 1. Identify human activities polluting water (toxic waste, sewage, mining, deforestation, agricultural chemicals) and brainstorm control measures.\nE.g. 2. Project: Create concept maps on the causes, control, and prevention of water pollution.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Cultural Identity and Global Citizenship",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Creativity and Innovation",
+      ],
+    },
+    {
+      code: "B5.2.1.5.2",
+      strand: "Cycles",
+      subStrand: "Earth Science",
+      contentStandard:
+        "Recognise water and air as important natural resources",
+      indicator:
+        "Know how to make and keep air clean in our environment",
+      objectives:
+        "Identify air pollutants (factory smoke, exhaust, bush fires, dust), state measures to maintain clean air (tree planting, stopping open burning), and construct concept maps and Futures Wheels.",
+      exemplars:
+        "E.g. 1. Identify air pollutants (smoke, exhaust, bush burning, dust) and discuss practices to keep air clean (tree planting, avoiding uncontrolled burning).\nE.g. 2. Design concept maps on air pollution control and use Futures Wheels to trace pollution impacts.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Cultural Identity and Global Citizenship",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Creativity and Innovation",
+      ],
+    },
+    {
+      code: "B5.2.2.1.1",
+      strand: "Cycles",
+      subStrand: "Life Cycles of Organisms",
+      contentStandard:
+        "Demonstrate understanding of life cycle of a plant",
+      indicator:
+        "Relate structure of the parts of a plant (leaves, stem, root, flower) to the functions they perform",
+      objectives:
+        "Uproot young plants, examine structural adaptations (broad thin leaves, anchoring roots, conductive stems), and draw/label plants showing structural adaptations to functions.",
+      exemplars:
+        "E.g. 1. Uproot young plants and examine structural adaptations (large leaf surface for light capture, roots for anchorage/absorption, stem for transport/support).\nE.g. 2. Draw, colour, and label plant diagrams showing how part structures relate to their specific functions.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
+    },
+    {
+      code: "B5.2.2.1.2",
+      strand: "Cycles",
+      subStrand: "Life Cycles of Organisms",
+      contentStandard:
+        "Demonstrate understanding of life cycle of a plant",
+      indicator:
+        "Compare the differences in germination of bean and maize seeds",
+      objectives:
+        "Plant bean and maize seeds in transparent containers, track germination stages (water absorption, coat rupture, root/stem sprouting, elongation), and compare cotyledon position (above vs below soil).",
+      exemplars:
+        "E.g. 1. Plant bean and maize seeds in transparent containers and record water absorption, coat rupture, root/stem sprouting, and elongation.\nE.g. 2. Compare cotyledon position during germination for beans (above soil / epigeal) versus maize (below soil / hypogeal).",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B5.3.1.1.1",
       strand: "Systems",
-      subStrand: "Human Respiratory and Circulatory Systems",
-      contentStandard: "Identify major organs of human respiratory and circulatory systems",
-      indicator: "Trace path of air (nasal cavity, trachea, lungs) and describe gaseous exchange",
-      objectives: "Describe breathing mechanism and oxygen-carbon dioxide exchange in lungs."
+      subStrand: "The Human Body Systems",
+      contentStandard:
+        "Recognise that different parts of the human body work interdependently to perform a specific function",
+      indicator:
+        "Know the parts of the respiratory system in humans",
+      objectives:
+        "Identify human respiratory organs using charts/models, role-play organ functions (lungs, diaphragm), construct plastic bottle breathing apparatus models, label diagrams, and research respiratory health.",
+      exemplars:
+        "E.g. 1. Identify respiratory organs using charts/models, role-play organ functions, and draw/label respiratory system diagrams.\nE.g. 2. Project: Design an improvised breathing apparatus using plastic bottles, balloons, and rubber bands.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+        "Creativity and Innovation",
+      ],
     },
     {
-      code: "B5.3.1.1.2",
+      code: "B5.3.2.1.1",
       strand: "Systems",
-      subStrand: "Human Respiratory and Circulatory Systems",
-      contentStandard: "Identify major organs of human respiratory and circulatory systems",
-      indicator: "Describe blood circulation through the heart and blood vessels",
-      objectives: "Identify heart structure and arteries, veins, and capillaries transporting blood."
+      subStrand: "The Solar System",
+      contentStandard:
+        "Show understanding of the orderliness of the sun, planets and satellites in the solar system, as well as the important role of the sun in the existence of the solar system",
+      indicator:
+        "Identify the components of the solar system (sun, earth, moon, other planets, satellite)",
+      objectives:
+        "Identify solar system components (Sun, Earth, Moon, planets, satellites), explain annual Earth orbit and seasons, observe Venus in sky, role-play celestial bodies, and build solar system models.",
+      exemplars:
+        "E.g. 1. Examine solar system charts/videos, observe Venus, role-play planetary orbits, and share Sun/Moon folktales.\nE.g. 2. Project: Plan, design, and build a solar system model using clay, cardboard, wood, or blu tack.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B5.3.3.1.1",
+      strand: "Systems",
+      subStrand: "Ecosystem",
+      contentStandard:
+        "Show understanding of ecosystem, interdependency of organisms in an ecosystem and appreciate the interactions",
+      indicator:
+        "Know how various organisms are adapted to survive in their habitat",
+      objectives:
+        "Define habitat, match organisms to habitats using flashcards, discuss adaptations (fish gills, bird wings/bones), and design habitat models.",
+      exemplars:
+        "E.g. 1. Match organisms with habitats using flashcards and discuss adaptations enabling fish to live in water and birds on trees.\nE.g. 2. Project: Plan, design, and build a habitat model using cardboard, paper, blu tack, and clay.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
     },
     {
       code: "B5.4.1.1.1",
       strand: "Forces and Energy",
-      subStrand: "Forces and Simple Machines",
-      contentStandard: "Demonstrate understanding of simple machines (levers, inclined planes, pulleys)",
-      indicator: "Identify 1st, 2nd, and 3rd class levers and measure mechanical advantage",
-      objectives: "Classify everyday tools (scissors, wheelbarrow, tweezers, claw hammer) as levers and explain how they ease work."
+      subStrand: "Sources and Forms of Energy",
+      contentStandard:
+        "Demonstrate understanding of the concept of energy, its various forms and sources and the ways in which it can be transformed and conserved",
+      indicator:
+        "Explain how energy is transformed from one form to another",
+      objectives:
+        "Demonstrate energy transformations using torches, radios, TVs, school bells, and drums, and design flowcharts tracing solar energy to physical movement.",
+      exemplars:
+        "E.g. 1. Demonstrate energy transformations using household appliances (torch, radio, TV) and school activities (bells, drums).\nE.g. 2. Design flowcharts explaining how solar energy converts to chemical energy in food and mechanical energy for walking.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B5.4.1.1.2",
       strand: "Forces and Energy",
-      subStrand: "Forces and Simple Machines",
-      contentStandard: "Demonstrate understanding of simple machines (levers, inclined planes, pulleys)",
-      indicator: "Explore the use of inclined planes and pulleys to ease work",
-      objectives: "Demonstrate how ramps and pulleys make lifting heavy loads easier."
+      subStrand: "Sources and Forms of Energy",
+      contentStandard:
+        "Demonstrate understanding of the concept of energy, its various forms and sources and the ways in which it can be transformed and conserved",
+      indicator:
+        "Know how to use electricity efficiently in the home",
+      objectives:
+        "Identify household electrical appliances, discuss power outage causes due to inefficient use, and propose energy efficiency habits (bulk ironing, energy star bulbs, turning off freezers during ironing).",
+      exemplars:
+        "E.g. 1. Discuss consequences of leaving electrical gadgets running and relate wastage to national power outages (dumsor).\nE.g. 2. Identify efficient electricity practices using think-pair-share (bulk ironing, energy-efficient rated bulbs, turning off appliances when not in use).",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Cultural Identity and Global Citizenship",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B5.4.1.2.1",
+      strand: "Forces and Energy",
+      subStrand: "Sources and Forms of Energy",
+      contentStandard:
+        "Show understanding of the concept of heat energy in terms of its importance, effects, sources and transfer from one medium to another",
+      indicator:
+        "Show the relationship between heat and temperature",
+      objectives:
+        "Place stone/metal objects in sun, feel warmness changes before and after sun exposure, cool objects in water, and summarize heat gain increases temperature while heat loss decreases temperature.",
+      exemplars:
+        "E.g. 1. Place metal plates or stones in the sun for 20 minutes and feel temperature differences before and after exposure.\nE.g. 2. Submerge heated objects in water to observe temperature reduction, establishing heat gain/loss changes temperature.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B5.4.1.2.2",
+      strand: "Forces and Energy",
+      subStrand: "Sources and Forms of Energy",
+      contentStandard:
+        "Show understanding of the concept of heat energy in terms of its importance, effects, sources and transfer from one medium to another",
+      indicator:
+        "Measure and record temperature using thermometer",
+      objectives:
+        "Construct improvised thermometers using plastic bottles, straws, and dyes, and use clinical/laboratory thermometers to measure and record body temperature and warm water temperature.",
+      exemplars:
+        "E.g. 1. Construct improvised thermometers using plastic bottles, straws, dye, and water.\nE.g. 2. Measure body temperatures using clinical thermometers and warm water temperatures using laboratory thermometers.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B5.4.2.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Electricity and Electronics",
+      contentStandard:
+        "Demonstrate knowledge of generation of electricity, its transmission and transformation into other forms",
+      indicator:
+        "Identify the components of an electric circuit and their functions",
+      objectives:
+        "Observe electric circuit diagrams/videos, construct simple circuits with wires, dry cells, and bulbs/LEDs, state component functions, and build plastic bottle LED lanterns.",
+      exemplars:
+        "E.g. 1. Construct functional electric circuits using dry cells, wires, and bulbs/LEDs and state component uses.\nE.g. 2. Project: Build an LED lantern using simple circuits and plastic bottles.",
+      coreCompetencies: [
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B5.4.3.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Forces and Movement",
+      contentStandard:
+        "Know that movement is caused by applied forces due to the release of stored energy",
+      indicator:
+        "Explain the term, “friction”, its effects and applications",
+      objectives:
+        "Explain friction as opposition to relative motion, demonstrate friction by rubbing palms and examining shrunken shoe soles, explain wet/polished surface slipping, and test toy cars on rough vs smooth surfaces.",
+      exemplars:
+        "E.g. 1. Rub palms together to feel friction heat, analyze worn shoe soles, and explain why reduced friction on wet roads causes slipping.\nE.g. 2. Project: Demonstrate friction effects by running toy cars across rough and smooth surfaces.",
+      coreCompetencies: [
+        "Creativity and Innovation",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B5.5.1.1.1",
       strand: "Humans and the Environment",
-      subStrand: "Climate Change and Deforestation",
-      contentStandard: "Understand human impact on climate change and forest cover",
-      indicator: "Examine causes of deforestation, bush burning, greenhouse effect and propose reforestation measures",
-      objectives: "Analyze consequences of tree cutting and bush fires on climate patterns and participate in tree planting."
+      subStrand: "Personal Hygiene and Sanitation",
+      contentStandard:
+        "Recognise the importance of personal hygiene",
+      indicator:
+        "Know why it is important to wash clothes regularly",
+      objectives:
+        "Demonstrate hand-washing of clothes and underwear using soap and water, view machine/alternative washing methods, discuss risks of unwashed clothes, and design a personal laundry schedule.",
+      exemplars:
+        "E.g. 1. Demonstrate hand-washing of dirty clothes using soap and water and view alternative laundry methods.\nE.g. 2. Discuss risks of unwashed clothing and design a personal weekly laundry roster.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+        "Creativity and Innovation",
+      ],
     },
     {
-      code: "B5.5.1.1.2",
+      code: "B5.5.1.2.1",
       strand: "Humans and the Environment",
-      subStrand: "Climate Change and Deforestation",
-      contentStandard: "Understand human impact on climate change and forest cover",
-      indicator: "Propose and participate in reforestation and environmental conservation measures",
-      objectives: "Design community campaigns against bush fires and illegal logging."
-    }
+      subStrand: "Personal Hygiene and Sanitation",
+      contentStandard:
+        "Identify, discuss and appreciate the natural and human features of the environment and the need to keep the environment clean",
+      indicator:
+        "Know how to keep washrooms clean",
+      objectives:
+        "Discuss washroom sanitation rules (flushing, direct urinating, proper tissue disposal/burning), investigate dirty washroom health risks, and design washroom sanitation posters.",
+      exemplars:
+        "E.g. 1. Discuss lavatory hygiene (flushing immediately, direct urinating, disposing/burning used tissues) and analyze risks of dirty washrooms.\nE.g. 2. Design educational sanitation posters for display in school washrooms.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
+    {
+      code: "B5.5.1.2.2",
+      strand: "Humans and the Environment",
+      subStrand: "Personal Hygiene and Sanitation",
+      contentStandard:
+        "Identify, discuss and appreciate the natural and human features of the environment and the need to keep the environment clean",
+      indicator:
+        "Demonstrate how to clean the environment regularly",
+      objectives:
+        "Tour community environment to observe clean vs untidy areas, demonstrate proper use of cleaning tools (brooms, rags, dustpans), clean school surroundings, and design cleanliness posters.",
+      exemplars:
+        "E.g. 1. Inspect tidy and untidy community areas, discuss cleaning tools (brooms, dustpans, rags), and clean school surroundings.\nE.g. 2. Project: Design community cleanliness awareness posters and exhibit work in school.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Cultural Identity and Global Citizenship",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Creativity and Innovation",
+      ],
+    },
+    {
+      code: "B5.5.2.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "Diseases",
+      contentStandard:
+        "Know common diseases of humans; causes, symptoms, effects and prevention",
+      indicator:
+        "Explain the causes, symptoms and control of chicken pox",
+      objectives:
+        "Watch media/talks by health/SHEP personnel on chicken pox, identify causes, symptoms, and control protocols, and create chicken pox concept maps.",
+      exemplars:
+        "E.g. 1. View charts/videos or host health personnel to identify chicken pox causes, symptoms, and prevention.\nE.g. 2. Project: Develop concept maps tracing causes, symptoms, and prevention of chicken pox.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
+    {
+      code: "B5.5.2.1.2",
+      strand: "Humans and the Environment",
+      subStrand: "Diseases",
+      contentStandard:
+        "Know common diseases of humans; causes, symptoms, effects and prevention",
+      indicator:
+        "Identify causes, symptoms and prevention of cholera",
+      objectives:
+        "Analyze cholera causes (contaminated food/water, dirty environment) through health presentations and scenarios, and compile ideas on causes, symptoms, and prevention on poster cardboards.",
+      exemplars:
+        "E.g. 1. Discuss cholera causes (contaminated food, dirty environment) with health officers/SHEP coordinators.\nE.g. 2. Compile causes, symptoms, and prevention of cholera on large cardboard charts for classroom display.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
+    {
+      code: "B5.5.3.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "Science and Industry",
+      contentStandard:
+        "Recognise the impact of science and technology in society",
+      indicator:
+        "Identify the raw materials used in some local industries (kenkey production, gari production, ceramic and pottery production)",
+      objectives:
+        "Visit local production sites (gari, kenkey, shea butter, pottery, carpentry) or watch videos, identify raw materials, match products to raw materials, and design factory layout models.",
+      exemplars:
+        "E.g. 1. Visit local gari, kenkey, pottery, or carpentry sites to identify raw materials and match products to raw materials.\nE.g. 2. Project: Plan and design a local factory model showing raw materials and finished products.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
+    {
+      code: "B5.5.4.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "Climate Change",
+      contentStandard:
+        "Know that climate change is one of the most important environmental issues facing the world today",
+      indicator:
+        "Identify the impact of deforestation on climate change",
+      objectives:
+        "Explain tree benefits (shade, oxygen, rain, soil protection), analyze long-term climate effects of deforestation, discuss anti-tree-felling measures, and plant/nurture trees on school grounds.",
+      exemplars:
+        "E.g. 1. Conduct nature walks to identify tree benefits (shade, fresh air, rain production) and brainstorm long-term impacts of deforestation on climate.\nE.g. 2. Plant and care for trees in school environments and strategic community locations.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
   ],
   "Basic 6": [
     {
       code: "B6.1.1.1.1",
       strand: "Diversity of Matter",
-      subStrand: "Cells and Microorganisms",
-      contentStandard: "Demonstrate understanding of cell structure and microorganisms",
-      indicator: "Identify plant and animal cells under microscope/diagrams",
-      objectives: "Compare plant cell (cell wall, chloroplasts, vacuole) and animal cell structures."
-    },
-    {
-      code: "B6.1.1.1.2",
-      strand: "Diversity of Matter",
-      subStrand: "Cells and Microorganisms",
-      contentStandard: "Demonstrate understanding of cell structure and microorganisms",
-      indicator: "Group microorganisms into bacteria, viruses, fungi, and protozoa, and discuss beneficial vs. harmful microbes",
-      objectives: "Discuss microbes in food production, medicine, and disease causation."
+      subStrand: "Living and Non-Living Things",
+      contentStandard:
+        "Show understanding of the physical features and life processes of living things and use this understanding to classify them",
+      indicator:
+        "Classify plants based on their root system",
+      objectives:
+        "Uproot plants (grass, beans, mango, sweet potato), compare root structures, group plants into tap roots and fibrous roots, and mould root system models using blu tack/clay.",
+      exemplars:
+        "E.g. 1. Uproot young plants (grass, beans, mango, sweet potato) and compare root systems with diagrams.\nE.g. 2. Classify plants into tap root and fibrous root systems and mould root models using blu tack or clay.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Creativity and Innovation",
+      ],
     },
     {
       code: "B6.1.2.1.1",
       strand: "Diversity of Matter",
-      subStrand: "Chemical and Physical Changes",
-      contentStandard: "Distinguish between physical and chemical changes in matter",
-      indicator: "Investigate reversible physical changes (melting, dissolving) vs. irreversible chemical changes (rusting, burning)",
-      objectives: "Perform experiments showing rusting of iron, burning of paper (chemical) vs. melting wax and ice (physical)."
+      subStrand: "Materials",
+      contentStandard:
+        "Recognise materials as important resources for providing human needs",
+      indicator:
+        "Know the general properties of metals such as lustre, malleability, conductivity and ductility",
+      objectives:
+        "Gather everyday objects, classify as metals or non-metals based on lustre, malleability, conductivity, and ductility, test aluminum foil vs straw conductivity, and build simple metallic machines.",
+      exemplars:
+        "E.g. 1. Classify objects (ruler, wire, cooking pan, iron nails) as metals or non-metals based on lustre, malleability, conductivity, and ductility.\nE.g. 2. Test conductivity of aluminum foil versus drinking straw and design simple metallic machines.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Digital Literacy",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B6.1.2.1.2",
+      strand: "Diversity of Matter",
+      subStrand: "Materials",
+      contentStandard:
+        "Recognise materials as important resources for providing human needs",
+      indicator:
+        "Investigate the uses of metals in everyday life and link the uses to their properties",
+      objectives:
+        "Identify metallic objects (farm tools, jewellery, cars, copper wire, aluminum sheets) and link everyday uses directly to metallic properties (conductivity, malleability, strength).",
+      exemplars:
+        "E.g. 1. Identify metallic objects from displays or videos (farm tools, jewellery, cars, bridges, spoons).\nE.g. 2. Link metallic uses to properties (copper for electric wires due to conductivity, aluminum for roofing sheets due to malleability).",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Digital Literacy",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B6.1.2.2.1",
+      strand: "Diversity of Matter",
+      subStrand: "Materials",
+      contentStandard:
+        "Understand mixtures, the types of formation, uses and ways of separating them into their components",
+      indicator:
+        "Examine some uses of mixtures in everyday life",
+      objectives:
+        "Prepare mixtures (salt solution, sugar solution, concrete, sand and water), investigate daily applications (gari and beans, construction, oral rehydration), and list mixture components.",
+      exemplars:
+        "E.g. 1. Prepare salt solution, sugar solution, concrete, and sand/water mixtures.\nE.g. 2. Investigate daily uses and applications of mixtures (construction concrete, salt solution, gari and beans) and identify their components.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Digital Literacy",
+        "Communication and Collaboration",
+      ],
     },
     {
       code: "B6.2.1.1.1",
       strand: "Cycles",
-      subStrand: "Life Cycles and Reproduction",
-      contentStandard: "Understand sexual and asexual reproduction in plants and animals",
-      indicator: "Describe pollination, fertilization, and seed dispersal in flowering plants",
-      objectives: "Trace plant fertilization and seed dispersal mechanisms by wind, water, and animals."
+      subStrand: "Earth Science",
+      contentStandard:
+        "Recognise the relationship between the earth and the sun",
+      indicator:
+        "Describe the relative sizes of the earth and sun and their importance",
+      objectives:
+        "Compare relative sizes and motions of Sun and Earth, present group reports, and evaluate hypothetical scenarios (e.g., impact on day/night length if Earth were larger than Sun).",
+      exemplars:
+        "E.g. 1. Investigate the relative sizes and movements of the Sun and Earth in the solar system.\nE.g. 2. Evaluate how day and night length would be affected if Earth were larger than the Sun.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+      ],
     },
     {
-      code: "B6.2.1.1.2",
+      code: "B6.2.1.2.1",
       strand: "Cycles",
-      subStrand: "Life Cycles and Reproduction",
-      contentStandard: "Understand sexual and asexual reproduction in plants and animals",
-      indicator: "Discuss physical, emotional, and social changes during human puberty and adolescence",
-      objectives: "Explain bodily changes during puberty and personal hygiene management."
+      subStrand: "Earth Science",
+      contentStandard:
+        "Show understanding of the roles of condensation, evaporation, transpiration and precipitation in the hydrological (water) cycle",
+      indicator:
+        "Explain how rain falls from clouds",
+      objectives:
+        "Define hydrological terms (evaporation, condensation, dew point, cloud, gravity, precipitation), design raindrop formation models around dust/smoke particles, and explain why not all clouds yield rain.",
+      exemplars:
+        "E.g. 1. Explain evaporation, condensation, dew point, cloud formation, gravity, and precipitation.\nE.g. 2. Design models showing raindrop condensation around dust/smoke particles and explain why some clouds do not produce rain.",
+      coreCompetencies: [
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+      ],
+    },
+    {
+      code: "B6.2.1.3.1",
+      strand: "Cycles",
+      subStrand: "Earth Science",
+      contentStandard:
+        "Demonstrate understanding of how carbon and nitrogen are cycled in nature",
+      indicator:
+        "Know the functions of carbon within the environment",
+      objectives:
+        "Identify carbon-containing materials (pencils, charcoal, food, carbon dioxide), explain carbon's role in living/non-living items, and role-play carbon functions in the environment.",
+      exemplars:
+        "E.g. 1. Identify carbon-containing environmental materials (charcoal, graphite pencils, organic food, carbon dioxide).\nE.g. 2. Role-play carbon functions in food production, fuel, materials, and atmospheric composition.",
+      coreCompetencies: [
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+      ],
+    },
+    {
+      code: "B6.2.1.4.1",
+      strand: "Cycles",
+      subStrand: "Earth Science",
+      contentStandard:
+        "Recognise water and air as important natural resources",
+      indicator:
+        "Investigate ways of conserving water in the home, school and community",
+      objectives:
+        "Identify household water uses, distinguish wise water usage from water wastage, propose water conservation strategies, and create promotional water conservation flyers/posters.",
+      exemplars:
+        "E.g. 1. Identify domestic water activities and distinguish proper water usage from wasteful habits.\nE.g. 2. Design promotional flyers and posters featuring slogans and cut-out pictures on water conservation.",
+      coreCompetencies: [
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+      ],
+    },
+    {
+      code: "B6.2.1.5.2",
+      strand: "Cycles",
+      subStrand: "Earth Science",
+      contentStandard:
+        "Recognise water and air as important natural resources",
+      indicator:
+        "Demonstrate that air supports burning",
+      objectives:
+        "Review air composition and carry out candle-and-glass-jar experiments demonstrating that air (oxygen) is required for combustion.",
+      exemplars:
+        "E.g. 1. Review air composition and perform glass jar inverted over lighted candle experiments to demonstrate air supports burning.",
+      coreCompetencies: [
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+      ],
+    },
+    {
+      code: "B6.2.2.1.1",
+      strand: "Cycles",
+      subStrand: "Life Cycles of Organisms",
+      contentStandard:
+        "Demonstrate understanding of the life cycle of a plant",
+      indicator:
+        "Know the materials needed for the survival of plants in the environment (water, carbon dioxide, oxygen, sunlight)",
+      objectives:
+        "Investigate essential plant requirements (water, CO2, O2, sunlight), draw annotated diagrams showing entry points (stomata, roots), test water effects on plant survival, and state specific functions of each requirement.",
+      exemplars:
+        "E.g. 1. Draw annotated diagrams showing sources and points of entry for plant survival materials (stomata, roots).\nE.g. 2. Conduct experiments testing water effects on plant survival and explain functions of oxygen, carbon dioxide, sunlight, and water.",
+      coreCompetencies: [
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
+    },
+    {
+      code: "B6.2.2.1.2",
+      strand: "Cycles",
+      subStrand: "Life Cycles of Organisms",
+      contentStandard:
+        "Demonstrate understanding of the life cycle of a plant",
+      indicator:
+        "Observe the life cycle of a plant (okra or maize plant)",
+      objectives:
+        "Plant maize or okra seeds, care for growing plants through flowering/fruiting until viable seeds form, record weekly growth observations, and compile observational reports.",
+      exemplars:
+        "E.g. 1. Plant and care for maize or okra seeds through germination, growth, flowering, and fruiting.\nE.g. 2. Track weekly growth changes and write observational reports detailing the full plant life cycle.",
+      coreCompetencies: [
+        "Communication and Collaboration",
+        "Critical Thinking and Problem-Solving",
+      ],
     },
     {
       code: "B6.3.1.1.1",
       strand: "Systems",
-      subStrand: "Ecosystems and Food Webs",
-      contentStandard: "Analyze food chains and food webs in terrestrial and aquatic ecosystems",
-      indicator: "Construct food chains and food webs identifying producers, primary consumers, secondary consumers, and decomposers",
-      objectives: "Diagram energy flow through food webs and predict ecological impact when a species is removed."
+      subStrand: "The Human Body Systems",
+      contentStandard:
+        "Recognise that different parts of the human body work interdependently to perform a specific function",
+      indicator:
+        "Explain the functions of organs in the excretory system of humans",
+      objectives:
+        "Identify human excretory organs (kidneys, lungs, skin, liver), match organs to excretory products (urine/urea, CO2, sweat, bile pigments), explain biological terms, and mould kidney models using clay/blu tack.",
+      exemplars:
+        "E.g. 1. Identify excretory organs (kidneys, lungs, skin, liver) using videos/charts and match organs with excretory products.\nE.g. 2. Define excretion terms (urea, kidney, excretion) and mould human kidney models using clay or blu tack.",
+      coreCompetencies: [
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Creativity and Innovation",
+      ],
+    },
+    {
+      code: "B6.3.2.1.1",
+      strand: "Systems",
+      subStrand: "The Solar System",
+      contentStandard:
+        "Show understanding of the motion of bodies in the solar system",
+      indicator:
+        "Explain the difference between a star, a planet and a satellite",
+      objectives:
+        "Differentiate stars (stationary, self-luminous), planets (orbit stars), and satellites (orbit planets), using solar system charts and role-playing games on school fields.",
+      exemplars:
+        "E.g. 1. Distinguish stars (stationary, self-luminous), planets (orbit stars), and satellites (orbit planets, e.g. Moon).\nE.g. 2. Play solar system games mimicking planetary orbits around the Sun on school fields.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B6.3.3.1.1",
+      strand: "Systems",
+      subStrand: "Ecosystem",
+      contentStandard:
+        "Show understanding of ecosystems, interdependency of organisms in an ecosystem and appreciate the interactions",
+      indicator:
+        "Investigate various interactions in an ecosystem and the effect on humans",
+      objectives:
+        "Observe local ecosystems (bush, pond), design classroom ecosystem models, identify interactions (hunting, farming, predation), and analyze human/environmental impacts.",
+      exemplars:
+        "E.g. 1. Inspect local ecosystems (bush, pond) and design classroom ecosystem interaction diagrams.\nE.g. 2. Discuss human and organism interactions (hunting, farming, predation) and evaluate their ecological impacts.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+      ],
     },
     {
       code: "B6.4.1.1.1",
       strand: "Forces and Energy",
-      subStrand: "Renewable and Non-Renewable Energy",
-      contentStandard: "Explore renewable (solar, wind, hydro) and non-renewable (fossil fuels) energy sources",
-      indicator: "Compare environmental impact of renewable vs. non-renewable energy",
-      objectives: "Discuss advantages of solar and hydroelectric power in Ghana over fossil fuels."
+      subStrand: "Sources and Forms of Energy",
+      contentStandard:
+        "Demonstrate understanding of the concept of energy, its various forms and sources and the ways in which it can be transformed and conserved",
+      indicator:
+        "Compare renewable and non-renewable sources of energy",
+      objectives:
+        "Classify energy sources into non-depletable/renewable (solar, wind, hydro) and depletable/non-renewable (firewood, batteries, food, gasoline, diesel, kerosene) and present findings on flashcards.",
+      exemplars:
+        "E.g. 1. Classify energy sources into non-depletable (solar, wind, hydro) and depletable (firewood, gasoline, batteries, food).\nE.g. 2. Define renewable and non-renewable energy sources using flashcard presentations.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+      ],
     },
     {
-      code: "B6.4.1.1.2",
+      code: "B6.4.1.2.1",
       strand: "Forces and Energy",
-      subStrand: "Renewable and Non-Renewable Energy",
-      contentStandard: "Explore renewable (solar, wind, hydro) and non-renewable (fossil fuels) energy sources",
-      indicator: "Design and build simple solar cooker or water heater models",
-      objectives: "Apply solar energy principles to construct functional thermal energy capture devices."
+      subStrand: "Sources and Forms of Energy",
+      contentStandard:
+        "Show understanding of the concept of heat energy in terms of its importance, effects, sources and transfer from one medium to another",
+      indicator:
+        "Measure the temperature of a body using a thermometer",
+      objectives:
+        "Define temperature, construct improvised bottle/straw thermometers, practice safe handling precautions, and measure body and warm water temperatures using clinical and laboratory thermometers.",
+      exemplars:
+        "E.g. 1. Construct improvised thermometers using plastic bottles, straws, dyes, and water.\nE.g. 2. Measure body temperature using clinical thermometers and warm water temperature using laboratory thermometers with safety precautions.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+      ],
+    },
+    {
+      code: "B6.4.2.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Electricity and Electronics",
+      contentStandard:
+        "Demonstrate knowledge of generation of electricity, its transmission and transformation into other forms",
+      indicator:
+        "Construct an electric circuit and know the functions of its components",
+      objectives:
+        "Identify basic circuit components (battery, bulb, wire, switch), construct a functional simple circuit, describe component roles, and draw circuit diagrams.",
+      exemplars:
+        "E.g. 1. Construct functional electric circuits using batteries, bulbs, connecting wires, and switches.\nE.g. 2. Describe roles of circuit components and draw constructed circuit diagrams.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B6.4.2.1.2",
+      strand: "Forces and Energy",
+      subStrand: "Electricity and Electronics",
+      contentStandard:
+        "Demonstrate knowledge of generation of electricity, its transmission and transformation into other forms",
+      indicator:
+        "Identify the symbols used in representing various components in a given circuit diagram",
+      objectives:
+        "Match circuit components (switch, wire, battery, bulb) with standard electrical symbols and draw circuit diagrams using schematic symbols.",
+      exemplars:
+        "E.g. 1. Match physical circuit components with standard circuit symbols.\nE.g. 2. Draw simple circuit diagrams using standard component symbols (battery, switch, bulb, wires).",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B6.4.2.1.3",
+      strand: "Forces and Energy",
+      subStrand: "Electricity and Electronics",
+      contentStandard:
+        "Demonstrate knowledge of generation of electricity, its transmission and transformation into other forms",
+      indicator:
+        "Know conductors, semi-conductors and insulators",
+      objectives:
+        "Test various materials (spoons, foil, straw, wood, nails, keys, LEDs, diodes) in an open circuit to classify as conductors, semi-conductors, or insulators, and explain plastic wire coating.",
+      exemplars:
+        "E.g. 1. Test everyday materials (spoons, foil, wood, nails, keys, LEDs, diodes) in open circuits to classify as conductors, semi-conductors, or insulators.\nE.g. 2. Explain why electrical wires are coated with plastic insulators.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B6.4.2.2.1",
+      strand: "Forces and Energy",
+      subStrand: "Electricity and Electronics",
+      contentStandard:
+        "Know the functions and assemblage of basic electronic components",
+      indicator:
+        "Construct an electronic circuit using battery, connecting wire and LED",
+      objectives:
+        "Connect a series electronic circuit with a 3V battery, switch, and LED, draw and label the electronic circuit, and stock salvaged components from old electronics.",
+      exemplars:
+        "E.g. 1. Connect series electronic circuits with 3V batteries, switches, and LEDs to illuminate the LED.\nE.g. 2. Draw and label electronic circuit diagrams and gather stock components from discarded devices.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+      ],
+    },
+    {
+      code: "B6.4.3.1.1",
+      strand: "Forces and Energy",
+      subStrand: "Forces and Movement",
+      contentStandard:
+        "Know that movement is caused by applied forces due to the release of stored energy",
+      indicator:
+        "Recognise the relationship between energy and forces",
+      objectives:
+        "Perform force activities (pulling items, lifting weights), explain that force must overcome object weight before motion occurs, and relate force/effort to daily work (weeding, cutting trees).",
+      exemplars:
+        "E.g. 1. Perform weight lifting and pulling activities to analyze why lifting heavier objects requires greater force.\nE.g. 2. Relate energy application to daily physical tasks (weeding with cutlasses, cutting trees) and establish work done increases with force applied.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Creativity and Innovation",
+      ],
+    },
+    {
+      code: "B6.4.3.2.1",
+      strand: "Forces and Energy",
+      subStrand: "Forces and Movement",
+      contentStandard:
+        "Recognise some simple machines used for making work easier, analyse their advantages and know their uses",
+      indicator:
+        "Identify levers, pulleys, inclined planes as classes of simple machines and cite some common examples",
+      objectives:
+        "Visit workplaces or view pictures of simple machines (screwdrivers, pliers, scissors, wheelbarrow, hammer, spanners, ramps), classify into levers, pulleys, or inclined planes, demonstrate safe usage, and design simple machine models.",
+      exemplars:
+        "E.g. 1. Visit workplaces and examine simple machines (pliers, scissors, wheelbarrow, hammer, ramps) to classify as levers, pulleys, or inclined planes.\nE.g. 2. Project: Design and construct simple machines using bamboo, wood, cardboard, plastic, or paper.",
+      coreCompetencies: [
+        "Personal Development and Leadership",
+        "Communication and Collaboration",
+        "Creativity and Innovation",
+      ],
     },
     {
       code: "B6.5.1.1.1",
       strand: "Humans and the Environment",
-      subStrand: "Diseases and STI Prevention",
-      contentStandard: "Understand infectious disease transmission, waterborne diseases, and STIs (HIV/AIDS)",
-      indicator: "Explain prevention of cholera, typhoid, malaria, and waterborne infections",
-      objectives: "Describe disease transmission vectors, water purification techniques, and environmental sanitation."
+      subStrand: "Personal Hygiene and Sanitation",
+      contentStandard:
+        "Recognise the importance of personal hygiene",
+      indicator:
+        "Identify the causes and effects of foul body odour on humans and how it can be prevented",
+      objectives:
+        "Discuss causes/effects of body odour, write prevention cards, demonstrate natural hygiene items (lime, lemon, deodorants), and design projects eliminating body odour (regular bathing, trimming hair/nails).",
+      exemplars:
+        "E.g. 1. Write causes and prevention of foul body odour on hygiene cards and demonstrate natural/commercial items (lime, lemon, deodorants).\nE.g. 2. Project: Plan and design personal projects to eliminate body odour through regular bathing and grooming.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
     },
     {
       code: "B6.5.1.1.2",
       strand: "Humans and the Environment",
-      subStrand: "Diseases and STI Prevention",
-      contentStandard: "Understand infectious disease transmission, waterborne diseases, and STIs (HIV/AIDS)",
-      indicator: "Understand transmission modes and prevention of Sexually Transmitted Infections (STIs) including HIV/AIDS",
-      objectives: "Discuss abstinence, safe behaviors, and destigmatization of HIV/AIDS."
-    }
+      subStrand: "Personal Hygiene and Sanitation",
+      contentStandard:
+        "Recognise the importance of personal hygiene",
+      indicator:
+        "Describe ways of minimising waste",
+      objectives:
+        "Discuss waste minimization in classrooms, schools, markets, stations, and beaches, design waste reduction posters, and plan/construct classroom litterbins.",
+      exemplars:
+        "E.g. 1. View media on waste minimization and discuss measures to reduce waste across classrooms, markets, stations, and beaches.\nE.g. 2. Project: Design waste reduction posters and construct classroom litterbins from suitable materials.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
+    {
+      code: "B6.5.2.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "Diseases",
+      contentStandard:
+        "Demonstrate knowledge of common diseases of humans; causes, symptoms, effects and prevention",
+      indicator:
+        "Explain the causes, symptoms and prevention of Eczema",
+      objectives:
+        "Examine pictures of eczema, discuss causes, symptoms, and prevention, and host health personnel talks on skin disease management.",
+      exemplars:
+        "E.g. 1. Analyze pictures of eczema sufferers, identify causes, symptoms, and prevention, and host health personnel presentations.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
+    {
+      code: "B6.5.2.1.2",
+      strand: "Humans and the Environment",
+      subStrand: "Diseases",
+      contentStandard:
+        "Demonstrate knowledge of common diseases of humans; causes, symptoms, effects and prevention",
+      indicator:
+        "Know how to prevent meningitis",
+      objectives:
+        "Watch media/charts on meningitis causes and prevention, and host talks by health personnel or SHEP coordinators on meningitis prevention.",
+      exemplars:
+        "E.g. 1. Examine health center charts/videos on meningitis causes and host health personnel presentations on prevention.",
+      coreCompetencies: [
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+        "Digital Literacy",
+      ],
+    },
+    {
+      code: "B6.5.3.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "Science and Industry",
+      contentStandard:
+        "Recognise the impact of science and technology on society",
+      indicator:
+        "Identify the scientific concepts and principles underlying the operation of some industries",
+      objectives:
+        "Visit local industries (kenkey, soap, salt, oil, gari production), identify scientific principles (evaporation, salting-out, fermentation, saponification), and produce yoghurt, kenkey, or soap in group projects.",
+      exemplars:
+        "E.g. 1. Visit kenkey, soap, salt, or gari production centers and explain underlying scientific principles (evaporation, salting-out, fermentation, saponification).\nE.g. 2. Project: Produce yoghurt, kenkey, or soap in groups based on industry visit experiences.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Critical Thinking and Problem-Solving",
+        "Cultural Identity and Global Citizenship",
+        "Communication and Collaboration",
+      ],
+    },
+    {
+      code: "B6.5.4.1.1",
+      strand: "Humans and the Environment",
+      subStrand: "Climate Change",
+      contentStandard:
+        "Know that climate change is one of the most important environmental issues facing the world today.",
+      indicator:
+        "Know the effects of climate change on humans",
+      objectives:
+        "Interview elders on historical weather changes, view media on climate change causes/effects (drought, flooding, high temperatures), design climate change concept maps, run school/community awareness campaigns, and plant/nurture trees.",
+      exemplars:
+        "E.g. 1. Interview elders on weather changes, view media on climate change effects (drought, flooding, temperature rise), and design climate change concept maps.\nE.g. 2. Conduct climate awareness campaigns using posters/placards and plant/nurture trees on school grounds.",
+      coreCompetencies: [
+        "Digital Literacy",
+        "Critical Thinking and Problem-Solving",
+        "Communication and Collaboration",
+        "Personal Development and Leadership",
+      ],
+    },
   ],
   "Basic 7": [
     {

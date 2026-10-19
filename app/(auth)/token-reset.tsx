@@ -198,6 +198,13 @@ export default function TokenResetScreen() {
               >
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Update Password</Text>}
               </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.push("/(auth)/forgot-password")}
+                style={styles.switchMethodBtn}
+              >
+                <Text style={styles.switchMethodText}>Or reset via Email Link instead</Text>
+              </TouchableOpacity>
             </Animatable.View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -230,4 +237,6 @@ const styles = StyleSheet.create({
   eyeIcon: { paddingHorizontal: 14 },
   button: { padding: 18, borderRadius: 16, alignItems: "center", marginTop: 10, ...SHADOWS.medium },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  switchMethodBtn: { marginTop: 16, alignItems: "center" },
+  switchMethodText: { color: "#64748B", fontSize: 14, fontWeight: "600" },
 });

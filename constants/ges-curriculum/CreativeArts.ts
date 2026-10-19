@@ -4,24 +4,2916 @@ const basic4Indicators: GESIndicator[] = [
   {
     code: "B4.1.1.1.1",
     strand: "Visual Arts",
-    subStrand: "Pattern Making, Weaving and Sculpture",
+    subStrand: "Thinking and Exploring Ideas",
     contentStandard:
-      "Create repeat patterns, paper weaving, and papier-mâché sculptures",
+      "B4 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
     indicator:
-      "Design fabric prints using potato/block stamps, weave paper mats, and construct masks",
+      "B4 1.1.1.1 Study and talk about visual artworks created by selected Ghanaian visual artists that reflect the history and culture of the people of Ghana",
     objectives:
-      "Execute block printing on paper/fabric and produce woven patterns.",
+      "Study visual artworks created by Ghanaian artists (Amon Kotei, Theodosia Okoh, Ablade Glover, Oku Ampofo, Offei-Nyako, Kwame Amoah, Betty Acquah, Kofi Antubam) through research and observations, examine how they reflect history and culture, discuss symbols, and write brief notes about one visual artist.",
+    exemplars:
+      "1. Study visual artworks (wood carvings, printed fabrics, wall paintings, cartoons, posters, photographs, clay pots) created by Ghanaian visual artists (Amon Kotei, Theodosia Okoh, Ablade Glover, Oku Ampofo, Offei-Nyako, Kwame Amoah, Betty Acquah, Kofi Antubam).\n2. Gather information from library books, internet, art studios, galleries, museums, exhibitions, videos, or photographs.\n3. Examine artworks to find out how they reflect the history and culture of Ghana (e.g. relate colors and star in Ghana Flag to history).\n4. Identify and discuss symbols found in the artworks.\n5. Write brief notes about one visual artist (Name, Training, Type of artworks, Title of some works).",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.1.1.2",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4. 1.1.1.2 Study and talk about visual artworks created by selected Ghanaian visual artists to generate ideas for designing and making own visual artworks",
+    objectives:
+      "Select an artwork of a Ghanaian visual artist studied; think about topic/purpose (e.g. flower pots beautifying surroundings); examine materials and methods used (clay, pinching/slabbing/throwing, Adinkra embossing/incision, firing); generate ideas for making own artworks reflecting Ghanaian history and culture.",
+    exemplars:
+      "1. Select an artwork of one of the visual artists studied.\n2. Think about the topic or purpose of that artwork (e.g. flower pots beautifying surroundings).\n3. Examine materials and production methods used (clay, pinching/slabbing/throwing, Adinkra symbols embossing/incision, firing).\n4. Generate ideas for making own artworks to reflect the history and culture of the people of Ghana.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.1.1.3",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4. 1.1.1.3 Generate ideas by studying visual artworks created by selected Ghanaian visual artists that reflect the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Select artworks showing natural and manmade environments; observe in detail and describe ideas (type, purpose, natural/manmade elements, materials); assess artworks by comparing size, purpose, colors, and ideas expressed.",
+    exemplars:
+      "1. Select artworks of some Ghanaian visual artists that show aspects of the natural and manmade environments.\n2. Observe the artworks in detail and describe the ideas that make up the artworks (type, topic/purpose, natural/manmade elements, art materials used).\n3. Assess the artworks by comparing their size, purpose, colours, ideas expressed.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.1.1.4",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4. 1.1.1.4 Make decisions for designing and creating own visual artworks that will reflect the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Go on environmental walk to observe natural and manmade surroundings; collect samples, photos, or videos; examine samples for shapes, texture, colors, size, lines; reflect on elements to generate ideas for own artworks.",
+    exemplars:
+      "1. Go on out-of-the-classroom walk to observe natural and manmade surroundings.\n2. Collect samples of natural and manmade objects, take photographs, or make videos.\n3. Examine samples for shapes, texture, colours, size, lines to gather ideas on suggested artworks.\n4. Reflect on shapes, texture, colour, suggestions of movement, pattern, rhythm to generate ideas for designing and making own artworks.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.1.1.5",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4. 1.1.1.5 Develop ideas by studying the artworks of some Ghanaian visual artists that reflect topical issues in Ghana",
+    objectives:
+      "Select works exhibiting current topical issues of national concern (road safety, plastic waste, water pollution, climate change, youth migration); share ideas on how artworks express concerns; discuss by type, theme, materials, style.",
+    exemplars:
+      "1. Select works of Ghanaian visual artists that exhibit current topical issues of national concern (road safety, plastic waste, water pollution, climate change, migration of youth).\n2. Share ideas on how selected artworks express issues of national concern.\n3. Discuss artworks by their type, topic/theme, materials used, style of artist.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.1.1.6",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4. 1.1.1.6 Explore through brainstorming to generate ideas for creating own visual artworks that reflect topical issues in Ghana",
+    objectives:
+      "Learn about national concerns through libraries, films, internet, interviews; document findings (notes, photos, drawings, voice recordings); discuss findings with peers and use feedback to generate ideas for making own artworks.",
+    exemplars:
+      "1. Learn about issues of national concern through library studies, watching films, surfing the internet, interviewing people.\n2. Document findings by writing simple notes, taking photos/drawings, or recording voice messages.\n3. Discuss findings in class with peers.\n4. Reflect on peer comments and use knowledge gained to generate ideas for designing and making own artworks reflecting topical national issues.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
   },
   {
     code: "B4.2.1.1.1",
     strand: "Performing Arts",
-    subStrand: "Instrument Playing and Drama Production",
+    subStrand: "Thinking and Exploring Ideas",
     contentStandard:
-      "Play indigenous percussion instruments (castanets, drums, bell) and act short plays",
+      "B4 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
     indicator:
-      "Accompany folk songs with dawuro (bell) and frikyiwa (castanet) and dramatize folklore stories",
+      "B4 2.1.1.1 Study the performing artworks created by some Ghanaian performing artists that reflect the history and the culture of the people in Ghana",
     objectives:
-      "Play rhythmic timekeeper instruments and perform Ananse story drama plays.",
+      "Study performing artworks composed/performed by Ghanaian artists (Ephraim Amu, Grace Omaboe, National Dance Ensemble, Agya Koo Nimo, Atukwei Okai) through research, studio visits, videos; discuss how works reflect history/culture; write notes about one performing artist.",
+    exemplars:
+      "1. Study performing artworks (music, dance, drama/play, poetry) composed or performed by Ghanaian artists (Ephraim Amu, Grace Omaboe, National Dance Ensemble, Agya Koo Nimoh, Atukwei Okai) through libraries, newspapers, internet, studio/cultural centre visits, videos.\n2. Examine artworks and share ideas on how they reflect the history and culture of Ghana.\n3. Identify and discuss themes/topics of compositions and performances.\n4. Write notes about one performing artist (Name, Training, Type of compositions/performances, Title of works).",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.1.1.2",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4. 2.1.1.2 Generate ideas from the performing artworks of some Ghanaian performing artists studied for planning own compositions and performances that will reflect the history and culture of the people of Ghana",
+    objectives:
+      "Select a composition/performance of a Ghanaian performing artist studied; think about topic/purpose (e.g. 'Wɔgbɛdzɛkɛ' by Nat Brew Amandzeba tracing Ga migration); study lyrics, movement patterns, topics; generate ideas for composing own performing artworks.",
+    exemplars:
+      "1. Select a composition or performance of any of the Ghanaian performing artists studied.\n2. Think about topic/theme or purpose (e.g. 'Wɔgbɛdzɛkɛ' by Nat Brew Amandzeba tracing Ga migration).\n3. Study lyrics, movement patterns, and topics used in composing and performing music, dance, and drama/poetry.\n4. Generate ideas for composing and performing own music, dance, drama, or poetry reflecting Ghana's history and culture.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.1.1.3",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4. 2.1.1.3 Study the performing artworks created of some Ghanaian performing artists that reflect the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Select artworks showing aspects of natural and manmade environments; study in detail and describe ideas (type, topic/purpose, natural/manmade elements, instruments, lyrics); assess artworks by comparing types, topics/themes, purpose, function.",
+    exemplars:
+      "1. Select artworks of some Ghanaian performing artists showing aspects of natural and manmade environments.\n2. Study artworks in detail and describe ideas (type, topic/purpose, natural/manmade elements, instruments, lyrics).\n3. Assess artworks by comparing types, topics/themes, purpose, function, and ideas expressed.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.1.1.4",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4 2.1.1.4. Generate own ideas for composing and performing own artworks that will reflect the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Go on environmental walks to observe natural and manmade things; observe movement patterns (animals, birds, trees, vehicles, people); listen to sounds (vehicles, whistles, birds, rivers, drums, raindrops, wind); record movements/sounds and use to generate ideas for planning own music, dance, drama, poetry.",
+    exemplars:
+      "1. Go on out-of-the-classroom walks to observe natural and manmade things in surroundings.\n2. Observe movement patterns of natural and manmade objects (animals, birds, trees, vehicles, bicycles, people).\n3. Listen to sounds created by natural and manmade objects (moving vehicles, whistles, birds, flowing rivers, drums, raindrops, wind).\n4. Record movement and sounds of interest.\n5. Study and analyse movements and sounds observed/recorded.\n6. Use collection of movement and sound patterns to generate ideas for planning own music, dance, drama, or poetry compositions.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.1.1.5",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4. 2.1.1.5. Study the performing artworks of some Ghanaian performing artists that reflect topical issues in Ghana",
+    objectives:
+      "Select compositions/performances reflecting topical issues of national concern (road safety, plastic waste, water pollution, climate change, youth migration); discuss to share ideas on how artworks express concerns; assess artworks by comparing types, themes, materials, style.",
+    exemplars:
+      "1. Select compositions and performances of Ghanaian performing artists reflecting topical issues of national concern (road safety, plastic waste, water pollution, climate change, youth migration).\n2. Discuss compositions/performances to share ideas on how artworks express issues of national concern.\n3. Assess artworks by comparing types, topic/theme, materials used, style of artist.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.1.1.6",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B4 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B4. 2.1.1.6. Explore through brainstorming to develop ideas for creating own performing artworks that will reflect topical issues in Ghana",
+    objectives:
+      "Learn about national concerns from books, newspapers, films, internet, interviews; document findings (notes, photos, videos, voice recordings); discuss findings with peers and use knowledge gained to generate ideas for own performing artworks.",
+    exemplars:
+      "1. Learn about issues of national concern from library books, newspapers, watching films, surfing internet, interviewing people.\n2. Document findings by writing notes, taking photos/videos, or recording voice messages.\n3. Discuss findings in class with peers and reflect on peer comments.\n4. Use knowledge gained to generate ideas for designing and making own performing artworks reflecting topical national issues.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.2.2.1",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 1.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B4 1.2.2.1. Experiment with available visual arts media and methods to create artworks that express own views, knowledge and understanding of visual artworks that reflect the history and culture of the people in Ghana",
+    objectives:
+      "Explore local environment for suitable materials and tools; practise using visual arts media and methods (clay modelling, straw/paper weaving, finger/leaf printing); assemble test results and share; create own artworks based on studied works and compare.",
+    exemplars:
+      "1. Explore local environment to select available materials and tools suitable for making visual artworks.\n2. Practise use of visual arts media using different art making methods (model with clay, weave with straw/paper, print with fingers/leaves).\n3. Assemble test results and share experiences through open discussion.\n4. Use available materials to make own artworks based on ideas gathered from studied artworks.\n5. Discuss and compare artworks to studied works.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.2.2.2",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 1.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B4 1.2.2.2. Experiment with available visual arts media and methods to create artworks that express own views, knowledge and understanding of the natural and manmade environments in some Ghanaian communities",
+    objectives:
+      "Explore local environment for materials/tools; test available materials using appropriate skills (clay/plasticine/papier-mâché, straw/yarn/paper weaving, odds and ends collage/construction, brushes/paints, paper folding, spatula, needles); discuss and share experiences; make artworks representing studied works.",
+    exemplars:
+      "1. Explore local environment to select available materials and tools suitable for making visual artworks.\n2. Study and test available materials and tools using appropriate skills (clay/plasticine/papier-mâché for modelling/casting, straw/yarn/paper for weaving, odds and ends for collage/construction, brushes/paint, paper folding for origami/mobiles/kites, spatula, needles).\n3. Discuss and share experiences through open discussion and peer assessment.\n4. Use available materials to make artworks that look like studied works and compare.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.2.2.3",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 1.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B4 1.2.2.3. Experiment with available visual arts media and methods to create artworks based on own views, knowledge and understanding of topical issues in Ghana",
+    objectives:
+      "Explore local surroundings for available materials/tools; experiment with materials/tools using art making methods (modelling, weaving, mobiles/stabiles construction, painting, spatula, needle); discuss and share through peer assessment; make visual artworks representing studied works.",
+    exemplars:
+      "1. Explore local surroundings to select available materials and tools good for making artworks.\n2. Study and experiment with available materials and tools using appropriate art making methods (clay/plasticine/papier-mâché for modelling/casting, straw/yarn/paper for weaving, odds and ends for mobiles/stabiles, brushes/paint, spatula, needle).\n3. Discuss and share experiences through peer assessment.\n4. Use available materials to make own visual artworks representing studied works and compare.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.2.2.1",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 2.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B4 2.2.2.1. Experiment with available performing arts media and techniques to create artworks based on own views, knowledge and understanding of performing artworks that reflect the history and culture of the people of Ghana",
+    objectives:
+      "Explore surroundings for instruments, sounds, rhythms, movement patterns; experiment to perform compositions of Ghanaian artists studied reflecting Ghanaian history/culture (sing patriotic songs by Ephraim Amu, act drama by Grace Omaboe/Obra Drama Troupe, recite poems by Atukwei Okai); discuss and share.",
+    exemplars:
+      "1. Explore surroundings to select available instruments, sounds, rhythms, movement patterns suitable for composing and performing music, dance, drama, poetry.\n2. Experiment with available instruments, sounds, rhythms, movement patterns to perform compositions of Ghanaian artists studied (sing patriotic songs by Ephraim Amu, act drama by Grace Omaboe or Obra Drama Troupe, recite poems by Atukwei Okai).\n3. Discuss and share experiences through peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.2.2.2",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 2.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B4 2.2.2.2. Experiment with available performing arts media and techniques to create performing artworks based on own views, knowledge and understanding of the natural and manmade environments in some Ghanaian communities",
+    objectives:
+      "Explore local surroundings for available instruments, sounds, rhythms, movement patterns; experiment to perform compositions of Ghanaian artists reflecting natural and manmade environments; discuss and share for peer review.",
+    exemplars:
+      "1. Explore local surroundings to select available instruments, sounds, rhythms, movement patterns.\n2. Experiment with available instruments, sounds, movement patterns, melody to perform compositions of Ghanaian artists studied reflecting natural and manmade environments.\n3. Discuss and share experiences for peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.2.2.3",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 2.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B4 2.2.2.3. Experiment with available performing arts media and techniques to create performing artworks based on own views, knowledge and understanding of topical issues in Ghana",
+    objectives:
+      "Explore local environment for instruments, sounds, rhythms, movement patterns; experiment to perform compositions of Ghanaian artists reflecting national concerns (road safety, plastic waste, water pollution, climate change, youth migration, slums); discuss and share.",
+    exemplars:
+      "1. Explore local environment to select available instruments, sounds, rhythms, movement patterns.\n2. Experiment with available instruments, sounds, movement patterns to perform compositions of Ghanaian artists studied reflecting topical national issues (road safety, plastic waste, water pollution, climate change, youth migration, slums).\n3. Discuss and share experiences for peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.2.3.1",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 1.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, as well as the visual artists, their culture, the environment and current topical issues of concern in Africa",
+    indicator:
+      "B4 1.2.3.1 Create own artworks using available visual arts media and methods to express own views, knowledge and understanding of the history and culture of the people of Ghana",
+    objectives:
+      "Select ideas from Ghanaian history/culture to create own designs; select materials, tools, and techniques to produce artworks (clay/papier-mâché ceremonial pots/ancestor images, woven tapestry/stoles/tassels, container construction, drawing/painting honoree portraits, paper/metal origami/quilling, fabric/leather dyeing/sewing); discuss through jury.",
+    exemplars:
+      "1. Select ideas from history and culture of Ghana to come out with own designs.\n2. Select and use available materials, tools, and appropriate techniques to make artworks based on own designs (modelling ceremonial pots/ancestor images with clay/papier-mâché, weaving tapestries/stoles/tassels, constructing/assembling container packages, drawing/painting images honouring personalities, paper/metal sheet origami/quilling, fabric/leather dyeing/sewing/printing).\n3. Discuss and share experiences through jury.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.2.3.2",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 1.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa as well as the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B4 1.2.3.2 Create own artworks using available visual arts media and methods to express own views, knowledge and understanding of the natural and manmade environments of some Ghanaian communities",
+    objectives:
+      "Select ideas from natural and manmade environments to create own designs; select materials, tools, and techniques to make artworks (clay/papier-mâché modelling, tapestry weaving, container construction, drawing/painting environmental scenes, fabric printing, paper/metal sheet origami, fabric/leather dyeing/embossing); discuss and share.",
+    exemplars:
+      "1. Select ideas from natural and manmade environments of Ghanaian communities and create own designs.\n2. Select and use available materials, tools, skills, and techniques to make artworks based on own designs (modelling functional/symbolic/decorative products with clay/papier-mâché, weaving tapestries/stoles/tassels, constructing container forms, drawing/painting environmental wall hangings, fabric printing, paper/metal sheet origami/quilling, fabric/leather dyeing/embossing).\n3. Discuss and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.2.3.3",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 1.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa as well as the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B4 1.2.3.3 Create own artworks using available visual arts media and methods to express own views, knowledge and understanding of performing artworks that reflect topical issues in Ghana",
+    objectives:
+      "Select ideas from trending topical issues in Ghana to develop design concepts educating/sensitising the public; select materials, tools, and techniques to make artworks (modelling, weaving, construction/assemblage, drawing/painting, fabric printing, origami/quilling, fabric/leather crafting); discuss and share.",
+    exemplars:
+      "1. Select ideas from trending topical issues in Ghana to develop own design concepts to educate or sensitise the public.\n2. Select and use available materials, tools, and techniques to make artworks based on own designs (clay/papier-mâché modelling, tapestry weaving, container construction/assemblage, drawing/painting, fabric printing, paper/metal sheet origami/quilling, fabric/leather dyeing/embossing).\n3. Discuss and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.2.3.1",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 2.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa as well as the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B4 2.2.3.1 Create own artworks using available performing arts media and techniques to express own views, knowledge and understanding of the history and culture of the people of Ghana",
+    objectives:
+      "Select ideas from history and culture to create own music, dance, drama, poem; select performing arts elements, instruments, movement patterns, and techniques to compose and perform; discuss and share through jury and peer review.",
+    exemplars:
+      "1. Select ideas from history and culture of Ghana to come out with own music, dance, drama, poem, etc.\n2. Select and use available performing arts elements, instruments, movement patterns, and techniques to compose and perform own music, dance, drama, poetry based on own concepts.\n3. Discuss and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.2.3.2",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 2.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa as well as the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B4 2.2.3.2 Create own artworks using available performing arts media and techniques to express own views, knowledge and understanding of the natural and manmade environments of some Ghanaian communities",
+    objectives:
+      "Select ideas from natural and manmade environments of Ghanaian communities to create own music, dance, drama, poem; select performing arts elements, instruments, movement patterns, and techniques to compose and perform; discuss and share.",
+    exemplars:
+      "1. Select ideas from natural and manmade environments of Ghanaian communities to create own music, dance, drama, poem, etc.\n2. Select and use available performing arts elements, instruments, movement patterns, and techniques to compose and perform own music, dance, drama, poetry based on own concepts.\n3. Discuss and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.2.3.3",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B4 2.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa as well as the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B4 2.2.3.3 Create own artworks using available performing arts media and techniques to express own views, knowledge and understanding of performing artworks that reflect topical issues in Ghana",
+    objectives:
+      "Select ideas from trending topical issues in Ghana to create own music, dance, drama, poem; select performing arts elements, instruments, movement patterns, and techniques to compose and perform; discuss and share.",
+    exemplars:
+      "1. Select ideas from trending topical issues in Ghana and create own music, dance, drama, poem, etc.\n2. Select and use available performing arts elements, instruments, movement patterns, and techniques to compose and perform own music, dance, drama, poetry based on own ideas.\n3. Discuss and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B4.1.3.4.1",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 1.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying and preparing a venue, selecting and grouping artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B4 1.3.4.1 Plan an exhibition of own artworks to share creative experiences based on own ideas, knowledge and understanding of the history and culture of the people of Ghana",
+    objectives:
+      "Watch video on exhibition or visit exhibition centre; discuss need for display; develop roadmap (date, venue, audience); agree on theme; send invitations; select works considering creativity, finishing, relevance, social/cultural importance; decide display mode; plan layout/labels; prepare hall; plan post-exhibition activities.",
+    exemplars:
+      "1. Watch short video on exhibition or visit exhibition centre (preferably GES cultural festival).\n2. Discuss need for displaying portfolio of own visual artworks.\n3. Develop roadmap for exhibition (fixing date, selecting venue, inviting audience).\n4. Brainstorm to agree on theme for exhibition.\n5. Send manual/electronic invitations (letters, postcards, WhatsApp, email, social media, jingles) to target audience.\n6. Select works considering creativity, originality, finishing, relevance to theme, social/cultural importance.\n7. Decide mode of display (hanging, draping, spreading).\n8. Plan layout of hall, prepare labels (title, artist, date).\n9. Clean and prepare hall and environment.\n10. Plan post-exhibition activities (cleaning, appreciation, evaluation, reporting).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.3.4.2",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 1.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying and preparing a venue, selecting and grouping artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B4 1.3.4.2 Plan an exhibition of own artworks to share creative experiences based on own ideas, knowledge and understanding of visual artworks that reflect the natural and manmade environments of some Ghanaian communities",
+    objectives:
+      "Watch video/visit exhibition centre; discuss need for display; develop roadmap; agree on theme; send invitations; select works considering creativity, finishing, relevance; decide display mode; plan layout/labels; prepare hall; plan post-exhibition activities.",
+    exemplars:
+      "1. Watch short video on exhibition or visit exhibition centre.\n2. Discuss need for displaying portfolio of visual artworks.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme.\n5. Send manual/electronic invitations to target audience.\n6. Select works considering creativity, finishing, relevance to theme, social/cultural importance.\n7. Decide mode of display (hanging, draping, spreading).\n8. Plan layout and prepare labels.\n9. Clean and prepare hall.\n10. Plan post-exhibition activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.3.4.3",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 1.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B4 1.3.4.3 Plan an exhibition of own artworks to share creative experiences based on own ideas, knowledge and understanding of topical issues in Ghana",
+    objectives:
+      "Watch video/visit exhibition centre; discuss need for display; develop roadmap; agree on theme; send invitations; select works considering creativity, finishing, relevance; decide display mode; plan layout/labels; prepare hall; plan post-exhibition activities.",
+    exemplars:
+      "1. Watch short video on exhibition or visit exhibition centre.\n2. Discuss need for displaying portfolio of visual artworks.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme.\n5. Send manual/electronic invitations to target audience.\n6. Select works considering creativity, originality, finishing, relevance to theme, social/cultural importance.\n7. Decide mode of display (hanging, draping, spreading).\n8. Plan layout and prepare labels.\n9. Clean and prepare hall.\n10. Plan post-exhibition activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.3.4.1",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 2.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B4 2.3.4.1 Plan a performance of compositions to share creative experiences based on own ideas, knowledge and understanding of the history and culture of the people of Ghana",
+    objectives:
+      "Watch video/live performances; discuss need for performing compositions; develop roadmap; agree on theme; send invitations; select compositions considering creativity, lyrics, movement, dynamics, relevance; decide mode/arrangement; plan sequence and stage/site plan; prepare venue; plan post-performance activities.",
+    exemplars:
+      "1. Watch short video or live performances reflecting history and culture of Ghana.\n2. Discuss need for performing compositions of own music, dance, drama, poetry.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme for performance.\n5. Send manual/electronic invitations to target audience.\n6. Select compositions considering creativity, lyrics, movement patterns, dynamics, relevance to theme, social/cultural importance.\n7. Decide mode and arrangement (monologue/solo/group, costumes, props).\n8. Plan sequence of events and stage/site plan (PA system, lighting, performance zone, changing rooms).\n9. Clean and prepare venue.\n10. Plan post-performance activities (cleaning, appreciation, evaluation, reporting).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.3.4.2",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 2.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying preparing a venue, selecting and grouping artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B4 2.3.4.2 Plan a performance of compositions to share creative experiences based on own ideas, knowledge and understanding of performing artworks that reflect the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Watch video/live performances; discuss need for performing compositions; develop roadmap; agree on theme; send invitations; select compositions; decide mode/arrangement; plan sequence and stage/site plan; prepare venue; plan post-performance activities.",
+    exemplars:
+      "1. Watch short video or live performances reflecting natural and manmade environments of Ghanaian communities.\n2. Discuss need for performing compositions.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme.\n5. Send manual/electronic invitations.\n6. Select compositions considering creativity, lyrics, movement patterns, dynamics, relevance.\n7. Decide mode and arrangement (monologue/solo/group, costumes, props).\n8. Plan sequence of events and stage/site plan.\n9. Clean and prepare venue.\n10. Plan post-performance activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+    ],
+  },
+  {
+    code: "B4.2.3.4.3",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 2.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B4 2.3.4.3 Plan a performance of own compositions to share creative experiences based on own ideas, knowledge and understanding of topical issues in Ghana",
+    objectives:
+      "Watch video/live performances reflecting current topical issues in Ghana; discuss need for performing compositions; develop roadmap; agree on theme; send invitations; select compositions; decide mode/arrangement; plan sequence and stage/site plan; prepare venue; plan post-performance activities.",
+    exemplars:
+      "1. Watch short video or live performances reflecting current topical issues of national concern in Ghana.\n2. Discuss need for performing compositions.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme.\n5. Send manual/electronic invitations.\n6. Select compositions considering creativity, lyrics, movement patterns, dynamics, relevance.\n7. Decide mode and arrangement (monologue/solo/group, costumes, props).\n8. Plan sequence of events and stage/site plan.\n9. Clean and prepare venue.\n10. Plan post-performance activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B4.1.3.5.1",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 1.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B4 1.3.5.1 Display own artworks to share creative experiences based on own ideas, knowledge and understanding of the history and culture of the people of Ghana",
+    objectives:
+      "Decide on types and number of artworks to exhibit and mount based on space and theme; display by hanging, draping, placing, spreading, leaning, plinths; label works manually or with ICT; assign individual/group responsibilities; monitor visitors against improper practices; organise opening/closing ceremonies; prepare evaluation template; clean hall.",
+    exemplars:
+      "1. Decide on types and number of artworks to exhibit and mount based on space available to suit theme.\n2. Display artworks by hanging, draping, placing, spreading, leaning, or using plinths to raise height/depth.\n3. Label works using manual penmanship (calligraphy) or ICT prints: artist name, title, size, date.\n4. Assign tasks and responsibilities (guiding visitors, explaining concepts/theme, writing comments).\n5. Check/monitor visitors against improper practices (touching, handling, taking exhibits).\n6. Organise opening and closing ceremonies for exhibition.\n7. Prepare template for appreciating, appraising, evaluating and reporting.\n8. Clean hall after exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.3.5.2",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 1.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B4 1.3.5.2 Display own artworks to share creative experiences based on own ideas, knowledge and understanding of the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Decide on types and number of artworks to exhibit; display artworks; label works manually or with ICT; assign responsibilities; monitor visitors against improper practices; organise opening/closing ceremonies; prepare evaluation template; clean hall.",
+    exemplars:
+      "1. Decide on types and number of artworks to exhibit and mount based on space available to suit theme.\n2. Display artworks by hanging, draping, placing, spreading, leaning, or using plinths.\n3. Label works using manual penmanship or ICT prints (artist name, title, size, date).\n4. Assign tasks and responsibilities (guiding visitors, explaining concepts/theme, writing comments).\n5. Check/monitor visitors to prevent improper practices.\n6. Organise opening and closing ceremonies for exhibition.\n7. Prepare template for evaluation and reporting.\n8. Clean hall after exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.3.5.3",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 1.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B4 1.3.5.3 Display own artworks to share creative experiences based on own ideas, knowledge and understanding of topical issues in Ghana",
+    objectives:
+      "Decide on types and number of artworks to exhibit; display artworks; label works manually or with ICT; assign responsibilities; monitor visitors against improper practices; organise opening/closing ceremonies; prepare evaluation template; clean hall.",
+    exemplars:
+      "1. Decide on types and number of artworks to exhibit and mount based on space available to suit theme.\n2. Display artworks by hanging, draping, placing, spreading, leaning, or using plinths.\n3. Label works using manual penmanship or ICT prints (artist name, title, size, date).\n4. Assign tasks and responsibilities (guiding visitors, explaining concepts/theme, writing comments).\n5. Check/monitor visitors against improper practices.\n6. Organise opening and closing ceremonies for exhibition.\n7. Prepare template for evaluation and reporting.\n8. Clean hall after exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.3.5.1",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 2.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B4 2.3.5.1 Perform own compositions to share creative experiences based on own ideas, knowledge and understanding of the history and culture of the people of Ghana",
+    objectives:
+      "Decide on types and number of compositions to perform based on theme, time, audience; assign individual and group tasks (MC, ushering, introducing guests, explaining concepts, recording comments); arrange sequence of performances to tell story; follow programme of the day; prepare template for evaluation; clean hall.",
+    exemplars:
+      "1. Decide on types and number of compositions to be performed during event reflecting history and culture of Ghana based on theme, time, expected audience.\n2. Assign individual and group tasks and responsibilities (MC, ushering, introducing guests, explaining concepts, recording comments).\n3. Arrange sequence of performances to best tell story from beginning to end.\n4. Follow programme of the day (opening, performances, closing).\n5. Prepare template for appreciating, appraising, evaluating and reporting.\n6. Clean hall after exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.3.5.2",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 2.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B4 2.3.5.2 Perform own compositions to share creative experiences based on own ideas, knowledge and understanding of the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Decide on types and number of compositions to perform; assign individual/group tasks; arrange sequence of performances; follow programme of the day; prepare template for evaluation; clean hall.",
+    exemplars:
+      "1. Decide on types and number of compositions to perform reflecting natural and manmade environments of Ghanaian communities.\n2. Assign individual and group tasks and responsibilities (MC, ushering, explaining concepts, recording comments).\n3. Arrange sequence of performances to tell story from beginning to end.\n4. Follow programme of the day (opening, performances, closing).\n5. Prepare template for appreciating, appraising, evaluating and reporting.\n6. Clean hall after exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.3.5.3",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B4 2.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B4 2.3.5.3 Perform own compositions to share creative experiences based on own ideas, knowledge and understanding of topical issues in Ghana",
+    objectives:
+      "Decide on types and number of compositions to perform reflecting current topical issues in Ghana; assign tasks; arrange sequence; follow programme; prepare evaluation template; clean hall.",
+    exemplars:
+      "1. Decide on types and number of compositions to perform reflecting current topical issues of national concern in Ghana based on theme, time, audience.\n2. Assign individual and group tasks and responsibilities (MC, ushering, explaining concepts, recording comments).\n3. Arrange sequence of performances to best tell story.\n4. Follow programme of the day (opening, performances, closing).\n5. Prepare template for evaluation and reporting.\n6. Clean hall after exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.4.6.1",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 1.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports.",
+    indicator:
+      "B4 1.4.6.1 Develop guidelines for appreciating and appraising own and others’ visual artworks that reflect the history and culture of the people of Ghana",
+    objectives:
+      "Discuss and accept guide for appreciating visual artworks; identify correct vocabulary; agree on purpose and sharing of report; agree on manual/digital recording approach; fix date for appraisal/jury. Suggested guidelines: Description (elements, materials, size), Subject matter (meaning, message, mood, history, environment), Appraisal (uses, beauty, value, correlation), Experiences to share.",
+    exemplars:
+      "1. Discuss and accept a guide for appreciating and appraising visual artworks based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising artworks.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested Guidelines: Description of work, Subject matter, Appraisal, Experiences to share).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.4.6.2",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 1.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports.",
+    indicator:
+      "B4 1.4.6.2 Develop guidelines for appraising and appreciating own and others’ visual artworks that reflect the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Discuss and accept guide for appreciating visual artworks; identify correct vocabulary; agree on report purpose/sharing; agree on recording method; fix date for appraisal. Suggested guidelines: Description, Subject matter, Appraisal, Experiences to share.",
+    exemplars:
+      "1. Discuss and accept a guide for appreciating and appraising visual artworks based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising artworks.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested Guidelines: Description of work, Subject matter, Appraisal, Experiences to share).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.4.6.3",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 1.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports.",
+    indicator:
+      "B4 1.4.6.3 Develop guidelines for appraising and appreciating own and others’ visual artworks that reflect topical issues in Ghana",
+    objectives:
+      "Discuss and accept guide for appreciating visual artworks; identify correct vocabulary; agree on report purpose/sharing; agree on recording method; fix date for appraisal. Suggested guidelines: Description, Subject matter, Appraisal, Experiences to share.",
+    exemplars:
+      "1. Discuss and accept a guide for appreciating and appraising visual artworks based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising artworks.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested Guidelines: Description of work, Subject matter, Appraisal, Experiences to share).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.2.4.6.1",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 2.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports.",
+    indicator:
+      "B4 2.4.6.1 Develop guidelines for appraising and appreciating own and others’ performing artworks that reflect the history and culture of the people of Ghana",
+    objectives:
+      "Discuss and accept guide for analysing/appreciating compositions and performances; identify correct vocabulary for music, dance, drama; agree on report purpose and sharing; agree on manual/digital recording method; fix date for appraisal/jury. Suggested guidelines: Music (theme, voice, harmony, diction), Dance (theme, movement, costume, energy), Drama (characterisation, makeup, gestures, voice projection, space).",
+    exemplars:
+      "1. Discuss and accept a guide for analysing and appreciating/appraising compositions and performances based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising music, dance, drama, etc.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested guidelines: Music: Theme, voice, harmony, diction; Dance: Movement, costume, energy; Drama: Characterisation, gestures, voice projection, space).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+      "Psychosocial Skills",
+    ],
+  },
+  {
+    code: "B4.2.4.6.2",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 2.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports.",
+    indicator:
+      "B4 2.4.6.2 Develop guidelines for appraising and appreciating own and others’ performing artworks that reflect the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Discuss and accept guide for evaluating compositions/performances; identify vocabulary; agree on report purpose/sharing; agree on recording method; fix date for appraisal. Suggested guidelines for Music, Dance, Drama.",
+    exemplars:
+      "1. Discuss and accept a guide for analysing and appreciating/appraising compositions and performances.\n2. Identify correct vocabulary to use for appreciating music, dance, drama, etc.\n3. Agree on report purpose and sharing.\n4. Agree on recording method (manual/digital).\n5. Fix date for appreciation/appraisal/jury.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+      "Psychosocial Skills",
+    ],
+  },
+  {
+    code: "B4.2.4.6.3",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 2.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports.",
+    indicator:
+      "B4 2.4.6.3 Develop guidelines for appraising and appreciating own and others’ performing artworks that reflect topical issues in Ghana",
+    objectives:
+      "Discuss and accept guide for evaluating compositions/performances; identify vocabulary; agree on report purpose/sharing; agree on recording method; fix date for appraisal. Suggested guidelines for Music, Dance, Drama.",
+    exemplars:
+      "1. Discuss and accept a guide for analysing and appreciating/appraising compositions and performances.\n2. Identify correct vocabulary to use for appreciating music, dance, drama, etc.\n3. Agree on report purpose and sharing.\n4. Agree on recording method.\n5. Fix date for appreciation/appraisal/jury.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+      "Psychosocial Skills",
+    ],
+  },
+  {
+    code: "B4.1.4.7.1",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 1.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B4 1.4.7.1 Analyse and appreciate own and others’ visual artworks based on the developed guidelines and present own reports as feedback on the artworks that reflect the history and culture of the people of Ghana",
+    objectives:
+      "Display selected works depicting history and culture of Ghana; talk about works dispassionately using developed guidelines; use outcome to modify product or produce similar/different artwork; record activity and share on social media.",
+    exemplars:
+      "1. Display (real/photographs/video) selected works depicting history and culture of the people of Ghana.\n2. Talk about works dispassionately using developed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar or different artworks.\n4. Record/document activity and share using a social media platform accepted by the class/group (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.4.7.2",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 1.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B4 1.4.7.2 Analyse and appreciate own or others’ visual artworks based on the developed guidelines and present own reports as feedback on artworks that reflect the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Display selected works reflecting natural and manmade environments in Ghana; talk about works dispassionately using developed guidelines; use outcome to modify product; record and share on social media.",
+    exemplars:
+      "1. Display (real/photographs/video) selected works reflecting natural and manmade environment of communities in Ghana.\n2. Talk about works dispassionately using developed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar or different artwork.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B4.1.4.7.3",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 1.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B4 1.4.7.3 Analyse and appreciate own or others’ visual artworks using the developed guidelines and present own report as feedback on artworks that reflect topical issues in Ghana",
+    objectives:
+      "Display selected works reflecting emerging topical issues in Ghana; talk about works dispassionately using developed guidelines; use outcome to modify product; record and share on social media.",
+    exemplars:
+      "1. Display (real/photographs/video) selected works reflecting emerging topical issues in Ghana.\n2. Talk about works dispassionately using developed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar artwork.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+      "Psychosocial Skills",
+    ],
+  },
+  {
+    code: "B4.2.4.7.1",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 2.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B4 2.4.7.1 Analyse and appraise own or others’ compositions and performances and present reports/feedback on works that reflect the history and culture of the people of Ghana",
+    objectives:
+      "Display photographs/video of selected performances reflecting history and culture of Ghana; talk about performances dispassionately using developed guidelines; use outcome to modify product or produce similar composition/performance; record and share on social media.",
+    exemplars:
+      "1. Display photographs/video of selected performances reflecting history and culture of the people of Ghana.\n2. Talk about performances dispassionately using developed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar or different composition and performance.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B4.2.4.7.2",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 2.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B4 2.4.7.2 Analyse and appreciate/appraise own or others’ compositions and performances and present reports/feedback on works that reflect the natural and manmade environments of some communities in Ghana",
+    objectives:
+      "Display photographs/video of selected performances reflecting natural and manmade environments in Ghana; talk about performances dispassionately using developed guidelines; use outcome to modify product; record and share on social media.",
+    exemplars:
+      "1. Display photographs/video of selected performances reflecting natural and manmade environments of communities in Ghana.\n2. Talk about performances dispassionately using developed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar composition/performance.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B4.2.4.7.3",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B4 2.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B4 2.4.7.3 Analyse and appreciate own or others’ compositions and performances and present reports as feedback on artworks that reflect topical issues in Ghana",
+    objectives:
+      "Display photographs/video of selected performances reflecting topical issues in Ghana; talk about performances dispassionately using developed guidelines; use outcome to modify product or produce similar composition; record and share on social media.",
+    exemplars:
+      "1. Display photographs/video of selected performances reflecting topical issues in Ghana.\n2. Talk about performances dispassionately using developed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar composition/performance.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+];
+
+const basic5Indicators: GESIndicator[] = [
+  {
+    code: "B5.1.1.1.1",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B5 1.1.1.1 Study some visual artworks created by Ghanaian and other African visual artists living in Africa and examine how the artworks reflect the history and culture of the people in Africa",
+    objectives:
+      "Study artworks created by Ghanaian and African visual artists (e.g. El-Anatsui, Nnenna Okore, Cheri Samba, Peju Alatise, William Kentridge) by gathering info, talking about works, identifying symbols, and writing a brief about chosen artist.",
+    exemplars:
+      "1. Study artworks (sculpture, textiles, metal arts, paintings, cartoons, photography, ceramics) created by Ghanaian and African visual artists (El-Anatsui, Nnenna Okore, Cheri Samba, Goncalo Mabunda, Abdoulaye Konate, Peju Alatise, William Kentridge, Justine Mahoney).\n2. Gather info via libraries, internet, art studios, galleries, museums, documentaries, or photographs (e.g. 'Warrior' by El-Anatsui, 'Story Maps of no Location' by Julie Mehretu).\n3. Talk about the works in relation to history and culture of Africa.\n4. Identify and discuss symbols found in the works.\n5. Write a brief about choice of artist (Name, Country of origin, Training, Type of artworks, Title of works, Medium of expression).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.1.1.1.2",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B5.1.1.1.2 Explore to generate ideas by studying visual artworks created by selected Ghanaian and other African visual artists living in Africa that reflect the history and culture of the people of Africa",
+    objectives:
+      "Select an artwork of an artist studied; reflect on theme/purpose (e.g., El-Anatsui's 'Warrior' bottle tops & copper wire referencing triangular slave trade); study materials and methods; generate ideas for own artworks reflecting Ghanaian history and culture.",
+    exemplars:
+      "1. Select an artwork of any of the artists studied in B5 1.1.1.1.\n2. Reflect on theme or purpose (e.g., 'Warrior' by El-Anatsui made from copper wire and bottle tops reflecting the link between Africa, Europe, America and slave trade).\n3. Study materials and methods used in designing and making the artwork (mixed media, construction and assemblage: cutting, joining, twisting; installation).\n4. Generate ideas for own artworks that will reflect the history and culture of the people of Ghana.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.1.1.1.3",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions about the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B5.1.1.1.3 Study some artworks created by Ghanaian and other African visual artists studied that reflect the physical and social environments of some African communities",
+    objectives:
+      "Select works reflecting physical and social environments; discuss in pairs/plenary on type, theme, environment reflected, materials, and methods; compare works in terms of type, function, materials, methods.",
+    exemplars:
+      "1. Select works of Ghanaian and other African visual artists that reflect ideas from physical and social environments of African communities.\n2. Appreciate and talk about the works in pairs and share views during plenary session (type, theme/purpose, idea reflected, materials used, method of production).\n3. Compare the works in terms of type, function, materials, methods.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.1.1.1.4",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B5.1.1.1.4 Generate own ideas for designing and creating own visual artworks that reflect the physical and social environments of some African communities",
+    objectives:
+      "Conduct field observations to record structures, automobiles, consumer services, and packaging; use OERs to study African environments; reflect on experiences to generate concepts for creating own artworks.",
+    exemplars:
+      "1. Go out for field observation/environmental walk to observe and record structures (buildings, bridges), automobiles, consumer services, packaging designs.\n2. Use OERs (libraries, internet, audio visuals) to study physical and social environments of other African communities.\n3. Reflect on experiences of field study and OER studies to analyse and generate concepts for designing and making own artworks reflecting African environments.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.1.1.1.5",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B5 1.1.1.5 Study the artworks of Ghanaian and other African visual artists that reflect topical issues in Africa",
+    objectives:
+      "Select works reflecting current topical issues in Africa (climate change, water/air pollution, slums, inclusion, diversity, international relations, highway codes); appreciate through shower thoughts sessions discussing type, theme, materials, tools, method, style.",
+    exemplars:
+      "1. Select works of Ghanaian and other African visual artists that reflect current topical issues in Africa (climate change, pollution, slums, inclusion, diversity, international relations, highway codes).\n2. Appreciate through shower thoughts sessions discussing type of artwork, theme/purpose, materials, tools, method, and style.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.1.1.1.6",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B5 1.1.1.6 Brainstorm and come out with ideas for creating own visual works that will reflect topical issues in Africa",
+    objectives:
+      "Learn about current topical issues in Africa using OERs; create portfolios (downloading docs, notes, photos, audio recordings); make presentations for discussions and peer review; reflect on feedback to generate concepts for making own artworks.",
+    exemplars:
+      "1. Learn about current topical issues of concern in Africa using available OERs (libraries, internet, audio visuals, social media).\n2. Create portfolios by downloading documents/videos, jotting simple notes, taking photos, making photocopies, or recording audio messages.\n3. Make presentations for class discussions and peer review.\n4. Reflect on feedback from discussions and peer review to generate concepts for designing and making own artworks reflecting topical issues in Africa.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.2.1.1.1",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B5 2.1.1.1 Explore and study some compositions and performances of Ghanaian and other African performing artists living in Africa and discuss how their works reflect the history and culture of the people of Africa",
+    objectives:
+      "Study compositions/performances of African performing artists (Salif Keita, Angelique Kidjo, Chinua Achebe, Jack Mapanje, Dada Masilo, Hugh Masekela, Miriam Makeba, Asabea Cropper, John Okafor, Osita Iheme) via OERs; discuss how works reflect African history/culture; write briefs about chosen artists.",
+    exemplars:
+      "1. Study compositions and performances of Ghanaian and African performing artists (e.g. Salif Keita, Angelique Kidjo, Chinua Achebe, Jack Mapanje, Dada Masilo, Hugh Masekela, Miriam Makeba, Asabea Cropper, John Okafor, Osita Iheme) through OERs, recorded videos, studio/theatre visits, and cultural festivals (e.g. 'Things Fall Apart' by Chinua Achebe, 'Shaka the Zulu' series).\n2. Appreciate and discuss compositions/performances to find out how works reflect African history and culture.\n3. Write a brief about choice of artist using guidelines: Name, Country of origin, Training, Type of compositions/performances, Title of works, Style.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.2.1.1.2",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B5. 2.1.1.2 Study how the compositions and performances of the Ghanaian and other African performing artists studied reflect the history and culture of the people of Africa and generate ideas for creating own artworks",
+    objectives:
+      "Select a composition/performance studied (e.g. 'Shaka the Zulu' film); study art-forms, concepts, elements, dynamics, harmony, melody, pitch, rhythm, tempo, texture, instruments; generate ideas for creating own performing artworks reflecting African history and culture.",
+    exemplars:
+      "1. Select any composition or performance of a preferred artist studied in B5 2.1.1.1.\n2. Reflect on theme or purpose of music, dance, or drama (e.g. 'Shaka the Zulu' giving historical accounts and leadership qualities).\n3. Study art-forms, concepts, elements, dynamics, harmony, melody, pitch, rhythm, tempo, texture, and instruments.\n4. Generate ideas for creating own performing artworks reflecting the history and culture of Africa.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.2.1.1.3",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B5. 2.1.1.3 Study some compositions and performances of Ghanaian and other African performing artists that reflect the physical and social environments of some African communities",
+    objectives:
+      "Select works of African performing artists reflecting physical/social environments; discuss in pairs/plenary on type, theme, environment reflected, style, method; compare works in terms of type, function, elements, tempo, rhythm, methods.",
+    exemplars:
+      "1. Select works of Ghanaian and other African performing artists that reflect ideas from physical and social environments of African communities.\n2. Appreciate and talk about art-forms in pairs and share views during plenary session (type, theme/purpose, idea reflected, style, method).\n3. Compare works in terms of type, function, elements, tempo, rhythm, methods.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.2.1.1.4",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B5. 2.1.1.4 Generate own ideas for composing and performing own artworks that will reflect the physical and social environments of some African communities",
+    objectives:
+      "Use OERs to study African environments; observe movement patterns, structures, commercials, environmental sounds (vehicle horns, birds singing, children laughing, market, trotro station); reflect and generate concepts for composing music, dance, drama.",
+    exemplars:
+      "1. Use OERs (libraries, internet, audio-visuals) to study physical and social environments of African communities.\n2. Observe movement patterns, arrangements, structures, automobiles, commercials, and environmental sounds (tooting of horns, birds singing, children laughing, market, trotro station).\n3. Reflect on information gathered, analyse and generate concepts for composing and performing own music, dance and drama reflecting African environments.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.2.1.1.5",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B5. 2.1.1.5 Study the compositions and performances of Ghanaian and other African performing artists that reflect topical issues in Africa",
+    objectives:
+      "Select compositions/performances reflecting current topical issues in Africa (climate change, pollution, slums, inclusion, diversity, international relations); appreciate through shower thoughts sessions discussing art-forms, theme, elements, dynamics, tempo, instruments, style.",
+    exemplars:
+      "1. Select compositions and performances of Ghanaian and African performing artists reflecting current topical issues of concern in Africa (climate change, pollution, slums, inclusion, diversity, international relations).\n2. Appreciate through shower thoughts sessions discussing art-forms, theme/purpose, elements, dynamics, tempo, instruments, style.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.2.1.1.6",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B5 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues",
+    indicator:
+      "B5. 2.1.1.6 Brainstorm to generate ideas for creating own compositions and performances that reflect topical issues in Africa",
+    objectives:
+      "Learn about topical issues in Africa using OERs; create portfolios (videos, notes, audio recordings); make presentations for discussions and peer review; reflect on feedback to generate concepts for designing performing artworks.",
+    exemplars:
+      "1. Learn about current topical issues of concern in Africa using available OERs (libraries, internet, audio-visuals, social media).\n2. Create portfolios by downloading videos/documents, jotting simple notes, or recording sound/voice messages.\n3. Make presentations for class discussions and peer review.\n4. Reflect on feedback from discussions and peer review to generate concepts for designing and making own artworks reflecting topical issues in Africa.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.1.2.2.1",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 1.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B5 1.2.2.1 Experiment with available relevant visual arts media and methods to create own visual artworks that reflect the history and culture of the people of Africa",
+    objectives:
+      "Explore local environment for materials and tools; study and experiment with media (clay, plasticine, papier-mâché, straw, yarn, paper, odds and ends, paint, craft tools, paper folding/origami/quilling, spatula, needle) to create artworks reflecting African history/culture; discuss and share through jury/peer review.",
+    exemplars:
+      "1. Explore local environment to select available materials and tools suitable for making artworks.\n2. Study and experiment with available materials and tools to create simple artworks reflecting the history and culture of the people (clay, plasticine, papier-mâché, straw, yarn, paper, odds and ends, paint, craft tools, paper folding, spatula, needle).\n3. Discuss and share experiences through jury and peer review.\n4. Use available materials to make artworks similar to works studied and compare.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.2.2.2",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 1.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B5 1.2.2.2 Experiment with available relevant visual arts media and methods to create own visual artworks that reflect the physical and social environments of some African communities",
+    objectives:
+      "Explore local environment for materials/tools; experiment to create simple artworks reflecting physical/social environments of African communities using appropriate skills; discuss and share through jury/peer review.",
+    exemplars:
+      "1. Explore local environment to select available materials and tools suitable for making artworks.\n2. Study and experiment with available materials and tools to create simple artworks reflecting physical and social environments of African communities (modelling, casting, weaving, construction, painting, paper folding, quilling, sewing).\n3. Discuss and share experiences through jury and peer review.\n4. Use available materials to make artworks similar to works studied and compare.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.2.2.3",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 1.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B5 1.2.2.3 Experiment with available relevant visual arts media and methods to create own visual artworks that reflect topical issues in Africa",
+    objectives:
+      "Explore local environment for materials/tools; experiment to create simple artworks reflecting emerging topical issues in Africa using appropriate skills; discuss and share through jury/peer review.",
+    exemplars:
+      "1. Explore local environment to select available materials and tools.\n2. Study and experiment with available materials and tools to create simple artworks reflecting emerging topical issues in Africa.\n3. Discuss and share experiences through jury and peer review.\n4. Use available materials to make artworks similar to works studied and compare.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.2.2.1",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 2.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B5 2.2.2.1 Experiment with available relevant performing arts media and techniques to create own performing artworks that reflect the history and culture of the people of Africa",
+    objectives:
+      "Explore local environment for instruments, equipment, sounds, melody, rhythms, movement patterns; experiment to perform compositions reflecting African history and culture; discuss and share through peer review.",
+    exemplars:
+      "1. Explore local environment to select available instruments, equipment, sounds, melody, rhythms, movement patterns good for composing and performing music, dance, drama, poems, appellations.\n2. Experiment with available instruments, equipment, sounds, movement patterns, melody to perform compositions of Ghanaian artists studied reflecting African history and culture.\n3. Discuss and share experiences through peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.2.2.2",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 2.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities",
+    indicator:
+      "B5 2.2.2.2 Experiment with available relevant performing arts media and techniques to create own performing artworks that reflect the physical and social environments of some communities in Africa",
+    objectives:
+      "Explore local environment for instruments, equipment, sounds, rhythms, movement patterns; experiment to perform compositions reflecting physical/social environments of African communities; discuss and share through peer review.",
+    exemplars:
+      "1. Explore local environment to select available instruments, equipment, sounds, melody, rhythms, movement patterns.\n2. Experiment with available media to perform compositions of Ghanaian artists studied reflecting physical and social environments of African communities.\n3. Discuss and share experiences through peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.2.2.3",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 2.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities",
+    indicator:
+      "B5 2.2.2.3 Experiment with available relevant performing arts media and techniques to create own performing artworks that reflect topical issues in Africa",
+    objectives:
+      "Explore local environment for instruments, equipment, sounds, rhythms, movement patterns; experiment to perform compositions reflecting topical issues in Africa; discuss and share through peer review.",
+    exemplars:
+      "1. Explore local environment to select available instruments, equipment, sounds, melody, rhythms, movement patterns.\n2. Experiment with available media to perform compositions of Ghanaian artists studied reflecting topical issues in Africa.\n3. Discuss and share experiences through peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.2.3.1",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 1.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production based on other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues.",
+    indicator:
+      "B5 1.2.3.1 Create own visual artworks based on own ideas, knowledge and understanding of artworks that reflect the history and culture of the people of Africa",
+    objectives:
+      "Demonstrate basic skills in using elements/principles, media, methods, techniques to produce 2D/3D artworks; make comprehensive designs reflecting African history/culture; select materials, tools, production methods, and finishing techniques to produce personal artworks.",
+    exemplars:
+      "1. Demonstrate basic knowledge and skills in applying elements and principles of art/design, media, methods, techniques freely to produce 2D and 3D artworks.\n2. Make comprehensive designs based on reflective memory of history and culture of Africans.\n3. Follow own design to produce personal artwork selecting suitable materials (clay, paper, paint, wood, glue, yarn), tools (brush, scissors, knives, diffuser, chisel, spatulas, craft tools), production methods (painting, printing, weaving, knotting, modelling, carving, construction, folding, quilling), and finishing techniques (firing, burnishing, spraying).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.2.3.2",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 1.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production based on other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues.",
+    indicator:
+      "B5 1.2.3.2 Create own visual artworks based on own ideas, knowledge and understanding of artworks that reflect the physical and social environments of some communities in Africa",
+    objectives:
+      "Demonstrate basic skills in applying elements/principles, media, methods, techniques to produce visual artworks; make comprehensive designs reflecting physical and social environments of African communities; follow design to produce personal artwork using suitable materials, tools, production methods, and finishing techniques.",
+    exemplars:
+      "1. Demonstrate basic knowledge and skills in applying elements/principles of art/design, media, methods, techniques to produce visual artworks.\n2. Make comprehensive designs based on reflections on physical and social environments of African communities.\n3. Follow own design to produce personal artwork selecting suitable materials, tools, production methods (painting, printing, weaving, modelling, carving, construction, folding, quilling), and finishing techniques (firing, burnishing, spraying).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.2.3.3",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 1.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production based on other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues.",
+    indicator:
+      "B5 1.2.3.3 Create own visual artworks based on own ideas, knowledge and understanding of artworks that reflect topical issues in Africa",
+    objectives:
+      "Demonstrate basic skills in applying elements/principles, media, methods, techniques to produce 2D/3D artworks; make comprehensive designs reflecting current topical issues in Africa; follow design to produce personal artwork using suitable materials, tools, production methods, and finishing techniques.",
+    exemplars:
+      "1. Demonstrate basic knowledge and skills in applying elements/principles of art/design, media, methods, techniques to produce 2D and 3D artworks.\n2. Make comprehensive designs based on reflective memory of current topical issues in Africa.\n3. Follow own design to produce personal artwork selecting suitable materials, tools, production methods, and finishing techniques.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.2.3.1",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 2.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B5 2.2.3.1 Create own performing artworks based on own ideas, knowledge and understanding of artworks that reflect the history and culture of the people of Africa",
+    objectives:
+      "Demonstrate basic skills in applying elements/principles of performing arts, instruments, equipment, and techniques freely; make compositions based on reflective memory of African history/culture; produce music, dance, drama using available instruments (xylophone, drums, flutes, bells, shakers, rattles, castanets, horn, costumes, props), techniques (voice, gestures, movement, improvisation, adaptation, guided writing), and scenery/costumes.",
+    exemplars:
+      "1. Demonstrate basic knowledge and skills in applying elements/principles of performing arts, instruments, equipment, and techniques freely to produce music, dance, drama, poetry.\n2. Make compositions based on reflective memory of the history and culture of Africans.\n3. Produce music, dance, drama using suitable instruments (xylophone, drums, flutes, bells, shakers, rasp, finger piano, rattles, clappers, castanets, horn, whistles, harp, costumes, props), techniques (voice, gestures, movements, language, improvisation, imitation, adaptation, guided writing), and props/scenery.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.2.3.2",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 2.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B5 2.2.3.2 Create own performing artworks based on own ideas, knowledge and understanding of artworks that reflect the physical and social environments of some communities in Africa",
+    objectives:
+      "Demonstrate basic skills in applying performing arts elements/principles, instruments, equipment, and techniques; make compositions reflecting physical and social environments of African communities; produce music, dance, drama using available instruments, production techniques, and props/scenery/costumes.",
+    exemplars:
+      "1. Demonstrate basic knowledge and skills in applying elements/principles of performing arts, instruments, equipment, and techniques freely.\n2. Make compositions based on reflective memory of physical and social environments of African communities.\n3. Produce music, dance, drama using suitable instruments, production techniques (voice, gestures, movements, improvisation, imitation, adaptation, guided writing), and props/scenery/costumes.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.2.3.3",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B5 2.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B5 2.2.3.3 Create own performing artworks based on own ideas, knowledge and understanding of artworks that reflect topical issues in Africa",
+    objectives:
+      "Demonstrate basic skills in applying performing arts elements/principles, instruments, equipment, and techniques; make compositions based on current topical physical and social issues in Africa; produce music, dance, drama using available instruments, techniques, and props/scenery/costumes.",
+    exemplars:
+      "1. Demonstrate basic knowledge and skills in applying elements/principles of performing arts, instruments, equipment, and techniques.\n2. Make compositions based on reflective memory of current topical issues in Africa.\n3. Produce music, dance, drama using suitable instruments, production techniques, and props/scenery/costumes.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.3.4.1",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 1.3.4 Demonstrate understanding of how to plan a display/ presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B5 1.3.4.1 Plan an exhibition of own portfolio of visual artworks to educate and share creative experiences of artworks that reflect the history and culture of the people of Africa",
+    objectives:
+      "Watch video on exhibition or visit exhibition centre; discuss need for display; develop roadmap (date, venue, audience); agree on theme (e.g. 'The African History and Culture'); send invitations; select works considering creativity, finishing, relevance, social/cultural importance; decide display mode; plan layout/labels; prepare hall; plan post-exhibition activities.",
+    exemplars:
+      "1. Watch short video on exhibition or visit exhibition centre (preferably GES cultural festival).\n2. Discuss need for displaying portfolio of visual artworks.\n3. Develop roadmap for exhibition (fixing date, selecting venue, inviting audience).\n4. Brainstorm to agree on theme (e.g. 'The African History and Culture').\n5. Send manual/electronic invitations (letters, postcards, WhatsApp, email, social media, jingles) to target audience.\n6. Select works considering creativity, originality, finishing, relevance to theme, social/cultural importance.\n7. Decide mode of display (hanging, draping, spreading).\n8. Plan layout of hall, prepare labels (title, artist, date).\n9. Clean and prepare hall and environment.\n10. Plan post-exhibition activities (cleaning, appreciation, evaluation, reporting).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.3.4.2",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 1.3.4 Demonstrate understanding of how to plan a display/ presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B5 1.3.4.2 Plan an exhibition of own portfolio of visual artworks to educate and share creative experiences of artworks that reflect the physical and social environments in some communities in Africa",
+    objectives:
+      "Watch video/visit exhibition centre; discuss need for display; develop roadmap; agree on theme (e.g. 'Our Environment'); send manual/electronic invitations; select works considering creativity, finishing, relevance; decide display mode; plan layout/labels; prepare hall; plan post-exhibition activities.",
+    exemplars:
+      "1. Watch short video on exhibition or visit exhibition centre.\n2. Discuss need for displaying portfolio of visual artworks.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme (e.g. 'Our Environment').\n5. Send manual/electronic invitations to target audience.\n6. Select works considering creativity, finishing, relevance to theme, social/cultural importance.\n7. Decide mode of display (hanging, draping, spreading).\n8. Plan layout and prepare labels.\n9. Clean and prepare hall.\n10. Plan post-exhibition activities (cleaning, appreciation, evaluation, reporting).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.3.4.3",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 1.3.4 Demonstrate understanding of how to plan a display/ presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B5 1.3.4.3 Plan an exhibition of own portfolio of visual artworks to educate and share creative experiences of artworks that reflect the topical issues in Africa",
+    objectives:
+      "Watch video/visit exhibition centre; discuss need for display; develop roadmap; agree on theme (e.g. 'The Future of Africa'); send invitations; select works considering creativity, finishing, relevance; decide display mode; plan layout/labels; prepare venue; plan post-exhibition activities.",
+    exemplars:
+      "1. Watch short video on exhibition or visit exhibition centre.\n2. Discuss need for displaying portfolio of visual artworks.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme (e.g. 'The Future of Africa').\n5. Send manual/electronic invitations to target audience.\n6. Select works considering creativity, originality, finishing, relevance to theme, social/cultural importance.\n7. Decide mode of display (hanging, draping, spreading).\n8. Plan layout and prepare labels.\n9. Clean and prepare hall.\n10. Plan post-exhibition activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.3.4.1",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 2.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B5 2.3.4.1 Plan a display of own portfolio of performing artworks to educate and share creative experiences of artworks that reflect the history and culture of the people of Africa",
+    objectives:
+      "Watch video/live performances; discuss need for performing compositions; develop roadmap; agree on theme (e.g. 'The Pride of African Culture'); send invitations; select compositions considering creativity, lyrics, movement, dynamics, relevance; decide mode/arrangement; plan sequence and stage/site plan; prepare venue; plan post-performance activities.",
+    exemplars:
+      "1. Watch short video or live performances reflecting African history and culture.\n2. Discuss need for performing compositions of own music, dance, drama, poetry.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme (e.g. 'The Pride of African Culture').\n5. Send manual/electronic invitations to target audience.\n6. Select compositions considering creativity, lyrics, movement patterns, dynamics, relevance to theme, social/cultural importance.\n7. Decide mode and arrangement (monologue/solo/group, costumes, props).\n8. Plan sequence of events and stage/site plan (PA system, lighting, performance zone, changing rooms).\n9. Clean and prepare venue.\n10. Plan post-performance activities (cleaning, appreciation, evaluation, reporting).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.2.3.4.2",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 2.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B5 2.3.4.2 Plan a display of own portfolio of performing artworks to educate and share creative experiences of artworks that reflect the physical and social environments of some communities of Africa",
+    objectives:
+      "Watch video/live performances; discuss need for performing compositions; develop roadmap; agree on theme (e.g. 'Our Continent Africa'); send invitations; select compositions; decide mode/arrangement; plan sequence and stage/site plan; prepare venue; plan post-performance activities.",
+    exemplars:
+      "1. Watch short video or live performances reflecting physical and social environments of Africa.\n2. Discuss need for performing compositions.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme (e.g. 'Our Continent Africa').\n5. Send manual/electronic invitations.\n6. Select compositions considering creativity, lyrics, movement patterns, dynamics, relevance.\n7. Decide mode and arrangement (monologue/solo/group, costumes, props).\n8. Plan sequence of events and stage/site plan.\n9. Clean and prepare venue.\n10. Plan post-performance activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.2.3.4.3",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 2.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B5 2.3.4.3 Plan a display of own portfolio of performing artworks to educate and share creative experiences of artworks that reflect the topical issues in Africa",
+    objectives:
+      "Watch video/live performances; discuss need for performing compositions; develop roadmap; agree on theme (e.g. 'The Future of Africa'); send invitations; select compositions; decide mode/arrangement; plan sequence and stage/site plan; prepare venue; plan post-performance activities.",
+    exemplars:
+      "1. Watch short video or live performances reflecting physical and social environments of Africa.\n2. Discuss need for performing compositions.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme (e.g. 'The Future of Africa').\n5. Send manual/electronic invitations.\n6. Select compositions considering creativity, lyrics, movement patterns, dynamics, relevance.\n7. Decide mode and arrangement (monologue/solo/group, costumes, props).\n8. Plan sequence of events and stage/site plan.\n9. Clean and prepare venue.\n10. Plan post-performance activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B5.1.3.5.1",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 1.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B5 1.3.5.1 Exhibit portfolio of own and others’ visual art artworks to share creative experiences of artworks that reflect the history and culture of the people of Africa",
+    objectives:
+      "Decide on types and number of artworks to exhibit and mount based on space and theme; display by hanging, draping, placing, spreading, leaning, plinths; label works manually or with ICT; assign individual/group responsibilities; monitor visitors against improper practices; organise opening/closing ceremonies; prepare evaluation template; clean hall.",
+    exemplars:
+      "1. Decide on types and number of artworks to exhibit and mount based on space available to suit theme.\n2. Display artworks by hanging, draping, placing, spreading, leaning, or using plinths to raise height/depth.\n3. Label works using manual penmanship (calligraphy) or ICT prints: artist name, title, size, date.\n4. Assign tasks and responsibilities (guiding visitors, explaining concepts/theme, writing comments).\n5. Check/monitor visitors against improper practices (touching, handling, taking exhibits).\n6. Organise opening and closing ceremonies for exhibition.\n7. Prepare template for appreciating, appraising, evaluating and reporting.\n8. Clean hall after exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.3.5.2",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 1.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B5 1.3.5.2 Exhibit portfolio of own and others’ art artworks to share creative experiences of artworks that reflect the physical and social environments of some communities in Africa",
+    objectives:
+      "Decide on types and number of artworks to exhibit; display artworks; label works manually or with ICT; assign responsibilities; monitor visitors against improper practices; organise opening/closing ceremonies; prepare evaluation template; clean hall.",
+    exemplars:
+      "1. Decide on types and number of artworks to exhibit and mount based on space available to suit theme.\n2. Display artworks by hanging, draping, placing, spreading, leaning, or using plinths.\n3. Label works using manual penmanship or ICT prints (artist name, title, size, date).\n4. Assign tasks and responsibilities (guiding visitors, explaining concepts/theme, writing comments).\n5. Check/monitor visitors against improper practices.\n6. Organise opening and closing ceremonies for exhibition.\n7. Prepare template for evaluation and reporting.\n8. Clean hall after exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.3.5.3",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 1.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B5 1.3.5.3 Exhibit portfolio of own and others’ art artworks to share creative experiences of artworks that reflect topical issues in Africa",
+    objectives:
+      "Decide on types and number of artworks to exhibit; display artworks; label works manually or with ICT; assign responsibilities; monitor visitors against improper practices; organise opening/closing ceremonies; prepare evaluation template; clean hall.",
+    exemplars:
+      "1. Decide on types and number of artworks to exhibit and mount based on space available to suit theme.\n2. Display artworks by hanging, draping, placing, spreading, leaning, or using plinths.\n3. Label works using manual penmanship or ICT prints (artist name, title, size, date).\n4. Assign tasks and responsibilities (guiding visitors, explaining concepts/theme, writing comments).\n5. Check/monitor visitors against improper practices.\n6. Organise opening and closing ceremonies for exhibition.\n7. Prepare template for evaluation and reporting.\n8. Clean hall after exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.3.5.1",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 2.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B5 2.3.5.1 Stage a display of own portfolio of performing artworks to share creative experiences of compositions that reflect the history and culture of the people of Africa",
+    objectives:
+      "Decide on types and number of compositions to perform based on theme, time, audience; assign individual and group tasks (MC, ushering, introducing guests, explaining concepts, recording comments); arrange sequence of performances to tell story; follow programme of the day; prepare template for evaluation; clean hall.",
+    exemplars:
+      "1. Decide on types and number of compositions to be performed during event reflecting history and culture of Africa based on theme, time, expected audience.\n2. Assign individual and group tasks and responsibilities (MC, ushering, introducing guests, explaining concepts, recording comments).\n3. Arrange sequence of performances to best tell story from beginning to end.\n4. Follow programme of the day (opening, performances, closing).\n5. Prepare template for appreciating, appraising, evaluating and reporting.\n6. Clean hall after performance.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.3.5.2",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 2.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B5 2.3.5.2 Stage a display of own portfolio of performing artworks to share creative experiences of compositions that reflect the physical and social environments of some communities in Africa",
+    objectives:
+      "Decide on types and number of compositions to perform; assign individual/group tasks; arrange sequence of performances; follow programme of the day; prepare template for evaluation; clean hall.",
+    exemplars:
+      "1. Decide on types and number of compositions to perform reflecting physical and social environments of African communities.\n2. Assign individual and group tasks and responsibilities (MC, ushering, explaining concepts, recording comments).\n3. Arrange sequence of performances to tell story from beginning to end.\n4. Follow programme of the day (opening, performances, closing).\n5. Prepare template for appreciating, appraising, evaluating and reporting.\n6. Clean hall after performance.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.3.5.3",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B5 2.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B5 2.3.5.3 Stage a display of own portfolio of performing artworks to share own creative experiences of compositions that reflect the topical issues in Africa",
+    objectives:
+      "Decide on types and number of compositions to perform reflecting topical issues in Africa; assign tasks; arrange sequence; follow programme; prepare evaluation template; clean hall.",
+    exemplars:
+      "1. Decide on types and number of compositions to perform reflecting current topical issues in Africa based on theme, time, audience.\n2. Assign individual and group tasks and responsibilities (MC, ushering, explaining concepts, recording comments).\n3. Arrange sequence of performances to best tell story.\n4. Follow programme of the day (opening, performances, closing).\n5. Prepare template for evaluation and reporting.\n6. Clean hall after performance.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.4.6.1",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 1.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B5 1.4.6.1 Develop guidelines for appreciating and appraising own and others’ visual artworks that reflect the history and culture of the African people",
+    objectives:
+      "Discuss and accept guide for appreciating visual artworks; identify correct vocabulary; agree on purpose and sharing of report; agree on manual/digital recording approach; fix date for appraisal/jury. Suggested guidelines: Description (elements, materials, size), Subject matter (meaning, message, mood, history, environment), Appraisal (uses, beauty, value, correlation), Experiences to share.",
+    exemplars:
+      "1. Discuss and accept a guide for appreciating and appraising visual artworks based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising artworks.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested Guidelines: Description of work, Subject matter, Appraisal, Experiences to share).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.4.6.2",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 1.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B5 1.4.6.2 Develop guidelines for appreciating and appraising own and others’ visual artworks that reflect the physical and social environments of some communities in Africa",
+    objectives:
+      "Discuss and accept guide for appreciating visual artworks; identify correct vocabulary; agree on report purpose/sharing; agree on recording method; fix date for appraisal. Suggested guidelines: Description, Subject matter, Appraisal, Experiences to share.",
+    exemplars:
+      "1. Discuss and accept a guide for appreciating and appraising visual artworks based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising artworks.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested Guidelines: Description of work, Subject matter, Appraisal, Experiences to share).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.4.6.3",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 1.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B5 1.4.6.3 Develop guidelines for appreciating and appraising own and others’ visual artworks that reflect the topical issues in Africa",
+    objectives:
+      "Discuss and accept guide for appreciating visual artworks; identify correct vocabulary; agree on report purpose/sharing; agree on recording method; fix date for appraisal. Suggested guidelines: Description, Subject matter, Appraisal, Experiences to share.",
+    exemplars:
+      "1. Discuss and accept a guide for appreciating and appraising visual artworks based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising artworks.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested Guidelines: Description of work, Subject matter, Appraisal, Experiences to share).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.4.6.1",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 2.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B5 2.4.6.1 Develop guidelines for appreciating and appraising own and others’ performing artworks that reflect the history and culture of the people of Africa",
+    objectives:
+      "Discuss and accept guide for analysing/appreciating compositions and performances; identify correct vocabulary for music, dance, drama; agree on report purpose and sharing; agree on manual/digital recording method; fix date for appraisal/jury. Suggested guidelines: Music (theme, voice, harmony, diction), Dance (theme, movement, costume, energy), Drama (characterisation, makeup, gestures, voice projection, space).",
+    exemplars:
+      "1. Discuss and accept a guide for analysing and appreciating/appraising compositions and performances based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising music, dance, drama, etc.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested guidelines: Music: Theme, voice, harmony, diction; Dance: Movement, costume, energy; Drama: Characterisation, gestures, voice projection, space).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.4.6.2",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 2.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B5 2.4.6.2 Develop guidelines for appreciating and appraising own and others’ performing artworks that reflect the physical and social environment of some communities in Africa",
+    objectives:
+      "Discuss and accept guide for evaluating compositions/performances; identify vocabulary; agree on report purpose/sharing; agree on recording method; fix date for appraisal. Suggested guidelines for Music, Dance, Drama.",
+    exemplars:
+      "1. Discuss and accept a guide for analysing and appreciating/appraising compositions and performances.\n2. Identify correct vocabulary to use for appreciating music, dance, drama, etc.\n3. Agree on report purpose and sharing.\n4. Agree on recording method (manual/digital).\n5. Fix date for appreciation/appraisal/jury.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.4.6.3",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 2.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B5 2.4.6.3 Develop guidelines for appreciating and appraising own and others’ performing artworks that reflect topical issues in Africa",
+    objectives:
+      "Discuss and accept guide for evaluating compositions/performances; identify vocabulary; agree on report purpose/sharing; agree on recording method; fix date for appraisal. Suggested guidelines for Music, Dance, Drama.",
+    exemplars:
+      "1. Discuss and accept a guide for analysing and appreciating/appraising compositions and performances.\n2. Identify correct vocabulary to use for appreciating music, dance, drama, etc.\n3. Agree on report purpose and sharing.\n4. Agree on recording method.\n5. Fix date for appreciation/appraisal/jury.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.4.7.1",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 1.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B5 1.4.7.1 Analyse and appreciate own or others’ visual artworks and present reports as feedback on artworks that reflect the history and culture of the people of Africa",
+    objectives:
+      "Display selected works depicting history and culture of Africa; talk about works dispassionately using agreed guidelines; use outcome to modify product or produce similar artwork; record activity and share using social media (Facebook, Twitter, Instagram, WhatsApp).",
+    exemplars:
+      "1. Display (real/photographs/video) selected works depicting history and culture of the people of Africa.\n2. Talk about works dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar/another artwork.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.4.7.2",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 1.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B5 1.4.7.2 Analyse and appreciate own or others’ visual artworks and present reports as feedback on artworks that reflect the physical and social environments of some communities in Africa",
+    objectives:
+      "Display selected works reflecting physical and social environments; talk about works dispassionately using agreed guidelines; use outcome to modify product or produce similar artwork; record/document activity and share using social media.",
+    exemplars:
+      "1. Display (real/photographs/video) selected works reflecting physical and social environment of communities in Africa.\n2. Talk about works dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar artwork.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.1.4.7.3",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 1.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B5 1.4.7.3 Analyse and appreciate own or others’ visual artworks and present reports as feedback on artworks that reflect topical issues of much concern in Africa",
+    objectives:
+      "Display selected works communicating, educating or sensitising public on current topical issues in Africa; talk about works dispassionately using agreed guidelines; use outcome to modify product; record and share using social media.",
+    exemplars:
+      "1. Display (real/photographs/video) selected works reflecting current topical issues in Africa.\n2. Talk about works dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar artwork.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.4.7.1",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 2.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B5 2.4.7.1 Analyse and appreciate own or others’ performing artworks and present reports as feedback on compositions that reflect the history and culture of the people of Africa",
+    objectives:
+      "Display photographs/video of selected performances reflecting African history and culture; talk about performances dispassionately using agreed guidelines; use outcome to modify product or produce similar composition/performance; record and share using social media.",
+    exemplars:
+      "1. Display photographs/video of selected performances reflecting history and culture of the people of Africa.\n2. Talk about performances dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar composition/performance.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.4.7.2",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 2.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B5 2.4.7.2 Analyse and appreciate own or others’ performing artworks and present reports as feedback on compositions that reflect the physical and social environments of some communities in Africa",
+    objectives:
+      "Display photographs/video of selected performances reflecting physical and social environments in Africa; talk about performances dispassionately using agreed guidelines; use outcome to modify product; record and share using social media.",
+    exemplars:
+      "1. Display photographs/video of selected performances reflecting physical and social environments of communities in Africa.\n2. Talk about performances dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar composition/performance.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B5.2.4.7.3",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B5 2.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B5 2.4.7.3 Analyse and appreciate/appraise own or others’ performing artworks and present reports as feedback on compositions that reflect topical issues in Africa",
+    objectives:
+      "Display photographs/video of selected performances reflecting current topical issues in Africa; talk about performances dispassionately using agreed guidelines; use outcome to modify product or produce similar composition/performance; record and share using social media.",
+    exemplars:
+      "1. Display photographs/video of selected performances reflecting current topical issues of concern in Africa.\n2. Talk about performances dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar composition/performance.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+];
+
+const basic6Indicators: GESIndicator[] = [
+  {
+    code: "B6.1.1.1.1",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6 1.1.1.1 Explore and study the artworks of some international visual artists and analyse how their artworks reflect the history and culture of some communities in the world",
+    objectives:
+      "Use OERs to study and share artworks of international visual artists (e.g. Meshack Asare, Zingaro, Leonardo, Michelangelo, Picasso, El-Anatsui, Kara Walker, Ibrahim Mahama, Rebecca Horn); discuss their works in relation to history and culture; write a brief about choice of artist.",
+    exemplars:
+      "1. Use OERs (e.g. library, videos, Facebook, internet) to study and share the artworks of some international visual artists (e.g. Meshack Asare, Zingaro, Leonardo, Michelangelo, Picasso, El-Anatsui, Kara Walker, Ibrahim Mahama, Rebecca Horn).\n2. Discuss the works of the international artists studied in relation to the history and cultures of some communities in the world (e.g. Ibrahim Mahama using transformation of materials to explore migration and cultural heritage).\n3. Write a brief about choice of artist using guidelines: Name, Country of origin, Training, Type of artworks, Title of some works, Preferred Media, Contribution to the development of art.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.1.1.1.2",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.1.1.1.2 Study how the artworks of the international visual artists studied reflect the history and culture of some communities in the world and generate own ideas for creating own artworks",
+    objectives:
+      "Select work of an international visual artist; reflect on themes or purposes; analyze materials, tools, equipment, methods, and styles used; use experience gained to generate ideas for own artworks reflecting history and culture.",
+    exemplars:
+      "1. Select the work of any of the international artists studied.\n2. Reflect on the themes or purposes of the works.\n3. Make an analytical study of artworks to identify the materials, tools, equipment, methods and styles used in designing and making them.\n4. Use the experience gained to generate ideas for own artworks that will reflect the history and culture of some communities in the world.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.1.1.1.3",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.1.1.1.3 Study some artworks created by international visual artists that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Select designs/works reflecting physical and social environments; discuss and share findings on type of artwork, theme/purpose, environment reflected, materials, and methods; select and compare two artworks in terms of type, material, method, finishing, function, and suitability.",
+    exemplars:
+      "1. Select the designs and works of any international visual artist that reflect ideas from the physical and social environments of any community in the world.\n2. Appreciate and discuss selected artworks in groups and share findings with class focusing on type of artwork, theme/purpose, idea from physical/social environment reflected, materials and methods used.\n3. Select and compare any two artworks in terms of type, material, method, finishing, function and suitability (e.g. bed designed from concept of a vehicle, building structure based on canoe and sail, Jubilee House based on a stool).",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.1.1.1.4",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.1.1.1.4 Generate own ideas for designing and creating own visual artworks based on the physical and social environments of some communities in the world",
+    objectives:
+      "Use OERs to study physical and social environments and select objects/ideas using spidergrams; present and share selected ideas; reflect and generate ideas from spidergrams into thumbnail sketches.",
+    exemplars:
+      "1. Use OERs to study the physical and social environments of some communities in the world and select objects/ideas that interest them using spidergrams.\n2. Present and share selected ideas using the prepared spidergrams.\n3. Reflect and generate ideas from the spidergrams into 'thumbnail' sketches (e.g. Vase, Pendant, Tray).",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.1.1.1.5",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.1.1.1.5 Study the artworks of some international visual artists that reflect topical issues in some communities in the world",
+    objectives:
+      "Select works of international visual artists reflecting emerging topical issues (war, racism, terrorism, corruption, road safety, counterfeiting, digital fraud/sakawa); discuss works in relation to global concepts; talk about works based on type, theme, technique, style, materials, and tools.",
+    exemplars:
+      "1. Select works of international visual artists that reflect emerging topical national issues (e.g. war, racism, terrorism, corruption, rights and responsibilities of road users, counterfeiting, intellectual property, digital fraud/'sakawa').\n2. Discuss the works in relation to topical global issues.\n3. Talk about the works based on type, theme/purpose, technique, style, materials, and tools.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.1.1.1.6",
+    strand: "Visual Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 1.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.1.1.1.6 Brainstorm and generate ideas for creating own visual artworks that will reflect topical issues in some communities in the world",
+    objectives:
+      "Research current topical issues using OERs; document findings as notes, statements, downloads, and recordings for presentation; reflect on feedback from discussions and peer reviews to generate concepts for creating own artworks reflecting topical issues.",
+    exemplars:
+      "1. Use available OERs (e.g. libraries, videos, documentaries, internet, Facebook) to research current topical issues of concern in some communities in the world.\n2. Document results of findings as notes, statements, downloads and recordings for presentations and class discussions.\n3. Reflect on feedback from class discussions and peer reviews to generate concepts for designing and making own artworks reflecting current topical issues.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.2.1.1.1",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6 2.1.1.1 Explore and study performing artworks of some international performing artists and analyse how their compositions reflect the history and culture of some communities in the world",
+    objectives:
+      "Use OERs to study and share performing artworks of international artists (e.g. Michael Jackson, Fred Astaire, Elton John, Bright Okpocha [Basket Mouth], Osei Boateng, Fela Kuti, Bob Marley, Kojo Antwi, Seidou Keita, Eddie Murphy); discuss works in relation to history and culture; write briefs about choice of artists.",
+    exemplars:
+      "1. Use OERs (e.g. library, videos, Facebook, internet) to study and share the artworks of some international performing artists (e.g. Michael Jackson, Fred Astaire, Elton John, Bright Okpocha [Basket Mouth], Osei Boateng, Fela Ransome Kuti, Bob Marley, Kojo Antwi, Seidou Keita, Eddie Murphy).\n2. Discuss the works of the international artists studied in relation to history and cultures of some communities in the world (e.g. 'Exodus' by Bob Marley).\n3. Write briefs about choice of artists using guidelines: Name, Country of origin, Training, Type of artworks, Title of some works, Preferred compositions and performances, Contribution to the development of performing arts industry.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.2.1.1.2",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.2.1.1.2 Study how the artworks of the international performing artists studied reflect the history and culture of some communities in the world and generate own ideas for creating own performing artworks",
+    objectives:
+      "Select work of an international performing artist studied; reflect on themes or purposes; analyze musicality, vocabulary, movement patterns, costuming, time, rhythm, speed, energy, space; generate ideas for own performing artworks reflecting history and culture.",
+    exemplars:
+      "1. Select the work of any of the international artists studied in B6 2.1.1.1.\n2. Reflect on the themes or purposes of the works.\n3. Make an analytical study of compositions and performances to identify musicality, vocabulary, movement patterns, costuming, time, rhythm, speed, energy, space, etc.\n4. Use information gained to generate ideas for own artworks that will reflect the history and culture of some communities in the world.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.2.1.1.3",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.2.1.1.3 Study how the artworks of the international performing artists studied reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Select compositions/performances reflecting physical and social environments; discuss in groups and share findings on type, theme, environment reflected, vocabulary used, and rhythm; compare any two compositions/performances in terms of type, material, method, finishing, function, and suitability.",
+    exemplars:
+      "1. Select compositions and performances of any international performing artist that reflect ideas from physical and social environments of any community in the world.\n2. Appreciate and discuss selected artworks in groups and share findings focusing on type of composition/performance, theme/purpose, idea reflected, vocabulary used, rhythm, etc.\n3. Select and compare any two compositions and performances in terms of type, material, method, finishing, function and suitability.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.2.1.1.4",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.2.1.1.4 Generate own ideas for creating own performing artworks based on the physical and social environments of some communities in the world",
+    objectives:
+      "Use OERs to study physical and social environments of communities and select ideas using concept notes; present and share concept notes; reflect and generate ideas from concept notes into poems, songs, dance patterns, and drama.",
+    exemplars:
+      "1. Use OERs to study physical and social environments of some communities in the world and select objects/ideas that interest them using concept notes.\n2. Present and share selected ideas using prepared concept notes.\n3. Reflect and generate ideas from concept notes into poems, songs, dance patterns and drama.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.2.1.1.5",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.2.1.1.5 Study how the artworks of the international performing artists studied reflect topical issues in some communities in the world",
+    objectives:
+      "Select compositions and performances reflecting current topical issues (war, racism, terrorism, corruption, road safety, counterfeiting, sakawa/digital fraud); discuss works in relation to global issues; appreciate works based on technique, rhythm, style, instruments, movement patterns, costumes.",
+    exemplars:
+      "1. Select compositions and performances of international performing artists reflecting current topical issues of concern in the world (war, racism, terrorism, corruption, road safety, counterfeiting, intellectual property rights, sakawa/digital fraud).\n2. Discuss the works in relation to topical global issues.\n3. Talk about works based on type, theme/purpose, technique, rhythm, style, instruments, movement patterns, costumes.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.2.1.1.6",
+    strand: "Performing Arts",
+    subStrand: "Thinking and Exploring Ideas",
+    contentStandard:
+      "B6 2.1.1 Demonstrate understanding of how to generate own ideas for artistic expressions on the people based on their history and culture, the environment and topical local/national/global issues.",
+    indicator:
+      "B6.2.1.1.6 Brainstorm and generate ideas for creating own performing artworks that reflect topical issues in some communities in the world",
+    objectives:
+      "Use OERs to research current topical issues of concern in the world; document findings as notes, statements, downloads, and recordings for presentation; reflect on feedback to generate concepts for composing music, dance, drama, poem on topical issues (e.g. poem 'Choice, Choice, Choice!').",
+    exemplars:
+      "1. Use available OERs (libraries, videos, documentaries, internet, Facebook) to research current topical issues of concern in some communities in the world.\n2. Document results of findings as notes, statements, downloads and recordings for presentations and class discussions.\n3. Reflect on feedback from class discussions and peer reviews to generate concepts for composing music, dance, drama, poem on current topical issues (e.g. poem 'Choice, Choice, Choice!').",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+    ],
+  },
+  {
+    code: "B6.1.2.2.1",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 1.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B6 1.2.2.1 Experiment with available visual arts media and methods to create visual artworks based on own views, knowledge and understanding of the artworks of some international visual artists",
+    objectives:
+      "Critically examine works of international visual artists; produce similar works using available local materials and tools (clay, plasticine, papier-mâché, straw, yarn, paper, odds and ends, paint, craft tools, paper folding/origami/quilling, spatula, needle); discuss and share experiences through jury and peer review.",
+    exemplars:
+      "1. Critically examine the works of some international artists.\n2. Make similar works of international artists studied using available materials and tools from local environment (e.g. clay, plasticine, papier-mâché for modelling/casting; straw, yarn, paper for weaving; odds and ends for construction; paint for painting; craft tools; paper folding for origami and quilling; spatula for modelling; needle for sewing).\n3. Discuss, compare and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.2.2.2",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 1.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B6 1.2.2.2 Brainstorm and generate designs for creating own visual artworks that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Study ideas, forms, and structures of physical/social environments; make analytical sketches; develop images; make comp sketches; present for peer review and refine; experiment with materials/tools to reproduce comp; discuss and share experiences.",
+    exemplars:
+      "1. Study ideas, forms and structures that constitute physical and social environments of some communities in the world.\n2. Make analytical study (sketches) of ideas, forms or structures that interest them.\n3. Develop images from ideas, forms and structures studied.\n4. Make comprehensive (comp) sketches or final designs for reproduction in artworks.\n5. Present designs for peer review and use feedback to improve designs.\n6. Experiment with available materials and tools to reproduce the comp (e.g. clay, plasticine, papier-mâché, straw, yarn, paper, odds and ends, paint, craft tools, paper folding, spatula, needle).\n7. Discuss, compare and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.2.2.3",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 1.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities.",
+    indicator:
+      "B6 1.2.2.3 Brainstorm and generate designs for making own visual artworks that reflect topical issues in the world",
+    objectives:
+      "Reflect on current topical/global issues using resources; develop 2D/3D design concepts to educate and sensitise the public; develop comprehensive designs; present for peer review; experiment with materials/tools to reproduce designs; discuss and share experiences.",
+    exemplars:
+      "1. Reflect on current topical/global issues using available learning resources (internet, libraries, videos, pictures).\n2. Come out with design concepts suitable for 2D or 3D artworks to educate and sensitise the public on current topical/global issues.\n3. Develop concepts into comprehensive designs for reproduction.\n4. Present designs for peer review.\n5. Experiment with available materials and tools to reproduce designs (clay, plasticine, papier-mâché, straw, yarn, paper, odds and ends, paint, craft tools, paper folding, spatula, needle).\n6. Discuss, compare and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.2.2.2.1",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 2.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities",
+    indicator:
+      "B6 2.2.2.1 Experiment with available performing arts media and techniques to create performing artworks based on own views, knowledge and understanding of artworks produced by some international performing artists",
+    objectives:
+      "Critically examine compositions and performances of international artists; create similar compositions or performances using available media, techniques, elements, instruments, melodies (e.g. Dance by Michael Jackson, Jokes by Basket Mouth, Song by Bob Marley, Film by Eddie Murphy); discuss and share through peer review.",
+    exemplars:
+      "1. Critically examine compositions and performances of some international artists.\n2. Make similar compositions or performances using available media, techniques, elements, instruments, melodies (e.g. Dance by Michael Jackson, Jokes by Bright Okpocha [Basket Mouth], Song by Bob Marley, Film by Eddie Murphy).\n3. Discuss and share experiences through peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.2.2.2.2",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 2.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities",
+    indicator:
+      "B6 2.2.2.2 Brainstorm and generate ideas for creating own performing artworks that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Study ideas, forms, and structures of physical/social environments; make analytical study of movement patterns, rhythms, sounds; develop, arrange and compose movement patterns, lyrics, sounds, rhythms, melodies; present concepts for peer review and refine.",
+    exemplars:
+      "1. Study ideas, forms and structures that constitute physical and social environments of some communities in the world.\n2. Make analytical study of ideas, forms, movement patterns, rhythms, sounds that interest them.\n3. Develop, arrange and compose own movement patterns, lyrics, sounds, rhythms, melodies from ideas studied.\n4. Present concepts for peer review.\n5. Use feedback from peer review to improve arrangements for own compositions.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.2.2.2.3",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 2.2.2 Demonstrate understanding of how to organise own ideas through experimenting with available media and techniques for creating/composing artworks based on the history, culture, environment and topical local/national/global issues of other communities",
+    indicator:
+      "B6 2.2.2.3 Generate ideas for creating own performing artworks that reflect topical issues in the world",
+    objectives:
+      "Reflect on current topical issues using learning resources; develop concepts for composing music, dance, drama, poems to educate and sensitise the public; present concepts for peer review; discuss, compare and share; use feedback to improve compositions.",
+    exemplars:
+      "1. Reflect on current topical issues of concern in the world using learning resources (internet, libraries, videos, pictures).\n2. Come out with concepts suitable for composing music, dance, drama, poems to educate and sensitise the public on topical issues.\n3. Present concepts for peer review.\n4. Discuss, compare and share experiences through jury and peer review.\n5. Use feedback from peer review to improve arrangements for own compositions.",
+    coreCompetencies: [
+      "Decision Making",
+      "Problem Solving",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.2.3.1",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 1.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B6 1.2.3.1 Create functional and decorative visual artworks based on own views, knowledge and understanding of the medium and style of some international visual artists studied",
+    objectives:
+      "Present and share design concepts reflecting history and culture; demonstrate skills in applying medium and style of an international artist (elements/principles, materials, tools, methods: painting, modelling, casting, carving, weaving, dyeing, quilling); make own artworks similar to international artists using local materials; discuss and share through jury/peer review.",
+    exemplars:
+      "1. Present and share design concepts reflecting knowledge and understanding of history and culture of communities in the world.\n2. Demonstrate embedded knowledge, skill and experience in applying selected medium and style of an international artist (elements/principles, materials, tools, methods: painting, modelling, casting, carving, slabbing, pinching, coiling, sewing, stitching, printing, weaving, dyeing, embossing, quilling).\n3. Make own artworks similar to works and style of international artists studied using local materials and tools.\n4. Discuss, compare and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.2.3.2",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 1.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B6 1.2.3.2 Create own visual artworks that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Present design concepts reflecting physical and social environments; demonstrate skills in applying selected media and techniques (clay, plasticine, papier-mâché, straw, yarn, paper, cane, bamboo, odds and ends, paint, dyes, craft tools, paper folding, spatula, needle) to make creative and functional artworks; discuss and share.",
+    exemplars:
+      "1. Present and share design concepts reflecting knowledge and understanding of physical and social environments in the world.\n2. Demonstrate embedded knowledge, skill and experience in applying selected media and techniques to make creative and functional artworks (modelling, casting, weaving, construction/assemblage, painting, dyeing, paper folding, quilling, sewing).\n3. Discuss, compare and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.2.3.3",
+    strand: "Visual Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 1.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B6 1.2.3.3 Create own symbolic visual artworks that communicate, educate or sensitise the public on some topical issues in the world",
+    objectives:
+      "Present design concepts intended to communicate, educate or sensitise public on topical issues (Graphic arts: posters, flyers, banners, T-shirts, cartoons; Picture-Making: painting, collage, mosaic; Textiles; Sculpture; Jewellery; Leatherworks; Ceramics; Basketry); demonstrate skills in media and techniques; discuss and share.",
+    exemplars:
+      "1. Present and share design concepts intended to communicate, educate or sensitise the public on advantages/disadvantages of topical issues (Graphic arts: posters, handbills, flyers, banners, T-shirts, brochure, cartoons; Picture-Making: painting, collage, montage, mosaic; Textiles: woven/printed/dyed fabric, appliqué; Sculpture: plaque, shield, statuette, stools, staffs, reliefs, trophies; Jewellery: pendant, badge, beads, brooch; Leatherworks: bags, amulet; Ceramics/Pottery: ceremonial pots; Basketry: containers).\n2. Demonstrate embedded knowledge, skill and experience in applying selected media and techniques to make creative artworks.\n3. Discuss, compare and share experiences through jury and peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.2.2.3.1",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 2.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B6 2.2.3.1 Create own performing artworks based on own views, knowledge and understanding of the techniques and styles of some international performing artists studied",
+    objectives:
+      "Present concepts reflecting history and culture; demonstrate skills in applying techniques and style of an international artist to compose music, dance, drama, poetry; compose and share artworks similar to international artists using local media/instruments; discuss compositions through peer review.",
+    exemplars:
+      "1. Present and share concepts reflecting knowledge and understanding of history and culture of communities in the world.\n2. Demonstrate embedded knowledge, skill and experience in applying techniques and style of an international artist to compose music, dance, drama, poetry.\n3. Compose and share own music, dance, drama and poems similar to works/style of international artists using local media and instruments.\n4. Discuss compositions through peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.2.2.3.2",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 2.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B6 2.2.3.2 Create own performing artworks that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Present concepts reflecting physical and social environments; demonstrate skills in applying media, techniques, styles, movement patterns, rhythms, melodies to compose music, dance, drama, poems reflecting physical/social environments; discuss, compare and share through peer review.",
+    exemplars:
+      "1. Present and share concepts reflecting knowledge and understanding of physical and social environments of communities in the world.\n2. Demonstrate embedded knowledge, skill and experience in using selected media, techniques, styles, movement patterns, rhythms, and melodies to compose music, dance, drama, poems.\n3. Discuss, compare and share composition and experiences through peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.2.2.3.3",
+    strand: "Performing Arts",
+    subStrand: "Planning, Making and Composing",
+    contentStandard:
+      "B6 2.2.3 Demonstrate understanding of how to create expressive artworks based on own ideas by applying knowledge of media and methods of production to reflect other cultures in Africa, the visual artists, their culture, the environment and emerging topical issues",
+    indicator:
+      "B6 2.2.3.3 Create own performing artworks that communicate, educate or sensitise the public on topical issues in the world",
+    objectives:
+      "Present concepts intended to communicate, educate or sensitise public on topical issues; demonstrate skills in applying performing arts techniques, movement patterns, melodies, elements, and rhythms to compose creative artworks; discuss, compare and share through peer review.",
+    exemplars:
+      "1. Present and share concepts intended to communicate, educate or sensitise the public on topical issues of concern in the world.\n2. Demonstrate embedded knowledge, skill and experience in applying performing arts skills, techniques, movement patterns, melodies, elements, and rhythms to compose creative artworks.\n3. Discuss, compare and share composition and experiences through peer review.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.1.3.4.1",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 1.3.4. Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B6 1.3.4.1 Plan an exhibition of own functional and decorative visual artworks that reflect the medium and style of some international visual artists studied",
+    objectives:
+      "Watch video or visit exhibition centre; discuss need for displaying portfolio; develop roadmap (date, venue, audience); agree on theme; send invitations; select works based on criteria; decide mode of display; plan layout and labels; prepare hall; plan post-exhibition activities.",
+    exemplars:
+      "1. Watch short video on exhibition or visit exhibition centre (preferably GES cultural festival).\n2. Discuss need for displaying portfolio of own visual artworks.\n3. Develop roadmap for exhibition (fixing date, selecting venue, inviting audience).\n4. Brainstorm to agree on theme for exhibition.\n5. Send manual/electronic invitations (letters, postcards, WhatsApp, email, social media, jingles) to target audience.\n6. Select works considering creativity, originality, finishing, relevance to theme, social/cultural importance.\n7. Decide mode of display (hanging, draping, spreading).\n8. Plan layout of hall, prepare labels (title, artist, date).\n9. Clean and prepare hall and environment.\n10. Plan post-exhibition activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.3.4.2",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 1.3.4. Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B6 1.3.4.2 Plan an exhibition of own functional and decorative visual artworks that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Watch video or visit exhibition centre; discuss need for displaying portfolio; develop roadmap; agree on theme; send manual/electronic invitations; select works considering creativity, finishing, relevance; decide display mode; plan layout/labels; prepare hall; plan post-exhibition activities.",
+    exemplars:
+      "1. Watch short video on exhibition or visit exhibition centre.\n2. Discuss need for displaying portfolio of visual artworks.\n3. Develop roadmap for exhibition (fixing date, selecting venue, inviting audience).\n4. Brainstorm to agree on theme.\n5. Send manual/electronic invitations to target audience.\n6. Select works considering creativity, finishing, relevance to theme, social/cultural importance.\n7. Decide mode of display (hanging, draping, spreading).\n8. Plan layout and prepare labels for works.\n9. Clean and prepare hall.\n10. Plan post-exhibition activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.3.4.3",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 1.3.4. Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B6 1.3.4.3 Plan an exhibition of own functional and decorative visual artworks that communicate, educate or sensitise the public on topical issues in the world",
+    objectives:
+      "Watch video/visit exhibition centre; discuss need for displaying portfolio; develop roadmap; agree on theme; send invitations; select works based on creativity, finishing, relevance to theme; decide mode of display; plan layout/labels; prepare hall; plan post-exhibition activities.",
+    exemplars:
+      "1. Watch short video on exhibition or visit exhibition centre.\n2. Discuss need for displaying portfolio of visual artworks.\n3. Develop roadmap (fixing date, venue, audience).\n4. Brainstorm to agree on theme.\n5. Send manual/electronic invitations to target audience.\n6. Select works considering creativity, originality, finishing, relevance to theme, social/cultural importance.\n7. Decide mode of display (hanging, draping, spreading).\n8. Plan layout and prepare labels.\n9. Clean and prepare venue.\n10. Plan post-exhibition activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.2.3.4.1",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 2.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B6 2.3.4.1 Plan a display of own performing artworks to share creative experiences of the techniques and styles of some international performing artists studied",
+    objectives:
+      "Watch video/live performances; discuss need for performing compositions; develop roadmap; agree on theme; send invitations; select compositions considering creativity, lyrics, movement, dynamics, relevance; decide mode/arrangement; plan sequence and stage/site plan; prepare venue; plan post-performance activities.",
+    exemplars:
+      "1. Watch short video or live performances reflecting emerging topical issues.\n2. Discuss need for performing compositions of own music, dance, drama, poetry, etc.\n3. Develop roadmap (fixing date, venue, audience).\n4. Brainstorm to agree on theme for performance.\n5. Send manual/electronic invitations to target audience.\n6. Select compositions considering creativity, lyrics, movement patterns, dynamics, relevance to theme, social/cultural importance.\n7. Decide mode and arrangement (monologue/solo/group, costumes, props).\n8. Plan sequence of events and stage/site plan (PA system, lighting, performance zone, entry/exit, changing rooms).\n9. Clean and prepare venue.\n10. Plan post-performance activities (cleaning, appreciation, appraisal, evaluation, reporting).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.2.3.4.2",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 2.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B6 2.3.4.2 Plan a display of own performing artworks to share experiences that reflect own knowledge and understanding of the physical and social environments of some communities in the world",
+    objectives:
+      "Watch video/live performances; discuss need for performing compositions; develop roadmap; agree on theme; send invitations; select compositions; decide mode/arrangement; plan sequence and stage/site plan; prepare venue; plan post-performance activities.",
+    exemplars:
+      "1. Watch short video or live performances reflecting physical and social environments.\n2. Discuss need for performing compositions.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme.\n5. Send manual/electronic invitations.\n6. Select compositions considering creativity, lyrics, movement patterns, dynamics, relevance.\n7. Decide mode and arrangement (monologue/solo/group, costumes, props).\n8. Plan sequence of events and stage/site plan (PA system, lighting, performance zone, changing rooms).\n9. Clean and prepare venue.\n10. Plan post-performance activities (cleaning, appreciation, appraisal, evaluation, reporting).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.2.3.4.3",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 2.3.4 Demonstrate understanding of how to plan a display/presentation of a portfolio of own artworks by identifying, and preparing a venue, selecting and grouping of artworks and inviting target audience for the planned display/performance.",
+    indicator:
+      "B6 2.3.4.3 Plan a display of own performing artworks to communicate, educate or sensitise the public on topical issues in the world",
+    objectives:
+      "Watch video/live performances; discuss need for performing compositions; develop roadmap; agree on theme; send invitations; select compositions; decide mode/arrangement; plan sequence and stage/site plan; prepare venue; plan post-performance activities.",
+    exemplars:
+      "1. Watch short video or live performances reflecting emerging topical issues.\n2. Discuss need for performing compositions.\n3. Develop roadmap (date, venue, audience).\n4. Brainstorm to agree on theme.\n5. Send manual/electronic invitations.\n6. Select compositions considering creativity, lyrics, movement patterns, dynamics, relevance.\n7. Decide mode and arrangement (monologue/solo/group, costumes, props).\n8. Plan sequence of events and stage/site plan.\n9. Clean and prepare venue.\n10. Plan post-performance activities.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.1.3.5.1",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 1.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B6 1.3.5.1 Exhibit own visual artworks to share creative experiences based on ideas, knowledge and understanding of the medium and style of some international artists studied",
+    objectives:
+      "Decide on types and number of artworks (2D/3D) to exhibit and mount; display by hanging, draping, placing, spreading, leaning, plinths; label works manually or with ICT; assign individual/group responsibilities; monitor visitors against improper practices; organise opening/closing ceremonies.",
+    exemplars:
+      "1. Decide on types and number of artworks (2D and 3D) to exhibit and mount based on space available to suit theme.\n2. Display artworks by hanging, draping, placing, spreading, leaning, or using plinths to raise height/depth.\n3. Label works using manual (calligraphy) or ICT (computer prints): artist name, title, size, date.\n4. Assign tasks and responsibilities (guiding visitors, explaining concepts/theme, collecting comments).\n5. Check/monitor visitors against improper practices (touching, handling, taking exhibits).\n6. Organise opening and closing ceremonies for exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.3.5.2",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 1.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B6 1.3.5.2 Exhibit own visual artworks to share creative experiences based on ideas, knowledge and understanding of the physical and social environments of some communities in the world",
+    objectives:
+      "Decide on types and number of artworks to exhibit; display artworks; label works manually or with ICT; assign responsibilities; monitor visitors against improper practices; organise opening and closing ceremonies.",
+    exemplars:
+      "1. Decide on types and number of artworks to exhibit and mount based on space available.\n2. Display artworks by hanging, draping, placing, spreading, leaning, or using plinths.\n3. Label works manually or using ICT (artist name, title, size, date).\n4. Assign tasks and responsibilities (leading visitors, explaining concepts/theme).\n5. Monitor visitors against improper practices.\n6. Organise opening and closing ceremonies for exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.3.5.3",
+    strand: "Visual Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 1.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B6 1.3.5.3 Exhibit own visual artworks to share creative experiences that communicate, educate or sensitise the public on topical issues in the world",
+    objectives:
+      "Decide on types and number of artworks to exhibit; display artworks; label works manually or with ICT; assign tasks and responsibilities; monitor visitors; organise opening and closing ceremonies.",
+    exemplars:
+      "1. Decide on types and number of artworks to exhibit and mount based on space available.\n2. Display artworks by hanging, draping, placing, spreading, leaning, or using plinths.\n3. Label works manually or using ICT.\n4. Assign tasks and responsibilities (guiding visitors, explaining concepts/theme).\n5. Monitor visitors against improper practices.\n6. Organise opening and closing ceremonies for exhibition.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.2.3.5.1",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 2.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B6 2.3.5.1 Stage a display of own performing artworks to share creative experiences of the techniques and style of international performing artists studied",
+    objectives:
+      "Decide on types and number of compositions to perform; assign individual and group tasks (MC, ushering, explaining concepts, recording comments); arrange sequence of performances to tell story; follow programme of the day; prepare template for evaluation and clean hall.",
+    exemplars:
+      "1. Decide on types and number of compositions to be performed during event based on theme, time, and audience.\n2. Assign individual and group tasks and responsibilities (MC, ushering, introducing guests, explaining concepts, recording comments).\n3. Arrange sequence of performances to best tell story from beginning to end.\n4. Follow programme of the day (opening, performances, closing).\n5. Prepare template for appreciating, appraising, evaluating and reporting.\n6. Clean hall after performance.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.2.3.5.2",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 2.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B6 2.3.5.2 Stage a display of own performing artworks to share creative experiences of the physical and social environments of some communities in the world",
+    objectives:
+      "Decide on types and number of compositions to perform; assign individual/group tasks; arrange sequence of performances; follow programme of the day; prepare template for evaluation and clean hall.",
+    exemplars:
+      "1. Decide on types and number of compositions to perform reflecting physical and social environments.\n2. Assign individual and group tasks and responsibilities (MC, ushering, explaining concepts, recording comments).\n3. Arrange sequence of performances to tell story from beginning to end.\n4. Follow programme of the day (opening, performances, closing).\n5. Prepare template for evaluation and reporting.\n6. Clean hall after performance.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.2.3.5.3",
+    strand: "Performing Arts",
+    subStrand: "Displaying and Sharing",
+    contentStandard:
+      "B6 2.3.5 Demonstrate understanding of how to display/present a portfolio of art works that share own knowledge, concepts, ideas and experiences with audience through display/presentation; and using senses/manual/digital applications where necessary, to record for reporting on the events.",
+    indicator:
+      "B6 2.3.5.3 Stage a display of own performing artworks to share creative experiences that communicate, educate and sensitise the public on topical issues in the world",
+    objectives:
+      "Decide on types and number of compositions to perform; assign tasks and responsibilities; arrange sequence of performances; follow programme; prepare evaluation template and clean hall.",
+    exemplars:
+      "1. Decide on types and number of compositions to communicate/educate/sensitise public on topical issues.\n2. Assign individual and group tasks and responsibilities (MC, ushering, explaining concepts, recording comments).\n3. Arrange sequence of performances to best tell story.\n4. Follow programme of the day.\n5. Prepare template for evaluation and reporting.\n6. Clean hall after performance.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.1.4.6.1",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 1.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B6 1.4.6.1 Develop guidelines for appreciating and appraising own and others’ visual artworks that reflect the medium and style of the international visual artists studied",
+    objectives:
+      "Discuss and accept guide for appreciating visual artworks; identify correct vocabulary; agree on purpose and sharing of report; agree on manual/digital recording approach; fix date for appraisal/jury. Suggested guidelines: Description (elements, materials, size), Subject matter (meaning, message, mood, history, environment), Appraisal (uses, beauty, value, correlation), Experiences to share.",
+    exemplars:
+      "1. Discuss and accept a guide for appreciating and appraising visual artworks based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising artworks.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested Guidelines: Description of work, Subject matter, Appraisal, Experiences to share).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.4.6.2",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 1.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B6 1.4.6.2 Develop guidelines for appreciating and appraising own and others’ visual artworks that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Discuss and accept guide for appreciating visual artworks; identify correct vocabulary; agree on report purpose and sharing; agree on manual/digital recording approach; fix date for appraisal. Suggested guidelines: Description, Subject matter, Appraisal, Experiences to share.",
+    exemplars:
+      "1. Discuss and accept a guide for appreciating and appraising visual artworks based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising artworks.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested Guidelines: Description of work, Subject matter, Appraisal, Experiences to share).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.1.4.6.3",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 1.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B6 1.4.6.3 Develop guidelines for appreciating and appraising own and others’ visual artworks that communicate, educate and sensitise the public on topical issues in the world",
+    objectives:
+      "Discuss and accept guide for appreciating visual artworks; identify correct vocabulary; agree on report purpose and sharing; agree on manual/digital recording approach; fix date for appraisal. Suggested guidelines: Description, Subject matter, Appraisal, Experiences to share.",
+    exemplars:
+      "1. Discuss and accept a guide for appreciating and appraising visual artworks based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising artworks.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested Guidelines: Description of work, Subject matter, Appraisal, Experiences to share).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.2.4.6.1",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 2.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B6 2.4.6.1 Develop guidelines for analysing and appreciating own and others’ performing artworks that reflect the technique and style of international performing artists studied",
+    objectives:
+      "Discuss and accept guide for analysing and appreciating compositions and performances; identify correct vocabulary for music, dance, drama, poetry; agree on report purpose and sharing; agree on manual/digital recording method; fix date for appraisal/jury. Suggested guidelines: Music (theme, voice, harmony, diction), Dance (theme, movement, costume, energy), Drama (characterisation, makeup, gestures, voice projection, space).",
+    exemplars:
+      "1. Discuss and accept a guide for analysing and appreciating/appraising compositions and performances based on suggested guidelines.\n2. Identify correct vocabulary to use for appreciating and appraising music, dance, drama, poetry, etc.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.\n(Suggested guidelines: Music: Theme, voice, harmony; Dance: Movement, costume, energy; Drama: Characterisation, gestures, voice projection, space).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.2.4.6.2",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 2.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B6 2.4.6.2 Develop guidelines for appreciating and appraising own and others’ compositions and performances that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Discuss and accept guide for analysing/appreciating compositions and performances; identify correct vocabulary; agree on report purpose and sharing; agree on manual/digital recording method; fix date for appraisal. Suggested guidelines for Music, Dance, Drama.",
+    exemplars:
+      "1. Discuss and accept a guide for analysing and appreciating/appraising compositions and performances.\n2. Identify correct vocabulary to use for appreciating and appraising music, dance, drama, poetry, etc.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on approach/method (manual/digital) in recording appraisal process.\n5. Fix date for appreciation/appraisal/jury.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.2.4.6.3",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 2.4.6 Demonstrate understanding of how to analyse, appreciate, appraise/critique and present report on own works and that of others based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values), the recordings and reports",
+    indicator:
+      "B6 2.4.6.3 Develop guidelines for appreciating and appraising own and others’ performing artworks that communicate, educate or sensitise the public on topical issues in the world",
+    objectives:
+      "Discuss and accept guide for analysing/appreciating compositions and performances; identify correct vocabulary; agree on report purpose and sharing; agree on recording method; fix date for appraisal. Suggested guidelines for Music, Dance, Drama.",
+    exemplars:
+      "1. Discuss and accept a guide for analysing and appreciating/appraising compositions and performances.\n2. Identify correct vocabulary to use for appreciating music, dance, drama, poetry, etc.\n3. Agree on what to use appraisal report for and how to share it.\n4. Agree on recording method (manual/digital).\n5. Fix date for appreciation/appraisal/jury.",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.1.4.7.1",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 1.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B6 1.4.7.1 Analyse and appreciate own or others’ artworks and present reports as feedback on artworks that reflect the medium and style of international performing artists studied",
+    objectives:
+      "Display selected works depicting medium and style of international artists; talk about works dispassionately using agreed guidelines; use outcome to modify product or produce similar artwork; record activity and share using social media (Facebook, Twitter, Instagram, WhatsApp).",
+    exemplars:
+      "1. Display (real/photographs/video) selected works depicting medium and style of international artists studied.\n2. Talk about works dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar/another artwork.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.1.4.7.2",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 1.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B6 1.4.7.2 Analyse and appreciate own or others’ performing artworks and present reports as feedback on artworks that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Display selected works reflecting physical and social environment; talk about works dispassionately using agreed guidelines; use outcome to modify product or produce similar artwork; record/document activity and share using social media.",
+    exemplars:
+      "1. Display (real/photographs/video) selected works reflecting physical and social environment of communities in the world.\n2. Talk about works dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar artwork.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.1.4.7.3",
+    strand: "Visual Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 1.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B6 1.4.7.3 Analyse and appreciate own or others’ performing artworks and present reports as feedback on artworks that communicate, educate or sensitise public on topical issues in the world",
+    objectives:
+      "Display selected works communicating, educating or sensitising public on topical issues; talk about works dispassionately using agreed guidelines; use outcome to modify product; record and share using social media.",
+    exemplars:
+      "1. Display (real/photographs/video) selected works communicating, educating or sensitising public on emerging topical/global issues.\n2. Talk about works dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar artwork.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Technology",
+    ],
+  },
+  {
+    code: "B6.2.4.7.1",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 2.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B6 2.4.7.1 Analyse and appreciate own or others’ performing artworks and present reports as feedback on artworks that reflect the techniques and styles of the international performing artists studied",
+    objectives:
+      "Display photographs/video of selected performances depicting techniques and styles of international artists studied; talk about performances dispassionately using agreed guidelines; use outcome to modify product or produce similar composition/performance; record and share using social media.",
+    exemplars:
+      "1. Display photographs/video of selected performances depicting techniques and styles of international artists studied.\n2. Talk about performances dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar composition/performance.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.2.4.7.2",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 2.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B6 2.4.7.2 Analyse and appreciate/appraise own or others’ music, dance and drama compositions and performances and present reports/feedback on works that reflect the physical and social environments of some communities in the world",
+    objectives:
+      "Display photographs/video of selected performances reflecting physical and social environments; talk about performances dispassionately using agreed guidelines; use outcome to modify product; record and share using social media.",
+    exemplars:
+      "1. Display photographs/video of selected performances reflecting physical and social environments of communities in the world.\n2. Talk about performances dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar composition/performance.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
+  },
+  {
+    code: "B6.2.4.7.3",
+    strand: "Performing Arts",
+    subStrand: "Appreciating and Appraising",
+    contentStandard:
+      "B6 2.4.7 Demonstrate understanding of how to make informed decisions on displays, presentations, performances, recordings and/or reports based on established guide for judging artworks (the theme, subject matter, media, techniques, elements and principles of design, social, aesthetic, cultural and functional values) for correlation, correction and future modifications",
+    indicator:
+      "B6 2.4.7.3 Analyse and appreciate own or others’ performing artworks and present reports as feedback on artworks that communicate, educate or sensitise the public on topical issues in the world",
+    objectives:
+      "Display photographs/video of selected performances communicating, educating or sensitising public on topical issues; talk about performances dispassionately using agreed guidelines; use outcome to modify product or produce similar composition; record and share using social media.",
+    exemplars:
+      "1. Display photographs/video of selected performances communicating, educating or sensitising on advantages/disadvantages of topical issues.\n2. Talk about performances dispassionately using agreed guidelines.\n3. Use outcome of appreciation/appraisal to modify product or produce similar composition/performance.\n4. Record/document activity and share using accepted social media (Facebook, Twitter, Instagram, WhatsApp).",
+    coreCompetencies: [
+      "Decision Making",
+      "Creativity and Innovation",
+      "Communication",
+      "Collaboration",
+      "Digital Literacy",
+    ],
   },
 ];
 
@@ -1046,6 +3938,11 @@ const basic9Indicators: GESIndicator[] = [
 
 export const CreativeArts: Record<string, GESIndicator[]> = {
   "Basic 4": basic4Indicators,
+  "Primary 4": basic4Indicators,
+  "Basic 5": basic5Indicators,
+  "Primary 5": basic5Indicators,
+  "Basic 6": basic6Indicators,
+  "Primary 6": basic6Indicators,
   "JHS 1": basic7Indicators,
   "Basic 7": basic7Indicators,
   "JHS 2": basic8Indicators,

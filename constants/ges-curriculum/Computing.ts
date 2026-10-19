@@ -4,34 +4,272 @@ const basic4Indicators: GESIndicator[] = [
   {
     code: "B4.1.1.1.1",
     strand: "Introduction to Computing",
-    subStrand: "Hardware and Software Components",
-    contentStandard: "Identify input, output and storage devices of a computer system",
-    indicator: "Identify keyboard, mouse, monitor, CPU box, printer, speaker, USB flash drive",
-    objectives: "Distinguish between input devices (keyboard, mouse) and output devices (monitor, printer)."
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B4.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B4.1.1.1.1. Identify parts of a computer and technology tools (mouse, keyboard, monitor, system unit and its components (memory, hard disk drive, CD-ROM etc.), speakers, and peripherals)",
+    objectives: "Bring items such as memory (memory cards, memory sticks), hard disk drive, CD-ROM etc. or pictures of these items to class and ask the learners to label selected items or computer parts in their notebooks.",
+    exemplars: "Bring items such as memory (i.e. memory cards, memory sticks), hard disk drive, CD-ROM etc. or pictures of these items to class and ask the learners to label selected items or computer parts in their note books.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Cultural Identity and Global Citizenship (CG)", "Personal Development and Leadership (PL)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.1.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B4.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B4.1.1.1.2. Describe the types of input devices of a computer and their uses (e.g. joystick, light pen, mouse, pointing stick etc.)",
+    objectives: "Bring input devices to class. Guide learners to explore the types of input devices and their uses.",
+    exemplars: "Bring input devices to class. Guide learners to explore the types of input devices and their uses.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.1.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B4.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B4.1.1.1.3. Differentiate between RAM and ROM",
+    objectives: "Bring a RAM or ROM (or picture) to class. Guide learners to differentiate between ROM and RAM.",
+    exemplars: "Bring a RAM or ROM to class or a picture of RAM and ROM to class. Guide learners to differentiate between ROM and RAM.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.1.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B4.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B4.1.1.1.4. Type short phrases",
+    objectives: "Guide learners to type different phrases using any Word Processing Application.",
+    exemplars: "Guide learners to type different phrases using any Word Processing Application.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.1.1.5",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B4.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B4.1.1.1.5. Summarise the first generation of computers which used vacuum tubes as a major piece of technology",
+    objectives: "Guide learners to discuss about the first generation of computers (e.g. ENIAC, EDVAC, UNIVAC, IBM-701 etc.).",
+    exemplars: "Guide learners to discuss about the first generation of computers. e.g. ENIAC, EDVAC, UNIVAC, IBM-701 etc.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.2.1.1",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B4.1.2.1: Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B4.1.2.1.1. Describe the desktop background and explain its features (e.g. image, icons and Taskbar of the background)",
+    objectives: "Guide learners to explore the desktop background and explain its features (wallpaper, icons of files/folders, taskbar). Show different desktop background images to learners.",
+    exemplars: "Guide learners to explore the desktop background and explain its features (wallpaper, icons of files and folders, taskbar etc.). Show different desktop background images to learners. Assist them to explain its features.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.2.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B4.1.2.1: Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B4.1.2.1.2. Demonstrate how to Personalise the Desktop Background using required tools and settings",
+    objectives: "Show projected examples of personalised Desktop Background with the aid of a projector or pictures and guide learners to personalise it using settings.",
+    exemplars: "Show projected examples of personalised Desktop Background to learners with the aid of a projector or pictures. Guide learners to personalise the Desktop Background using the required tools and settings.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.2.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B4.1.2.1: Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B4.1.2.1.3. Demonstrate the use of the Sections of the Taskbar; Start Menu (Location and Launching only), Pinned Applications (Launched / Minimised programmes) and Notification Area or system tray (Date & Time, and Volume)",
+    objectives: "Guide learners to explore the use of the Taskbar, Start Menu, Pinned Applications, and Notification Area.",
+    exemplars: "Guide learners to explore the use of the Taskbar, Start Menu, and Pinned Applications and Notification Area.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.2.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B4.1.2.1: Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B4.1.2.1.4. Adding and removing icons from the desktop",
+    objectives: "Guide learners to add and remove icons from the desktop.",
+    exemplars: "Guide learners to add and remove icons from the desktop.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.2.1.5",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B4.1.2.1: Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B4.1.2.1.5. Moving, selecting and hiding multiple icons on the desktop",
+    objectives: "Guide learners to move, select and hide icons on the desktop.",
+    exemplars: "Guide learners to move, select and hide icons on the desktop.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.2.1.6",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B4.1.2.1: Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B4.1.2.1.6. Creating, naming and renaming a folder",
+    objectives: "Guide learners to create, name and rename a folder.",
+    exemplars: "Guide learners to create, name and rename a folder.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.3.1.1",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B4.1.3.1. Identify Data and collect data from different sources",
+    indicator: "B4.1.3.1.1. Use strategies for identifying data in conversation and newspapers",
+    objectives: "Guide learners to discuss strategies which can be used to identify data and information in conversation and newspapers.",
+    exemplars: "Guide learners to discuss strategies, which can be used to identify data and information. Use different approaches to aid identify data in conversation and newspaper e.g. grouping students, role play etc.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.3.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B4.1.3.1. Identify Data and collect data from different sources",
+    indicator: "B4.1.3.1.2. Use strategies for classifying data into information (i.e. sorting and classifying)",
+    objectives: "Guide learners to identify and record data in different forms (e.g. age, shoe size) and extract/classify relevant data into information.",
+    exemplars: "Guide learners to identify and record data in the different forms (e.g. age, shoe size, etc.) Assist learners to extract and classify the relevant data into information.",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.3.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B4.1.3.1. Identify Data and collect data from different sources",
+    indicator: "B4.1.3.1.3. Identify primary sources of information (photographs, audio recordings, video recordings, film, letters and diaries, speeches, published books, newspapers and magazines, government publications, oral histories, etc.)",
+    objectives: "Guide learners in groups to discuss where one can get data and information and make a presentation on it to the class.",
+    exemplars: "Guide learners in groups to discuss where one can get data and information and make a presentation on it to the class.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.3.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B4.1.3.1. Identify Data and collect data from different sources",
+    indicator: "B4.1.3.1.4. Demonstrate Sending and sharing information to and from other gadgets (e.g. radio, fax, telephones calls, SMS etc.)",
+    objectives: "Guide learners to mention or talk about where one can receive or share information in the community and the world as a whole.",
+    exemplars: "Guide learners to mention or talk about where one can receive or share information in the community and the world as a whole.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.3.1.5",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B4.1.3.1. Identify Data and collect data from different sources",
+    indicator: "B4.1.3.1.5. Demonstrate basic calculations on sample data (e.g. sum, percentage, average etc.)",
+    objectives: "Guide learners to perform basic calculations on sample data they have collected using sum, average, percentages etc.",
+    exemplars: "Guide learners to perform basic calculations on sample data they have been made to collect using sum, average, percentages etc.",
+    coreCompetencies: ["Arithmetic", "Critical Thinking and Problem Solving (CP)"]
+  },
+  {
+    code: "B4.1.3.2.1",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B4.1.3.2. Demonstrate data collection using Data collection tools",
+    indicator: "B4.1.3.2.1. Identify the steps and issues involved in data collection",
+    objectives: "Guide learners to explore steps (reasons, goals, planning approach, collecting & interpreting data) and issues (unavailability, intentional manipulation, random errors) in data collection.",
+    exemplars: "Guide learners to explore: I. steps (reasons, goals, planning approach, collecting & interpreting) II. issues (unavailability of data, intentional manipulation, random errors).",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.3.2.2",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B4.1.3.2. Demonstrate data collection using Data collection tools",
+    indicator: "B4.1.3.2.2. Describe various tools or techniques of data collection (e.g. interview, observation, checklist etc.)",
+    objectives: "Guide learners to explore tools for collecting data and aid them to make practical examples of various tools.",
+    exemplars: "Guide learners to explore the tools for collecting data and aid them to make practical examples of the various tools.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.3.2.3",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B4.1.3.2. Demonstrate data collection using Data collection tools",
+    indicator: "B4.1.3.2.3. Draw or sketch maps of the area to be surveyed",
+    objectives: "Bring diagrams or pictures of area(s) surveyed. Guide learners to sketch maps of an area to be surveyed by them.",
+    exemplars: "Bring diagrams or pictures of area(s) surveyed. Guide learners to sketch maps of an area to be surveyed by them.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.4.1.1",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community (Communication)",
+    contentStandard: "B4.1.4.1. Demonstrate the use of technology in the community",
+    indicator: "B4.1.4.1.1. Describe how digital systems are used and could be used at home, in school and the local community",
+    objectives: "Guide learners to mention and describe how digital systems (computers, mobile phones, megaphones etc.) are used at home, school, and community.",
+    exemplars: "Guide learners to mention and describe how digital systems (computers, mobile phones, megaphones etc.) are used and could be used at home, in school and the local community.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.4.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community (Communication)",
+    contentStandard: "B4.1.4.1. Demonstrate the use of technology in the community",
+    indicator: "B4.1.4.1.2. Identify and list common examples of energy-efficient gadgets and techniques used in homes, in schools and in the local communities (e.g. energy saving bulbs, choosing right appliances, cleaning stoves, reducing cooking time)",
+    objectives: "Bring pictures of energy-efficient gadgets to class and guide learners to discuss in groups and present examples of devices and techniques.",
+    exemplars: "Bring pictures of energy-efficient gadgets or devices to class. Guide learners to discuss in groups of five or less and present examples of energy-efficient devices and techniques.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.4.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community (Communication)",
+    contentStandard: "B4.1.4.1. Demonstrate the use of technology in the community",
+    indicator: "B4.1.4.1.3. Describe how a range of digital systems (hardware and software) and their peripheral devices can be used for different purposes in the community",
+    objectives: "Guide learners to discuss in groups of three to five, the range of digital systems and their peripheral devices and how they are used in the community.",
+    exemplars: "Guide learners to discuss in groups of three to five, the range of digital systems and their peripheral devices. How they can be used for different purposes in the community.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.1.4.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community (Communication)",
+    contentStandard: "B4.1.4.1. Demonstrate the use of technology in the community",
+    indicator: "B4.1.4.1.4. Identify technological changes in the community (e.g. Using automated irrigation for farming, eco-friendly pesticides and manure, etc.)",
+    objectives: "Guide learners to explore technological changes in the community or world around them and present findings to class.",
+    exemplars: "Guide learners to explore technological changes in the community or in the world. Let learners find examples and present findings to the class.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
   },
   {
     code: "B4.2.1.1.1",
-    strand: "Productivity Software",
-    subStrand: "Word Processing",
-    contentStandard: "Demonstrate basic word processing skills",
-    indicator: "Open a word processor, type short sentences, select text, change font size and color",
-    objectives: "Type text using proper keyboard fingers and apply simple formatting (bold, color, font size)."
+    strand: "Presentation",
+    subStrand: "Introduction to MS-PowerPoint (Tabs and Ribbons of MS-PowerPoint)",
+    contentStandard: "B4.2.1.1. Demonstrate the use of MS- PowerPoint",
+    indicator: "B4.2.1.1.1. Demonstrate the use of clipboard, slides, fonts, paragraph and editing in the ribbons under the home ribbons section",
+    objectives: "Guide learners to explore the use of the clipboard, slides, fonts, paragraph, and editing features in MS-PowerPoint under the Home tab.",
+    exemplars: "Guide learners to explore the use of the clipboard, slides, fonts, paragraph, and editing features in MS- PowerPoint under the Home tab.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B4.2.1.1.2",
+    strand: "Presentation",
+    subStrand: "Introduction to MS-PowerPoint (Tabs and Ribbons of MS-PowerPoint)",
+    contentStandard: "B4.2.1.1. Demonstrate the use of MS- PowerPoint",
+    indicator: "B4.2.1.1.2. Show a 3-slide presentation using clipboard, slides, fonts, paragraph and editing of the ribbons studied",
+    objectives: "Guide learners to prepare and present a project using clipboard, slides, fonts, paragraph, and editing ribbons in MS-PowerPoint to the class.",
+    exemplars: "Guide learners to prepare and present a prepared project or exercise using clipboard, slides, fonts, paragraph and editing of the ribbons studied in MS-PowerPoint to the class.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
   },
   {
     code: "B4.3.1.1.1",
-    strand: "Communication Networks",
-    subStrand: "Introduction to Internet",
-    contentStandard: "Understand the internet and web browsers",
-    indicator: "Identify web browser icons (Chrome, Edge) and state uses of the internet",
-    objectives: "Explain how the internet connects computers worldwide for information search and learning."
+    strand: "Word Processing",
+    subStrand: "Introduction to Word Processing (Tabs and Ribbons of Word Processing)",
+    contentStandard: "B4.3.1.1. Demonstrate understanding of the use of word processing application",
+    indicator: "B4.3.1.1.1. Demonstrate how to use the clipboard, styles, fonts, paragraph and editing",
+    objectives: "Guide learners to use clipboard, styles, fonts, paragraph and editing in the Home Tab of MS-Word.",
+    exemplars: "Guide learners to use clipboard, styles, fonts, paragraph and editing in the Home Tab of MS –Word.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
   },
   {
-    code: "B4.4.1.1.1",
-    strand: "Computational Thinking",
-    subStrand: "Algorithms and Block Coding",
-    contentStandard: "Understand basic algorithm steps and block-based programming",
-    indicator: "Follow sequential steps (recipes, directions) and create simple drag-and-drop block code",
-    objectives: "Design simple step-by-step instructions to solve daily tasks and move sprites in Scratch."
+    code: "B4.3.1.1.2",
+    strand: "Word Processing",
+    subStrand: "Introduction to Word Processing (Tabs and Ribbons of Word Processing)",
+    contentStandard: "B4.3.1.1. Demonstrate understanding of the use of word processing application",
+    indicator: "B4.3.1.1.2. Illustrate the use of the clip board, styles, fonts, paragraph and editing",
+    objectives: "Guide learners to use the clipboard, styles, fonts, paragraph and editing feature under the Home tab on a simple word document.",
+    exemplars: "Guide learners to use the clipboard, styles, fonts, paragraph and editing feature under the Home tab and let learners explore on a simple word document.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
   }
 ];
 
@@ -39,34 +277,822 @@ const basic5Indicators: GESIndicator[] = [
   {
     code: "B5.1.1.1.1",
     strand: "Introduction to Computing",
-    subStrand: "Operating Systems and File Management",
-    contentStandard: "Demonstrate desktop navigation and file/folder organization",
-    indicator: "Create, rename, copy, paste, and delete folders on desktop environment",
-    objectives: "Organize files logically into named folders and subfolders on a computer hard drive."
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B5.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B5.1.1.1.1. Recognise and use output devices",
+    objectives: "Guide learners to recall what they learnt in previous classes and mention computer devices that produce output: Softcopy (computer monitor/projector, audio signals) and Hardcopy (printed images, pictures, documents).",
+    exemplars: "Guide learners to recall output devices. Softcopy: computer monitor/projector, audio electrical signals. Hardcopy: printed images, pictures, documents.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Cultural Identity and Global Citizenship (CG)", "Personal Development and Leadership (PL)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.1.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B5.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B5.1.1.1.2. Describe the types of output device and identify their uses",
+    objectives: "Guide learners to identify types of output devices and their uses and list them on the board.",
+    exemplars: "Guide learners to identify types of output devices and their uses. Assist them to list them on the board as well as their uses.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.1.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B5.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B5.1.1.1.3. Distinguish the difference and similarities between analogue and digital devices (e.g. telephone, mobile phone, radio, tablets, satellite etc.)",
+    objectives: "Guide learners to identify similarities and differences between analogue and digital devices.",
+    exemplars: "Present examples of analogue and digital devices to learners. Aid them to mention other examples and notice differences.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.1.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B5.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B5.1.1.1.4. Identify the left, right mouse button, holding of mouse, performing single, double and triple clicking and dragging object",
+    objectives: "Guide learners to use the mouse to perform single, double, and triple clicking and dragging objects into folders.",
+    exemplars: "Guide learners to use the mouse to perform single, double and triple clicking and dragging object into a folder.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.1.1.5",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B5.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B5.1.1.1.5. Identify home row keys, top row, bottom row keys, numerical pad and type (short sentences)",
+    objectives: "Guide learners to type using top row, bottom row, numerical pad and type a 50-word essay using Word Processor or typing tutorial.",
+    exemplars: "Guide learners to type using top row keys, bottom row keys, numerical pad and type an essay (50 words) using Word Processor or typing tutorial.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.1.1.6",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B5.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B5.1.1.1.6. Introduction to Windows Interface",
+    objectives: "Guide learners to list features (Start Menu Returns, Cortana, Xbox App, Spartan Browser) and compatibility issues of Windows 10.",
+    exemplars: "Guide learners to list the features and compatibility issues of Windows 10 using leading questions.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.1.1.7",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B5.1.1.1: Identify parts of a computer and technology tools",
+    indicator: "B5.1.1.1.7. Summarise the generation of computers",
+    objectives: "Guide learners to recall previous classes and identify differences between computer types, advantages, and disadvantages.",
+    exemplars: "Guide learners to recall what has been learnt in previous classes and use scenarios to identify differences between computer types.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.2.1.1",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B5.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B5.1.2.1.1. Personalise the Desktop Background and edit its images (e.g. image, icons and Taskbar of the background)",
+    objectives: "Guide learners to create their own background picture using Paint and set it as background picture.",
+    exemplars: "Guide learners to create their own background picture using any application (e.g. Paint) and set it as background picture.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.2.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B5.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B5.1.2.1.2. Recognise how to customise the Desktop Background using Change Background, Start menu and Pin to taskbar or start menu",
+    objectives: "Guide learners to identify and use taskbar, start menu, and pin items.",
+    exemplars: "Guide learners to identify and use taskbar, start menu, etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.2.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B5.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B5.1.2.1.3. Describe how to Personalise the Desktop Background using advance tools and settings",
+    objectives: "Guide learners to customize the Start Menu and Notification Area.",
+    exemplars: "Guide learners to customize the Start Menu and the Notification Area.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.2.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B5.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B5.1.2.1.4. Creating a shortcut, adding or removing common icons on the desktop",
+    objectives: "Guide learners to create shortcuts of icons on the desktop.",
+    exemplars: "Guide learners to create shortcuts of icons on the computers' desktop.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.2.1.5",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B5.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B5.1.2.1.5. Moving, copying and pasting a file or icon into and from a folder on the desktop",
+    objectives: "Guide learners to copy and paste a file or icon into and from a desktop folder.",
+    exemplars: "Guide learners to copy and paste a file or icon into and from a folder on the desktop.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.2.1.6",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B5.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B5.1.2.1.6. Demonstrate understanding of the File Explorer window and locations of the computer through the file explorer",
+    objectives: "Guide learners to use File Explorer to locate files and folders.",
+    exemplars: "Guide learners to use the file explorer to locate files.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.3.1.1",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.1. Use Strategies for identifying data from results of an experiment",
+    objectives: "Guide learners to identify types of data (qualitative and quantitative) and convert data from one format to another without losing value.",
+    exemplars: "Guide learners to identify qualitative and quantitative data and convert formats without losing value.",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.3.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.2. Identify primary sources of information (e.g. photographs, audio, video recordings, letters etc.)",
+    objectives: "Guide learners to record data from primary sources, bring to class, and group by similarities.",
+    exemplars: "Task learners to record data from primary sources and bring to class to group according to similarities.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.3.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.3. Identify secondary sources of information (e.g. radio, fax, telephone calls, SMS etc.)",
+    objectives: "Guide learners to identify secondary sources, record data from radio news, and group items by similarities.",
+    exemplars: "Task learners to record data from news on the radio and bring to class to group according to similarities.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.3.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.4. Demonstrate sending and sharing information (e.g. arranging data, sorting and calculations etc.)",
+    objectives: "Task learners to sort data in alphabetical order and perform basic calculations (multiplying, dividing, adding, age calculations).",
+    exemplars: "Task learners to sort data in alphabetical order and perform basic calculations such as multiplying, dividing and adding.",
+    coreCompetencies: ["Arithmetic", "Critical Thinking and Problem Solving (CP)"]
+  },
+  {
+    code: "B5.1.3.1.5",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.5. Demonstrate basic calculations on sample data (e.g. arranging, summing and averaging data)",
+    objectives: "Guide learners to add and find average of collected data and present findings.",
+    exemplars: "Guide learners to add and find the average data collected and present their findings to the class.",
+    coreCompetencies: ["Arithmetic", "Communication and Collaboration (CC)"]
+  },
+  {
+    code: "B5.1.3.1.6",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.6. Recognise data types (integer, double, float)",
+    objectives: "Divide learners into groups to mention numbers and identify data types (integer, double, float).",
+    exemplars: "Divide learners into two groups and ask one group to mention a number and the other group to identify data type.",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.3.1.7",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.7. Demonstrate sending and sharing information",
+    objectives: "Guide learners to send messages to each other via SMS, email, etc.",
+    exemplars: "Guide learners to send messages to each other via SMS, email. etc.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.3.1.8",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.8. Select the samples and collect data (e.g. listening to radio, newspaper, talking to people etc.)",
+    objectives: "Put learners into groups, task them to interview teachers using simple questionnaire, and record data.",
+    exemplars: "Put learners into groups, task them to interview teachers using simple questionnaire, and record data in books.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Critical Thinking and Problem Solving (CP)"]
+  },
+  {
+    code: "B5.1.3.1.9",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.9. Make simple tables and diagrams from the collected data",
+    objectives: "Guide learners to select appropriate data collection tools and make simple tables/diagrams.",
+    exemplars: "Bring tools or pictures of tools and ask learners to select tools for collecting data and create simple tables/diagrams.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.3.1.10",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B5.1.3.1. Illustrate the use of Data and identify their sources",
+    indicator: "B5.1.3.1.10. Analyse tables, maps, diagrams, photographs and charts, and generalize the results and make suggestions (e.g. Finding sum or grand total)",
+    objectives: "Task learners to calculate average, mean, sum, and difference between collected data.",
+    exemplars: "Task learners to calculate the average, mean, sum and difference between data collected in an earlier class.",
+    coreCompetencies: ["Arithmetic", "Critical Thinking and Problem Solving (CP)"]
+  },
+  {
+    code: "B5.1.4.1.1",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community (Communication)",
+    contentStandard: "B5.1.4.1. Demonstrate the use of Technology in the community",
+    indicator: "B5.1.4.1.1. List the effects of technology on the community",
+    objectives: "Guide learners to investigate positive effects (health care, education, agriculture) and negative effects (resource depletion, pollution, privacy).",
+    exemplars: "Positive effects: health care, education, manufacturing, agriculture. Negative effects: resource depletion, pollution, privacy.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.4.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community (Communication)",
+    contentStandard: "B5.1.4.1. Demonstrate the use of Technology in the community",
+    indicator: "B5.1.4.1.2. Explain the fundamentals of digital system components (hardware, software and networks)",
+    objectives: "Guide learners to brainstorm the basics of digital system components: hardware, software, and networks.",
+    exemplars: "Guide learners to brainstorm the basics of digital system components such as hardware, software and networks.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.4.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community (Communication)",
+    contentStandard: "B5.1.4.1. Demonstrate the use of Technology in the community",
+    indicator: "B5.1.4.1.3. Discuss how technology is used to save lives in community and how they are used",
+    objectives: "Guide learners to explore how technology is used to save lives in communities and present findings.",
+    exemplars: "Group learners into groups of maximum five and let them present their findings on life-saving technology to class.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.1.4.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community (Communication)",
+    contentStandard: "B5.1.4.1. Demonstrate the use of Technology in the community",
+    indicator: "B5.1.4.1.4. Discuss the effects of technology on the community",
+    objectives: "Guide learners to brainstorm effects of technology on community using videos or pictures.",
+    exemplars: "Show learners videos or pictures of effects of technology and let them discuss in groups the effects on their own community.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
   },
   {
     code: "B5.2.1.1.1",
-    strand: "Productivity Software",
-    subStrand: "Presentation Software",
-    contentStandard: "Create simple electronic presentations using MS PowerPoint",
-    indicator: "Add slides, insert text boxes, images, and apply slide transitions",
-    objectives: "Design a 3-slide presentation on a class project with titles, bullet points, and images."
+    strand: "Presentation",
+    subStrand: "Introduction to MS-PowerPoint (Tabs and Ribbons of MS-PowerPoint)",
+    contentStandard: "B5.2.1.1. Demonstrate how to use Microsoft PowerPoint",
+    indicator: "B5.2.1.1.1. Show the use of Insert, design, animation and transition in the ribbons section (New, Open, Save, Save As, Print and Close)",
+    objectives: "Ask learners to use File menu, Insert, and Design ribbons to create a slide and draw the Ghana flag using shapes.",
+    exemplars: "Ask learners to use File menu, Insert, and Design Ribbons to create a new MS-PowerPoint slide and draw the Ghana flag using shapes.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.2.1.1.2",
+    strand: "Presentation",
+    subStrand: "Introduction to MS-PowerPoint (Tabs and Ribbons of MS-PowerPoint)",
+    contentStandard: "B5.2.1.1. Demonstrate how to use Microsoft PowerPoint",
+    indicator: "B5.2.1.1.2. Show a 5-slide presentation using Insert, design, animation and transition of the ribbons studied",
+    objectives: "Ask learners to design a colorful 5-page MS-PowerPoint presentation on the topic 'Myself'.",
+    exemplars: "Ask learners to use File menu, Insert and Design Ribbons to design a colourful 5-paged MS-PowerPoint on the topic 'Myself'.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
   },
   {
     code: "B5.3.1.1.1",
-    strand: "Communication Networks",
-    subStrand: "Web Searching and Cyber Safety",
-    contentStandard: "Demonstrate safe internet search techniques and digital etiquette",
-    indicator: "Use search engines (Google) with keywords and observe online safety rules",
-    objectives: "Formulate effective search terms and identify online safety risks (passwords, stranger safety)."
+    strand: "Word Processing",
+    subStrand: "Introduction to Word Processing (Tabs and Ribbons of Word Processing)",
+    contentStandard: "B5.3.1.1. Illustrate the use of word processing",
+    indicator: "B5.3.1.1.1. Demonstrate the use of Insert, Design, and Layout (New, Open, Save, Save As, Print and Close) ribbons",
+    objectives: "Guide learners to use File menu, Insert, Design and Layout ribbons in MS Word.",
+    exemplars: "Guide learners to use File menu, Insert, Design and Layout Ribbon.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
   },
   {
-    code: "B5.4.1.1.1",
-    strand: "Computational Thinking",
-    subStrand: "Loops and Conditional Logic",
-    contentStandard: "Apply loops (repeat) and conditional logic (If-Then) in Scratch",
-    indicator: "Construct Scratch scripts using repeat loops, motion blocks, and event triggers",
-    objectives: "Animate a sprite to move in a square using repeat loops and spacebar triggers."
+    code: "B5.3.1.1.2",
+    strand: "Word Processing",
+    subStrand: "Introduction to Word Processing (Tabs and Ribbons of Word Processing)",
+    contentStandard: "B5.3.1.1. Illustrate the use of word processing",
+    indicator: "B5.3.1.1.2. Illustrate the use Insert, Design and Layout",
+    objectives: "Guide learners to create and format a document using Insert, Design, and Layout ribbons.",
+    exemplars: "Guide the learners to create and format a document.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.5.1.3.1",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming",
+    contentStandard: "B5.5.1.3. Demonstrate how to use Databases",
+    indicator: "B5.5.1.3.1. Describe databases",
+    objectives: "Guide learners to identify features of a database and types of databases that exist.",
+    exemplars: "Guide learners to identify features of a database and types of databases. Ask learners to select databases from a list.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.5.1.3.2",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming",
+    contentStandard: "B5.5.1.3. Demonstrate how to use Databases",
+    indicator: "B5.5.1.3.2. Discuss the importance and uses of database",
+    objectives: "Play video of database importance and explain how databases organize data to model reality.",
+    exemplars: "Play a video of the importance and uses of databases. Assist learners to realize database designers model reality.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.5.1.3.3",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming",
+    contentStandard: "B5.5.1.3. Demonstrate how to use Databases",
+    indicator: "B5.5.1.3.3. Describe the types of database",
+    objectives: "Guide learners to describe the types of database systems.",
+    exemplars: "Guide learners to describe the types of database.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.5.1.3.4",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming",
+    contentStandard: "B5.5.1.3. Demonstrate how to use Databases",
+    indicator: "B5.5.1.3.4. Identify types of databases and data",
+    objectives: "Guide learners to investigate types of databases and data and present findings.",
+    exemplars: "Guide learners to investigate in groups on types of databases and data. Let learners present findings to class.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.5.1.3.5",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming",
+    contentStandard: "B5.5.1.3. Demonstrate how to use Databases",
+    indicator: "B5.5.1.3.5. Explain fundamental database concepts",
+    objectives: "Guide learners to explore core concepts: tables, data types, data selection, security, backup & restore.",
+    exemplars: "Guide learners to explore fundamental database concepts e.g. tables, data types, selection, security, backup and restore.",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.5.1.3.6",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming",
+    contentStandard: "B5.5.1.3. Demonstrate how to use Databases",
+    indicator: "B5.5.1.3.6. Discuss programming languages and their use (e.g. Scratch, VB.NET etc.)",
+    objectives: "Guide learners to investigate programming languages and their uses in problem solving.",
+    exemplars: "Guide learners to investigate in groups on programming languages and their use (e.g. Scratch, VB.NET etc.).",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.5.1.2.1",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B5.5.1.2. Demonstrate how to use Electronic Spreadsheet",
+    indicator: "B5.5.1.2.1. Identify Electronic Spreadsheets and their uses",
+    objectives: "Play video on electronic spreadsheets and guide learners to list examples (MS Excel, Numbers, Google Sheets, Lotus 1-2-3).",
+    exemplars: "Play video on Electronic Spreadsheets and their uses in society. Assist learners to list examples (MS Excel, Numbers, Google Sheets, Lotus 1-2-3 etc.).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.5.1.2.2",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B5.5.1.2. Demonstrate how to use Electronic Spreadsheet",
+    indicator: "B5.5.1.2.2. Learners discuss the importance of Electronic Spreadsheets",
+    objectives: "Guide learners to discuss the importance and practical uses of electronic spreadsheets.",
+    exemplars: "Guide learners to discuss the importance of Electronic Spreadsheets and what they are used for.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.5.1.2.3",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B5.5.1.2. Demonstrate how to use Electronic Spreadsheet",
+    indicator: "B5.5.1.2.3. Learners get familiar with the interface of MS-Excel",
+    objectives: "Guide learners to demonstrate how to access MS-Excel and display text in cells.",
+    exemplars: "Guide Learners to demonstrate how to access MS-Excel on any computer or gadget and display text in MS-Excel.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.1.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Network Overview",
+    contentStandard: "B5.6.1.1. Demonstrate how to Network computers",
+    indicator: "B5.6.1.1.1. Explain what a network is",
+    objectives: "Guide learners to discuss how devices communicate and demonstrate connectivity between nodes.",
+    exemplars: "Guide the learners to discuss how devices communicate. Demonstrate simple connectivity between nodes.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.1.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Network Overview",
+    contentStandard: "B5.6.1.1. Demonstrate how to Network computers",
+    indicator: "B5.6.1.1.2. Describe how the internet works",
+    objectives: "Guide learners to distinguish between PAN, LAN, MAN, WAN and Internet.",
+    exemplars: "Guide learners to distinguish between PAN, LAN, MAN, WAN and Internet.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.1.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Network Overview",
+    contentStandard: "B5.6.1.1. Demonstrate how to Network computers",
+    indicator: "B5.6.1.1.3. Explain what the Internet is",
+    objectives: "Guide learners to discuss the interconnection of computers (network of networks) and internet communication.",
+    exemplars: "Guide learners to discuss the inter-connection of internet computers (network of networks) and examples of communication.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.2.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B5.6.2.1. Demonstrate how to use Web Pages",
+    indicator: "B5.6.2.1.1. Explain what a web browser is and its use",
+    objectives: "Guide learners to understand web browsers through practical lessons and browser images.",
+    exemplars: "Guide learners to understand the concept and use of browsers through practical lessons.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.2.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B5.6.2.1. Demonstrate how to use Web Pages",
+    indicator: "B5.6.2.1.2. Identify web browsers",
+    objectives: "Guide learners to list various browser types (Firefox, Internet Explorer, Chrome) through practical lessons.",
+    exemplars: "Guide learners to list the various types of browsers e.g. Firefox, Internet Explorer, Chrome etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.2.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B5.6.2.1. Demonstrate how to use Web Pages",
+    indicator: "B5.6.2.1.3. Demonstrate the use of MS-Internet Explorer",
+    objectives: "Guide learners to launch MS-Internet Explorer and use navigation components.",
+    exemplars: "Guide learners to launch MS-Internet Explorer and use the components (navigation, browse, etc.).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.2.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B5.6.2.1. Demonstrate how to use Web Pages",
+    indicator: "B5.6.2.1.4. Show how to create and remove a favorites link",
+    objectives: "Guide learners to practice creating and removing favorite links in practical sessions.",
+    exemplars: "Guide learners to practice how to create or remove favorite links in practical session(s).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.2.1.5",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B5.6.2.1. Demonstrate how to use Web Pages",
+    indicator: "B5.6.2.1.5. Create favorites folder",
+    objectives: "Guide learners to practice creating a favorites folder through practical sessions.",
+    exemplars: "Guide learners to practice how to create a favorites folder through practical session(s).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.2.1.6",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B5.6.2.1. Demonstrate how to use Web Pages",
+    indicator: "B5.6.2.1.6. Use the links toolbar",
+    objectives: "Guide learners to practice using the links toolbar.",
+    exemplars: "Guide learners to practice the use of link toolbar through practical session(s).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.2.1.7",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B5.6.2.1. Demonstrate how to use Web Pages",
+    indicator: "B5.6.2.1.7. Explain what a Web Page is",
+    objectives: "Guide learners to explore web page features (text, graphics, audio, video, animation).",
+    exemplars: "Guide learners to explore features of a Web Page (text, graphics, audio, video, animation etc. through practical lessons).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.2.1.8",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B5.6.2.1. Demonstrate how to use Web Pages",
+    indicator: "B5.6.2.1.8. Explain what a home page is",
+    objectives: "Guide learners to identify a home page from other web pages through practical lessons.",
+    exemplars: "Guide learners to identify a home page from other web pages, through practical lessons.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.2.1.9",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B5.6.2.1. Demonstrate how to use Web Pages",
+    indicator: "B5.6.2.1.9. Movement within and between web pages using hyperlinks",
+    objectives: "Guide learners to practice clicking hyperlinks to move within and between web pages.",
+    exemplars: "Guide learners to practice clicking hyperlinks, through practical lessons.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.3.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Surfing the World Wide Web",
+    contentStandard: "B5.6.3.1. Demonstrate how to use Favorite places",
+    indicator: "B5.6.3.1.1. Show how to create a favorite link",
+    objectives: "Guide learners to create a favorite link in a browser.",
+    exemplars: "Guide learners to create a favorite link.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.3.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Surfing the World Wide Web",
+    contentStandard: "B5.6.3.1. Demonstrate how to use Favorite places",
+    indicator: "B5.6.3.1.2. Demonstrate deleting favorite links",
+    objectives: "Guide learners to delete favorite links created in previous lessons.",
+    exemplars: "Guide learners to delete favorite links they have created in the previous lesson.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.3.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Surfing the World Wide Web",
+    contentStandard: "B5.6.3.1. Demonstrate how to use Favorite places",
+    indicator: "B5.6.3.1.3. Create favorite folder",
+    objectives: "Guide learners to create a favorite folder.",
+    exemplars: "Guide learners to create a favorite folder.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.3.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Surfing the World Wide Web",
+    contentStandard: "B5.6.3.1. Demonstrate how to use Favorite places",
+    indicator: "B5.6.3.1.4. Use the links toolbar",
+    objectives: "Guide learners to use the links toolbar for surfing the web.",
+    exemplars: "Guide learners to use the links toolbar.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.4.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Favourite Places and Search Engine",
+    contentStandard: "B5.6.4.1. Demonstrate how to use Search Engines",
+    indicator: "B5.6.4.1.1. Identify common search engines",
+    objectives: "Guide learners to discuss search engines and different types (Google, DuckDuckGo, Yahoo etc.).",
+    exemplars: "Guide learners to discuss search engines and the different types (Google, DuckDuckGo, Yahoo etc.).",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.4.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Favourite Places and Search Engine",
+    contentStandard: "B5.6.4.1. Demonstrate how to use Search Engines",
+    indicator: "B5.6.4.1.2. Explore how smart search engines work",
+    objectives: "Guide learners to understand how search engines process queries and retrieve information.",
+    exemplars: "Guide learners to how smart search engines work (how professionals seek information for work or interests).",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.4.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Favourite Places and Search Engine",
+    contentStandard: "B5.6.4.1. Demonstrate how to use Search Engines",
+    indicator: "B5.6.4.1.3. Demonstrate how to handle search results",
+    objectives: "Guide learners to explore how to handle search results from search engines.",
+    exemplars: "Guide learners to explore how to handle search results from a search engine.",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.5.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Using Online Forms",
+    contentStandard: "B5.6.5.1. Demonstrate the Usage of Forms",
+    indicator: "B5.6.5.1.1. Identify and describe forms in a web page",
+    objectives: "Guide learners to fill out dropdown boxes, combo boxes, text fields in web forms.",
+    exemplars: "Guide learners to fill out dropdown boxes, combo box, Text fields etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.5.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Using Online Forms",
+    contentStandard: "B5.6.5.1. Demonstrate the Usage of Forms",
+    indicator: "B5.6.5.1.2. Demonstrate working on or offline",
+    objectives: "Guide learners to register online or fill PDF/Word forms offline.",
+    exemplars: "Guide learners to register or fill out online forms as well as offline through practical sessions.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.5.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Using Online Forms",
+    contentStandard: "B5.6.5.1. Demonstrate the Usage of Forms",
+    indicator: "B5.6.5.1.3. Demonstrate downloading of files (e.g. pictures, audio, pdf etc.)",
+    objectives: "Guide learners to download files through practical sessions.",
+    exemplars: "Guide learners to download a file through practical session(s).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.6.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B5.6.6.1. Show how to Customize a Browser",
+    indicator: "B5.6.6.1.1. Demonstrate how to set default search engines",
+    objectives: "Guide learners to set default search engines in browser settings.",
+    exemplars: "Guide learners to set default search engines.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.6.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B5.6.6.1. Show how to Customize a Browser",
+    indicator: "B5.6.6.1.2. Show how to set homepages",
+    objectives: "Guide learners to set homepages in browser options.",
+    exemplars: "Guide learners to set homepages.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.6.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B5.6.6.1. Show how to Customize a Browser",
+    indicator: "B5.6.6.1.3. Show how to make Browser apps, add-ons, plug-ins, and extensions",
+    objectives: "Guide learners to explore and install browser apps, add-ons, plug-ins, and extensions.",
+    exemplars: "Guide learners to make Browser apps, add-ons, plug-ins, and extensions.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.6.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B5.6.6.1. Show how to Customize a Browser",
+    indicator: "B5.6.6.1.4. Illustrate how to customise the browser toolbar",
+    objectives: "Facilitate learners to customise the browser toolbar.",
+    exemplars: "Facilitate learners to customise the browser toolbar.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.6.1.5",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B5.6.6.1. Show how to Customize a Browser",
+    indicator: "B5.6.6.1.5. Identify cookies in web browsers",
+    objectives: "Aid learners to recognize cookies and understand browser cookies.",
+    exemplars: "Aid learners to recognize cookies in web browsers.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.6.1.6",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B5.6.6.1. Show how to Customize a Browser",
+    indicator: "B5.6.6.1.6. Illustrate how to set disk space or cache usage",
+    objectives: "Guide learners to adjust disk space and cache usage limits in browser settings.",
+    exemplars: "Guide learners to set disk space or cache usage.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.7.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B5.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B5.6.7.1.1. Identify the various e-mail service providers",
+    objectives: "Guide learners to explore various email service providers (Gmail, Outlook.com, iCloud Mail).",
+    exemplars: "Guide learners to explore on the various email service providers (email, outlook.com, icloud mail).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.7.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B5.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B5.6.7.1.2. Demonstrate the use of internet e-mail addresses",
+    objectives: "Guide learners to start an email address and use email addresses properly.",
+    exemplars: "Guide learners to start an email address. Assist learners to use email address.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.7.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B5.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B5.6.7.1.3. Creating an email account e.g. Yahoo mail or Gmail account",
+    objectives: "Guide learners to create an email account following necessary registration steps.",
+    exemplars: "Guide learners to create email account (i.e. the possible steps).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.7.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B5.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B5.6.7.1.4. Illustrate viewing received messages and Create or Compose messages",
+    objectives: "Guide learners to view received messages, compose new messages, and format email text.",
+    exemplars: "Guide learners to write messages, format text, and view received email messages.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.8.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Internet of Things (IoT)",
+    contentStandard: "B5.6.8.1. Demonstrate the use of Internet of Things (IoT)",
+    indicator: "B5.6.8.1.1 Describe the purpose Internet of Things",
+    objectives: "Guide learners to discuss the purpose and scope of IoT in groups.",
+    exemplars: "Guide learners to discuss the IoT in groups.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.8.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Internet of Things (IoT)",
+    contentStandard: "B5.6.8.1. Demonstrate the use of Internet of Things (IoT)",
+    indicator: "B5.6.8.1.2. Give examples of Internet of Things with a consumer part and an industrial/business segment",
+    objectives: "Guide learners to explore and present examples of consumer and industrial IoT devices.",
+    exemplars: "Guide learners to give, explore and present in class examples of Internet of Things with consumer and business segments.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.8.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Internet of Things (IoT)",
+    contentStandard: "B5.6.8.1. Demonstrate the use of Internet of Things (IoT)",
+    indicator: "B5.6.8.1.3. Identify components of Internet of Things",
+    objectives: "Guide learners to explore IoT components: Hardware, Data, Software, and Connectivity.",
+    exemplars: "Guide learners to explore the components of the Internet of Things (Hardware, Data, Software, Connectivity).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.8.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Internet of Things (IoT)",
+    contentStandard: "B5.6.8.1. Demonstrate the use of Internet of Things (IoT)",
+    indicator: "B5.6.8.1.4. Identify the role of smart sensors in the Internet of Things",
+    objectives: "Guide learners to explore smart sensors in IoT (electronic doors, RFID, CCTV cameras) and define at least five IoT terms/acronyms.",
+    exemplars: "Guide learners to explore the role of smart sensors in IoT (Electronic Doors, RFID, CCTV camera) and define five IoT terms.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.9.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Digital Literacy",
+    contentStandard: "B5.6.9.1. Demonstrate proficiency in Digital Literacy",
+    indicator: "B5.6.9.1.1. Describe private and personal information",
+    objectives: "Encourage learners to identify private and personal information online and understand privacy boundaries.",
+    exemplars: "Encourage learners to tell what they know about private and personal information online using leading questions.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.9.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Digital Literacy",
+    contentStandard: "B5.6.9.1. Demonstrate proficiency in Digital Literacy",
+    indicator: "B5.6.9.1.2. Discuss various techniques on online protection from online identity theft",
+    objectives: "Guide learners to discuss security measures online such as logging out after browsing sessions.",
+    exemplars: "Guide learners to discuss security measures online such as logging out after browsing.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.10.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Digital Literacy / Network Etiquette",
+    contentStandard: "B5.6.10.1. Demonstrated the application of Network Etiquette (Netiquette)",
+    indicator: "B5.6.10.1.1. Define digital footprint",
+    objectives: "Guide learners to explain digital footprints and understand online traces.",
+    exemplars: "Guide learners to explain digital footprint.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.6.10.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Digital Literacy / Network Etiquette",
+    contentStandard: "B5.6.10.1. Demonstrated the application of Network Etiquette (Netiquette)",
+    indicator: "B5.6.10.1.2. Illustrate how to keep some information from public when using the internet",
+    objectives: "Guide learners to avoid posting personal information online.",
+    exemplars: "Guide learner to avoid posting personal information.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.7.1.1.1",
+    strand: "Health and Safety in Using ICT Tools",
+    subStrand: "Health and Safety in Using ICT Tools",
+    contentStandard: "B5.7.1.1. Demonstrate the application of Health and safety measures, in using ICT tools",
+    indicator: "B5.7.1.1.1. Identify some major health hazards associated with the use of ICT tools' use",
+    objectives: "Guide learners to discuss health hazards: wrist pain, neck pain, back pain, waist pain from sitting posture.",
+    exemplars: "Guide the learners to discuss wrist pain and sitting posture (neck, back and waist pain).",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B5.7.1.1.2",
+    strand: "Health and Safety in Using ICT Tools",
+    subStrand: "Health and Safety in Using ICT Tools",
+    contentStandard: "B5.7.1.1. Demonstrate the application of Health and safety measures, in using ICT tools",
+    indicator: "B5.7.1.1.2. Describe proper sitting posture",
+    objectives: "Guide learners in groups to identify and practise proper posture (sitting at 90 degrees, wrist pads, short breaks).",
+    exemplars: "Guide learners in groups to discuss, identify and practise proper sitting posture (sitting at 90 degrees, wrist pad, short breaks).",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Personal Development and Leadership (PL)", "Digital Literacy (DL)"]
   }
 ];
 
@@ -74,34 +1100,992 @@ const basic6Indicators: GESIndicator[] = [
   {
     code: "B6.1.1.1.1",
     strand: "Introduction to Computing",
-    subStrand: "Computer Generations and Health & Safety",
-    contentStandard: "Understand evolution of computing devices and ergonomic safety practices",
-    indicator: "Identify traits of 1st-5th computer generations and practice healthy posture/screen breaks",
-    objectives: "Describe evolution from vacuum tubes to microprocessors and demonstrate ergonomic sitting posture."
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B6.1.1.1: Identify parts of a computer, technology tools and history of computers",
+    indicator: "B6.1.1.1.1. Learn about the Generation of Computers",
+    objectives: "Guide learners to discuss the Generation of Computers: Microprocessors - Super Computers, Mainframe, Minicomputers, Microcomputers, Mobile Phones etc.",
+    exemplars: "Guide learners to discuss the Generation of Computers: Microprocessors - Super Computers, Mainframe, Minicomputers, Microcomputers, Mobile Phones, etc.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.1.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B6.1.1.1: Identify parts of a computer, technology tools and history of computers",
+    indicator: "B6.1.1.1.2. Identify components of a Computer System: Hardware, Software and Liveware",
+    objectives: "Guide learners to identify Hardware (input, output, storage, communication), Software, Liveware and discuss their uses at definition level.",
+    exemplars: "Guide learners to identify Hardware (input, output, storage and communication), Software, Liveware and discuss the components and how they are used.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.1.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B6.1.1.1: Identify parts of a computer, technology tools and history of computers",
+    indicator: "B6.1.1.1.3. Identify the left, right mouse button, holding of mouse, performing single, double and triple clicking, dragging object and using the scroll wheel",
+    objectives: "Guide learners to master the use of mouse through practical sessions and games.",
+    exemplars: "Guide learners to master the use of mouse through practical sessions and games.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.1.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B6.1.1.1: Identify parts of a computer, technology tools and history of computers",
+    indicator: "B6.1.1.1.4. Demonstrate proper use of keyboarding technique",
+    objectives: "Guide learners to type stories using Word Processor or typing tutorial (e.g. Mavis Beacon) to improve typing speed.",
+    exemplars: "Guide learners to type stories using Word Processor or typing tutorial (e.g. Mavis Beacon) to improve typing speed.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.1.1.5",
+    strand: "Introduction to Computing",
+    subStrand: "Generation of Computers and Parts of a Computer and Other Gadgets",
+    contentStandard: "B6.1.1.1: Identify parts of a computer, technology tools and history of computers",
+    indicator: "B6.1.1.1.5. Summarise the generation of computers (second generation of computers)",
+    objectives: "Group learners to summarise computer generations (1st, 2nd, 3rd, etc.) and present group findings to class.",
+    exemplars: "Group learners into groups. Guide them to summarise the generation of computers and present findings in groups to the class.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.1",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.1. Explore the use of the desktop Background, changing the themes colours and User account",
+    objectives: "Guide learners to use the desktop background, change theme colours and manage user account settings.",
+    exemplars: "Guide learners to the use of the desktop Background, change the themes colours and the User account.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.2. Demonstrate the use of the Recycle Bin or Trash Can",
+    objectives: "Guide learners to use the recycle bin by deleting and viewing deleted files.",
+    exemplars: "Guide learners to use the recycle bin by deleting and viewing deleted files.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.3. Perform permanent delete or Empty Trash can and restoring files or icons in the recycle bin",
+    objectives: "Support learners to relate the Recycle Bin to an office trash can and demonstrate permanent delete and restoring files.",
+    exemplars: "Support learners to liken the Recycle bin and its use to the real-world office trash can.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.4. Explore the use of Copy, Paste, Delete tools, the moving of folders by using the Desktop Pop-Up menu",
+    objectives: "Guide learners to use Copy, Paste, Delete tools, and move folders using the Desktop Pop-Up context menu.",
+    exemplars: "Guide learners to the use of the Copy, Paste, Delete tools, the moving of folders by using the Desktop Pop-Up menu.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.5",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.5. Illustrate the use of File Explorer window and locations of the computer through the file explorer",
+    objectives: "Guide learners to use the File Explorer window and access computer locations.",
+    exemplars: "Guide learners to the use File Explorer window and locations of the computer through the file explorer.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.6",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.6. Locate the hard drives, and other removable storage icons in the File explorer",
+    objectives: "Guide learners to locate hard drives and other removable storage icons in File Explorer.",
+    exemplars: "Guide learners to locate the hard drives and other removable storage icons in the File explorer.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.7",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.7. Use the File Explorer Ribbon (Home Ribbon only): Clipboard and Organise tools, Open New Window and Close tools",
+    objectives: "Guide learners to use Clipboard and Organise tools on File Explorer Home ribbon, and Open New Window / Close tools.",
+    exemplars: "Guide learners to use the File Explorer Ribbon (Home Ribbon only); Clipboard, Organise tools, Open New Window and Close tools.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.8",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.8. Demonstrate the use of the Navigation Pane of the File Explorer to access different locations of the computer",
+    objectives: "Guide learners to use the Navigation Pane in File Explorer to access different computer locations.",
+    exemplars: "Guide learners to the use of the navigation Pane of the File Explorer to access different locations of the computer.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.9",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.9. Demonstrate the use of Frequent Folders Section of the File Explorer to access frequently used locations",
+    objectives: "Guide learners to explore the Frequent Folders section of File Explorer to access frequently used locations.",
+    exemplars: "Guide learners to explore the use of Frequent Folders Section of the File Explorer to access frequently used locations.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.2.1.10",
+    strand: "Introduction to Computing",
+    subStrand: "Introduction to MS-Windows Interface (Desktop Background and Locations of the Computer)",
+    contentStandard: "B6.1.2.1. Demonstrate the use of the Desktop Background as well as working with folders",
+    indicator: "B6.1.2.1.10. Demonstrate the use of Recent Files Section of the File Explorer to access frequently used files",
+    objectives: "Guide learners to explore Recent Files section in File Explorer to access frequently used files.",
+    exemplars: "Guide learners to explore the use of Recent Files Section of the File Explorer to access frequently used files of the computer.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.3.1.1",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.1. Identify types of data (Integers, double, characters, float etc.)",
+    objectives: "Guide learners to identify and record data in different forms (integers, double, characters, float).",
+    exemplars: "Guide learners to identify and record data in the different forms.",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.3.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.2. Identify more sources of data and information e.g. internet (emailing, Skype, SMS etc.)",
+    objectives: "Guide learners to discuss where one can get data and information on the internet.",
+    exemplars: "Guide learners to discuss where one can get data and information.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.3.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.3. Demonstrate sending and receiving information from other gadgets e.g. Bluetooth, Infrared, Radio, Fax, Telephones calls, SMS etc.",
+    objectives: "Guide learners to mention and demonstrate receiving or sending information across gadgets.",
+    exemplars: "Guide learners to mention or talk about where one can receive or send information.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.3.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.4. Demonstrate basic manipulations on sample data e.g. arranging data in a matrix table, sorting and calculations etc.",
+    objectives: "Guide learners to sort data in alphabetical order and perform calculations (multiplying, dividing, adding, generating age data).",
+    exemplars: "Guide learners to sort data in alphabetical order and perform basic calculations such as multiplying, dividing and adding.",
+    coreCompetencies: ["Arithmetic", "Critical Thinking and Problem Solving (CP)"]
+  },
+  {
+    code: "B6.1.3.1.5",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.5. Demonstrate how to manage users of the Desktop",
+    objectives: "Guide learners to brainstorm how to manage users of the desktop using videos or pictures.",
+    exemplars: "Guide learners to brainstorm how to manage users of the Desktop using videos or pictures.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.3.1.6",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.6. Demonstrate how to collect data (e.g. listening to radio, reading newspapers, interviews use of questionnaires etc.)",
+    objectives: "Lead learners to collect data in the community using simple questionnaires, surveys, documents, and observations.",
+    exemplars: "Lead learners to collect data from the community using simple questionnaire, surveys, documents, observations.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Critical Thinking and Problem Solving (CP)"]
+  },
+  {
+    code: "B6.1.3.1.7",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.7. Demonstrate the use of the tools for collecting data",
+    objectives: "Bring tools or pictures of tools for collecting data (case studies, interviews, checklists) and demonstrate their use.",
+    exemplars: "Bring tools or pictures of the tools for collecting data e.g. case studies, interviews, checklists, etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.3.1.8",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.8. Demonstrate data interpretation by computing data to gain required information (e.g. Finding sum or grand total using Electronic Spreadsheet)",
+    objectives: "Guide learners to make meaning out of collected data using tables, charts, or electronic spreadsheets.",
+    exemplars: "Guide learners to make meanings out of data collected using tables, charts or Spreadsheet.",
+    coreCompetencies: ["Arithmetic", "Critical Thinking and Problem Solving (CP)"]
+  },
+  {
+    code: "B6.1.3.1.9",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.9. Demonstrate data presentation in different forms",
+    objectives: "Guide learners to write data in tables, pictures, charts, maps, words, and type them in a Spreadsheet.",
+    exemplars: "Guide learners to write data in tables, pictures, charts, maps, words etc. as well as type them in a Spreadsheet.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.3.1.10",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.10. Demonstrate how to store data",
+    objectives: "Guide learners to store data in different formats (handwriting, phone recording, magnetic tapes, optical discs).",
+    exemplars: "Guide learners to use tools to store data in different formats (handwriting, phone recording, magnetic tapes, optical disc).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.3.1.11",
+    strand: "Introduction to Computing",
+    subStrand: "Data, Sources and Usage",
+    contentStandard: "B6.1.3.1. Demonstrate the use of Data and identify sources of data",
+    indicator: "B6.1.3.1.11. Manipulate data to gain required output (e.g. Finding sum, mean, grand totals, maximum, minimum, mode, division, multiplication etc.)",
+    objectives: "Guide learners to compute mode, product, minimum value, maximum value, and grand total from datasets.",
+    exemplars: "Guide learners to find the mode, product, minimum value, maximum value etc.",
+    coreCompetencies: ["Arithmetic", "Critical Thinking and Problem Solving (CP)"]
+  },
+  {
+    code: "B6.1.4.1.1",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community",
+    contentStandard: "B6.1.4.1. Demonstrate the use of Technology in the community",
+    indicator: "B6.1.4.1.1. Define communication",
+    objectives: "Put learners into groups to discuss communication and present findings to the class.",
+    exemplars: "Put learners into groups to discuss communication and present findings to the class.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.4.1.2",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community",
+    contentStandard: "B6.1.4.1. Demonstrate the use of Technology in the community",
+    indicator: "B6.1.4.1.2. Identify three more technological tools for communication in the community",
+    objectives: "Guide learners to mention and describe the importance of technology tools in communication.",
+    exemplars: "Guide learners to mention and describe the importance of technology in communication.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.4.1.3",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community",
+    contentStandard: "B6.1.4.1. Demonstrate the use of Technology in the community",
+    indicator: "B6.1.4.1.3. Demonstrate communication with others",
+    objectives: "Guide learners to explain how communication is conducted via TV, radio, phone calls, satellite, etc.",
+    exemplars: "Guide learners to demonstrate communication (explain how communication is done via TV, radio, phone call, satellite etc.).",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.1.4.1.4",
+    strand: "Introduction to Computing",
+    subStrand: "Technology in the Community",
+    contentStandard: "B6.1.4.1. Demonstrate the use of Technology in the community",
+    indicator: "B6.1.4.1.4. Identify three more importance of technology in communication",
+    objectives: "Guide learners to mention key reasons why technology is important in communication.",
+    exemplars: "Guide learners to mention the importance of technology in communication.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
   },
   {
     code: "B6.2.1.1.1",
-    strand: "Productivity Software",
-    subStrand: "Spreadsheets (MS Excel)",
-    contentStandard: "Create simple spreadsheets, enter data, and use formulas",
-    indicator: "Identify rows, columns, cells, and perform addition/average formulas (=SUM, =AVERAGE)",
-    objectives: "Enter student marks in Excel worksheet and calculate totals using =SUM(A1:A10)."
+    strand: "Presentation",
+    subStrand: "Introduction to MS-PowerPoint",
+    contentStandard: "B6.2.1.1 Demonstrate how to use Microsoft PowerPoint",
+    indicator: "B6.2.1.1.1. Demonstrate how to use the File menu, the Insert and Design Ribbon from B5",
+    objectives: "Guide learners to use File menu, Insert and Design Ribbons in MS-PowerPoint.",
+    exemplars: "Guide learners to use File menu, Insert and Design Ribbons.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.2.1.1.2",
+    strand: "Presentation",
+    subStrand: "Introduction to MS-PowerPoint",
+    contentStandard: "B6.2.1.1 Demonstrate how to use Microsoft PowerPoint",
+    indicator: "B6.2.1.1.2. Demonstrate how to use icons in the Text group in the Insert Ribbon",
+    objectives: "Guide learners to properly use icons in the Text group under the Insert Ribbon.",
+    exemplars: "Guide learners to properly use the icons in the Insert Ribbon.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.2.1.1.3",
+    strand: "Presentation",
+    subStrand: "Introduction to MS-PowerPoint",
+    contentStandard: "B6.2.1.1 Demonstrate how to use Microsoft PowerPoint",
+    indicator: "B6.2.1.1.3. Be able to give a 5-slide presentation in MS-PowerPoint using the tools of the ribbons studied",
+    objectives: "Guide learners to prepare and present a 5-slide PowerPoint project to the class.",
+    exemplars: "Guide learners to present their work to the class.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
   },
   {
     code: "B6.3.1.1.1",
-    strand: "Communication Networks",
-    subStrand: "Electronic Mail and Social Media Ethics",
-    contentStandard: "Compose, send, and reply to emails responsibly",
-    indicator: "Create email account, compose messages with attachments, and avoid cyberbullying",
-    objectives: "Draft formal email messages with file attachments adhering to netiquette."
+    strand: "Word Processing",
+    subStrand: "Introduction to Word Processing",
+    contentStandard: "B6.3.1.1. Illustrate the use of word processing application",
+    indicator: "B6.3.1.1.1. Demonstrate how to use the File menu and Insert, Design, and Layout Ribbons from B5",
+    objectives: "Guide learners to use File menu, Insert, Design and Layout Ribbons in Word.",
+    exemplars: "Guide learners to use File menu, Insert, Design and Layout Ribbon.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
   },
   {
-    code: "B6.4.1.1.1",
-    strand: "Computational Thinking",
-    subStrand: "Variables and Interactive Games",
-    contentStandard: "Create interactive games and quizzes using variables in block programming",
-    indicator: "Design a Scratch score-keeping quiz game using variables and broadcasting messages",
-    objectives: "Build a multiple-choice Scratch game that tracks player score using variables."
+    code: "B6.3.1.1.2",
+    strand: "Word Processing",
+    subStrand: "Introduction to Word Processing",
+    contentStandard: "B6.3.1.1. Illustrate the use of word processing application",
+    indicator: "B6.3.1.1.2 Demonstrate how to use icons in the Text group in the Insert Ribbon",
+    objectives: "Guide learners to properly use icons in the Text group under the Insert Ribbon.",
+    exemplars: "Guide learners to properly use the icons in the Insert Ribbon.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.3.1.1.3",
+    strand: "Word Processing",
+    subStrand: "Introduction to Word Processing",
+    contentStandard: "B6.3.1.1. Illustrate the use of word processing application",
+    indicator: "B6.3.1.1.3 Be able to use the attributes of the ribbons studied in a paragraph",
+    objectives: "Guide learners to create and format text in a document paragraph using studied ribbon attributes.",
+    exemplars: "Guide the learners to create and format text in a document.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.1.1.1",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming Languages",
+    contentStandard: "B6.5.1.1. Demonstrate how to manipulate data in Databases",
+    indicator: "B6.5.1.1.1 Describe Databases",
+    objectives: "Guide learners through group discussions to list and describe databases.",
+    exemplars: "Guide learners through discussion in groups, to list and describe databases.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.1.1.2",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming Languages",
+    contentStandard: "B6.5.1.1. Demonstrate how to manipulate data in Databases",
+    indicator: "B6.5.1.1.2 Identify databases and data structures",
+    objectives: "Guide learners to identify database structures (collection of record types and field type definitions).",
+    exemplars: "Guide learners to identify databases structures (record type and field type definitions).",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.1.1.3",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming Languages",
+    contentStandard: "B6.5.1.1. Demonstrate how to manipulate data in Databases",
+    indicator: "B6.5.1.1.3. Explain Fundamental Database concepts",
+    objectives: "Guide learners to apply fundamental database concepts to a sample database in class discussion.",
+    exemplars: "Guide learners apply the fundamental database concepts to a sample database in a class discussion.",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.1.1.5",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming Languages",
+    contentStandard: "B6.5.1.1. Demonstrate how to manipulate data in Databases",
+    indicator: "B6.5.1.1.5. Describe the basics of Relational Data model",
+    objectives: "Lead learners to describe basics of Relational Data model (rows and columns).",
+    exemplars: "Lead learners to describe the basics of Relational Data model (rows and columns).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.1.1.6",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming Languages",
+    contentStandard: "B6.5.1.1. Demonstrate how to manipulate data in Databases",
+    indicator: "B6.5.1.1.6. Identify the basics of logical Database Design",
+    objectives: "Guide learners to list basics of logical database design and develop sample database designs.",
+    exemplars: "Guide learners to list the basics of logical database design and develop sample database design.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.1.1.7",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming Languages",
+    contentStandard: "B6.5.1.1. Demonstrate how to manipulate data in Databases",
+    indicator: "B6.5.1.1.7. Illustrate basics of relational algebra",
+    objectives: "Guide learners to apply basics of relational algebra in a sample database.",
+    exemplars: "Guide learners apply the basics of relational algebra in a sample database.",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.1.1.8",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming Languages",
+    contentStandard: "B6.5.1.1. Demonstrate how to manipulate data in Databases",
+    indicator: "B6.5.1.1.8. Operate basics SQL: querying and manipulating data",
+    objectives: "Guide learners to write simple SQL queries (CREATE DATABASE, SELECT, UPDATE) to retrieve student names.",
+    exemplars: "Guide learners to write simple queries to retrieve specific names of students (e.g. CREATE DATABASE, SELECT and UPDATE).",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.1.1.9",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Databases, Algorithm and Programming Languages",
+    contentStandard: "B6.5.1.1. Demonstrate how to manipulate data in Databases",
+    indicator: "B6.5.1.1.9. Operate basics SQL: querying and manipulating data",
+    objectives: "Guide learners to write simple queries (CREATE TABLE, DELETE, INSERT INTO) on class databases.",
+    exemplars: "Guide learners to write simple queries to retrieve specific names of students (e.g. CREATE TABLE, DELETE and INSERT INTO).",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.3.1.1",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B6.5.3.1. Demonstrate how to use Spreadsheet",
+    indicator: "B6.5.3.1.1 Demonstrate how to use the ribbons under the home ribbons (clipboard, styles, fonts, paragraph, editing)",
+    objectives: "Guide learners to do a presentation on the use of ribbons under the Home button in spreadsheets.",
+    exemplars: "Guide learners to do a presentation on the use of the ribbons under the home button.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.3.1.2",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B6.5.3.1. Demonstrate how to use Spreadsheet",
+    indicator: "B6.5.3.1.2. Learners to create basic worksheets using Microsoft Excel 2016",
+    objectives: "Guide learners to develop worksheets consisting of lists of names (teachers, students, friends, family).",
+    exemplars: "Guide learners to develop worksheet consisting of list of names ie. teachers, students, friends, families, etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.3.1.3",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B6.5.3.1. Demonstrate how to use Spreadsheet",
+    indicator: "B6.5.3.1.3. Perform calculations in an MS-Excel worksheet",
+    objectives: "Guide learners to develop worksheets that calculate multiplication, addition, and subtraction.",
+    exemplars: "Guide learners to develop worksheet that will help in calculating multiplication, addition and subtraction.",
+    coreCompetencies: ["Arithmetic", "Critical Thinking and Problem Solving (CP)"]
+  },
+  {
+    code: "B6.5.3.1.4",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B6.5.3.1. Demonstrate how to use Spreadsheet",
+    indicator: "B6.5.3.1.4. Modify an MS-Excel worksheet",
+    objectives: "Guide learners to modify worksheets by appending student ages to existing lists.",
+    exemplars: "Guide learners to modify worksheet by adding the age of learners in the class to the list of learners.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.3.1.5",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B6.5.3.1. Demonstrate how to use Spreadsheet",
+    indicator: "B6.5.3.1.5 Modify the appearance of data within a worksheet",
+    objectives: "Show projected examples of modified data and guide learners to format data appearances within worksheets.",
+    exemplars: "Show examples of modified data in worksheet(s) on projected screens/pictures and guide learners to modify data appearance.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.3.1.6",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B6.5.3.1. Demonstrate how to use Spreadsheet",
+    indicator: "B6.5.3.1.6. Manage Excel workbooks",
+    objectives: "Guide learners to properly name MS-Excel workbooks and store them in folders for retrieval.",
+    exemplars: "Guide learners to properly name MS-Excel workbooks and store them in folders for retrieval later.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.5.3.1.7",
+    strand: "Programming and Databases",
+    subStrand: "Introduction to Electronic Spreadsheet (Tabs and Ribbons Manipulation)",
+    contentStandard: "B6.5.3.1. Demonstrate how to use Spreadsheet",
+    indicator: "B6.5.3.1.7. Print the content of an MS-Excel worksheet",
+    objectives: "Guide learners to adjust margins to suit A4 paper size for printing in landscape and portrait.",
+    exemplars: "Guide learners to adjust margins to suit the A4 paper size for printing in landscape and portrait.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.1.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Network Overview",
+    contentStandard: "B6.6.1.1. Demonstrate how to Network computers",
+    indicator: "B6.6.1.1.1. Give examples of facilities the internet offers",
+    objectives: "Guide learners to give examples of internet facilities (email, FTP, WWW) for presentation.",
+    exemplars: "Guide learners to give examples of internet facilities ie. e-mail, FTP’s, www, etc. for presentation.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.1.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Network Overview",
+    contentStandard: "B6.6.1.1. Demonstrate how to Network computers",
+    indicator: "B6.6.1.1.2. Describe the types of information available on the Internet",
+    objectives: "Guide learners to identify and describe types of information on the Internet (educational, financial, entertainment).",
+    exemplars: "Guide learners in groups to describe types of Information available on the Internet (Educational, Financial, entertainment).",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.1.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Network Overview",
+    contentStandard: "B6.6.1.1. Demonstrate how to Network computers",
+    indicator: "B6.6.1.1.3. Identify data duplication",
+    objectives: "Display list of student names on the board and ask learners to identify duplicated data.",
+    exemplars: "Display list of names of learners on the board and ask them to identify the duplicated data.",
+    coreCompetencies: ["Critical Thinking and Problem Solving (CP)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.1.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Network Overview",
+    contentStandard: "B6.6.1.1. Demonstrate how to Network computers",
+    indicator: "B6.6.1.1.4. Outline what one needs to connect to the Internet",
+    objectives: "Encourage learners to identify devices needed for internet connection (desktop, laptop, mobile phones).",
+    exemplars: "Encourage learners to bring devices or pictures of devices needed to connect to the Internet.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.2.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B6.6.2.1. Demonstrate the use of a Web Browser",
+    indicator: "B6.6.2.1.1 Identify the address or links window",
+    objectives: "Guide learners to identify address or links window on phones and electronic gadgets with browsers.",
+    exemplars: "Guide learners to identify the address or links window on phones and other electronic gadgets.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.2.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B6.6.2.1. Demonstrate the use of a Web Browser",
+    indicator: "B6.6.2.1.2. Recognise the status bar and list its use",
+    objectives: "Bring window pictures showing status bar and ask learners to point out status bar and its functions.",
+    exemplars: "Bring a picture of a window that has the status bar and ask learners to point out status and mention functions.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.2.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B6.6.2.1. Demonstrate the use of a Web Browser",
+    indicator: "B6.6.2.1.3. Illustrate using help button",
+    objectives: "Guide learners to use the Help button to navigate and find steps for new tasks.",
+    exemplars: "Guide learners to use the help button to navigate and find the steps involved in tasks.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.2.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B6.6.2.1. Demonstrate the use of a Web Browser",
+    indicator: "B6.6.2.1.4. Recognise internet explorer speed keys",
+    objectives: "Ask learners to use speed keys to open new browser windows, increase font size, etc.",
+    exemplars: "Ask learners to use speed keys to open a new browser, make font size bigger in a browser, etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.2.1.5",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B6.6.2.1. Demonstrate the use of a Web Browser",
+    indicator: "B6.6.2.1.5. Recognise Uniform Resource Locators (URLs)",
+    objectives: "Guide learners to discuss URL properties, uses, locations, and practice entering URLs.",
+    exemplars: "Guide learners to discuss properties of URLs, their uses and locations, and practice entering URLs.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.2.1.6",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B6.6.2.1. Demonstrate the use of a Web Browser",
+    indicator: "B6.6.2.1.6. Demonstrate how to return to a URL",
+    objectives: "Guide learners to navigate using the Back button to return to previous web pages.",
+    exemplars: "Guide the learners to navigate using the back button to go to a previous page.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.2.1.7",
+    strand: "Internet and Social Media",
+    subStrand: "Web Browsers and Web Pages",
+    contentStandard: "B6.6.2.1. Demonstrate the use of a Web Browser",
+    indicator: "B6.6.2.1.7. Show how to find items on a page",
+    objectives: "Guide learners to search for items on a web page using search textboxes.",
+    exemplars: "Guide learners to search for items using the search textbox.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.3.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Surfing the World Wide Web",
+    contentStandard: "B6.6.3.1. Demonstrate Surfing The World Wide Web",
+    indicator: "B6.6.3.1.1. Recognize resource locators (URLs)",
+    objectives: "Group learners to explore how to recognize URLs to locate resources on the web.",
+    exemplars: "Group learners into groups of five or less to explore on how to recognise URLs to locate web resources.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.3.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Surfing the World Wide Web",
+    contentStandard: "B6.6.3.1. Demonstrate Surfing The World Wide Web",
+    indicator: "B6.6.3.1.2. Illustrate how to jump directory to URLs",
+    objectives: "Give learners a project on jumping directly to directory URLs.",
+    exemplars: "Give learners a project on how to jump directory to URLs.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.3.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Surfing the World Wide Web",
+    contentStandard: "B6.6.3.1. Demonstrate Surfing The World Wide Web",
+    indicator: "B6.6.3.1.3. Demonstrate how to return to a URL",
+    objectives: "Guide learners to investigate how to return to a URL.",
+    exemplars: "Guide learners to investigate how to return to a URL.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.3.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Surfing the World Wide Web",
+    contentStandard: "B6.6.3.1. Demonstrate Surfing The World Wide Web",
+    indicator: "B6.6.3.1.4. Show how to find items on a page",
+    objectives: "Guide learners to discuss and present findings on how to find items on a web page.",
+    exemplars: "Guide learners to discuss on how to find items on a page and present findings to class.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.3.1.5",
+    strand: "Internet and Social Media",
+    subStrand: "Surfing the World Wide Web",
+    contentStandard: "B6.6.3.1. Demonstrate Surfing The World Wide Web",
+    indicator: "B6.6.3.1.5. Illustrate how to print pages",
+    objectives: "Guide learners on how to print web pages or selected text sections.",
+    exemplars: "Guide learners on how to print pages e.g. selected pages, only selected pages etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.4.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Favourite Places and Search Engine",
+    contentStandard: "B6.6.4.1. Demonstrate searching for information on the Web",
+    indicator: "B6.6.4.1.1. Show how to create a favourite link",
+    objectives: "Guide learners to create an Internet favourite link.",
+    exemplars: "Guide learners to create an Internet favourite link.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.4.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Favourite Places and Search Engine",
+    contentStandard: "B6.6.4.1. Demonstrate searching for information on the Web",
+    indicator: "B6.6.4.1.2. Demonstrate deleting favourite links",
+    objectives: "Guide learners to delete a favourite link they created.",
+    exemplars: "Guide learners to delete a favourite link they have created.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.4.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Favourite Places and Search Engine",
+    contentStandard: "B6.6.4.1. Demonstrate searching for information on the Web",
+    indicator: "B6.6.4.1.3. Create favourite folder",
+    objectives: "Guide learners through necessary steps to create a favourite folder or subfolder.",
+    exemplars: "Guide learners to create a favourite folder or subfolder through necessary steps.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.4.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Favourite Places and Search Engine",
+    contentStandard: "B6.6.4.1. Demonstrate searching for information on the Web",
+    indicator: "B6.6.4.1.4. Use the links toolbar and Favourite Places",
+    objectives: "Guide learners to use the links toolbar and Favourite Places menu.",
+    exemplars: "Guide learners to use the links toolbar.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.5.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Using Online Forms",
+    contentStandard: "B6.6.5.1. Demonstrate the Usage of Forms",
+    indicator: "B6.6.5.1.1. Demonstrate the types and uses of form elements",
+    objectives: "Explore the uses of check boxes, radio buttons, textboxes in web forms.",
+    exemplars: "Explore the uses of check boxes, radio buttons, textboxes etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.5.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Using Online Forms",
+    contentStandard: "B6.6.5.1. Demonstrate the Usage of Forms",
+    indicator: "B6.6.5.1.2. Demonstrate the filing of forms offline",
+    objectives: "Guide learners to open, save a page, and fill form fields offline.",
+    exemplars: "Guide learners to open and save a page. Lead them to fill the forms offline.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.5.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Using Online Forms",
+    contentStandard: "B6.6.5.1. Demonstrate the Usage of Forms",
+    indicator: "B6.6.5.1.3. Demonstrate uploading of files",
+    objectives: "Lead learners to explore the upload button by attaching pictures, audio, PDF files.",
+    exemplars: "Lead learners to explore the upload button by adding pictures, audio, pdf etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.5.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Using Online Forms",
+    contentStandard: "B6.6.5.1. Demonstrate the Usage of Forms",
+    indicator: "B6.6.5.1.4. Illustrate retrieving text, pictures, sounds and programs",
+    objectives: "Lead learners to explore the download button by retrieving text, pictures, sounds, programs.",
+    exemplars: "Lead learners to explore the download button by downloading pictures, audio, pdf etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.5.1.5",
+    strand: "Internet and Social Media",
+    subStrand: "Using Online Forms",
+    contentStandard: "B6.6.5.1. Demonstrate the Usage of Forms",
+    indicator: "B6.6.5.1.5. Discuss more about security on the form submission",
+    objectives: "Guide learners to investigate security issues when typing details online (antivirus, credit cards, passwords).",
+    exemplars: "Guide learners to Investigate and identify security issues when typing account details online (Antivirus, Credit card details, personal passwords).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.6.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B6.6.6.1. Show how to Customize a Browser",
+    indicator: "B6.6.6.1.1. Identify reasons for customising a web browser",
+    objectives: "Discuss reasons for browser customization: quick command access, side-by-side browsing, beautification.",
+    exemplars: "Discuss reasons needed for customising an item: (i) quick commands (ii) side by side browsing (iii) beautifications.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.6.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B6.6.6.1. Show how to Customize a Browser",
+    indicator: "B6.6.6.1.2. Illustrate how to set themes",
+    objectives: "Explore customization settings under Appearance to set themes.",
+    exemplars: "Explore on customisation, locate more settings under Appearance.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.6.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B6.6.6.1. Show how to Customize a Browser",
+    indicator: "B6.6.6.1.3. Show how to customise the toolbar",
+    objectives: "Lead learners to customize browser toolbars, wallpapers, and tools.",
+    exemplars: "Lead learners to explore in customising a browser (themes, wallpaper, tools etc.).",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.6.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B6.6.6.1. Show how to Customize a Browser",
+    indicator: "B6.6.6.1.4. Set bookmarks",
+    objectives: "Demonstrate bookmarks as shortcuts to save favorite webpages for quick navigation.",
+    exemplars: "Demonstrate the meaning of bookmarks: save shortcuts to favourite webpages and navigate in seconds.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.6.1.5",
+    strand: "Internet and Social Media",
+    subStrand: "Customizing Your Browser",
+    contentStandard: "B6.6.6.1. Show how to Customize a Browser",
+    indicator: "B6.6.6.1.5. Show how to set cookies demonstrate the steps in turning on cookies in a browser",
+    objectives: "Guide learners to turn on session cookies via Internet Options > Privacy > Settings > Advanced.",
+    exemplars: "Guide learners to turn on cookies in browser: Internet Options > Privacy tab > Settings > Advanced > Always allow session cookies.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.7.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B6.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B6.6.7.1.1. Show how to create and access e-mail messages",
+    objectives: "Guide learners to log in and receive email messages.",
+    exemplars: "Guide learners to receive email.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.7.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B6.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B6.6.7.1.2. Illustrate how to reply to and forward received messages",
+    objectives: "Guide learners to use Reply and Forward buttons in email.",
+    exemplars: "Guide learners to use forward and reply buttons in email.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.7.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B6.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B6.6.7.1.3. Demonstrate how to delete messages",
+    objectives: "Guide learners to delete unwanted email messages.",
+    exemplars: "Guide learners to delete email messages.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.7.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B6.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B6.6.7.1.4. Illustrate filing of e-mail messages",
+    objectives: "Guide learners to create folders in Inbox and sort emails into them.",
+    exemplars: "Guide learners to create folders in the Inbox and sorting emails into them.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.7.1.5",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B6.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B6.6.7.1.5. Create address list",
+    objectives: "Guide learners to create an email address list.",
+    exemplars: "Guide learners to create an address list.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.7.1.6",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B6.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B6.6.7.1.6. Demonstrate attaching files to e-mail messages",
+    objectives: "Guide learners to attach file documents to email messages.",
+    exemplars: "Guide learners to attach files to email.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.7.1.7",
+    strand: "Internet and Social Media",
+    subStrand: "Electronic Email",
+    contentStandard: "B6.6.7.1. Demonstrate the use of Electronic Mail",
+    indicator: "B6.6.7.1.7. Demonstrate some e-mail tips",
+    objectives: "Assist learners in email tips: avoiding all-caps, verifying file extensions, clear subject line summaries.",
+    exemplars: "Assist learners in writing email using techniques as NOT writing in caps, checking file extensions, using subject lines.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.8.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Internet of Things (IoT)",
+    contentStandard: "B6.6.8.1. Demonstrate the use of Internet of Things (IoT)",
+    indicator: "B6.6.8.1.1. Describe other hardware used in IoT Internet of Things",
+    objectives: "Guide learners to discuss IoT hardware components in groups.",
+    exemplars: "Guide learners to discuss the IoT hardware in groups.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.8.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Internet of Things (IoT)",
+    contentStandard: "B6.6.8.1. Demonstrate the use of Internet of Things (IoT)",
+    indicator: "B6.6.8.1.2. Give more examples of internet of things with a consumer part and an industrial/business segment",
+    objectives: "Guide learners to list at least five gadgets used for IoT (Nest Thermostat, SmartThings Hub, August Smart Lock).",
+    exemplars: "Guide learners to list at least five gadgets used for IoT (e.g. Nest Smart Thermostat, Samsung SmartThings Hub, August Smart Lock).",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.8.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Internet of Things (IoT)",
+    contentStandard: "B6.6.8.1. Demonstrate the use of Internet of Things (IoT)",
+    indicator: "B6.6.8.1.3. Mention at least five more terms and acronyms of IoT",
+    objectives: "Guide learners to describe IoT terminology and operational uses.",
+    exemplars: "Guide learners to describe IoT use.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.9.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Digital Literacy",
+    contentStandard: "B6.6.9.1. Demonstrate proficiency in Digital Literacy",
+    indicator: "B6.6.9.1.1. Demonstrate how to handle private and personal information",
+    objectives: "Guide learners on how not to post detailed personal information online.",
+    exemplars: "Guide learners on how not post detailed personal information online.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.9.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Digital Literacy",
+    contentStandard: "B6.6.9.1. Demonstrate proficiency in Digital Literacy",
+    indicator: "B6.6.9.1.2. Devise various techniques on how to protect oneself from online identity theft",
+    objectives: "Guide learners to use strong passwords or passphrases on online sites.",
+    exemplars: "Guide learners to use strong passwords or passphrases in online sites, etc.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.9.1.3",
+    strand: "Internet and Social Media",
+    subStrand: "Digital Literacy",
+    contentStandard: "B6.6.9.1. Demonstrate proficiency in Digital Literacy",
+    indicator: "B6.6.9.1.3. Debate a spam and solicited messages",
+    objectives: "Guide learners to differentiate spam from solicited email messages.",
+    exemplars: "Guide learners to differentiate spam from solicited messages.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.9.1.4",
+    strand: "Internet and Social Media",
+    subStrand: "Digital Literacy",
+    contentStandard: "B6.6.9.1. Demonstrate proficiency in Digital Literacy",
+    indicator: "B6.6.9.1.4. Differentiate between virtual friends and real friends",
+    objectives: "Guide learners to characterize virtual versus real friends and recognize associated risks.",
+    exemplars: "Guide learners to characterise virtual and real friends.",
+    coreCompetencies: ["Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.10.1.1",
+    strand: "Internet and Social Media",
+    subStrand: "Internet Etiquette",
+    contentStandard: "B6.6.10.1. Demonstrate the application of Internet Etiquette",
+    indicator: "B6.6.10.1.1. Explain Internet etiquette and how to deal with it",
+    objectives: "Guide learners to explain Internet etiquette rules and guidelines.",
+    exemplars: "Guide learners to explain Internet etiquette and elaborate on rules associated with it.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.6.10.1.2",
+    strand: "Internet and Social Media",
+    subStrand: "Internet Etiquette",
+    contentStandard: "B6.6.10.1. Demonstrate the application of Internet Etiquette",
+    indicator: "B6.6.10.1.2. Investigate on the responsible use of computers",
+    objectives: "Guide learners to investigate responsible computer use: information privacy, copyright, avoiding hardware/software/information theft.",
+    exemplars: "Guide learners to investigate on responsible use of computers: (i) Information privacy (ii) Copyright (iii) Theft prevention.",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.7.1.1.1",
+    strand: "Health and Safety in Using ICT Tools",
+    subStrand: "Health and Safety in Using ICT Tools",
+    contentStandard: "B6.7.1.1. Demonstrate how to apply Health and Safety measures in Using ICT Tools",
+    indicator: "B6.7.1.1.1. Identify five (5) major health hazards associated with the use of ICT tools (Eye strain, Eye irritation, Eye fatigue)",
+    objectives: "Guide learners to discuss major health hazards associated with ICT tool usage.",
+    exemplars: "Guide learners to discuss major health hazards associated with the use of ICT tools (Eye strain, Eye irritation, Eye fatigue).",
+    coreCompetencies: ["Communication and Collaboration (CC)", "Digital Literacy (DL)"]
+  },
+  {
+    code: "B6.7.1.1.2",
+    strand: "Health and Safety in Using ICT Tools",
+    subStrand: "Health and Safety in Using ICT Tools",
+    contentStandard: "B6.7.1.1. Demonstrate how to apply Health and Safety measures in Using ICT Tools",
+    indicator: "B6.7.1.1.2. Demonstrate solutions for the health related problems in ICT",
+    objectives: "Guide learners to brainstorm solutions for health hazards associated with ICT tool usage.",
+    exemplars: "Guide learners to brainstorm to find solutions to health hazards associated with the use of ICT tools.",
+    coreCompetencies: ["Creativity and Innovation (CI)", "Communication and Collaboration (CC)", "Digital Literacy (DL)"]
   }
 ];
 

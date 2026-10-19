@@ -171,6 +171,17 @@ export default function LoginSelectionScreen() {
             style={styles.footer}
           >
             <TouchableOpacity
+              onPress={() => router.push("/(auth)/forgot-password")}
+              style={styles.recoveryButton}
+              activeOpacity={0.7}
+            >
+              <SVGIcon name="key-outline" size={18} color={primary} />
+              <Text style={[styles.recoveryText, { color: primary }]}>
+                Forgot Password or Reset Account?
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => router.push("/about")}
               style={styles.aboutButton}
               activeOpacity={0.7}
@@ -377,6 +388,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#64748b",
     fontWeight: "600",
+  },
+
+  recoveryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    columnGap: 8,
+    ...SHADOWS.small,
+  },
+
+  recoveryText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
 
   footerBrandText: {

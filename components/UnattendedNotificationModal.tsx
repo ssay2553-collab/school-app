@@ -9,7 +9,7 @@ import {
   Pressable,
 } from "react-native";
 import SVGIcon from "./SVGIcon";
-import { markNotificationsAsRead } from "../src/services/notificationService";
+import { markNotificationsAsRead, markSingleNotificationAsRead } from "../src/services/notificationService";
 import { useAuth } from "../contexts/AuthContext";
 import { ExtendedNotification } from "../hooks/useUnreadNotifications";
 
@@ -32,9 +32,9 @@ export const UnattendedNotificationModal: React.FC<Props> = ({
     }
   };
 
-  const handleMarkSingleRead = async (id: string, type?: any) => {
-    if (appUser?.uid) {
-      await markNotificationsAsRead(appUser.uid, type);
+  const handleMarkSingleRead = async (id: string) => {
+    if (id) {
+      await markSingleNotificationAsRead(id);
     }
   };
 
@@ -103,7 +103,7 @@ export const UnattendedNotificationModal: React.FC<Props> = ({
                       From: {item.senderName || "System Admin"}
                     </Text>
                     <TouchableOpacity
-                      onPress={() => handleMarkSingleRead(item.id, item.type)}
+                      onPress={() => handleMarkSingleRead(item.id)}
                       style={styles.dismissBtn}
                       activeOpacity={0.7}
                     >

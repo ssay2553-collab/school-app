@@ -39,7 +39,7 @@ export const StudentRow = memo(({
   const { showToast } = useToast();
   const isPaid = existingRecord?.feedingPaid === true;
   const isAbsent = attendanceStatus === "absent";
-  const isAdvanceCovered = existingRecord?.isAdvanceCovered === true;
+  const isAdvanceCovered = (existingRecord as any)?.isAdvanceCovered === true;
   const hasArrears = (item.dailyArrears || 0) > 0;
 
   return (

@@ -363,6 +363,7 @@ export default function StudentDashboard() {
                       isSmallScreen={isSmallScreen}
                       numColumns={numColumns}
                       totalUnread={totalUnread}
+                      assignmentUnread={assignmentUnread}
                       onPress={() => {
                         if (isNavigating.current) return;
                         isNavigating.current = true;

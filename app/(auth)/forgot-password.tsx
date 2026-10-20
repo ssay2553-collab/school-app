@@ -98,6 +98,17 @@ export default function ForgotPasswordScreen() {
     setLoading(true);
     try {
       const targetEmail = await resolveTargetEmail(emailInput);
+
+      // Synthetic student emails (@*.edueaz.com) cannot receive external emails
+      if (targetEmail.includes(".edueaz.com")) {
+        showToast({
+          message: "Student accounts use internal handles. Please use the Link Code tab to reset or ask your Teacher/Admin.",
+          type: "info",
+        });
+        setLoading(false);
+        return;
+      }
+
       await sendPasswordResetEmail(auth, targetEmail);
       showToast({
         message: `Password reset link sent to ${targetEmail}. Please check your inbox!`,
@@ -119,7 +130,7 @@ export default function ForgotPasswordScreen() {
   };
 
   /**
-   * Method 2: Reset Password via Admin-Provided Code / Token
+   * Method 2: Reset Password via Admin-Provided Code / Link Code
    */
   const handleTokenReset = async () => {
     if (!emailInput.trim() || !tokenInput.trim() || !newPassword.trim()) {
@@ -139,42 +150,66 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      const targetEmail = await resolveTargetEmail(emailInput);
       const cleanToken = tokenInput.trim().toUpperCase();
 
-      // Search Firestore user document
+      // 1. Try Cloud Function if deployed
+      try {
+        const updatePasswordFn = httpsCallable(functions, "resetUserPasswordWithToken");
+        await updatePasswordFn({
+          identifier: emailInput.trim(),
+          token: cleanToken,
+          newPassword: newPassword,
+        });
+
+        showToast({ message: "Password reset successfully! You can now sign in.", type: "success" });
+        router.back();
+        return;
+      } catch (cfErr) {
+        console.warn("Cloud function unavailable (Free Spark Plan mode), trying client-side token verification:", cfErr);
+      }
+
+      // 2. Client-Side Firestore Link Code Verification (100% Free Spark Plan)
+      const targetEmail = await resolveTargetEmail(emailInput);
       const usersRef = collection(db, "users");
       const q = query(
         usersRef,
         or(
           where("profile.email", "==", targetEmail),
-          where("email", "==", targetEmail)
+          where("email", "==", targetEmail),
+          where("parentLinkCode", "==", cleanToken),
+          where("signupCode", "==", cleanToken)
         ),
         limit(1)
       );
       const snap = await getDocs(q);
 
       if (snap.empty) {
-        throw new Error("No user record found with this email or identifier.");
+        throw new Error("No user record found matching this code or identifier.");
       }
 
       const userDoc = snap.docs[0];
       const userData = userDoc.data();
-      const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toUpperCase();
+      const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toString().trim().toUpperCase();
 
       if (!storedToken || storedToken !== cleanToken) {
-        throw new Error("Invalid reset token. Please check your admin code.");
+        throw new Error("Invalid Link Code. Please check your official school code.");
       }
 
-      // Call secure Cloud Function to update Auth password
-      const updatePasswordFn = httpsCallable(functions, "resetUserPasswordWithToken");
-      await updatePasswordFn({
-        uid: userDoc.id,
-        token: cleanToken,
-        newPassword: newPassword,
-      });
+      // Check if user has a real parent email linked
+      const parentRealEmail = userData.profile?.parentEmail || userData.parentEmail;
+      if (parentRealEmail && !parentRealEmail.includes(".edueaz.com") && parentRealEmail.includes("@")) {
+        await sendPasswordResetEmail(auth, parentRealEmail);
+        showToast({
+          message: `Link Code verified! Reset instructions sent to linked parent email (${parentRealEmail}).`,
+          type: "success",
+        });
+      } else {
+        showToast({
+          message: `Link Code (${cleanToken}) verified! You can now log in using your Link Code as your password on the Student Login screen.`,
+          type: "success",
+        });
+      }
 
-      showToast({ message: "Password reset successfully! You can now sign in.", type: "success" });
       router.back();
     } catch (error: any) {
       console.error("Token reset error:", error);

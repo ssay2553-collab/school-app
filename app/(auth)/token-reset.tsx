@@ -63,38 +63,12 @@ export default function TokenResetScreen() {
 
     setLoading(true);
     try {
-      const cleanEmail = getStudentFinalEmail(email);
       const cleanToken = token.trim().toUpperCase();
 
-      // Find user by email
-      const usersRef = collection(db, "users");
-      const q = query(
-        usersRef,
-        or(
-          where("profile.email", "==", cleanEmail),
-          where("email", "==", cleanEmail)
-        )
-      );
-      const snap = await getDocs(q);
-
-      if (snap.empty) {
-        throw new Error("No user found with this email address.");
-      }
-
-      const userDoc = snap.docs[0];
-      const userData = userDoc.data();
-
-      // Verify token (supports signupCode, secretCode, or student parentLinkCode)
-      const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toUpperCase();
-      if (storedToken !== cleanToken) {
-        throw new Error("Invalid reset token. Please contact your administrator.");
-      }
-
-      // Call Cloud Function to update password
-      // Using the specialized token-based reset function which validates the token server-side
+      // Call Cloud Function directly (bypasses unauthenticated client Firestore read permissions)
       const updatePasswordFn = httpsCallable(functions, "resetUserPasswordWithToken");
       await updatePasswordFn({
-        uid: userDoc.id,
+        identifier: email.trim(),
         token: cleanToken,
         newPassword: newPassword,
       });

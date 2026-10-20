@@ -379,12 +379,37 @@ export default function useUnreadCounts() {
     prevTotalRef.current = totalUnread;
   }, [totalUnread, appUser?.uid]);
 
+  const [academicRecordUnread, setAcademicRecordUnread] = useState<number>(0);
+
+  // Watch Pending Academic Records Awaiting Approval (for Admins & Staff)
+  useEffect(() => {
+    if (!appUser?.uid || (appUser.role !== "admin" && appUser.role !== "staff")) {
+      setAcademicRecordUnread(0);
+      return;
+    }
+
+    const q = query(
+      collection(db, "academicRecords"),
+      where("status", "==", "pending")
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      setAcademicRecordUnread(snap.docs.length);
+    }, (err) => {
+      if (err.code === 'permission-denied') return;
+      console.warn("Watch Pending Academic Records error", err);
+    });
+
+    return () => unsub();
+  }, [appUser?.uid, appUser?.role]);
+
   return {
     totalUnread,
     groupUnread,
     directUnread,
     assignmentUnread,
     submissionUnread,
+    academicRecordUnread,
     registerDirectChat,
     unregisterDirectChat,
     markChatRead,

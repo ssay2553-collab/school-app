@@ -70,8 +70,9 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
       try {
         let q;
         const userRole = (appUser.role || "").toLowerCase();
-        const isTeacherOnDutyActive = (appUser as any).isTeacherOnDuty && (appUser as any).teacherOnDutyExpiresAt &&
-          ((appUser as any).teacherOnDutyExpiresAt.toMillis ? (appUser as any).teacherOnDutyExpiresAt.toMillis() : new Date((appUser as any).teacherOnDutyExpiresAt).getTime()) > Date.now();
+        const teacherOnDutyExpiresAt = (appUser as any).teacherOnDutyExpiresAt;
+        const isTeacherOnDutyActive = (appUser as any).isTeacherOnDuty && teacherOnDutyExpiresAt &&
+          (typeof teacherOnDutyExpiresAt?.toMillis === "function" ? teacherOnDutyExpiresAt.toMillis() : new Date(teacherOnDutyExpiresAt).getTime()) > Date.now();
 
         if (userRole === "admin" || userRole === "superadmin" || isTeacherOnDutyActive) {
           q = query(collection(db, "classes"));

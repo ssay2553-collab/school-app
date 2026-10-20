@@ -7,7 +7,7 @@ import {
     getDoc,
     serverTimestamp,
     setDoc,
-    updateDoc
+    updateDoc,
 } from "firebase/firestore";
 import moment from "moment";
 import React, { useCallback, useEffect, useState } from "react";
@@ -21,7 +21,7 @@ import {
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
@@ -44,7 +44,10 @@ export default function SharedScanAttendanceScreen() {
   const [currentLocation, setCurrentLocation] = useState<{
     latitude: number;
     longitude: number;
+    accuracy?: number;
   } | null>(null);
+  const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null);
+  const [refreshingGps, setRefreshingGps] = useState(false);
   const [attendanceRecord, setAttendanceRecord] = useState<any>(null);
   const [weeklyRecords, setWeeklyRecords] = useState<Record<string, any>>({});
   const [mode, setMode] = useState<"checkIn" | "checkOut">("checkIn");
@@ -63,7 +66,7 @@ export default function SharedScanAttendanceScreen() {
   // Target user is strictly the logged-in staff member / admin account
   const targetUser = appUser;
   const targetUid = appUser?.uid;
-  const isAdmin = appUser?.role === "admin" || appUser?.role === "superadmin";
+  const isAdmin = appUser?.role === "admin" || (appUser?.role as string) === "superadmin";
 
   const schoolId = (
     Constants.expoConfig?.extra?.schoolId ||
@@ -120,17 +123,34 @@ export default function SharedScanAttendanceScreen() {
     setFacePhotoUri(null);
 
     try {
-      // 1. Fetch Admin Attendance Config
+      // 1. Prepare references
       const configRef = doc(db, "teacherAttendanceConfig", schoolId);
-      const configSnap = await getDoc(configRef);
+      const attendanceRecordId = `${schoolId}_${targetUid}_${today}`;
+      const attDocRef = doc(db, "teacherAttendance", attendanceRecordId);
+
+      const startOfWeek = moment().startOf("isoWeek"); // Monday
+      const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri"].map(
+        (name, index) => {
+          const d = moment(startOfWeek).add(index, "days");
+          return { name, date: d.format("YYYY-MM-DD") };
+        },
+      );
+
+      // 2. Fetch Config, Today's Record, and Weekly Records ALL IN PARALLEL!
+      const [configSnap, attSnap, ...weeklySnaps] = await Promise.all([
+        getDoc(configRef),
+        getDoc(attDocRef),
+        ...weekDays.map((wd) =>
+          getDoc(
+            doc(db, "teacherAttendance", `${schoolId}_${targetUid}_${wd.date}`),
+          ),
+        ),
+      ]);
+
       if (configSnap.exists()) {
         setConfigData(configSnap.data());
       }
 
-      // 2. Check existing attendance record for today & fetch weekly records (Mon - Fri)
-      const attendanceRecordId = `${schoolId}_${targetUid}_${today}`;
-      const attDocRef = doc(db, "teacherAttendance", attendanceRecordId);
-      const attSnap = await getDoc(attDocRef);
       if (attSnap.exists()) {
         const data = attSnap.data();
         setAttendanceRecord(data);
@@ -146,52 +166,76 @@ export default function SharedScanAttendanceScreen() {
       } else {
         setAttendanceRecord(null);
         setMode("checkIn");
-      }
-
-      // If user already has a saved profile photo and no scan for today yet, use profile image as default preview
-      if (!attSnap.exists() && targetUser?.profile?.profileImage) {
-        setFacePhotoUri(targetUser.profile.profileImage);
-      }
-
-      const startOfWeek = moment().startOf("isoWeek"); // Monday
-      const weekDays = ["Mon", "Tue", "Wed", "Thu", "Fri"].map(
-        (name, index) => {
-          const d = moment(startOfWeek).add(index, "days");
-          return { name, date: d.format("YYYY-MM-DD") };
-        },
-      );
-
-      const weeklyMap: Record<string, any> = {};
-      for (const wd of weekDays) {
-        const recId = `${schoolId}_${targetUid}_${wd.date}`;
-        const recSnap = await getDoc(doc(db, "teacherAttendance", recId));
-        if (recSnap.exists()) {
-          weeklyMap[wd.date] = recSnap.data();
+        if (targetUser?.profile?.profileImage) {
+          setFacePhotoUri(targetUser.profile.profileImage);
         }
       }
-      setWeeklyRecords(weeklyMap);
 
-      // 3. Get current GPS location
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === "granted") {
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-        setCurrentLocation({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
-      } else {
-        showToast({
-          message:
-            "Location permission is required for attendance verification.",
-          type: "error",
-        });
-      }
+      const weeklyMap: Record<string, any> = {};
+      weekDays.forEach((wd, idx) => {
+        const snap = weeklySnaps[idx];
+        if (snap && snap.exists()) {
+          weeklyMap[wd.date] = snap.data();
+        }
+      });
+      setWeeklyRecords(weeklyMap);
     } catch (err) {
       console.error("Error loading attendance setup:", err);
     } finally {
+      // Unblock screen UI immediately!
       setFetchingConfig(false);
+    }
+
+    // 3. Acquire GPS location in background (non-blocking)
+    fetchBackgroundLocation();
+  };
+
+  const fetchBackgroundLocation = async () => {
+    try {
+      if (Platform.OS === "web" && typeof navigator !== "undefined") {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setCurrentLocation({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy || 0,
+              });
+              setGpsErrorMsg(null);
+            },
+            (err) => {
+              console.warn("Background web geolocation notice:", err);
+              if (err.code === 1) setGpsErrorMsg("Location permission denied in browser");
+            },
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 30000 },
+          );
+        }
+        return;
+      }
+
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        let loc;
+        try {
+          loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          });
+        } catch {
+          loc = await Location.getLastKnownPositionAsync();
+        }
+        if (loc && loc.coords) {
+          setCurrentLocation({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            accuracy: loc.coords.accuracy || 0,
+          });
+          setGpsErrorMsg(null);
+        }
+      } else {
+        setGpsErrorMsg("Location permission denied");
+      }
+    } catch (e) {
+      console.warn("Background GPS fetch notice:", e);
     }
   };
 
@@ -201,6 +245,9 @@ export default function SharedScanAttendanceScreen() {
     lat2: number,
     lon2: number,
   ) => {
+    if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
+      return Infinity;
+    }
     const R = 6371000; // Earth radius in meters
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
@@ -210,12 +257,130 @@ export default function SharedScanAttendanceScreen() {
         Math.cos(lat2 * (Math.PI / 180)) *
         Math.sin(dLon / 2) *
         Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const clampedA = Math.min(1, Math.max(0, a));
+    const c = 2 * Math.atan2(Math.sqrt(clampedA), Math.sqrt(1 - clampedA));
     return R * c;
   };
 
+  const ensureCurrentLocation = useCallback(
+    async (forceFresh = false) => {
+      if (currentLocation && !forceFresh) return currentLocation;
+
+      setRefreshingGps(true);
+      setGpsErrorMsg(null);
+
+      try {
+        if (Platform.OS === "web" && typeof navigator !== "undefined") {
+          if (!navigator.geolocation) {
+            const err = "Browser geolocation is unavailable.";
+            setGpsErrorMsg(err);
+            throw new Error(err);
+          }
+
+          const coords = await new Promise<GeolocationCoordinates>(
+            (resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(
+                (position) => resolve(position.coords),
+                (error) => {
+                  console.warn(
+                    "High accuracy geolocation failed on web, trying standard accuracy...",
+                    error,
+                  );
+                  navigator.geolocation.getCurrentPosition(
+                    (pos) => resolve(pos.coords),
+                    (err) => {
+                      let msg = "Location access was denied or timed out.";
+                      if (err.code === 1) {
+                        msg = "Location access permission denied in browser.";
+                      } else if (err.code === 2) {
+                        msg = "Location position unavailable. Please enable device location.";
+                      } else if (err.code === 3) {
+                        msg = "GPS location request timed out.";
+                      }
+                      reject(new Error(msg));
+                    },
+                    { enableHighAccuracy: false, timeout: 12000, maximumAge: 60000 },
+                  );
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 },
+              );
+            },
+          );
+
+          const nextLocation = {
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            accuracy: coords.accuracy || 0,
+          };
+          setCurrentLocation(nextLocation);
+          setGpsErrorMsg(null);
+          return nextLocation;
+        }
+
+        // Native Mobile (Android & iOS)
+        const servicesEnabled = await Location.hasServicesEnabledAsync();
+        if (!servicesEnabled) {
+          const err = "Device Location Services (GPS) are turned off. Please turn on GPS in your device settings.";
+          setGpsErrorMsg("GPS turned off in device settings");
+          throw new Error(err);
+        }
+
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          const err = "Location permission was denied. Please grant location permissions to EduEaz in device settings.";
+          setGpsErrorMsg("Location permission denied");
+          throw new Error(err);
+        }
+
+        let loc;
+        try {
+          loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.High,
+          });
+        } catch (highErr) {
+          console.warn("High accuracy GPS failed, falling back to balanced accuracy:", highErr);
+          try {
+            loc = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            });
+          } catch (balErr) {
+            console.warn("Balanced accuracy GPS failed, trying last known position:", balErr);
+            loc = await Location.getLastKnownPositionAsync();
+          }
+        }
+
+        if (!loc || !loc.coords) {
+          const err = "Unable to obtain GPS fix. Please ensure you have clear sky view or network connection.";
+          setGpsErrorMsg("Unable to obtain GPS fix");
+          throw new Error(err);
+        }
+
+        const nextLocation = {
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          accuracy: loc.coords.accuracy || 0,
+        };
+        setCurrentLocation(nextLocation);
+        setGpsErrorMsg(null);
+        return nextLocation;
+      } catch (e: any) {
+        console.error("Unable to fetch GPS location:", e);
+        const userMsg = e?.message || "Unable to acquire GPS location.";
+        setGpsErrorMsg(userMsg);
+        showToast({
+          message: userMsg,
+          type: "error",
+        });
+        return null;
+      } finally {
+        setRefreshingGps(false);
+      }
+    },
+    [currentLocation, showToast],
+  );
+
   const baselineFaceUri =
-    targetUser?.profile?.faceBaselineImage ||
+    (targetUser?.profile as any)?.faceBaselineImage ||
     targetUser?.profile?.profileImage ||
     null;
   const hasSourceOfTruth = Boolean(baselineFaceUri);
@@ -228,7 +393,7 @@ export default function SharedScanAttendanceScreen() {
       try {
         const loadImage = (src: string): Promise<HTMLImageElement> => {
           return new Promise((resolve, reject) => {
-            const img = new Image();
+            const img = new (window as any).Image() as HTMLImageElement;
             img.crossOrigin = "Anonymous";
             img.onload = () => resolve(img);
             img.onerror = () =>
@@ -300,7 +465,7 @@ export default function SharedScanAttendanceScreen() {
     setVerifyingFace(true);
 
     const currentBaseline =
-      targetUser?.profile?.faceBaselineImage ||
+      (targetUser?.profile as any)?.faceBaselineImage ||
       targetUser?.profile?.profileImage ||
       null;
     const hasExistingBaseline = Boolean(currentBaseline);
@@ -365,7 +530,7 @@ export default function SharedScanAttendanceScreen() {
 
   const launchFileExplorerPicker = async () => {
     const currentBaseline =
-      targetUser?.profile?.faceBaselineImage ||
+      (targetUser?.profile as any)?.faceBaselineImage ||
       targetUser?.profile?.profileImage ||
       null;
     if (currentBaseline) {
@@ -417,15 +582,6 @@ export default function SharedScanAttendanceScreen() {
               await updateDoc(doc(db, "users", targetUid), {
                 "profile.faceBaselineImage": null,
               });
-              if (isAdmin && selectedStaff && selectedStaff.uid === targetUid) {
-                setSelectedStaff((prev: any) => ({
-                  ...prev,
-                  profile: {
-                    ...(prev?.profile || {}),
-                    faceBaselineImage: null,
-                  },
-                }));
-              }
               setFaceVerified(false);
               setFacePhotoUri(null);
               showToast({
@@ -624,7 +780,7 @@ export default function SharedScanAttendanceScreen() {
     if (
       Platform.OS === "web" &&
       typeof navigator !== "undefined" &&
-      navigator.mediaDevices?.getUserMedia
+      Boolean(navigator.mediaDevices?.getUserMedia)
     ) {
       await startWebCamera("user");
     } else {
@@ -634,18 +790,13 @@ export default function SharedScanAttendanceScreen() {
 
   const handleCheckInOut = async () => {
     if (opStatus.isBlocked) {
-      Alert.alert(
-        `Check-In Paused (${opStatus.statusTitle})`,
-        `Staff attendance check-in is paused today due to ${opStatus.statusTitle}. Staff members are excused and will NOT be logged as absent.`,
-      );
-      return;
-    }
-
-    if (!configData) {
-      showToast({
-        message: "No active attendance session configured by admin.",
-        type: "error",
-      });
+      const title = `Check-In Paused (${opStatus.statusTitle})`;
+      const msg = `Staff attendance check-in is paused today due to ${opStatus.statusTitle}. Staff members are excused and will NOT be logged as absent.`;
+      if (Platform.OS === "web") {
+        alert(`${title}\n\n${msg}`);
+      } else {
+        Alert.alert(title, msg);
+      }
       return;
     }
 
@@ -657,50 +808,55 @@ export default function SharedScanAttendanceScreen() {
       return;
     }
 
-    if (!currentLocation) {
-      showToast({
-        message: "Fetching GPS location. Please wait...",
-        type: "error",
-      });
-      try {
-        const loc = await Location.getCurrentPositionAsync({
-          accuracy: Location.Accuracy.High,
-        });
-        setCurrentLocation({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        });
-      } catch (e) {
+    setLoading(true);
+
+    try {
+      const adminLat = Number(configData?.latitude);
+      const adminLng = Number(configData?.longitude);
+      const allowedRadius = Number(configData?.radius) || 50;
+
+      if (!configData || isNaN(adminLat) || isNaN(adminLng)) {
         showToast({
           message:
-            "Unable to fetch GPS location. Please enable location services.",
+            "No active attendance session or valid GPS coordinates configured by admin.",
           type: "error",
         });
         return;
       }
-    }
 
-    setLoading(true);
-    try {
-      const teacherLat = currentLocation!.latitude;
-      const teacherLng = currentLocation!.longitude;
-      const adminLat = configData.latitude;
-      const adminLng = configData.longitude;
-      const allowedRadius = configData.radius || 50;
+      const location = await ensureCurrentLocation(true);
+      if (!location) {
+        return;
+      }
 
-      const distance = calculateDistanceInMeters(
+      const teacherLat = Number(location.latitude);
+      const teacherLng = Number(location.longitude);
+      const gpsAccuracy = Math.round(location.accuracy || 0);
+
+      const rawDistance = calculateDistanceInMeters(
         teacherLat,
         teacherLng,
         adminLat,
         adminLng,
       );
 
-      if (distance > allowedRadius) {
-        Alert.alert(
-          "Attendance Rejected 🚫",
-          `Location is outside the school perimeter!\n\nDistance: ${Math.round(distance)} meters\nAllowed range: ${allowedRadius} meters\n\nPlease move closer to the school premises.`,
-        );
-        setLoading(false);
+      // Account for GPS accuracy error margin (capped at a tolerance buffer of up to 40m)
+      const accuracyBuffer = Math.min(gpsAccuracy, 40);
+      const effectiveDistance = Math.max(0, rawDistance - accuracyBuffer);
+      const distance = Math.round(effectiveDistance);
+
+      if (effectiveDistance > allowedRadius) {
+        const title = "Attendance Rejected 🚫";
+        const msg = `Location is outside the school perimeter!\n\nMeasured Distance: ${Math.round(rawDistance)} meters\nGPS Error Margin: ±${gpsAccuracy} meters\nEffective Distance: ${Math.round(effectiveDistance)} meters\nAllowed Perimeter: ${allowedRadius} meters\n\nDetected GPS: ${teacherLat.toFixed(5)}, ${teacherLng.toFixed(5)}\nSchool Center: ${adminLat.toFixed(5)}, ${adminLng.toFixed(5)}\n\nPlease move closer to the school premises or ask Admin to verify or increase the allowed perimeter (100m – 200m recommended) in Staff Attendance Setup.`;
+        if (Platform.OS === "web") {
+          showToast({
+            message: `Outside school perimeter (${Math.round(effectiveDistance)}m / max ${allowedRadius}m)`,
+            type: "error",
+          });
+          alert(`${title}\n\n${msg}`);
+        } else {
+          Alert.alert(title, msg);
+        }
         return;
       }
 
@@ -710,21 +866,34 @@ export default function SharedScanAttendanceScreen() {
 
       if (mode === "checkIn") {
         if (!faceVerified) {
-          Alert.alert(
-            "Facial Authentication Required 👤📸",
-            "Please verify face using facial recognition before approving attendance login.",
-          );
-          setLoading(false);
+          const faceMessage = hasSourceOfTruth
+            ? "Your face has not been verified yet. Please scan again before checking in."
+            : "No face baseline has been enrolled yet. Please scan your face first to complete the enrollment and then check in.";
+
+          showToast({
+            message: "Facial authentication required before check-in.",
+            type: "warning",
+          });
+
+          if (Platform.OS === "web") {
+            setTimeout(() => {
+              handleScanFace();
+            }, 300);
+          } else {
+            Alert.alert("Facial Authentication Required 👤📸", faceMessage, [
+              { text: "Scan Face", onPress: () => handleScanFace() },
+              { text: "Cancel", style: "cancel" },
+            ]);
+          }
           return;
         }
 
         if (attSnap.exists() && attSnap.data().checkInTime) {
-          Alert.alert(
-            "Already Logged In",
-            "Attendance (check-in) has already been logged for today.",
-          );
+          showToast({
+            message: "Check-in already recorded for today.",
+            type: "info",
+          });
           setMode("checkOut");
-          setLoading(false);
           return;
         }
 
@@ -747,7 +916,7 @@ export default function SharedScanAttendanceScreen() {
             .join(" ") ||
           "Staff Member";
         const teacherEmail =
-          targetUser?.profile?.email || targetUser?.email || "";
+          targetUser?.profile?.email || (targetUser as any)?.email || "";
 
         const checkInPayload = {
           teacherId: targetUid,
@@ -771,12 +940,16 @@ export default function SharedScanAttendanceScreen() {
         setAttendanceRecord(updatedSnap.data());
         setWeeklyRecords((prev) => ({ ...prev, [today]: updatedSnap.data() }));
         setMode("checkOut");
-        Alert.alert(
+
+        const msgTitle =
           attendanceStatus === "On Time"
             ? "Login Successful! 🎉"
-            : "Logged In (Late) ⏰",
-          `Attendance and facial authentication recorded for ${teacherDisplayName} as: ${attendanceStatus} (${now.format("hh:mm A")}).`,
-        );
+            : "Logged In (Late) ⏰";
+        const msgBody = `Attendance recorded for ${teacherDisplayName} as ${attendanceStatus} (${now.format("hh:mm A")}).`;
+        showToast({ message: `${msgTitle} - ${msgBody}`, type: "success" });
+        if (Platform.OS !== "web") {
+          Alert.alert(msgTitle, msgBody);
+        }
       } else {
         const checkOutPayload = {
           checkOutTime: serverTimestamp(),
@@ -790,14 +963,23 @@ export default function SharedScanAttendanceScreen() {
         const updatedSnap = await getDoc(attDocRef);
         setAttendanceRecord(updatedSnap.data());
         setWeeklyRecords((prev) => ({ ...prev, [today]: updatedSnap.data() }));
-        Alert.alert(
-          "Logout Successful! 👋",
-          "Attendance check-out recorded successfully.",
-        );
+        showToast({
+          message: "Logout Successful! 👋 Attendance check-out recorded.",
+          type: "success",
+        });
+        if (Platform.OS !== "web") {
+          Alert.alert(
+            "Logout Successful! 👋",
+            "Attendance check-out recorded successfully.",
+          );
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error recording attendance:", err);
-      showToast({ message: "Failed to record attendance.", type: "error" });
+      showToast({
+        message: `Failed to record attendance: ${err?.message || "Error"}`,
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -839,7 +1021,7 @@ export default function SharedScanAttendanceScreen() {
       [targetUser.profile?.firstName, targetUser.profile?.lastName]
         .filter(Boolean)
         .join(" ") ||
-      targetUser.email ||
+      (targetUser as any).email ||
       "Staff Member"
     );
   };
@@ -1136,14 +1318,46 @@ export default function SharedScanAttendanceScreen() {
                 <Text style={styles.locationBadgeText}>
                   GPS Acquired ({currentLocation.latitude.toFixed(4)},{" "}
                   {currentLocation.longitude.toFixed(4)})
+                  {configData &&
+                    !isNaN(Number(configData.latitude)) &&
+                    !isNaN(Number(configData.longitude)) &&
+                    (() => {
+                      const dist = calculateDistanceInMeters(
+                        currentLocation.latitude,
+                        currentLocation.longitude,
+                        Number(configData.latitude),
+                        Number(configData.longitude),
+                      );
+                      const acc = Math.round(currentLocation.accuracy || 0);
+                      const eff = Math.max(0, dist - Math.min(acc, 40));
+                      const maxR = Number(configData.radius) || 100;
+                      return ` • ~${Math.round(eff)}m from school (Allowed: ${maxR}m)`;
+                    })()}
                 </Text>
               </View>
             ) : (
-              <View style={styles.warningBadge}>
-                <SVGIcon name="warning" size={16} color="#f59e0b" />
-                <Text style={styles.warningBadgeText}>
-                  Fetching GPS location...
-                </Text>
+              <View style={styles.warningBadgeRow}>
+                <View style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 6 }}>
+                  <SVGIcon name="warning" size={16} color="#d97706" />
+                  <Text style={styles.warningBadgeText}>
+                    {refreshingGps
+                      ? "Acquiring live GPS fix..."
+                      : gpsErrorMsg
+                      ? `GPS Notice: ${gpsErrorMsg}`
+                      : "Fetching GPS location..."}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.retryGpsBtn}
+                  onPress={() => ensureCurrentLocation(true)}
+                  disabled={refreshingGps}
+                >
+                  {refreshingGps ? (
+                    <ActivityIndicator size="small" color="#d97706" />
+                  ) : (
+                    <Text style={styles.retryGpsBtnText}>Retry GPS 🔄</Text>
+                  )}
+                </TouchableOpacity>
               </View>
             )}
 
@@ -1228,7 +1442,24 @@ export default function SharedScanAttendanceScreen() {
               {Platform.OS === "web" && (
                 <React.Fragment>
                   {React.createElement("video", {
-                    ref: videoRef,
+                    ref: (node: HTMLVideoElement | null) => {
+                      videoRef.current = node;
+                      if (
+                        node &&
+                        webCameraStream &&
+                        node.srcObject !== webCameraStream
+                      ) {
+                        node.srcObject = webCameraStream;
+                        node
+                          .play()
+                          .catch((e) =>
+                            console.error(
+                              "Error playing web camera stream:",
+                              e,
+                            ),
+                          );
+                      }
+                    },
                     autoPlay: true,
                     playsInline: true,
                     muted: true,
@@ -1436,6 +1667,20 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   locationBadgeText: { color: "#059669", fontSize: 12, fontWeight: "600" },
+  warningBadgeRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fffbeb",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#fde68a",
+    marginBottom: 16,
+    gap: 8,
+  },
   warningBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -1446,7 +1691,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 6,
   },
-  warningBadgeText: { color: "#d97706", fontSize: 12, fontWeight: "600" },
+  warningBadgeText: { color: "#d97706", fontSize: 12, fontWeight: "600", flex: 1 },
+  retryGpsBtn: {
+    backgroundColor: "#fef3c7",
+    borderWidth: 1,
+    borderColor: "#f59e0b",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  retryGpsBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#b45309",
+  },
   statusBox: {
     width: "100%",
     backgroundColor: "#f8fafc",

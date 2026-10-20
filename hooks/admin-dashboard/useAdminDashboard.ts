@@ -22,7 +22,7 @@ export const useAdminDashboard = () => {
   const { appUser, loading: authLoading } = useAuth();
   const config = useSchoolConfig();
   const { width: windowWidth } = useWindowDimensions();
-  const { totalUnread } = useUnreadCounts();
+  const { totalUnread, academicRecordUnread } = useUnreadCounts();
 
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
@@ -92,6 +92,7 @@ export const useAdminDashboard = () => {
     config,
     windowWidth,
     totalUnread,
+    academicRecordUnread,
     upcomingEvents,
     eventsLoading,
     refreshing,

@@ -212,18 +212,34 @@ export default function StudentSettings() {
     }
   };
 
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/student-dashboard");
+      }
+    } catch (e) {
+      router.replace("/student-dashboard");
+    }
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FDFDFD" />
       
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => {
-            if (isNavigating.current) return;
-            isNavigating.current = true;
-            router.back();
-          }}
+          onPress={handleBack}
           style={styles.backBtn}
+          activeOpacity={0.7}
         >
           <SVGIcon name="arrow-back" size={20} color={COLORS.primary} />
         </TouchableOpacity>

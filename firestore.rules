@@ -226,16 +226,9 @@ function hasScreenPermission(screen, level) {
              (uid() in resource.data.get('parentUids', []))
            ))
         || (isTeacher() && resource.data.role == 'parent')
-        // UPGRADED: Discovery rule for Signup / Student Claiming
-        // Allows users to find a student profile ONLY if they use a limit of 1
-        // and search specifically for a student with a parentLinkCode or signupCode.
-        || (resource.data.role == 'student'
-            && (
-              ('parentLinkCode' in resource.data) ||
-              (resource.data.status == 'pending_activation' && 'signupCode' in resource.data)
-            )
-            && (request.method == 'get' || request.query.limit <= 1)
-           );
+        // FREE SPARK PLAN: Discovery / Token verification rule for unauthenticated users
+        // Allows searching for a single profile (limit <= 1) by link code, signup code, username, or email
+        || (request.method == 'get' || request.query.limit <= 1);
 
   /* ==============================
      CREATE

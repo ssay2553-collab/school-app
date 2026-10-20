@@ -359,6 +359,47 @@ export const useAcademicRecords = () => {
 
       await batch.commit();
 
+      // Send notifications to admins if records are awaiting approval
+      if (overallStatus === "pending" || overallStatus === "partially_approved") {
+        try {
+          const staffName = `${appUser?.profile?.firstName || ''} ${appUser?.profile?.lastName || ''}`.trim() || "Teacher";
+          const className = teacherClasses.find(c => c.id === selectedClassId)?.name || selectedClassId;
+
+          const adminQuery = query(
+            collection(db, "users"),
+            where("role", "in", ["admin", "superadmin", "super admin", "staff"])
+          );
+          const adminSnap = await getDocs(adminQuery);
+
+          for (const adminDoc of adminSnap.docs) {
+            const adminData = adminDoc.data();
+            const role = String(adminData?.role || "").toLowerCase();
+            const adminRole = String(adminData?.adminRole || "").toLowerCase();
+            const isEligible = ["admin", "superadmin", "super admin"].includes(role) ||
+              (role === "staff" && !!adminRole);
+
+            if (!isEligible || adminDoc.id === firebaseUser.uid) continue;
+
+            sendNotification({
+              recipientId: adminDoc.id,
+              senderId: firebaseUser.uid,
+              senderName: staffName,
+              type: "score",
+              title: "Academic Records Awaiting Approval 📊",
+              body: `${className} - ${selectedSubject}: ${reportType} scores uploaded by ${staffName} require review & approval.`,
+              data: {
+                docId,
+                classId: selectedClassId,
+                subject: selectedSubject,
+                status: overallStatus,
+              },
+            });
+          }
+        } catch (adminNotifErr) {
+          console.error("Error notifying admins about academic records approval:", adminNotifErr);
+        }
+      }
+
       // Send notifications to parents for non-draft students in chunks of 30
       try {
         const filledStudentIds = updatedStudents

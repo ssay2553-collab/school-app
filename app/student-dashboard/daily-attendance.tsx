@@ -153,6 +153,25 @@ export default function StudentAttendanceScreen() {
     );
   }
 
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/student-dashboard");
+      }
+    } catch (e) {
+      router.replace("/student-dashboard");
+    }
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
@@ -168,12 +187,9 @@ export default function StudentAttendanceScreen() {
       >
         <View style={styles.headerRow}>
           <TouchableOpacity
-            onPress={() => {
-              if (isNavigating.current) return;
-              isNavigating.current = true;
-              router.back();
-            }}
+            onPress={handleBack}
             style={styles.backBtn}
+            activeOpacity={0.7}
           >
             <SVGIcon name="arrow-back" size={24} color={brandColor} />
           </TouchableOpacity>

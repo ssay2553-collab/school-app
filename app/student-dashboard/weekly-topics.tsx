@@ -82,6 +82,25 @@ export default function StudentWeeklyTopicsScreen() {
     setSelectedWeek(newWeek);
   };
 
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/student-dashboard");
+      }
+    } catch (e) {
+      router.replace("/student-dashboard");
+    }
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
+  };
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -96,12 +115,9 @@ export default function StudentWeeklyTopicsScreen() {
       <View style={styles.header}>
         <View style={[styles.headerInner, isLargeScreen && styles.maxContent]}>
           <TouchableOpacity
-            onPress={() => {
-              if (isNavigating.current) return;
-              isNavigating.current = true;
-              router.back();
-            }}
+            onPress={handleBack}
             style={styles.backBtn}
+            activeOpacity={0.7}
           >
             <SVGIcon name="arrow-back" size={24} color="#1E293B" />
           </TouchableOpacity>

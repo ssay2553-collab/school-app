@@ -18,7 +18,7 @@ import { db } from '../../firebaseConfig';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { getTeacherClasses } from '../../lib/classHelpers';
-import { sendNotification } from '../../src/services/notificationService';
+import { sendNotification, markNotificationsAsRead } from '../../src/services/notificationService';
 
 export interface Question {
   text: string;
@@ -84,8 +84,12 @@ export const useMarkAssignment = () => {
 
   useEffect(() => {
     isMounted.current = true;
+    if (teacherId) {
+      markNotificationsAsRead(teacherId, "submission");
+      markNotificationsAsRead(teacherId, "assignment");
+    }
     return () => { isMounted.current = false; };
-  }, []);
+  }, [teacherId]);
 
   const qScoreInputsRef = useRef(qScoreInputs);
   const standardMarksInputRef = useRef(standardMarksInput);

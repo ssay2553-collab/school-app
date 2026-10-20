@@ -128,33 +128,97 @@ export const updateUserEmail = onCall(async (req) => {
  * We need a version that can be called by the user themselves IF they have the token.
  */
 export const resetUserPasswordWithToken = onCall(async (req) => {
-  const { uid, token, newPassword } = req.data || {};
-  if (!uid || !token || !newPassword) {
-    throw new HttpsError("invalid-argument", "Missing required fields.");
+  const { uid, identifier, email, token, newPassword } = req.data || {};
+  const cleanToken = (token || "").toString().trim().toUpperCase();
+
+  if (!cleanToken || !newPassword) {
+    throw new HttpsError("invalid-argument", "Missing required token or new password.");
   }
 
   const db = admin.firestore();
-  const userDoc = await db.collection("users").doc(uid).get();
+  let targetUid = uid;
+  let userData: any = null;
 
-  if (!userDoc.exists) {
-    throw new HttpsError("not-found", "User not found.");
+  if (targetUid) {
+    const userDoc = await db.collection("users").doc(targetUid).get();
+    if (userDoc.exists) {
+      userData = userDoc.data();
+    }
   }
 
-  const userData = userDoc.data();
+  // If UID was not provided or doc not found, search by identifier, email, or token
+  if (!userData) {
+    const searchTarget = (identifier || email || "").toString().trim().toLowerCase();
+    const usersRef = db.collection("users");
+    let querySnap: FirebaseFirestore.QuerySnapshot | null = null;
+
+    if (searchTarget) {
+      // 1. Try finding by profile.email
+      querySnap = await usersRef
+        .where("profile.email", "==", searchTarget)
+        .limit(1)
+        .get();
+
+      if (querySnap.empty) {
+        querySnap = await usersRef
+          .where("email", "==", searchTarget)
+          .limit(1)
+          .get();
+      }
+
+      if (querySnap.empty) {
+        querySnap = await usersRef
+          .where("username", "==", searchTarget)
+          .limit(1)
+          .get();
+      }
+    }
+
+    // 2. If searchTarget failed or wasn't provided, search directly by parentLinkCode or signupCode matching cleanToken
+    if ((!querySnap || querySnap.empty) && cleanToken) {
+      querySnap = await usersRef
+        .where("parentLinkCode", "==", cleanToken)
+        .limit(1)
+        .get();
+
+      if (querySnap.empty) {
+        querySnap = await usersRef
+          .where("signupCode", "==", cleanToken)
+          .limit(1)
+          .get();
+      }
+    }
+
+    if (!querySnap || querySnap.empty) {
+      throw new HttpsError("not-found", "No account found matching this code or identifier.");
+    }
+
+    const matchedDoc = querySnap.docs[0];
+    targetUid = matchedDoc.id;
+    userData = matchedDoc.data();
+  }
+
+  // Verify token against signupCode, secretCode, or parentLinkCode
   const storedToken = (
     userData?.signupCode ||
     userData?.secretCode ||
     userData?.parentLinkCode ||
     ""
-  ).toUpperCase();
+  ).toString().trim().toUpperCase();
 
-  if (!storedToken || storedToken !== token.toUpperCase()) {
-    throw new HttpsError("permission-denied", "Invalid reset token.");
+  if (!storedToken || storedToken !== cleanToken) {
+    throw new HttpsError("permission-denied", "Invalid reset token. Please check your link code.");
   }
 
   try {
-    await admin.auth().updateUser(uid, { password: newPassword });
-    return { status: 200, message: "Password updated successfully" };
+    await admin.auth().updateUser(targetUid, { password: newPassword });
+    const userEmail = userData?.profile?.email || userData?.email || "";
+    return {
+      status: 200,
+      message: "Password updated successfully",
+      uid: targetUid,
+      email: userEmail,
+    };
   } catch (error: any) {
     console.error("resetUserPasswordWithToken error:", error);
     throw new HttpsError("internal", error.message);

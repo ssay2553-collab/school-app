@@ -25,6 +25,8 @@ interface AdminMenuCardProps {
   isSmallScreen: boolean;
   numColumns: number;
   totalUnread: number;
+  assignmentUnread?: number;
+  academicRecordUnread?: number;
   onPress: () => void;
 }
 
@@ -54,7 +56,9 @@ export const AdminMenuCard: React.FC<AdminMenuCardProps> = ({
   cardWidth,
   isSmallScreen,
   numColumns,
-  totalUnread,
+  totalUnread = 0,
+  assignmentUnread = 0,
+  academicRecordUnread = 0,
   onPress,
 }) => {
   const gradientColors = getGradientColors(item.color);
@@ -125,6 +129,24 @@ export const AdminMenuCard: React.FC<AdminMenuCardProps> = ({
             totalUnread > 0 ? (
               <View style={styles.badgePos}>
                 <UnreadBadge count={totalUnread} />
+              </View>
+            ) : null}
+          {item.route &&
+            (String(item.route).includes("assignment") ||
+              String(item.route).includes("assignments")) &&
+            !String(item.route).includes("chat") &&
+            (assignmentUnread || 0) > 0 ? (
+              <View style={styles.badgePos}>
+                <UnreadBadge count={assignmentUnread!} />
+              </View>
+            ) : null}
+          {item.route &&
+            (String(item.route).includes("view-academic-records") ||
+              String(item.route).includes("EditStudentScores") ||
+              String(item.route).includes("academic-records")) &&
+            (academicRecordUnread || 0) > 0 ? (
+              <View style={styles.badgePos}>
+                <UnreadBadge count={academicRecordUnread!} />
               </View>
             ) : null}
         </LinearGradient>

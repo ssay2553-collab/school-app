@@ -38,7 +38,7 @@ export default function ParentDashboard() {
   const router = useRouter();
   const { appUser } = useAuth();
   const config = useSchoolConfig();
-  const { totalUnread } = useUnreadCounts();
+  const { totalUnread, assignmentUnread } = useUnreadCounts();
   const { upcomingEvents, loading: eventsLoading } = useUpcomingEvents(2);
 
   const [fullName, setFullName] = useState("");
@@ -311,6 +311,11 @@ export default function ParentDashboard() {
           {item.path && item.path.includes("chat") && totalUnread > 0 ? (
             <View style={styles.badgePos}>
               <UnreadBadge count={totalUnread} />
+            </View>
+          ) : null}
+          {item.path && item.path.includes("assignment") && assignmentUnread > 0 ? (
+            <View style={styles.badgePos}>
+              <UnreadBadge count={assignmentUnread} />
             </View>
           ) : null}
         </LinearGradient>

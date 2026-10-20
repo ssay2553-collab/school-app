@@ -39,7 +39,7 @@ export default function TeacherAttendanceConfigScreen() {
   const [fetchingLocation, setFetchingLocation] = useState(false);
   const [latitude, setLatitude] = useState<string>('');
   const [longitude, setLongitude] = useState<string>('');
-  const [radius, setRadius] = useState<string>('50'); // default 50 meters range
+  const [radius, setRadius] = useState<string>('100'); // default 100 meters range for school campus coverage
   const [lateTime, setLateTime] = useState<string>('08:15'); // default late threshold time e.g. 08:15 AM
   const [configId, setConfigId] = useState<string>('');
   const [savedConfig, setSavedConfig] = useState<any>(null);
@@ -63,9 +63,9 @@ export default function TeacherAttendanceConfigScreen() {
       if (snap.exists()) {
         const data = snap.data();
         setSavedConfig(data);
-        if (data.latitude) setLatitude(data.latitude.toString());
-        if (data.longitude) setLongitude(data.longitude.toString());
-        if (data.radius) setRadius(data.radius.toString());
+        if (data.latitude !== undefined && data.latitude !== null) setLatitude(data.latitude.toString());
+        if (data.longitude !== undefined && data.longitude !== null) setLongitude(data.longitude.toString());
+        if (data.radius !== undefined && data.radius !== null) setRadius(data.radius.toString());
         if (data.lateTime) setLateTime(data.lateTime);
         if (data.configId) setConfigId(data.configId);
         if (data.holidays && Array.isArray(data.holidays)) setHolidays(data.holidays);
@@ -87,16 +87,37 @@ export default function TeacherAttendanceConfigScreen() {
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      setLatitude(location.coords.latitude.toString());
-      setLongitude(location.coords.longitude.toString());
+      let location;
+      try {
+        location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      } catch (highErr) {
+        console.warn('High accuracy GPS failed, falling back to balanced accuracy:', highErr);
+        try {
+          location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        } catch (balErr) {
+          console.warn('Balanced accuracy GPS failed, trying last known position:', balErr);
+          location = await Location.getLastKnownPositionAsync();
+        }
+      }
+
+      if (!location || !location.coords) {
+        throw new Error('Unable to acquire live GPS location.');
+      }
+
+      const latStr = location.coords.latitude.toString();
+      const lngStr = location.coords.longitude.toString();
+      const accuracyMeters = location.coords.accuracy ? Math.round(location.coords.accuracy) : null;
+
+      setLatitude(latStr);
+      setLongitude(lngStr);
       if (showToastMessage) {
-        showToast({ message: 'GPS coordinates auto-generated successfully!', type: 'success' });
+        const accInfo = accuracyMeters ? ` (Accuracy: ±${accuracyMeters}m)` : '';
+        showToast({ message: `GPS coordinates auto-generated successfully!${accInfo}`, type: 'success' });
       }
     } catch (err) {
       console.error('Error auto-generating location:', err);
       if (showToastMessage) {
-        showToast({ message: 'Failed to auto-generate GPS location.', type: 'error' });
+        showToast({ message: 'Failed to auto-generate GPS location. Please ensure location services are enabled.', type: 'error' });
       }
     } finally {
       setFetchingLocation(false);
@@ -109,14 +130,51 @@ export default function TeacherAttendanceConfigScreen() {
       return;
     }
 
-    const latNum = parseFloat(latitude);
-    const lngNum = parseFloat(longitude);
-    const radiusNum = parseFloat(radius) || 50;
+    const cleanLatStr = latitude.toString().trim().replace(',', '.');
+    const cleanLngStr = longitude.toString().trim().replace(',', '.');
+    const cleanRadiusStr = radius.toString().trim().replace(',', '.');
 
-    if (isNaN(latNum) || isNaN(lngNum)) {
-      showToast({ message: 'Invalid latitude or longitude values.', type: 'error' });
+    const latNum = parseFloat(cleanLatStr);
+    const lngNum = parseFloat(cleanLngStr);
+    const radiusNum = parseFloat(cleanRadiusStr) || 100;
+
+    if (isNaN(latNum) || isNaN(lngNum) || latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
+      showToast({ message: 'Invalid latitude (-90 to 90) or longitude (-180 to 180) values.', type: 'error' });
       return;
     }
+
+    if (radiusNum < 10) {
+      showToast({ message: 'Allowed radius must be at least 10 meters.', type: 'error' });
+      return;
+    }
+
+    // Normalize late time input (e.g. "8:30", "8.30", "830" -> "08:30")
+    const normalizeLateTime = (input: string): string => {
+      const clean = input.trim().replace('.', ':').replace(' ', '');
+      if (!clean) return '08:15';
+      if (clean.includes(':')) {
+        const parts = clean.split(':');
+        let h = parseInt(parts[0], 10);
+        let m = parseInt(parts[1], 10);
+        if (isNaN(h)) h = 8;
+        if (isNaN(m)) m = 15;
+        h = Math.max(0, Math.min(23, h));
+        m = Math.max(0, Math.min(59, m));
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      }
+      if (/^\d{3,4}$/.test(clean)) {
+        const h = parseInt(clean.slice(0, clean.length - 2), 10);
+        const m = parseInt(clean.slice(-2), 10);
+        if (isNaN(h) || isNaN(m)) return '08:15';
+        const normH = Math.max(0, Math.min(23, h));
+        const normM = Math.max(0, Math.min(59, m));
+        return `${normH.toString().padStart(2, '0')}:${normM.toString().padStart(2, '0')}`;
+      }
+      return '08:15';
+    };
+
+    const formattedLateTime = normalizeLateTime(lateTime);
+    setLateTime(formattedLateTime);
 
     setLoading(true);
     try {
@@ -127,7 +185,7 @@ export default function TeacherAttendanceConfigScreen() {
         latitude: latNum,
         longitude: lngNum,
         radius: radiusNum,
-        lateTime: lateTime || '08:15',
+        lateTime: formattedLateTime,
         holidays,
         updatedBy: appUser?.uid || 'admin',
         updatedAt: serverTimestamp(),
@@ -231,7 +289,7 @@ export default function TeacherAttendanceConfigScreen() {
                 placeholderTextColor="#94a3b8"
                 value={latitude}
                 onChangeText={setLatitude}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
               />
             </View>
             <View style={styles.inputContainer}>
@@ -242,7 +300,7 @@ export default function TeacherAttendanceConfigScreen() {
                 placeholderTextColor="#94a3b8"
                 value={longitude}
                 onChangeText={setLongitude}
-                keyboardType="numeric"
+                keyboardType="decimal-pad"
               />
             </View>
           </View>
@@ -252,7 +310,7 @@ export default function TeacherAttendanceConfigScreen() {
               <Text style={styles.label}>Allowed Range (Meters)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g. 50"
+                placeholder="e.g. 100"
                 placeholderTextColor="#94a3b8"
                 value={radius}
                 onChangeText={setRadius}
@@ -270,8 +328,37 @@ export default function TeacherAttendanceConfigScreen() {
               />
             </View>
           </View>
+
+          {/* Preset Quick-Select Time Chips */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: '#64748b' }}>Quick Select:</Text>
+            {['07:30', '08:00', '08:15', '08:30', '09:00'].map((preset) => (
+              <TouchableOpacity
+                key={preset}
+                onPress={() => setLateTime(preset)}
+                style={{
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderRadius: 8,
+                  backgroundColor: lateTime === preset ? primary : '#f1f5f9',
+                  borderWidth: 1,
+                  borderColor: lateTime === preset ? primary : '#cbd5e1',
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: '700',
+                    color: lateTime === preset ? '#ffffff' : '#334155',
+                  }}
+                >
+                  {preset}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <Text style={styles.hint}>
-            Check-ins after {lateTime || '08:15'} will automatically be evaluated and marked as <Text style={{ fontWeight: '700', color: '#d97706' }}>Late</Text>.
+            Recommended range: <Text style={{ fontWeight: '700', color: primary }}>100 – 200 meters</Text> to cover classrooms/buildings and account for indoor GPS drift. Check-ins after {lateTime || '08:15'} will automatically be evaluated and marked as <Text style={{ fontWeight: '700', color: '#d97706' }}>Late</Text>.
           </Text>
 
           <TouchableOpacity

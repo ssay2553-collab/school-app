@@ -8,6 +8,7 @@ import {
   where,
   getDocs,
   writeBatch,
+  updateDoc,
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
@@ -78,6 +79,21 @@ export async function markNotificationsAsRead(recipientId: string, type?: Notifi
     await batch.commit();
   } catch (error) {
     console.error("Error marking notifications as read:", error);
+  }
+}
+
+/**
+ * Marks a single notification as read by its document ID without affecting other items.
+ */
+export async function markSingleNotificationAsRead(notificationId: string) {
+  try {
+    const notifRef = doc(db, "notifications", notificationId);
+    await updateDoc(notifRef, {
+      read: true,
+      readAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error("Error marking single notification as read:", error);
   }
 }
 

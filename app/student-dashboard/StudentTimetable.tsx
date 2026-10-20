@@ -126,6 +126,25 @@ export default function StudentTimetable() {
   const numColumns = timetable?.numColumns || 6;
   const timetableDays = timetable?.days || {};
 
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/student-dashboard");
+      }
+    } catch (e) {
+      router.replace("/student-dashboard");
+    }
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
+  };
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: surface }]}>
@@ -141,12 +160,9 @@ export default function StudentTimetable() {
 
       <View style={[styles.header, { borderLeftWidth: 5, borderLeftColor: brandColor }]}>
         <TouchableOpacity
-          onPress={() => {
-            if (isNavigating.current) return;
-            isNavigating.current = true;
-            router.back();
-          }}
+          onPress={handleBack}
           style={styles.backBtn}
+          activeOpacity={0.7}
         >
           <SVGIcon name="arrow-back" size={24} color={brandColor} />
         </TouchableOpacity>

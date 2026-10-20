@@ -37,6 +37,10 @@ import { broadcastFeeReminders } from "../../src/services/feeReminderService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import Constants from "expo-constants";
 
+const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
+
+type DatePickerTarget = 'vacationNextTerm' | 'midTermStart' | 'midTermEnd' | 'holidayDate' | null;
+
 export default function AdminSettingsScreen() {
   const { theme } = useTheme();
   const { showToast } = useToast();
@@ -62,6 +66,10 @@ export default function AdminSettingsScreen() {
   const [midTermEndDate, setMidTermEndDate] = useState(moment().add(5, 'days').format('YYYY-MM-DD'));
   const [holidayDate, setHolidayDate] = useState(moment().format('YYYY-MM-DD'));
   const [modalTitleInput, setModalTitleInput] = useState('');
+
+  // DatePicker state
+  const [activeDatePickerTarget, setActiveDatePickerTarget] = useState<DatePickerTarget>(null);
+  const [activeDatePickerDate, setActiveDatePickerDate] = useState<Date>(new Date());
 
   const schoolId = (Constants.expoConfig?.extra?.schoolId || SCHOOL_CONFIG.schoolId || 'school').toLowerCase();
 
@@ -95,6 +103,83 @@ export default function AdminSettingsScreen() {
     } catch (e) {
       console.error('Error fetching operations config in settings:', e);
     }
+  };
+
+  const openDatePicker = (target: DatePickerTarget, currentVal: string) => {
+    const parsed = moment(currentVal, 'YYYY-MM-DD');
+    const d = parsed.isValid() ? parsed.toDate() : new Date();
+    setActiveDatePickerDate(d);
+    setActiveDatePickerTarget(target);
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setActiveDatePickerTarget(null);
+    }
+    if (selectedDate && activeDatePickerTarget) {
+      const formatted = moment(selectedDate).format('YYYY-MM-DD');
+      if (activeDatePickerTarget === 'vacationNextTerm') {
+        setVacationNextTermBegins(formatted);
+      } else if (activeDatePickerTarget === 'midTermStart') {
+        setMidTermStartDate(formatted);
+      } else if (activeDatePickerTarget === 'midTermEnd') {
+        setMidTermEndDate(formatted);
+      } else if (activeDatePickerTarget === 'holidayDate') {
+        setHolidayDate(formatted);
+      }
+      setActiveDatePickerDate(selectedDate);
+    }
+  };
+
+  const renderDateField = (
+    label: string,
+    value: string,
+    onChangeText: (text: string) => void,
+    target: DatePickerTarget
+  ) => {
+    const isValid = Boolean(value) && moment(value, 'YYYY-MM-DD', true).isValid();
+    const formattedDisplay = isValid
+      ? moment(value, 'YYYY-MM-DD').format('ddd, MMM D, YYYY')
+      : 'Select Date 📅';
+
+    return (
+      <View style={{ marginBottom: 12 }}>
+        <Text style={styles.inputLabel}>{label}</Text>
+        {Platform.OS === 'web' ? (
+          <View style={styles.webDateRow}>
+            <TouchableOpacity
+              style={styles.datePickerBtn}
+              onPress={() => openDatePicker(target, value)}
+            >
+              <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+              <Text style={styles.datePickerBtnText}>
+                {formattedDisplay} <Text style={{ fontSize: 11, color: '#64748b' }}>({value || 'YYYY-MM-DD'})</Text>
+              </Text>
+            </TouchableOpacity>
+            <input
+              type="date"
+              value={value}
+              onChange={(e) => {
+                if (e.target.value) {
+                  onChangeText(e.target.value);
+                }
+              }}
+              style={webDateInputStyle}
+            />
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.datePickerBtn}
+            onPress={() => openDatePicker(target, value)}
+          >
+            <SVGIcon name="calendar-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.datePickerBtnText}>
+              {formattedDisplay} <Text style={{ fontSize: 11, color: '#64748b' }}>({value || 'YYYY-MM-DD'})</Text>
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    );
   };
 
   const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, report: financeReport } = useFinanceCleanup(showToast);
@@ -736,14 +821,7 @@ export default function AdminSettingsScreen() {
 
             {modalMode === 'vacation' && (
               <View style={styles.fieldBox}>
-                <Text style={styles.inputLabel}>Next Term Begins Date (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="YYYY-MM-DD (e.g. 2025-05-05)"
-                  placeholderTextColor="#94a3b8"
-                  value={vacationNextTermBegins}
-                  onChangeText={setVacationNextTermBegins}
-                />
+                {renderDateField('Next Term Begins Date', vacationNextTermBegins, setVacationNextTermBegins, 'vacationNextTerm')}
                 {!vacationNextTermBegins ? (
                   <Text style={styles.warningNote}>
                     ⚠️ Next Term Begins date is not set. Please set the date above so the app auto-unlocks when school resumes.
@@ -758,22 +836,8 @@ export default function AdminSettingsScreen() {
 
             {modalMode === 'mid_term' && (
               <View style={styles.fieldBox}>
-                <Text style={styles.inputLabel}>Break Start Date (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#94a3b8"
-                  value={midTermStartDate}
-                  onChangeText={setMidTermStartDate}
-                />
-                <Text style={styles.inputLabel}>Break End Date (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#94a3b8"
-                  value={midTermEndDate}
-                  onChangeText={setMidTermEndDate}
-                />
+                {renderDateField('Break Start Date', midTermStartDate, setMidTermStartDate, 'midTermStart')}
+                {renderDateField('Break End Date', midTermEndDate, setMidTermEndDate, 'midTermEnd')}
                 <Text style={styles.infoNote}>
                   🔓 App will automatically unlock on <Text style={{ fontWeight: '800' }}>{moment(midTermEndDate).add(1, 'day').format('YYYY-MM-DD')}</Text> after the break.
                 </Text>
@@ -782,14 +846,7 @@ export default function AdminSettingsScreen() {
 
             {modalMode === 'holiday' && (
               <View style={styles.fieldBox}>
-                <Text style={styles.inputLabel}>Holiday Date (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#94a3b8"
-                  value={holidayDate}
-                  onChangeText={setHolidayDate}
-                />
+                {renderDateField('Holiday Date', holidayDate, setHolidayDate, 'holidayDate')}
                 <Text style={styles.infoNote}>
                   🔓 App will automatically unlock on <Text style={{ fontWeight: '800' }}>{moment(holidayDate).add(1, 'day').format('YYYY-MM-DD')}</Text>.
                 </Text>
@@ -826,6 +883,37 @@ export default function AdminSettingsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* DatePicker Overlay for Mobile Platforms */}
+      {activeDatePickerTarget && DateTimePicker && (
+        Platform.OS === 'ios' ? (
+          <Modal visible transparent animationType="fade" onRequestClose={() => setActiveDatePickerTarget(null)}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.iosTimePickerContainer}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Select Date</Text>
+                  <TouchableOpacity onPress={() => setActiveDatePickerTarget(null)}>
+                    <Text style={{ color: COLORS.primary, fontWeight: '700', fontSize: 15 }}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={activeDatePickerDate}
+                  mode="date"
+                  display="spinner"
+                  onChange={handleDateChange}
+                />
+              </View>
+            </View>
+          </Modal>
+        ) : (
+          <DateTimePicker
+            value={activeDatePickerDate}
+            mode="date"
+            display="default"
+            onChange={handleDateChange}
+          />
+        )
+      )}
     </View>
   );
 }
@@ -948,4 +1036,46 @@ const styles = StyleSheet.create({
   modalCancelText: { fontSize: 13, fontWeight: '700', color: '#475569' },
   modalSaveBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   modalSaveText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  datePickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
+  },
+  datePickerBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  webDateRow: {
+    gap: 6,
+  },
+  iosTimePickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    width: '100%',
+    maxWidth: 450,
+  },
 });
+
+const webDateInputStyle = {
+  border: '1px solid #cbd5e1',
+  borderRadius: '10px',
+  padding: '8px 12px',
+  fontSize: '13px',
+  color: '#0f172a',
+  backgroundColor: '#f8fafc',
+  fontFamily: 'inherit',
+  cursor: 'pointer',
+  outline: 'none',
+  height: '42px',
+  width: '100%',
+  boxSizing: 'border-box' as const,
+  marginTop: '4px',
+};

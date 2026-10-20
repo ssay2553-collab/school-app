@@ -23,11 +23,13 @@ interface MetroTileProps {
   tileWidth: number;
   tileHeight: number;
   totalUnread?: number;
+  submissionUnread?: number;
+  assignmentUnread?: number;
   onPress: () => void;
 }
 
 export const MetroTile: React.FC<MetroTileProps> = React.memo(
-  ({ item, index, tileWidth, tileHeight, totalUnread = 0, onPress }) => {
+  ({ item, index, tileWidth, tileHeight, totalUnread = 0, submissionUnread = 0, assignmentUnread = 0, onPress }) => {
     const shouldAnimate = Platform.OS !== "web";
     const TileWrapper = shouldAnimate ? Animatable.View : View;
 
@@ -69,6 +71,17 @@ export const MetroTile: React.FC<MetroTileProps> = React.memo(
           totalUnread > 0 ? (
             <View style={styles.badgePos}>
               <UnreadBadge count={totalUnread} />
+            </View>
+          ) : null}
+
+          {/* Live Badge for Assignments / Submissions */}
+          {item.route &&
+          (String(item.route).includes("mark-assignment") ||
+            String(item.route).includes("manage-assignments") ||
+            String(item.route).includes("assignments")) &&
+          (submissionUnread > 0 || assignmentUnread > 0) ? (
+            <View style={styles.badgePos}>
+              <UnreadBadge count={submissionUnread || assignmentUnread} />
             </View>
           ) : null}
 

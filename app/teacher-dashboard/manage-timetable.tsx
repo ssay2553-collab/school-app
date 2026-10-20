@@ -24,6 +24,7 @@ import {
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { SCHOOL_CONFIG, useSchoolConfig } from "../../constants/Config";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useRouter } from "expo-router";
 import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, MONTESSORI_SUBJECTS, COMMON_ACTIVITIES } from "../../constants/Curriculum";
@@ -71,8 +72,10 @@ export default function CreateLessonTimetable() {
     updateColumnPeriod,
     saveTimetable,
     customSubjects,
+    setCustomSubjects,
   } = useManageTimetable();
 
+  const { appUser } = useAuth();
   const acadConfig = useAcademicConfig();
   const schoolConfig = useSchoolConfig();
 
@@ -80,6 +83,7 @@ export default function CreateLessonTimetable() {
   const [timeModal, setTimeModal] = useState<{ col: number; type: "start" | "end" } | null>(null);
   const [tempTime, setTempTime] = useState(new Date());
   const [exportingPDF, setExportingPDF] = useState(false);
+  const [subjectSearchText, setSubjectSearchText] = useState("");
   const isNavigating = useRef(false);
 
   const brandColor = COLORS.brandPrimary || COLORS.primary || "#2e86de";
@@ -131,8 +135,37 @@ export default function CreateLessonTimetable() {
     if (curriculum === "Cambridge") list = CAMBRIDGE_SUBJECTS;
     else if (curriculum === "Montessori") list = MONTESSORI_SUBJECTS;
 
-    return [...new Set([...list, ...COMMON_ACTIVITIES, ...customSubjects])].sort();
-  }, [curriculum, customSubjects]);
+    const teacherProfileSubjects = Array.from(
+      new Set([
+        ...(Array.isArray(appUser?.subjects) ? appUser.subjects : []),
+        ...(Array.isArray((appUser?.profile as any)?.subjects) ? (appUser?.profile as any).subjects : []),
+      ])
+    ).filter((s): s is string => typeof s === "string" && Boolean(s.trim()));
+
+    return [...new Set([...list, ...COMMON_ACTIVITIES, ...teacherProfileSubjects, ...customSubjects])].filter(Boolean).sort();
+  }, [curriculum, customSubjects, appUser]);
+
+  const filteredSubjects = useMemo(() => {
+    if (!subjectSearchText.trim()) return availableSubjects;
+    const query = subjectSearchText.toLowerCase();
+    return availableSubjects.filter(s => s.toLowerCase().includes(query));
+  }, [availableSubjects, subjectSearchText]);
+
+  const handleAddNewSubject = (subjectName: string) => {
+    const trimmed = subjectName.trim();
+    if (!trimmed) return;
+
+    if (!customSubjects.includes(trimmed)) {
+      setCustomSubjects(prev => [...prev, trimmed]);
+    }
+
+    if (pickerModal) {
+      updatePeriod(pickerModal.day, pickerModal.col, { subject: trimmed });
+      setPickerModal(null);
+      setSubjectSearchText("");
+      showToast({ message: `"${trimmed}" added as a custom subject!`, type: "success" });
+    }
+  };
 
   const handleBack = useCallback(() => {
     if (isNavigating.current) return true;
@@ -152,26 +185,81 @@ export default function CreateLessonTimetable() {
     const { day, col } = pickerModal;
     const currentSubject = timetableDays[day]?.[col]?.subject || "";
 
+    const isSearchNotInList = subjectSearchText.trim().length > 0 &&
+      !availableSubjects.some(s => s.toLowerCase() === subjectSearchText.trim().toLowerCase());
+
     return (
-      <Modal visible transparent animationType="slide">
+      <Modal
+        visible
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          setPickerModal(null);
+          setSubjectSearchText("");
+        }}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Activity</Text>
-              <TouchableOpacity onPress={() => setPickerModal(null)}>
+              <View>
+                <Text style={styles.modalTitle}>Select Activity / Subject</Text>
+                <Text style={styles.modalSub}>{day} • Period {col + 1}</Text>
+              </View>
+              <TouchableOpacity onPress={() => {
+                setPickerModal(null);
+                setSubjectSearchText("");
+              }}>
                 <SVGIcon name="close" size={24} color={neutralDark} />
               </TouchableOpacity>
             </View>
+
+            <View style={styles.searchBarContainer}>
+              <SVGIcon name="search" size={18} color="#94A3B8" />
+              <TextInput
+                style={styles.searchBarInput}
+                placeholder="Search or type custom subject..."
+                placeholderTextColor="#94A3B8"
+                value={subjectSearchText}
+                onChangeText={setSubjectSearchText}
+                autoCorrect={false}
+              />
+              {subjectSearchText.length > 0 && (
+                <TouchableOpacity onPress={() => setSubjectSearchText("")}>
+                  <SVGIcon name="close-circle" size={18} color="#94A3B8" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {isSearchNotInList && (
+              <TouchableOpacity
+                style={[styles.addCustomChip, { backgroundColor: brandColor }]}
+                onPress={() => handleAddNewSubject(subjectSearchText)}
+              >
+                <SVGIcon name="add-circle" size={20} color="#fff" />
+                <Text style={styles.addCustomChipText}>
+                  Add "{subjectSearchText.trim()}" as Custom Subject
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <FlatList
-              data={availableSubjects}
+              data={filteredSubjects}
               keyExtractor={item => item}
-              contentContainerStyle={{ padding: 10 }}
+              contentContainerStyle={{ padding: 10, paddingBottom: 30 }}
+              ListEmptyComponent={
+                !isSearchNotInList ? (
+                  <View style={{ padding: 20, alignItems: "center" }}>
+                    <Text style={{ color: "#94A3B8", fontWeight: "600" }}>No matching subjects found.</Text>
+                  </View>
+                ) : null
+              }
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[styles.subjectItem, currentSubject === item && { backgroundColor: brandColor + "15", borderColor: brandColor }]}
                   onPress={() => {
                     updatePeriod(day, col, { subject: item });
                     setPickerModal(null);
+                    setSubjectSearchText("");
                   }}
                 >
                   <View style={[styles.colorDot, { backgroundColor: getSubjectColor(item) === "#F8FAFC" ? brandColor : getSubjectColor(item) }]} />
@@ -521,6 +609,43 @@ const styles = StyleSheet.create({
     borderBottomColor: "#F1F5F9",
   },
   modalTitle: { fontSize: 18, fontWeight: "900", color: "#1E293B" },
+  modalSub: { fontSize: 12, color: "#64748B", marginTop: 2, fontWeight: "600" },
+  searchBarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginHorizontal: 15,
+    marginTop: 10,
+    marginBottom: 5,
+    paddingHorizontal: 12,
+    height: 46,
+    gap: 8,
+  },
+  searchBarInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1E293B",
+    fontWeight: "600",
+  },
+  addCustomChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginHorizontal: 15,
+    marginVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  addCustomChipText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
   subjectItem: {
     flexDirection: "row",
     alignItems: "center",

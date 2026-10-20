@@ -30,6 +30,35 @@ export type ClassData = {
   curriculum?: CurriculumType;
 };
 
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+export const ensureValidPeriod = (p?: Partial<Period>): Period => ({
+  id: p?.id && typeof p.id === 'string' && p.id.trim().length > 0 ? p.id : (Date.now().toString() + Math.random().toString(36).substring(2, 9)),
+  subject: p?.subject && typeof p.subject === 'string' ? p.subject : '',
+  startTime: p?.startTime && typeof p.startTime === 'string' ? p.startTime : '',
+  endTime: p?.endTime && typeof p.endTime === 'string' ? p.endTime : '',
+  isCustom: Boolean(p?.isCustom),
+});
+
+const sanitizeDayArray = (list?: any[], targetLength = 12): Period[] => {
+  const arr = Array.isArray(list) ? list : [];
+  const len = Math.max(arr.length, targetLength);
+  const result: Period[] = [];
+  for (let i = 0; i < len; i++) {
+    result.push(ensureValidPeriod(arr[i]));
+  }
+  return result;
+};
+
+const sanitizeDaysMap = (daysObj?: any, targetLength = 12): Record<string, Period[]> => {
+  const result: Record<string, Period[]> = {};
+  DAYS.forEach(day => {
+    const rawList = daysObj && typeof daysObj === 'object' ? daysObj[day] : [];
+    result[day] = sanitizeDayArray(rawList, targetLength);
+  });
+  return result;
+};
+
 export const useManageTimetable = () => {
   const { appUser } = useAuth();
   const { showToast } = useToast();
@@ -38,7 +67,7 @@ export const useManageTimetable = () => {
   const [selectedClass, setSelectedClass] = useState("");
   const [curriculum, setCurriculum] = useState<CurriculumType>(appUser?.curriculum || "GES");
   const [timetableDays, setTimetableDays] = useState<Record<string, Period[]>>({});
-  const [numColumns, setNumColumns] = useState(6);
+  const [numColumns, setNumColumnsState] = useState(6);
   const [customSubjects, setCustomSubjects] = useState<string[]>([]);
 
   const [loadingClasses, setLoadingClasses] = useState(true);
@@ -52,6 +81,25 @@ export const useManageTimetable = () => {
   }, []);
 
   const generateId = () => Date.now().toString() + Math.random().toString(36).substring(2, 9);
+
+  const setNumColumns = useCallback((newCols: number) => {
+    const validCols = Math.max(1, Math.min(20, newCols));
+    setNumColumnsState(validCols);
+    setTimetableDays(prev => sanitizeDaysMap(prev, Math.max(validCols, 12)));
+  }, []);
+
+  // Extract subjects specified in teacher profile
+  const userTeacherSubjects = useMemo(() => {
+    const list1 = Array.isArray(appUser?.subjects) ? appUser.subjects : [];
+    const list2 = Array.isArray((appUser?.profile as any)?.subjects) ? (appUser?.profile as any).subjects : [];
+    return [...new Set([...list1, ...list2])].filter(s => typeof s === 'string' && s.trim().length > 0);
+  }, [appUser]);
+
+  useEffect(() => {
+    if (userTeacherSubjects.length > 0) {
+      setCustomSubjects(prev => [...new Set([...prev, ...userTeacherSubjects])]);
+    }
+  }, [userTeacherSubjects]);
 
   // Fetch classes
   useEffect(() => {
@@ -114,34 +162,72 @@ export const useManageTimetable = () => {
       const docRef = doc(db, "timetables", classId);
       const snap = await getDoc(docRef);
 
+      let classSubjects: string[] = [];
+      try {
+        const classSnap = await getDoc(doc(db, "classes", classId));
+        if (classSnap.exists()) {
+          const cData = classSnap.data();
+          if (Array.isArray(cData.subjects)) {
+            classSubjects = cData.subjects.filter((s: any) => typeof s === "string" && s.trim().length > 0);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not load class subjects:", e);
+      }
+
       if (!isMounted.current) return;
+
+      const savedPeriodSubjects: string[] = [];
 
       if (snap.exists()) {
         const data = snap.data();
-        setNumColumns(data.numColumns || 6);
-        setTimetableDays(data.days || {});
+        const cols = Number(data.numColumns) || 6;
+        setNumColumnsState(cols);
+        setTimetableDays(sanitizeDaysMap(data.days, Math.max(cols, 12)));
         if (data.curriculum) setCurriculum(data.curriculum);
+
+        if (data.days && typeof data.days === "object") {
+          Object.values(data.days).forEach((periodList: any) => {
+            if (Array.isArray(periodList)) {
+              periodList.forEach((p: any) => {
+                if (p && typeof p.subject === "string" && p.subject.trim()) {
+                  savedPeriodSubjects.push(p.subject.trim());
+                }
+              });
+            }
+          });
+        }
+
+        const savedCustom = Array.isArray(data.customSubjects) ? data.customSubjects : [];
+
+        setCustomSubjects(prev => [
+          ...new Set([
+            ...prev,
+            ...userTeacherSubjects,
+            ...classSubjects,
+            ...savedCustom,
+            ...savedPeriodSubjects,
+          ])
+        ]);
       } else {
         // Initialize empty timetable
-        const initialDays: Record<string, Period[]> = {};
-        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].forEach(day => {
-          initialDays[day] = Array.from({ length: 12 }, () => ({
-            id: generateId(),
-            subject: "",
-            startTime: "",
-            endTime: "",
-            isCustom: false
-          }));
-        });
-        setTimetableDays(initialDays);
-        setNumColumns(6);
+        setNumColumnsState(6);
+        setTimetableDays(sanitizeDaysMap({}, 12));
+
+        setCustomSubjects(prev => [
+          ...new Set([
+            ...prev,
+            ...userTeacherSubjects,
+            ...classSubjects,
+          ])
+        ]);
       }
     } catch (err) {
       if (isMounted.current) console.error("loadTimetable error:", err);
     } finally {
       if (isMounted.current) setLoadingData(false);
     }
-  }, []);
+  }, [userTeacherSubjects]);
 
   useEffect(() => {
     if (selectedClass) {
@@ -153,21 +239,25 @@ export const useManageTimetable = () => {
 
   const updatePeriod = useCallback((day: string, col: number, updates: Partial<Period>) => {
     setTimetableDays(prev => {
-      const newDay = [...(prev[day] || [])];
-      newDay[col] = { ...newDay[col], ...updates };
-      return { ...prev, [day]: newDay };
+      const dayList = [...(prev[day] || [])];
+      while (dayList.length <= col) {
+        dayList.push(ensureValidPeriod());
+      }
+      dayList[col] = ensureValidPeriod({ ...dayList[col], ...updates });
+      return { ...prev, [day]: dayList };
     });
   }, []);
 
   const updateColumnPeriod = useCallback((col: number, updates: Partial<Period>) => {
     setTimetableDays(prev => {
       const next = { ...prev };
-      Object.keys(next).forEach(day => {
-        const newDay = [...(next[day] || [])];
-        if (newDay[col]) {
-          newDay[col] = { ...newDay[col], ...updates };
-          next[day] = newDay;
+      DAYS.forEach(day => {
+        const dayList = [...(next[day] || [])];
+        while (dayList.length <= col) {
+          dayList.push(ensureValidPeriod());
         }
+        dayList[col] = ensureValidPeriod({ ...dayList[col], ...updates });
+        next[day] = dayList;
       });
       return next;
     });
@@ -177,24 +267,46 @@ export const useManageTimetable = () => {
     if (!selectedClass) return;
     setSaving(true);
     try {
-      await setDoc(doc(db, "timetables", selectedClass), {
-        classId: selectedClass,
-        days: timetableDays,
-        numColumns,
-        curriculum,
-        lastUpdated: serverTimestamp(),
-        updatedBy: appUser?.uid
+      const cleanDays: Record<string, Period[]> = {};
+      const usedSubjects = new Set<string>();
+
+      DAYS.forEach(day => {
+        const dayList = timetableDays[day] || [];
+        const cleanList: Period[] = [];
+        const targetLen = Math.max(numColumns, dayList.length);
+        for (let i = 0; i < targetLen; i++) {
+          const p = ensureValidPeriod(dayList[i]);
+          cleanList.push(p);
+          if (p.subject && p.subject.trim()) {
+            usedSubjects.add(p.subject.trim());
+          }
+        }
+        cleanDays[day] = cleanList;
       });
 
-      // After saving to DB, schedule local reminders for the teacher
+      const allCustomSubjects = [...new Set([...customSubjects, ...Array.from(usedSubjects)])];
+
+      const payload = {
+        classId: selectedClass,
+        days: cleanDays,
+        numColumns,
+        curriculum: curriculum || "GES",
+        customSubjects: allCustomSubjects,
+        lastUpdated: serverTimestamp(),
+        updatedBy: appUser?.uid || "teacher"
+      };
+
+      await setDoc(doc(db, "timetables", selectedClass), payload, { merge: true });
+
+      // After saving to DB, schedule local reminders for valid lessons
       const flatLessons: any[] = [];
-      Object.keys(timetableDays).forEach(day => {
-        timetableDays[day].forEach(period => {
-          if (period.subject && period.startTime && period.endTime) {
+      DAYS.forEach(day => {
+        (cleanDays[day] || []).slice(0, numColumns).forEach(period => {
+          if (period.subject && period.subject.trim() && period.startTime && period.endTime) {
             flatLessons.push({
-              subject: period.subject,
-              startTime: period.startTime,
-              endTime: period.endTime,
+              subject: period.subject.trim(),
+              startTime: period.startTime.trim(),
+              endTime: period.endTime.trim(),
               day: day
             });
           }
@@ -204,12 +316,12 @@ export const useManageTimetable = () => {
       await scheduleTimetableReminders(flatLessons);
 
       if (isMounted.current) {
-        showToast({ message: "Timetable saved and reminders scheduled!", type: "success" });
+        showToast({ message: "Timetable saved and reminders scheduled! 🎉", type: "success" });
       }
-    } catch (err) {
+    } catch (err: any) {
       if (isMounted.current) {
         console.error("saveTimetable error:", err);
-        showToast({ message: "Failed to save timetable.", type: "error" });
+        showToast({ message: `Failed to save timetable: ${err?.message || "Error"}`, type: "error" });
       }
     } finally {
       if (isMounted.current) {

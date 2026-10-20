@@ -25,6 +25,7 @@ export default function AdminDashboard() {
     appUser,
     authLoading,
     totalUnread,
+    academicRecordUnread,
     upcomingEvents,
     eventsLoading,
     refreshing,
@@ -61,7 +62,7 @@ export default function AdminDashboard() {
       color: brandPrimary,
       items: [
         {
-          title: "User Directory",
+          title: "Manage Users",
           subtitle: "Manage people",
           route: "/admin-dashboard/manage-users",
           icon: "people",
@@ -75,14 +76,14 @@ export default function AdminDashboard() {
           color: "#8b5cf6",
         },
         {
-          title: "Access Tokens",
+          title: "Generate Code",
           subtitle: "Signup codes",
           route: "/admin-dashboard/generate-code",
           icon: "key",
           color: "#ec4899",
         },
         {
-          title: "Attendance",
+          title: "Student Attendance",
           subtitle: "Daily logs",
           route: "/admin-dashboard/attendance-overview",
           icon: "checkmark-circle",
@@ -118,14 +119,14 @@ export default function AdminDashboard() {
         ...(appUser?.role?.toLowerCase() !== "teacher"
           ? [
               {
-                title: "Student Fees",
+                title: "Fees",
                 subtitle: "Billing center",
                 route: "/admin-dashboard/ManageFees",
                 icon: "cash",
                 color: "#f59e0b",
               },
               {
-                title: "Student Charges",
+                title: "Other Fees",
                 subtitle: "PTA, Uniform, Books",
                 route: "/admin-dashboard/StudentCharges",
                 icon: "card",
@@ -182,7 +183,7 @@ export default function AdminDashboard() {
           color: "#6366f1",
         },
         {
-          title: "Edit Scores",
+          title: "Approve Score",
           subtitle: "Score correction",
           route: "/admin-dashboard/EditStudentScores",
           icon: "create",
@@ -196,7 +197,7 @@ export default function AdminDashboard() {
           color: "#84cc16",
         },
         {
-          title: "Calendar",
+          title: "Term Calendar",
           subtitle: "Events & Terms",
           route: "/academic-calendar",
           icon: "calendar-outline",
@@ -306,6 +307,7 @@ export default function AdminDashboard() {
                       isSmallScreen={isSmallScreen}
                       numColumns={numColumns}
                       totalUnread={totalUnread}
+                      academicRecordUnread={academicRecordUnread}
                       onPress={() => {
                         if (isNavigating.current) return;
                         isNavigating.current = true;

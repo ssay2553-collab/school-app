@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { doc, getDoc, collection, query, where, limit, getDocs, or } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useState } from "react";
@@ -64,39 +64,62 @@ export default function TeacherLoginScreen() {
       console.log("Standard login failed, checking for Token Login...");
 
       try {
-        // 2. Secondary check: Token Login
+        // 2. Secondary check: Token / Code Verification (Free Spark Plan compatible)
         const cleanToken = password.trim().toUpperCase();
-        const usersRef = collection(db, "users");
-        const q = query(
-          usersRef,
-          or(
-            where("profile.email", "==", finalEmail),
-            where("email", "==", finalEmail)
-          ),
-          limit(1)
-        );
-        const snap = await getDocs(q);
-
-        if (!snap.empty) {
-          const userDoc = snap.docs[0];
-          const userData = userDoc.data();
-          const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toUpperCase();
-
-          if (storedToken && (storedToken === cleanToken || storedToken === password.trim().toUpperCase())) {
-            showToast({ message: "Token matched! Syncing access...", type: "info" });
-
-            // Call Cloud Function to update password to match the token for future logins
+        if (cleanToken.length >= 4) {
+          try {
             const updatePasswordFn = httpsCallable(functions, "resetUserPasswordWithToken");
-            await updatePasswordFn({
-              uid: userDoc.id,
-              token: storedToken, // Use the stored token (could be case sensitive in some contexts)
-              newPassword: password.trim(), // Reset password to what they typed
+            const res: any = await updatePasswordFn({
+              identifier: finalEmail,
+              token: cleanToken,
+              newPassword: password.trim(),
             });
 
-            // Now sign in with the new password
-            const cred = await signInWithEmailAndPassword(auth, finalEmail, password.trim());
-            await finishLogin(cred.user.uid, finalEmail);
-            return;
+            if (res?.data?.email || res?.data?.status === 200) {
+              showToast({ message: "Token verified! Logging in...", type: "info" });
+              const targetEmail = res.data.email || finalEmail;
+              const cred = await signInWithEmailAndPassword(auth, targetEmail, password.trim());
+              await finishLogin(cred.user.uid, targetEmail);
+              return;
+            }
+          } catch (cfErr) {
+            console.warn("Cloud function unavailable (Free Spark plan), trying client-side code match:", cfErr);
+          }
+
+          // Client-side Firestore Link Code fallback (100% Free Spark Plan)
+          const usersRef = collection(db, "users");
+          const q = query(
+            usersRef,
+            or(
+              where("profile.email", "==", finalEmail),
+              where("email", "==", finalEmail),
+              where("parentLinkCode", "==", cleanToken),
+              where("signupCode", "==", cleanToken)
+            ),
+            limit(1)
+          );
+          const snap = await getDocs(q);
+
+          if (!snap.empty) {
+            const userData = snap.docs[0].data();
+            const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toString().trim().toUpperCase();
+
+            if (storedToken && (storedToken === cleanToken || storedToken === password.trim().toUpperCase())) {
+              const targetEmail = userData.profile?.email || userData.email || finalEmail;
+              try {
+                const cred = await signInWithEmailAndPassword(auth, targetEmail, storedToken);
+                await finishLogin(cred.user.uid, targetEmail);
+                return;
+              } catch {
+                await sendPasswordResetEmail(auth, targetEmail);
+                showToast({
+                  message: `Code matched! Password reset link sent to ${targetEmail}. Check your inbox!`,
+                  type: "info",
+                });
+                setLoading(false);
+                return;
+              }
+            }
           }
         }
       } catch (tokenErr) {

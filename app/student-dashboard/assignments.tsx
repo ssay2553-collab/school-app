@@ -40,7 +40,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { Assignment, Question, VisualItem } from "../../types/assignments";
 import QuestionResponseItem from "../../components/student-dashboard/assignments/QuestionResponseItem";
 import AssignmentCard from "../../components/student-dashboard/assignments/AssignmentCard";
-import { markNotificationsAsRead } from "../../src/services/notificationService";
+import { markNotificationsAsRead, sendNotification } from "../../src/services/notificationService";
 import { useRef } from "react";
 
 export default function Assignments() {
@@ -217,6 +217,23 @@ export default function Assignments() {
       };
 
       await setDoc(submissionRef, submissionData);
+
+      // Notify Teacher of submission
+      if (activeAssignment.teacherId) {
+        sendNotification({
+          recipientId: activeAssignment.teacherId,
+          senderId: appUser.uid,
+          senderName: studentName,
+          type: "submission",
+          title: "New Assignment Submission 📝",
+          body: `${studentName} submitted "${activeAssignment.title}"`,
+          data: {
+            assignmentId: activeAssignment.id,
+            studentId: appUser.uid,
+          },
+        });
+      }
+
       if (isMounted.current) {
         showToast({
           message: "Your assignment has been submitted successfully!",
@@ -250,6 +267,25 @@ export default function Assignments() {
     showToast({ message: "Assignment code copied to clipboard!", type: "success" });
   };
 
+  const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
+
+    try {
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.replace("/student-dashboard");
+      }
+    } catch (e) {
+      router.replace("/student-dashboard");
+    }
+
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
+  };
+
   const renderAssignmentItem = ({ item, index }: { item: Assignment, index: number }) => (
     <AssignmentCard item={item} index={index} onStart={handleStartAssignment} />
   );
@@ -260,12 +296,9 @@ export default function Assignments() {
       
       <View style={styles.header}>
         <TouchableOpacity
-          onPress={() => {
-            if (isNavigating.current) return;
-            isNavigating.current = true;
-            router.back();
-          }}
+          onPress={handleBack}
           style={styles.backBtn}
+          activeOpacity={0.7}
         >
           <SVGIcon name="arrow-back" size={24} color="#1E293B" />
         </TouchableOpacity>

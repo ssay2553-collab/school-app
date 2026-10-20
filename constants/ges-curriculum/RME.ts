@@ -1,111 +1,6 @@
 import { GESIndicator } from "../GES_Curriculum";
 
 export const RME: Record<string, GESIndicator[]> = {
-  "Basic 1": [
-    {
-      code: "B1.1.1.1.1",
-      strand: "God, His Creation and Attributes",
-      subStrand: "God the Creator",
-      contentStandard:
-        "Recognize God as the Creator of the universe, nature, and human beings",
-      indicator:
-        "Name things created by God (sun, stars, animals, plants, humans) and care for nature",
-      objectives:
-        "Identify natural creations and explain why caring for environment shows gratitude to God.",
-    },
-    {
-      code: "B1.2.1.1.1",
-      strand: "Religious Practices and Observances",
-      subStrand: "Prayer and Worship",
-      contentStandard:
-        "Understand prayer in Christianity, Islam, and Traditional Religion",
-      indicator:
-        "Demonstrate prayer postures and recite simple prayers in Christian, Islamic, or Traditional faith",
-      objectives:
-        "Demonstrate respectful prayer postures (bowing, prostration, hands folded) and quiet reverence.",
-    },
-    {
-      code: "B1.3.1.1.1",
-      strand: "Family and Community",
-      subStrand: "Roles in the Family",
-      contentStandard:
-        "Identify family duties and show respect to parents and siblings",
-      indicator:
-        "Perform age-appropriate home chores and show obedience to family members",
-      objectives:
-        "List household duties and practice helpfulness and respect towards parents and elders.",
-    },
-    {
-      code: "B1.4.1.1.1",
-      strand: "Religious Leaders and Moral Life",
-      subStrand: "Good Moral Behavior",
-      contentStandard:
-        "Demonstrate honesty, truthfulness, and kindness in daily interactions",
-      indicator:
-        "Identify good moral behaviors (telling truth, sharing, helping) vs bad behaviors (lying, stealing)",
-      objectives:
-        "Explain why honesty and kindness bring peace and trust at home and school.",
-    },
-  ],
-  "Basic 2": [
-    {
-      code: "B2.1.1.1.1",
-      strand: "God, His Creation and Attributes",
-      subStrand: "Creation and Purpose of Things",
-      contentStandard:
-        "Recognize that living things (plants, animals, humans) depend on God's creation for survival",
-      indicator:
-        "Identify plants and animals in the immediate environment and explain how they benefit human beings",
-      objectives:
-        "Appreciate God's provision in nature (water, food sources) and demonstrate care for domestic animals.",
-    },
-    {
-      code: "B2.2.1.1.1",
-      strand: "Religious Practices and Observances",
-      subStrand: "Places of Worship",
-      contentStandard:
-        "Identify sacred places of worship in Christianity, Islam, and Traditional Religion",
-      indicator:
-        "Name and describe churches, mosques, shrines, and traditional groves",
-      objectives:
-        "Describe how people gather for worship in churches, mosques, and traditional worship centers with reverence.",
-    },
-    {
-      code: "B2.3.1.1.1",
-      strand: "Family and Community",
-      subStrand: "Relationships and Respect for Elders",
-      contentStandard:
-        "Understand the importance of showing respect and obedience to elders and family members",
-      indicator:
-        "Demonstrate polite greetings, respect for elderly relatives, and helping with simple home tasks",
-      objectives:
-        "Practice respectful cultural greetings and model helpfulness at home.",
-    },
-  ],
-  "Basic 3": [
-    {
-      code: "B3.1.1.1.1",
-      strand: "God, His Creation and Attributes",
-      subStrand: "Attributes of God",
-      contentStandard:
-        "Understand basic attributes of God across the three major religions",
-      indicator:
-        "Describe attributes of God such as Creator, Loving, Merciful, and Provider",
-      objectives:
-        "Relate divine attributes to everyday moral actions such as showing love, mercy, and kindness.",
-    },
-    {
-      code: "B3.2.1.1.1",
-      strand: "Religious Practices and Observances",
-      subStrand: "Religious Ceremonies",
-      contentStandard:
-        "Identify major religious ceremonies (naming ceremonies, festivals) in Ghana",
-      indicator:
-        "Describe naming ceremonies (Outdooring/Kpodziemo/Aqiqah) and major religious festivals",
-      objectives:
-        "Explain significance of naming ceremonies and festivals in welcoming infants and building community.",
-    },
-  ],
   "Basic 4": [
     {
       code: "B4.1.1.1.1",
@@ -128,8 +23,7 @@ export const RME: Record<string, GESIndicator[]> = {
       subStrand: "God the Creator",
       contentStandard:
         "B4.1.1.2. Appreciate the uniqueness of humankind and other creatures",
-      indicator:
-        "Identify the uniqueness of humankind from other creatures.",
+      indicator: "Identify the uniqueness of humankind from other creatures.",
       objectives:
         "Compare human beings with animals and plants, list human characteristics (thinking ability, speech, moral sense of good vs evil), draw animals and humans for comparison, and write distinctive human traits.",
       exemplars:
@@ -362,7 +256,11 @@ export const RME: Record<string, GESIndicator[]> = {
         "Mention God's qualities (love, patience, mercy, kindness, forgiveness, honesty, accountability) and discuss how to apply divine qualities to serve God, protect environment, live in harmony, and contribute to development.",
       exemplars:
         "1. Mention qualities of God humankind should demonstrate: love, patience, mercy, kindness, forgiveness, honesty, accountability. 2. Discuss qualities needed to be God's children. 3. Discuss using God-given qualities to serve God/humankind, protect environment, live in harmony, and contribute to development.",
-      coreCompetencies: ["Stewardship", "Love", "Communication and Collaboration"],
+      coreCompetencies: [
+        "Stewardship",
+        "Love",
+        "Communication and Collaboration",
+      ],
     },
     {
       code: "B5.1.1.1.3",
@@ -413,8 +311,7 @@ export const RME: Record<string, GESIndicator[]> = {
     {
       code: "B5.2.1.1.1",
       strand: "Religious Practices and their Moral Implications",
-      subStrand:
-        "Religious Worship in the Three Major Religions in Ghana",
+      subStrand: "Religious Worship in the Three Major Religions in Ghana",
       contentStandard:
         "B5.2.1.1. Appreciate the importance of prayer, worship and other acts of worship",
       indicator: "Discuss the moral importance of worship.",
@@ -427,8 +324,7 @@ export const RME: Record<string, GESIndicator[]> = {
     {
       code: "B5.2.1.1.2",
       strand: "Religious Practices and their Moral Implications",
-      subStrand:
-        "Religious Worship in the Three Major Religions in Ghana",
+      subStrand: "Religious Worship in the Three Major Religions in Ghana",
       contentStandard:
         "B5.2.1.1. Appreciate the importance of prayer, worship and other acts of worship",
       indicator:
@@ -553,11 +449,7 @@ export const RME: Record<string, GESIndicator[]> = {
         "Identify ways to act responsibly at home (being good to avoid punishment, emulating parents/family), dramatise responsible parental behavior, and write essays on becoming responsible adults.",
       exemplars:
         "1. Identify responsible behaviors: avoiding punishment, emulating good parental examples. 2. Dramatise responsible parental behaviors. 3. Write and present essays on becoming responsible adults.",
-      coreCompetencies: [
-        "Responsibility",
-        "Tolerance",
-        "Personal Leadership",
-      ],
+      coreCompetencies: ["Responsibility", "Tolerance", "Personal Leadership"],
     },
     {
       code: "B5.5.2.1.1",
@@ -584,8 +476,7 @@ export const RME: Record<string, GESIndicator[]> = {
       code: "B6.1.1.1.1",
       strand: "God, His Creation and Attributes",
       subStrand: "God the Creator",
-      contentStandard:
-        "B6.1.1.1. Explore the Nature of God as the Creator",
+      contentStandard: "B6.1.1.1. Explore the Nature of God as the Creator",
       indicator: "Describe the nature of God through His attributes.",
       objectives:
         "List divine attributes (love, patience, merciful, Omniscient) in English and Ghanaian languages, identify divine attributes shared with humans, relate attributes to life, and write essays on God's attributes.",
@@ -637,8 +528,7 @@ export const RME: Record<string, GESIndicator[]> = {
     {
       code: "B6.2.1.1.1",
       strand: "Religious Practices and their Moral Implications",
-      subStrand:
-        "Religious Worship in the Three Major Religions in Ghana",
+      subStrand: "Religious Worship in the Three Major Religions in Ghana",
       contentStandard:
         "B6.2.1.1. Explain the importance of prayer, worship and other acts of worship",
       indicator: "Discuss the importance of prayer in our lives.",
@@ -770,8 +660,7 @@ export const RME: Record<string, GESIndicator[]> = {
       subStrand: "Commitment to God",
       contentStandard:
         "B6.4.1.1. Discuss the need to be committed to the community",
-      indicator:
-        "Explain the need to be committed members of the community.",
+      indicator: "Explain the need to be committed members of the community.",
       objectives:
         "Discuss benefits of being a committed citizen (attracting spiritual/material blessings, ensuring peace and harmony, driving progress and development) and show commitment through drama.",
       exemplars:
@@ -794,11 +683,7 @@ export const RME: Record<string, GESIndicator[]> = {
         "Define family harmony, list children's roles (respectful, obedient, humble) and relatives' roles (caring, protective, defensive), and role-play extended family duties (grandparents, uncles, aunts) in character molding.",
       exemplars:
         "1. Explain family harmony. 2. List children's roles to promote harmony: respectful, obedient, humble. 3. List relatives' roles: respectful, caring, protective, defensive, humble. 4. Role-play duties of grandparents, uncles, aunts, cousins in character molding.",
-      coreCompetencies: [
-        "Family Harmony",
-        "Respect",
-        "Character Formation",
-      ],
+      coreCompetencies: ["Family Harmony", "Respect", "Character Formation"],
     },
     {
       code: "B6.5.1.1.2",
@@ -812,11 +697,7 @@ export const RME: Record<string, GESIndicator[]> = {
         "Explain cordial relationships, list behaviors building family cordiality, explain reasons (peace, unity, character formation, family progress, provision of basic needs like shelter/food/school fees), and write group essays.",
       exemplars:
         "1. Explain cordial relationships in the family. 2. List behaviors ensuring cordial relationships. 3. Explain necessity of cordial relationships: peace, unity, character formation, family progress, securing basic needs (shelter, food, school fees). 4. Write group essays on cordial family relationships and present for feedback.",
-      coreCompetencies: [
-        "Peace and Unity",
-        "Family Provision",
-        "Cordiality",
-      ],
+      coreCompetencies: ["Peace and Unity", "Family Provision", "Cordiality"],
     },
     {
       code: "B6.5.2.1.1",
@@ -830,11 +711,7 @@ export const RME: Record<string, GESIndicator[]> = {
         "Identify responsible family behaviors (participating in family activities, obedience, respect, performing assigned duties, initiatives, helping needy relatives), discuss importance (unity, respect, trustworthiness, uplifting family image), and hold formal debates on family commitment.",
       exemplars:
         "1. Discuss attitudes of responsible family members: taking part in family activities, obedience to elders, respect, performing duties, taking initiative, helping needy relatives. 2. Discuss importance: promoting unity, gaining respect, being trustworthy, uplifting family image. 3. Debate motion: 'It is good to be committed to one's family.'",
-      coreCompetencies: [
-        "Debate Skills",
-        "Responsibility",
-        "Family Image",
-      ],
+      coreCompetencies: ["Debate Skills", "Responsibility", "Family Image"],
     },
   ],
   "JHS 1": [
@@ -1019,8 +896,7 @@ export const RME: Record<string, GESIndicator[]> = {
     {
       code: "B8.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand:
-        "The Creation Stories of the Three Major Religions in Ghana",
+      subStrand: "The Creation Stories of the Three Major Religions in Ghana",
       contentStandard:
         "Outline and explain the moral lessons in the creation stories of the three main religions in Ghana",
       indicator:
@@ -1043,7 +919,8 @@ export const RME: Record<string, GESIndicator[]> = {
       code: "B8.3.1.1.1",
       strand: "The Family and the Community",
       subStrand: "Authority and Obedience",
-      contentStandard: "Identify and explain the importance of obeying authority",
+      contentStandard:
+        "Identify and explain the importance of obeying authority",
       indicator:
         "Identify sources of authority (home, school, community, nation) and reasons for obeying authority",
       objectives:
@@ -1097,8 +974,7 @@ export const RME: Record<string, GESIndicator[]> = {
     {
       code: "B8.1.1.1.1",
       strand: "God, His Creation and Attributes",
-      subStrand:
-        "The Creation Stories of the Three Major Religions in Ghana",
+      subStrand: "The Creation Stories of the Three Major Religions in Ghana",
       contentStandard:
         "Outline and explain the moral lessons in the creation stories of the three main religions in Ghana",
       indicator:
@@ -1121,7 +997,8 @@ export const RME: Record<string, GESIndicator[]> = {
       code: "B8.3.1.1.1",
       strand: "The Family and the Community",
       subStrand: "Authority and Obedience",
-      contentStandard: "Identify and explain the importance of obeying authority",
+      contentStandard:
+        "Identify and explain the importance of obeying authority",
       indicator:
         "Identify sources of authority (home, school, community, nation) and reasons for obeying authority",
       objectives:

@@ -42,7 +42,7 @@ export default function TeacherDashboard() {
 
   const [assignmentCount, setAssignmentCount] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const { totalUnread } = useUnreadCounts();
+  const { totalUnread, submissionUnread, assignmentUnread } = useUnreadCounts();
   const { upcomingEvents, loading: eventsLoading } = useUpcomingEvents(2);
 
   // Attendance Alert Logic
@@ -452,6 +452,8 @@ export default function TeacherDashboard() {
                         tileWidth={calcWidth}
                         tileHeight={tileHeight}
                         totalUnread={totalUnread}
+                        submissionUnread={submissionUnread}
+                        assignmentUnread={assignmentUnread}
                         onPress={() => {
                           if (isNavigating.current || !item.route) return;
                           isNavigating.current = true;

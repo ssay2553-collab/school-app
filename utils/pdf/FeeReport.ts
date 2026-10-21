@@ -51,7 +51,7 @@ export class FeeReportGenerator extends BasePDFGenerator {
         this.options.schoolAddress,
         this.options.schoolHotline ? `Tel: ${this.options.schoolHotline}` : null,
         this.options.schoolEmail ? `Email: ${this.options.schoolEmail}` : null,
-    ].filter(Boolean).join("  •  ");
+    ].filter(Boolean).join("   |   ");
 
     if (contactInfo) {
         this.drawText(contactInfo, MARGIN, {
@@ -84,7 +84,7 @@ export class FeeReportGenerator extends BasePDFGenerator {
 
     this.drawTitleBanner("COMPREHENSIVE FEE STATUS REPORT");
 
-    this.drawText(`Academic Year: ${data.academicYear} | Term: ${data.term}`, MARGIN, {
+    this.drawText(`Academic Year: ${data.academicYear || "N/A"} | Term: ${data.term || "N/A"}`, MARGIN, {
       size: FONT_SIZE.small,
       color: rgb(0.45, 0.5, 0.58),
       align: "center",
@@ -93,10 +93,19 @@ export class FeeReportGenerator extends BasePDFGenerator {
 
     this.currentY -= 20;
 
-    const finalCurrency = data.currencySymbol === "₵" ? "GHS" : (data.currencySymbol || "GHS");
+    const rawCurrency = data.currencySymbol || "GHS";
+    const finalCurrency = (rawCurrency === "₵" || rawCurrency === "GH₵") ? "GHS" : rawCurrency.replace(/₵/g, "GHS");
 
-    Object.entries(data.groupedData).forEach(([className, students]) => {
-      this.addPage();
+    const entries = Object.entries(data.groupedData || {});
+    if (entries.length === 0) {
+      this.drawSectionHeader("NO FEE DATA AVAILABLE");
+      return this.savePdf();
+    }
+
+    entries.forEach(([className, students], index) => {
+      if (index > 0) {
+        this.addPage();
+      }
       this.drawSectionHeader(`CLASS: ${className}`);
 
       const columns = [
@@ -107,21 +116,21 @@ export class FeeReportGenerator extends BasePDFGenerator {
         { header: `BALANCE`, width: 100, align: "right" as const },
       ];
 
-      const rows = students.map((s) => [
-        s.fullName.toUpperCase(),
-        s.studentID,
-        s.totalPayable.toFixed(2),
-        s.amountPaid.toFixed(2),
-        s.balance.toFixed(2),
+      const rows = (students || []).map((s) => [
+        (s.fullName || "STUDENT").toUpperCase(),
+        s.studentID || "N/A",
+        (s.totalPayable || 0).toFixed(2),
+        (s.amountPaid || 0).toFixed(2),
+        (s.balance || 0).toFixed(2),
       ]);
 
       this.drawTable(MARGIN, columns, rows, {
         headerBgColor: this.primaryColor,
       });
 
-      const classTotalPayable = students.reduce((sum, s) => sum + s.totalPayable, 0);
-      const classTotalPaid = students.reduce((sum, s) => sum + s.amountPaid, 0);
-      const classTotalBalance = students.reduce((sum, s) => sum + s.balance, 0);
+      const classTotalPayable = (students || []).reduce((sum, s) => sum + (s.totalPayable || 0), 0);
+      const classTotalPaid = (students || []).reduce((sum, s) => sum + (s.amountPaid || 0), 0);
+      const classTotalBalance = (students || []).reduce((sum, s) => sum + (s.balance || 0), 0);
 
       this.currentY -= 15;
       const boxHeight = 26;
@@ -137,7 +146,7 @@ export class FeeReportGenerator extends BasePDFGenerator {
       const boxFontSize = 8.5;
       this.currentY = boxTopY - (boxHeight - boxFontSize) / 2 - 2;
       this.drawText(
-        `CLASS SUMMARY: ${students.length} Students | Payable: ${finalCurrency}${classTotalPayable.toFixed(2)} | Paid: ${finalCurrency}${classTotalPaid.toFixed(2)} | Balance: ${finalCurrency}${classTotalBalance.toFixed(2)}`,
+        `CLASS SUMMARY: ${students.length} Students | Payable: ${finalCurrency} ${classTotalPayable.toFixed(2)} | Paid: ${finalCurrency} ${classTotalPaid.toFixed(2)} | Balance: ${finalCurrency} ${classTotalBalance.toFixed(2)}`,
         MARGIN + 12,
         {
           size: boxFontSize,
@@ -149,13 +158,13 @@ export class FeeReportGenerator extends BasePDFGenerator {
       this.currentY = boxTopY - boxHeight - 25;
     });
 
-    const isMultiClass = Object.keys(data.groupedData).length > 1;
+    const isMultiClass = entries.length > 1;
 
-    if (isMultiClass) {
+    if (isMultiClass && data.schoolTotals) {
       this.addPage();
       this.drawSectionHeader("SCHOOL-WIDE FINANCIAL SUMMARY");
 
-      this.drawText(`Consolidated Report for Academic Year: ${data.academicYear} | ${data.term}`, MARGIN + 12, {
+      this.drawText(`Consolidated Report for Academic Year: ${data.academicYear || ""} | ${data.term || ""}`, MARGIN + 12, {
         size: FONT_SIZE.small,
         color: rgb(0.45, 0.5, 0.58),
       });
@@ -164,10 +173,10 @@ export class FeeReportGenerator extends BasePDFGenerator {
 
       const currency = finalCurrency;
       const summaryData = [
-        ["Total Fees Payable", `${currency} ${data.schoolTotals.payable.toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
-        ["Total Discounts Granted", `${currency} ${data.schoolTotals.discount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
-        ["Total Amount Paid", `${currency} ${data.schoolTotals.paid.toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
-        ["Total Outstanding Balance", `${currency} ${data.schoolTotals.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
+        ["Total Fees Payable", `${currency} ${(data.schoolTotals.payable || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
+        ["Total Discounts Granted", `${currency} ${(data.schoolTotals.discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
+        ["Total Amount Paid", `${currency} ${(data.schoolTotals.paid || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
+        ["Total Outstanding Balance", `${currency} ${(data.schoolTotals.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
       ];
 
       const summaryColumns = [

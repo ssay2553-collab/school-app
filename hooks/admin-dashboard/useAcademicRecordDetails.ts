@@ -144,7 +144,7 @@ export const useAcademicRecordDetails = (
       );
 
       const rawScoresSnap = await getDocsFromServer(qScores);
-      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType);
+      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType);
       const scoresDocs = rawScoresSnap.docs.filter((d) => {
         const data = d.data() as any;
         if (isNumbered) {
@@ -163,7 +163,7 @@ export const useAcademicRecordDetails = (
       if (!effectiveClassId) effectiveClassId = classIdState;
 
       const reportSlug = reportType.replace(/\s+/g, "");
-      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? reportNumber : "";
+      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? reportNumber : "";
       const reportId =
         `${studentId}_${academicYearState}_${termState}_${reportSlug}${numSuffix}`.replace(
           /\//g,
@@ -279,7 +279,7 @@ export const useAcademicRecordDetails = (
             ? d.data().students
             : [];
           const typeKey = reportType.replace(/\s+/g, "");
-          const reportSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? reportNumber : "";
+          const reportSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? reportNumber : "";
           const typeMatchKey = `${typeKey}${reportSuffix}`;
 
           students.forEach((s: any) => {
@@ -509,8 +509,8 @@ export const useAcademicRecordDetails = (
             : termState,
           overallPosition,
           attendance: attendance || "N/A",
-          reportType: ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType)
-            ? `${reportType === "Trial Test" ? "TEST" : reportType === "Mock Exams" ? "MOCK" : "CAT"} ${reportNumber}`
+          reportType: ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType)
+            ? `${reportType === "Trial Test" ? "TEST" : "CAT"} ${reportNumber}`
             : reportType,
           isFullReport,
           subjectsData,

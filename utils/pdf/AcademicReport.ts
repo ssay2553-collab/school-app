@@ -111,8 +111,8 @@ export class AcademicReportGenerator extends BasePDFGenerator {
     const sectionGap = subjectsCount <= 7 ? 15 : 8;
 
     // Report Title Banner
-    const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(data.reportType);
-    const typeLabel = data.reportType === "Trial Test" ? "TEST" : data.reportType === "Mock Exams" ? "MOCK" : "CAT";
+    const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(data.reportType);
+    const typeLabel = data.reportType === "Trial Test" ? "TEST" : "CAT";
     const reportTitle = isNumbered
       ? `${typeLabel} ${data.reportNumber || 1} PROGRESS REPORT`
       : `${data.reportType} PROGRESS REPORT`;

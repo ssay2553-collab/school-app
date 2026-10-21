@@ -1,34 +1,48 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocsFromServer,
-  query,
-  where,
-  writeBatch,
-  serverTimestamp,
-  deleteDoc,
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocsFromServer,
+    query,
+    serverTimestamp,
+    where,
+    writeBatch,
 } from "firebase/firestore";
-import { db } from "../../firebaseConfig";
-import { sortClasses, calculateCompetitionRanking, getGradeDetails } from "../../lib/classHelpers";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReportType } from "../../components/admin-dashboard/StudentScoreCard";
+import { db } from "../../firebaseConfig";
+import {
+    calculateCompetitionRanking,
+    getGradeDetails,
+    sortClasses,
+} from "../../lib/classHelpers";
 import { sendNotification } from "../../src/services/notificationService";
 
 interface SubjectInfo {
+  id: string;
   name: string;
   status: string;
   reportType: ReportType;
+  reportNumber?: number;
+  maxScore?: number;
   hasBehavioral?: boolean;
 }
 
 interface UseEditScoresLogicProps {
   appUser: any;
   acadConfig: any;
-  showToast: (options: { message: string; type: "success" | "error" | "info" | "warning" }) => void;
+  showToast: (options: {
+    message: string;
+    type: "success" | "error" | "info" | "warning";
+  }) => void;
 }
 
-export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditScoresLogicProps) => {
+export const useEditScoresLogic = ({
+  appUser,
+  acadConfig,
+  showToast,
+}: UseEditScoresLogicProps) => {
   const [loading, setLoading] = useState(true);
   const [fetchingSubjects, setFetchingSubjects] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -39,24 +53,27 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
   const [selectedClassId, setSelectedClassId] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
   const [subjects, setSubjects] = useState<SubjectInfo[]>([]);
-  const [selectedReportType, setSelectedReportType] = useState<ReportType>("End of Term");
+  const [selectedReportType, setSelectedReportType] =
+    useState<ReportType>("End of Term");
   const [selectedReportNumber, setSelectedReportNumber] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const [maxScore, setMaxScore] = useState<number>(100);
 
   const handleMaxScoreChange = useCallback((newMax: number) => {
     setMaxScore(newMax);
-    setAllStudents(prev => prev.map(s => {
-      const examsMark = parseFloat(s.examsMark) || 0;
-      const gradeInfo = getGradeDetails(examsMark, newMax);
-      return {
-        ...s,
-        maxScore: newMax,
-        finalScore: examsMark.toFixed(2),
-        grade: gradeInfo.grade,
-        remarks: gradeInfo.remark,
-      };
-    }));
+    setAllStudents((prev) =>
+      prev.map((s) => {
+        const examsMark = parseFloat(s.examsMark) || 0;
+        const gradeInfo = getGradeDetails(examsMark, newMax);
+        return {
+          ...s,
+          maxScore: newMax,
+          finalScore: examsMark.toFixed(2),
+          grade: gradeInfo.grade,
+          remarks: gradeInfo.remark,
+        };
+      }),
+    );
   }, []);
 
   const [recordId, setRecordId] = useState<string | null>(null);
@@ -68,7 +85,9 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const masterDataRef = useRef<Record<string, any>>({});
@@ -83,17 +102,19 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
   }, [allStudents]);
 
   const selectedClassName = useMemo(() => {
-    return classes.find((c) => c.id === selectedClassId)?.name || selectedClassId;
+    return (
+      classes.find((c) => c.id === selectedClassId)?.name || selectedClassId
+    );
   }, [classes, selectedClassId]);
 
   const filteredStudents = useMemo(() => {
-    let list = allStudents.filter(s => s.status !== "draft");
+    let list = allStudents.filter((s) => s.status !== "draft");
     if (!searchQuery) return list;
     const q = searchQuery.toLowerCase();
     return list.filter(
       (s) =>
         s.fullName?.toLowerCase().includes(q) ||
-        s.studentId?.toLowerCase().includes(q)
+        s.studentId?.toLowerCase().includes(q),
     );
   }, [allStudents, searchQuery]);
 
@@ -127,48 +148,102 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
       }
     };
     init();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [appUser]);
 
   const fetchSubjects = useCallback(async () => {
     if (!selectedClassId || !selectedYear || !term) return;
     setFetchingSubjects(true);
     try {
-      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
       const q = query(
         collection(db, "academicRecords"),
         where("classId", "==", selectedClassId),
         where("academicYear", "==", selectedYear),
         where("term", "==", term),
-        where("reportType", "==", selectedReportType)
       );
       const snap = await getDocsFromServer(q);
-      const matchingDocs = snap.docs.filter((d) => {
+
+      const subsMap = new Map<string, SubjectInfo>();
+
+      snap.docs.forEach((d) => {
         const data = d.data() as any;
-        if (isNumbered) {
-          const docNum = Number(data.reportNumber || 1);
-          return docNum === Number(selectedReportNumber || 1);
+        const reportType = (data.reportType as ReportType) || "End of Term";
+        const reportNumber = Number(data.reportNumber || 1);
+        const isNumbered = [
+          "Class Assessment Task (CAT)",
+          "Trial Test",
+        ].includes(reportType);
+        const key = `${data.subject || "unknown"}__${reportType}__${isNumbered ? reportNumber : 0}`;
+
+        const subjectInfo: SubjectInfo = {
+          id: key,
+          name: data.subject,
+          status: data.status || "pending",
+          reportType,
+          reportNumber: isNumbered ? reportNumber : undefined,
+          maxScore:
+            Number(data.maxScore) ||
+            (reportType === "End of Term" || reportType === "Mock Exams"
+              ? 100
+              : 50),
+          hasBehavioral: data.containsBehavioralData,
+        };
+
+        const existing = subsMap.get(key);
+        if (
+          !existing ||
+          (existing.status === "pending" && subjectInfo.status !== "pending")
+        ) {
+          subsMap.set(key, subjectInfo);
         }
-        return true;
       });
 
-      const subsList: SubjectInfo[] = matchingDocs
-        .map((d) => {
-          const data = d.data() as any;
-          return {
-            name: data.subject,
-            status: data.status || "pending",
-            reportType: data.reportType || "End of Term",
-            hasBehavioral: data.containsBehavioralData,
-          };
-        })
-        .sort((a, b) => a.name.localeCompare(b.name));
+      const subsList = Array.from(subsMap.values()).sort((a, b) => {
+        const nameCompare = a.name.localeCompare(b.name);
+        if (nameCompare !== 0) return nameCompare;
+        return (a.reportType || "").localeCompare(b.reportType || "");
+      });
 
       if (isMounted.current) {
         setSubjects(subsList);
         if (subsList.length > 0) {
-          if (!selectedSubject || !subsList.find((s) => s.name === selectedSubject)) {
-            setSelectedSubject(subsList[0].name);
+          const matchedSubject = subsList.find((s) => {
+            const sameName = s.name === selectedSubject;
+            const sameType = s.reportType === selectedReportType;
+            if (
+              ["Class Assessment Task (CAT)", "Trial Test"].includes(
+                selectedReportType,
+              )
+            ) {
+              return (
+                sameName &&
+                sameType &&
+                Number(s.reportNumber || 1) ===
+                  Number(selectedReportNumber || 1)
+              );
+            }
+            return sameName && sameType;
+          });
+
+          if (!matchedSubject) {
+            const preferredFallback =
+              subsList.find((s) => s.name === selectedSubject) || subsList[0];
+            setSelectedSubject(preferredFallback.name);
+            setSelectedReportType(preferredFallback.reportType);
+            if (
+              ["Class Assessment Task (CAT)", "Trial Test"].includes(
+                preferredFallback.reportType,
+              )
+            ) {
+              setSelectedReportNumber(
+                Number(preferredFallback.reportNumber || 1),
+              );
+            }
+            if (preferredFallback.maxScore) {
+              setMaxScore(preferredFallback.maxScore);
+            }
           }
         } else {
           setSelectedSubject("");
@@ -181,16 +256,41 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
         setFetchingSubjects(false);
       }
     }
-  }, [selectedClassId, selectedYear, term, selectedReportType, selectedReportNumber, selectedSubject]);
+  }, [
+    selectedClassId,
+    selectedYear,
+    term,
+    selectedReportType,
+    selectedReportNumber,
+    selectedSubject,
+  ]);
 
   useEffect(() => {
     if (selectedClassId && selectedYear && term) {
       fetchSubjects();
     }
-  }, [selectedClassId, selectedYear, term, selectedReportType, selectedReportNumber, fetchSubjects]);
+  }, [
+    selectedClassId,
+    selectedYear,
+    term,
+    selectedReportType,
+    selectedReportNumber,
+    fetchSubjects,
+  ]);
 
-  const loadSubmission = async (subjectOverride?: string) => {
+  const loadSubmission = async (
+    subjectOverride?: string,
+    overrides?: {
+      reportType?: ReportType;
+      reportNumber?: number;
+      maxScore?: number;
+    },
+  ) => {
     const subject = subjectOverride || selectedSubject;
+    const reportType = overrides?.reportType || selectedReportType;
+    const reportNumber = overrides?.reportNumber ?? selectedReportNumber;
+    const recordMaxScore = overrides?.maxScore ?? maxScore;
+
     if (!selectedClassId || !subject || !selectedYear || !term) {
       return showToast({
         message: "Please select Year, Class and Subject.",
@@ -200,13 +300,15 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
     setListLoading(true);
     try {
       const yearSlug = selectedYear.replace(/\//g, "-");
-      const reportSlug = selectedReportType.replace(/\s+/g, "");
-      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
-      const numSuffix = isNumbered ? `_${selectedReportNumber || 1}` : "";
+      const reportSlug = reportType.replace(/\s+/g, "");
+      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(
+        reportType,
+      );
+      const numSuffix = isNumbered ? `_${reportNumber || 1}` : "";
       const docId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
 
       let snap = await getDoc(doc(db, "academicRecords", docId));
-      if (!snap.exists() && isNumbered && Number(selectedReportNumber) === 1) {
+      if (!snap.exists() && isNumbered && Number(reportNumber) === 1) {
         const legacyDocId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
         snap = await getDoc(doc(db, "academicRecords", legacyDocId));
       }
@@ -214,7 +316,10 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
       if (snap.exists()) {
         setRecordId(snap.id);
         const data = snap.data() as any;
-        const docMaxScore = Number(data.maxScore) || 100;
+        const docMaxScore =
+          reportType === "End of Term" || reportType === "Mock Exams"
+            ? 100
+            : Number(data.maxScore) || recordMaxScore || 100;
         setMaxScore(docMaxScore);
         const rawStudents = Array.isArray(data.students) ? data.students : [];
         const students = rawStudents.map((s: any) => ({
@@ -237,7 +342,7 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
       } else {
         if (isMounted.current) {
           showToast({
-            message: `No submissions found for ${selectedSubject} in the selected period.`,
+            message: `No submissions found for ${subject} in the selected period.`,
             type: "info",
           });
           setRecordId(null);
@@ -286,7 +391,7 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
   const approveAndSave = async () => {
     if (!recordId || allStudents.length === 0) return;
     const studentsToSave = allStudents.map(
-      (s) => masterDataRef.current[s.studentId] || s
+      (s) => masterDataRef.current[s.studentId] || s,
     );
 
     if (selectedReportType === "End of Term") {
@@ -310,11 +415,15 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
       }));
 
       batch.update(recordRef, {
-        maxScore: selectedReportType === "End of Term" ? 100 : maxScore,
+        maxScore:
+          selectedReportType === "End of Term" ||
+          selectedReportType === "Mock Exams"
+            ? 100
+            : maxScore,
         students: studentsToSave.map((s) => {
           const rankInfo = calculateCompetitionRanking(
             subjectScoresList,
-            s.studentId
+            s.studentId,
           );
           return {
             ...s,
@@ -334,12 +443,17 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
         const summaryId = `${student.studentId}_${yearSlug}_${termSlug}`;
         const summaryRef = doc(db, "academicRecordsSummary", summaryId);
         const typeKey = selectedReportType.replace(/\s+/g, "");
-        const reportSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
+        const reportSuffix = [
+          "Class Assessment Task (CAT)",
+          "Trial Test",
+        ].includes(selectedReportType)
+          ? selectedReportNumber
+          : "";
         const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${typeKey}${reportSuffix}`;
 
         const rankInfo = calculateCompetitionRanking(
           subjectScoresList,
-          student.studentId
+          student.studentId,
         );
 
         batch.set(
@@ -360,7 +474,7 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
               },
             },
           },
-          { merge: true }
+          { merge: true },
         );
       });
 
@@ -368,21 +482,23 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
 
       // Notify parents of updated/approved scores
       try {
-        const studentIdsToNotify = studentsToSave.map(s => s.studentId);
+        const studentIdsToNotify = studentsToSave.map((s) => s.studentId);
         if (studentIdsToNotify.length > 0) {
           const qUsers = query(
             collection(db, "users"),
-            where("__name__", "in", studentIdsToNotify.slice(0, 30))
+            where("__name__", "in", studentIdsToNotify.slice(0, 30)),
           );
           const snapUsers = await getDocsFromServer(qUsers);
           const adminName = appUser?.displayName || "School Admin";
 
-          snapUsers.docs.forEach(uDoc => {
+          snapUsers.docs.forEach((uDoc) => {
             const uData = uDoc.data();
             const parentUids = uData?.parentUids;
             if (Array.isArray(parentUids) && parentUids.length > 0) {
-              const studentName = `${uData.profile?.firstName || ''} ${uData.profile?.lastName || ''}`.trim() || "Your ward";
-              parentUids.forEach(parentId => {
+              const studentName =
+                `${uData.profile?.firstName || ""} ${uData.profile?.lastName || ""}`.trim() ||
+                "Your ward";
+              parentUids.forEach((parentId) => {
                 sendNotification({
                   recipientId: parentId,
                   senderId: appUser?.uid || "admin",
@@ -396,15 +512,18 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
                     subject: selectedSubject,
                     academicYear: selectedYear,
                     term,
-                    reportType: selectedReportType
-                  }
+                    reportType: selectedReportType,
+                  },
                 });
               });
             }
           });
         }
       } catch (notifErr) {
-        console.error("Error sending score notifications to parents:", notifErr);
+        console.error(
+          "Error sending score notifications to parents:",
+          notifErr,
+        );
       }
 
       if (isMounted.current) {
@@ -438,7 +557,10 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
     setDeleting(true);
     try {
       await deleteDoc(doc(db, "academicRecords", recordId));
-      showToast({ message: "Submission record deleted successfully.", type: "success" });
+      showToast({
+        message: "Submission record deleted successfully.",
+        type: "success",
+      });
       setRecordId(null);
       setAllStudents([]);
       setVisibleStudents([]);
@@ -452,15 +574,19 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
   };
 
   const classStats = useMemo(() => {
-    const nonDraftStudents = allStudents.filter(s => s.status !== "draft");
-    if (nonDraftStudents.length === 0) return { avg: "0.00", graded: 0, high: "0.00" };
+    const nonDraftStudents = allStudents.filter((s) => s.status !== "draft");
+    if (nonDraftStudents.length === 0)
+      return { avg: "0.00", graded: 0, high: "0.00" };
 
     const scores = nonDraftStudents
       .map((s) => parseFloat(s.finalScore) || 0)
       .filter((s) => s > 0);
 
     const graded = scores.length;
-    const totalScore = nonDraftStudents.reduce((sum, s) => sum + (parseFloat(s.finalScore) || 0), 0);
+    const totalScore = nonDraftStudents.reduce(
+      (sum, s) => sum + (parseFloat(s.finalScore) || 0),
+      0,
+    );
     const high = scores.length > 0 ? Math.max(...scores).toFixed(2) : "0.00";
 
     return {
@@ -501,6 +627,7 @@ export const useEditScoresLogic = ({ appUser, acadConfig, showToast }: UseEditSc
     selectedYear,
     term,
     maxScore,
+    setMaxScore,
     handleMaxScoreChange,
   };
 };

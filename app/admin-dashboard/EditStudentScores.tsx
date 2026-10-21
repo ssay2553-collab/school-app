@@ -1,33 +1,33 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  BackHandler,
-  FlatList,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    BackHandler,
+    FlatList,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
-import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useToast } from "../../contexts/ToastContext";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 // Components
-import { StudentScoreCard } from "../../components/admin-dashboard/StudentScoreCard";
 import { ScoreFilterSection } from "../../components/admin-dashboard/ScoreFilterSection";
+import { StudentScoreCard } from "../../components/admin-dashboard/StudentScoreCard";
 import { EditScoresStats } from "../../components/edit-scores/EditScoresStats";
 
 // Hooks
@@ -44,7 +44,9 @@ export default function EditStudentScores() {
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const {
@@ -60,6 +62,8 @@ export default function EditStudentScores() {
     subjects,
     selectedReportType,
     setSelectedReportType,
+    selectedReportNumber,
+    setSelectedReportNumber,
     searchQuery,
     setSearchQuery,
     recordId,
@@ -76,6 +80,7 @@ export default function EditStudentScores() {
     selectedYear,
     term,
     maxScore,
+    setMaxScore,
     handleMaxScoreChange,
   } = useEditScoresLogic({ appUser, acadConfig, showToast });
 
@@ -95,7 +100,7 @@ export default function EditStudentScores() {
           [
             { text: "Stay", style: "cancel" },
             { text: "Discard", style: "destructive", onPress: onConfirm },
-          ]
+          ],
         );
       }
     } else {
@@ -121,7 +126,7 @@ export default function EditStudentScores() {
     if (Platform.OS === "web") {
       if (
         window.confirm(
-          "This will permanently delete this subject's scores for this class."
+          "This will permanently delete this subject's scores for this class.",
         )
       ) {
         deleteSubmission();
@@ -137,7 +142,7 @@ export default function EditStudentScores() {
             style: "destructive",
             onPress: deleteSubmission,
           },
-        ]
+        ],
       );
     }
   };
@@ -151,8 +156,12 @@ export default function EditStudentScores() {
           "You have modified scores. Are you sure you want to exit without saving?",
           [
             { text: "Stay", style: "cancel" },
-            { text: "Exit", style: "destructive", onPress: () => router.back() },
-          ]
+            {
+              text: "Exit",
+              style: "destructive",
+              onPress: () => router.back(),
+            },
+          ],
         );
         return true;
       }
@@ -237,55 +246,122 @@ export default function EditStudentScores() {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.subjectScrollContent}
                   >
-                    {subjects.map((s) => (
-                      <TouchableOpacity
-                        key={s.name}
-                        style={[
-                          styles.subjectChip,
-                          s.status === "approved"
-                            ? styles.approvedChip
-                            : styles.pendingChip,
-                          selectedSubject === s.name && styles.activeSubjectChip,
-                        ]}
-                        onPress={() => {
-                          if (selectedSubject === s.name) return;
-                          confirmDiscard(() => {
-                            setSelectedSubject(s.name);
-                            loadSubmission(s.name);
-                          });
-                        }}
-                      >
-                        <View
+                    {subjects.map((s) => {
+                      const isNumbered = [
+                        "Class Assessment Task (CAT)",
+                        "Trial Test",
+                      ].includes(s.reportType);
+                      const reportLabel =
+                        isNumbered && s.reportNumber
+                          ? `${s.reportType} ${s.reportNumber}`
+                          : s.reportType;
+                      const markLabel =
+                        s.reportType === "End of Term" ||
+                        s.reportType === "Mock Exams"
+                          ? "Over 100"
+                          : `Over ${s.maxScore || 100}`;
+                      const isApproved = s.status === "approved";
+                      const isPending = s.status === "pending";
+                      const active =
+                        selectedSubject === s.name &&
+                        selectedReportType === s.reportType &&
+                        (!isNumbered ||
+                          Number(selectedReportNumber || 1) ===
+                            Number(s.reportNumber || 1));
+
+                      return (
+                        <TouchableOpacity
+                          key={s.id}
                           style={[
-                            styles.statusDotSmall,
-                            {
-                              backgroundColor:
-                                s.status === "approved" ? "#10B981" : "#F59E0B",
-                            },
+                            styles.subjectChip,
+                            !active &&
+                              (isApproved
+                                ? styles.approvedChip
+                                : isPending
+                                  ? styles.pendingChip
+                                  : styles.neutralChip),
+                            active && styles.activeSubjectChip,
                           ]}
-                        />
-                        <Text
-                          style={[
-                            styles.subjectChipText,
-                            selectedSubject === s.name
-                              ? { color: primary }
-                              : { color: "#fff" },
-                          ]}
+                          onPress={() => {
+                            if (active) return;
+                            confirmDiscard(() => {
+                              setSelectedSubject(s.name);
+                              setSelectedReportType(s.reportType);
+                              if (isNumbered) {
+                                setSelectedReportNumber(
+                                  Number(s.reportNumber || 1),
+                                );
+                              }
+                              if (s.maxScore) {
+                                setMaxScore(s.maxScore);
+                              }
+                              loadSubmission(s.name, {
+                                reportType: s.reportType,
+                                reportNumber: s.reportNumber || 1,
+                                maxScore: s.maxScore || 100,
+                              });
+                            });
+                          }}
                         >
-                          {s.name}
-                        </Text>
-                        {s.status === "approved" && (
-                          <SVGIcon
-                            name="checkmark-circle"
-                            size={14}
-                            color={
-                              selectedSubject === s.name ? primary : "#10B981"
-                            }
-                            style={{ marginLeft: 6 }}
+                          <View
+                            style={[
+                              styles.statusDotSmall,
+                              {
+                                backgroundColor: active
+                                  ? isApproved
+                                    ? "#10B981"
+                                    : isPending
+                                      ? "#F59E0B"
+                                      : primary
+                                  : isApproved
+                                    ? "#10B981"
+                                    : isPending
+                                      ? "#F59E0B"
+                                      : "#E2E8F0",
+                              },
+                            ]}
                           />
-                        )}
-                      </TouchableOpacity>
-                    ))}
+                          <View style={styles.subjectChipContent}>
+                            <Text
+                              style={[
+                                styles.subjectChipText,
+                                active
+                                  ? { color: primary }
+                                  : isApproved
+                                    ? { color: "#065F46" }
+                                    : isPending
+                                      ? { color: "#92400E" }
+                                      : { color: "#ffffff" },
+                              ]}
+                            >
+                              {s.name}
+                            </Text>
+                            <Text
+                              style={[
+                                styles.subjectChipMeta,
+                                active
+                                  ? { color: primary }
+                                  : isApproved
+                                    ? { color: "#047857" }
+                                    : isPending
+                                      ? { color: "#B45309" }
+                                      : { color: "rgba(255,255,255,0.8)" },
+                              ]}
+                            >
+                              {reportLabel} • {markLabel}
+                            </Text>
+                          </View>
+                          {isApproved && (
+                            <SVGIcon
+                              name="checkmark-circle"
+                              size={14}
+                              color={active ? "#10B981" : "#047857"}
+                              style={{ marginLeft: 6 }}
+                            />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
                   </ScrollView>
                 </Animatable.View>
               )}
@@ -298,6 +374,8 @@ export default function EditStudentScores() {
               term={term}
               selectedReportType={selectedReportType}
               setSelectedReportType={setSelectedReportType}
+              selectedReportNumber={selectedReportNumber}
+              setSelectedReportNumber={setSelectedReportNumber}
               selectedClassId={selectedClassId}
               setSelectedClassId={setSelectedClassId}
               classes={classes}
@@ -328,7 +406,9 @@ export default function EditStudentScores() {
 
                 <EditScoresStats
                   stats={classStats}
-                  totalStudents={allStudents.filter(s => s.status !== "draft").length}
+                  totalStudents={
+                    allStudents.filter((s) => s.status !== "draft").length
+                  }
                   primary={primary}
                 />
               </Animatable.View>
@@ -467,24 +547,41 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 22,
+    paddingVertical: 11,
+    borderRadius: 20,
     marginRight: 10,
     borderWidth: 1.5,
     backgroundColor: "rgba(255,255,255,0.1)",
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.12)",
+    maxWidth: 248,
+    minHeight: 52,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
+  subjectChipContent: {
+    flexDirection: "column",
+    alignItems: "flex-start",
+    marginRight: 6,
+    flexShrink: 1,
+  },
+  neutralChip: {
+    backgroundColor: "rgba(148, 163, 184, 0.12)",
+    borderColor: "rgba(148, 163, 184, 0.25)",
+  },
   approvedChip: {
-    backgroundColor: "rgba(16, 185, 129, 0.15)",
-    borderColor: "rgba(16, 185, 129, 0.3)",
+    backgroundColor: "rgba(16, 185, 129, 0.18)",
+    borderColor: "rgba(16, 185, 129, 0.45)",
   },
   pendingChip: {
-    backgroundColor: "rgba(245, 158, 11, 0.15)",
-    borderColor: "rgba(245, 158, 11, 0.3)",
+    backgroundColor: "rgba(245, 158, 11, 0.18)",
+    borderColor: "rgba(245, 158, 11, 0.45)",
   },
   activeSubjectChip: {
     backgroundColor: "#fff",
@@ -497,6 +594,13 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textTransform: "uppercase",
     letterSpacing: 0.3,
+  },
+  subjectChipMeta: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+    marginTop: 2,
   },
   statusDotSmall: {
     width: 6,
@@ -517,8 +621,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   titleContainer: {
@@ -607,8 +711,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FEE2E2",
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   saveBtn: {
@@ -620,8 +724,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     ...SHADOWS.small,
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   saveBtnText: {

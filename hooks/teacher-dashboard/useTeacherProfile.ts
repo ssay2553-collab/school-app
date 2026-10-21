@@ -1,14 +1,25 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { signOut, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
-import { doc, updateDoc, query, collection, where, getDocs } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { Platform, Alert, BackHandler } from "react-native";
-import { auth, db, storage } from "../../firebaseConfig";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+    EmailAuthProvider,
+    reauthenticateWithCredential,
+    signOut,
+    updatePassword,
+} from "firebase/auth";
+import {
+    collection,
+    doc,
+    getDocs,
+    query,
+    updateDoc,
+    where,
+} from "firebase/firestore";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Alert, BackHandler, Platform } from "react-native";
+import { CurriculumType } from "../../constants/Curriculum";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { CurriculumType } from "../../constants/Curriculum";
+import { auth, db } from "../../firebaseConfig";
 import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 
 export const useTeacherProfile = () => {
@@ -25,7 +36,9 @@ export const useTeacherProfile = () => {
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   // Modals visibility
@@ -42,20 +55,32 @@ export const useTeacherProfile = () => {
   // Personal Info state
   const [phone, setPhone] = useState(appUser?.profile?.phone || "");
   const [gender, setGender] = useState(appUser?.profile?.gender || "");
-  const [dob, setDob] = useState<Date>(appUser?.profile?.dob ? new Date(appUser.profile.dob) : new Date());
+  const [dob, setDob] = useState<Date>(
+    appUser?.profile?.dob ? new Date(appUser.profile.dob) : new Date(),
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Work Assignments state
-  const [selectedClasses, setSelectedClasses] = useState<string[]>(getTeacherClasses(appUser));
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(appUser?.subjects || []);
-  const [curriculum, setCurriculum] = useState<CurriculumType>((appUser?.curriculum as CurriculumType) || "GES");
-  const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>([]);
+  const [selectedClasses, setSelectedClasses] = useState<string[]>(
+    getTeacherClasses(appUser),
+  );
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(
+    appUser?.subjects || [],
+  );
+  const [curriculum, setCurriculum] = useState<CurriculumType>(
+    (appUser?.curriculum as CurriculumType) || "GES",
+  );
+  const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [customSubject, setCustomSubject] = useState("");
   const [isOtherSelected, setIsOtherSelected] = useState(false);
 
   // Professional Profile state
   const [bio, setBio] = useState(appUser?.profile?.bio || "");
-  const [experience, setExperience] = useState(appUser?.profile?.experience || "");
+  const [experience, setExperience] = useState(
+    appUser?.profile?.experience || "",
+  );
   const [education, setEducation] = useState(appUser?.profile?.education || "");
 
   // Password change state
@@ -91,7 +116,14 @@ export const useTeacherProfile = () => {
       router.replace("/teacher-dashboard");
     }
     return true;
-  }, [nameModalVisible, personalModalVisible, profModalVisible, pwModalVisible, workModalVisible, router]);
+  }, [
+    nameModalVisible,
+    personalModalVisible,
+    profModalVisible,
+    pwModalVisible,
+    workModalVisible,
+    router,
+  ]);
 
   useEffect(() => {
     if (appUser) {
@@ -103,7 +135,9 @@ export const useTeacherProfile = () => {
         setEducation(appUser.profile.education || "");
         setPhone(appUser.profile.phone || "");
         setGender(appUser.profile.gender || "");
-        setDob(appUser.profile.dob ? new Date(appUser.profile.dob) : new Date());
+        setDob(
+          appUser.profile.dob ? new Date(appUser.profile.dob) : new Date(),
+        );
       }
       setSelectedClasses(getTeacherClasses(appUser));
       const subjects = appUser.subjects || [];
@@ -124,17 +158,24 @@ export const useTeacherProfile = () => {
       try {
         const snap = await getDocs(collection(db, "classes"));
         if (!isMounted.current) return;
-        const list = snap.docs.map((d) => ({ id: d.id, name: d.data().name || d.id }));
+        const list = snap.docs.map((d) => ({
+          id: d.id,
+          name: d.data().name || d.id,
+        }));
         setAllClasses(sortClasses(list));
       } catch (err) {
-        if (isMounted.current) console.error("Error fetching all classes:", err);
+        if (isMounted.current)
+          console.error("Error fetching all classes:", err);
       }
     };
     fetchAllClasses();
   }, []);
 
   useEffect(() => {
-    const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      handleBack,
+    );
     return () => backHandler.remove();
   }, [handleBack]);
 
@@ -147,7 +188,10 @@ export const useTeacherProfile = () => {
         return;
       }
       try {
-        const q = query(collection(db, "classes"), where("__name__", "in", classIds));
+        const q = query(
+          collection(db, "classes"),
+          where("__name__", "in", classIds),
+        );
         const snap = await getDocs(q);
         if (!isMounted.current) return;
         const namesMap: Record<string, string> = {};
@@ -163,7 +207,8 @@ export const useTeacherProfile = () => {
           setMainClassName(namesMap[appUser.classTeacherOf] || "Unknown");
         }
       } catch (err) {
-        if (isMounted.current) console.error("Error fetching class names:", err);
+        if (isMounted.current)
+          console.error("Error fetching class names:", err);
       }
     };
     fetchClassNames();
@@ -180,7 +225,10 @@ export const useTeacherProfile = () => {
           router.replace("/");
         }
       } catch (err) {
-        showToast({ message: "Logout failed. Please try again.", type: "error" });
+        showToast({
+          message: "Logout failed. Please try again.",
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }
@@ -199,7 +247,10 @@ export const useTeacherProfile = () => {
 
   const handleUpdateName = async () => {
     if (!firstName.trim() || !lastName.trim()) {
-      showToast({ message: "First name and surname are required.", type: "error" });
+      showToast({
+        message: "First name and surname are required.",
+        type: "error",
+      });
       return;
     }
     if (!appUser) return;
@@ -239,7 +290,10 @@ export const useTeacherProfile = () => {
     } catch (err) {
       if (isMounted.current) {
         console.error(err);
-        showToast({ message: "Failed to update personal details.", type: "error" });
+        showToast({
+          message: "Failed to update personal details.",
+          type: "error",
+        });
       }
     } finally {
       if (isMounted.current) setUpdating(false);
@@ -249,7 +303,10 @@ export const useTeacherProfile = () => {
   const handleUpdateWork = async () => {
     if (!appUser) return;
     if (selectedClasses.length === 0) {
-      showToast({ message: "Please select at least one class.", type: "error" });
+      showToast({
+        message: "Please select at least one class.",
+        type: "error",
+      });
       return;
     }
     let finalSubjects = [...selectedSubjects];
@@ -259,7 +316,10 @@ export const useTeacherProfile = () => {
       }
     }
     if (finalSubjects.length === 0) {
-      showToast({ message: "Please select at least one subject.", type: "error" });
+      showToast({
+        message: "Please select at least one subject.",
+        type: "error",
+      });
       return;
     }
     setUpdating(true);
@@ -275,7 +335,10 @@ export const useTeacherProfile = () => {
       setIsOtherSelected(false);
     } catch (err) {
       console.error(err);
-      showToast({ message: "Failed to update work assignments.", type: "error" });
+      showToast({
+        message: "Failed to update work assignments.",
+        type: "error",
+      });
     } finally {
       setUpdating(false);
     }
@@ -294,7 +357,10 @@ export const useTeacherProfile = () => {
       setProfModalVisible(false);
     } catch (err) {
       console.error(err);
-      showToast({ message: "Failed to update professional profile.", type: "error" });
+      showToast({
+        message: "Failed to update professional profile.",
+        type: "error",
+      });
     } finally {
       setUpdating(false);
     }
@@ -302,7 +368,10 @@ export const useTeacherProfile = () => {
 
   const handleUpdatePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      showToast({ message: "Please fill in all password fields.", type: "error" });
+      showToast({
+        message: "Please fill in all password fields.",
+        type: "error",
+      });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -310,14 +379,20 @@ export const useTeacherProfile = () => {
       return;
     }
     if (newPassword.length < 6) {
-      showToast({ message: "New password must be at least 6 characters.", type: "error" });
+      showToast({
+        message: "New password must be at least 6 characters.",
+        type: "error",
+      });
       return;
     }
     setPwUpdating(true);
     try {
       const user = auth.currentUser;
       if (!user || !user.email) throw new Error("No user session found.");
-      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        currentPassword,
+      );
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
       showToast({ message: "Password updated successfully!", type: "success" });
@@ -328,7 +403,8 @@ export const useTeacherProfile = () => {
     } catch (error: any) {
       console.error(error);
       let msg = "Failed to update password.";
-      if (error.code === "auth/wrong-password") msg = "The current password you entered is incorrect.";
+      if (error.code === "auth/wrong-password")
+        msg = "The current password you entered is incorrect.";
       showToast({ message: msg, type: "error" });
     } finally {
       setPwUpdating(false);
@@ -341,32 +417,56 @@ export const useTeacherProfile = () => {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.3,
+        quality: 0.5,
         base64: true,
       });
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const base64DataUrl = asset.base64
-          ? `data:image/jpeg;base64,${asset.base64}`
-          : asset.uri;
-        uploadProfileImage(base64DataUrl);
+        uploadProfileImage(asset.uri, asset.base64);
       }
     } catch (e) {
       showToast({ message: "Failed to open library.", type: "error" });
     }
   };
 
-  const uploadProfileImage = async (base64OrUri: string) => {
-    if (!appUser) return;
+  const uploadProfileImage = async (uri: string, base64?: string | null) => {
+    const targetUid = appUser?.uid || auth.currentUser?.uid;
+    if (!targetUid) {
+      showToast({ message: "User session not found.", type: "error" });
+      return;
+    }
     setUpdating(true);
     try {
-      await updateDoc(doc(db, "users", appUser.uid), {
-        "profile.profileImage": base64OrUri,
+      const finalUrl = base64 ? `data:image/jpeg;base64,${base64}` : uri;
+
+      const updateData = {
+        "profile.profileImage": finalUrl,
+        "profile.photoURL": finalUrl,
+        photoURL: finalUrl,
+      };
+
+      if (appUser?.uid) {
+        await updateDoc(doc(db, "users", appUser.uid), updateData);
+      }
+
+      if (auth.currentUser?.uid && auth.currentUser.uid !== appUser?.uid) {
+        try {
+          await updateDoc(doc(db, "users", auth.currentUser.uid), updateData);
+        } catch (e) {
+          /* ignore */
+        }
+      }
+
+      showToast({
+        message: "Profile picture updated successfully!",
+        type: "success",
       });
-      showToast({ message: "Profile picture updated successfully!", type: "success" });
-    } catch (err) {
-      console.error(err);
-      showToast({ message: "Could not save image.", type: "error" });
+    } catch (err: any) {
+      console.error("Error saving profile picture:", err);
+      showToast({
+        message: err?.message || "Could not save profile picture.",
+        type: "error",
+      });
     } finally {
       setUpdating(false);
     }

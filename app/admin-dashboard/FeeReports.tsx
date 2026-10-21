@@ -252,17 +252,17 @@ export default function FeeReports() {
           term: term || "",
           groupedData: groupedData,
           schoolTotals: schoolTotals,
-          currencySymbol: SCHOOL_CONFIG.currencySymbol,
+          currencySymbol: SCHOOL_CONFIG.currencySymbol || "GHS",
         },
-        SCHOOL_CONFIG.fullName,
-        SCHOOL_CONFIG.hotline,
-        SCHOOL_CONFIG.email,
-        SCHOOL_CONFIG.address,
-        SCHOOL_CONFIG.motto,
+        SCHOOL_CONFIG.fullName || "Educational Center",
+        SCHOOL_CONFIG.hotline || "",
+        SCHOOL_CONFIG.email || "",
+        SCHOOL_CONFIG.address || "",
+        SCHOOL_CONFIG.motto || "",
         getSchoolLogo(SCHOOL_CONFIG.schoolId),
       );
     } catch (error) {
-      console.error("PDF Generation Error:", error);
+      console.error("PDF Generation Error in FeeReports:", error);
     }
   };
 

@@ -70,12 +70,12 @@ export default function FinancialSummary() {
 
   const generatePDF = async () => {
     try {
-      const feeCat = categories.find((c) => c.name === "General Student Fees");
-      const dailyCats = categories.filter((c) => ["Feeding Fees", "Bus Fees", "Extra Classes"].includes(c.name));
-      const expenditureCat = categories.find((c) => c.name === "Expenditure");
+      const feeCat = categories.find((c) => c?.name === "General Student Fees");
+      const dailyCats = categories.filter((c) => c && ["Feeding Fees", "Bus Fees", "Extra Classes"].includes(c.name));
+      const expenditureCat = categories.find((c) => c?.name === "Expenditure");
 
       const totalGeneralFees = feeCat?.allPeriodsTotal || 0;
-      const totalDaily = dailyCats.reduce((acc, cat) => acc + cat.allPeriodsTotal, 0);
+      const totalDaily = dailyCats.reduce((acc, cat) => acc + (cat?.allPeriodsTotal || 0), 0);
       const totalExpenditure = expenditureCat?.allPeriodsTotal || 0;
       const netBalance = totalGeneralFees - totalExpenditure;
 
@@ -85,29 +85,33 @@ export default function FinancialSummary() {
           totalDailyPayments: totalDaily,
           totalExpenditure,
           netBalance,
-          totalBilled: feeStats.billed,
-          totalPaid: feeStats.paid,
-          totalOutstanding: feeStats.balance,
-          totalDiscount: feeStats.discount,
-          discountCount: feeStats.discountCount,
-          ledgerItems: ledgerItems,
-          categories: categories.map((cat) => ({
-            name: cat.name,
-            count: cat.term.count,
-            total: cat.allPeriodsTotal,
-            today: cat.today.total,
-            week: cat.week.total,
-            month: cat.month.total,
-            term: cat.term.total,
+          totalBilled: feeStats?.billed || 0,
+          totalPaid: feeStats?.paid || 0,
+          totalOutstanding: feeStats?.balance || 0,
+          totalDiscount: feeStats?.discount || 0,
+          discountCount: feeStats?.discountCount || 0,
+          ledgerItems: ledgerItems || [],
+          categories: (categories || []).map((cat) => ({
+            name: cat?.name || "N/A",
+            count: cat?.term?.count || 0,
+            total: cat?.allPeriodsTotal || 0,
+            today: cat?.today?.total || 0,
+            week: cat?.week?.total || 0,
+            month: cat?.month?.total || 0,
+            term: cat?.term?.total || 0,
           })),
           currencySymbol: SCHOOL_CONFIG.currencySymbol || "GHS",
         },
-        SCHOOL_CONFIG.fullName,
-        SCHOOL_CONFIG.hotline,
-        SCHOOL_CONFIG.email,
-        SCHOOL_CONFIG.address,
+        SCHOOL_CONFIG.fullName || "Educational Center",
+        SCHOOL_CONFIG.hotline || "",
+        SCHOOL_CONFIG.email || "",
+        SCHOOL_CONFIG.address || "",
       );
+      if (isMounted.current) {
+        showToast({ message: "PDF generated successfully!", type: "success" });
+      }
     } catch (error) {
+      console.error("Financial Summary PDF generation error:", error);
       if (isMounted.current) {
         showToast({ message: "Failed to generate PDF.", type: "error" });
       }

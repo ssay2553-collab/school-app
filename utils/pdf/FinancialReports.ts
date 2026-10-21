@@ -32,7 +32,7 @@ abstract class FinancialBaseGenerator extends BasePDFGenerator {
     }
 
     // School Details (Left Aligned)
-    this.currentPage.drawText(this.options.schoolName.toUpperCase(), {
+    this.currentPage.drawText(this.sanitizeText((this.options.schoolName || "").toUpperCase()), {
       x: MARGIN + 15,
       y: startY - 18,
       size: 16,
@@ -44,7 +44,7 @@ abstract class FinancialBaseGenerator extends BasePDFGenerator {
     const infoSize = 8.5;
 
     if (this.options.schoolAddress) {
-      this.currentPage.drawText(this.options.schoolAddress, {
+      this.currentPage.drawText(this.sanitizeText(this.options.schoolAddress), {
         x: MARGIN + 15,
         y: infoY,
         size: infoSize,
@@ -62,7 +62,7 @@ abstract class FinancialBaseGenerator extends BasePDFGenerator {
       .join("   |   ");
 
     if (contactText) {
-      this.currentPage.drawText(contactText, {
+      this.currentPage.drawText(this.sanitizeText(contactText), {
         x: MARGIN + 15,
         y: infoY,
         size: infoSize,
@@ -93,14 +93,24 @@ export class FinancialSummaryGenerator extends FinancialBaseGenerator {
     this.drawTitleBanner("FINANCIAL SUMMARY REPORT");
 
     this.currentY -= 10;
-    const finalCurrency = data.currencySymbol === "₵" ? "GHS" : (data.currencySymbol || "GHS");
+    const rawCurrency = data.currencySymbol || "GHS";
+    const finalCurrency = (rawCurrency === "₵" || rawCurrency === "GH₵") ? "GHS" : rawCurrency.replace(/₵/g, "GHS");
+
+    const totalFees = data.totalFees || 0;
+    const totalExpenditure = data.totalExpenditure || 0;
+    const netStanding = totalFees - totalExpenditure;
+    const totalDailyPayments = data.totalDailyPayments || 0;
+    const totalBilled = data.totalBilled || 0;
+    const totalPaid = data.totalPaid || 0;
+    const totalOutstanding = data.totalOutstanding || 0;
+    const totalDiscount = data.totalDiscount || 0;
+    const discountCount = data.discountCount || 0;
 
     // 1. School Financial Standing (Top Summary)
     const cardWidth = (PAGE_WIDTH - 20) / 3;
     const cardHeight = 65;
     this.ensureSpace(cardHeight + 20);
     const cardsY = this.currentY;
-    const netStanding = data.totalFees - data.totalExpenditure;
 
     // Total Fees Collected (Gen. Fees Only)
     this.drawRect(MARGIN, cardWidth, cardHeight, {
@@ -113,7 +123,7 @@ export class FinancialSummaryGenerator extends FinancialBaseGenerator {
       font: this.boldFont,
       color: rgb(0.39, 0.45, 0.54),
     });
-    this.drawText(`${finalCurrency} ${data.totalFees.toLocaleString()}`, MARGIN + 10, {
+    this.drawText(`${finalCurrency} ${totalFees.toLocaleString()}`, MARGIN + 10, {
       size: 14,
       font: this.boldFont,
       color: rgb(0.06, 0.73, 0.5),
@@ -132,7 +142,7 @@ export class FinancialSummaryGenerator extends FinancialBaseGenerator {
       color: rgb(0.39, 0.45, 0.54),
     });
     this.drawText(
-      `${finalCurrency} ${data.totalExpenditure.toLocaleString()}`,
+      `${finalCurrency} ${totalExpenditure.toLocaleString()}`,
       MARGIN + cardWidth + 20,
       { size: 14, font: this.boldFont, color: rgb(0.94, 0.27, 0.27) }
     );
@@ -169,18 +179,18 @@ export class FinancialSummaryGenerator extends FinancialBaseGenerator {
     ];
 
     const feeRows = (data.ledgerItems || []).map(item => [
-      item.name,
-      `${finalCurrency} ${item.billed.toLocaleString()}`,
-      `${finalCurrency} ${item.paid.toLocaleString()}`,
-      `${finalCurrency} ${item.balance.toLocaleString()}`,
+      item?.name || "N/A",
+      `${finalCurrency} ${(item?.billed || 0).toLocaleString()}`,
+      `${finalCurrency} ${(item?.paid || 0).toLocaleString()}`,
+      `${finalCurrency} ${(item?.balance || 0).toLocaleString()}`,
     ]);
 
     // Add Subtotal row for ledger
     feeRows.push([
       "TOTAL LEDGER",
-      `${finalCurrency} ${data.totalBilled.toLocaleString()}`,
-      `${finalCurrency} ${data.totalPaid.toLocaleString()}`,
-      `${finalCurrency} ${data.totalOutstanding.toLocaleString()}`,
+      `${finalCurrency} ${totalBilled.toLocaleString()}`,
+      `${finalCurrency} ${totalPaid.toLocaleString()}`,
+      `${finalCurrency} ${totalOutstanding.toLocaleString()}`,
     ]);
 
     this.drawTable(MARGIN, feeColumns, feeRows, { headerBgColor: this.primaryColor });
@@ -189,7 +199,7 @@ export class FinancialSummaryGenerator extends FinancialBaseGenerator {
     // 3. Discounts
     this.drawSectionHeader("Discounts Summary");
     this.drawText(
-      `Total Students on Discount: ${data.discountCount}  |  Total Discount Amount: ${finalCurrency} ${data.totalDiscount.toLocaleString()}`,
+      `Total Students on Discount: ${discountCount}  |  Total Discount Amount: ${finalCurrency} ${totalDiscount.toLocaleString()}`,
       MARGIN + 10,
       { size: 10, font: this.font }
     );
@@ -204,19 +214,19 @@ export class FinancialSummaryGenerator extends FinancialBaseGenerator {
       { header: "TERM TOTAL", width: 135, align: "right" as const },
     ];
 
-    const dailyRows = data.categories
-      .filter(cat => ["Feeding Fees", "Bus Fees", "Extra Classes"].includes(cat.name))
+    const dailyRows = (data.categories || [])
+      .filter(cat => cat && ["Feeding Fees", "Bus Fees", "Extra Classes"].includes(cat.name))
       .map(cat => [
         cat.name,
-        `${finalCurrency} ${cat.week.toLocaleString()}`,
-        `${finalCurrency} ${cat.month.toLocaleString()}`,
-        `${finalCurrency} ${cat.term.toLocaleString()}`,
+        `${finalCurrency} ${(cat.week || 0).toLocaleString()}`,
+        `${finalCurrency} ${(cat.month || 0).toLocaleString()}`,
+        `${finalCurrency} ${(cat.term || 0).toLocaleString()}`,
       ]);
 
     this.drawTable(MARGIN, dailyColumns, dailyRows, { headerBgColor: this.primaryColor });
     this.currentY -= 5;
     this.drawText(
-      `DAILY ITEMS TOTAL: ${finalCurrency} ${data.totalDailyPayments.toLocaleString()}`,
+      `DAILY ITEMS TOTAL: ${finalCurrency} ${totalDailyPayments.toLocaleString()}`,
       MARGIN + PAGE_WIDTH - 200,
       {
         size: 10,
@@ -235,10 +245,10 @@ export class FinancialSummaryGenerator extends FinancialBaseGenerator {
       { header: "TRANSACTIONS", width: 120, align: "center" as const },
       { header: `TOTAL AMOUNT (${finalCurrency})`, width: 145, align: "right" as const },
     ];
-    const rows = data.categories.map((cat) => [
-      cat.name,
-      cat.count,
-      `${finalCurrency} ${cat.total.toLocaleString()}`,
+    const rows = (data.categories || []).map((cat) => [
+      cat?.name || "N/A",
+      cat?.count || 0,
+      `${finalCurrency} ${(cat?.total || 0).toLocaleString()}`,
     ]);
     this.drawTable(MARGIN, columns, rows, { headerBgColor: this.primaryColor });
 
@@ -265,6 +275,9 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
 
     this.drawTitleBanner("TERM FEE STATEMENT");
 
+    const rawCurrency = data.currencySymbol || "GHS";
+    const finalCurrency = (rawCurrency === "₵" || rawCurrency === "GH₵") ? "GHS" : rawCurrency.replace(/₵/g, "GHS");
+
     const metaY = this.currentY;
     this.drawRect(MARGIN, PAGE_WIDTH, 50, {
       borderColor: rgb(0.89, 0.91, 0.94),
@@ -279,7 +292,7 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
     });
     const studentNameY = this.currentY + 12;
     this.currentY = studentNameY;
-    this.drawText(data.studentName, MARGIN + 60, {
+    this.drawText(data.studentName || "N/A", MARGIN + 60, {
       size: 10,
       font: this.boldFont,
     });
@@ -291,7 +304,7 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
     });
     const classY = this.currentY + 12;
     this.currentY = classY;
-    this.drawText(data.studentClass, MARGIN + 60, {
+    this.drawText(data.studentClass || "N/A", MARGIN + 60, {
       size: 10,
       font: this.boldFont,
     });
@@ -304,7 +317,7 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
       color: rgb(0.58, 0.64, 0.71),
     });
     this.currentY = studentNameY;
-    this.drawText(data.term, rightColX + 40, { size: 10, font: this.boldFont });
+    this.drawText(data.term || "N/A", rightColX + 40, { size: 10, font: this.boldFont });
     this.currentY = classY;
     this.drawText("YEAR:", rightColX, {
       size: 8,
@@ -312,7 +325,7 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
       color: rgb(0.58, 0.64, 0.71),
     });
     this.currentY = classY;
-    this.drawText(data.academicYear, rightColX + 40, {
+    this.drawText(data.academicYear || "N/A", rightColX + 40, {
       size: 10,
       font: this.boldFont,
     });
@@ -322,26 +335,26 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
     const columns = [
       { header: "DESCRIPTION", width: 195 },
       {
-        header: `BILLED (${data.currencySymbol})`,
+        header: `BILLED (${finalCurrency})`,
         width: 100,
         align: "right" as const,
       },
       {
-        header: `PAID (${data.currencySymbol})`,
+        header: `PAID (${finalCurrency})`,
         width: 100,
         align: "right" as const,
       },
       {
-        header: `BALANCE (${data.currencySymbol})`,
+        header: `BALANCE (${finalCurrency})`,
         width: 120,
         align: "right" as const,
       },
     ];
-    const rows = data.categorySummary.map((item) => [
-      item.name.toUpperCase(),
-      item.billed.toFixed(2),
-      item.paid.toFixed(2),
-      item.balance.toFixed(2),
+    const rows = (data.categorySummary || []).map((item) => [
+      (item.name || "").toUpperCase(),
+      (item.billed || 0).toFixed(2),
+      (item.paid || 0).toFixed(2),
+      (item.balance || 0).toFixed(2),
     ]);
     this.drawTable(MARGIN, columns, rows, {
       headerBgColor: this.primaryColor,
@@ -358,7 +371,7 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
     });
     this.currentY = subtotalY;
     this.drawText(
-      `${data.currencySymbol} ${data.totals.billed.toFixed(2)}`,
+      `${finalCurrency} ${(data.totals?.billed || 0).toFixed(2)}`,
       MARGIN + PAGE_WIDTH,
       { size: 10, font: this.boldFont, align: "right", maxWidth: 100 }
     );
@@ -371,7 +384,7 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
     });
     this.currentY = totalPaidY;
     this.drawText(
-      `${data.currencySymbol} ${data.totals.paid.toFixed(2)}`,
+      `${finalCurrency} ${(data.totals?.paid || 0).toFixed(2)}`,
       MARGIN + PAGE_WIDTH,
       {
         size: 10,
@@ -398,11 +411,12 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
       size: 12,
       font: this.boldFont,
     });
+    const totalBalance = data.totals?.balance || 0;
     const balanceColor =
-      data.totals.balance > 0 ? rgb(0.94, 0.27, 0.27) : rgb(0.06, 0.73, 0.5);
+      totalBalance > 0 ? rgb(0.94, 0.27, 0.27) : rgb(0.06, 0.73, 0.5);
     this.currentY = netBalanceY;
     this.drawText(
-      `${data.currencySymbol} ${data.totals.balance.toFixed(2)}`,
+      `${finalCurrency} ${totalBalance.toFixed(2)}`,
       MARGIN + PAGE_WIDTH,
       {
         size: 14,
@@ -431,6 +445,9 @@ export class FeeReceiptGenerator extends FinancialBaseGenerator {
 
     this.drawTitleBanner("OFFICIAL PAYMENT RECEIPT");
 
+    const rawCurrency = data.currencySymbol || "GHS";
+    const finalCurrency = (rawCurrency === "₵" || rawCurrency === "GH₵") ? "GHS" : rawCurrency.replace(/₵/g, "GHS");
+
     const metaY = this.currentY;
     this.drawRect(MARGIN, PAGE_WIDTH, 50, {
       borderColor: rgb(0.89, 0.91, 0.94),
@@ -445,7 +462,7 @@ export class FeeReceiptGenerator extends FinancialBaseGenerator {
     });
     const studentNameY = this.currentY + 12;
     this.currentY = studentNameY;
-    this.drawText(data.studentName, MARGIN + 60, {
+    this.drawText(data.studentName || "N/A", MARGIN + 60, {
       size: 10,
       font: this.boldFont,
     });
@@ -457,7 +474,7 @@ export class FeeReceiptGenerator extends FinancialBaseGenerator {
     });
     const classY = this.currentY + 12;
     this.currentY = classY;
-    this.drawText(data.studentClass, MARGIN + 60, {
+    this.drawText(data.studentClass || "N/A", MARGIN + 60, {
       size: 10,
       font: this.boldFont,
     });
@@ -470,7 +487,7 @@ export class FeeReceiptGenerator extends FinancialBaseGenerator {
       color: rgb(0.58, 0.64, 0.71),
     });
     this.currentY = studentNameY;
-    this.drawText(data.term, rightColX + 40, { size: 10, font: this.boldFont });
+    this.drawText(data.term || "N/A", rightColX + 40, { size: 10, font: this.boldFont });
     this.currentY = classY;
     this.drawText("YEAR:", rightColX, {
       size: 8,
@@ -478,7 +495,7 @@ export class FeeReceiptGenerator extends FinancialBaseGenerator {
       color: rgb(0.58, 0.64, 0.71),
     });
     this.currentY = classY;
-    this.drawText(data.academicYear, rightColX + 40, {
+    this.drawText(data.academicYear || "N/A", rightColX + 40, {
       size: 10,
       font: this.boldFont,
     });
@@ -512,16 +529,16 @@ export class FeeReceiptGenerator extends FinancialBaseGenerator {
     };
 
     this.currentY = boxStartY - 10;
-    drawRow("RECEIPT NO:", `#${data.receiptNo}`);
-    drawRow("DATE:", data.date);
-    drawRow("CATEGORY:", data.category.toUpperCase());
+    drawRow("RECEIPT NO:", `#${data.receiptNo || "N/A"}`);
+    drawRow("DATE:", data.date || "N/A");
+    drawRow("CATEGORY:", (data.category || "N/A").toUpperCase());
     drawRow(
       "AMOUNT PAID:",
-      `${data.currencySymbol} ${data.amount.toFixed(2)}`,
+      `${finalCurrency} ${(data.amount || 0).toFixed(2)}`,
       true
     );
-    drawRow("PAYMENT METHOD:", data.method.toUpperCase());
-    drawRow("RECEIVED FROM:", data.receivedFrom.toUpperCase());
+    drawRow("PAYMENT METHOD:", (data.method || "N/A").toUpperCase());
+    drawRow("RECEIVED FROM:", (data.receivedFrom || "N/A").toUpperCase());
 
     this.currentY = boxStartY - boxHeight - 20;
     this.drawRect(MARGIN, PAGE_WIDTH, 40, {

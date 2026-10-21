@@ -125,7 +125,7 @@ export default function ViewAcademicRecords() {
                   academicYear: selectedYear,
                   subject: selectedSubject,
                   reportType: selectedReportType,
-                  reportNumber: ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber.toString() : undefined,
+                  reportNumber: ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) ? selectedReportNumber.toString() : undefined,
                 },
               });
           setTimeout(() => { isNavigating.current = false; }, 500);

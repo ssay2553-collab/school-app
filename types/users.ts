@@ -1,6 +1,12 @@
 import { CurriculumType } from "../constants/Curriculum";
 
-export type UserRole = "guest" | "admin" | "teacher" | "parent" | "student" | "staff";
+export type UserRole =
+  | "guest"
+  | "admin"
+  | "teacher"
+  | "parent"
+  | "student"
+  | "staff";
 
 export type PermissionLevel = "full" | "view" | "edit" | "deny";
 
@@ -10,16 +16,20 @@ export interface UserProfile {
   email?: string;
   phone?: string;
   profileImage?: string;
+  photoURL?: string;
+  faceBaselineImage?: string;
   signatureUrl?: string;
   bio?: string;
   experience?: string;
   education?: string;
   gender?: string;
   dob?: any;
+  subjects?: string[];
 }
 
 export interface AppUser {
   uid: string;
+  email?: string;
 
   // Core identity
   role: UserRole;

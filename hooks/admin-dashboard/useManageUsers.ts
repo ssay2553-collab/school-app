@@ -1,40 +1,44 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Platform, Share } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as DocumentPicker from "expo-document-picker";
-import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-import { initializeApp, deleteApp } from "firebase/app";
+import * as ImagePicker from "expo-image-picker";
+import { deleteApp, initializeApp } from "firebase/app";
 import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import {
-  arrayRemove,
-  arrayUnion,
-  collection,
-  deleteDoc,
-  doc,
-  documentId,
-  getDoc,
-  getDocsFromServer,
-  increment,
-  limit,
-  onSnapshot,
-  query,
-  serverTimestamp,
-  setDoc,
-  Timestamp,
-  updateDoc,
-  where,
-  writeBatch,
+    arrayRemove,
+    arrayUnion,
+    collection,
+    deleteDoc,
+    doc,
+    documentId,
+    getDoc,
+    getDocsFromServer,
+    increment,
+    limit,
+    onSnapshot,
+    query,
+    serverTimestamp,
+    setDoc,
+    Timestamp,
+    updateDoc,
+    where,
+    writeBatch,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { httpsCallable } from "firebase/functions";
-import { db, functions, storage } from "../../firebaseConfig";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Alert, Platform, Share } from "react-native";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { db, functions } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
-import { useFinanceCleanup } from "./useFinanceCleanup";
-import { User, UserRole, PermissionLevel, AssignmentModalState, PERMISSION_KEYS } from "./manage-users-types";
-import { useRef } from "react";
 import { getStudentFinalEmail } from "../../utils/authUnify";
+import {
+    AssignmentModalState,
+    PERMISSION_KEYS,
+    PermissionLevel,
+    User,
+    UserRole,
+} from "./manage-users-types";
+import { useFinanceCleanup } from "./useFinanceCleanup";
 
 interface UseManageUsersProps {
   appUser: any;
@@ -43,12 +47,19 @@ interface UseManageUsersProps {
   router: any;
 }
 
-export function useManageUsers({ appUser, acadConfig, showToast, router }: UseManageUsersProps) {
+export function useManageUsers({
+  appUser,
+  acadConfig,
+  showToast,
+  router,
+}: UseManageUsersProps) {
   const isMounted = useRef(true);
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
@@ -84,15 +95,22 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [showArchived, setShowArchived] = useState(false);
-  const [selectedUserUids, setSelectedUserUids] = useState<Set<string>>(new Set());
+  const [selectedUserUids, setSelectedUserUids] = useState<Set<string>>(
+    new Set(),
+  );
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>([]);
+  const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>(
+    [],
+  );
   const [viewingUser, setViewingUser] = useState<User | null>(null);
   const [linkedUsers, setLinkedUsers] = useState<User[]>([]);
   const [loadingLinks, setLoadingLinks] = useState(false);
-  const [assignmentModal, setAssignmentModal] = useState<AssignmentModalState>({ type: "none", target: null });
+  const [assignmentModal, setAssignmentModal] = useState<AssignmentModalState>({
+    type: "none",
+    target: null,
+  });
   const [updating, setUpdating] = useState(false);
   const [deletingUid, setDeletingUid] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -135,7 +153,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   const [busLocations, setBusLocations] = useState<string[]>([]);
   const [isAddingNewBusLoc, setIsAddingNewBusLoc] = useState(false);
   const [newBusLocInput, setNewBusLocInput] = useState("");
-  const [tempPermissions, setTempPermissions] = useState<Record<string, PermissionLevel>>({});
+  const [tempPermissions, setTempPermissions] = useState<
+    Record<string, PermissionLevel>
+  >({});
   const [targetClassId, setTargetClassId] = useState<string>("");
 
   useEffect(() => {
@@ -181,7 +201,11 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     let q = query(
       collection(db, "users"),
       where("role", "==", selectedRole),
-      where("status", "in", showArchived ? ["archived"] : ["active", "pending_activation"]),
+      where(
+        "status",
+        "in",
+        showArchived ? ["archived"] : ["active", "pending_activation"],
+      ),
       limit(1000),
     );
 
@@ -190,7 +214,11 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         collection(db, "users"),
         where("role", "==", "student"),
         where("classId", "==", selectedClassId),
-        where("status", "in", showArchived ? ["archived"] : ["active", "pending_activation"]),
+        where(
+          "status",
+          "in",
+          showArchived ? ["archived"] : ["active", "pending_activation"],
+        ),
         limit(1000),
       );
     }
@@ -199,18 +227,28 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       q,
       (snap) => {
         if (!isMounted.current) return;
-        const fetchedList = snap.docs.map((d: any) => ({ uid: d.id, ...(d.data() as any) }) as User);
-        const uniqueList = Array.from(new Map(fetchedList.map((u) => [u.uid, u])).values());
+        const fetchedList = snap.docs.map(
+          (d: any) => ({ uid: d.id, ...(d.data() as any) }) as User,
+        );
+        const uniqueList = Array.from(
+          new Map(fetchedList.map((u) => [u.uid, u])).values(),
+        );
 
         if (selectedRole === "student") {
           uniqueList.sort((a, b) => {
             const classA = a.classId || "";
             const classB = b.classId || "";
             if (classA !== classB) return classA.localeCompare(classB);
-            return (a.profile?.firstName || "").localeCompare(b.profile?.firstName || "");
+            return (a.profile?.firstName || "").localeCompare(
+              b.profile?.firstName || "",
+            );
           });
         } else {
-          uniqueList.sort((a, b) => (a.profile?.firstName || "").localeCompare(b.profile?.firstName || ""));
+          uniqueList.sort((a, b) =>
+            (a.profile?.firstName || "").localeCompare(
+              b.profile?.firstName || "",
+            ),
+          );
         }
         setUsers(uniqueList);
         setLoading(false);
@@ -235,7 +273,12 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   }, [users, searchQuery]);
 
   const isHighestClassView = useMemo(() => {
-    if (selectedRole !== "student" || selectedClassId === "all" || allClasses.length === 0) return false;
+    if (
+      selectedRole !== "student" ||
+      selectedClassId === "all" ||
+      allClasses.length === 0
+    )
+      return false;
     return allClasses[allClasses.length - 1].id === selectedClassId;
   }, [selectedRole, selectedClassId, allClasses]);
 
@@ -259,13 +302,13 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     if (isAllSelected) {
       setSelectedUserUids((prev) => {
         const next = new Set(prev);
-        allUids.forEach(id => next.delete(id));
+        allUids.forEach((id) => next.delete(id));
         return next;
       });
     } else {
       setSelectedUserUids((prev) => {
         const next = new Set(prev);
-        allUids.forEach(id => next.add(id));
+        allUids.forEach((id) => next.add(id));
         return next;
       });
     }
@@ -284,7 +327,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       const fileUri = result.assets[0].uri;
 
       let csvText = "";
-      if (Platform.OS === 'web') {
+      if (Platform.OS === "web") {
         const asset = result.assets[0];
         if ((asset as any).file) {
           csvText = await new Promise((resolve, reject) => {
@@ -301,8 +344,11 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         csvText = await FileSystem.readAsStringAsync(fileUri);
       }
 
-      const rows = csvText.split(/\r?\n|\r/).filter((line) => line.trim() !== "");
-      if (rows.length < 2) throw new Error("CSV file is empty or missing data.");
+      const rows = csvText
+        .split(/\r?\n|\r/)
+        .filter((line) => line.trim() !== "");
+      if (rows.length < 2)
+        throw new Error("CSV file is empty or missing data.");
 
       const userData = rows.slice(1);
 
@@ -316,7 +362,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       // Initialize secondary auth for bulk creation if needed
       const firebaseConfig = (SCHOOL_CONFIG as any).firebase;
       if (!firebaseConfig || !firebaseConfig.apiKey) {
-        throw new Error("Invalid school configuration: Firebase credentials missing for bulk activation.");
+        throw new Error(
+          "Invalid school configuration: Firebase credentials missing for bulk activation.",
+        );
       }
 
       // Reuse or initialize the secondary app more efficiently
@@ -324,7 +372,8 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       const secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
 
-      const generateCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
+      const generateCode = () =>
+        Math.random().toString(36).substring(2, 8).toUpperCase();
 
       try {
         // Firestore batch limit is 500. Each user has 1 set.
@@ -336,7 +385,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           let chunkStaffIncrement = 0;
 
           for (const row of chunk) {
-            const values = row.split(/[,;\t]/).map(v => v.trim().replace(/^"|"$/g, ''));
+            const values = row
+              .split(/[,;\t]/)
+              .map((v) => v.trim().replace(/^"|"$/g, ""));
 
             if (values.length < 2) continue;
 
@@ -347,10 +398,12 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
             const cleanString = (val: string) => {
               if (!val) return "";
-              const cleaned = val.trim().replace(/^"|"$/g, '');
+              const cleaned = val.trim().replace(/^"|"$/g, "");
               if (cleaned.toUpperCase().includes("E+")) {
                 const num = Number(cleaned);
-                return isNaN(num) ? cleaned : num.toLocaleString("fullwide", { useGrouping: false });
+                return isNaN(num)
+                  ? cleaned
+                  : num.toLocaleString("fullwide", { useGrouping: false });
               }
               return cleaned;
             };
@@ -360,7 +413,12 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
             const rawEmail = cleanString(values[6] || "");
             const password = cleanString(values[7] || "");
 
-            if (!firstName || !lastName || firstName.toLowerCase() === "firstname") continue;
+            if (
+              !firstName ||
+              !lastName ||
+              firstName.toLowerCase() === "firstname"
+            )
+              continue;
 
             const email = getStudentFinalEmail(rawEmail);
 
@@ -373,25 +431,35 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
             // LOGIC: Create Auth Account "On the Go" if Email & Password exist
             if (email && password && password.length >= 6) {
               if (!emailRegex.test(email)) {
-                importErrors.push(`${firstName} ${lastName}: Invalid email "${email}"`);
+                importErrors.push(
+                  `${firstName} ${lastName}: Invalid email "${email}"`,
+                );
                 // Fallback to signup code if email is invalid
                 signupCode = generateCode();
                 pendingCount++;
               } else {
                 try {
                   // Attempt to create Firebase Auth account
-                  const userCred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+                  const userCred = await createUserWithEmailAndPassword(
+                    secondaryAuth,
+                    email,
+                    password,
+                  );
                   authUid = userCred.user.uid;
                   status = "active"; // Account is live!
                   activatedCount++;
                 } catch (authError: any) {
-                  const errorCode = (authError as any).code || 'auth-error';
+                  const errorCode = (authError as any).code || "auth-error";
                   console.warn(`Auth Error for ${email}: ${errorCode}`);
 
-                  if (errorCode === 'auth/email-already-in-use') {
-                    importErrors.push(`${firstName} ${lastName}: Email "${email}" is already taken.`);
+                  if (errorCode === "auth/email-already-in-use") {
+                    importErrors.push(
+                      `${firstName} ${lastName}: Email "${email}" is already taken.`,
+                    );
                   } else {
-                    importErrors.push(`${firstName} ${lastName} (${email}): ${errorCode}`);
+                    importErrors.push(
+                      `${firstName} ${lastName} (${email}): ${errorCode}`,
+                    );
                   }
 
                   // Fallback to signup code so they aren't lost
@@ -411,21 +479,35 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
               uid: tempId,
               role: selectedRole,
               status: status,
-              profile: { firstName, lastName, gender, emergencyPhone, parentPhone },
+              profile: {
+                firstName,
+                lastName,
+                gender,
+                emergencyPhone,
+                parentPhone,
+              },
               createdAt: Timestamp.now(),
             };
 
             if (selectedRole === "student") {
-               const familyKey = parentPhone || `${lastName.toLowerCase()}`;
-               let linkCode = "";
-               if (familyKey && (secondaryApp as any)._familyCodeMap?.has(familyKey)) {
-                 linkCode = (secondaryApp as any)._familyCodeMap.get(familyKey);
-               } else {
-                 linkCode = generateCode();
-                 if (!(secondaryApp as any)._familyCodeMap) (secondaryApp as any)._familyCodeMap = new Map<string, string>();
-                 if (familyKey) (secondaryApp as any)._familyCodeMap.set(familyKey, linkCode);
-               }
-               newUserDoc.parentLinkCode = linkCode;
+              const familyKey = parentPhone || `${lastName.toLowerCase()}`;
+              let linkCode = "";
+              if (
+                familyKey &&
+                (secondaryApp as any)._familyCodeMap?.has(familyKey)
+              ) {
+                linkCode = (secondaryApp as any)._familyCodeMap.get(familyKey);
+              } else {
+                linkCode = generateCode();
+                if (!(secondaryApp as any)._familyCodeMap)
+                  (secondaryApp as any)._familyCodeMap = new Map<
+                    string,
+                    string
+                  >();
+                if (familyKey)
+                  (secondaryApp as any)._familyCodeMap.set(familyKey, linkCode);
+              }
+              newUserDoc.parentLinkCode = linkCode;
             }
 
             if (email) {
@@ -441,15 +523,20 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
             if (selectedRole === "student") {
               if (extraInput) {
                 const matchedClass = allClasses.find(
-                  (c) => c.name.toLowerCase() === extraInput.toLowerCase() || c.id === extraInput,
+                  (c) =>
+                    c.name.toLowerCase() === extraInput.toLowerCase() ||
+                    c.id === extraInput,
                 );
                 importClassId = matchedClass ? matchedClass.id : "";
               } else {
-                importClassId = selectedClassId === "all" ? "" : selectedClassId;
+                importClassId =
+                  selectedClassId === "all" ? "" : selectedClassId;
               }
               newUserDoc.classId = importClassId;
               chunkStudentIncrement++;
-            } else if (["admin", "staff", "teacher"].includes(selectedRole || "")) {
+            } else if (
+              ["admin", "staff", "teacher"].includes(selectedRole || "")
+            ) {
               if (extraInput) newUserDoc.adminRole = extraInput;
               chunkStaffIncrement++;
             }
@@ -476,8 +563,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           if (chunkStudentIncrement > 0 || chunkStaffIncrement > 0) {
             const statsRef = doc(db, "stats", "global");
             const statsUpdate: any = {};
-            if (chunkStudentIncrement > 0) statsUpdate.totalStudents = increment(chunkStudentIncrement);
-            if (chunkStaffIncrement > 0) statsUpdate.totalStaff = increment(chunkStaffIncrement);
+            if (chunkStudentIncrement > 0)
+              statsUpdate.totalStudents = increment(chunkStudentIncrement);
+            if (chunkStaffIncrement > 0)
+              statsUpdate.totalStaff = increment(chunkStaffIncrement);
             batch.set(statsRef, statsUpdate, { merge: true });
             studentIncrement += chunkStudentIncrement;
             staffIncrement += chunkStaffIncrement;
@@ -487,14 +576,16 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
         if (count > 0) {
           let summaryMsg = `Successfully imported ${count} ${selectedRole}(s).`;
-          if (activatedCount > 0) summaryMsg += `\n- ${activatedCount} Active (Login enabled)`;
-          if (pendingCount > 0) summaryMsg += `\n- ${pendingCount} Pending Activation`;
+          if (activatedCount > 0)
+            summaryMsg += `\n- ${activatedCount} Active (Login enabled)`;
+          if (pendingCount > 0)
+            summaryMsg += `\n- ${pendingCount} Pending Activation`;
 
           if (importErrors.length > 0) {
             Alert.alert(
               "Import Completed with Warnings",
               `${summaryMsg}\n\nSome accounts could not be activated:\n${importErrors.slice(0, 5).join("\n")}${importErrors.length > 5 ? "\n..." : ""}`,
-              [{ text: "OK" }]
+              [{ text: "OK" }],
             );
           } else {
             showToast?.({ message: summaryMsg, type: "success" });
@@ -505,7 +596,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       }
     } catch (error: any) {
       console.error(error);
-      showToast?.({ message: `Import Failed: ${error.message}`, type: "error" });
+      showToast?.({
+        message: `Import Failed: ${error.message}`,
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -530,7 +624,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       }
 
       setSelectedUserUids(new Set());
-      showToast?.({ message: `Updated ${uids.length} students`, type: "success" });
+      showToast?.({
+        message: `Updated ${uids.length} students`,
+        type: "success",
+      });
     } catch (error) {
       console.error(error);
       showToast?.({ message: "Bulk update failed.", type: "error" });
@@ -544,13 +641,20 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     setLinkedUsers([]);
     try {
       let idsToFetch: string[] = [];
-      if (user.role === "parent" && user.childrenIds?.length) idsToFetch = user.childrenIds;
-      else if (user.role === "student" && user.parentUids?.length) idsToFetch = user.parentUids;
+      if (user.role === "parent" && user.childrenIds?.length)
+        idsToFetch = user.childrenIds;
+      else if (user.role === "student" && user.parentUids?.length)
+        idsToFetch = user.parentUids;
 
       if (idsToFetch.length > 0) {
-        const q = query(collection(db, "users"), where(documentId(), "in", idsToFetch));
+        const q = query(
+          collection(db, "users"),
+          where(documentId(), "in", idsToFetch),
+        );
         const snap = await getDocsFromServer(q as any);
-        setLinkedUsers(snap.docs.map((d) => ({ uid: d.id, ...(d.data() as any) }) as User));
+        setLinkedUsers(
+          snap.docs.map((d) => ({ uid: d.id, ...(d.data() as any) }) as User),
+        );
       }
     } catch (err) {
       console.error(err);
@@ -564,14 +668,26 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     setUpdating(true);
     try {
       const batch = writeBatch(db);
-      batch.update(doc(db, "users", viewingUser.uid), { parentUids: arrayRemove(parentUid) });
-      batch.update(doc(db, "users", parentUid), { childrenIds: arrayRemove(viewingUser.uid) });
+      batch.update(doc(db, "users", viewingUser.uid), {
+        parentUids: arrayRemove(parentUid),
+      });
+      batch.update(doc(db, "users", parentUid), {
+        childrenIds: arrayRemove(viewingUser.uid),
+      });
       await batch.commit();
       setLinkedUsers((prev) => prev.filter((u) => u.uid !== parentUid));
       setViewingUser((prev) =>
-        prev ? { ...prev, parentUids: prev.parentUids?.filter((id) => id !== parentUid) } : null,
+        prev
+          ? {
+              ...prev,
+              parentUids: prev.parentUids?.filter((id) => id !== parentUid),
+            }
+          : null,
       );
-      showToast?.({ message: "Parent unlinked from student record.", type: "success" });
+      showToast?.({
+        message: "Parent unlinked from student record.",
+        type: "success",
+      });
     } catch (err) {
       showToast?.({ message: "Failed to unlink parent.", type: "error" });
     } finally {
@@ -583,14 +699,19 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     if (!assignmentModal.target) return;
     setUpdating(true);
     try {
-      const sanitized: Record<string, PermissionLevel> = Object.entries(tempPermissions || {}).reduce(
+      const sanitized: Record<string, PermissionLevel> = Object.entries(
+        tempPermissions || {},
+      ).reduce(
         (acc, [k, v]) => {
-          if (["full", "view", "edit", "deny"].includes(v)) acc[k] = v as PermissionLevel;
+          if (["full", "view", "edit", "deny"].includes(v))
+            acc[k] = v as PermissionLevel;
           return acc;
         },
         {} as Record<string, PermissionLevel>,
       );
-      const dutyExpiresAt = isTeacherOnDuty ? Timestamp.fromMillis(Date.now() + 6 * 24 * 60 * 60 * 1000) : null;
+      const dutyExpiresAt = isTeacherOnDuty
+        ? Timestamp.fromMillis(Date.now() + 6 * 24 * 60 * 60 * 1000)
+        : null;
       await updateDoc(doc(db, "users", assignmentModal.target.uid), {
         permissions: sanitized,
         canCreateNews: newsPermission,
@@ -609,9 +730,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       showToast?.({ message: "Admin permissions updated", type: "success" });
     } catch (e: any) {
       console.error("Failed to update permissions:", e);
-      const errorMsg = e.code === 'permission-denied'
-        ? "Access Denied: You don't have permission to modify these settings."
-        : "Failed to update permissions. Please try again.";
+      const errorMsg =
+        e.code === "permission-denied"
+          ? "Access Denied: You don't have permission to modify these settings."
+          : "Failed to update permissions. Please try again.";
       showToast?.({ message: errorMsg, type: "error" });
     } finally {
       setUpdating(false);
@@ -629,7 +751,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       });
       const updatedUser = {
         ...teacher,
-        assignedRoles: teacher.assignedRoles ? Array.from(new Set([...teacher.assignedRoles, roleName])) : [roleName],
+        assignedRoles: teacher.assignedRoles
+          ? Array.from(new Set([...teacher.assignedRoles, roleName]))
+          : [roleName],
         canCreateNews: newsPermission,
       };
       if (viewingUser?.uid === teacher.uid) setViewingUser(updatedUser);
@@ -648,8 +772,13 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     if (!assignmentModal.target) return;
     setUpdating(true);
     try {
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), { classes: selectedClasses });
-      const updatedUser = { ...assignmentModal.target, classes: selectedClasses };
+      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
+        classes: selectedClasses,
+      });
+      const updatedUser = {
+        ...assignmentModal.target,
+        classes: selectedClasses,
+      };
       if (viewingUser?.uid === updatedUser.uid) setViewingUser(updatedUser);
       setAssignmentModal({ type: "none", target: null });
       showToast?.({ message: "Teacher classes updated.", type: "success" });
@@ -664,8 +793,13 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     if (!assignmentModal.target) return;
     setUpdating(true);
     try {
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), { subjects: selectedSubjects });
-      const updatedUser = { ...assignmentModal.target, subjects: selectedSubjects };
+      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
+        subjects: selectedSubjects,
+      });
+      const updatedUser = {
+        ...assignmentModal.target,
+        subjects: selectedSubjects,
+      };
       if (viewingUser?.uid === updatedUser.uid) setViewingUser(updatedUser);
       setAssignmentModal({ type: "none", target: null });
       showToast?.({ message: "Teacher subjects updated.", type: "success" });
@@ -679,7 +813,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   const handleAssignDeptHead = async (department: string) => {
     const teacher = assignmentModal.target;
     if (!teacher || !department.trim()) {
-      showToast?.({ message: "Error: Please enter a department name.", type: "error" });
+      showToast?.({
+        message: "Error: Please enter a department name.",
+        type: "error",
+      });
       return;
     }
     setUpdating(true);
@@ -691,14 +828,19 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       });
       const updatedUser = {
         ...teacher,
-        assignedRoles: teacher.assignedRoles ? Array.from(new Set([...teacher.assignedRoles, "Dept Head"])) : ["Dept Head"],
+        assignedRoles: teacher.assignedRoles
+          ? Array.from(new Set([...teacher.assignedRoles, "Dept Head"]))
+          : ["Dept Head"],
         departmentHeadOf: department.trim(),
         canCreateNews: newsPermission,
       };
       if (viewingUser?.uid === teacher.uid) setViewingUser(updatedUser);
       setAssignmentModal({ type: "none", target: null });
       setDeptText("");
-      showToast?.({ message: `Assigned Dept Head (${department.trim()})`, type: "success" });
+      showToast?.({
+        message: `Assigned Dept Head (${department.trim()})`,
+        type: "success",
+      });
     } catch (e) {
       console.error(e);
       showToast?.({ message: "Failed to assign dept head.", type: "error" });
@@ -715,9 +857,13 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         const batch = writeBatch(db);
         const userRef = doc(db, "users", user.uid);
         batch.update(userRef, { assignedRoles: arrayRemove(roleName) });
-        if (roleName === "Dept Head") batch.update(userRef, { departmentHeadOf: null });
+        if (roleName === "Dept Head")
+          batch.update(userRef, { departmentHeadOf: null });
         if (roleName === "Class Teacher" || user.classTeacherOf) {
-          if (user.classTeacherOf) batch.update(doc(db, "classes", user.classTeacherOf), { classTeacherId: null });
+          if (user.classTeacherOf)
+            batch.update(doc(db, "classes", user.classTeacherOf), {
+              classTeacherId: null,
+            });
           batch.update(userRef, { classTeacherOf: null });
         }
         await batch.commit();
@@ -725,9 +871,15 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           prev
             ? {
                 ...prev,
-                assignedRoles: prev.assignedRoles?.filter((r) => r !== roleName),
-                departmentHeadOf: roleName === "Dept Head" ? undefined : prev.departmentHeadOf,
-                classTeacherOf: roleName === "Class Teacher" ? undefined : prev.classTeacherOf,
+                assignedRoles: prev.assignedRoles?.filter(
+                  (r) => r !== roleName,
+                ),
+                departmentHeadOf:
+                  roleName === "Dept Head" ? undefined : prev.departmentHeadOf,
+                classTeacherOf:
+                  roleName === "Class Teacher"
+                    ? undefined
+                    : prev.classTeacherOf,
               }
             : prev,
         );
@@ -740,9 +892,16 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       }
     };
 
-    const displayName = `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() || user.uid;
+    const displayName =
+      `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() ||
+      user.uid;
     if (Platform.OS === "web") {
-      if (window.confirm(`Confirm\n\nRemove role '${roleName}' from ${displayName}?`)) performRemove();
+      if (
+        window.confirm(
+          `Confirm\n\nRemove role '${roleName}' from ${displayName}?`,
+        )
+      )
+        performRemove();
     } else {
       Alert.alert("Confirm", `Remove role '${roleName}' from ${displayName}?`, [
         { text: "Cancel", style: "cancel" },
@@ -759,23 +918,32 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       const isAlreadyAssigned = teacher.classTeacherOf === targetClassId;
       const finalClassId = isAlreadyAssigned ? null : targetClassId;
       const batch = writeBatch(db);
-      if (teacher.classTeacherOf) batch.update(doc(db, "classes", teacher.classTeacherOf), { classTeacherId: null });
+      if (teacher.classTeacherOf)
+        batch.update(doc(db, "classes", teacher.classTeacherOf), {
+          classTeacherId: null,
+        });
       if (targetClassId && !isAlreadyAssigned) {
         const classDoc = await getDoc(doc(db, "classes", targetClassId));
         const oldId = classDoc.data()?.classTeacherId;
-        if (oldId && oldId !== teacher.uid) batch.update(doc(db, "users", oldId), { classTeacherOf: null });
+        if (oldId && oldId !== teacher.uid)
+          batch.update(doc(db, "users", oldId), { classTeacherOf: null });
       }
       batch.update(doc(db, "users", teacher.uid), {
         classTeacherOf: finalClassId,
         assignedRoles: arrayUnion("Class Teacher"),
         canCreateNews: newsPermission,
       });
-      if (targetClassId) batch.update(doc(db, "classes", targetClassId), { classTeacherId: isAlreadyAssigned ? null : teacher.uid });
+      if (targetClassId)
+        batch.update(doc(db, "classes", targetClassId), {
+          classTeacherId: isAlreadyAssigned ? null : teacher.uid,
+        });
       await batch.commit();
       const updatedUser = {
         ...teacher,
         classTeacherOf: finalClassId || undefined,
-        assignedRoles: teacher.assignedRoles ? Array.from(new Set([...teacher.assignedRoles, "Class Teacher"])) : ["Class Teacher"],
+        assignedRoles: teacher.assignedRoles
+          ? Array.from(new Set([...teacher.assignedRoles, "Class Teacher"]))
+          : ["Class Teacher"],
         canCreateNews: newsPermission,
       };
       if (viewingUser?.uid === teacher.uid) setViewingUser(updatedUser);
@@ -790,10 +958,16 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
   const handleToggleArchiveStatus = async (user: User) => {
     if (!hasManageUsersAccess) {
-      showToast?.({ message: "Denied: You do not have permissions to modify archive status.", type: "error" });
+      showToast?.({
+        message:
+          "Denied: You do not have permissions to modify archive status.",
+        type: "error",
+      });
       return;
     }
-    const displayName = `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() || "Student";
+    const displayName =
+      `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() ||
+      "Student";
     const isArchived = user.status === "archived";
     const msg = isArchived
       ? `Restore ${displayName} to active status?`
@@ -812,18 +986,32 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           updates.classId = "archived";
         }
         if (isArchived) {
-          updates.classId = user.previousClassId || (selectedClassId !== "all" ? selectedClassId : allClasses[0]?.id || "");
+          updates.classId =
+            user.previousClassId ||
+            (selectedClassId !== "all"
+              ? selectedClassId
+              : allClasses[0]?.id || "");
           updates.previousClassId = null;
         }
 
         batch.update(doc(db, "users", user.uid), updates);
         if (user.role === "student") {
           const statsRef = doc(db, "stats", "global");
-          batch.set(statsRef, { totalStudents: increment(isArchived ? 1 : -1) }, { merge: true });
+          batch.set(
+            statsRef,
+            { totalStudents: increment(isArchived ? 1 : -1) },
+            { merge: true },
+          );
         }
         await batch.commit();
-        if (viewingUser?.uid === user.uid) setViewingUser({ ...viewingUser, ...updates });
-        showToast?.({ message: isArchived ? "Student restored." : "Student moved to archive.", type: "success" });
+        if (viewingUser?.uid === user.uid)
+          setViewingUser({ ...viewingUser, ...updates });
+        showToast?.({
+          message: isArchived
+            ? "Student restored."
+            : "Student moved to archive.",
+          type: "success",
+        });
       } catch (e) {
         console.error(e);
         showToast?.({ message: "Action failed.", type: "error" });
@@ -835,23 +1023,38 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     if (Platform.OS === "web") {
       if (window.confirm(msg)) performToggle();
     } else {
-      Alert.alert(isArchived ? "Restore Student" : "Student Stopped School?", msg, [
-        { text: "Cancel", style: "cancel" },
-        { text: isArchived ? "Restore" : "Set to Stopped", onPress: performToggle },
-      ]);
+      Alert.alert(
+        isArchived ? "Restore Student" : "Student Stopped School?",
+        msg,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: isArchived ? "Restore" : "Set to Stopped",
+            onPress: performToggle,
+          },
+        ],
+      );
     }
   };
 
   const handleGraduateClass = async () => {
-    const currentClassName = allClasses.find((c) => c.id === selectedClassId)?.name || "";
-    const highestClass = allClasses.length > 0 ? allClasses[allClasses.length - 1] : null;
+    const currentClassName =
+      allClasses.find((c) => c.id === selectedClassId)?.name || "";
+    const highestClass =
+      allClasses.length > 0 ? allClasses[allClasses.length - 1] : null;
     if (!highestClass || highestClass.id !== selectedClassId) {
-      showToast?.({ message: `Graduation can only be triggered from ${highestClass?.name || "the highest class"}.`, type: "error" });
+      showToast?.({
+        message: `Graduation can only be triggered from ${highestClass?.name || "the highest class"}.`,
+        type: "error",
+      });
       return;
     }
     const targetStudents = users.filter((u) => u.status !== "archived");
     if (targetStudents.length === 0) {
-      showToast?.({ message: `No active ${currentClassName} students found.`, type: "error" });
+      showToast?.({
+        message: `No active ${currentClassName} students found.`,
+        type: "error",
+      });
       return;
     }
     const performGraduation = async () => {
@@ -859,7 +1062,8 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       try {
         const currentYear = acadConfig.academicYear || "Unknown Year";
         const chunks = [];
-        for (let i = 0; i < targetStudents.length; i += 100) chunks.push(targetStudents.slice(i, i + 100));
+        for (let i = 0; i < targetStudents.length; i += 100)
+          chunks.push(targetStudents.slice(i, i + 100));
         for (const chunk of chunks) {
           const batch = writeBatch(db);
           chunk.forEach((s) => {
@@ -882,11 +1086,18 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
             batch.update(doc(db, "users", s.uid), updates);
           });
-          batch.set(doc(db, "stats", "global"), { totalStudents: increment(-chunk.length) }, { merge: true });
+          batch.set(
+            doc(db, "stats", "global"),
+            { totalStudents: increment(-chunk.length) },
+            { merge: true },
+          );
           await batch.commit();
         }
         setSelectedUserUids(new Set());
-        showToast?.({ message: `Graduation for ${currentYear} completed.`, type: "success" });
+        showToast?.({
+          message: `Graduation for ${currentYear} completed.`,
+          type: "success",
+        });
       } catch (e) {
         showToast?.({ message: "Graduation process failed.", type: "error" });
       } finally {
@@ -894,18 +1105,34 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       }
     };
     if (Platform.OS === "web") {
-      if (window.confirm(`Move ${targetStudents.length} students from ${currentClassName} to Archive for ${acadConfig.academicYear}?`)) performGraduation();
+      if (
+        window.confirm(
+          `Move ${targetStudents.length} students from ${currentClassName} to Archive for ${acadConfig.academicYear}?`,
+        )
+      )
+        performGraduation();
     } else {
-      Alert.alert("Confirm Graduation", `Move ${targetStudents.length} students from ${currentClassName} to Archive for ${acadConfig.academicYear}?`, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Graduate & Archive", style: "destructive", onPress: performGraduation },
-      ]);
+      Alert.alert(
+        "Confirm Graduation",
+        `Move ${targetStudents.length} students from ${currentClassName} to Archive for ${acadConfig.academicYear}?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Graduate & Archive",
+            style: "destructive",
+            onPress: performGraduation,
+          },
+        ],
+      );
     }
   };
 
   const handleDeleteUser = (user: User) => {
     if (user.uid === appUser?.uid) {
-      showToast?.({ message: "Error: You cannot delete your own account.", type: "error" });
+      showToast?.({
+        message: "Error: You cannot delete your own account.",
+        type: "error",
+      });
       return;
     }
     const performDelete = async () => {
@@ -914,28 +1141,57 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       setUpdating(true);
       try {
         const batch = writeBatch(db);
-        if (user.role === "teacher" && user.classTeacherOf) batch.update(doc(db, "classes", user.classTeacherOf), { classTeacherId: null });
+        if (user.role === "teacher" && user.classTeacherOf)
+          batch.update(doc(db, "classes", user.classTeacherOf), {
+            classTeacherId: null,
+          });
         if (user.role === "student" && user.parentUids?.length) {
-          user.parentUids.forEach((pUid) => batch.update(doc(db, "users", pUid), { childrenIds: arrayRemove(uidToDelete) }));
+          user.parentUids.forEach((pUid) =>
+            batch.update(doc(db, "users", pUid), {
+              childrenIds: arrayRemove(uidToDelete),
+            }),
+          );
         }
         if (user.role === "parent" && user.childrenIds?.length) {
-          user.childrenIds.forEach((sUid) => batch.update(doc(db, "users", sUid), { parentUids: arrayRemove(uidToDelete) }));
+          user.childrenIds.forEach((sUid) =>
+            batch.update(doc(db, "users", sUid), {
+              parentUids: arrayRemove(uidToDelete),
+            }),
+          );
         }
         const statsRef = doc(db, "stats", "global");
-        if (user.role === "student" && user.status !== "archived") batch.set(statsRef, { totalStudents: increment(-1) }, { merge: true });
-        else if (["admin", "teacher", "staff"].includes(user.role)) batch.set(statsRef, { totalStaff: increment(-1) }, { merge: true });
+        if (user.role === "student" && user.status !== "archived")
+          batch.set(
+            statsRef,
+            { totalStudents: increment(-1) },
+            { merge: true },
+          );
+        else if (["admin", "teacher", "staff"].includes(user.role))
+          batch.set(statsRef, { totalStaff: increment(-1) }, { merge: true });
         await batch.commit();
-        await httpsCallable(functions, "deleteUserAccount")({ uid: uidToDelete });
+        await httpsCallable(
+          functions,
+          "deleteUserAccount",
+        )({ uid: uidToDelete });
         setUsers((prev) => prev.filter((u) => u.uid !== uidToDelete));
-        showToast?.({ message: "Account and references removed.", type: "success" });
+        showToast?.({
+          message: "Account and references removed.",
+          type: "success",
+        });
       } catch (error: any) {
         console.error("Deletion failed:", error);
         try {
           await deleteDoc(doc(db, "users", uidToDelete));
           setUsers((prev) => prev.filter((u) => u.uid !== uidToDelete));
-          showToast?.({ message: "Partial Success: Database entry removed.", type: "warning" });
+          showToast?.({
+            message: "Partial Success: Database entry removed.",
+            type: "warning",
+          });
         } catch (dbError) {
-          showToast?.({ message: "Failed to delete user record.", type: "error" });
+          showToast?.({
+            message: "Failed to delete user record.",
+            type: "error",
+          });
         }
       } finally {
         setDeletingUid(null);
@@ -944,14 +1200,21 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       }
     };
 
-    const displayName = `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() || user.uid;
+    const displayName =
+      `${user.profile?.firstName || ""} ${user.profile?.lastName || ""}`.trim() ||
+      user.uid;
     if (Platform.OS === "web") {
-      if (window.confirm(`Permanently delete ${displayName} (${user.role})?`)) performDelete();
+      if (window.confirm(`Permanently delete ${displayName} (${user.role})?`))
+        performDelete();
     } else {
-      Alert.alert("Critical Action", `Permanently delete ${displayName} (${user.role})?`, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Delete", style: "destructive", onPress: performDelete },
-      ]);
+      Alert.alert(
+        "Critical Action",
+        `Permanently delete ${displayName} (${user.role})?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Delete", style: "destructive", onPress: performDelete },
+        ],
+      );
     }
   };
 
@@ -960,10 +1223,16 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     if (uidsArray.length === 0 || !hasManageUsersAccess) return;
 
     const targetUsers = users.filter((u) => uidsArray.includes(u.uid));
-    const uidsToDelete = targetUsers.map((u) => u.uid).filter((uid) => uid !== appUser?.uid);
+    const uidsToDelete = targetUsers
+      .map((u) => u.uid)
+      .filter((uid) => uid !== appUser?.uid);
 
     if (uidsToDelete.length === 0) {
-      showToast?.({ message: "No valid users to delete (you cannot delete your own account).", type: "error" });
+      showToast?.({
+        message:
+          "No valid users to delete (you cannot delete your own account).",
+        type: "error",
+      });
       return;
     }
 
@@ -978,16 +1247,22 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           if (user.uid === appUser?.uid) continue;
 
           if (user.role === "teacher" && user.classTeacherOf) {
-            batch.update(doc(db, "classes", user.classTeacherOf), { classTeacherId: null });
+            batch.update(doc(db, "classes", user.classTeacherOf), {
+              classTeacherId: null,
+            });
           }
           if (user.role === "student" && user.parentUids?.length) {
             user.parentUids.forEach((pUid) =>
-              batch.update(doc(db, "users", pUid), { childrenIds: arrayRemove(user.uid) })
+              batch.update(doc(db, "users", pUid), {
+                childrenIds: arrayRemove(user.uid),
+              }),
             );
           }
           if (user.role === "parent" && user.childrenIds?.length) {
             user.childrenIds.forEach((sUid) =>
-              batch.update(doc(db, "users", sUid), { parentUids: arrayRemove(user.uid) })
+              batch.update(doc(db, "users", sUid), {
+                parentUids: arrayRemove(user.uid),
+              }),
             );
           }
           if (user.role === "student" && user.status !== "archived") {
@@ -1007,7 +1282,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
               totalStudents: increment(-studentCountRemoved),
               totalStaff: increment(-staffCountRemoved),
             },
-            { merge: true }
+            { merge: true },
           );
         }
 
@@ -1017,23 +1292,36 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           try {
             await httpsCallable(functions, "deleteUserAccount")({ uid });
           } catch (e) {
-            console.warn(`Auth deletion for ${uid} failed, database doc removed.`, e);
+            console.warn(
+              `Auth deletion for ${uid} failed, database doc removed.`,
+              e,
+            );
           }
         }
 
         setUsers((prev) => prev.filter((u) => !uidsToDelete.includes(u.uid)));
         setSelectedUserUids(new Set());
-        showToast?.({ message: `Successfully deleted ${uidsToDelete.length} account(s).`, type: "success" });
+        showToast?.({
+          message: `Successfully deleted ${uidsToDelete.length} account(s).`,
+          type: "success",
+        });
       } catch (error: any) {
         console.error("Bulk deletion failed:", error);
-        showToast?.({ message: "Failed to delete selected accounts: " + error.message, type: "error" });
+        showToast?.({
+          message: "Failed to delete selected accounts: " + error.message,
+          type: "error",
+        });
       } finally {
         setUpdating(false);
       }
     };
 
     if (Platform.OS === "web") {
-      if (window.confirm(`Permanently delete ${uidsToDelete.length} selected user account(s)? This action cannot be undone.`)) {
+      if (
+        window.confirm(
+          `Permanently delete ${uidsToDelete.length} selected user account(s)? This action cannot be undone.`,
+        )
+      ) {
         performBulkDelete();
       }
     } else {
@@ -1042,8 +1330,12 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         `Permanently delete ${uidsToDelete.length} selected user account(s)? This action cannot be undone.`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Delete Accounts", style: "destructive", onPress: performBulkDelete },
-        ]
+          {
+            text: "Delete Accounts",
+            style: "destructive",
+            onPress: performBulkDelete,
+          },
+        ],
       );
     }
   };
@@ -1074,7 +1366,9 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         takesBus: editForm.takesBus,
         onScholarship: editForm.onScholarship,
         onDiscount: editForm.onDiscount,
-        discountAmount: editForm.onDiscount ? parseFloat(editForm.discountAmount) || 0 : 0,
+        discountAmount: editForm.onDiscount
+          ? parseFloat(editForm.discountAmount) || 0
+          : 0,
         isFeeding: editForm.isFeeding,
         takesExtraClasses: editForm.takesExtraClasses,
       };
@@ -1085,12 +1379,19 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         const { academicYear, currentTerm } = acadConfig;
         if (academicYear && currentTerm) {
           const recordId = `${assignmentModal.target.uid}_${academicYear.replace(/\//g, "-")}_${currentTerm.replace(/\s/g, "")}`;
-          const recordSnap = await getDoc(doc(db, "studentFeeRecords", recordId));
+          const recordSnap = await getDoc(
+            doc(db, "studentFeeRecords", recordId),
+          );
           if (recordSnap.exists()) {
             const currentDiscount = recordSnap.data().discount || 0;
             if (currentDiscount > 0) {
-              batch.update(doc(db, "studentFeeRecords", recordId), { discount: 0, balance: increment(currentDiscount) });
-              batch.update(userRef, { walletBalance: increment(currentDiscount) });
+              batch.update(doc(db, "studentFeeRecords", recordId), {
+                discount: 0,
+                balance: increment(currentDiscount),
+              });
+              batch.update(userRef, {
+                walletBalance: increment(currentDiscount),
+              });
             }
           }
         }
@@ -1115,14 +1416,24 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   const handleUpgradeStaff = async () => {
     if (!assignmentModal.target) return;
     if (!upgradeForm.email.trim() || upgradeForm.password.length < 6) {
-      showToast?.({ message: "Error: Invalid email or short password.", type: "error" });
+      showToast?.({
+        message: "Error: Invalid email or short password.",
+        type: "error",
+      });
       return;
     }
     setUpdating(true);
     const secondaryAppName = `upgrade-staff-${Date.now()}`;
-    const secondaryApp = initializeApp((SCHOOL_CONFIG as any).firebase || {}, secondaryAppName);
+    const secondaryApp = initializeApp(
+      (SCHOOL_CONFIG as any).firebase || {},
+      secondaryAppName,
+    );
     try {
-      const userCredential = await createUserWithEmailAndPassword(getAuth(secondaryApp), upgradeForm.email.trim(), upgradeForm.password);
+      const userCredential = await createUserWithEmailAndPassword(
+        getAuth(secondaryApp),
+        upgradeForm.email.trim(),
+        upgradeForm.password,
+      );
       const updates = {
         authUid: userCredential.user.uid,
         role: "staff" as UserRole,
@@ -1133,7 +1444,8 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         hasLoginEnabled: true,
       };
       await updateDoc(doc(db, "users", assignmentModal.target.uid), updates);
-      if (viewingUser?.uid === assignmentModal.target.uid) setViewingUser({ ...viewingUser, ...updates });
+      if (viewingUser?.uid === assignmentModal.target.uid)
+        setViewingUser({ ...viewingUser, ...updates });
       showToast?.({ message: "Staff account upgraded.", type: "success" });
       setAssignmentModal({ type: "none", target: null });
     } catch (e: any) {
@@ -1172,7 +1484,8 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
       await batch.commit();
 
-      if (viewingUser?.uid === user.uid) setViewingUser({ ...user, signupCode: newCode });
+      if (viewingUser?.uid === user.uid)
+        setViewingUser({ ...user, signupCode: newCode });
       showToast?.({ message: `Code Regenerated: ${newCode}`, type: "success" });
     } catch (err) {
       console.error(err);
@@ -1188,11 +1501,18 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     try {
       const newCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       await updateDoc(doc(db, "users", user.uid), { parentLinkCode: newCode });
-      if (viewingUser?.uid === user.uid) setViewingUser({ ...user, parentLinkCode: newCode });
-      showToast?.({ message: `Parent Link Code updated: ${newCode}`, type: "success" });
+      if (viewingUser?.uid === user.uid)
+        setViewingUser({ ...user, parentLinkCode: newCode });
+      showToast?.({
+        message: `Parent Link Code updated: ${newCode}`,
+        type: "success",
+      });
     } catch (err) {
       console.error(err);
-      showToast?.({ message: "Failed to update parent link code.", type: "error" });
+      showToast?.({
+        message: "Failed to update parent link code.",
+        type: "error",
+      });
     } finally {
       setUpdating(false);
     }
@@ -1202,9 +1522,15 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     const code = user.signupCode || user.parentLinkCode || user.secretCode;
     if (!code) return;
     const firstName = user.profile?.firstName || "there";
-    const codeType = user.signupCode ? "signup token" : (user.parentLinkCode ? "parent link code" : "security token");
+    const codeType = user.signupCode
+      ? "signup token"
+      : user.parentLinkCode
+        ? "parent link code"
+        : "security token";
     try {
-      await Share.share({ message: `Hello ${firstName}, your ${acadConfig.schoolName || "school"} ${codeType} is: ${code}` });
+      await Share.share({
+        message: `Hello ${firstName}, your ${acadConfig.schoolName || "school"} ${codeType} is: ${code}`,
+      });
     } catch (error) {
       console.error(error);
     }
@@ -1214,8 +1540,13 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     if (!assignmentModal.target || !editForm.email.trim()) return;
     setUpdating(true);
     try {
-      await httpsCallable(functions, "updateUserEmail")({ uid: assignmentModal.target.uid, newEmail: editForm.email.trim() });
-      await updateDoc(doc(db, "users", assignmentModal.target.uid), { "profile.email": editForm.email.trim() });
+      await httpsCallable(
+        functions,
+        "updateUserEmail",
+      )({ uid: assignmentModal.target.uid, newEmail: editForm.email.trim() });
+      await updateDoc(doc(db, "users", assignmentModal.target.uid), {
+        "profile.email": editForm.email.trim(),
+      });
       showToast?.({ message: "Email updated.", type: "success" });
       setAssignmentModal({ type: "none", target: null });
     } catch (err: any) {
@@ -1230,12 +1561,22 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     setUpdating(true);
     try {
       const newLoc = newBusLocInput.trim();
-      await setDoc(doc(db, "school_settings", "bus_rates"), { [newLoc]: 0 }, { merge: true });
-      setBusLocations(prev => (prev.includes(newLoc) ? prev : [...prev, newLoc].sort()));
-      if (assignmentModal.type === 'edit_profile') setEditForm(p => ({ ...p, busLocation: newLoc }));
+      await setDoc(
+        doc(db, "school_settings", "bus_rates"),
+        { [newLoc]: 0 },
+        { merge: true },
+      );
+      setBusLocations((prev) =>
+        prev.includes(newLoc) ? prev : [...prev, newLoc].sort(),
+      );
+      if (assignmentModal.type === "edit_profile")
+        setEditForm((p) => ({ ...p, busLocation: newLoc }));
       else if (targetUser) {
-        await updateDoc(doc(db, "users", targetUser.uid), { busLocation: newLoc });
-        if (viewingUser?.uid === targetUser.uid) setViewingUser({ ...viewingUser, busLocation: newLoc });
+        await updateDoc(doc(db, "users", targetUser.uid), {
+          busLocation: newLoc,
+        });
+        if (viewingUser?.uid === targetUser.uid)
+          setViewingUser({ ...viewingUser, busLocation: newLoc });
       }
       setNewBusLocInput("");
       setIsAddingNewBusLoc(false);
@@ -1248,17 +1589,29 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
   };
 
   const openPermissionModal = (user: User) => {
-    const defaults = PERMISSION_KEYS.reduce((acc, p) => ({ ...acc, [p.key]: "deny" as PermissionLevel }), {});
+    const defaults = PERMISSION_KEYS.reduce(
+      (acc, p) => ({ ...acc, [p.key]: "deny" as PermissionLevel }),
+      {},
+    );
     const incoming = user.permissions || {};
-    const merged = Object.keys(defaults).reduce((acc, k) => {
-      const val = (incoming as any)[k];
-      acc[k] = ["full", "view", "edit", "deny"].includes(val) ? (val as PermissionLevel) : "deny";
-      return acc;
-    }, {} as Record<string, PermissionLevel>);
+    const merged = Object.keys(defaults).reduce(
+      (acc, k) => {
+        const val = (incoming as any)[k];
+        acc[k] = ["full", "view", "edit", "deny"].includes(val)
+          ? (val as PermissionLevel)
+          : "deny";
+        return acc;
+      },
+      {} as Record<string, PermissionLevel>,
+    );
     setTempPermissions(merged);
     setNewsPermission(!!user.canCreateNews);
-    const isDutyActive = !!user.isTeacherOnDuty && user.teacherOnDutyExpiresAt &&
-      (user.teacherOnDutyExpiresAt.toMillis ? user.teacherOnDutyExpiresAt.toMillis() : new Date(user.teacherOnDutyExpiresAt).getTime()) > Date.now();
+    const isDutyActive =
+      !!user.isTeacherOnDuty &&
+      user.teacherOnDutyExpiresAt &&
+      (user.teacherOnDutyExpiresAt.toMillis
+        ? user.teacherOnDutyExpiresAt.toMillis()
+        : new Date(user.teacherOnDutyExpiresAt).getTime()) > Date.now();
     setIsTeacherOnDuty(isDutyActive);
     setAssignmentModal({ type: "permissions", target: user });
   };
@@ -1269,27 +1622,40 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     let p2Name = user.profile?.parent2Name || "";
     let p2Phone = user.profile?.parent2Phone || "";
 
-    if (user.role === "student" && user.parentUids?.length && (!pName || !pPhone)) {
+    if (
+      user.role === "student" &&
+      user.parentUids?.length &&
+      (!pName || !pPhone)
+    ) {
       try {
-        const q = query(collection(db, "users"), where(documentId(), "in", user.parentUids));
+        const q = query(
+          collection(db, "users"),
+          where(documentId(), "in", user.parentUids),
+        );
         const snap = await getDocsFromServer(q as any);
-        const parentDocs = snap.docs.map(d => d.data());
+        const parentDocs = snap.docs.map((d) => d.data());
 
         if (parentDocs.length > 0) {
           const parent1: any = parentDocs[0];
-          const p1FullName = `${parent1.profile?.firstName || ""} ${parent1.profile?.lastName || ""}`.trim();
+          const p1FullName =
+            `${parent1.profile?.firstName || ""} ${parent1.profile?.lastName || ""}`.trim();
           if (!pName && p1FullName) pName = p1FullName;
           if (!pPhone && parent1.profile?.phone) pPhone = parent1.profile.phone;
 
           if (parentDocs.length > 1) {
             const parent2: any = parentDocs[1];
-            const p2FullName = `${parent2.profile?.firstName || ""} ${parent2.profile?.lastName || ""}`.trim();
+            const p2FullName =
+              `${parent2.profile?.firstName || ""} ${parent2.profile?.lastName || ""}`.trim();
             if (!p2Name && p2FullName) p2Name = p2FullName;
-            if (!p2Phone && parent2.profile?.phone) p2Phone = parent2.profile.phone;
+            if (!p2Phone && parent2.profile?.phone)
+              p2Phone = parent2.profile.phone;
           }
         }
       } catch (err) {
-        console.error("Error auto-filling parent info from linked parents:", err);
+        console.error(
+          "Error auto-filling parent info from linked parents:",
+          err,
+        );
       }
     }
 
@@ -1311,23 +1677,44 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       discountAmount: user.discountAmount ? String(user.discountAmount) : "",
       isFeeding: !!user.isFeeding,
       takesExtraClasses: !!user.takesExtraClasses,
-      dob: user.dateOfBirth?.toDate ? user.dateOfBirth.toDate() : user.dateOfBirth ? new Date(user.dateOfBirth) : null,
+      dob: user.dateOfBirth?.toDate
+        ? user.dateOfBirth.toDate()
+        : user.dateOfBirth
+          ? new Date(user.dateOfBirth)
+          : null,
     });
     setAssignmentModal({ type: "edit_profile", target: user });
   };
 
   const handleCopyAllCodes = async () => {
-    const pendingStudents = filteredUsers.filter((u) => u.status === "pending_activation" && u.signupCode);
+    const pendingStudents = filteredUsers.filter(
+      (u) => u.status === "pending_activation" && u.signupCode,
+    );
     if (pendingStudents.length === 0) {
-      showToast?.({ message: "No pending students with codes found.", type: "error" });
+      showToast?.({
+        message: "No pending students with codes found.",
+        type: "error",
+      });
       return;
     }
-    const report = pendingStudents.map((s) => `${s.profile?.firstName} ${s.profile?.lastName}: ${s.signupCode}`).join("\n");
+    const report = pendingStudents
+      .map(
+        (s) =>
+          `${s.profile?.firstName} ${s.profile?.lastName}: ${s.signupCode}`,
+      )
+      .join("\n");
     await Clipboard.setStringAsync(report);
-    showToast?.({ message: `Codes for ${pendingStudents.length} students copied.`, type: "success" });
+    showToast?.({
+      message: `Codes for ${pendingStudents.length} students copied.`,
+      type: "success",
+    });
   };
 
-  const clearStudentArrearsCore = async (studentUid: string, studentUser?: User, termKeyToClear?: string) => {
+  const clearStudentArrearsCore = async (
+    studentUid: string,
+    studentUser?: User,
+    termKeyToClear?: string,
+  ) => {
     let userData = studentUser;
     if (!userData) {
       const uDoc = await getDoc(doc(db, "users", studentUid));
@@ -1338,7 +1725,7 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
     const qRecords = query(
       collection(db, "studentFeeRecords"),
-      where("studentUid", "==", studentUid)
+      where("studentUid", "==", studentUid),
     );
     const recordsSnap = await getDocsFromServer(qRecords);
 
@@ -1351,11 +1738,18 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
 
       recordsSnap.docs.forEach((rDoc) => {
         const rData = rDoc.data();
-        const key1 = `${rData.academicYear}_${rData.term}`.replace(/[\/\s]/g, "_");
+        const key1 = `${rData.academicYear}_${rData.term}`.replace(
+          /[\/\s]/g,
+          "_",
+        );
         const key2 = rData.term ? rData.term.replace(/[\/\s]/g, "_") : "";
         const cleanTermKey = termKeyToClear.replace(/[\/\s]/g, "_");
 
-        if (key1 === cleanTermKey || key2 === cleanTermKey || rDoc.id.includes(cleanTermKey)) {
+        if (
+          key1 === cleanTermKey ||
+          key2 === cleanTermKey ||
+          rDoc.id.includes(cleanTermKey)
+        ) {
           targetRecordDoc = rDoc;
         }
       });
@@ -1363,7 +1757,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       if (targetRecordDoc) {
         const rData = targetRecordDoc.data();
         const recArrears = Number(rData.arrears || 0);
-        clearedAmt = recArrears > 0 ? recArrears : Number(userData?.termArrears?.[termKeyToClear] || 0);
+        clearedAmt =
+          recArrears > 0
+            ? recArrears
+            : Number(userData?.termArrears?.[termKeyToClear] || 0);
 
         if (clearedAmt > 0) {
           batch.update(doc(db, "studentFeeRecords", targetRecordDoc.id), {
@@ -1371,7 +1768,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
             arrearsCleared: true,
             clearedArrearsAmount: clearedAmt,
             balance: Math.max(0, Number(rData.balance || 0) - clearedAmt),
-            totalPayable: Math.max(0, Number(rData.totalPayable || 0) - clearedAmt),
+            totalPayable: Math.max(
+              0,
+              Number(rData.totalPayable || 0) - clearedAmt,
+            ),
             lastUpdated: serverTimestamp(),
           });
         }
@@ -1389,7 +1789,6 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         [`termArrears.${termKeyToClear}`]: 0,
         walletBalance: newWallet,
       });
-
     } else {
       // Clear ALL arrears for student
       recordsSnap.docs.forEach((rDoc) => {
@@ -1401,20 +1800,27 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           batch.update(doc(db, "studentFeeRecords", rDoc.id), {
             arrears: 0,
             arrearsCleared: true,
-            clearedArrearsAmount: recArrears || Number(rData.clearedArrearsAmount || 0),
+            clearedArrearsAmount:
+              recArrears || Number(rData.clearedArrearsAmount || 0),
             balance: Math.max(0, Number(rData.balance || 0) - recArrears),
-            totalPayable: Math.max(0, Number(rData.totalPayable || 0) - recArrears),
+            totalPayable: Math.max(
+              0,
+              Number(rData.totalPayable || 0) - recArrears,
+            ),
             lastUpdated: serverTimestamp(),
           });
         }
       });
 
       const userDailyArrears = Number(userData?.dailyArrears || 0);
-      const userTermArrearsSum = Object.values(userData?.termArrears || {}).reduce(
-        (sum: number, val: any) => sum + Number(val || 0),
-        0
+      const userTermArrearsSum = Object.values(
+        userData?.termArrears || {},
+      ).reduce((sum: number, val: any) => sum + Number(val || 0), 0);
+      const totalCleared = Math.max(
+        totalClearedAcrossRecords,
+        userDailyArrears,
+        userTermArrearsSum,
       );
-      const totalCleared = Math.max(totalClearedAcrossRecords, userDailyArrears, userTermArrearsSum);
 
       const currentWallet = Number(userData?.walletBalance || 0);
       const newWallet = Math.max(0, currentWallet - totalCleared);
@@ -1437,17 +1843,26 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         if (viewingUser?.uid === user.uid) {
           const termArrearsSum = Object.values(user.termArrears || {}).reduce(
             (sum: number, val: any) => sum + Number(val || 0),
-            0
+            0,
           );
-          const clearedAmount = Math.max(Number(user.dailyArrears || 0), termArrearsSum);
+          const clearedAmount = Math.max(
+            Number(user.dailyArrears || 0),
+            termArrearsSum,
+          );
           setViewingUser({
             ...viewingUser,
             dailyArrears: 0,
             termArrears: {},
-            walletBalance: Math.max(0, Number(viewingUser.walletBalance || 0) - clearedAmount),
+            walletBalance: Math.max(
+              0,
+              Number(viewingUser.walletBalance || 0) - clearedAmount,
+            ),
           });
         }
-        showToast?.({ message: "All service arrears cleared.", type: "success" });
+        showToast?.({
+          message: "All service arrears cleared.",
+          type: "success",
+        });
       } catch (err) {
         console.error("Clear arrears error:", err);
         showToast?.({ message: "Failed to clear arrears.", type: "error" });
@@ -1456,12 +1871,19 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       }
     };
     if (Platform.OS === "web") {
-      if (window.confirm("Reset ALL service arrears (including all terms) to 0?")) performClear();
+      if (
+        window.confirm("Reset ALL service arrears (including all terms) to 0?")
+      )
+        performClear();
     } else {
-      Alert.alert("Clear All Arrears", "Reset ALL service arrears (including all terms) to 0?", [
-        { text: "Cancel", style: "cancel" },
-        { text: "Clear All", style: "destructive", onPress: performClear }
-      ]);
+      Alert.alert(
+        "Clear All Arrears",
+        "Reset ALL service arrears (including all terms) to 0?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Clear All", style: "destructive", onPress: performClear },
+        ],
+      );
     }
   };
 
@@ -1473,32 +1895,46 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         await clearStudentArrearsCore(user.uid, user, termKey);
 
         if (viewingUser?.uid === user.uid) {
-           const newTermArrears = { ...(viewingUser.termArrears || {}) };
-           delete newTermArrears[termKey];
-           setViewingUser({
-             ...viewingUser,
-             dailyArrears: Math.max(0, (viewingUser.dailyArrears || 0) - amount),
-             termArrears: newTermArrears,
-             walletBalance: Math.max(0, (viewingUser.walletBalance || 0) - amount),
-           });
+          const newTermArrears = { ...(viewingUser.termArrears || {}) };
+          delete newTermArrears[termKey];
+          setViewingUser({
+            ...viewingUser,
+            dailyArrears: Math.max(0, (viewingUser.dailyArrears || 0) - amount),
+            termArrears: newTermArrears,
+            walletBalance: Math.max(
+              0,
+              (viewingUser.walletBalance || 0) - amount,
+            ),
+          });
         }
-        showToast?.({ message: `Arrears for ${termKey.replace(/_/g, ' ')} cleared.`, type: "success" });
+        showToast?.({
+          message: `Arrears for ${termKey.replace(/_/g, " ")} cleared.`,
+          type: "success",
+        });
       } catch (err) {
         console.error("Clear term arrears error:", err);
-        showToast?.({ message: "Failed to clear term arrears.", type: "error" });
+        showToast?.({
+          message: "Failed to clear term arrears.",
+          type: "error",
+        });
       } finally {
         setUpdating(false);
       }
     };
 
-    const displayTerm = termKey.replace(/_/g, ' ');
+    const displayTerm = termKey.replace(/_/g, " ");
     if (Platform.OS === "web") {
-      if (window.confirm(`Reset arrears for ${displayTerm} to 0?`)) performClear();
+      if (window.confirm(`Reset arrears for ${displayTerm} to 0?`))
+        performClear();
     } else {
-      Alert.alert("Clear Term Arrears", `Reset arrears for ${displayTerm} to 0?`, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Clear", style: "destructive", onPress: performClear }
-      ]);
+      Alert.alert(
+        "Clear Term Arrears",
+        `Reset arrears for ${displayTerm} to 0?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Clear", style: "destructive", onPress: performClear },
+        ],
+      );
     }
   };
 
@@ -1513,7 +1949,10 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
           await clearStudentArrearsCore(uid, u);
         }
         setSelectedUserUids(new Set());
-        showToast?.({ message: `Arrears cleared for ${uids.length} student(s).`, type: "success" });
+        showToast?.({
+          message: `Arrears cleared for ${uids.length} student(s).`,
+          type: "success",
+        });
       } catch (err) {
         console.error(err);
         showToast?.({ message: "Bulk clear arrears failed.", type: "error" });
@@ -1523,20 +1962,32 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     };
 
     if (Platform.OS === "web") {
-      if (window.confirm(`Clear arrears for ${selectedUserUids.size} selected student(s)?`)) performClear();
+      if (
+        window.confirm(
+          `Clear arrears for ${selectedUserUids.size} selected student(s)?`,
+        )
+      )
+        performClear();
     } else {
       Alert.alert(
         "Clear Bulk Arrears",
         `Clear arrears for ${selectedUserUids.size} selected student(s)?`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Clear Arrears", style: "destructive", onPress: performClear },
-        ]
+          {
+            text: "Clear Arrears",
+            style: "destructive",
+            onPress: performClear,
+          },
+        ],
       );
     }
   };
 
-  const handleUploadProfileImage = async (user: User, source: 'library' | 'camera') => {
+  const handleUploadProfileImage = async (
+    user: User,
+    source: "library" | "camera",
+  ) => {
     try {
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -1545,29 +1996,28 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
         quality: 0.5,
       };
 
-      const result = source === 'library'
-        ? await ImagePicker.launchImageLibraryAsync(options)
-        : await ImagePicker.launchCameraAsync(options);
+      const result =
+        source === "library"
+          ? await ImagePicker.launchImageLibraryAsync(options)
+          : await ImagePicker.launchCameraAsync(options);
 
       if (result.canceled || !result.assets.length) return;
 
       setUploadingImage(true);
       const uri = result.assets[0].uri;
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      const storageRef = ref(storage, `profiles/${user.uid}.jpg`);
-
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
+      const base64 = result.assets[0].base64;
+      const profileImageValue = base64
+        ? `data:image/jpeg;base64,${base64}`
+        : uri;
 
       await updateDoc(doc(db, "users", user.uid), {
-        "profile.profileImage": downloadURL,
+        "profile.profileImage": profileImageValue,
       });
 
       if (viewingUser?.uid === user.uid) {
         setViewingUser({
           ...viewingUser,
-          profile: { ...viewingUser.profile, profileImage: downloadURL },
+          profile: { ...viewingUser.profile, profileImage: profileImageValue },
         });
       }
 
@@ -1586,7 +2036,11 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       return;
     }
     const isBulk = selectedUserUids.size > 0;
-    let targetUids = isBulk ? Array.from(selectedUserUids) : (assignmentModal.target ? [assignmentModal.target.uid] : []);
+    let targetUids = isBulk
+      ? Array.from(selectedUserUids)
+      : assignmentModal.target
+        ? [assignmentModal.target.uid]
+        : [];
 
     // If no specific selection, but a class is filtered, target the entire class
     if (targetUids.length === 0 && selectedClassId !== "all") {
@@ -1602,10 +2056,13 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
     try {
       const batch = writeBatch(db);
       targetUids.forEach((uid) => {
-        const user = users.find(u => u.uid === uid);
+        const user = users.find((u) => u.uid === uid);
         const currentStatus = user?.status || "active";
         // Preserve pending_activation status so they can still sign up after being moved
-        const newStatus = currentStatus === "pending_activation" ? "pending_activation" : "active";
+        const newStatus =
+          currentStatus === "pending_activation"
+            ? "pending_activation"
+            : "active";
 
         batch.update(doc(db, "users", uid), {
           classId: targetClassId,
@@ -1623,59 +2080,105 @@ export function useManageUsers({ appUser, acadConfig, showToast, router }: UseMa
       setTargetClassId("");
     } catch (e: any) {
       console.error(e);
-      showToast?.({ message: "Action failed. Check permissions.", type: "error" });
+      showToast?.({
+        message: "Action failed. Check permissions.",
+        type: "error",
+      });
     } finally {
       setUpdating(false);
     }
   };
 
-  const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup } = useFinanceCleanup(showToast);
+  const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup } =
+    useFinanceCleanup(showToast);
 
   return {
-    selectedRole, setSelectedRole,
-    selectedClassId, setSelectedClassId,
-    searchQuery, setSearchQuery,
-    showArchived, setShowArchived,
-    selectedUserUids, setSelectedUserUids,
-    users, loading, refreshing,
+    selectedRole,
+    setSelectedRole,
+    selectedClassId,
+    setSelectedClassId,
+    searchQuery,
+    setSearchQuery,
+    showArchived,
+    setShowArchived,
+    selectedUserUids,
+    setSelectedUserUids,
+    users,
+    loading,
+    refreshing,
     allClasses,
-    viewingUser, setViewingUser,
-    linkedUsers, loadingLinks,
-    assignmentModal, setAssignmentModal,
-    updating, deletingUid, uploadingImage,
-    editForm, setEditForm,
-    upgradeForm, setUpgradeForm,
-    customRoleText, setCustomRoleText,
-    deptText, setDeptText,
-    newsPermission, setNewsPermission,
-    isTeacherOnDuty, setIsTeacherOnDuty,
-    selectedSubjects, setSelectedSubjects,
-    selectedClasses, setSelectedClasses,
+    viewingUser,
+    setViewingUser,
+    linkedUsers,
+    loadingLinks,
+    assignmentModal,
+    setAssignmentModal,
+    updating,
+    deletingUid,
+    uploadingImage,
+    editForm,
+    setEditForm,
+    upgradeForm,
+    setUpgradeForm,
+    customRoleText,
+    setCustomRoleText,
+    deptText,
+    setDeptText,
+    newsPermission,
+    setNewsPermission,
+    isTeacherOnDuty,
+    setIsTeacherOnDuty,
+    selectedSubjects,
+    setSelectedSubjects,
+    selectedClasses,
+    setSelectedClasses,
     busLocations,
-    isAddingNewBusLoc, setIsAddingNewBusLoc,
-    newBusLocInput, setNewBusLocInput,
-    tempPermissions, setTempPermissions,
-    targetClassId, setTargetClassId,
-    filteredUsers, isHighestClassView,
-    toggleUserSelection, handleSelectAll,
-    handleBulkImport, handleBulkUpdate,
-    fetchLinkedUsers, handleUnlinkParent,
-    handleUpdatePermissions, handleAssignRole,
-    handleUpdateClasses, handleUpdateSubjects,
-    handleAssignDeptHead, handleRemoveAssignedRole,
-    handleAssignClassTeacher, handleToggleArchiveStatus,
-    handleGraduateClass, handleDeleteUser, handleBulkDeleteUsers,
-    handleUpdateProfile, handleUpgradeStaff,
-    handleRegenerateSignupCode, handleShareCode,
-    handleUpdateEmail, handleSaveNewBusLocation,
-    openPermissionModal, openEditProfile,
+    isAddingNewBusLoc,
+    setIsAddingNewBusLoc,
+    newBusLocInput,
+    setNewBusLocInput,
+    tempPermissions,
+    setTempPermissions,
+    targetClassId,
+    setTargetClassId,
+    filteredUsers,
+    isHighestClassView,
+    toggleUserSelection,
+    handleSelectAll,
+    handleBulkImport,
+    handleBulkUpdate,
+    fetchLinkedUsers,
+    handleUnlinkParent,
+    handleUpdatePermissions,
+    handleAssignRole,
+    handleUpdateClasses,
+    handleUpdateSubjects,
+    handleAssignDeptHead,
+    handleRemoveAssignedRole,
+    handleAssignClassTeacher,
+    handleToggleArchiveStatus,
+    handleGraduateClass,
+    handleDeleteUser,
+    handleBulkDeleteUsers,
+    handleUpdateProfile,
+    handleUpgradeStaff,
+    handleRegenerateSignupCode,
+    handleShareCode,
+    handleUpdateEmail,
+    handleSaveNewBusLocation,
+    openPermissionModal,
+    openEditProfile,
     handleUploadProfileImage,
-    handleCopyAllCodes, clearServiceArrears,
-    clearTermArrears, handleBulkClearArrears,
+    handleCopyAllCodes,
+    clearServiceArrears,
+    clearTermArrears,
+    handleBulkClearArrears,
     handleRegenerateParentLinkCode,
-    isSuperAdmin, hasManageUsersAccess,
+    isSuperAdmin,
+    hasManageUsersAccess,
     handlePromoteRepeat,
-    openPromoteRepeat: (target: User | null = null) => setAssignmentModal({ type: "promote_repeat", target }),
+    openPromoteRepeat: (target: User | null = null) =>
+      setAssignmentModal({ type: "promote_repeat", target }),
     runFinanceCleanup,
     isFinanceCleaning,
   };

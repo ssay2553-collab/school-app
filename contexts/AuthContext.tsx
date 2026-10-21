@@ -2,6 +2,7 @@ import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import {
     collection,
     doc,
+    getDoc,
     getDocs,
     limit,
     onSnapshot,
@@ -26,12 +27,14 @@ interface AuthContextValue {
   firebaseUser: FirebaseUser | null;
   appUser: AppUser | null;
   loading: boolean;
+  refreshAppUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue>({
   firebaseUser: null,
   appUser: null,
   loading: true,
+  refreshAppUser: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({
@@ -42,6 +45,159 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   const [loading, setLoading] = useState(true);
 
   const lastSyncedUid = useRef<string | null>(null);
+
+  const refreshAppUser = async () => {
+    if (!firebaseUser?.uid) {
+      setAppUser(null);
+      return;
+    }
+
+    try {
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const userQuerySnap = await getDocs(
+        query(
+          collection(db, "users"),
+          where("uid", "==", firebaseUser.uid),
+          limit(1),
+        ),
+      );
+
+      if (!userQuerySnap.empty) {
+        const docSnap = userQuerySnap.docs[0];
+        const data = docSnap.data() || {};
+        const rawRole =
+          data.role ||
+          data.profile?.role ||
+          (data.adminRole ? "staff" : undefined);
+        const role =
+          typeof rawRole === "string" ? rawRole.toLowerCase() : rawRole;
+
+        const mapped: AppUser = {
+          uid: docSnap.id,
+          role: role as any,
+          status: data.status || data.profile?.status,
+          adminRole: data.adminRole || data.profile?.adminRole,
+          permissions: data.permissions || data.profile?.permissions,
+          dateOfBirth: data.dateOfBirth || data.profile?.dateOfBirth,
+          profile: {
+            firstName: data.profile?.firstName ?? "",
+            lastName: data.profile?.lastName ?? "",
+            email: data.profile?.email,
+            phone: data.profile?.phone,
+            profileImage:
+              data.profile?.profileImage ??
+              data.photoURL ??
+              data.profile?.photoURL,
+            photoURL: data.profile?.photoURL ?? data.photoURL,
+            faceBaselineImage: data.profile?.faceBaselineImage,
+            signatureUrl: data.profile?.signatureUrl,
+            bio: data.profile?.bio,
+            experience: data.profile?.experience,
+            education: data.profile?.education,
+            gender: data.profile?.gender,
+            dob: data.profile?.dob || data.dateOfBirth,
+          },
+          displayName:
+            data.displayName ||
+            (data.profile?.firstName
+              ? `${data.profile.firstName} ${data.profile.lastName || ""}`.trim()
+              : data.username) ||
+            undefined,
+          fullName:
+            data.fullName ||
+            data.profile?.fullName ||
+            data.displayName ||
+            (data.profile?.firstName
+              ? `${data.profile.firstName} ${data.profile.lastName || ""}`.trim()
+              : data.username),
+          classes: data.classes ?? data.profile?.classes ?? [],
+          subjects: data.subjects ?? data.profile?.subjects ?? [],
+          classId: data.classId || data.profile?.classId,
+          childrenIds: data.childrenIds || data.profile?.childrenIds,
+          childrenClassIds:
+            data.childrenClassIds || data.profile?.childrenClassIds,
+          createdAt: data.createdAt,
+          parentUids: data.parentUids || data.profile?.parentUids,
+          parentLinkCode: data.parentLinkCode || data.profile?.parentLinkCode,
+          schoolId: data.schoolId || data.profile?.schoolId,
+          curriculum: data.curriculum || data.profile?.curriculum,
+          departments: data.departments || data.profile?.departments,
+          classTeacherOf: data.classTeacherOf || data.profile?.classTeacherOf,
+          assignedRoles: data.assignedRoles || data.profile?.assignedRoles,
+        };
+        setAppUser(mapped);
+        return;
+      }
+
+      const userDocSnap = await getDoc(userRef);
+      if (userDocSnap.exists()) {
+        const data = userDocSnap.data() || {};
+        const rawRole =
+          data.role ||
+          data.profile?.role ||
+          (data.adminRole ? "staff" : undefined);
+        const role =
+          typeof rawRole === "string" ? rawRole.toLowerCase() : rawRole;
+
+        const mapped: AppUser = {
+          uid: userDocSnap.id,
+          role: role as any,
+          status: data.status || data.profile?.status,
+          adminRole: data.adminRole || data.profile?.adminRole,
+          permissions: data.permissions || data.profile?.permissions,
+          dateOfBirth: data.dateOfBirth || data.profile?.dateOfBirth,
+          profile: {
+            firstName: data.profile?.firstName ?? "",
+            lastName: data.profile?.lastName ?? "",
+            email: data.profile?.email,
+            phone: data.profile?.phone,
+            profileImage:
+              data.profile?.profileImage ??
+              data.photoURL ??
+              data.profile?.photoURL,
+            photoURL: data.profile?.photoURL ?? data.photoURL,
+            faceBaselineImage: data.profile?.faceBaselineImage,
+            signatureUrl: data.profile?.signatureUrl,
+            bio: data.profile?.bio,
+            experience: data.profile?.experience,
+            education: data.profile?.education,
+            gender: data.profile?.gender,
+            dob: data.profile?.dob || data.dateOfBirth,
+          },
+          displayName:
+            data.displayName ||
+            (data.profile?.firstName
+              ? `${data.profile.firstName} ${data.profile.lastName || ""}`.trim()
+              : data.username) ||
+            undefined,
+          fullName:
+            data.fullName ||
+            data.profile?.fullName ||
+            data.displayName ||
+            (data.profile?.firstName
+              ? `${data.profile.firstName} ${data.profile.lastName || ""}`.trim()
+              : data.username),
+          classes: data.classes ?? data.profile?.classes ?? [],
+          subjects: data.subjects ?? data.profile?.subjects ?? [],
+          classId: data.classId || data.profile?.classId,
+          childrenIds: data.childrenIds || data.profile?.childrenIds,
+          childrenClassIds:
+            data.childrenClassIds || data.profile?.childrenClassIds,
+          createdAt: data.createdAt,
+          parentUids: data.parentUids || data.profile?.parentUids,
+          parentLinkCode: data.parentLinkCode || data.profile?.parentLinkCode,
+          schoolId: data.schoolId || data.profile?.schoolId,
+          curriculum: data.curriculum || data.profile?.curriculum,
+          departments: data.departments || data.profile?.departments,
+          classTeacherOf: data.classTeacherOf || data.profile?.classTeacherOf,
+          assignedRoles: data.assignedRoles || data.profile?.assignedRoles,
+        };
+        setAppUser(mapped);
+      }
+    } catch (error) {
+      console.error("Failed to refresh app user:", error);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -67,7 +223,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       };
       syncToken();
     }
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [firebaseUser]);
 
   useEffect(() => {
@@ -101,7 +259,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           typeof rawRole === "string" ? rawRole.toLowerCase() : rawRole;
 
         const isAdmin =
-          (role && (role.includes("admin") || role.includes("super") || role === "manager" || role === "staff")) ||
+          (role &&
+            (role.includes("admin") ||
+              role.includes("super") ||
+              role === "manager" ||
+              role === "staff")) ||
           !!data.adminRole ||
           !!data.profile?.adminRole;
 
@@ -117,7 +279,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             lastName: data.profile?.lastName ?? "",
             email: data.profile?.email,
             phone: data.profile?.phone,
-            profileImage: data.profile?.profileImage,
+            profileImage:
+              data.profile?.profileImage ??
+              data.photoURL ??
+              data.profile?.photoURL,
+            photoURL: data.profile?.photoURL ?? data.photoURL,
+            faceBaselineImage: data.profile?.faceBaselineImage,
             signatureUrl: data.profile?.signatureUrl,
             bio: data.profile?.bio,
             experience: data.profile?.experience,
@@ -167,7 +334,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         async (snap) => {
           if (snap.exists()) {
             const data = snap.data() || {};
-            const hasRoleInfo = !!(data.role || data.profile?.role || data.adminRole);
+            const hasRoleInfo = !!(
+              data.role ||
+              data.profile?.role ||
+              data.adminRole
+            );
             if (hasRoleInfo) {
               processSnap(snap);
               return;
@@ -179,7 +350,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             let q = query(
               collection(db, "users"),
               where("uid", "==", user.uid),
-              limit(1)
+              limit(1),
             );
             let querySnap = await getDocs(q);
 
@@ -187,7 +358,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
               q = query(
                 collection(db, "users"),
                 where("authUid", "==", user.uid),
-                limit(1)
+                limit(1),
               );
               querySnap = await getDocs(q);
             }
@@ -246,7 +417,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   return (
-    <AuthContext.Provider value={{ firebaseUser, appUser, loading }}>
+    <AuthContext.Provider
+      value={{ firebaseUser, appUser, loading, refreshAppUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -63,7 +63,7 @@ export const useAcademicRecords = () => {
 
   const calculateScores = useCallback((student: StudentScoreRecord, type: ReportType, customMaxScore?: number) => {
     const updated = { ...student };
-    const effectiveMaxScore = customMaxScore || maxScore || 100;
+    const effectiveMaxScore = (type === "End of Term" || type === "Mock Exams") ? 100 : (customMaxScore || maxScore || 100);
     if (type === "End of Term") {
       const classScoreRaw = parseFloat(updated.classScore) || 0;
       updated.classScore50 = classScoreRaw.toFixed(2);
@@ -143,7 +143,7 @@ export const useAcademicRecords = () => {
       try {
         const yearSlug = academicYear.replace(/\//g, "-");
         const reportSlug = reportType.replace(/\s+/g, "");
-        const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType);
+        const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType);
         const numSuffix = isNumbered ? `_${reportNumber || 1}` : "";
         const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
 
@@ -179,17 +179,19 @@ export const useAcademicRecords = () => {
             exam50: "0",
             finalScore: "0",
             grade: "N/A",
-            maxScore: reportType === "End of Term" ? 100 : maxScore,
+            maxScore: (reportType === "End of Term" || reportType === "Mock Exams") ? 100 : maxScore,
             status: "draft",
           } as StudentScoreRecord;
         }).filter((s): s is StudentScoreRecord => s !== null);
 
-        let docMaxScore = 100;
+        let docMaxScore = (reportType === "End of Term" || reportType === "Mock Exams") ? 100 : 100;
         if (docSnap.exists()) {
           const data = docSnap.data();
-          docMaxScore = Number(data.maxScore) || 100;
-          if (reportType !== "End of Term") {
+          docMaxScore = (reportType === "End of Term" || reportType === "Mock Exams") ? 100 : (Number(data.maxScore) || 100);
+          if (reportType !== "End of Term" && reportType !== "Mock Exams") {
             setMaxScore(docMaxScore);
+          } else {
+            setMaxScore(100);
           }
           const savedStudents = Array.isArray(data.students) ? data.students : [];
 
@@ -209,6 +211,9 @@ export const useAcademicRecords = () => {
           setServerStudents(JSON.parse(JSON.stringify(mergedStudents)));
           setRecordStatus(data.status || "pending");
         } else {
+          if (reportType === "End of Term" || reportType === "Mock Exams") {
+            setMaxScore(100);
+          }
           setRecordStatus("pending");
           const sortedList = activeClassStudents.sort((a, b) => a.fullName.localeCompare(b.fullName));
           setAllStudents(sortedList);
@@ -229,6 +234,10 @@ export const useAcademicRecords = () => {
   }, [selectedClassId, selectedSubject, academicYear, term, reportType, reportNumber, calculateScores]);
 
   const handleMaxScoreChange = useCallback((newMax: number) => {
+    if (reportType === "Mock Exams" || reportType === "End of Term") {
+      setMaxScore(100);
+      return;
+    }
     setMaxScore(newMax);
     setAllStudents(prev => prev.map(s => calculateScores(s, reportType, newMax)));
   }, [calculateScores, reportType]);
@@ -245,14 +254,18 @@ export const useAcademicRecords = () => {
           showToast({ message: "Max score for End of Term Exam is 100", type: "error" });
           return s;
         }
-        if (reportType !== "End of Term" && parseFloat(value) > maxScore) {
+        if (reportType === "Mock Exams" && parseFloat(value) > 100) {
+          showToast({ message: "Max score for Mock Exam is 100", type: "error" });
+          return s;
+        }
+        if (reportType !== "End of Term" && reportType !== "Mock Exams" && parseFloat(value) > maxScore) {
           showToast({ message: `Score cannot exceed total marks (${maxScore})`, type: "error" });
           return s;
         }
       }
       let updated = { ...s, [field]: value } as StudentScoreRecord;
       if (["classScore", "examsMark"].includes(field)) {
-        updated = calculateScores(updated, reportType, maxScore);
+        updated = calculateScores(updated, reportType, (reportType === "End of Term" || reportType === "Mock Exams") ? 100 : maxScore);
       }
       return updated;
     }));
@@ -285,10 +298,10 @@ export const useAcademicRecords = () => {
       const batch = writeBatch(db);
       const yearSlug = academicYear.replace(/\//g, "-");
       const reportSlug = reportType.replace(/\s+/g, "");
-      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `_${reportNumber}` : "";
+      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? `_${reportNumber}` : "";
       const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
 
-      const effectiveMax = reportType === "End of Term" ? 100 : maxScore;
+      const effectiveMax = (reportType === "End of Term" || reportType === "Mock Exams") ? 100 : maxScore;
 
       const updatedStudents = allStudents.map(s => {
         const isFilled = reportType === "End of Term"
@@ -321,7 +334,7 @@ export const useAcademicRecords = () => {
         academicYear,
         term,
         reportType,
-        reportNumber: ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? reportNumber : null,
+        reportNumber: ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? reportNumber : null,
         maxScore: effectiveMax,
         students: updatedStudents,
         studentIds: updatedStudents.map(s => s.studentId),
@@ -336,7 +349,7 @@ export const useAcademicRecords = () => {
 
         const summaryId = `${student.studentId}_${academicYear.replace(/\//g, "_")}_${term.replace(/\s+/g, "")}`;
         const typeKey = reportType.replace(/\s+/g, "");
-        const subKey = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `${typeKey}${reportNumber}` : typeKey;
+        const subKey = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? `${typeKey}${reportNumber}` : typeKey;
         const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${subKey}`;
         batch.set(doc(db, "academicRecordsSummary", summaryId), {
           teacherId: firebaseUser.uid,

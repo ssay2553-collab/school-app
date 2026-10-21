@@ -1,11 +1,22 @@
-import React from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View, Platform } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import {
+    ActivityIndicator,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import * as Animatable from "react-native-animatable";
-import SVGIcon from "../SVGIcon";
 import { SHADOWS } from "../../constants/theme";
+import SVGIcon from "../SVGIcon";
 
-type ReportType = "End of Term" | "Mid-Term" | "Mock Exams" | "Class Assessment Task (CAT)" | "Trial Test";
+type ReportType =
+  | "End of Term"
+  | "Mid-Term"
+  | "Mock Exams"
+  | "Class Assessment Task (CAT)"
+  | "Trial Test";
 
 interface SubjectInfo {
   name: string;
@@ -21,13 +32,22 @@ interface ScoreFilterSectionProps {
   term: string;
   selectedReportType: ReportType;
   setSelectedReportType: (type: ReportType) => void;
+  selectedReportNumber: number;
+  setSelectedReportNumber: (value: number) => void;
   selectedClassId: string;
   setSelectedClassId: (id: string) => void;
   classes: { id: string; name: string }[];
   selectedSubject: string;
   setSelectedSubject: (subject: string) => void;
   subjects: SubjectInfo[];
-  loadSubmission: () => void;
+  loadSubmission: (
+    subjectOverride?: string,
+    overrides?: {
+      reportType?: ReportType;
+      reportNumber?: number;
+      maxScore?: number;
+    },
+  ) => void;
   listLoading: boolean;
   recordId: string | null;
   primary: string;
@@ -42,6 +62,8 @@ export const ScoreFilterSection = ({
   term,
   selectedReportType,
   setSelectedReportType,
+  selectedReportNumber,
+  setSelectedReportNumber,
   selectedClassId,
   setSelectedClassId,
   classes,
@@ -69,7 +91,9 @@ export const ScoreFilterSection = ({
           <Text style={styles.sectionTitle}>Filter Records</Text>
           {!showFilters && recordId && (
             <Text style={styles.filterSummary} numberOfLines={1}>
-              {classes.find((c) => c.id === selectedClassId)?.name || selectedClassId} • {selectedSubject}
+              {classes.find((c) => c.id === selectedClassId)?.name ||
+                selectedClassId}{" "}
+              • {selectedSubject}
             </Text>
           )}
         </View>
@@ -83,72 +107,168 @@ export const ScoreFilterSection = ({
       </TouchableOpacity>
 
       {showFilters && (
-        <Animatable.View animation="fadeIn" duration={400} style={styles.expandedContent}>
+        <Animatable.View
+          animation="fadeIn"
+          duration={400}
+          style={styles.expandedContent}
+        >
           <View style={styles.lockedConfigRow}>
             <View style={styles.lockedConfigItem}>
-              <View style={[styles.lockedIcon, { backgroundColor: primary + "10" }]}>
+              <View
+                style={[styles.lockedIcon, { backgroundColor: primary + "10" }]}
+              >
                 <SVGIcon name="calendar" size={16} color={primary} />
               </View>
               <View>
                 <Text style={styles.miniLabelStatic}>ACADEMIC YEAR</Text>
-                <Text style={[styles.lockedVal, { color: primary }]}>{selectedYear || "---"}</Text>
+                <Text style={[styles.lockedVal, { color: primary }]}>
+                  {selectedYear || "---"}
+                </Text>
               </View>
             </View>
             <View style={styles.lockedConfigItem}>
-              <View style={[styles.lockedIcon, { backgroundColor: "#F59E0B15" }]}>
+              <View
+                style={[styles.lockedIcon, { backgroundColor: "#F59E0B15" }]}
+              >
                 <SVGIcon name="time" size={16} color="#F59E0B" />
               </View>
               <View>
                 <Text style={styles.miniLabelStatic}>CURRENT TERM</Text>
-                <Text style={[styles.lockedVal, { color: "#F59E0B" }]}>{term || "---"}</Text>
+                <Text style={[styles.lockedVal, { color: "#F59E0B" }]}>
+                  {term || "---"}
+                </Text>
               </View>
             </View>
           </View>
 
           <View style={styles.reportTypeRow}>
-            {(["Mid-Term", "End of Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"] as ReportType[]).map((type) => (
-              <TouchableOpacity
-                key={type}
-                style={[
-                  styles.typeChip,
-                  selectedReportType === type && { backgroundColor: primary, borderColor: primary }
-                ]}
-                onPress={() => setSelectedReportType(type)}
-              >
-                <Text style={[
-                  styles.typeChipText,
-                  selectedReportType === type && { color: "#fff" }
-                ]}>
-                  {type === "End of Term" ? "Final" : type === "Mid-Term" ? "Mid" : type === "Mock Exams" ? "Mock" : type}
-                </Text>
-              </TouchableOpacity>
-            ))}
+            {(
+              [
+                "Mid-Term",
+                "End of Term",
+                "Mock Exams",
+                "Class Assessment Task (CAT)",
+                "Trial Test",
+              ] as ReportType[]
+            ).map((type) => {
+              const hasPending = subjects.some(
+                (s) => s.reportType === type && s.status === "pending",
+              );
+              const hasApproved = subjects.some(
+                (s) => s.reportType === type && s.status === "approved",
+              );
+              const active = selectedReportType === type;
+
+              return (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.typeChip,
+                    active && {
+                      backgroundColor: primary,
+                      borderColor: primary,
+                    },
+                    !active &&
+                      hasPending && {
+                        backgroundColor: "#FEF3C7",
+                        borderColor: "#F59E0B",
+                      },
+                    !active &&
+                      !hasPending &&
+                      hasApproved && {
+                        backgroundColor: "#DCFCE7",
+                        borderColor: "#22C55E",
+                      },
+                  ]}
+                  onPress={() => setSelectedReportType(type)}
+                >
+                  <Text
+                    style={[
+                      styles.typeChipText,
+                      active && { color: "#fff" },
+                      !active && hasPending && { color: "#92400E" },
+                      !active &&
+                        !hasPending &&
+                        hasApproved && { color: "#166534" },
+                    ]}
+                  >
+                    {type === "End of Term"
+                      ? "Final"
+                      : type === "Mid-Term"
+                        ? "Mid"
+                        : type === "Mock Exams"
+                          ? "Mock"
+                          : type}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          {selectedReportType !== "End of Term" && (
+          {["Class Assessment Task (CAT)", "Trial Test"].includes(
+            selectedReportType,
+          ) && (
             <View style={{ marginTop: 16 }}>
-              <Text style={styles.floatingLabelStatic}>TEST TOTAL MARKS (OVER SCORE)</Text>
+              <Text style={styles.floatingLabelStatic}>ASSESSMENT NUMBER</Text>
               <View style={[styles.reportTypeRow, { marginTop: 6 }]}>
-                {[20, 30, 50, 100].map((score) => (
+                {[1, 2, 3, 4, 5].map((n) => (
                   <TouchableOpacity
-                    key={score}
+                    key={n}
                     style={[
                       styles.typeChip,
-                      maxScore === score && { backgroundColor: primary, borderColor: primary }
+                      selectedReportNumber === n && {
+                        backgroundColor: primary,
+                        borderColor: primary,
+                      },
                     ]}
-                    onPress={() => handleMaxScoreChange(score)}
+                    onPress={() => setSelectedReportNumber(n)}
                   >
-                    <Text style={[
-                      styles.typeChipText,
-                      maxScore === score && { color: "#fff" }
-                    ]}>
-                      Over {score}
+                    <Text
+                      style={[
+                        styles.typeChipText,
+                        selectedReportNumber === n && { color: "#fff" },
+                      ]}
+                    >
+                      {n}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
           )}
+
+          {selectedReportType !== "End of Term" &&
+            selectedReportType !== "Mock Exams" && (
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.floatingLabelStatic}>
+                  TEST TOTAL MARKS (OVER SCORE)
+                </Text>
+                <View style={[styles.reportTypeRow, { marginTop: 6 }]}>
+                  {[20, 30, 50, 100].map((score) => (
+                    <TouchableOpacity
+                      key={score}
+                      style={[
+                        styles.typeChip,
+                        maxScore === score && {
+                          backgroundColor: primary,
+                          borderColor: primary,
+                        },
+                      ]}
+                      onPress={() => handleMaxScoreChange(score)}
+                    >
+                      <Text
+                        style={[
+                          styles.typeChipText,
+                          maxScore === score && { color: "#fff" },
+                        ]}
+                      >
+                        Over {score}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
 
           <View style={styles.pickerGrid}>
             <View style={styles.pickerBox}>
@@ -178,11 +298,7 @@ export const ScoreFilterSection = ({
                 >
                   {subjects.length > 0 ? (
                     subjects.map((s) => (
-                      <Picker.Item
-                        key={s.name}
-                        label={s.name}
-                        value={s.name}
-                      />
+                      <Picker.Item key={s.name} label={s.name} value={s.name} />
                     ))
                   ) : (
                     <Picker.Item label="None" value="" />
@@ -267,9 +383,9 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#F8FAFC',
-    justifyContent: 'center',
-    alignItems: 'center'
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
   },
   sectionTitle: {
     fontSize: 16,
@@ -286,37 +402,37 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
     marginTop: 16,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
     padding: 12,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
   },
   lockedConfigItem: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
   lockedIcon: {
     width: 32,
     height: 32,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   miniLabelStatic: {
     fontSize: 8,
-    fontWeight: '800',
-    color: '#94A3B8',
+    fontWeight: "800",
+    color: "#94A3B8",
     letterSpacing: 0.5,
   },
   lockedVal: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   reportTypeRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   typeChip: {
@@ -324,13 +440,13 @@ const styles = StyleSheet.create({
     height: 38,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    borderColor: "#E2E8F0",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   floatingLabelStatic: {
@@ -341,9 +457,9 @@ const styles = StyleSheet.create({
   },
   typeChipText: {
     fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
-    textTransform: 'uppercase',
+    fontWeight: "800",
+    color: "#64748B",
+    textTransform: "uppercase",
   },
   pickerBox: {
     flex: 1,
@@ -357,7 +473,7 @@ const styles = StyleSheet.create({
   pickerWrapper: {
     height: 40,
     marginTop: -4,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   floatingLabel: {
     fontSize: 8,
@@ -372,20 +488,20 @@ const styles = StyleSheet.create({
   picker: {
     color: "#1E293B",
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: "800",
     ...Platform.select({
       web: {
         height: 35,
         backgroundColor: "transparent",
         borderWidth: 0,
         outlineStyle: "none",
-        paddingHorizontal: 12
+        paddingHorizontal: 12,
       },
       android: {
         height: 45,
-        width: '100%',
-        marginLeft: 0
-      }
+        width: "100%",
+        marginLeft: 0,
+      },
     }),
   } as any,
   loadBtn: {
@@ -395,7 +511,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    ...SHADOWS.medium
+    ...SHADOWS.medium,
   },
   btnContent: {
     flexDirection: "row",
@@ -407,6 +523,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     fontSize: 15,
     letterSpacing: 1,
-    textTransform: 'uppercase'
+    textTransform: "uppercase",
   },
 });

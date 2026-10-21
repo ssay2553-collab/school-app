@@ -36,7 +36,7 @@ export const MockPreview: React.FC<Props> = ({
   adminRemarks,
   adminSig,
 }) => {
-  const mockTitle = `MOCK ${reportNumber || 1}`;
+  const mockTitle = "MOCK";
 
   return (
     <View>

@@ -16,7 +16,7 @@ export const generateMockHtml = (data: ReportHtmlData, styles: string, header: s
     adminRemarks,
   } = data;
 
-  const mockTitle = `MOCK ${reportNumber || 1}`;
+  const mockTitle = "MOCK";
 
   return `
     <!DOCTYPE html>

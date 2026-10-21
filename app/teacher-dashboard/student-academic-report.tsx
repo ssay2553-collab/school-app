@@ -375,7 +375,7 @@ export default function TeacherStudentAcademicReport() {
             ))}
           </ScrollView>
 
-          {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) && (
+          {["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) && (
             <>
               <Text style={styles.label}>Assessment Number</Text>
               <ScrollView

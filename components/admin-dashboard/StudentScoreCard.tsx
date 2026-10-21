@@ -32,7 +32,7 @@ export const StudentScoreCard = React.memo(
       setLocalItem(item);
     }, [item]);
 
-    const effectiveMaxScore = reportType === "End of Term" ? 100 : (localItem.maxScore || maxScore || 100);
+    const effectiveMaxScore = (reportType === "End of Term" || reportType === "Mock Exams") ? 100 : (localItem.maxScore || maxScore || 100);
 
     const handleUpdate = (field: string, v: string) => {
       setLocalItem((prev: any) => {

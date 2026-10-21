@@ -72,7 +72,7 @@ export default function StudentFeeHistory() {
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: "center" }}>
             <Text style={styles.headerTitle}>Financial Statement</Text>
-            <Text style={styles.headerSub}>Transaction Ledger</Text>
+            <Text style={styles.headerSub}>School Fees</Text>
           </View>
         </View>
         <View style={styles.filterRow}>
@@ -371,7 +371,7 @@ export default function StudentFeeHistory() {
             <View style={styles.ledgerHeaderRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.historyTitle}>
-                  {showFullHistory ? "ALL TRANSACTIONS" : "TRANSACTION LEDGER"}
+                  {showFullHistory ? "ALL TRANSACTIONS" : "SCHOOL FEES"}
                 </Text>
                 <Text style={styles.ledgerCaption}>
                   {showFullHistory

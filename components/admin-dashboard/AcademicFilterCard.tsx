@@ -173,7 +173,7 @@ export const AcademicFilterCard = ({
         )}
       </ScrollView>
 
-      {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) && (
+      {["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) && (
         <>
           <Text style={styles.bubbleLabel}>ASSESSMENT NUMBER</Text>
           <ScrollView

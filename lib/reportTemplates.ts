@@ -140,8 +140,8 @@ export const generateAcademicReportHtml = (data: ReportHtmlData) => {
     .signature-img { width: 100%; height: 50pt; object-fit: contain; margin-bottom: 5pt; }
   `;
 
-  const letterheadType = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType)
-    ? `${reportType === "Trial Test" ? "TEST" : reportType === "Mock Exams" ? "MOCK" : "CAT"} ${reportNumber || 1} PROGRESS REPORT`
+  const letterheadType = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType)
+    ? `${reportType === "Trial Test" ? "TEST" : "CAT"} ${reportNumber || 1} PROGRESS REPORT`
     : `${reportType.toUpperCase()} PROGRESS REPORT`;
 
   const header = `

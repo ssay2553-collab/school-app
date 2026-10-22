@@ -1,6 +1,12 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, Platform } from "react-native";
-import * as Animatable from "react-native-animatable";
+import {
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 
@@ -24,11 +30,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   if (selectedCount === 0) return null;
 
   return (
-    <Animatable.View
-      animation="slideInUp"
-      style={styles.bulkActionBar}
-      useNativeDriver={false}
-    >
+    <View style={styles.bulkActionBar}>
       <View style={styles.bulkActionInfo}>
         <Text style={styles.bulkActionCount}>{selectedCount} Selected</Text>
         <TouchableOpacity onPress={onCancel} activeOpacity={0.7}>
@@ -61,10 +63,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           <SVGIcon name="book" size={20} color="#fff" />
           <Text style={styles.bulkActionText}>Extra</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkActionBtn}
-          onPress={onClearArrears}
-        >
+        <TouchableOpacity style={styles.bulkActionBtn} onPress={onClearArrears}>
           <SVGIcon name="refresh-circle" size={20} color="#fff" />
           <Text style={styles.bulkActionText}>Clear Arrears</Text>
         </TouchableOpacity>
@@ -92,7 +91,7 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
           </TouchableOpacity>
         )}
       </ScrollView>
-    </Animatable.View>
+    </View>
   );
 };
 
@@ -137,8 +136,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   bulkActionText: {

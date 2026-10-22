@@ -239,7 +239,7 @@ export const MathSprintGame: React.FC<MathSprintGameProps> = ({ onExit }) => {
 
       {/* Streak Badge */}
       {streak > 1 && (
-        <Animatable.View animation="pulse" iterationCount="infinite" style={styles.streakBadge}>
+        <Animatable.View animation="pulse" iterationCount={3} style={styles.streakBadge}>
           <Text style={styles.streakText}>🔥 {streak}x STREAK!</Text>
         </Animatable.View>
       )}

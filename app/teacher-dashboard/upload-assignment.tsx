@@ -71,6 +71,7 @@ const Header = memo(({ onBack, onOpenArchive }: { onBack: () => void; onOpenArch
    ========================================================= */
 const AssignmentDetailsCard = memo(({
   title, setTitle,
+  description, setDescription,
   teacherClasses, selectedClassId, setSelectedClassId,
   subjects, selectedSubject, setSelectedSubject,
   type, setType,
@@ -90,6 +91,15 @@ const AssignmentDetailsCard = memo(({
         placeholder="e.g. Algebra Homework 1"
         value={title}
         onChangeText={setTitle}
+      />
+
+      <Text style={styles.inputLabel}>Instructions / Description (Optional)</Text>
+      <TextInput
+        style={[styles.input, { minHeight: 60, textAlignVertical: 'top' }]}
+        placeholder="e.g. Write a 200-word essay on climate change..."
+        value={description}
+        onChangeText={setDescription}
+        multiline
       />
 
       <Text style={styles.inputLabel}>Class *</Text>
@@ -462,6 +472,7 @@ export default function UploadAssignment() {
           
           <AssignmentDetailsCard
             title={title} setTitle={setTitle}
+            description={description} setDescription={setDescription}
             teacherClasses={teacherClasses} selectedClassId={selectedClassId} setSelectedClassId={setSelectedClassId}
             subjects={subjects} selectedSubject={selectedSubject} setSelectedSubject={setSelectedSubject}
             type={type} setType={setType}

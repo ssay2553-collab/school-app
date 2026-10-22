@@ -26,7 +26,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
 
 interface ChatMessage {
   id: string;
@@ -54,7 +54,8 @@ export default function ChatWithAdmin() {
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
 
   useEffect(() => {
-    if (!appUser) return;
+    if (!appUser?.uid) return;
+    markNotificationsAsRead(appUser.uid, "chat");
     const chatRef = doc(db, "chats", appUser.uid);
     const unsub = onSnapshot(chatRef, (snap) => {
       if (snap.exists()) {
@@ -64,7 +65,7 @@ export default function ChatWithAdmin() {
       }
     });
     return unsub;
-  }, [appUser]);
+  }, [appUser?.uid]);
 
   const scrollToBottom = (animated = true) => {
     if (scrollRef.current) {

@@ -83,7 +83,7 @@ const SubmissionItem = React.memo(({
   };
 
   const isInteractive = item.type === "mcq" || item.type === "short_answer" || item.type === "mathematics";
-  const isDirectGrade = item.type === "preschool";
+  const isDirectGrade = item.type === "preschool" || item.type === "rich-text";
 
   return (
     <View style={styles.subCard}>
@@ -281,6 +281,24 @@ const SubmissionItem = React.memo(({
                 <Text style={styles.totalSumValue}>{String(calculateTotal())}</Text>
             </View>
           </View>
+        </View>
+      )}
+
+      {(item.type === "rich-text" || item.contentHtml) && (
+        <View style={[styles.responsesBox, { marginBottom: 20 }]}>
+          <Text style={styles.responseLabel}>STUDENT ESSAY SUBMISSION</Text>
+          {item.contentHtml ? (
+            <View style={styles.textResponseBox}>
+              <FormattedText text={item.contentHtml} style={{ fontSize: 14, color: '#1E293B', lineHeight: 22 }} />
+            </View>
+          ) : (
+            <Text style={styles.aTextLarge}>{item.note || "No essay text submitted."}</Text>
+          )}
+          {item.noteId ? (
+            <Text style={{ fontSize: 12, color: '#64748B', marginTop: 8, fontStyle: 'italic' }}>
+              Attached Note ID: {item.noteId}
+            </Text>
+          ) : null}
         </View>
       )}
 

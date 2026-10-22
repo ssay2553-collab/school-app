@@ -1,24 +1,27 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  serverTimestamp,
-  startAfter,
-  updateDoc,
-  where,
-  Timestamp,
-  documentId,
-} from 'firebase/firestore';
-import { db } from '../../firebaseConfig';
-import { useAuth } from '../../contexts/AuthContext';
-import { useToast } from '../../contexts/ToastContext';
-import { getTeacherClasses } from '../../lib/classHelpers';
-import { sendNotification, markNotificationsAsRead } from '../../src/services/notificationService';
+    Timestamp,
+    collection,
+    doc,
+    documentId,
+    getDoc,
+    getDocs,
+    limit,
+    orderBy,
+    query,
+    serverTimestamp,
+    startAfter,
+    updateDoc,
+    where,
+} from "firebase/firestore";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import { db } from "../../firebaseConfig";
+import { dedupeSubjects, getTeacherClasses } from "../../lib/classHelpers";
+import {
+    markNotificationsAsRead,
+    sendNotification,
+} from "../../src/services/notificationService";
 
 export interface Question {
   text: string;
@@ -49,6 +52,8 @@ export interface Submission {
   isLate?: boolean;
   submittedAt?: Timestamp;
   contentHtml?: string;
+  note?: string;
+  noteId?: string;
 }
 
 export interface ClassInfo {
@@ -67,14 +72,21 @@ export const useMarkAssignment = () => {
   const [selectedSubject, setSelectedSubject] = useState("");
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [selectedAssignment, setSelectedAssignment] =
+    useState<Assignment | null>(null);
   const [answerKey, setAnswerKey] = useState<any>(null);
 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
 
-  const [qScoreInputs, setQScoreInputs] = useState<Record<string, Record<number, string>>>({});
-  const [standardMarksInput, setStandardMarksInput] = useState<Record<string, string>>({});
-  const [feedbackInputs, setFeedbackInputs] = useState<Record<string, string>>({});
+  const [qScoreInputs, setQScoreInputs] = useState<
+    Record<string, Record<number, string>>
+  >({});
+  const [standardMarksInput, setStandardMarksInput] = useState<
+    Record<string, string>
+  >({});
+  const [feedbackInputs, setFeedbackInputs] = useState<Record<string, string>>(
+    {},
+  );
 
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -88,16 +100,24 @@ export const useMarkAssignment = () => {
       markNotificationsAsRead(teacherId, "submission");
       markNotificationsAsRead(teacherId, "assignment");
     }
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, [teacherId]);
 
   const qScoreInputsRef = useRef(qScoreInputs);
   const standardMarksInputRef = useRef(standardMarksInput);
   const feedbackInputsRef = useRef(feedbackInputs);
 
-  useEffect(() => { qScoreInputsRef.current = qScoreInputs; }, [qScoreInputs]);
-  useEffect(() => { standardMarksInputRef.current = standardMarksInput; }, [standardMarksInput]);
-  useEffect(() => { feedbackInputsRef.current = feedbackInputs; }, [feedbackInputs]);
+  useEffect(() => {
+    qScoreInputsRef.current = qScoreInputs;
+  }, [qScoreInputs]);
+  useEffect(() => {
+    standardMarksInputRef.current = standardMarksInput;
+  }, [standardMarksInput]);
+  useEffect(() => {
+    feedbackInputsRef.current = feedbackInputs;
+  }, [feedbackInputs]);
 
   const lastVisibleRef = useRef<any>(null);
   const hasMoreRef = useRef(true);
@@ -109,8 +129,18 @@ export const useMarkAssignment = () => {
     const userRole = appUser?.role?.toLowerCase() || "";
     const adminRole = appUser?.adminRole?.toLowerCase() || "";
     const isManagerOrAdmin =
-        userRole === "admin" ||
-        ["manager", "headmaster", "headmistress", "administrator", "director", "proprietor", "proprietress", "accountant", "bursar"].includes(adminRole);
+      userRole === "admin" ||
+      [
+        "manager",
+        "headmaster",
+        "headmistress",
+        "administrator",
+        "director",
+        "proprietor",
+        "proprietress",
+        "accountant",
+        "bursar",
+      ].includes(adminRole);
 
     const fetchClasses = async () => {
       try {
@@ -120,9 +150,9 @@ export const useMarkAssignment = () => {
           // Fetch ALL classes for managers/admins
           const q = query(collection(db, "classes"));
           const snap = await getDocs(q);
-          results = snap.docs.map(item => ({
+          results = snap.docs.map((item) => ({
             id: item.id,
-            name: (item.data() as any).name || item.id
+            name: (item.data() as any).name || item.id,
           }));
         } else {
           // Fetch only assigned classes for teachers
@@ -136,23 +166,27 @@ export const useMarkAssignment = () => {
             const chunk = classIds.slice(i, i + 30);
             const q = query(
               collection(db, "classes"),
-              where(documentId(), "in", chunk)
+              where(documentId(), "in", chunk),
             );
             const snap = await getDocs(q);
-            results.push(...snap.docs.map(item => ({
-              id: item.id,
-              name: (item.data() as any).name || item.id
-            })));
+            results.push(
+              ...snap.docs.map((item) => ({
+                id: item.id,
+                name: (item.data() as any).name || item.id,
+              })),
+            );
           }
         }
 
         if (isMounted.current) {
           const sorted = results.sort((a, b) => a.name.localeCompare(b.name));
           setAvailableClasses(sorted);
-          if (sorted.length > 0 && !selectedClass) setSelectedClass(sorted[0].id);
+          if (sorted.length > 0 && !selectedClass)
+            setSelectedClass(sorted[0].id);
         }
       } catch (err) {
-        if (isMounted.current) console.error("Error fetching class names:", err);
+        if (isMounted.current)
+          console.error("Error fetching class names:", err);
       }
     };
 
@@ -164,25 +198,41 @@ export const useMarkAssignment = () => {
     const userRole = appUser?.role?.toLowerCase() || "";
     const adminRole = appUser?.adminRole?.toLowerCase() || "";
     const isManagerOrAdmin =
-        userRole === "admin" ||
-        ["manager", "headmaster", "headmistress", "administrator", "director", "proprietor", "proprietress", "accountant", "bursar"].includes(adminRole);
+      userRole === "admin" ||
+      [
+        "manager",
+        "headmaster",
+        "headmistress",
+        "administrator",
+        "director",
+        "proprietor",
+        "proprietress",
+        "accountant",
+        "bursar",
+      ].includes(adminRole);
 
     if (isManagerOrAdmin) {
-       const fetchAllSubjects = async () => {
-         try {
-           const q = query(collection(db, "subjects"));
-           const snap = await getDocs(q);
-           const list = snap.docs.map(d => d.id);
-           if (isMounted.current) {
-             const combined = Array.from(new Set([...list, ...(appUser.subjects || [])]));
-             setAvailableSubjects(combined);
-             if (combined.length > 0 && !selectedSubject) setSelectedSubject(combined[0]);
-           }
-         } catch (e) { console.error(e); }
-       };
-       fetchAllSubjects();
+      const fetchAllSubjects = async () => {
+        try {
+          const q = query(collection(db, "subjects"));
+          const snap = await getDocs(q);
+          const list = snap.docs.map((d) => d.id);
+          if (isMounted.current) {
+            const combined = dedupeSubjects([
+              ...list,
+              ...(appUser.subjects || []),
+            ]);
+            setAvailableSubjects(combined);
+            if (combined.length > 0 && !selectedSubject)
+              setSelectedSubject(combined[0]);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+      fetchAllSubjects();
     } else {
-      const userSubjects = appUser?.subjects || [];
+      const userSubjects = dedupeSubjects(appUser?.subjects || []);
       setAvailableSubjects(userSubjects);
       if (userSubjects.length > 0 && !selectedSubject) {
         setSelectedSubject(userSubjects[0]);
@@ -190,94 +240,124 @@ export const useMarkAssignment = () => {
     }
   }, [appUser, selectedSubject]);
 
-  const fetchAssignments = useCallback(async (isFirstLoad = false) => {
-    if (!selectedClass || !selectedSubject || !teacherId) {
-      if (isFirstLoad) {
-        setAssignments([]);
-        lastVisibleRef.current = null;
-        hasMoreRef.current = false;
-      }
-      return;
-    }
-
-    if (isFetchingRef.current && !isFirstLoad) return;
-    if (!isFirstLoad && !hasMoreRef.current) return;
-
-    isFetchingRef.current = true;
-    if (isFirstLoad) {
-      setLoading(true);
-      lastVisibleRef.current = null;
-      hasMoreRef.current = true;
-    } else {
-      setLoadingMore(true);
-    }
-
-    try {
-      const userRole = appUser?.role?.toLowerCase() || "";
-      const adminRole = appUser?.adminRole?.toLowerCase() || "";
-
-      const isManagerOrAdmin =
-        userRole === "admin" ||
-        ["manager", "headmaster", "headmistress", "administrator", "director", "proprietor", "proprietress", "accountant", "bursar"].includes(adminRole);
-
-      // Managers and Admins should see ALL assignments for the class/subject
-      // Teachers should also see assignments for their subjects even if created by admins
-      const queryConstraints: any[] = [
-        where("classId", "==", selectedClass),
-        where("subjectId", "==", selectedSubject),
-      ];
-
-      // Only apply teacherId filter if NOT a manager/admin AND we want to restrict strictly to own
-      // However, the request is to allow seeing admin assignments, so we relax this.
-      if (!isManagerOrAdmin && !appUser?.subjects?.includes(selectedSubject)) {
-        queryConstraints.push(where("teacherId", "==", teacherId));
-      }
-
-      queryConstraints.push(orderBy("createdAt", "desc"));
-      queryConstraints.push(limit(50));
-
-      if (!isFirstLoad && lastVisibleRef.current) {
-        queryConstraints.push(startAfter(lastVisibleRef.current));
-      }
-
-      const q = query(collection(db, "assignments"), ...queryConstraints);
-      const snap = await getDocs(q);
-
-      const data = snap.docs.map((d) => ({
-        id: d.id,
-        ...(d.data() as any),
-      })) as Assignment[];
-
-      if (isMounted.current) {
+  const fetchAssignments = useCallback(
+    async (isFirstLoad = false) => {
+      if (!selectedClass || !selectedSubject || !teacherId) {
         if (isFirstLoad) {
-          setAssignments(data);
-          if (data.length > 0) setSelectedAssignment(data[0]);
-          else setSelectedAssignment(null);
-        } else {
-          setAssignments((prev) => [...prev, ...data]);
+          setAssignments([]);
+          lastVisibleRef.current = null;
+          hasMoreRef.current = false;
+        }
+        return;
+      }
+
+      if (isFetchingRef.current && !isFirstLoad) return;
+      if (!isFirstLoad && !hasMoreRef.current) return;
+
+      isFetchingRef.current = true;
+      if (isFirstLoad) {
+        setLoading(true);
+        lastVisibleRef.current = null;
+        hasMoreRef.current = true;
+      } else {
+        setLoadingMore(true);
+      }
+
+      try {
+        const userRole = appUser?.role?.toLowerCase() || "";
+        const adminRole = appUser?.adminRole?.toLowerCase() || "";
+
+        const isManagerOrAdmin =
+          userRole === "admin" ||
+          [
+            "manager",
+            "headmaster",
+            "headmistress",
+            "administrator",
+            "director",
+            "proprietor",
+            "proprietress",
+            "accountant",
+            "bursar",
+          ].includes(adminRole);
+
+        // Managers and Admins should see ALL assignments for the class/subject
+        // Teachers should also see assignments for their subjects even if created by admins
+        const queryConstraints: any[] = [
+          where("classId", "==", selectedClass),
+          where("subjectId", "==", selectedSubject),
+        ];
+
+        // Only apply teacherId filter if NOT a manager/admin AND we want to restrict strictly to own
+        // However, the request is to allow seeing admin assignments, so we relax this.
+        if (
+          !isManagerOrAdmin &&
+          !appUser?.subjects?.includes(selectedSubject)
+        ) {
+          queryConstraints.push(where("teacherId", "==", teacherId));
         }
 
-        lastVisibleRef.current = snap.docs[snap.docs.length - 1] || null;
-        hasMoreRef.current = snap.docs.length === 50;
-      }
-    } catch (e: any) {
-      if (isMounted.current) {
-        console.error("fetchAssignments Error:", e);
-        if (e.message?.includes("index")) {
-          showToast({ message: "Database error: Missing query index. Please notify admin.", type: "error" });
-        } else {
-          showToast({ message: "Failed to load assignments. Check subject/class filter.", type: "error" });
+        queryConstraints.push(orderBy("createdAt", "desc"));
+        queryConstraints.push(limit(50));
+
+        if (!isFirstLoad && lastVisibleRef.current) {
+          queryConstraints.push(startAfter(lastVisibleRef.current));
         }
+
+        const q = query(collection(db, "assignments"), ...queryConstraints);
+        const snap = await getDocs(q);
+
+        const data = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as any),
+        })) as Assignment[];
+
+        if (isMounted.current) {
+          if (isFirstLoad) {
+            setAssignments(data);
+            if (data.length > 0) setSelectedAssignment(data[0]);
+            else setSelectedAssignment(null);
+          } else {
+            setAssignments((prev) => [...prev, ...data]);
+          }
+
+          lastVisibleRef.current = snap.docs[snap.docs.length - 1] || null;
+          hasMoreRef.current = snap.docs.length === 50;
+        }
+      } catch (e: any) {
+        if (isMounted.current) {
+          console.error("fetchAssignments Error:", e);
+          if (e.message?.includes("index")) {
+            showToast({
+              message:
+                "Database error: Missing query index. Please notify admin.",
+              type: "error",
+            });
+          } else {
+            showToast({
+              message:
+                "Failed to load assignments. Check subject/class filter.",
+              type: "error",
+            });
+          }
+        }
+      } finally {
+        if (isMounted.current) {
+          setLoading(false);
+          setLoadingMore(false);
+          setRefreshing(false);
+        }
+        isFetchingRef.current = false;
       }
-    } finally {
-      if (isMounted.current) {
-        setLoading(false);
-        setLoadingMore(false);
-        setRefreshing(false);
-      }
-      isFetchingRef.current = false;
-    }
-  }, [selectedClass, selectedSubject, teacherId, appUser?.adminRole, appUser?.role]);
+    },
+    [
+      selectedClass,
+      selectedSubject,
+      teacherId,
+      appUser?.adminRole,
+      appUser?.role,
+    ],
+  );
 
   useEffect(() => {
     fetchAssignments(true);
@@ -300,7 +380,9 @@ export const useMarkAssignment = () => {
       setFetchingSubmissions(true);
       try {
         // Fetch Answer Key
-        const akDoc = await getDoc(doc(db, "assignmentAnswerKeys", selectedAssignment.id));
+        const akDoc = await getDoc(
+          doc(db, "assignmentAnswerKeys", selectedAssignment.id),
+        );
         const currentAnswerKey = akDoc.exists() ? akDoc.data() : null;
 
         if (!isMounted.current) return;
@@ -321,7 +403,8 @@ export const useMarkAssignment = () => {
         })) as Submission[];
 
         fetchedSubmissions.sort(
-          (a, b) => (b.submittedAt?.toMillis() || 0) - (a.submittedAt?.toMillis() || 0),
+          (a, b) =>
+            (b.submittedAt?.toMillis() || 0) - (a.submittedAt?.toMillis() || 0),
         );
 
         setSubmissions(fetchedSubmissions);
@@ -347,104 +430,127 @@ export const useMarkAssignment = () => {
     fetchSubs();
   }, [selectedAssignment]);
 
-  const submitMark = useCallback(async (sub: Submission) => {
-    let totalScore = 0;
-    const finalQuestionScores: Record<number, number> = {};
+  const submitMark = useCallback(
+    async (sub: Submission) => {
+      let totalScore = 0;
+      const finalQuestionScores: Record<number, number> = {};
 
-    const currentStandardMarks = standardMarksInputRef.current;
-    const currentQScores = qScoreInputsRef.current;
-    const currentFeedback = feedbackInputsRef.current;
+      const currentStandardMarks = standardMarksInputRef.current;
+      const currentQScores = qScoreInputsRef.current;
+      const currentFeedback = feedbackInputsRef.current;
 
-    if ((sub.type as string) === "standard" || (sub.type as string) === "preschool") {
-      const val = currentStandardMarks[sub.id];
-      if (!val || isNaN(Number(val))) {
-        showToast({ message: "Please enter a numeric score.", type: "error" });
-        return;
-      }
-      totalScore = Number(val);
-    } else {
-      const submissionQInputs = currentQScores[sub.id] || {};
-      const questionIndices = Object.keys(sub.responses || {});
-
-      for (const idx of questionIndices) {
-        const i = parseInt(idx);
-        const scoreStr = submissionQInputs[i];
-        if (!scoreStr || isNaN(Number(scoreStr))) {
-          showToast({ message: `Please score question ${i + 1}.`, type: "error" });
+      if (
+        (sub.type as string) === "standard" ||
+        (sub.type as string) === "preschool" ||
+        (sub.type as string) === "rich-text"
+      ) {
+        const val = currentStandardMarks[sub.id];
+        if (!val || isNaN(Number(val))) {
+          showToast({
+            message: "Please enter a numeric score.",
+            type: "error",
+          });
           return;
         }
-        const score = Number(scoreStr);
-        finalQuestionScores[i] = score;
-        totalScore += score;
+        totalScore = Number(val);
+      } else {
+        const submissionQInputs = currentQScores[sub.id] || {};
+        const questionIndices = Object.keys(sub.responses || {});
+
+        for (const idx of questionIndices) {
+          const i = parseInt(idx);
+          const scoreStr = submissionQInputs[i];
+          if (!scoreStr || isNaN(Number(scoreStr))) {
+            showToast({
+              message: `Please score question ${i + 1}.`,
+              type: "error",
+            });
+            return;
+          }
+          const score = Number(scoreStr);
+          finalQuestionScores[i] = score;
+          totalScore += score;
+        }
       }
-    }
 
-    try {
-      await updateDoc(doc(db, "submissions", sub.id), {
-        marks: totalScore,
-        questionScores: finalQuestionScores,
-        marked: true,
-        feedback: currentFeedback[sub.id] || "",
-        markedAt: serverTimestamp(),
-      });
+      try {
+        await updateDoc(doc(db, "submissions", sub.id), {
+          marks: totalScore,
+          questionScores: finalQuestionScores,
+          marked: true,
+          feedback: currentFeedback[sub.id] || "",
+          markedAt: serverTimestamp(),
+        });
 
-      const studentSnap = await getDoc(doc(db, "users", sub.studentId));
-      if (studentSnap.exists()) {
-        const studentData = studentSnap.data() as any;
-        const parentUids = studentData.parentUids || [];
-        const notifications = [];
+        const studentSnap = await getDoc(doc(db, "users", sub.studentId));
+        if (studentSnap.exists()) {
+          const studentData = studentSnap.data() as any;
+          const parentUids = studentData.parentUids || [];
+          const notifications = [];
 
-        // Prepare parent notifications
-        for (const pUid of parentUids) {
-          notifications.push(sendNotification({
-            recipientId: pUid,
-            senderId: appUser!.uid,
-            senderName: appUser!.displayName || "Teacher",
-            type: "score",
-            title: "New Assignment Grade",
-            body: `${sub.studentName} scored ${totalScore} in their ${selectedAssignment?.title || "assignment"}.`,
-            data: { studentId: sub.studentId, assignmentId: selectedAssignment?.id },
-          }));
+          // Prepare parent notifications
+          for (const pUid of parentUids) {
+            notifications.push(
+              sendNotification({
+                recipientId: pUid,
+                senderId: appUser!.uid,
+                senderName: appUser!.displayName || "Teacher",
+                type: "score",
+                title: "New Assignment Grade",
+                body: `${sub.studentName} scored ${totalScore} in their ${selectedAssignment?.title || "assignment"}.`,
+                data: {
+                  studentId: sub.studentId,
+                  assignmentId: selectedAssignment?.id,
+                },
+              }),
+            );
+          }
+
+          // Student notification
+          notifications.push(
+            sendNotification({
+              recipientId: sub.studentId,
+              senderId: appUser!.uid,
+              senderName: appUser!.displayName || "Teacher",
+              type: "score",
+              title: "Assignment Marked",
+              body: `You scored ${totalScore} in ${selectedAssignment?.title || "your assignment"}.`,
+              data: { assignmentId: selectedAssignment?.id },
+            }),
+          );
+
+          await Promise.allSettled(notifications);
         }
 
-        // Student notification
-        notifications.push(sendNotification({
-          recipientId: sub.studentId,
-          senderId: appUser!.uid,
-          senderName: appUser!.displayName || "Teacher",
-          type: "score",
-          title: "Assignment Marked",
-          body: `You scored ${totalScore} in ${selectedAssignment?.title || "your assignment"}.`,
-          data: { assignmentId: selectedAssignment?.id },
-        }));
-
-        await Promise.allSettled(notifications);
+        if (isMounted.current) {
+          setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
+          showToast({
+            message: `Assignment marked! Total Score: ${totalScore}. Parent has been notified.`,
+            type: "success",
+          });
+        }
+      } catch (error) {
+        if (isMounted.current) {
+          console.error("Marking Error:", error);
+          showToast({ message: "Failed to submit marks.", type: "error" });
+        }
       }
+    },
+    [selectedAssignment, appUser, showToast],
+  );
 
-      if (isMounted.current) {
-        setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
-        showToast({
-          message: `Assignment marked! Total Score: ${totalScore}. Parent has been notified.`,
-          type: "success"
-        });
-      }
-    } catch (error) {
-      if (isMounted.current) {
-        console.error("Marking Error:", error);
-        showToast({ message: "Failed to submit marks.", type: "error" });
-      }
-    }
-  }, [selectedAssignment, appUser, showToast]);
-
-  const updateQScore = useCallback((subId: string, qIdx: number, text: string) => {
-    setQScoreInputs((prev) => ({
-      ...prev,
-      [subId]: {
-        ...(prev[subId] || {}),
-        [qIdx]: text,
-      },
-    }));
-  }, []);
+  const updateQScore = useCallback(
+    (subId: string, qIdx: number, text: string) => {
+      setQScoreInputs((prev) => ({
+        ...prev,
+        [subId]: {
+          ...(prev[subId] || {}),
+          [qIdx]: text,
+        },
+      }));
+    },
+    [],
+  );
 
   const updateStandardMark = useCallback((subId: string, text: string) => {
     setStandardMarksInput((prev) => ({ ...prev, [subId]: text }));

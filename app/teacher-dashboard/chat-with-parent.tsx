@@ -44,7 +44,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
 
 type TeacherClass = { id: string; name: string };
 type Student = { uid: string; fullName: string };
@@ -94,6 +94,12 @@ export default function TeacherChatWithParent() {
   const messagesLenRef = useRef<number>(0);
   const isMounted = useRef(true);
   const isNavigating = useRef(false);
+
+  useEffect(() => {
+    if (appUser?.uid) {
+      markNotificationsAsRead(appUser.uid, "chat");
+    }
+  }, [appUser?.uid]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -597,7 +603,7 @@ export default function TeacherChatWithParent() {
         keyExtractor={(item, index) => item.id || item.uid || index.toString()}
         contentContainerStyle={styles.listContent}
         renderItem={({ item, index }) => (
-          <Animatable.View animation="fadeInUp" delay={index * 50}>
+          <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50}>
             <TouchableOpacity
               style={styles.listItem}
               onPress={() => {

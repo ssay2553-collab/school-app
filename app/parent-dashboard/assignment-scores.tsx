@@ -183,7 +183,7 @@ export default function AssignmentScores() {
     const details = assignmentMeta[item.assignmentId];
     
     return (
-      <Animatable.View animation="fadeInUp" delay={index * 50} key={item.id} style={styles.card}>
+      <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50} key={item.id} style={styles.card}>
         <TouchableOpacity onPress={() => toggleExpand(item)} activeOpacity={0.8}>
           <View style={styles.cardHeader}>
             <View style={[styles.subjectBadge, { backgroundColor: COLORS.primary + "15" }]}>

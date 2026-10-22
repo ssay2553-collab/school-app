@@ -1,101 +1,136 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  collection,
-  getDocsFromServer,
-  query,
-  where,
-} from "firebase/firestore";
 import moment from "moment";
 import React, { useCallback, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
+    ActivityIndicator,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useWindowDimensions
 } from "react-native";
-import * as Animatable from "react-native-animatable";
+
+import { useEffect, useRef } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 import SVGIcon from "../../components/SVGIcon";
-import { SCHOOL_CONFIG } from "../../constants/Config";
+import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { db } from "../../firebaseConfig";
+import {
+    Student,
+    useBooksCharges,
+} from "../../hooks/admin-dashboard/useBooksCharges";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
-import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
-import { useBooksCharges, Student } from "../../hooks/admin-dashboard/useBooksCharges";
-import { useRef, useEffect } from "react";
 
 const THEME = {
   primary: "#3B82F6", // Books Blue
   secondary: "#2563EB",
 };
 
-const BooksStudentCard = React.memo(({
-  item,
-  onPress,
-}: {
-  item: Student;
-  onPress: (student: Student) => void;
-}) => {
-  const isolatedTotal = (item.admissionBalance || 0) + (item.ptaBalance || 0) +
-                        (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
-                        (item.uniformBalance || 0) + (item.otherBalance || 0);
-  const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
+const BooksStudentCard = React.memo(
+  ({
+    item,
+    onPress,
+  }: {
+    item: Student;
+    onPress: (student: Student) => void;
+  }) => {
+    const isolatedTotal =
+      (item.admissionBalance || 0) +
+      (item.ptaBalance || 0) +
+      (item.maintenanceBalance || 0) +
+      (item.booksBalance || 0) +
+      (item.uniformBalance || 0) +
+      (item.otherBalance || 0);
+    const tuitionBalance = Math.max(
+      0,
+      (item.walletBalance || 0) - isolatedTotal,
+    );
 
-  return (
-    <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper} useNativeDriver={false}>
-      <TouchableOpacity
-        style={[styles.financeCard, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
-        activeOpacity={0.7}
-        onPress={() => onPress(item)}
-      >
-        <View style={styles.cardContent}>
-          <View style={styles.leftSection}>
-            <View style={[styles.avatar, { backgroundColor: THEME.primary + "15" }]}>
-              <Text style={[styles.avatarText, { color: THEME.primary }]}>{item.fullName.charAt(0)}</Text>
-            </View>
-            <View style={styles.mainInfo}>
-              <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
-
-              <View style={styles.tuitionBreakdown}>
-                <View style={styles.breakdownItem}>
-                  <Text style={styles.breakdownLabel}>TUITION</Text>
-                  <Text style={styles.breakdownValue}>₵{tuitionBalance.toFixed(0)}</Text>
-                </View>
-                <View style={styles.breakdownItem}>
-                  <Text style={styles.breakdownLabel}>BOOKS BILL</Text>
-                  <Text style={styles.breakdownValue}>₵{item.booksBill.toFixed(0)}</Text>
-                </View>
-              </View>
-
-              <View style={styles.debtBox}>
-                <Text style={[styles.debtLabel, { color: item.booksBalance > 0 ? VIBE.danger : VIBE.success }]}>
-                  {item.booksBalance > 0 ? "Books Owed: " : "Paid: "}
-                </Text>
-                <Text style={[styles.debtValue, { color: item.booksBalance > 0 ? VIBE.danger : VIBE.success }]}>
-                  ₵{Math.max(0, item.booksBalance || 0).toFixed(0)}
+    return (
+      <View style={styles.cardWrapper}>
+        <TouchableOpacity
+          style={[
+            styles.financeCard,
+            Platform.OS === "web" && ({ cursor: "pointer" } as any),
+          ]}
+          activeOpacity={0.7}
+          onPress={() => onPress(item)}
+        >
+          <View style={styles.cardContent}>
+            <View style={styles.leftSection}>
+              <View
+                style={[
+                  styles.avatar,
+                  { backgroundColor: THEME.primary + "15" },
+                ]}
+              >
+                <Text style={[styles.avatarText, { color: THEME.primary }]}>
+                  {item.fullName.charAt(0)}
                 </Text>
               </View>
+              <View style={styles.mainInfo}>
+                <Text style={styles.studentName} numberOfLines={1}>
+                  {item.fullName}
+                </Text>
+
+                <View style={styles.tuitionBreakdown}>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>TUITION</Text>
+                    <Text style={styles.breakdownValue}>
+                      ₵{tuitionBalance.toFixed(0)}
+                    </Text>
+                  </View>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>BOOKS BILL</Text>
+                    <Text style={styles.breakdownValue}>
+                      ₵{item.booksBill.toFixed(0)}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.debtBox}>
+                  <Text
+                    style={[
+                      styles.debtLabel,
+                      {
+                        color:
+                          item.booksBalance > 0 ? VIBE.danger : VIBE.success,
+                      },
+                    ]}
+                  >
+                    {item.booksBalance > 0 ? "Books Owed: " : "Paid: "}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.debtValue,
+                      {
+                        color:
+                          item.booksBalance > 0 ? VIBE.danger : VIBE.success,
+                      },
+                    ]}
+                  >
+                    ₵{Math.max(0, item.booksBalance || 0).toFixed(0)}
+                  </Text>
+                </View>
+              </View>
             </View>
+            <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
           </View>
-          <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
-        </View>
-      </TouchableOpacity>
-    </Animatable.View>
-  );
-});
+        </TouchableOpacity>
+      </View>
+    );
+  },
+);
 
 export default function BooksCharges() {
   const { width } = useWindowDimensions();
@@ -108,12 +143,19 @@ export default function BooksCharges() {
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   if (acadConfig.loading || !appUser) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <ActivityIndicator size="large" color={THEME.primary} />
       </View>
     );
@@ -166,13 +208,15 @@ export default function BooksCharges() {
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase().trim();
     if (!lower) return students;
-    return students.filter(s => s.fullName.toLowerCase().includes(lower));
+    return students.filter((s) => s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
 
-  const renderStudentItem = useCallback(({ item }: { item: Student }) => (
-    <BooksStudentCard item={item} onPress={openStudentModal} />
-  ), [openStudentModal]);
-
+  const renderStudentItem = useCallback(
+    ({ item }: { item: Student }) => (
+      <BooksStudentCard item={item} onPress={openStudentModal} />
+    ),
+    [openStudentModal],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -190,7 +234,9 @@ export default function BooksCharges() {
                 if (isNavigating.current) return;
                 isNavigating.current = true;
                 router.push("/admin-dashboard/StudentCharges");
-                setTimeout(() => { isNavigating.current = false; }, 500);
+                setTimeout(() => {
+                  isNavigating.current = false;
+                }, 500);
               }}
               style={styles.headerIconBtn}
               activeOpacity={0.7}
@@ -201,21 +247,34 @@ export default function BooksCharges() {
               <Text style={styles.headerTitle}>Books & Stationery</Text>
               <Text style={styles.headerSub}>INVENTORY BILLING</Text>
             </View>
-            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={() => setClassModalVisible(true)}
+              style={styles.headerIconBtn}
+              activeOpacity={0.7}
+            >
               <SVGIcon name="funnel-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.selectorGrid}>
-            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.glassPill}
+              onPress={() => setClassModalVisible(true)}
+              activeOpacity={0.8}
+            >
               <Text style={styles.glassLabel}>FILTER BY CLASS</Text>
               <Text style={styles.glassValue} numberOfLines={1}>
-                {selectedClassId === "all" ? "All Classes" : classes.find(c => c.id === selectedClassId)?.name || "Select Class"}
+                {selectedClassId === "all"
+                  ? "All Classes"
+                  : classes.find((c) => c.id === selectedClassId)?.name ||
+                    "Select Class"}
               </Text>
             </TouchableOpacity>
             <View style={styles.glassPill}>
               <Text style={styles.glassLabel}>ACADEMIC YEAR</Text>
-              <Text style={styles.glassValue}>{acadConfig?.academicYear || "---"}</Text>
+              <Text style={styles.glassValue}>
+                {acadConfig?.academicYear || "---"}
+              </Text>
             </View>
           </View>
         </LinearGradient>
@@ -231,7 +290,11 @@ export default function BooksCharges() {
               placeholderTextColor={VIBE.muted}
             />
           </View>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={handleRefresh}
+            style={styles.refreshRound}
+            activeOpacity={0.7}
+          >
             <SVGIcon name="refresh" size={18} color={THEME.primary} />
           </TouchableOpacity>
         </View>
@@ -240,7 +303,7 @@ export default function BooksCharges() {
       <FlatList
         data={filteredStudents}
         renderItem={renderStudentItem}
-        keyExtractor={item => item.uid}
+        keyExtractor={(item) => item.uid}
         contentContainerStyle={styles.flatListContent}
         onEndReached={() => fetchStudents()}
         initialNumToRender={10}
@@ -248,28 +311,81 @@ export default function BooksCharges() {
         windowSize={5}
         removeClippedSubviews={Platform.OS === "android"}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[THEME.primary]}
+          />
         }
         ListHeaderComponent={
           <>
-            <View style={[styles.statsDashboard, { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10, paddingBottom: 15 }]}>
-              <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
+            <View
+              style={[
+                styles.statsDashboard,
+                {
+                  paddingHorizontal: 20,
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  marginTop: 10,
+                  paddingBottom: 15,
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={[THEME.primary, THEME.secondary]}
+                style={[
+                  styles.statBox,
+                  { width: Math.max(150, (width - 52) / 2) },
+                ]}
+              >
                 <Text style={styles.statLabel}>TERM BILLED</Text>
-                <Text style={styles.statValue}>₵{(stats.totalBilled || 0).toLocaleString()}</Text>
-                <SVGIcon name="receipt" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+                <Text style={styles.statValue}>
+                  ₵{(stats.totalBilled || 0).toLocaleString()}
+                </Text>
+                <SVGIcon
+                  name="receipt"
+                  size={24}
+                  color="rgba(255,255,255,0.3)"
+                  style={styles.statIcon}
+                />
               </LinearGradient>
-              <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
+              <LinearGradient
+                colors={[VIBE.success, "#059669"]}
+                style={[
+                  styles.statBox,
+                  { width: Math.max(150, (width - 52) / 2) },
+                ]}
+              >
                 <Text style={styles.statLabel}>TERM COLLECTED</Text>
-                <Text style={styles.statValue}>₵{(stats.totalCollected || 0).toLocaleString()}</Text>
-                <SVGIcon name="cash" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+                <Text style={styles.statValue}>
+                  ₵{(stats.totalCollected || 0).toLocaleString()}
+                </Text>
+                <SVGIcon
+                  name="cash"
+                  size={24}
+                  color="rgba(255,255,255,0.3)"
+                  style={styles.statIcon}
+                />
               </LinearGradient>
             </View>
-            <Text style={[styles.listTitle, { marginHorizontal: 20, marginBottom: 15 }]}>STUDENT DIRECTORY</Text>
+            <Text
+              style={[
+                styles.listTitle,
+                { marginHorizontal: 20, marginBottom: 15 },
+              ]}
+            >
+              STUDENT DIRECTORY
+            </Text>
           </>
         }
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator size="large" color={THEME.primary} style={{ marginTop: 50 }} />
+            <ActivityIndicator
+              size="large"
+              color={THEME.primary}
+              style={{ marginTop: 50 }}
+            />
           ) : (
             <View style={styles.emptyWrap}>
               <SVGIcon name="search" size={64} color="#CBD5E1" />
@@ -287,40 +403,84 @@ export default function BooksCharges() {
         onSelect={setSelectedClassId}
       />
 
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.overlay}>
+      <Modal visible={modalVisible} transparent animationType="none">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.overlay}
+        >
           <View style={styles.sheetBody}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <View>
-                <Text style={styles.sheetTitle}>{selectedStudent?.fullName}</Text>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>BOOKS & STATIONERY MGMT</Text>
+                <Text style={styles.sheetTitle}>
+                  {selectedStudent?.fullName}
+                </Text>
+                <Text
+                  style={{ fontSize: 10, fontWeight: "800", color: VIBE.muted }}
+                >
+                  BOOKS & STATIONERY MGMT
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeRound} activeOpacity={0.7}>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={styles.closeRound}
+                activeOpacity={0.7}
+              >
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modeTabs}>
               <TouchableOpacity
-                style={[styles.modeTab, activeTab === "payment" && styles.activeModeTab]}
+                style={[
+                  styles.modeTab,
+                  activeTab === "payment" && styles.activeModeTab,
+                ]}
                 activeOpacity={0.7}
                 onPress={() => setActiveTab("payment")}
               >
-                <SVGIcon name="cash-outline" size={18} color={activeTab === "payment" ? "#fff" : VIBE.muted} />
-                <Text style={[styles.modeTabText, activeTab === "payment" && { color: "#fff" }]}>PAYMENT</Text>
+                <SVGIcon
+                  name="cash-outline"
+                  size={18}
+                  color={activeTab === "payment" ? "#fff" : VIBE.muted}
+                />
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    activeTab === "payment" && { color: "#fff" },
+                  ]}
+                >
+                  PAYMENT
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modeTab, activeTab === "billing" && styles.activeModeTab]}
+                style={[
+                  styles.modeTab,
+                  activeTab === "billing" && styles.activeModeTab,
+                ]}
                 activeOpacity={0.7}
                 onPress={() => setActiveTab("billing")}
               >
-                <SVGIcon name="receipt-outline" size={18} color={activeTab === "billing" ? "#fff" : VIBE.muted} />
-                <Text style={[styles.modeTabText, activeTab === "billing" && { color: "#fff" }]}>BILLING</Text>
+                <SVGIcon
+                  name="receipt-outline"
+                  size={18}
+                  color={activeTab === "billing" ? "#fff" : VIBE.muted}
+                />
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    activeTab === "billing" && { color: "#fff" },
+                  ]}
+                >
+                  BILLING
+                </Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40 }}
+            >
               {activeTab === "payment" ? (
                 <>
                   <View style={{ gap: 15, marginBottom: 25 }}>
@@ -343,28 +503,57 @@ export default function BooksCharges() {
 
                   <Text style={styles.breakdownLabel}>PAYMENT METHOD</Text>
                   <View style={styles.methodGrid}>
-                    {["Cash", "Momo", "Cheque", "E-cash"].map(m => (
+                    {["Cash", "Momo", "Cheque", "E-cash"].map((m) => (
                       <TouchableOpacity
                         key={m}
                         activeOpacity={0.7}
                         style={[
                           styles.methodBtn,
-                          paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary },
-                          Platform.OS === 'web' && { cursor: 'pointer' } as any
+                          paymentMethod === m && {
+                            backgroundColor: THEME.primary,
+                            borderColor: THEME.primary,
+                          },
+                          Platform.OS === "web" &&
+                            ({ cursor: "pointer" } as any),
                         ]}
                         onPress={() => setPaymentMethod(m as any)}
                       >
-                        <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
+                        <Text
+                          style={[
+                            styles.methodText,
+                            paymentMethod === m && { color: "#fff" },
+                          ]}
+                        >
+                          {m}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
 
-                  <TouchableOpacity onPress={handleLogPayment} disabled={saving} activeOpacity={0.8}>
-                    <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
-                      {saving ? <ActivityIndicator color="#fff" /> : (
+                  <TouchableOpacity
+                    onPress={handleLogPayment}
+                    disabled={saving}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={[THEME.primary, THEME.secondary]}
+                      style={[
+                        styles.saveBtn,
+                        Platform.OS === "web" && ({ cursor: "pointer" } as any),
+                      ]}
+                    >
+                      {saving ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
                         <>
-                          <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
-                          <SVGIcon name="checkmark-circle" size={20} color="#fff" />
+                          <Text style={styles.saveBtnText}>
+                            CONFIRM PAYMENT
+                          </Text>
+                          <SVGIcon
+                            name="checkmark-circle"
+                            size={20}
+                            color="#fff"
+                          />
                         </>
                       )}
                     </LinearGradient>
@@ -389,9 +578,21 @@ export default function BooksCharges() {
                       onChangeText={setBillAmount}
                     />
                   </View>
-                  <TouchableOpacity onPress={handleLogBill} disabled={saving} activeOpacity={0.8}>
-                    <LinearGradient colors={[VIBE.purple, "#7C3AED"]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
-                      {saving ? <ActivityIndicator color="#fff" /> : (
+                  <TouchableOpacity
+                    onPress={handleLogBill}
+                    disabled={saving}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={[VIBE.purple, "#7C3AED"]}
+                      style={[
+                        styles.saveBtn,
+                        Platform.OS === "web" && ({ cursor: "pointer" } as any),
+                      ]}
+                    >
+                      {saving ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
                         <>
                           <Text style={styles.saveBtnText}>APPLY CHARGE</Text>
                           <SVGIcon name="receipt" size={20} color="#fff" />
@@ -405,7 +606,10 @@ export default function BooksCharges() {
               <View style={styles.historyBlock}>
                 <Text style={styles.blockTitle}>Transaction History</Text>
                 {loadingHistory ? (
-                  <ActivityIndicator color={THEME.primary} style={{ marginTop: 20 }} />
+                  <ActivityIndicator
+                    color={THEME.primary}
+                    style={{ marginTop: 20 }}
+                  />
                 ) : history.length > 0 ? (
                   history.map((h, i) => (
                     <TouchableOpacity
@@ -419,31 +623,73 @@ export default function BooksCharges() {
                         router.push({
                           pathname: "/shared/receipt-view",
                           params: {
-                            type: h.type === 'books' ? 'bill' : 'payment',
+                            type: h.type === "books" ? "bill" : "payment",
                             studentId: selectedStudent?.uid,
                             paymentId: h.receiptNo,
                             year: h.academicYear,
-                            term: h.term
-                          }
+                            term: h.term,
+                          },
                         });
-                        setTimeout(() => { isNavigating.current = false; }, 800);
+                        setTimeout(() => {
+                          isNavigating.current = false;
+                        }, 800);
                       }}
                       onLongPress={() => confirmDeletePayment(h)}
                     >
                       <View style={styles.tileHeader}>
-                        <Text style={[styles.tileAmt, { color: h.type === 'books' ? VIBE.purple : VIBE.success }]}>
+                        <Text
+                          style={[
+                            styles.tileAmt,
+                            {
+                              color:
+                                h.type === "books" ? VIBE.purple : VIBE.success,
+                            },
+                          ]}
+                        >
                           ₵{h.amount.toLocaleString()}
                         </Text>
-                        <View style={{ backgroundColor: h.type === 'books' ? VIBE.purple + '15' : VIBE.success + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                          <Text style={{ fontSize: 9, fontWeight: '900', color: h.type === 'books' ? VIBE.purple : VIBE.success }}>
-                            {h.type === 'books' ? 'BILL' : 'PAYMENT'}
+                        <View
+                          style={{
+                            backgroundColor:
+                              h.type === "books"
+                                ? VIBE.purple + "15"
+                                : VIBE.success + "15",
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 8,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              fontWeight: "900",
+                              color:
+                                h.type === "books" ? VIBE.purple : VIBE.success,
+                            }}
+                          >
+                            {h.type === "books" ? "BILL" : "PAYMENT"}
                           </Text>
                         </View>
                       </View>
                       <Text style={styles.tileDetail}>{h.method}</Text>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-                        <Text style={styles.tileDate}>{moment(h.createdAt).format("MMM DD, YYYY • HH:mm")}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginTop: 10,
+                        }}
+                      >
+                        <Text style={styles.tileDate}>
+                          {moment(h.createdAt).format("MMM DD, YYYY • HH:mm")}
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
+                        >
                           <TouchableOpacity
                             onPress={(e) => {
                               e.stopPropagation();
@@ -452,15 +698,25 @@ export default function BooksCharges() {
                             activeOpacity={0.7}
                             style={{ padding: 4 }}
                           >
-                            <SVGIcon name="trash" size={16} color={VIBE.danger} />
+                            <SVGIcon
+                              name="trash"
+                              size={16}
+                              color={VIBE.danger}
+                            />
                           </TouchableOpacity>
-                          <SVGIcon name="eye-outline" size={14} color={VIBE.muted} />
+                          <SVGIcon
+                            name="eye-outline"
+                            size={14}
+                            color={VIBE.muted}
+                          />
                         </View>
                       </View>
                     </TouchableOpacity>
                   ))
                 ) : (
-                  <Text style={styles.noHistory}>No previous book transactions</Text>
+                  <Text style={styles.noHistory}>
+                    No previous book transactions
+                  </Text>
                 )}
               </View>
             </ScrollView>

@@ -1,22 +1,26 @@
+import moment from "moment";
 import React from "react";
 import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Pressable,
-  StyleSheet
+    ActivityIndicator,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import moment from "moment";
-import SVGIcon from "../SVGIcon";
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { StudentDraft } from "../../constants/admin-dashboard/ManageFeesTypes";
+import SVGIcon from "../SVGIcon";
+
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 
 interface FeePaymentModalProps {
   visible: boolean;
@@ -53,28 +57,45 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
   saving,
   canEdit,
 }) => {
-  const [showPaymentDatePicker, setShowPaymentDatePicker] = React.useState(false);
+  const [showPaymentDatePicker, setShowPaymentDatePicker] =
+    React.useState(false);
 
   return (
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
       statusBarTranslucent={Platform.OS === "android"}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : Platform.OS === "android" ? "height" : undefined}
+        behavior={
+          Platform.OS === "ios"
+            ? "padding"
+            : Platform.OS === "android"
+              ? "height"
+              : undefined
+        }
         style={styles.overlay}
       >
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        <View style={[styles.paymentModal, Platform.OS === "web" && ({ zIndex: 10, pointerEvents: "auto" } as any)]}>
+        <View
+          style={[
+            styles.paymentModal,
+            Platform.OS === "web" &&
+              ({ zIndex: 10, pointerEvents: "auto" } as any),
+          ]}
+        >
           <View style={styles.sheetHandle} />
           <View style={styles.modalTopRow}>
             <Text style={styles.modalStudentName}>
               {selectedStudent?.fullName || "Student Profile"}
             </Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeRound} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={onClose}
+              style={styles.closeRound}
+              activeOpacity={0.7}
+            >
               <SVGIcon name="close" size={24} color={VIBE.muted} />
             </TouchableOpacity>
           </View>
@@ -93,7 +114,11 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
                   if (Platform.OS === "web") {
                     const cleaned = val.replace(/[^0-9.]/g, "");
                     const parts = cleaned.split(".");
-                    setPaymentAmount(parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : cleaned);
+                    setPaymentAmount(
+                      parts.length > 2
+                        ? `${parts[0]}.${parts.slice(1).join("")}`
+                        : cleaned,
+                    );
                   } else {
                     setPaymentAmount(val);
                   }
@@ -170,12 +195,12 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
                     </View>
                   </TouchableOpacity>
 
-                  {showPaymentDatePicker && (
+                  {showPaymentDatePicker && DateTimePicker && (
                     <DateTimePicker
                       value={paymentDate}
                       mode="date"
                       display="default"
-                      onChange={(event, selectedDate) => {
+                      onChange={(event: any, selectedDate?: Date) => {
                         setShowPaymentDatePicker(Platform.OS === "ios");
                         if (selectedDate) {
                           setPaymentDate(selectedDate);
@@ -193,7 +218,7 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
                   style={[
                     styles.methodBtn,
                     paymentMethod === m && { backgroundColor: VIBE.primary },
-                    Platform.OS === 'web' && { cursor: 'pointer' } as any
+                    Platform.OS === "web" && ({ cursor: "pointer" } as any),
                   ]}
                   activeOpacity={0.7}
                   onPress={() => setPaymentMethod(m as any)}
@@ -211,7 +236,11 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
               ))}
             </View>
             <TouchableOpacity
-              style={[styles.saveBtn, { backgroundColor: VIBE.primary }, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
+              style={[
+                styles.saveBtn,
+                { backgroundColor: VIBE.primary },
+                Platform.OS === "web" && ({ cursor: "pointer" } as any),
+              ]}
               activeOpacity={0.8}
               onPress={onConfirm}
               disabled={saving || !canEdit}
@@ -232,10 +261,7 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
                   .slice()
                   .reverse()
                   .map((p: any, i: number) => (
-                    <View
-                      key={p.receiptNo || i}
-                      style={styles.transactionTile}
-                    >
+                    <View key={p.receiptNo || i} style={styles.transactionTile}>
                       <View style={{ flex: 1 }}>
                         <View style={styles.tileHeader}>
                           <View>
@@ -257,7 +283,10 @@ export const FeePaymentModal: React.FC<FeePaymentModalProps> = ({
                             disabled={saving}
                           >
                             {saving ? (
-                              <ActivityIndicator size="small" color={VIBE.danger} />
+                              <ActivityIndicator
+                                size="small"
+                                color={VIBE.danger}
+                              />
                             ) : (
                               <SVGIcon
                                 name="trash"

@@ -1,43 +1,42 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  collection,
-  getDocsFromServer,
-  query,
-  where,
-} from "firebase/firestore";
 import moment from "moment";
-import React, { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
+import {
+    ActivityIndicator,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useWindowDimensions
 } from "react-native";
-import * as Animatable from "react-native-animatable";
+
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
-import { COLORS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { db } from "../../firebaseConfig";
+import {
+    Student,
+    useMaintenanceCharges,
+} from "../../hooks/admin-dashboard/useMaintenanceCharges";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { useMaintenanceCharges, Student } from "../../hooks/admin-dashboard/useMaintenanceCharges";
 
-
+import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { SHADOWS } from "../../constants/theme";
-import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 
 const THEME = {
   primary: "#EF4444", // Maintenance Color
@@ -55,12 +54,19 @@ export default function MaintenanceCharges() {
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   if (acadConfig.loading || !appUser) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <ActivityIndicator size="large" color={THEME.primary} />
       </View>
     );
@@ -118,181 +124,346 @@ export default function MaintenanceCharges() {
 
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase();
-    return students.filter(s => s.fullName.toLowerCase().includes(lower));
+    return students.filter((s) => s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
 
-  const renderStudentItem = useCallback(({ item }: { item: Student }) => {
-    const isolatedTotal = (item.ptaBalance || 0) + (item.admissionBalance || 0) +
-                          (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
-                          (item.uniformBalance || 0) + (item.otherBalance || 0);
-    const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
-    const isSelected = selectedStudentUids.has(item.uid);
+  const renderStudentItem = useCallback(
+    ({ item }: { item: Student }) => {
+      const isolatedTotal =
+        (item.ptaBalance || 0) +
+        (item.admissionBalance || 0) +
+        (item.maintenanceBalance || 0) +
+        (item.booksBalance || 0) +
+        (item.uniformBalance || 0) +
+        (item.otherBalance || 0);
+      const tuitionBalance = Math.max(
+        0,
+        (item.walletBalance || 0) - isolatedTotal,
+      );
+      const isSelected = selectedStudentUids.has(item.uid);
 
-    return (
-      <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper} useNativeDriver={false}>
-        <TouchableOpacity
-          style={[
-            styles.financeCard,
-            isSelected && { borderColor: THEME.primary, borderWidth: 1.5, backgroundColor: THEME.primary + "0A" },
-            Platform.OS === 'web' && { cursor: 'pointer' } as any
-          ]}
-          activeOpacity={0.7}
-          onPress={() => {
-            if (selectedStudentUids.size > 0) {
-              toggleStudentSelection(item.uid);
-            } else {
-              openPaymentModal(item);
-            }
-          }}
-          onLongPress={() => toggleStudentSelection(item.uid)}
-        >
-          <View style={styles.cardContent}>
-            <View style={styles.leftSection}>
-              <TouchableOpacity
-                onPress={(e) => {
-                  e.stopPropagation();
-                  toggleStudentSelection(item.uid);
-                }}
-                style={{ paddingRight: 8, justifyContent: 'center' }}
-              >
-                <View style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 6,
-                  borderWidth: 2,
-                  borderColor: isSelected ? THEME.primary : "#CBD5E1",
-                  backgroundColor: isSelected ? THEME.primary : "#fff",
-                  justifyContent: "center",
-                  alignItems: "center"
-                }}>
-                  {isSelected && <SVGIcon name="checkmark" size={14} color="#fff" />}
-                </View>
-              </TouchableOpacity>
-
-              <View style={[styles.avatar, { backgroundColor: THEME.primary + "15" }]}>
-                <SVGIcon name="construct-outline" size={24} color={THEME.primary} />
-              </View>
-              <View style={styles.mainInfo}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
-                  {item.exemptions?.includes('maintenance') && (
-                    <View style={{ backgroundColor: VIBE.warning + '20', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                      <Text style={{ color: VIBE.warning, fontSize: 8, fontWeight: '900' }}>EXEMPTED</Text>
-                    </View>
-                  )}
-                </View>
-
-                <View style={styles.tuitionBreakdown}>
-                  <View style={styles.breakdownItem}>
-                    <Text style={styles.breakdownLabel}>TUITION</Text>
-                    <Text style={styles.breakdownValue}>₵{tuitionBalance.toFixed(0)}</Text>
-                  </View>
-                  <View style={styles.breakdownItem}>
-                    <Text style={styles.breakdownLabel}>MAINT. BILLED</Text>
-                    <Text style={styles.breakdownValue}>₵{item.maintenanceBill.toFixed(0)}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.debtBox}>
-                  <Text style={[styles.debtLabel, { color: item.maintenanceBalance > 0 ? VIBE.danger : VIBE.success }]}>
-                    {item.maintenanceBalance > 0 ? "Maint. Arrears: " : "Cleared: "}
-                  </Text>
-                  <Text style={[styles.debtValue, { color: item.maintenanceBalance > 0 ? VIBE.danger : VIBE.success }]}>
-                    ₵{Math.abs(item.maintenanceBalance).toLocaleString()}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
-          </View>
-        </TouchableOpacity>
-      </Animatable.View>
-    );
-  }, [openPaymentModal, THEME.primary, selectedStudentUids, toggleStudentSelection]);
-
-  const ListHeader = useMemo(() => (
-    <>
-      <View style={[styles.statsDashboard, { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10 }]}>
-         <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
-            <Text style={styles.statLabel}>TERM BILLED</Text>
-            <Text style={styles.statValue}>₵{stats.totalBilled.toLocaleString()}</Text>
-            <SVGIcon name="receipt" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
-         </LinearGradient>
-         <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
-            <Text style={styles.statLabel}>TERM COLLECTED</Text>
-            <Text style={styles.statValue}>₵{stats.totalCollected.toLocaleString()}</Text>
-            <SVGIcon name="cash" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
-         </LinearGradient>
-      </View>
-
-      <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
-        <Text style={styles.listTitle}>
-          {selectedStudentUids.size > 0
-            ? `APPLY MAINTENANCE FEE (${selectedStudentUids.size} SELECTED)`
-            : "APPLY MAINTENANCE FEE (CLASS BULK)"}
-        </Text>
-        <View style={{ marginTop: 10 }}>
-          <View style={[styles.bulkInputContainer, { paddingHorizontal: 12, height: 54 }]}>
-            <TextInput
-              style={[styles.bulkInput, { flex: 1, fontSize: 14 }]}
-              placeholder="Enter Amount (₵)"
-              keyboardType="numeric"
-              value={chargeAmount}
-              onChangeText={setChargeAmount}
-              placeholderTextColor={VIBE.muted}
-
-            />
-          </View>
+      return (
+        <View style={styles.cardWrapper}>
           <TouchableOpacity
-             onPress={handleApplyBulkCharge}
-             style={{
-               marginTop: 10,
-               backgroundColor: THEME.primary,
-               height: 50,
-               borderRadius: 15,
-               flexDirection: 'row',
-               justifyContent: 'center',
-               alignItems: 'center',
-               gap: 8,
-               ...SHADOWS.small,
-               ...Platform.select({ web: { cursor: 'pointer' } as any, default: {} })
-             }}
-             activeOpacity={0.8}
-             disabled={saving}
+            style={[
+              styles.financeCard,
+              isSelected && {
+                borderColor: THEME.primary,
+                borderWidth: 1.5,
+                backgroundColor: THEME.primary + "0A",
+              },
+              Platform.OS === "web" && ({ cursor: "pointer" } as any),
+            ]}
+            activeOpacity={0.7}
+            onPress={() => {
+              if (selectedStudentUids.size > 0) {
+                toggleStudentSelection(item.uid);
+              } else {
+                openPaymentModal(item);
+              }
+            }}
+            onLongPress={() => toggleStudentSelection(item.uid)}
           >
-            {saving ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <>
-                <SVGIcon name="add-circle-outline" size={20} color="#fff" />
-                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 }}>
-                  {selectedStudentUids.size > 0
-                    ? `APPLY BILL TO ${selectedStudentUids.size} STUDENT(S)`
-                    : "APPLY BULK MAINTENANCE"}
-                </Text>
-              </>
-            )}
+            <View style={styles.cardContent}>
+              <View style={styles.leftSection}>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    toggleStudentSelection(item.uid);
+                  }}
+                  style={{ paddingRight: 8, justifyContent: "center" }}
+                >
+                  <View
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: 6,
+                      borderWidth: 2,
+                      borderColor: isSelected ? THEME.primary : "#CBD5E1",
+                      backgroundColor: isSelected ? THEME.primary : "#fff",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    {isSelected && (
+                      <SVGIcon name="checkmark" size={14} color="#fff" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+
+                <View
+                  style={[
+                    styles.avatar,
+                    { backgroundColor: THEME.primary + "15" },
+                  ]}
+                >
+                  <SVGIcon
+                    name="construct-outline"
+                    size={24}
+                    color={THEME.primary}
+                  />
+                </View>
+                <View style={styles.mainInfo}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <Text style={styles.studentName} numberOfLines={1}>
+                      {item.fullName}
+                    </Text>
+                    {item.exemptions?.includes("maintenance") && (
+                      <View
+                        style={{
+                          backgroundColor: VIBE.warning + "20",
+                          paddingHorizontal: 6,
+                          paddingVertical: 2,
+                          borderRadius: 4,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: VIBE.warning,
+                            fontSize: 8,
+                            fontWeight: "900",
+                          }}
+                        >
+                          EXEMPTED
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.tuitionBreakdown}>
+                    <View style={styles.breakdownItem}>
+                      <Text style={styles.breakdownLabel}>TUITION</Text>
+                      <Text style={styles.breakdownValue}>
+                        ₵{tuitionBalance.toFixed(0)}
+                      </Text>
+                    </View>
+                    <View style={styles.breakdownItem}>
+                      <Text style={styles.breakdownLabel}>MAINT. BILLED</Text>
+                      <Text style={styles.breakdownValue}>
+                        ₵{item.maintenanceBill.toFixed(0)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.debtBox}>
+                    <Text
+                      style={[
+                        styles.debtLabel,
+                        {
+                          color:
+                            item.maintenanceBalance > 0
+                              ? VIBE.danger
+                              : VIBE.success,
+                        },
+                      ]}
+                    >
+                      {item.maintenanceBalance > 0
+                        ? "Maint. Arrears: "
+                        : "Cleared: "}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.debtValue,
+                        {
+                          color:
+                            item.maintenanceBalance > 0
+                              ? VIBE.danger
+                              : VIBE.success,
+                        },
+                      ]}
+                    >
+                      ₵{Math.abs(item.maintenanceBalance).toLocaleString()}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
+            </View>
           </TouchableOpacity>
         </View>
-        {selectedClassId === "all" && selectedStudentUids.size === 0 && (
-          <Text style={{ fontSize: 10, color: VIBE.danger, marginTop: 8, fontWeight: "700" }}>
-            * Select a specific class or select individual students to enable bulk billing
-          </Text>
-        )}
-      </View>
+      );
+    },
+    [
+      openPaymentModal,
+      THEME.primary,
+      selectedStudentUids,
+      toggleStudentSelection,
+    ],
+  );
 
-      <View style={{ marginHorizontal: 20, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text style={styles.listTitle}>STUDENT DIRECTORY</Text>
-        {filteredStudents.length > 0 && (
-          <TouchableOpacity onPress={toggleSelectAll} activeOpacity={0.7}>
-            <Text style={{ fontSize: 12, fontWeight: '800', color: THEME.primary }}>
-              {selectedStudentUids.size === filteredStudents.length ? 'Deselect All' : 'Select All'}
+  const ListHeader = useMemo(
+    () => (
+      <>
+        <View
+          style={[
+            styles.statsDashboard,
+            {
+              paddingHorizontal: 20,
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 12,
+              marginTop: 10,
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={[THEME.primary, THEME.secondary]}
+            style={[styles.statBox, { width: Math.max(150, (width - 52) / 2) }]}
+          >
+            <Text style={styles.statLabel}>TERM BILLED</Text>
+            <Text style={styles.statValue}>
+              ₵{stats.totalBilled.toLocaleString()}
             </Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </>
-  ), [stats, chargeAmount, setChargeAmount, handleApplyBulkCharge, saving, selectedClassId, THEME, width, selectedStudentUids, toggleSelectAll, filteredStudents.length]);
+            <SVGIcon
+              name="receipt"
+              size={24}
+              color="rgba(255,255,255,0.3)"
+              style={styles.statIcon}
+            />
+          </LinearGradient>
+          <LinearGradient
+            colors={[VIBE.success, "#059669"]}
+            style={[styles.statBox, { width: Math.max(150, (width - 52) / 2) }]}
+          >
+            <Text style={styles.statLabel}>TERM COLLECTED</Text>
+            <Text style={styles.statValue}>
+              ₵{stats.totalCollected.toLocaleString()}
+            </Text>
+            <SVGIcon
+              name="cash"
+              size={24}
+              color="rgba(255,255,255,0.3)"
+              style={styles.statIcon}
+            />
+          </LinearGradient>
+        </View>
+
+        <View style={{ paddingHorizontal: 20, marginBottom: 25 }}>
+          <Text style={styles.listTitle}>
+            {selectedStudentUids.size > 0
+              ? `APPLY MAINTENANCE FEE (${selectedStudentUids.size} SELECTED)`
+              : "APPLY MAINTENANCE FEE (CLASS BULK)"}
+          </Text>
+          <View style={{ marginTop: 10 }}>
+            <View
+              style={[
+                styles.bulkInputContainer,
+                { paddingHorizontal: 12, height: 54 },
+              ]}
+            >
+              <TextInput
+                style={[styles.bulkInput, { flex: 1, fontSize: 14 }]}
+                placeholder="Enter Amount (₵)"
+                keyboardType="numeric"
+                value={chargeAmount}
+                onChangeText={setChargeAmount}
+                placeholderTextColor={VIBE.muted}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleApplyBulkCharge}
+              style={{
+                marginTop: 10,
+                backgroundColor: THEME.primary,
+                height: 50,
+                borderRadius: 15,
+                flexDirection: "row",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 8,
+                ...SHADOWS.small,
+                ...Platform.select({
+                  web: { cursor: "pointer" } as any,
+                  default: {},
+                }),
+              }}
+              activeOpacity={0.8}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <SVGIcon name="add-circle-outline" size={20} color="#fff" />
+                  <Text
+                    style={{
+                      color: "#fff",
+                      fontWeight: "900",
+                      fontSize: 14,
+                      letterSpacing: 0.5,
+                    }}
+                  >
+                    {selectedStudentUids.size > 0
+                      ? `APPLY BILL TO ${selectedStudentUids.size} STUDENT(S)`
+                      : "APPLY BULK MAINTENANCE"}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+          {selectedClassId === "all" && selectedStudentUids.size === 0 && (
+            <Text
+              style={{
+                fontSize: 10,
+                color: VIBE.danger,
+                marginTop: 8,
+                fontWeight: "700",
+              }}
+            >
+              * Select a specific class or select individual students to enable
+              bulk billing
+            </Text>
+          )}
+        </View>
+
+        <View
+          style={{
+            marginHorizontal: 20,
+            marginBottom: 15,
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Text style={styles.listTitle}>STUDENT DIRECTORY</Text>
+          {filteredStudents.length > 0 && (
+            <TouchableOpacity onPress={toggleSelectAll} activeOpacity={0.7}>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "800",
+                  color: THEME.primary,
+                }}
+              >
+                {selectedStudentUids.size === filteredStudents.length
+                  ? "Deselect All"
+                  : "Select All"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </>
+    ),
+    [
+      stats,
+      chargeAmount,
+      setChargeAmount,
+      handleApplyBulkCharge,
+      saving,
+      selectedClassId,
+      THEME,
+      width,
+      selectedStudentUids,
+      toggleSelectAll,
+      filteredStudents.length,
+    ],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -300,7 +471,8 @@ export default function MaintenanceCharges() {
       <View style={styles.header} pointerEvents="box-none">
         <LinearGradient
           colors={[THEME.primary, THEME.secondary]}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
           style={styles.headerTop}
         >
           <View style={styles.navBar}>
@@ -309,7 +481,9 @@ export default function MaintenanceCharges() {
                 if (isNavigating.current) return;
                 isNavigating.current = true;
                 router.back();
-                setTimeout(() => { isNavigating.current = false; }, 500);
+                setTimeout(() => {
+                  isNavigating.current = false;
+                }, 500);
               }}
               style={styles.headerIconBtn}
               activeOpacity={0.7}
@@ -320,21 +494,34 @@ export default function MaintenanceCharges() {
               <Text style={styles.headerTitle}>Maintenance</Text>
               <Text style={styles.headerSub}>FACILITY BILLING</Text>
             </View>
-            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={() => setClassModalVisible(true)}
+              style={styles.headerIconBtn}
+              activeOpacity={0.7}
+            >
               <SVGIcon name="funnel-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.selectorGrid}>
-            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.glassPill}
+              onPress={() => setClassModalVisible(true)}
+              activeOpacity={0.8}
+            >
               <Text style={styles.glassLabel}>TARGET CLASS</Text>
               <Text style={styles.glassValue} numberOfLines={1}>
-                {selectedClassId === "all" ? "All Classes" : classes.find(c => c.id === selectedClassId)?.name || "Select Class"}
+                {selectedClassId === "all"
+                  ? "All Classes"
+                  : classes.find((c) => c.id === selectedClassId)?.name ||
+                    "Select Class"}
               </Text>
             </TouchableOpacity>
             <View style={styles.glassPill}>
               <Text style={styles.glassLabel}>TERM / YEAR</Text>
-              <Text style={styles.glassValue}>{acadConfig?.currentTerm || "---"}</Text>
+              <Text style={styles.glassValue}>
+                {acadConfig?.currentTerm || "---"}
+              </Text>
             </View>
           </View>
         </LinearGradient>
@@ -348,34 +535,45 @@ export default function MaintenanceCharges() {
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholderTextColor={VIBE.muted}
-
             />
           </View>
-          <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound} activeOpacity={0.7}>
+          <TouchableOpacity
+            onPress={handleRefresh}
+            style={styles.refreshRound}
+            activeOpacity={0.7}
+          >
             <SVGIcon name="refresh" size={18} color={THEME.primary} />
           </TouchableOpacity>
         </View>
 
         {selectedStudentUids.size > 0 && (
-          <Animatable.View animation="fadeInDown" duration={250} style={{
-            backgroundColor: '#FEF2F2',
-            borderBottomWidth: 1,
-            borderBottomColor: '#FCA5A5',
-            paddingHorizontal: 16,
-            paddingVertical: 10,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{
-                backgroundColor: THEME.primary,
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-                borderRadius: 10,
-              }}>
-                <Text style={{ color: '#fff', fontWeight: '900', fontSize: 11 }}>
+          <View
+            style={{
+              backgroundColor: "#FEF2F2",
+              borderBottomWidth: 1,
+              borderBottomColor: "#FCA5A5",
+              paddingHorizontal: 16,
+              paddingVertical: 10,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 8,
+            }}
+          >
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <View
+                style={{
+                  backgroundColor: THEME.primary,
+                  paddingHorizontal: 8,
+                  paddingVertical: 3,
+                  borderRadius: 10,
+                }}
+              >
+                <Text
+                  style={{ color: "#fff", fontWeight: "900", fontSize: 11 }}
+                >
                   {selectedStudentUids.size} Selected
                 </Text>
               </View>
@@ -386,79 +584,111 @@ export default function MaintenanceCharges() {
                   paddingHorizontal: 8,
                   paddingVertical: 4,
                   borderRadius: 6,
-                  backgroundColor: '#fff',
+                  backgroundColor: "#fff",
                   borderWidth: 1,
-                  borderColor: VIBE.border
+                  borderColor: VIBE.border,
                 }}
               >
-                <Text style={{ fontSize: 11, fontWeight: '800', color: VIBE.dark }}>
-                  {selectedStudentUids.size === filteredStudents.length ? 'Clear All' : 'Select All'}
+                <Text
+                  style={{ fontSize: 11, fontWeight: "800", color: VIBE.dark }}
+                >
+                  {selectedStudentUids.size === filteredStudents.length
+                    ? "Clear All"
+                    : "Select All"}
                 </Text>
               </TouchableOpacity>
             </View>
 
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
               <TouchableOpacity
                 onPress={() => batchSetExemption(true)}
                 disabled={saving}
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection: "row",
+                  alignItems: "center",
                   gap: 4,
-                  backgroundColor: VIBE.warning + '20',
+                  backgroundColor: VIBE.warning + "20",
                   paddingHorizontal: 9,
                   paddingVertical: 5,
                   borderRadius: 6,
                   borderWidth: 1,
-                  borderColor: VIBE.warning + '40'
+                  borderColor: VIBE.warning + "40",
                 }}
               >
                 <SVGIcon name="shield-outline" size={13} color={VIBE.warning} />
-                <Text style={{ fontSize: 10, fontWeight: '900', color: VIBE.warning }}>Exempt</Text>
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "900",
+                    color: VIBE.warning,
+                  }}
+                >
+                  Exempt
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => batchSetExemption(false)}
                 disabled={saving}
                 style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
+                  flexDirection: "row",
+                  alignItems: "center",
                   gap: 4,
-                  backgroundColor: '#fff',
+                  backgroundColor: "#fff",
                   paddingHorizontal: 9,
                   paddingVertical: 5,
                   borderRadius: 6,
                   borderWidth: 1,
-                  borderColor: VIBE.border
+                  borderColor: VIBE.border,
                 }}
               >
-                <SVGIcon name="close-circle-outline" size={13} color={VIBE.muted} />
-                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>Unexempt</Text>
+                <SVGIcon
+                  name="close-circle-outline"
+                  size={13}
+                  color={VIBE.muted}
+                />
+                <Text
+                  style={{ fontSize: 10, fontWeight: "800", color: VIBE.muted }}
+                >
+                  Unexempt
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={clearSelection} style={{ padding: 4 }}>
                 <SVGIcon name="close" size={18} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
-          </Animatable.View>
+          </View>
         )}
       </View>
 
       <FlatList
         data={filteredStudents}
         renderItem={renderStudentItem}
-        keyExtractor={item => item.uid}
+        keyExtractor={(item) => item.uid}
         contentContainerStyle={styles.flatListContent}
         onEndReached={() => fetchStudents()}
         initialNumToRender={10}
         maxToRenderPerBatch={10}
         windowSize={5}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[THEME.primary]}
+          />
+        }
         removeClippedSubviews={Platform.OS === "android"}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator size="large" color={THEME.primary} style={{ marginTop: 50 }} />
+            <ActivityIndicator
+              size="large"
+              color={THEME.primary}
+              style={{ marginTop: 50 }}
+            />
           ) : (
             <View style={styles.emptyWrap}>
               <SVGIcon name="search" size={64} color="#CBD5E1" />
@@ -480,21 +710,37 @@ export default function MaintenanceCharges() {
         onSelect={setSelectedClassId}
       />
 
-      <Modal visible={paymentModalVisible} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.overlay}>
+      <Modal visible={paymentModalVisible} transparent animationType="none">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.overlay}
+        >
           <View style={styles.sheetBody}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <View>
-                <Text style={styles.sheetTitle}>{selectedStudent?.fullName}</Text>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>MAINTENANCE PAYMENT</Text>
+                <Text style={styles.sheetTitle}>
+                  {selectedStudent?.fullName}
+                </Text>
+                <Text
+                  style={{ fontSize: 10, fontWeight: "800", color: VIBE.muted }}
+                >
+                  MAINTENANCE PAYMENT
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeRound} activeOpacity={0.7}>
+              <TouchableOpacity
+                onPress={() => setPaymentModalVisible(false)}
+                style={styles.closeRound}
+                activeOpacity={0.7}
+              >
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40 }}
+            >
               <View style={{ gap: 15, marginBottom: 25 }}>
                 <Text style={styles.breakdownLabel}>AMOUNT TO PAY (₵)</Text>
                 <TextInput
@@ -503,7 +749,6 @@ export default function MaintenanceCharges() {
                   keyboardType="numeric"
                   value={paymentAmount}
                   onChangeText={setPaymentAmount}
-
                 />
 
                 <Text style={styles.breakdownLabel}>RECEIVED FROM</Text>
@@ -512,60 +757,124 @@ export default function MaintenanceCharges() {
                   placeholder="Payer Name"
                   value={receivedFrom}
                   onChangeText={setReceivedFrom}
-
                 />
               </View>
 
               <Text style={styles.breakdownLabel}>PAYMENT METHOD</Text>
               <View style={styles.methodGrid}>
-                {["Cash", "Cheque", "Momo", "E-cash"].map(m => (
+                {["Cash", "Cheque", "Momo", "E-cash"].map((m) => (
                   <TouchableOpacity
                     key={m}
                     activeOpacity={0.7}
                     style={[
                       styles.methodBtn,
-                      paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary },
-                      Platform.OS === 'web' && { cursor: 'pointer' } as any
+                      paymentMethod === m && {
+                        backgroundColor: THEME.primary,
+                        borderColor: THEME.primary,
+                      },
+                      Platform.OS === "web" && ({ cursor: "pointer" } as any),
                     ]}
                     onPress={() => setPaymentMethod(m as any)}
                   >
-                    <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
+                    <Text
+                      style={[
+                        styles.methodText,
+                        paymentMethod === m && { color: "#fff" },
+                      ]}
+                    >
+                      {m}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
-              <View style={{ marginVertical: 20, padding: 15, backgroundColor: VIBE.light, borderRadius: 15, borderStyle: 'dashed', borderWidth: 1, borderColor: VIBE.border }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View
+                style={{
+                  marginVertical: 20,
+                  padding: 15,
+                  backgroundColor: VIBE.light,
+                  borderRadius: 15,
+                  borderStyle: "dashed",
+                  borderWidth: 1,
+                  borderColor: VIBE.border,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
                   <View>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: VIBE.dark }}>Individual Exemption</Text>
-                    <Text style={{ fontSize: 10, color: VIBE.muted }}>Exclude from bulk maintenance billing</Text>
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: "800",
+                        color: VIBE.dark,
+                      }}
+                    >
+                      Individual Exemption
+                    </Text>
+                    <Text style={{ fontSize: 10, color: VIBE.muted }}>
+                      Exclude from bulk maintenance billing
+                    </Text>
                   </View>
                   <TouchableOpacity
-                    onPress={() => selectedStudent && toggleExemption(selectedStudent.uid, 'maintenance', !selectedStudent.exemptions?.includes('maintenance'))}
+                    onPress={() =>
+                      selectedStudent &&
+                      toggleExemption(
+                        selectedStudent.uid,
+                        "maintenance",
+                        !selectedStudent.exemptions?.includes("maintenance"),
+                      )
+                    }
                     activeOpacity={0.7}
                     style={{
                       width: 44,
                       height: 24,
                       borderRadius: 12,
-                      backgroundColor: selectedStudent?.exemptions?.includes('maintenance') ? VIBE.warning : '#CBD5E1',
-                      justifyContent: 'center',
-                      paddingHorizontal: 2
+                      backgroundColor: selectedStudent?.exemptions?.includes(
+                        "maintenance",
+                      )
+                        ? VIBE.warning
+                        : "#CBD5E1",
+                      justifyContent: "center",
+                      paddingHorizontal: 2,
                     }}
                   >
-                    <View style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      backgroundColor: '#fff',
-                      alignSelf: selectedStudent?.exemptions?.includes('maintenance') ? 'flex-end' : 'flex-start'
-                    }} />
+                    <View
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        backgroundColor: "#fff",
+                        alignSelf: selectedStudent?.exemptions?.includes(
+                          "maintenance",
+                        )
+                          ? "flex-end"
+                          : "flex-start",
+                      }}
+                    />
                   </TouchableOpacity>
                 </View>
               </View>
 
-              <TouchableOpacity onPress={handleLogPayment} disabled={saving} activeOpacity={0.8}>
-                <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
-                  {saving ? <ActivityIndicator color="#fff" /> : (
+              <TouchableOpacity
+                onPress={handleLogPayment}
+                disabled={saving}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={[THEME.primary, THEME.secondary]}
+                  style={[
+                    styles.saveBtn,
+                    Platform.OS === "web" && ({ cursor: "pointer" } as any),
+                  ]}
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
                     <>
                       <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
                       <SVGIcon name="checkmark-circle" size={20} color="#fff" />
@@ -575,21 +884,54 @@ export default function MaintenanceCharges() {
               </TouchableOpacity>
 
               {/* Standalone Individual Manual Billing section */}
-              <View style={{ marginTop: 25, padding: 18, backgroundColor: VIBE.light, borderRadius: 20, borderWidth: 1, borderColor: VIBE.border }}>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: VIBE.dark, marginBottom: 4 }}>
+              <View
+                style={{
+                  marginTop: 25,
+                  padding: 18,
+                  backgroundColor: VIBE.light,
+                  borderRadius: 20,
+                  borderWidth: 1,
+                  borderColor: VIBE.border,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: "800",
+                    color: VIBE.dark,
+                    marginBottom: 4,
+                  }}
+                >
                   Create Single Manual Charge
                 </Text>
-                <Text style={{ fontSize: 11, color: VIBE.muted, marginBottom: 15 }}>
-                  Apply maintenance fee adjustment to this student independently.
+                <Text
+                  style={{ fontSize: 11, color: VIBE.muted, marginBottom: 15 }}
+                >
+                  Apply maintenance fee adjustment to this student
+                  independently.
                 </Text>
-                <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    gap: 10,
+                    alignItems: "center",
+                  }}
+                >
                   <TextInput
-                    style={[styles.pillInput, { flex: 1, height: 48, fontSize: 14, paddingHorizontal: 15, paddingVertical: 0 }]}
+                    style={[
+                      styles.pillInput,
+                      {
+                        flex: 1,
+                        height: 48,
+                        fontSize: 14,
+                        paddingHorizontal: 15,
+                        paddingVertical: 0,
+                      },
+                    ]}
                     placeholder="Amount (₵)"
                     keyboardType="numeric"
                     value={individualChargeAmount}
                     onChangeText={setIndividualChargeAmount}
-
                   />
                   <TouchableOpacity
                     style={{
@@ -598,30 +940,46 @@ export default function MaintenanceCharges() {
                       height: 48,
                       borderRadius: 24,
                       justifyContent: "center",
-                      alignItems: "center"
+                      alignItems: "center",
                     }}
                     disabled={saving}
                     onPress={async () => {
                       if (selectedStudent && individualChargeAmount) {
                         const amt = parseFloat(individualChargeAmount);
                         if (!isNaN(amt) && amt > 0) {
-                          const done = await applyIndividualCharge(selectedStudent, amt, "Individual Maintenance Fee");
+                          const done = await applyIndividualCharge(
+                            selectedStudent,
+                            amt,
+                            "Individual Maintenance Fee",
+                          );
                           if (done) setIndividualChargeAmount("");
                         } else {
-                          showToast({ message: "Please enter a valid billing amount", type: "error" });
+                          showToast({
+                            message: "Please enter a valid billing amount",
+                            type: "error",
+                          });
                         }
                       }
                     }}
                   >
-                    <Text style={{ color: "#fff", fontWeight: "900", fontSize: 12 }}>APPLY BILL</Text>
+                    <Text
+                      style={{ color: "#fff", fontWeight: "900", fontSize: 12 }}
+                    >
+                      APPLY BILL
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               <View style={styles.historyBlock}>
                 <Text style={styles.blockTitle}>Transaction History</Text>
-                {loadingHistory ? <ActivityIndicator color={THEME.primary} style={{ marginTop: 20 }} /> : (
-                  history.length > 0 ? history.map((h, i) => (
+                {loadingHistory ? (
+                  <ActivityIndicator
+                    color={THEME.primary}
+                    style={{ marginTop: 20 }}
+                  />
+                ) : history.length > 0 ? (
+                  history.map((h, i) => (
                     <TouchableOpacity
                       key={i}
                       style={styles.transactionTile}
@@ -633,31 +991,79 @@ export default function MaintenanceCharges() {
                         router.push({
                           pathname: "/shared/receipt-view",
                           params: {
-                            type: h.type === 'maintenance' ? 'bill' : 'payment',
+                            type: h.type === "maintenance" ? "bill" : "payment",
                             studentId: selectedStudent?.uid,
                             paymentId: h.receiptNo,
                             year: h.academicYear,
-                            term: h.term
-                          }
+                            term: h.term,
+                          },
                         });
-                        setTimeout(() => { isNavigating.current = false; }, 800);
+                        setTimeout(() => {
+                          isNavigating.current = false;
+                        }, 800);
                       }}
                       onLongPress={() => confirmDeletePayment(h)}
                     >
                       <View style={styles.tileHeader}>
-                        <Text style={[styles.tileAmt, { color: h.type === 'maintenance' ? VIBE.info : VIBE.success }]}>
+                        <Text
+                          style={[
+                            styles.tileAmt,
+                            {
+                              color:
+                                h.type === "maintenance"
+                                  ? VIBE.info
+                                  : VIBE.success,
+                            },
+                          ]}
+                        >
                           ₵{h.amount.toLocaleString()}
                         </Text>
-                        <View style={{ backgroundColor: h.type === 'maintenance' ? VIBE.info + '15' : VIBE.success + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                           <Text style={{ fontSize: 9, fontWeight: '900', color: h.type === 'maintenance' ? VIBE.info : VIBE.success }}>
-                             {h.type === 'maintenance' ? 'BILL' : 'PAYMENT'}
-                           </Text>
+                        <View
+                          style={{
+                            backgroundColor:
+                              h.type === "maintenance"
+                                ? VIBE.info + "15"
+                                : VIBE.success + "15",
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 8,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              fontWeight: "900",
+                              color:
+                                h.type === "maintenance"
+                                  ? VIBE.info
+                                  : VIBE.success,
+                            }}
+                          >
+                            {h.type === "maintenance" ? "BILL" : "PAYMENT"}
+                          </Text>
                         </View>
                       </View>
-                      <Text style={styles.tileDetail}>{h.method || h.receivedFrom}</Text>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-                         <Text style={styles.tileDate}>{moment(h.createdAt).format("MMM DD, YYYY • HH:mm")}</Text>
-                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <Text style={styles.tileDetail}>
+                        {h.method || h.receivedFrom}
+                      </Text>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginTop: 10,
+                        }}
+                      >
+                        <Text style={styles.tileDate}>
+                          {moment(h.createdAt).format("MMM DD, YYYY • HH:mm")}
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
+                        >
                           <TouchableOpacity
                             onPress={(e) => {
                               e.stopPropagation();
@@ -666,13 +1072,23 @@ export default function MaintenanceCharges() {
                             activeOpacity={0.7}
                             style={{ padding: 4 }}
                           >
-                            <SVGIcon name="trash" size={16} color={VIBE.danger} />
+                            <SVGIcon
+                              name="trash"
+                              size={16}
+                              color={VIBE.danger}
+                            />
                           </TouchableOpacity>
-                          <SVGIcon name="eye-outline" size={14} color={VIBE.muted} />
+                          <SVGIcon
+                            name="eye-outline"
+                            size={14}
+                            color={VIBE.muted}
+                          />
                         </View>
                       </View>
                     </TouchableOpacity>
-                  )) : <Text style={styles.noHistory}>No history available</Text>
+                  ))
+                ) : (
+                  <Text style={styles.noHistory}>No history available</Text>
                 )}
               </View>
             </ScrollView>

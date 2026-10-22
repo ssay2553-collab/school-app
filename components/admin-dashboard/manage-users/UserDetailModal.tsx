@@ -1,21 +1,23 @@
-import React from "react";
 import moment from "moment";
+import React from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from "react-native";
-import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
-import { User, PERMISSION_KEYS, PERMISSION_LEVELS } from "../../../hooks/admin-dashboard/manage-users-types";
+import {
+    PERMISSION_KEYS,
+    PERMISSION_LEVELS,
+    User,
+} from "../../../hooks/admin-dashboard/manage-users-types";
 
 const DEFAULT_AVATAR = require("../../../assets/default-avatar.png");
 
@@ -89,17 +91,17 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   };
 
   return (
-    <Modal visible={isVisible} animationType="slide" transparent>
+    <Modal visible={isVisible} animationType="none" transparent>
       <View style={styles.modalOverlay}>
-        <Animatable.View
-          animation="slideInUp"
-          duration={400}
-          style={styles.modalContent}
-        >
+        <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Member Profile</Text>
             <TouchableOpacity onPress={onClose}>
-              <SVGIcon name="close" size={28} color={COLORS.gray || "#9ca3af"} />
+              <SVGIcon
+                name="close"
+                size={28}
+                color={COLORS.gray || "#9ca3af"}
+              />
             </TouchableOpacity>
           </View>
 
@@ -161,7 +163,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                       </View>
                     ))}
                     {user.departmentHeadOf ? (
-                      <View style={[styles.badge, { backgroundColor: "#fff7ed" }]}>
+                      <View
+                        style={[styles.badge, { backgroundColor: "#fff7ed" }]}
+                      >
                         <Text style={[styles.badgeText, { color: "#b45309" }]}>
                           Dept: {user.departmentHeadOf}
                         </Text>
@@ -188,7 +192,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                         styles.financeValue,
                         {
                           color:
-                            (user.walletBalance || 0) > 0 ? "#ef4444" : "#10b981",
+                            (user.walletBalance || 0) > 0
+                              ? "#ef4444"
+                              : "#10b981",
                         },
                       ]}
                     >
@@ -218,7 +224,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                           styles.financeValue,
                           {
                             color:
-                              (user.dailyArrears || 0) > 0 ? "#f59e0b" : "#10b981",
+                              (user.dailyArrears || 0) > 0
+                                ? "#f59e0b"
+                                : "#10b981",
                           },
                         ]}
                       >
@@ -238,35 +246,66 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                 </View>
               )}
 
-              {user.role === "student" && user.termArrears && Object.keys(user.termArrears).length > 0 && (
-                <View style={styles.infoSection}>
-                  <Text style={styles.infoLabel}>Arrears Breakdown (by Term)</Text>
-                  <View style={styles.infoGrid}>
-                    {Object.entries(user.termArrears).map(([termKey, amount]) => {
-                      if (amount <= 0) return null;
-                      return (
-                        <View key={termKey} style={styles.infoRow}>
-                          <Text style={styles.infoKey}>{termKey.replace(/_/g, ' ')}:</Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                             <Text style={[styles.infoValue, { color: "#f59e0b" }]}>
-                              ₵{amount.toLocaleString()}
-                            </Text>
-                            {onClearTermArrears && (
-                              <TouchableOpacity onPress={() => onClearTermArrears(termKey, user)}>
-                                <SVGIcon name="refresh-circle" size={18} color="#f59e0b" />
-                              </TouchableOpacity>
-                            )}
-                          </View>
-                        </View>
-                      );
-                    })}
+              {user.role === "student" &&
+                user.termArrears &&
+                Object.keys(user.termArrears).length > 0 && (
+                  <View style={styles.infoSection}>
+                    <Text style={styles.infoLabel}>
+                      Arrears Breakdown (by Term)
+                    </Text>
+                    <View style={styles.infoGrid}>
+                      {Object.entries(user.termArrears).map(
+                        ([termKey, amount]) => {
+                          if (amount <= 0) return null;
+                          return (
+                            <View key={termKey} style={styles.infoRow}>
+                              <Text style={styles.infoKey}>
+                                {termKey.replace(/_/g, " ")}:
+                              </Text>
+                              <View
+                                style={{
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  gap: 10,
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    styles.infoValue,
+                                    { color: "#f59e0b" },
+                                  ]}
+                                >
+                                  ₵{amount.toLocaleString()}
+                                </Text>
+                                {onClearTermArrears && (
+                                  <TouchableOpacity
+                                    onPress={() =>
+                                      onClearTermArrears(termKey, user)
+                                    }
+                                  >
+                                    <SVGIcon
+                                      name="refresh-circle"
+                                      size={18}
+                                      color="#f59e0b"
+                                    />
+                                  </TouchableOpacity>
+                                )}
+                              </View>
+                            </View>
+                          );
+                        },
+                      )}
+                    </View>
                   </View>
-                </View>
-              )}
+                )}
 
-              {(user.signupCode || user.secretCode || user.role === 'student') && (
+              {(user.signupCode ||
+                user.secretCode ||
+                user.role === "student") && (
                 <View style={styles.infoSection}>
-                  <Text style={styles.infoLabel}>Security Tokens & Link Codes</Text>
+                  <Text style={styles.infoLabel}>
+                    Security Tokens & Link Codes
+                  </Text>
                   <View
                     style={[
                       styles.financeBox,
@@ -277,7 +316,11 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     ]}
                   >
                     <Text style={[styles.financeLabel, { color: "#b45309" }]}>
-                      {user.role === 'student' ? "PARENT LINK CODE" : (user.status === "pending_activation" ? "SIGNUP CODE" : "RESET/SECRET TOKEN")}
+                      {user.role === "student"
+                        ? "PARENT LINK CODE"
+                        : user.status === "pending_activation"
+                          ? "SIGNUP CODE"
+                          : "RESET/SECRET TOKEN"}
                     </Text>
                     <View
                       style={{
@@ -297,17 +340,26 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                           },
                         ]}
                       >
-                        {user.role === 'student' ? (user.parentLinkCode || user.signupCode || "N/A") : (user.signupCode || user.parentLinkCode || user.secretCode || "N/A")}
+                        {user.role === "student"
+                          ? user.parentLinkCode || user.signupCode || "N/A"
+                          : user.signupCode ||
+                            user.parentLinkCode ||
+                            user.secretCode ||
+                            "N/A"}
                       </Text>
                       <View style={{ flexDirection: "row", gap: 8 }}>
                         <TouchableOpacity
                           onPress={() => {
-                            if (user.role === 'student' && user.parentLinkCode && !user.signupCode) {
-                               // Custom share for parent link code if we had a prop,
-                               // but for now onShareCode will be updated in the hook to handle this.
-                               onShareCode(user);
+                            if (
+                              user.role === "student" &&
+                              user.parentLinkCode &&
+                              !user.signupCode
+                            ) {
+                              // Custom share for parent link code if we had a prop,
+                              // but for now onShareCode will be updated in the hook to handle this.
+                              onShareCode(user);
                             } else {
-                               onShareCode(user);
+                              onShareCode(user);
                             }
                           }}
                           style={{
@@ -320,7 +372,11 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                             gap: 4,
                           }}
                         >
-                          <SVGIcon name="share-outline" size={14} color="#fff" />
+                          <SVGIcon
+                            name="share-outline"
+                            size={14}
+                            color="#fff"
+                          />
                           <Text
                             style={{
                               color: "#fff",
@@ -352,27 +408,29 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                             </Text>
                           </TouchableOpacity>
                         )}
-                        {user.role === 'student' && user.status !== 'pending_activation' && onRegenerateParentCode && (
-                          <TouchableOpacity
-                            onPress={() => onRegenerateParentCode(user)}
-                            style={{
-                              backgroundColor: "#b45309",
-                              paddingHorizontal: 12,
-                              paddingVertical: 6,
-                              borderRadius: 8,
-                            }}
-                          >
-                            <Text
+                        {user.role === "student" &&
+                          user.status !== "pending_activation" &&
+                          onRegenerateParentCode && (
+                            <TouchableOpacity
+                              onPress={() => onRegenerateParentCode(user)}
                               style={{
-                                color: "#fff",
-                                fontSize: 10,
-                                fontWeight: "800",
+                                backgroundColor: "#b45309",
+                                paddingHorizontal: 12,
+                                paddingVertical: 6,
+                                borderRadius: 8,
                               }}
                             >
-                              REGENERATE
-                            </Text>
-                          </TouchableOpacity>
-                        )}
+                              <Text
+                                style={{
+                                  color: "#fff",
+                                  fontSize: 10,
+                                  fontWeight: "800",
+                                }}
+                              >
+                                REGENERATE
+                              </Text>
+                            </TouchableOpacity>
+                          )}
                       </View>
                     </View>
                     <Text
@@ -385,7 +443,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     >
                       {user.status === "pending_activation"
                         ? "Provide this code to the student to claim their profile."
-                        : user.role === 'student'
+                        : user.role === "student"
                           ? "Share this code with parents to link their account to this student."
                           : "This token can be used for secure password resets."}
                     </Text>
@@ -418,7 +476,8 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                           {user.classes
                             ?.map(
                               (cid) =>
-                                allClasses.find((c) => c.id === cid)?.name || cid,
+                                allClasses.find((c) => c.id === cid)?.name ||
+                                cid,
                             )
                             .join(", ")}
                         </Text>
@@ -471,55 +530,77 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                       </Text>
                     </View>
                   )}
-                  {user.role === "student" && (() => {
-                    const parent1 = linkedUsers.length > 0 ? linkedUsers[0] : null;
-                    const parent2 = linkedUsers.length > 1 ? linkedUsers[1] : null;
+                  {user.role === "student" &&
+                    (() => {
+                      const parent1 =
+                        linkedUsers.length > 0 ? linkedUsers[0] : null;
+                      const parent2 =
+                        linkedUsers.length > 1 ? linkedUsers[1] : null;
 
-                    const displayParent1Name = user.profile?.parentName || (parent1 ? `${parent1.profile?.firstName || ""} ${parent1.profile?.lastName || ""}`.trim() : "N/A");
-                    const displayParent1Phone = user.profile?.parentPhone || parent1?.profile?.phone || "N/A";
+                      const displayParent1Name =
+                        user.profile?.parentName ||
+                        (parent1
+                          ? `${parent1.profile?.firstName || ""} ${parent1.profile?.lastName || ""}`.trim()
+                          : "N/A");
+                      const displayParent1Phone =
+                        user.profile?.parentPhone ||
+                        parent1?.profile?.phone ||
+                        "N/A";
 
-                    const displayParent2Name = user.profile?.parent2Name || (parent2 ? `${parent2.profile?.firstName || ""} ${parent2.profile?.lastName || ""}`.trim() : "");
-                    const displayParent2Phone = user.profile?.parent2Phone || parent2?.profile?.phone || "";
+                      const displayParent2Name =
+                        user.profile?.parent2Name ||
+                        (parent2
+                          ? `${parent2.profile?.firstName || ""} ${parent2.profile?.lastName || ""}`.trim()
+                          : "");
+                      const displayParent2Phone =
+                        user.profile?.parent2Phone ||
+                        parent2?.profile?.phone ||
+                        "";
 
-                    return (
-                      <>
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoKey}>Emergency #:</Text>
-                          <Text style={styles.infoValue}>
-                            {user.profile?.emergencyPhone || "N/A"}
-                          </Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoKey}>Parent 1 Name:</Text>
-                          <Text style={styles.infoValue}>
-                            {displayParent1Name}
-                          </Text>
-                        </View>
-                        <View style={styles.infoRow}>
-                          <Text style={styles.infoKey}>Parent 1 #:</Text>
-                          <Text style={styles.infoValue}>
-                            {displayParent1Phone}
-                          </Text>
-                        </View>
-                        {(displayParent2Name || displayParent2Phone) && displayParent2Name !== "N/A" && (
-                          <>
-                            <View style={styles.infoRow}>
-                              <Text style={styles.infoKey}>Parent 2 Name:</Text>
-                              <Text style={styles.infoValue}>
-                                {displayParent2Name}
-                              </Text>
-                            </View>
-                            <View style={styles.infoRow}>
-                              <Text style={styles.infoKey}>Parent 2 #:</Text>
-                              <Text style={styles.infoValue}>
-                                {displayParent2Phone}
-                              </Text>
-                            </View>
-                          </>
-                        )}
-                      </>
-                    );
-                  })()}
+                      return (
+                        <>
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoKey}>Emergency #:</Text>
+                            <Text style={styles.infoValue}>
+                              {user.profile?.emergencyPhone || "N/A"}
+                            </Text>
+                          </View>
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoKey}>Parent 1 Name:</Text>
+                            <Text style={styles.infoValue}>
+                              {displayParent1Name}
+                            </Text>
+                          </View>
+                          <View style={styles.infoRow}>
+                            <Text style={styles.infoKey}>Parent 1 #:</Text>
+                            <Text style={styles.infoValue}>
+                              {displayParent1Phone}
+                            </Text>
+                          </View>
+                          {(displayParent2Name || displayParent2Phone) &&
+                            displayParent2Name !== "N/A" && (
+                              <>
+                                <View style={styles.infoRow}>
+                                  <Text style={styles.infoKey}>
+                                    Parent 2 Name:
+                                  </Text>
+                                  <Text style={styles.infoValue}>
+                                    {displayParent2Name}
+                                  </Text>
+                                </View>
+                                <View style={styles.infoRow}>
+                                  <Text style={styles.infoKey}>
+                                    Parent 2 #:
+                                  </Text>
+                                  <Text style={styles.infoValue}>
+                                    {displayParent2Phone}
+                                  </Text>
+                                </View>
+                              </>
+                            )}
+                        </>
+                      );
+                    })()}
                   <View style={styles.infoRow}>
                     <Text style={styles.infoKey}>Gender:</Text>
                     <Text style={styles.infoValue}>
@@ -570,7 +651,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                           <Text
                             style={[
                               styles.infoValue,
-                              { color: level === "full" ? "#10b981" : "#6366f1" },
+                              {
+                                color: level === "full" ? "#10b981" : "#6366f1",
+                              },
                             ]}
                           >
                             {levelLabel}
@@ -685,7 +768,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     ]}
                     onPress={() => onViewAttendance?.(user)}
                   >
-                    <Text style={styles.actionButtonText}>View Attendance Analysis</Text>
+                    <Text style={styles.actionButtonText}>
+                      View Attendance Analysis
+                    </Text>
                   </TouchableOpacity>
                 )}
 
@@ -700,7 +785,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                     ]}
                     onPress={() => onPromoteRepeat(user)}
                   >
-                    <Text style={styles.actionButtonText}>Promote / Repeat</Text>
+                    <Text style={styles.actionButtonText}>
+                      Promote / Repeat
+                    </Text>
                   </TouchableOpacity>
                 )}
 
@@ -741,7 +828,14 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
 
                 {user.role === "student" && (
                   <>
-                    <Text style={[styles.infoLabel, { paddingHorizontal: 20, marginTop: 10 }]}>Maintenance & Integrity</Text>
+                    <Text
+                      style={[
+                        styles.infoLabel,
+                        { paddingHorizontal: 20, marginTop: 10 },
+                      ]}
+                    >
+                      Maintenance & Integrity
+                    </Text>
                     <TouchableOpacity
                       style={[
                         styles.actionButton,
@@ -756,7 +850,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                       {isFinanceCleaning ? (
                         <ActivityIndicator color="#fff" />
                       ) : (
-                        <Text style={styles.actionButtonText}>Reconcile Student Balance</Text>
+                        <Text style={styles.actionButtonText}>
+                          Reconcile Student Balance
+                        </Text>
                       )}
                     </TouchableOpacity>
                   </>
@@ -773,7 +869,9 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                   {updating && deletingUid === user.uid ? (
                     <ActivityIndicator color="#ef4444" />
                   ) : (
-                    <Text style={[styles.actionButtonText, { color: "#ef4444" }]}>
+                    <Text
+                      style={[styles.actionButtonText, { color: "#ef4444" }]}
+                    >
                       Delete Account
                     </Text>
                   )}
@@ -781,7 +879,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
               </View>
             </View>
           </ScrollView>
-        </Animatable.View>
+        </View>
       </View>
     </Modal>
   );
@@ -895,8 +993,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginHorizontal: 20,
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   actionButtonText: { color: "#fff", fontSize: 16, fontWeight: "800" },

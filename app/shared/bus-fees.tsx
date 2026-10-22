@@ -15,17 +15,21 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import * as Animatable from "react-native-animatable";
+
 import { SafeAreaView } from "react-native-safe-area-context";
-import SVGIcon from "../../components/SVGIcon";
-import { COLORS, SHADOWS } from "../../constants/theme";
-import { useToast } from "../../contexts/ToastContext";
-import { useBusFeeLogic, DailyRecord, TabType } from "../../hooks/shared/useBusFeeLogic";
 import { VIBE } from "../../components/bus-fees/BusFeeConstants";
 import { BusFeeStats } from "../../components/bus-fees/BusFeeStats";
 import { StudentRow } from "../../components/bus-fees/StudentRow";
 import { AdvancePaymentModal } from "../../components/shared/AdvancePaymentModal";
+import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { COLORS, SHADOWS } from "../../constants/theme";
+import { useToast } from "../../contexts/ToastContext";
+import {
+    DailyRecord,
+    TabType,
+    useBusFeeLogic,
+} from "../../hooks/shared/useBusFeeLogic";
 
 // Guarded import for native-only library
 const DateTimePicker =
@@ -90,7 +94,9 @@ export default function BusFees() {
     handleAdvancePayment,
   } = useBusFeeLogic();
 
-  const [paymentModalStudent, setPaymentModalStudent] = useState<any | null>(null);
+  const [paymentModalStudent, setPaymentModalStudent] = useState<any | null>(
+    null,
+  );
 
   const handleBack = () => {
     router.replace("/shared/daily-financials");
@@ -115,14 +121,13 @@ export default function BusFees() {
   const renderRecordItem = useCallback(({ item }: { item: DailyRecord }) => {
     const isPaid = item.busPaid === true;
     return (
-      <Animatable.View animation="fadeInUp" duration={300}>
+      <View>
         <View style={styles.recordCard}>
           <View
             style={[
               styles.recordStatus,
               {
-                backgroundColor:
-                  isPaid ? VIBE.info + "20" : VIBE.danger + "20",
+                backgroundColor: isPaid ? VIBE.info + "20" : VIBE.danger + "20",
               },
             ]}
           />
@@ -133,11 +138,32 @@ export default function BusFees() {
             <Text style={styles.recordClass}>{item.className}</Text>
             <View style={styles.recordDetails}>
               <View style={styles.recordFeeItem}>
-                <SVGIcon name="bus" size={14} color={isPaid ? VIBE.info : VIBE.danger} />
-                <Text style={styles.recordFeeText}>₵{item.busPaidAmount ?? item.busFee}</Text>
+                <SVGIcon
+                  name="bus"
+                  size={14}
+                  color={isPaid ? VIBE.info : VIBE.danger}
+                />
+                <Text style={styles.recordFeeText}>
+                  ₵{item.busPaidAmount ?? item.busFee}
+                </Text>
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: isPaid ? VIBE.success + "15" : VIBE.danger + "15" }]}>
-                <Text style={{ fontSize: 10, fontWeight: "800", color: isPaid ? VIBE.success : VIBE.danger }}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: isPaid
+                      ? VIBE.success + "15"
+                      : VIBE.danger + "15",
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "800",
+                    color: isPaid ? VIBE.success : VIBE.danger,
+                  }}
+                >
                   {isPaid ? "PAID" : "UNPAID"}
                 </Text>
               </View>
@@ -153,7 +179,7 @@ export default function BusFees() {
             <Text style={styles.recordRecordedBy}>{item.recordedBy}</Text>
           </View>
         </View>
-      </Animatable.View>
+      </View>
     );
   }, []);
 
@@ -191,7 +217,9 @@ export default function BusFees() {
           </TouchableOpacity>
           <View style={styles.headerTitle}>
             <Text style={styles.headerTitleText}>Bus Fees</Text>
-            <Text style={styles.headerSubtitle}>Record daily transportation fees</Text>
+            <Text style={styles.headerSubtitle}>
+              Record daily transportation fees
+            </Text>
           </View>
         </View>
 
@@ -218,7 +246,11 @@ export default function BusFees() {
               onPress={() => changeDate(1)}
               style={styles.dateArrow}
             >
-              <SVGIcon name="chevron-forward" size={20} color={COLORS.primary} />
+              <SVGIcon
+                name="chevron-forward"
+                size={20}
+                color={COLORS.primary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -290,7 +322,10 @@ export default function BusFees() {
               }
             >
               {/* Statistics */}
-              <BusFeeStats totalBus={stats.totalBus} recordsCount={stats.recordsCount} />
+              <BusFeeStats
+                totalBus={stats.totalBus}
+                recordsCount={stats.recordsCount}
+              />
 
               {/* Filters */}
               <View style={styles.filterSection}>
@@ -527,18 +562,24 @@ export default function BusFees() {
                 {/* Student List */}
                 <View style={styles.studentListHeader}>
                   <TouchableOpacity
-                    style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
                     onPress={() => handleSelectAll(filteredStudents)}
                   >
                     <SVGIcon
-                        name={
-                            filteredStudents.length > 0 &&
-                            filteredStudents.every((s) => selectedStudentUids.has(s.uid))
-                                ? "checkbox"
-                                : "square-outline"
-                        }
-                        size={20}
-                        color={COLORS.primary}
+                      name={
+                        filteredStudents.length > 0 &&
+                        filteredStudents.every((s) =>
+                          selectedStudentUids.has(s.uid),
+                        )
+                          ? "checkbox"
+                          : "square-outline"
+                      }
+                      size={20}
+                      color={COLORS.primary}
                     />
                     <Text style={styles.studentListTitle}>Students List</Text>
                   </TouchableOpacity>
@@ -554,12 +595,18 @@ export default function BusFees() {
                       item={item}
                       existingRecord={getExistingRecord(item.uid)}
                       attendanceStatus={attendanceMap[item.uid]?.status}
-                      rate={locationRates[item.busLocation || ""] || SCHOOL_CONFIG.defaultBusRate || 10}
+                      rate={
+                        locationRates[item.busLocation || ""] ||
+                        SCHOOL_CONFIG.defaultBusRate ||
+                        10
+                      }
                       canEdit={canEdit}
                       overrideValue={overrideMap[item.uid]}
                       onMarkPaid={markStudentPaid}
                       onMarkNotPaid={markStudentNotPaid}
-                      onSetOverride={(uid, val) => setOverrideMap(m => ({...m, [uid]: val}))}
+                      onSetOverride={(uid, val) =>
+                        setOverrideMap((m) => ({ ...m, [uid]: val }))
+                      }
                       isSelected={selectedStudentUids.has(item.uid)}
                       onToggleSelection={toggleStudentSelection}
                       isSelectionMode={selectedStudentUids.size > 0}
@@ -581,7 +628,10 @@ export default function BusFees() {
           {activeTab === "history" && (
             <View style={{ flex: 1 }}>
               {/* Statistics Summary for History */}
-              <BusFeeStats totalBus={stats.totalBus} recordsCount={stats.recordsCount} />
+              <BusFeeStats
+                totalBus={stats.totalBus}
+                recordsCount={stats.recordsCount}
+              />
 
               <FlatList
                 data={dailyRecords.filter((r) => (r.busFee || 0) > 0)}
@@ -655,45 +705,40 @@ export default function BusFees() {
 
       {/* Bulk Action Bar */}
       {selectedStudentUids.size > 0 && activeTab === "record" && (
-        <Animatable.View
-            animation="slideInUp"
-            duration={300}
-            style={styles.bulkActionBar}
-        >
-            <View style={styles.bulkActionHeader}>
-                <Text style={styles.bulkActionTitle}>{selectedStudentUids.size} Selected</Text>
-                <TouchableOpacity onPress={() => setSelectedStudentUids(new Set())}>
-                    <Text style={styles.bulkActionCancel}>Cancel</Text>
-                </TouchableOpacity>
+        <View style={styles.bulkActionBar}>
+          <View style={styles.bulkActionHeader}>
+            <Text style={styles.bulkActionTitle}>
+              {selectedStudentUids.size} Selected
+            </Text>
+            <TouchableOpacity onPress={() => setSelectedStudentUids(new Set())}>
+              <Text style={styles.bulkActionCancel}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.bulkActionControls}>
+            <View style={styles.bulkInputContainer}>
+              <Text style={styles.bulkInputSymbol}>₵</Text>
+              <TextInput
+                style={styles.bulkInput}
+                placeholder="Unique Amount"
+                value={bulkBillAmount}
+                onChangeText={setBulkBillAmount}
+                keyboardType="numeric"
+                placeholderTextColor="#94A3B8"
+              />
             </View>
-            <View style={styles.bulkActionControls}>
-                <View style={styles.bulkInputContainer}>
-                    <Text style={styles.bulkInputSymbol}>₵</Text>
-                    <TextInput
-                        style={styles.bulkInput}
-                        placeholder="Unique Amount"
-                        value={bulkBillAmount}
-                        onChangeText={setBulkBillAmount}
-                        keyboardType="numeric"
-                        placeholderTextColor="#94A3B8"
-                    />
-                </View>
-                <TouchableOpacity
-                    style={[
-                        styles.bulkApplyBtn,
-                        saving && { opacity: 0.7 }
-                    ]}
-                    onPress={handleBulkBill}
-                    disabled={saving}
-                >
-                    {saving ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                        <Text style={styles.bulkApplyText}>Apply Bill</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
-        </Animatable.View>
+            <TouchableOpacity
+              style={[styles.bulkApplyBtn, saving && { opacity: 0.7 }]}
+              onPress={handleBulkBill}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.bulkApplyText}>Apply Bill</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       {paymentModalStudent && (
@@ -703,7 +748,11 @@ export default function BusFees() {
           studentName={paymentModalStudent.fullName}
           className={paymentModalStudent.className}
           feeType="Bus"
-          dailyRate={locationRates[paymentModalStudent.busLocation || ""] || SCHOOL_CONFIG.defaultBusRate || 10}
+          dailyRate={
+            locationRates[paymentModalStudent.busLocation || ""] ||
+            SCHOOL_CONFIG.defaultBusRate ||
+            10
+          }
           currentArrears={paymentModalStudent.dailyArrears || 0}
           saving={saving}
           onConfirmPayment={async (amt) => {
@@ -1083,7 +1132,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, justifyContent: "center" },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    justifyContent: "center",
+  },
   recordFeeText: { fontSize: 13, fontWeight: "700", color: VIBE.text },
   recordTotal: {
     flexDirection: "row",

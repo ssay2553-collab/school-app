@@ -1,30 +1,34 @@
 import { useRouter } from "expo-router";
 import moment from "moment";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import * as Animatable from "react-native-animatable";
+
 import { SafeAreaView } from "react-native-safe-area-context";
-import SVGIcon from "../../components/SVGIcon";
-import { COLORS, SHADOWS } from "../../constants/theme";
-import { useToast } from "../../contexts/ToastContext";
-import { useExtraClassesFeeLogic, DailyRecord, TabType } from "../../hooks/shared/useExtraClassesFeeLogic";
+import { VIBE } from "../../components/extra-classes-fees/ExtraClassesFeeConstants";
 import ExtraClassesFeeStats from "../../components/extra-classes-fees/ExtraClassesFeeStats";
 import StudentRow from "../../components/extra-classes-fees/StudentRow";
-import { VIBE } from "../../components/extra-classes-fees/ExtraClassesFeeConstants";
 import { AdvancePaymentModal } from "../../components/shared/AdvancePaymentModal";
+import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { COLORS, SHADOWS } from "../../constants/theme";
+import { useToast } from "../../contexts/ToastContext";
+import {
+    DailyRecord,
+    TabType,
+    useExtraClassesFeeLogic,
+} from "../../hooks/shared/useExtraClassesFeeLogic";
 
 // Guarded import for native-only library
 const DateTimePicker =
@@ -79,7 +83,9 @@ export default function ExtraClassesFees() {
     handleAdvancePayment,
   } = useExtraClassesFeeLogic();
 
-  const [paymentModalStudent, setPaymentModalStudent] = useState<any | null>(null);
+  const [paymentModalStudent, setPaymentModalStudent] = useState<any | null>(
+    null,
+  );
 
   const handleBack = () => {
     router.replace("/shared/daily-financials");
@@ -105,14 +111,15 @@ export default function ExtraClassesFees() {
   const renderRecordItem = ({ item }: { item: DailyRecord }) => {
     const isPaid = item.extraPaid === true;
     return (
-      <Animatable.View animation="fadeInUp" duration={300}>
+      <View>
         <View style={styles.recordCard}>
           <View
             style={[
               styles.recordStatus,
               {
-                backgroundColor:
-                  isPaid ? VIBE.purple + "20" : VIBE.danger + "20",
+                backgroundColor: isPaid
+                  ? VIBE.purple + "20"
+                  : VIBE.danger + "20",
               },
             ]}
           />
@@ -123,11 +130,32 @@ export default function ExtraClassesFees() {
             <Text style={styles.recordClass}>{item.className}</Text>
             <View style={styles.recordDetails}>
               <View style={styles.recordFeeItem}>
-                <SVGIcon name="book" size={14} color={isPaid ? VIBE.purple : VIBE.danger} />
-                <Text style={styles.recordFeeText}>₵{item.extraPaidAmount ?? item.extraClassesFee}</Text>
+                <SVGIcon
+                  name="book"
+                  size={14}
+                  color={isPaid ? VIBE.purple : VIBE.danger}
+                />
+                <Text style={styles.recordFeeText}>
+                  ₵{item.extraPaidAmount ?? item.extraClassesFee}
+                </Text>
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: isPaid ? VIBE.success + "15" : VIBE.danger + "15" }]}>
-                <Text style={{ fontSize: 10, fontWeight: "800", color: isPaid ? VIBE.success : VIBE.danger }}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: isPaid
+                      ? VIBE.success + "15"
+                      : VIBE.danger + "15",
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "800",
+                    color: isPaid ? VIBE.success : VIBE.danger,
+                  }}
+                >
                   {isPaid ? "PAID" : "UNPAID"}
                 </Text>
               </View>
@@ -143,7 +171,7 @@ export default function ExtraClassesFees() {
             <Text style={styles.recordRecordedBy}>{item.recordedBy}</Text>
           </View>
         </View>
-      </Animatable.View>
+      </View>
     );
   };
 
@@ -181,7 +209,9 @@ export default function ExtraClassesFees() {
           </TouchableOpacity>
           <View style={styles.headerTitle}>
             <Text style={styles.headerTitleText}>Extra Classes Fees</Text>
-            <Text style={styles.headerSubtitle}>Record daily extra classes fees</Text>
+            <Text style={styles.headerSubtitle}>
+              Record daily extra classes fees
+            </Text>
           </View>
         </View>
 
@@ -208,7 +238,11 @@ export default function ExtraClassesFees() {
               onPress={() => changeDate(1)}
               style={styles.dateArrow}
             >
-              <SVGIcon name="chevron-forward" size={20} color={COLORS.primary} />
+              <SVGIcon
+                name="chevron-forward"
+                size={20}
+                color={COLORS.primary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -428,18 +462,24 @@ export default function ExtraClassesFees() {
                 {/* Student List */}
                 <View style={styles.studentListHeader}>
                   <TouchableOpacity
-                    style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
                     onPress={() => handleSelectAll(filteredStudents)}
                   >
                     <SVGIcon
-                        name={
-                            filteredStudents.length > 0 &&
-                            filteredStudents.every((s) => selectedStudentUids.has(s.uid))
-                                ? "checkbox"
-                                : "square-outline"
-                        }
-                        size={20}
-                        color={COLORS.primary}
+                      name={
+                        filteredStudents.length > 0 &&
+                        filteredStudents.every((s) =>
+                          selectedStudentUids.has(s.uid),
+                        )
+                          ? "checkbox"
+                          : "square-outline"
+                      }
+                      size={20}
+                      color={COLORS.primary}
                     />
                     <Text style={styles.studentListTitle}>Students List</Text>
                   </TouchableOpacity>
@@ -459,7 +499,9 @@ export default function ExtraClassesFees() {
                       overrideAmount={overrideMap[item.uid]}
                       onMarkPaid={markStudentPaid}
                       onMarkNotPaid={markStudentNotPaid}
-                      onSetOverride={(uid, amt) => setOverrideMap(m => ({ ...m, [uid]: amt }))}
+                      onSetOverride={(uid, amt) =>
+                        setOverrideMap((m) => ({ ...m, [uid]: amt }))
+                      }
                       showToast={showToast}
                       isSelected={selectedStudentUids.has(item.uid)}
                       onToggleSelection={toggleStudentSelection}
@@ -563,45 +605,40 @@ export default function ExtraClassesFees() {
 
       {/* Bulk Action Bar */}
       {selectedStudentUids.size > 0 && activeTab === "record" && (
-        <Animatable.View
-            animation="slideInUp"
-            duration={300}
-            style={styles.bulkActionBar}
-        >
-            <View style={styles.bulkActionHeader}>
-                <Text style={styles.bulkActionTitle}>{selectedStudentUids.size} Selected</Text>
-                <TouchableOpacity onPress={() => setSelectedStudentUids(new Set())}>
-                    <Text style={styles.bulkActionCancel}>Cancel</Text>
-                </TouchableOpacity>
+        <View style={styles.bulkActionBar}>
+          <View style={styles.bulkActionHeader}>
+            <Text style={styles.bulkActionTitle}>
+              {selectedStudentUids.size} Selected
+            </Text>
+            <TouchableOpacity onPress={() => setSelectedStudentUids(new Set())}>
+              <Text style={styles.bulkActionCancel}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.bulkActionControls}>
+            <View style={styles.bulkInputContainer}>
+              <Text style={styles.bulkInputSymbol}>₵</Text>
+              <TextInput
+                style={styles.bulkInput}
+                placeholder="Unique Amount"
+                value={bulkBillAmount}
+                onChangeText={setBulkBillAmount}
+                keyboardType="numeric"
+                placeholderTextColor="#94A3B8"
+              />
             </View>
-            <View style={styles.bulkActionControls}>
-                <View style={styles.bulkInputContainer}>
-                    <Text style={styles.bulkInputSymbol}>₵</Text>
-                    <TextInput
-                        style={styles.bulkInput}
-                        placeholder="Unique Amount"
-                        value={bulkBillAmount}
-                        onChangeText={setBulkBillAmount}
-                        keyboardType="numeric"
-                        placeholderTextColor="#94A3B8"
-                    />
-                </View>
-                <TouchableOpacity
-                    style={[
-                        styles.bulkApplyBtn,
-                        saving && { opacity: 0.7 }
-                    ]}
-                    onPress={handleBulkBill}
-                    disabled={saving}
-                >
-                    {saving ? (
-                        <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                        <Text style={styles.bulkApplyText}>Apply Bill</Text>
-                    )}
-                </TouchableOpacity>
-            </View>
-        </Animatable.View>
+            <TouchableOpacity
+              style={[styles.bulkApplyBtn, saving && { opacity: 0.7 }]}
+              onPress={handleBulkBill}
+              disabled={saving}
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.bulkApplyText}>Apply Bill</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       {paymentModalStudent && (
@@ -611,7 +648,9 @@ export default function ExtraClassesFees() {
           studentName={paymentModalStudent.fullName}
           className={paymentModalStudent.className}
           feeType="Extra Classes"
-          dailyRate={currentClassRate || SCHOOL_CONFIG.defaultExtraClassesRate || 10}
+          dailyRate={
+            currentClassRate || SCHOOL_CONFIG.defaultExtraClassesRate || 10
+          }
           currentArrears={paymentModalStudent.dailyArrears || 0}
           saving={saving}
           onConfirmPayment={async (amt) => {
@@ -965,7 +1004,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, justifyContent: "center" },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    justifyContent: "center",
+  },
   recordFeeText: { fontSize: 13, fontWeight: "700", color: VIBE.text },
   recordTotal: {
     flexDirection: "row",

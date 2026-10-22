@@ -37,7 +37,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
 
 type Child = {
   uid: string;
@@ -94,6 +94,9 @@ export default function ParentChatWithTeacher() {
 
   useEffect(() => {
     appUserUidRef.current = appUser?.uid;
+    if (appUser?.uid) {
+      markNotificationsAsRead(appUser.uid, "chat");
+    }
   }, [appUser?.uid]);
 
   useEffect(() => {

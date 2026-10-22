@@ -7,11 +7,18 @@ import { AppUser } from "../types/users";
  * 2. They have a teacher, admin, or staff role
  * 3. The classId matches their 'classTeacherOf' property OR is in their 'classes' array
  */
-export const isClassTeacher = (user: AppUser | null | undefined, classId: string): boolean => {
+export const isClassTeacher = (
+  user: AppUser | null | undefined,
+  classId: string,
+): boolean => {
   if (!user || !classId) return false;
 
   const role = user.role?.toLowerCase();
-  const isAdmin = role === "admin" || role === "superadmin" || role === "super admin" || !!(user as any).adminRole;
+  const isAdmin =
+    role === "admin" ||
+    role === "superadmin" ||
+    role === "super admin" ||
+    !!(user as any).adminRole;
   const isTeacher = role === "teacher";
   const isStaff = role === "staff";
 
@@ -40,13 +47,39 @@ export const isClassTeacher = (user: AppUser | null | undefined, classId: string
  * Returns all class IDs associated with a teacher or staff member.
  * Combines classTeacherOf and the classes array.
  */
-export const getTeacherClasses = (user: AppUser | null | undefined): string[] => {
+export const getTeacherClasses = (
+  user: AppUser | null | undefined,
+): string[] => {
   if (!user) return [];
   const list = [...(user.classes || [])];
   if (user.classTeacherOf && !list.includes(user.classTeacherOf)) {
     list.push(user.classTeacherOf);
   }
   return list;
+};
+
+export const normalizeSubjectName = (
+  subject: string | null | undefined,
+): string => {
+  return typeof subject === "string" ? subject.trim().replace(/\s+/g, " ") : "";
+};
+
+export const dedupeSubjects = (
+  subjects: Array<string | null | undefined>,
+): string[] => {
+  const seen = new Set<string>();
+
+  return (subjects || [])
+    .map((subject) => normalizeSubjectName(subject))
+    .filter((subject): subject is string => Boolean(subject))
+    .filter((subject) => {
+      const key = subject.toLowerCase();
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
 };
 
 /**
@@ -60,26 +93,26 @@ export const sortClasses = <T extends { name: string }>(list: T[]): T[] => {
 
     // Priority Map for different levels
     const levelOrder: Record<string, number> = {
-      'CRECHE': 1,
-      'NURSERY': 2,
-      'KG': 3,
-      'KINDERGARTEN': 3,
-      'CLASS': 4,
-      'PRIMARY': 4,
-      'GRADE': 4,
-      'BASIC': 4,
-      'JHS': 5,
-      'JUNIOR HIGH': 5,
-      'SHS': 6,
-      'SENIOR HIGH': 6
+      CRECHE: 1,
+      NURSERY: 2,
+      KG: 3,
+      KINDERGARTEN: 3,
+      CLASS: 4,
+      PRIMARY: 4,
+      GRADE: 4,
+      BASIC: 4,
+      JHS: 5,
+      "JUNIOR HIGH": 5,
+      SHS: 6,
+      "SENIOR HIGH": 6,
     };
 
     const getLevelPriority = (name: string) => {
       // Check for keywords in order of specificity
-      if (name.includes('SHS')) return levelOrder['SHS'];
-      if (name.includes('JHS')) return levelOrder['JHS'];
-      if (name.includes('KG')) return levelOrder['KG'];
-      
+      if (name.includes("SHS")) return levelOrder["SHS"];
+      if (name.includes("JHS")) return levelOrder["JHS"];
+      if (name.includes("KG")) return levelOrder["KG"];
+
       for (const key in levelOrder) {
         if (name.includes(key)) return levelOrder[key];
       }
@@ -108,18 +141,31 @@ export const sortClasses = <T extends { name: string }>(list: T[]): T[] => {
  * Standardized scale: 80-100%(1), 70-79%(2), 60-69%(3), 55-59%(4), 50-54%(5), 45-49%(6), 40-44%(7), 35-39%(8), 0-34%(9)
  */
 export const getGradeDetails = (score: number, maxScore: number = 100) => {
-  const max = (maxScore && maxScore > 0) ? maxScore : 100;
+  const max = maxScore && maxScore > 0 ? maxScore : 100;
   const percentage = (Math.max(0, score || 0) / max) * 100;
   const s = Math.round(percentage);
 
-  if (s >= 80) return { grade: "1", aggregate: 1, remark: "Highest", label: "Excellent" };
-  if (s >= 70) return { grade: "2", aggregate: 2, remark: "Higher", label: "Very Good" };
-  if (s >= 60) return { grade: "3", aggregate: 3, remark: "High", label: "Good" };
-  if (s >= 55) return { grade: "4", aggregate: 4, remark: "High Average", label: "Credit" };
-  if (s >= 50) return { grade: "5", aggregate: 5, remark: "Average", label: "Pass" };
-  if (s >= 45) return { grade: "6", aggregate: 6, remark: "Low Average", label: "Pass" };
-  if (s >= 40) return { grade: "7", aggregate: 7, remark: "Low", label: "Weak" };
-  if (s >= 35) return { grade: "8", aggregate: 8, remark: "Lower", label: "Very Weak" };
+  if (s >= 80)
+    return { grade: "1", aggregate: 1, remark: "Highest", label: "Excellent" };
+  if (s >= 70)
+    return { grade: "2", aggregate: 2, remark: "Higher", label: "Very Good" };
+  if (s >= 60)
+    return { grade: "3", aggregate: 3, remark: "High", label: "Good" };
+  if (s >= 55)
+    return {
+      grade: "4",
+      aggregate: 4,
+      remark: "High Average",
+      label: "Credit",
+    };
+  if (s >= 50)
+    return { grade: "5", aggregate: 5, remark: "Average", label: "Pass" };
+  if (s >= 45)
+    return { grade: "6", aggregate: 6, remark: "Low Average", label: "Pass" };
+  if (s >= 40)
+    return { grade: "7", aggregate: 7, remark: "Low", label: "Weak" };
+  if (s >= 35)
+    return { grade: "8", aggregate: 8, remark: "Lower", label: "Very Weak" };
   return { grade: "9", aggregate: 9, remark: "Lowest", label: "Fail" };
 };
 
@@ -127,7 +173,10 @@ export const getGradeDetails = (score: number, maxScore: number = 100) => {
  * Generates automated remarks based on aggregate score or average performance.
  * Suitable for Admin and Class Teacher remarks.
  */
-export const getAutoRemarks = (aggregate: number, isTeacher: boolean = false) => {
+export const getAutoRemarks = (
+  aggregate: number,
+  isTeacher: boolean = false,
+) => {
   const agg = aggregate || 54;
   let remark = "";
 
@@ -167,29 +216,39 @@ export const getAutoRemarks = (aggregate: number, isTeacher: boolean = false) =>
  * @param isPreschool Whether to skip the "Best 6" penalty logic
  * @param skipAggregate Whether to skip grade-based aggregate calculation (returns TRS for both TRS and TAS)
  */
-export const calculatePerformanceFromList = (subjects: any[], isPreschool: boolean = false, skipAggregate: boolean = false) => {
+export const calculatePerformanceFromList = (
+  subjects: any[],
+  isPreschool: boolean = false,
+  skipAggregate: boolean = false,
+) => {
   if (!subjects || subjects.length === 0) {
     return { trs: "0.00", tas: "0.00", aggregate: isPreschool ? 0 : 54 };
   }
 
   // 1. TRS: Sum of ALL scores
-  const trsValue = subjects.reduce((acc, curr) => acc + (parseFloat(curr.total) || 0), 0);
+  const trsValue = subjects.reduce(
+    (acc, curr) => acc + (parseFloat(curr.total) || 0),
+    0,
+  );
 
   if (skipAggregate) {
     return {
       trs: trsValue.toFixed(2),
       tas: trsValue.toFixed(2),
-      aggregate: 0
+      aggregate: 0,
     };
   }
 
   if (isPreschool) {
     // For Preschool: No "Best 6" logic. Sum everything they have.
-    const aggregate = subjects.reduce((acc, curr) => acc + (parseInt(curr.aggregate || curr.grade) || 9), 0);
+    const aggregate = subjects.reduce(
+      (acc, curr) => acc + (parseInt(curr.aggregate || curr.grade) || 9),
+      0,
+    );
     return {
       trs: trsValue.toFixed(2),
       tas: trsValue.toFixed(2),
-      aggregate
+      aggregate,
     };
   }
 
@@ -198,11 +257,12 @@ export const calculatePerformanceFromList = (subjects: any[], isPreschool: boole
 
   // Split into Core and Electives
   const cores = subjects.filter((s) =>
-    targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase())
+    targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase()),
   );
 
   const electives = subjects.filter(
-    (s) => !targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase())
+    (s) =>
+      !targetCores.some((c) => s.subject.toLowerCase() === c.toLowerCase()),
   );
 
   /**
@@ -216,33 +276,46 @@ export const calculatePerformanceFromList = (subjects: any[], isPreschool: boole
 
   // Sort electives for Aggregate (best grade first - lowest number)
   const sortedElectivesForGrade = [...electives].sort(
-    (a, b) => (parseInt(a.aggregate || a.grade) || 9) - (parseInt(b.aggregate || b.grade) || 9)
+    (a, b) =>
+      (parseInt(a.aggregate || a.grade) || 9) -
+      (parseInt(b.aggregate || b.grade) || 9),
   );
 
   // Sort electives for Score (highest score first)
   const sortedElectivesForScore = [...electives].sort(
-    (a, b) => (parseFloat(b.total) || 0) - (parseFloat(a.total) || 0)
+    (a, b) => (parseFloat(b.total) || 0) - (parseFloat(a.total) || 0),
   );
 
   // Sum up Cores (limited to coreCount)
-  const coreGradeSum = cores.slice(0, coreCount).reduce((a, c) => a + (parseInt(c.aggregate || c.grade) || 9), 0);
-  const coreScoreSum = cores.slice(0, coreCount).reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
+  const coreGradeSum = cores
+    .slice(0, coreCount)
+    .reduce((a, c) => a + (parseInt(c.aggregate || c.grade) || 9), 0);
+  const coreScoreSum = cores
+    .slice(0, coreCount)
+    .reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
 
   // Sum up Electives (limited to electiveCount)
-  const electiveGradeSum = sortedElectivesForGrade.slice(0, electiveCount).reduce((a, c) => a + (parseInt(c.aggregate || c.grade) || 9), 0);
-  const electiveScoreSum = sortedElectivesForScore.slice(0, electiveCount).reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
+  const electiveGradeSum = sortedElectivesForGrade
+    .slice(0, electiveCount)
+    .reduce((a, c) => a + (parseInt(c.aggregate || c.grade) || 9), 0);
+  const electiveScoreSum = sortedElectivesForScore
+    .slice(0, electiveCount)
+    .reduce((a, c) => a + (parseFloat(c.total) || 0), 0);
 
   // Penalize missing subjects with Grade 9
   const missingCoresCount = Math.max(0, coreCount - cores.length);
   const missingElectivesCount = Math.max(0, electiveCount - electives.length);
-  const aggregate = coreGradeSum + electiveGradeSum + (missingCoresCount + missingElectivesCount) * 9;
+  const aggregate =
+    coreGradeSum +
+    electiveGradeSum +
+    (missingCoresCount + missingElectivesCount) * 9;
 
   const tasValue = coreScoreSum + electiveScoreSum;
 
   return {
     trs: trsValue.toFixed(2),
     tas: tasValue.toFixed(2),
-    aggregate
+    aggregate,
   };
 };
 
@@ -276,10 +349,17 @@ export const calculateCompetitionRanking = (
 /**
  * Calculates a student's total score for a subject based on report type.
  */
-export const calculateStudentTotalScore = (s: any, reportType: string): number => {
+export const calculateStudentTotalScore = (
+  s: any,
+  reportType: string,
+): number => {
   if (reportType === "End of Term") {
     // Priority: finalScore > classScore + exam50
-    if (s.finalScore !== undefined && s.finalScore !== null && s.finalScore !== "") {
+    if (
+      s.finalScore !== undefined &&
+      s.finalScore !== null &&
+      s.finalScore !== ""
+    ) {
       return parseFloat(s.finalScore) || 0;
     }
     const classScore = parseFloat(s.classScore || 0);
@@ -287,7 +367,11 @@ export const calculateStudentTotalScore = (s: any, reportType: string): number =
     return parseFloat((classScore + exam50).toFixed(2));
   } else {
     // Mid-term / Mock
-    if (s.finalScore !== undefined && s.finalScore !== null && s.finalScore !== "") {
+    if (
+      s.finalScore !== undefined &&
+      s.finalScore !== null &&
+      s.finalScore !== ""
+    ) {
       return parseFloat(s.finalScore) || 0;
     }
     return parseFloat(s.examsMark || 0);
@@ -301,36 +385,47 @@ export const calculateStudentTotalScore = (s: any, reportType: string): number =
  * Calculates the TRS (Total Raw Score), TAS (Total Aggregate Score - 6 subjects),
  * and Aggregate (Sum of grades - 6 subjects) based on GES standards.
  */
-export const calculatePerformanceMetrics = (subjects: Record<string, { grade: number, score: number }>) => {
+export const calculatePerformanceMetrics = (
+  subjects: Record<string, { grade: number; score: number }>,
+) => {
   const coreList = ["mathematics", "science", "english"];
 
   // 1. TRS: Sum of ALL scores
-  const trs = Object.values(subjects).reduce((acc, curr) => acc + (curr.score || 0), 0);
+  const trs = Object.values(subjects).reduce(
+    (acc, curr) => acc + (curr.score || 0),
+    0,
+  );
 
   // Split into Core and Electives
   const coreEntries = Object.keys(subjects)
-    .filter(k => coreList.includes(k.toLowerCase()))
-    .map(k => subjects[k]);
+    .filter((k) => coreList.includes(k.toLowerCase()))
+    .map((k) => subjects[k]);
 
   const electiveEntries = Object.keys(subjects)
-    .filter(k => !coreList.includes(k.toLowerCase()))
-    .map(k => subjects[k])
+    .filter((k) => !coreList.includes(k.toLowerCase()))
+    .map((k) => subjects[k])
     .sort((a, b) => a.grade - b.grade); // Lower grade is better
 
   // 2. Aggregate (Best 6 Grades)
   // Logic: Sum of 3 Cores + Best 3 Electives. Missing cores/electives count as Grade 9.
-  const coreGradeSum = coreEntries.reduce((a, b) => a + b.grade, 0) + (Math.max(0, 3 - coreEntries.length) * 9);
-  const electiveGradeSum = electiveEntries.slice(0, 3).reduce((a, b) => a + b.grade, 0) + (Math.max(0, 3 - electiveEntries.length) * 9);
+  const coreGradeSum =
+    coreEntries.reduce((a, b) => a + b.grade, 0) +
+    Math.max(0, 3 - coreEntries.length) * 9;
+  const electiveGradeSum =
+    electiveEntries.slice(0, 3).reduce((a, b) => a + b.grade, 0) +
+    Math.max(0, 3 - electiveEntries.length) * 9;
   const aggregate = coreGradeSum + electiveGradeSum;
 
   // 3. TAS (Best 6 Raw Scores)
   const coreScoreSum = coreEntries.reduce((a, b) => a + b.score, 0);
-  const electiveScoreSum = electiveEntries.slice(0, 3).reduce((a, b) => a + b.score, 0);
+  const electiveScoreSum = electiveEntries
+    .slice(0, 3)
+    .reduce((a, b) => a + b.score, 0);
   const tas = coreScoreSum + electiveScoreSum;
 
   return {
     trs: trs.toFixed(2),
     tas: tas.toFixed(2),
-    aggregate
+    aggregate,
   };
 };

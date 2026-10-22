@@ -85,7 +85,11 @@ export const UnattendedNotificationModal: React.FC<Props> = ({
               keyExtractor={(item) => item.id}
               showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
-                <View style={styles.card}>
+                <TouchableOpacity
+                  style={styles.card}
+                  activeOpacity={0.85}
+                  onPress={() => handleMarkSingleRead(item.id)}
+                >
                   <View style={styles.cardHeader}>
                     <View style={styles.typeBadge}>
                       <Text style={styles.typeBadgeText}>
@@ -110,7 +114,7 @@ export const UnattendedNotificationModal: React.FC<Props> = ({
                       <Text style={styles.dismissBtnText}>Acknowledge</Text>
                     </TouchableOpacity>
                   </View>
-                </View>
+                </TouchableOpacity>
               )}
             />
           )}

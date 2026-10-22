@@ -1,9 +1,18 @@
 import React from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from "react-native";
-import * as Animatable from "react-native-animatable";
+import {
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from "react-native";
 import SVGIcon from "../../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../../constants/theme";
-import { roles, UserRole } from "../../../hooks/admin-dashboard/manage-users-types";
+import {
+    roles,
+    UserRole,
+} from "../../../hooks/admin-dashboard/manage-users-types";
 
 interface RoleSelectorProps {
   onSelectRole: (role: UserRole) => void;
@@ -19,12 +28,8 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
         </Text>
       </View>
       <ScrollView contentContainerStyle={styles.roleGrid}>
-        {roles.map((r, idx) => (
-          <Animatable.View
-            key={r.role}
-            animation="fadeInUp"
-            delay={idx * 100}
-          >
+        {roles.map((r) => (
+          <View key={r.role}>
             <TouchableOpacity
               style={styles.roleCard}
               activeOpacity={0.7}
@@ -54,7 +59,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({ onSelectRole }) => {
                 color={COLORS.gray || "#9ca3af"}
               />
             </TouchableOpacity>
-          </Animatable.View>
+          </View>
         ))}
       </ScrollView>
     </View>
@@ -76,8 +81,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     ...SHADOWS.medium,
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   roleIcon: {

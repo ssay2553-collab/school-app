@@ -128,7 +128,7 @@ export default function ViewTeachers() {
   }, [teachers, searchQuery]);
 
   const renderTeacherItem = ({ item, index }: { item: Teacher, index: number }) => (
-    <Animatable.View animation="fadeInUp" delay={index * 50} duration={400}>
+    <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50} duration={400}>
       <TouchableOpacity 
         style={styles.teacherCard} 
         onPress={() => setViewingTeacher(item)}

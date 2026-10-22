@@ -1,108 +1,179 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import {
-  collection,
-  getDocsFromServer,
-  query,
-  where,
-} from "firebase/firestore";
 import moment from "moment";
-import React, { useCallback, useMemo, useState, useRef, useEffect } from "react";
+import React, {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StatusBar,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  useWindowDimensions,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StatusBar,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+    useWindowDimensions,
 } from "react-native";
-import * as Animatable from "react-native-animatable";
+
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 import SVGIcon from "../../components/SVGIcon";
-import { SCHOOL_CONFIG } from "../../constants/Config";
+import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { db } from "../../firebaseConfig";
+import {
+    Student,
+    useAdmissionCharges,
+} from "../../hooks/admin-dashboard/useAdmissionCharges";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
-import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
-import { useAdmissionCharges, Student } from "../../hooks/admin-dashboard/useAdmissionCharges";
 
 const THEME = {
   primary: "#6366F1", // Admission Indigo
   secondary: "#4F46E5",
 };
 
-const AdmissionStudentCard = React.memo(({
-  item,
-  onPress,
-}: {
-  item: Student;
-  onPress: (student: Student) => void;
-}) => {
-  const isolatedTotal = (item.admissionBalance || 0) + (item.ptaBalance || 0) +
-                        (item.maintenanceBalance || 0) + (item.booksBalance || 0) +
-                        (item.uniformBalance || 0) + (item.otherBalance || 0);
-  const tuitionBalance = Math.max(0, (item.walletBalance || 0) - isolatedTotal);
+const AdmissionStudentCard = React.memo(
+  ({
+    item,
+    onPress,
+  }: {
+    item: Student;
+    onPress: (student: Student) => void;
+  }) => {
+    const isolatedTotal =
+      (item.admissionBalance || 0) +
+      (item.ptaBalance || 0) +
+      (item.maintenanceBalance || 0) +
+      (item.booksBalance || 0) +
+      (item.uniformBalance || 0) +
+      (item.otherBalance || 0);
+    const tuitionBalance = Math.max(
+      0,
+      (item.walletBalance || 0) - isolatedTotal,
+    );
 
-  return (
-    <Animatable.View animation="fadeInUp" duration={400} style={styles.cardWrapper} useNativeDriver={false}>
-      <TouchableOpacity
-        style={[styles.financeCard, Platform.OS === 'web' && { cursor: 'pointer' } as any]}
-        activeOpacity={0.7}
-        onPress={() => onPress(item)}
-      >
-        <View style={styles.cardContent}>
-          <View style={styles.leftSection}>
-            <View style={[styles.avatar, { backgroundColor: THEME.primary + "15" }]}>
-              <Text style={[styles.avatarText, { color: THEME.primary }]}>{item.fullName.charAt(0)}</Text>
-            </View>
-            <View style={styles.mainInfo}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                <Text style={styles.studentName} numberOfLines={1}>{item.fullName}</Text>
-                {item.admissionBill > 0 && (
-                  <View style={{ backgroundColor: VIBE.success, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                    <Text style={{ color: '#fff', fontSize: 8, fontWeight: '900' }}>NEW</Text>
+    return (
+      <View style={styles.cardWrapper}>
+        <TouchableOpacity
+          style={[
+            styles.financeCard,
+            Platform.OS === "web" && ({ cursor: "pointer" } as any),
+          ]}
+          activeOpacity={0.7}
+          onPress={() => onPress(item)}
+        >
+          <View style={styles.cardContent}>
+            <View style={styles.leftSection}>
+              <View
+                style={[
+                  styles.avatar,
+                  { backgroundColor: THEME.primary + "15" },
+                ]}
+              >
+                <Text style={[styles.avatarText, { color: THEME.primary }]}>
+                  {item.fullName.charAt(0)}
+                </Text>
+              </View>
+              <View style={styles.mainInfo}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    marginBottom: 2,
+                  }}
+                >
+                  <Text style={styles.studentName} numberOfLines={1}>
+                    {item.fullName}
+                  </Text>
+                  {item.admissionBill > 0 && (
+                    <View
+                      style={{
+                        backgroundColor: VIBE.success,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: "#fff",
+                          fontSize: 8,
+                          fontWeight: "900",
+                        }}
+                      >
+                        NEW
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={styles.tuitionBreakdown}>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>TUITION</Text>
+                    <Text style={styles.breakdownValue}>
+                      ₵{tuitionBalance.toFixed(0)}
+                    </Text>
                   </View>
-                )}
-              </View>
-
-              <View style={styles.tuitionBreakdown}>
-                <View style={styles.breakdownItem}>
-                  <Text style={styles.breakdownLabel}>TUITION</Text>
-                  <Text style={styles.breakdownValue}>₵{tuitionBalance.toFixed(0)}</Text>
+                  <View style={styles.breakdownItem}>
+                    <Text style={styles.breakdownLabel}>ADMISSION BILL</Text>
+                    <Text style={styles.breakdownValue}>
+                      ₵{item.admissionBill.toFixed(0)}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.breakdownItem}>
-                  <Text style={styles.breakdownLabel}>ADMISSION BILL</Text>
-                  <Text style={styles.breakdownValue}>₵{item.admissionBill.toFixed(0)}</Text>
-                </View>
-              </View>
 
-              <View style={styles.debtBox}>
-                <Text style={[styles.debtLabel, { color: item.admissionBalance > 0 ? VIBE.danger : VIBE.success }]}>
-                  {item.admissionBalance > 0 ? "Admission Owed: " : "Paid: "}
-                </Text>
-                <Text style={[styles.debtValue, { color: item.admissionBalance > 0 ? VIBE.danger : VIBE.success }]}>
-                  ₵{item.admissionBalance > 0 ? (item.admissionBalance || 0).toFixed(0) : (item.admissionPaid || 0).toFixed(0)}
-                </Text>
+                <View style={styles.debtBox}>
+                  <Text
+                    style={[
+                      styles.debtLabel,
+                      {
+                        color:
+                          item.admissionBalance > 0
+                            ? VIBE.danger
+                            : VIBE.success,
+                      },
+                    ]}
+                  >
+                    {item.admissionBalance > 0 ? "Admission Owed: " : "Paid: "}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.debtValue,
+                      {
+                        color:
+                          item.admissionBalance > 0
+                            ? VIBE.danger
+                            : VIBE.success,
+                      },
+                    ]}
+                  >
+                    ₵
+                    {item.admissionBalance > 0
+                      ? (item.admissionBalance || 0).toFixed(0)
+                      : (item.admissionPaid || 0).toFixed(0)}
+                  </Text>
+                </View>
               </View>
             </View>
+            <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
           </View>
-          <SVGIcon name="chevron-forward" size={20} color={VIBE.muted} />
-        </View>
-      </TouchableOpacity>
-    </Animatable.View>
-  );
-});
+        </TouchableOpacity>
+      </View>
+    );
+  },
+);
 
 export default function AdmissionCharges() {
   const { width } = useWindowDimensions();
@@ -115,12 +186,19 @@ export default function AdmissionCharges() {
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   if (acadConfig.loading || !appUser) {
     return (
-      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
         <ActivityIndicator size="large" color={THEME.primary} />
       </View>
     );
@@ -173,7 +251,7 @@ export default function AdmissionCharges() {
   const filteredStudents = useMemo(() => {
     const lower = searchQuery.toLowerCase().trim();
     if (!lower) return students;
-    return students.filter(s => s.fullName.toLowerCase().includes(lower));
+    return students.filter((s) => s.fullName.toLowerCase().includes(lower));
   }, [students, searchQuery]);
 
   const handleDeletePayment = (payment: any) => {
@@ -186,7 +264,7 @@ export default function AdmissionCharges() {
 
     if (Platform.OS === "web") {
       const confirmed = window.confirm(
-        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance."
+        "Are you sure you want to delete this transaction? This will automatically adjust the student's balance.",
       );
       if (confirmed) {
         confirmDeletion();
@@ -202,19 +280,24 @@ export default function AdmissionCharges() {
             style: "destructive",
             onPress: confirmDeletion,
           },
-        ]
+        ],
       );
     }
   };
 
-  const handleStudentPress = useCallback((student: Student) => {
-    openPaymentModal(student);
-  }, [openPaymentModal]);
+  const handleStudentPress = useCallback(
+    (student: Student) => {
+      openPaymentModal(student);
+    },
+    [openPaymentModal],
+  );
 
-  const renderStudentItem = useCallback(({ item }: { item: Student }) => (
-    <AdmissionStudentCard item={item} onPress={handleStudentPress} />
-  ), [handleStudentPress]);
-
+  const renderStudentItem = useCallback(
+    ({ item }: { item: Student }) => (
+      <AdmissionStudentCard item={item} onPress={handleStudentPress} />
+    ),
+    [handleStudentPress],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
@@ -232,7 +315,9 @@ export default function AdmissionCharges() {
                 if (isNavigating.current) return;
                 isNavigating.current = true;
                 router.push("/admin-dashboard/StudentCharges");
-                setTimeout(() => { isNavigating.current = false; }, 500);
+                setTimeout(() => {
+                  isNavigating.current = false;
+                }, 500);
               }}
               style={styles.headerIconBtn}
               activeOpacity={0.7}
@@ -243,21 +328,34 @@ export default function AdmissionCharges() {
               <Text style={styles.headerTitle}>Admission Fees</Text>
               <Text style={styles.headerSub}>ENROLLMENT BILLING</Text>
             </View>
-            <TouchableOpacity onPress={() => setClassModalVisible(true)} style={styles.headerIconBtn} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={() => setClassModalVisible(true)}
+              style={styles.headerIconBtn}
+              activeOpacity={0.7}
+            >
               <SVGIcon name="funnel-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.selectorGrid}>
-            <TouchableOpacity style={styles.glassPill} onPress={() => setClassModalVisible(true)} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.glassPill}
+              onPress={() => setClassModalVisible(true)}
+              activeOpacity={0.8}
+            >
               <Text style={styles.glassLabel}>FILTER BY CLASS</Text>
               <Text style={styles.glassValue} numberOfLines={1}>
-                {selectedClassId === "all" ? "All Classes" : classes.find(c => c.id === selectedClassId)?.name || "Select Class"}
+                {selectedClassId === "all"
+                  ? "All Classes"
+                  : classes.find((c) => c.id === selectedClassId)?.name ||
+                    "Select Class"}
               </Text>
             </TouchableOpacity>
             <View style={styles.glassPill}>
               <Text style={styles.glassLabel}>ACADEMIC YEAR</Text>
-              <Text style={styles.glassValue}>{acadConfig?.academicYear || "---"}</Text>
+              <Text style={styles.glassValue}>
+                {acadConfig?.academicYear || "---"}
+              </Text>
             </View>
           </View>
         </LinearGradient>
@@ -273,12 +371,36 @@ export default function AdmissionCharges() {
               placeholderTextColor={VIBE.muted}
             />
           </View>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            <TouchableOpacity onPress={handleBulkImport} style={[styles.refreshRound, { width: 'auto', paddingHorizontal: 12, flexDirection: 'row', gap: 6 }]} activeOpacity={0.7}>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity
+              onPress={handleBulkImport}
+              style={[
+                styles.refreshRound,
+                {
+                  width: "auto",
+                  paddingHorizontal: 12,
+                  flexDirection: "row",
+                  gap: 6,
+                },
+              ]}
+              activeOpacity={0.7}
+            >
               <SVGIcon name="cloud-upload" size={18} color={THEME.primary} />
-              <Text style={{ fontSize: 12, fontWeight: '800', color: THEME.primary }}>CSV</Text>
+              <Text
+                style={{
+                  fontSize: 12,
+                  fontWeight: "800",
+                  color: THEME.primary,
+                }}
+              >
+                CSV
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleRefresh} style={styles.refreshRound} activeOpacity={0.7}>
+            <TouchableOpacity
+              onPress={handleRefresh}
+              style={styles.refreshRound}
+              activeOpacity={0.7}
+            >
               <SVGIcon name="refresh" size={18} color={THEME.primary} />
             </TouchableOpacity>
           </View>
@@ -288,7 +410,7 @@ export default function AdmissionCharges() {
       <FlatList
         data={filteredStudents}
         renderItem={renderStudentItem}
-        keyExtractor={item => item.uid}
+        keyExtractor={(item) => item.uid}
         contentContainerStyle={styles.flatListContent}
         onEndReached={() => !selectedTerm && fetchStudents()}
         initialNumToRender={10}
@@ -296,27 +418,69 @@ export default function AdmissionCharges() {
         windowSize={5}
         removeClippedSubviews={Platform.OS === "android"}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[THEME.primary]} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[THEME.primary]}
+          />
         }
         ListHeaderComponent={
           <>
-            <View style={[styles.statsDashboard, { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 10, paddingBottom: 15 }]}>
-              <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
+            <View
+              style={[
+                styles.statsDashboard,
+                {
+                  paddingHorizontal: 20,
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 12,
+                  marginTop: 10,
+                  paddingBottom: 15,
+                },
+              ]}
+            >
+              <LinearGradient
+                colors={[THEME.primary, THEME.secondary]}
+                style={[
+                  styles.statBox,
+                  { width: Math.max(150, (width - 52) / 2) },
+                ]}
+              >
                 <Text style={styles.statLabel}>TERM BILLED</Text>
-                <Text style={styles.statValue}>₵{(stats.totalBilled || 0).toLocaleString()}</Text>
-                <SVGIcon name="receipt" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+                <Text style={styles.statValue}>
+                  ₵{(stats.totalBilled || 0).toLocaleString()}
+                </Text>
+                <SVGIcon
+                  name="receipt"
+                  size={24}
+                  color="rgba(255,255,255,0.3)"
+                  style={styles.statIcon}
+                />
               </LinearGradient>
-              <LinearGradient colors={[VIBE.success, "#059669"]} style={[styles.statBox, { width: Math.max(150, (width - 52)/2) }]}>
+              <LinearGradient
+                colors={[VIBE.success, "#059669"]}
+                style={[
+                  styles.statBox,
+                  { width: Math.max(150, (width - 52) / 2) },
+                ]}
+              >
                 <Text style={styles.statLabel}>TERM COLLECTED</Text>
-                <Text style={styles.statValue}>₵{(stats.totalCollected || 0).toLocaleString()}</Text>
-                <SVGIcon name="cash" size={24} color="rgba(255,255,255,0.3)" style={styles.statIcon} />
+                <Text style={styles.statValue}>
+                  ₵{(stats.totalCollected || 0).toLocaleString()}
+                </Text>
+                <SVGIcon
+                  name="cash"
+                  size={24}
+                  color="rgba(255,255,255,0.3)"
+                  style={styles.statIcon}
+                />
               </LinearGradient>
             </View>
 
             <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
               <Text style={styles.listTitle}>TERM-SPECIFIC ADMISSIONS</Text>
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-                {[1, 2, 3].map(t => {
+              <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                {[1, 2, 3].map((t) => {
                   const termName = `Term ${t}`;
                   const isActive = selectedTerm === termName;
                   return (
@@ -325,14 +489,17 @@ export default function AdmissionCharges() {
                       activeOpacity={0.8}
                       style={{
                         flex: 1,
-                        backgroundColor: isActive ? THEME.primary : '#fff',
+                        backgroundColor: isActive ? THEME.primary : "#fff",
                         padding: 12,
                         borderRadius: 15,
                         borderWidth: 1,
                         borderColor: isActive ? THEME.primary : VIBE.border,
-                        alignItems: 'center',
+                        alignItems: "center",
                         ...SHADOWS.small,
-                        ...Platform.select({ web: { cursor: 'pointer' } as any, default: {} })
+                        ...Platform.select({
+                          web: { cursor: "pointer" } as any,
+                          default: {},
+                        }),
                       }}
                       onPress={() => {
                         if (isActive) {
@@ -343,11 +510,35 @@ export default function AdmissionCharges() {
                         }
                       }}
                     >
-                      <Text style={{ fontSize: 10, fontWeight: '800', color: isActive ? '#fff' : VIBE.muted }}>TERM {t}</Text>
-                      <Text style={{ fontSize: 16, fontWeight: '900', color: isActive ? '#fff' : VIBE.text, marginTop: 2 }}>
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: "800",
+                          color: isActive ? "#fff" : VIBE.muted,
+                        }}
+                      >
+                        TERM {t}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "900",
+                          color: isActive ? "#fff" : VIBE.text,
+                          marginTop: 2,
+                        }}
+                      >
                         {stats[`term${t}Count`]}
                       </Text>
-                      <Text style={{ fontSize: 9, fontWeight: '700', color: isActive ? 'rgba(255,255,255,0.8)' : VIBE.success, marginTop: 1 }}>
+                      <Text
+                        style={{
+                          fontSize: 9,
+                          fontWeight: "700",
+                          color: isActive
+                            ? "rgba(255,255,255,0.8)"
+                            : VIBE.success,
+                          marginTop: 1,
+                        }}
+                      >
                         ₵{stats[`term${t}Revenue`].toLocaleString()}
                       </Text>
                     </TouchableOpacity>
@@ -358,22 +549,48 @@ export default function AdmissionCharges() {
 
             {selectedTerm && (
               <View style={[styles.filterInfoBar, { marginBottom: 20 }]}>
-                <Text style={styles.filterInfoText}>Showing: {selectedTerm.toUpperCase()} ADMISSIONS</Text>
-                <TouchableOpacity onPress={() => { setSelectedTerm(null); }} activeOpacity={0.7}>
+                <Text style={styles.filterInfoText}>
+                  Showing: {selectedTerm.toUpperCase()} ADMISSIONS
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setSelectedTerm(null);
+                  }}
+                  activeOpacity={0.7}
+                >
                   <SVGIcon name="close-circle" size={20} color={VIBE.danger} />
                 </TouchableOpacity>
               </View>
             )}
 
-            <Text style={[styles.listTitle, { marginHorizontal: 20, marginBottom: 15 }]}>STUDENT DIRECTORY</Text>
+            <Text
+              style={[
+                styles.listTitle,
+                { marginHorizontal: 20, marginBottom: 15 },
+              ]}
+            >
+              STUDENT DIRECTORY
+            </Text>
           </>
         }
         ListEmptyComponent={
           loading ? (
-            <ActivityIndicator size="large" color={THEME.primary} style={{ marginTop: 50 }} />
+            <ActivityIndicator
+              size="large"
+              color={THEME.primary}
+              style={{ marginTop: 50 }}
+            />
           ) : (
             <View style={styles.emptyWrap}>
-              <SVGIcon name={selectedTerm || selectedClassId !== "all" ? "person" : "search"} size={64} color="#CBD5E1" />
+              <SVGIcon
+                name={
+                  selectedTerm || selectedClassId !== "all"
+                    ? "person"
+                    : "search"
+                }
+                size={64}
+                color="#CBD5E1"
+              />
               <Text style={styles.emptyText}>
                 {selectedTerm
                   ? "No students found for this term"
@@ -397,40 +614,84 @@ export default function AdmissionCharges() {
       />
 
       {/* Payment/Billing Modal */}
-      <Modal visible={paymentModalVisible} transparent animationType="slide">
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.overlay}>
+      <Modal visible={paymentModalVisible} transparent animationType="none">
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.overlay}
+        >
           <View style={styles.sheetBody}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
               <View>
-                <Text style={styles.sheetTitle}>{selectedStudent?.fullName}</Text>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: VIBE.muted }}>ADMISSION FEE MGMT</Text>
+                <Text style={styles.sheetTitle}>
+                  {selectedStudent?.fullName}
+                </Text>
+                <Text
+                  style={{ fontSize: 10, fontWeight: "800", color: VIBE.muted }}
+                >
+                  ADMISSION FEE MGMT
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setPaymentModalVisible(false)} style={styles.closeRound} activeOpacity={0.7}>
+              <TouchableOpacity
+                onPress={() => setPaymentModalVisible(false)}
+                style={styles.closeRound}
+                activeOpacity={0.7}
+              >
                 <SVGIcon name="close" size={24} color={VIBE.muted} />
               </TouchableOpacity>
             </View>
 
             <View style={styles.modeTabs}>
               <TouchableOpacity
-                style={[styles.modeTab, activeTab === "payment" && styles.activeModeTab]}
+                style={[
+                  styles.modeTab,
+                  activeTab === "payment" && styles.activeModeTab,
+                ]}
                 activeOpacity={0.7}
                 onPress={() => setActiveTab("payment")}
               >
-                <SVGIcon name="cash-outline" size={18} color={activeTab === "payment" ? "#fff" : VIBE.muted} />
-                <Text style={[styles.modeTabText, activeTab === "payment" && { color: "#fff" }]}>PAYMENT</Text>
+                <SVGIcon
+                  name="cash-outline"
+                  size={18}
+                  color={activeTab === "payment" ? "#fff" : VIBE.muted}
+                />
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    activeTab === "payment" && { color: "#fff" },
+                  ]}
+                >
+                  PAYMENT
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modeTab, activeTab === "billing" && styles.activeModeTab]}
+                style={[
+                  styles.modeTab,
+                  activeTab === "billing" && styles.activeModeTab,
+                ]}
                 activeOpacity={0.7}
                 onPress={() => setActiveTab("billing")}
               >
-                <SVGIcon name="receipt-outline" size={18} color={activeTab === "billing" ? "#fff" : VIBE.muted} />
-                <Text style={[styles.modeTabText, activeTab === "billing" && { color: "#fff" }]}>BILLING</Text>
+                <SVGIcon
+                  name="receipt-outline"
+                  size={18}
+                  color={activeTab === "billing" ? "#fff" : VIBE.muted}
+                />
+                <Text
+                  style={[
+                    styles.modeTabText,
+                    activeTab === "billing" && { color: "#fff" },
+                  ]}
+                >
+                  BILLING
+                </Text>
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 40 }}
+            >
               {activeTab === "payment" ? (
                 <>
                   <View style={{ gap: 15, marginBottom: 25 }}>
@@ -454,28 +715,57 @@ export default function AdmissionCharges() {
 
                   <Text style={styles.breakdownLabel}>PAYMENT METHOD</Text>
                   <View style={styles.methodGrid}>
-                    {["Cash", "Cheque", "Momo", "E-cash"].map(m => (
+                    {["Cash", "Cheque", "Momo", "E-cash"].map((m) => (
                       <TouchableOpacity
                         key={m}
                         activeOpacity={0.7}
                         style={[
                           styles.methodBtn,
-                          paymentMethod === m && { backgroundColor: THEME.primary, borderColor: THEME.primary },
-                          Platform.OS === 'web' && { cursor: 'pointer' } as any
+                          paymentMethod === m && {
+                            backgroundColor: THEME.primary,
+                            borderColor: THEME.primary,
+                          },
+                          Platform.OS === "web" &&
+                            ({ cursor: "pointer" } as any),
                         ]}
                         onPress={() => setPaymentMethod(m as any)}
                       >
-                        <Text style={[styles.methodText, paymentMethod === m && { color: "#fff" }]}>{m}</Text>
+                        <Text
+                          style={[
+                            styles.methodText,
+                            paymentMethod === m && { color: "#fff" },
+                          ]}
+                        >
+                          {m}
+                        </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
 
-                  <TouchableOpacity onPress={handleLogPayment} disabled={saving} activeOpacity={0.8}>
-                    <LinearGradient colors={[THEME.primary, THEME.secondary]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
-                      {saving ? <ActivityIndicator color="#fff" /> : (
+                  <TouchableOpacity
+                    onPress={handleLogPayment}
+                    disabled={saving}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={[THEME.primary, THEME.secondary]}
+                      style={[
+                        styles.saveBtn,
+                        Platform.OS === "web" && ({ cursor: "pointer" } as any),
+                      ]}
+                    >
+                      {saving ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
                         <>
-                          <Text style={styles.saveBtnText}>CONFIRM PAYMENT</Text>
-                          <SVGIcon name="checkmark-circle" size={20} color="#fff" />
+                          <Text style={styles.saveBtnText}>
+                            CONFIRM PAYMENT
+                          </Text>
+                          <SVGIcon
+                            name="checkmark-circle"
+                            size={20}
+                            color="#fff"
+                          />
                         </>
                       )}
                     </LinearGradient>
@@ -484,7 +774,9 @@ export default function AdmissionCharges() {
               ) : (
                 <>
                   <View style={{ gap: 15, marginBottom: 25 }}>
-                    <Text style={styles.breakdownLabel}>ADMISSION FEE AMOUNT (₵)</Text>
+                    <Text style={styles.breakdownLabel}>
+                      ADMISSION FEE AMOUNT (₵)
+                    </Text>
                     <TextInput
                       style={styles.pillInput}
                       placeholder="0.00"
@@ -493,11 +785,25 @@ export default function AdmissionCharges() {
                       onChangeText={setBillAmount}
                     />
                   </View>
-                  <TouchableOpacity onPress={handleLogBill} disabled={saving} activeOpacity={0.8}>
-                    <LinearGradient colors={[VIBE.purple, "#7C3AED"]} style={[styles.saveBtn, Platform.OS === 'web' && { cursor: 'pointer' } as any]}>
-                      {saving ? <ActivityIndicator color="#fff" /> : (
+                  <TouchableOpacity
+                    onPress={handleLogBill}
+                    disabled={saving}
+                    activeOpacity={0.8}
+                  >
+                    <LinearGradient
+                      colors={[VIBE.purple, "#7C3AED"]}
+                      style={[
+                        styles.saveBtn,
+                        Platform.OS === "web" && ({ cursor: "pointer" } as any),
+                      ]}
+                    >
+                      {saving ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
                         <>
-                          <Text style={styles.saveBtnText}>INITIATE BILLING</Text>
+                          <Text style={styles.saveBtnText}>
+                            INITIATE BILLING
+                          </Text>
                           <SVGIcon name="receipt" size={20} color="#fff" />
                         </>
                       )}
@@ -509,7 +815,10 @@ export default function AdmissionCharges() {
               <View style={styles.historyBlock}>
                 <Text style={styles.blockTitle}>Transaction History</Text>
                 {loadingHistory ? (
-                  <ActivityIndicator color={THEME.primary} style={{ marginTop: 20 }} />
+                  <ActivityIndicator
+                    color={THEME.primary}
+                    style={{ marginTop: 20 }}
+                  />
                 ) : history.length > 0 ? (
                   history.map((h, i) => (
                     <TouchableOpacity
@@ -523,31 +832,77 @@ export default function AdmissionCharges() {
                         router.push({
                           pathname: "/shared/receipt-view",
                           params: {
-                            type: h.type === 'admission' ? 'bill' : 'payment',
+                            type: h.type === "admission" ? "bill" : "payment",
                             studentId: selectedStudent?.uid,
                             paymentId: h.receiptNo,
                             year: h.academicYear,
-                            term: h.term
-                          }
+                            term: h.term,
+                          },
                         });
-                        setTimeout(() => { isNavigating.current = false; }, 800);
+                        setTimeout(() => {
+                          isNavigating.current = false;
+                        }, 800);
                       }}
                       onLongPress={() => handleDeletePayment(h)}
                     >
                       <View style={styles.tileHeader}>
-                        <Text style={[styles.tileAmt, { color: h.type === 'admission' ? VIBE.purple : VIBE.success }]}>
+                        <Text
+                          style={[
+                            styles.tileAmt,
+                            {
+                              color:
+                                h.type === "admission"
+                                  ? VIBE.purple
+                                  : VIBE.success,
+                            },
+                          ]}
+                        >
                           ₵{h.amount.toLocaleString()}
                         </Text>
-                        <View style={{ backgroundColor: h.type === 'admission' ? VIBE.purple + '15' : VIBE.success + '15', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                          <Text style={{ fontSize: 9, fontWeight: '900', color: h.type === 'admission' ? VIBE.purple : VIBE.success }}>
-                            {h.type === 'admission' ? 'BILL' : 'PAYMENT'}
+                        <View
+                          style={{
+                            backgroundColor:
+                              h.type === "admission"
+                                ? VIBE.purple + "15"
+                                : VIBE.success + "15",
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            borderRadius: 8,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              fontWeight: "900",
+                              color:
+                                h.type === "admission"
+                                  ? VIBE.purple
+                                  : VIBE.success,
+                            }}
+                          >
+                            {h.type === "admission" ? "BILL" : "PAYMENT"}
                           </Text>
                         </View>
                       </View>
                       <Text style={styles.tileDetail}>{h.method}</Text>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
-                        <Text style={styles.tileDate}>{moment(h.createdAt).format("MMM DD, YYYY • HH:mm")}</Text>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginTop: 10,
+                        }}
+                      >
+                        <Text style={styles.tileDate}>
+                          {moment(h.createdAt).format("MMM DD, YYYY • HH:mm")}
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
+                        >
                           <TouchableOpacity
                             onPress={(e) => {
                               e.stopPropagation();
@@ -556,15 +911,25 @@ export default function AdmissionCharges() {
                             style={{ padding: 4 }}
                             activeOpacity={0.7}
                           >
-                            <SVGIcon name="trash" size={16} color={VIBE.danger} />
+                            <SVGIcon
+                              name="trash"
+                              size={16}
+                              color={VIBE.danger}
+                            />
                           </TouchableOpacity>
-                          <SVGIcon name="eye-outline" size={14} color={VIBE.muted} />
+                          <SVGIcon
+                            name="eye-outline"
+                            size={14}
+                            color={VIBE.muted}
+                          />
                         </View>
                       </View>
                     </TouchableOpacity>
                   ))
                 ) : (
-                  <Text style={styles.noHistory}>No previous admission transactions</Text>
+                  <Text style={styles.noHistory}>
+                    No previous admission transactions
+                  </Text>
                 )}
               </View>
             </ScrollView>

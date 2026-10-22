@@ -100,7 +100,7 @@ export default function WelcomeScreen() {
         {/* Animated Background Blobs */}
         <Animatable.View
             animation="pulse"
-            iterationCount="infinite"
+            iterationCount={Platform.OS === 'web' ? 'infinite' : 2}
             duration={8000}
             style={[styles.blob, {
                 top: -windowHeight * 0.1,
@@ -112,7 +112,7 @@ export default function WelcomeScreen() {
         />
         <Animatable.View
             animation="pulse"
-            iterationCount="infinite"
+            iterationCount={Platform.OS === 'web' ? 'infinite' : 2}
             duration={10000}
             delay={1000}
             style={[styles.blob, {

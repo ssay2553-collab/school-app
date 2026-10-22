@@ -10,10 +10,14 @@ import {
   Pressable,
   StyleSheet
 } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import moment from "moment";
 import SVGIcon from "../SVGIcon";
 import { VIBE, styles } from "../../constants/admin-dashboard/ManageFeesStyles";
+
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 
 interface FeeDailyTransactionsModalProps {
   visible: boolean;
@@ -82,7 +86,7 @@ export const FeeDailyTransactionsModal: React.FC<
                     {moment(selectedDate).format("DD MMMM, YYYY")}
                   </Text>
                 </TouchableOpacity>
-                {showDatePicker && (
+                {showDatePicker && DateTimePicker && (
                   <DateTimePicker
                     value={selectedDate}
                     mode="date"

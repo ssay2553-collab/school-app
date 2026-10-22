@@ -1,4 +1,3 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import {
@@ -16,15 +15,22 @@ import {
     Image,
     Modal,
     Platform,
+    RefreshControl,
     SafeAreaView,
     ScrollView,
     StatusBar,
     StyleSheet,
+    Switch,
     Text,
     TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
+
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -413,7 +419,7 @@ export default function StudentSettings() {
               )}
             </TouchableOpacity>
 
-            {Platform.OS !== "web" && showDatePicker && (
+            {Platform.OS !== "web" && showDatePicker && DateTimePicker && (
               <DateTimePicker
                 value={dob || new Date()}
                 mode="date"

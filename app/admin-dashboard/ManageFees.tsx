@@ -1,32 +1,31 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import {
-  ActivityIndicator,
-  Animated,
-  BackHandler,
-  FlatList,
-  Platform,
-  RefreshControl,
-  StatusBar,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Animated,
+    BackHandler,
+    FlatList,
+    Platform,
+    RefreshControl,
+    StatusBar,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
-import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // Components
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
+import { FeeBulkActionStrip } from "../../components/admin-dashboard/FeeBulkActionStrip";
+import { FeeConfirmModal } from "../../components/admin-dashboard/FeeConfirmModal";
 import { FeeDailyTransactionsModal } from "../../components/admin-dashboard/FeeDailyTransactionsModal";
+import { FeeHeader } from "../../components/admin-dashboard/FeeHeader";
+import { FeeModeTabs } from "../../components/admin-dashboard/FeeModeTabs";
 import { FeePaymentModal } from "../../components/admin-dashboard/FeePaymentModal";
+import { FeeSearchStrip } from "../../components/admin-dashboard/FeeSearchStrip";
 import { FeeStatsDashboard } from "../../components/admin-dashboard/FeeStatsDashboard";
 import { FeeStudentCard } from "../../components/admin-dashboard/FeeStudentCard";
-import { FeeConfirmModal } from "../../components/admin-dashboard/FeeConfirmModal";
-import { FeeHeader } from "../../components/admin-dashboard/FeeHeader";
-import { FeeSearchStrip } from "../../components/admin-dashboard/FeeSearchStrip";
-import { FeeModeTabs } from "../../components/admin-dashboard/FeeModeTabs";
-import { FeeBulkActionStrip } from "../../components/admin-dashboard/FeeBulkActionStrip";
 import SVGIcon from "../../components/SVGIcon";
 
 // Constants & Hooks
@@ -51,7 +50,9 @@ export default function ManageFees() {
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const {
@@ -210,43 +211,60 @@ export default function ManageFees() {
     dailyModalVisible,
   ]);
 
-  const renderStudentItem = useCallback(({ item }: { item: StudentDraft }) => {
-    return (
-      <FeeStudentCard
-        item={item}
-        isSelected={selectedStudentUids.has(item.uid)}
-        activeMode={activeMode}
-        onPress={() => {
-          if (activeMode === "billing" || activeMode === "discounts") {
-            toggleStudentSelection(item.uid);
-          } else {
-            setPaymentAmount("");
-            setReceivedFrom("");
-            setPaymentMethod("Cash");
-            setSelectedStudent(item);
-            setPaymentDate(new Date());
-            setPaymentModalVisible(true);
-          }
-        }}
-        canEdit={canEdit}
-        individualBillOverrides={individualBillOverrides}
-        termBillAmount={termBillAmount}
-        setIndividualBillOverrides={setIndividualBillOverrides}
-        individualDiscountOverrides={individualDiscountOverrides}
-        discountAmount={discountAmount}
-        setIndividualDiscountOverrides={setIndividualDiscountOverrides}
-        onViewLedger={() => {
-          if (isNavigating.current) return;
-          isNavigating.current = true;
-          router.push({
-            pathname: "/admin-dashboard/student-fee-history",
-            params: { studentId: item.uid, academicYear, term },
-          });
-          setTimeout(() => { isNavigating.current = false; }, 500);
-        }}
-      />
-    );
-  }, [selectedStudentUids, activeMode, termBillAmount, individualBillOverrides, discountAmount, individualDiscountOverrides, canEdit, toggleStudentSelection, academicYear, term, router]);
+  const renderStudentItem = useCallback(
+    ({ item }: { item: StudentDraft }) => {
+      return (
+        <FeeStudentCard
+          item={item}
+          isSelected={selectedStudentUids.has(item.uid)}
+          activeMode={activeMode}
+          onPress={() => {
+            if (activeMode === "billing" || activeMode === "discounts") {
+              toggleStudentSelection(item.uid);
+            } else {
+              setPaymentAmount("");
+              setReceivedFrom("");
+              setPaymentMethod("Cash");
+              setSelectedStudent(item);
+              setPaymentDate(new Date());
+              setPaymentModalVisible(true);
+            }
+          }}
+          canEdit={canEdit}
+          individualBillOverrides={individualBillOverrides}
+          termBillAmount={termBillAmount}
+          setIndividualBillOverrides={setIndividualBillOverrides}
+          individualDiscountOverrides={individualDiscountOverrides}
+          discountAmount={discountAmount}
+          setIndividualDiscountOverrides={setIndividualDiscountOverrides}
+          onViewLedger={() => {
+            if (isNavigating.current) return;
+            isNavigating.current = true;
+            router.push({
+              pathname: "/admin-dashboard/student-fee-history",
+              params: { studentId: item.uid, academicYear, term },
+            });
+            setTimeout(() => {
+              isNavigating.current = false;
+            }, 500);
+          }}
+        />
+      );
+    },
+    [
+      selectedStudentUids,
+      activeMode,
+      termBillAmount,
+      individualBillOverrides,
+      discountAmount,
+      individualDiscountOverrides,
+      canEdit,
+      toggleStudentSelection,
+      academicYear,
+      term,
+      router,
+    ],
+  );
 
   if (!appUser || !canView) {
     return (
@@ -315,7 +333,9 @@ export default function ManageFees() {
                     pathname: "/admin-dashboard/FeeReports",
                     params: { classId: selectedClassId, academicYear, term },
                   });
-                  setTimeout(() => { isNavigating.current = false; }, 500);
+                  setTimeout(() => {
+                    isNavigating.current = false;
+                  }, 500);
                 }}
                 onRefresh={handleRefresh}
                 onShowDaily={() => setDailyModalVisible(true)}
@@ -343,7 +363,9 @@ export default function ManageFees() {
                       if (isNavigating.current) return;
                       isNavigating.current = true;
                       router.push("/academic-calendar");
-                      setTimeout(() => { isNavigating.current = false; }, 500);
+                      setTimeout(() => {
+                        isNavigating.current = false;
+                      }, 500);
                     }}
                   >
                     <Text style={styles.warningLink}>Configure Now</Text>
@@ -390,7 +412,7 @@ export default function ManageFees() {
                           backgroundColor: VIBE.primary,
                           borderColor: VIBE.primary,
                         },
-                        Platform.OS === 'web' && { cursor: 'pointer' } as any
+                        Platform.OS === "web" && ({ cursor: "pointer" } as any),
                       ]}
                       activeOpacity={0.7}
                       onPress={() => setStatusFilter(f as any)}
@@ -450,7 +472,7 @@ export default function ManageFees() {
         {activeMode !== "payment" &&
           selectedStudentUids.size > 0 &&
           canEdit && (
-            <Animatable.View animation="bounceIn" style={styles.fabWrap}>
+            <View style={styles.fabWrap}>
               <TouchableOpacity
                 style={styles.mainFab}
                 activeOpacity={0.8}
@@ -471,8 +493,7 @@ export default function ManageFees() {
                   end={{ x: 1, y: 1 }}
                 >
                   <Text style={styles.fabText}>
-                    APPLY{" "}
-                    {activeMode === "billing" ? "BILLS" : "DISCOUNTS"} (
+                    APPLY {activeMode === "billing" ? "BILLS" : "DISCOUNTS"} (
                     {selectedStudentUids.size})
                   </Text>
                   <SVGIcon
@@ -486,7 +507,7 @@ export default function ManageFees() {
                   />
                 </LinearGradient>
               </TouchableOpacity>
-            </Animatable.View>
+            </View>
           )}
       </View>
 

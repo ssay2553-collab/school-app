@@ -71,8 +71,8 @@ export default function StudentFeeHistory() {
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: "center" }}>
-            <Text style={styles.headerTitle}>Financial Statement</Text>
-            <Text style={styles.headerSub}>School Fees</Text>
+            <Text style={styles.headerTitle}>School Fees</Text>
+            <Text style={styles.headerSub}>Statement & History</Text>
           </View>
         </View>
         <View style={styles.filterRow}>

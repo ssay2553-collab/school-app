@@ -6,8 +6,8 @@ import {
   useSegments,
 } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
-import { Image, Platform, StyleSheet, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Image, Platform, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -195,21 +195,61 @@ function MainLayout() {
   );
 }
 
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[System Error Boundary Caught]:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Something went wrong ⚠️</Text>
+          <Text style={styles.errorSubtitle}>
+            {this.state.error?.message || "An unexpected system error occurred."}
+          </Text>
+          <TouchableOpacity
+            style={styles.retryBtn}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={styles.retryBtnText}>Reload App 🔄</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function Layout() {
   return (
-    <SafeAreaProvider>
-      <GestureHandlerRootView style={styles.root}>
-        <AuthProvider>
-          <AcademicProvider>
-            <ThemeProvider>
-              <ToastProvider>
-                <MainLayout />
-              </ToastProvider>
-            </ThemeProvider>
-          </AcademicProvider>
-        </AuthProvider>
-      </GestureHandlerRootView>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={styles.root}>
+          <AuthProvider>
+            <AcademicProvider>
+              <ThemeProvider>
+                <ToastProvider>
+                  <MainLayout />
+                </ToastProvider>
+              </ThemeProvider>
+            </AcademicProvider>
+          </AuthProvider>
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -227,5 +267,35 @@ const styles = StyleSheet.create({
   splashImage: {
     width: "70%",
     height: "70%",
+  },
+  errorContainer: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1E293B",
+    marginBottom: 8,
+  },
+  errorSubtitle: {
+    fontSize: 14,
+    color: "#64748B",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  retryBtn: {
+    backgroundColor: "#3B82F6",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: 14,
   },
 });

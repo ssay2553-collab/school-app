@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Notifications from "expo-notifications";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import React, { useCallback, useEffect, useState } from "react";
@@ -8,15 +7,20 @@ import {
   Alert,
   Modal,
   Platform,
+  SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  SafeAreaView,
-  StatusBar,
 } from "react-native";
+
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -337,13 +341,13 @@ const PersonalTimetable = () => {
                     {tempTime.getHours().toString().padStart(2, "0")}:{tempTime.getMinutes().toString().padStart(2, "0")}
                   </Text>
                 </TouchableOpacity>
-                {showTimePicker && (
+                {showTimePicker && DateTimePicker && (
                   <DateTimePicker
                     value={tempTime}
                     mode="time"
                     is24Hour={true}
                     display={Platform.OS === "ios" ? "spinner" : "default"}
-                    onChange={(e, d) => {
+                    onChange={(e: any, d?: Date) => {
                       setShowTimePicker(false);
                       if (d) setTempTime(d);
                     }}

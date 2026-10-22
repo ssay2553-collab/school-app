@@ -627,7 +627,7 @@ export default function NewsCenter() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listPadding}
             renderItem={({ item, index }) => (
-              <Animatable.View animation="fadeInUp" duration={500} delay={index * 50} style={styles.newsItemWrapper}>
+              <Animatable.View animation="fadeInUp" duration={500} delay={Math.min(index, 8) * 50} style={styles.newsItemWrapper}>
                 <NewsCard item={item} />
                 {canPostNews && (
                   <View style={styles.adminActions}>

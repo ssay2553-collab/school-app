@@ -212,7 +212,7 @@ export default function AttendanceDetails() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[primary]} />
           }
           renderItem={({ item, index }) => (
-            <Animatable.View animation="fadeInUp" duration={300} delay={index * 30} style={styles.studentCard}>
+            <Animatable.View animation="fadeInUp" duration={300} delay={Math.min(index, 8) * 30} style={styles.studentCard}>
               <TouchableOpacity
                 style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
                 onPress={() => {

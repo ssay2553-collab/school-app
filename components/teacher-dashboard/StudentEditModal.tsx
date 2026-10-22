@@ -1,4 +1,3 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import moment from "moment";
 import React, { useEffect, useState } from "react";
 import {
@@ -13,6 +12,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 import { COLORS, SHADOWS, SIZES } from "../../constants/theme";
 import SVGIcon from "../SVGIcon";
 import { StudentData } from "./StudentCard";
@@ -154,7 +158,7 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                         {dob ? moment(dob).format("MMM DD, YYYY") : "Select Date"}
                       </Text>
                     </TouchableOpacity>
-                    {showDatePicker && (
+                    {showDatePicker && DateTimePicker && (
                       <DateTimePicker
                         value={dob || new Date()}
                         mode="date"

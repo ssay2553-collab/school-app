@@ -60,7 +60,7 @@ export default function UpgradeScreen() {
               <Text style={styles.message}>A newer version of the app is ready to install with new features!</Text>
               <Animatable.View
                 animation="bounce"
-                iterationCount="infinite"
+                iterationCount={3}
                 duration={2000}
                 style={{ width: "100%", alignItems: "center" }}
               >

@@ -237,7 +237,6 @@ allow create: if
     isSignedIn() &&
     (uid() == userId || isSuperAdmin() || hasPermission('manage-users', 'full')) &&
     (
-
       // ==========================================================
       // TEACHER / STUDENT / STAFF
       // ==========================================================

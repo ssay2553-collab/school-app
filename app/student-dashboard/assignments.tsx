@@ -142,7 +142,8 @@ export default function Assignments() {
         pathname: "/student-dashboard/submit-note",
         params: {
           assignmentCode: item.code,
-          assignmentTitle: item.title
+          assignmentTitle: item.title,
+          assignmentId: item.id
         }
       });
       setTimeout(() => { isNavigating.current = false; }, 500);

@@ -1,53 +1,73 @@
 import { Picker } from "@react-native-picker/picker";
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useRouter } from "expo-router";
+import moment from "moment";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  Platform,
-  Modal,
-  FlatList,
-  BackHandler,
-  Alert
+    ActivityIndicator,
+    BackHandler,
+    FlatList,
+    Modal,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
-import { COLORS, SHADOWS } from "../../constants/theme";
+import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG, useSchoolConfig } from "../../constants/Config";
-import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import {
+    CAMBRIDGE_SUBJECTS,
+    COMMON_ACTIVITIES,
+    GES_SUBJECTS,
+    MONTESSORI_SUBJECTS,
+} from "../../constants/Curriculum";
+import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { useRouter } from "expo-router";
-import { GES_SUBJECTS, CAMBRIDGE_SUBJECTS, MONTESSORI_SUBJECTS, COMMON_ACTIVITIES } from "../../constants/Curriculum";
-import SVGIcon from "../../components/SVGIcon";
-import { useManageTimetable, Period } from "../../hooks/teacher-dashboard/useManageTimetable";
+import {
+    useManageTimetable
+} from "../../hooks/teacher-dashboard/useManageTimetable";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
+import { dedupeSubjects } from "../../lib/classHelpers";
 import { generateTimetablePDF } from "../../utils/pdfGenerator";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import moment from "moment";
-import { useRef } from "react";
+
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
 const SUBJECT_COLORS: Record<string, string> = {
-  "Mathematics": "#E0F2FE", "English": "#FEE2E2", "Science": "#DCFCE7",
-  "Social Studies": "#FEF9C3", "Computing": "#F3E8FF", "RME": "#FFEDD5",
-  "Creative Arts": "#FAE8FF", "French": "#F1F5F9", "History": "#FEF3C7",
-  "Career Technology": "#E0E7FF", "Break": "#F1F5F9", "Lunch": "#F1F5F9",
-  "Physical Education": "#ECFDF5", "ICT": "#E0F2FE", "Biology": "#DCFCE7",
-  "Chemistry": "#FEF9C3", "Physics": "#F3E8FF", "Economics": "#FFEDD5",
-  "Business Studies": "#E0E7FF", "Geography": "#ECFDF5", "DEFAULT": "#F8FAFC"
+  Mathematics: "#E0F2FE",
+  English: "#FEE2E2",
+  Science: "#DCFCE7",
+  "Social Studies": "#FEF9C3",
+  Computing: "#F3E8FF",
+  RME: "#FFEDD5",
+  "Creative Arts": "#FAE8FF",
+  French: "#F1F5F9",
+  History: "#FEF3C7",
+  "Career Technology": "#E0E7FF",
+  Break: "#F1F5F9",
+  Lunch: "#F1F5F9",
+  "Physical Education": "#ECFDF5",
+  ICT: "#E0F2FE",
+  Biology: "#DCFCE7",
+  Chemistry: "#FEF9C3",
+  Physics: "#F3E8FF",
+  Economics: "#FFEDD5",
+  "Business Studies": "#E0E7FF",
+  Geography: "#ECFDF5",
+  DEFAULT: "#F8FAFC",
 };
 
-const getSubjectColor = (subject: string) => SUBJECT_COLORS[subject] || SUBJECT_COLORS.DEFAULT;
+const getSubjectColor = (subject: string) =>
+  SUBJECT_COLORS[subject] || SUBJECT_COLORS.DEFAULT;
 
 const COLUMN_WIDTH = 150;
 const DAY_COLUMN_WIDTH = 100;
@@ -79,8 +99,14 @@ export default function CreateLessonTimetable() {
   const acadConfig = useAcademicConfig();
   const schoolConfig = useSchoolConfig();
 
-  const [pickerModal, setPickerModal] = useState<{ day: string; col: number } | null>(null);
-  const [timeModal, setTimeModal] = useState<{ col: number; type: "start" | "end" } | null>(null);
+  const [pickerModal, setPickerModal] = useState<{
+    day: string;
+    col: number;
+  } | null>(null);
+  const [timeModal, setTimeModal] = useState<{
+    col: number;
+    type: "start" | "end";
+  } | null>(null);
   const [tempTime, setTempTime] = useState(new Date());
   const [exportingPDF, setExportingPDF] = useState(false);
   const [subjectSearchText, setSubjectSearchText] = useState("");
@@ -96,10 +122,16 @@ export default function CreateLessonTimetable() {
     }
     setExportingPDF(true);
     try {
-      const currentClassObj = classes.find(c => c.id === selectedClass);
+      const currentClassObj = classes.find((c) => c.id === selectedClass);
       const className = currentClassObj?.name || "Class";
 
-      const schoolName = acadConfig.schoolName || schoolConfig.fullName || schoolConfig.name || SCHOOL_CONFIG.fullName || SCHOOL_CONFIG.name || "School";
+      const schoolName =
+        acadConfig.schoolName ||
+        schoolConfig.fullName ||
+        schoolConfig.name ||
+        SCHOOL_CONFIG.fullName ||
+        SCHOOL_CONFIG.name ||
+        "School";
       const schoolHotline = schoolConfig.hotline || "";
       const schoolEmail = schoolConfig.email || "";
       const schoolAddress = schoolConfig.address || "";
@@ -118,13 +150,19 @@ export default function CreateLessonTimetable() {
         schoolEmail,
         schoolAddress,
         schoolMotto,
-        schoolLogo
+        schoolLogo,
       );
 
-      showToast({ message: "Timetable PDF generated successfully!", type: "success" });
+      showToast({
+        message: "Timetable PDF generated successfully!",
+        type: "success",
+      });
     } catch (error: any) {
       console.error("PDF export error:", error);
-      showToast({ message: error.message || "Failed to generate PDF.", type: "error" });
+      showToast({
+        message: error.message || "Failed to generate PDF.",
+        type: "error",
+      });
     } finally {
       setExportingPDF(false);
     }
@@ -138,17 +176,24 @@ export default function CreateLessonTimetable() {
     const teacherProfileSubjects = Array.from(
       new Set([
         ...(Array.isArray(appUser?.subjects) ? appUser.subjects : []),
-        ...(Array.isArray((appUser?.profile as any)?.subjects) ? (appUser?.profile as any).subjects : []),
-      ])
+        ...(Array.isArray((appUser?.profile as any)?.subjects)
+          ? (appUser?.profile as any).subjects
+          : []),
+      ]),
     ).filter((s): s is string => typeof s === "string" && Boolean(s.trim()));
 
-    return [...new Set([...list, ...COMMON_ACTIVITIES, ...teacherProfileSubjects, ...customSubjects])].filter(Boolean).sort();
+    return dedupeSubjects([
+      ...list,
+      ...COMMON_ACTIVITIES,
+      ...teacherProfileSubjects,
+      ...customSubjects,
+    ]).sort();
   }, [curriculum, customSubjects, appUser]);
 
   const filteredSubjects = useMemo(() => {
     if (!subjectSearchText.trim()) return availableSubjects;
     const query = subjectSearchText.toLowerCase();
-    return availableSubjects.filter(s => s.toLowerCase().includes(query));
+    return availableSubjects.filter((s) => s.toLowerCase().includes(query));
   }, [availableSubjects, subjectSearchText]);
 
   const handleAddNewSubject = (subjectName: string) => {
@@ -156,14 +201,17 @@ export default function CreateLessonTimetable() {
     if (!trimmed) return;
 
     if (!customSubjects.includes(trimmed)) {
-      setCustomSubjects(prev => [...prev, trimmed]);
+      setCustomSubjects((prev) => [...prev, trimmed]);
     }
 
     if (pickerModal) {
       updatePeriod(pickerModal.day, pickerModal.col, { subject: trimmed });
       setPickerModal(null);
       setSubjectSearchText("");
-      showToast({ message: `"${trimmed}" added as a custom subject!`, type: "success" });
+      showToast({
+        message: `"${trimmed}" added as a custom subject!`,
+        type: "success",
+      });
     }
   };
 
@@ -185,8 +233,11 @@ export default function CreateLessonTimetable() {
     const { day, col } = pickerModal;
     const currentSubject = timetableDays[day]?.[col]?.subject || "";
 
-    const isSearchNotInList = subjectSearchText.trim().length > 0 &&
-      !availableSubjects.some(s => s.toLowerCase() === subjectSearchText.trim().toLowerCase());
+    const isSearchNotInList =
+      subjectSearchText.trim().length > 0 &&
+      !availableSubjects.some(
+        (s) => s.toLowerCase() === subjectSearchText.trim().toLowerCase(),
+      );
 
     return (
       <Modal
@@ -203,12 +254,16 @@ export default function CreateLessonTimetable() {
             <View style={styles.modalHeader}>
               <View>
                 <Text style={styles.modalTitle}>Select Activity / Subject</Text>
-                <Text style={styles.modalSub}>{day} • Period {col + 1}</Text>
+                <Text style={styles.modalSub}>
+                  {day} • Period {col + 1}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => {
-                setPickerModal(null);
-                setSubjectSearchText("");
-              }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setPickerModal(null);
+                  setSubjectSearchText("");
+                }}
+              >
                 <SVGIcon name="close" size={24} color={neutralDark} />
               </TouchableOpacity>
             </View>
@@ -244,26 +299,54 @@ export default function CreateLessonTimetable() {
 
             <FlatList
               data={filteredSubjects}
-              keyExtractor={item => item}
+              keyExtractor={(item) => item}
               contentContainerStyle={{ padding: 10, paddingBottom: 30 }}
               ListEmptyComponent={
                 !isSearchNotInList ? (
                   <View style={{ padding: 20, alignItems: "center" }}>
-                    <Text style={{ color: "#94A3B8", fontWeight: "600" }}>No matching subjects found.</Text>
+                    <Text style={{ color: "#94A3B8", fontWeight: "600" }}>
+                      No matching subjects found.
+                    </Text>
                   </View>
                 ) : null
               }
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[styles.subjectItem, currentSubject === item && { backgroundColor: brandColor + "15", borderColor: brandColor }]}
+                  style={[
+                    styles.subjectItem,
+                    currentSubject === item && {
+                      backgroundColor: brandColor + "15",
+                      borderColor: brandColor,
+                    },
+                  ]}
                   onPress={() => {
                     updatePeriod(day, col, { subject: item });
                     setPickerModal(null);
                     setSubjectSearchText("");
                   }}
                 >
-                  <View style={[styles.colorDot, { backgroundColor: getSubjectColor(item) === "#F8FAFC" ? brandColor : getSubjectColor(item) }]} />
-                  <Text style={[styles.subjectItemText, currentSubject === item && { color: brandColor, fontWeight: "700" }]}>{item}</Text>
+                  <View
+                    style={[
+                      styles.colorDot,
+                      {
+                        backgroundColor:
+                          getSubjectColor(item) === "#F8FAFC"
+                            ? brandColor
+                            : getSubjectColor(item),
+                      },
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.subjectItemText,
+                      currentSubject === item && {
+                        color: brandColor,
+                        fontWeight: "700",
+                      },
+                    ]}
+                  >
+                    {item}
+                  </Text>
                 </TouchableOpacity>
               )}
             />
@@ -274,33 +357,46 @@ export default function CreateLessonTimetable() {
   };
 
   const handleTimeChange = (event: any, date?: Date) => {
-    if (Platform.OS === 'android') setTimeModal(null);
+    if (Platform.OS === "android") setTimeModal(null);
     if (date && timeModal) {
       const timeString = moment(date).format("hh:mm A");
-      updateColumnPeriod(timeModal.col, timeModal.type === "start" ? { startTime: timeString } : { endTime: timeString });
+      updateColumnPeriod(
+        timeModal.col,
+        timeModal.type === "start"
+          ? { startTime: timeString }
+          : { endTime: timeString },
+      );
     }
   };
 
-  const handleWebTimeChange = (col: number, type: "start" | "end", val: string) => {
+  const handleWebTimeChange = (
+    col: number,
+    type: "start" | "end",
+    val: string,
+  ) => {
     // val is in "HH:mm" 24h format from <input type="time">
     if (!val) return;
-    const [h, m] = val.split(':').map(Number);
+    const [h, m] = val.split(":").map(Number);
     const date = new Date();
     date.setHours(h, m, 0, 0);
     const timeString = moment(date).format("hh:mm A");
-    updateColumnPeriod(col, type === "start" ? { startTime: timeString } : { endTime: timeString });
+    updateColumnPeriod(
+      col,
+      type === "start" ? { startTime: timeString } : { endTime: timeString },
+    );
   };
 
   const openTimePicker = (col: number, type: "start" | "end") => {
     const currentPeriod = timetableDays["Monday"]?.[col];
-    const timeVal = type === "start" ? currentPeriod?.startTime : currentPeriod?.endTime;
+    const timeVal =
+      type === "start" ? currentPeriod?.startTime : currentPeriod?.endTime;
 
     let d = new Date();
     if (timeVal) {
-      const [time, modifier] = timeVal.split(' ');
-      let [hours, minutes] = time.split(':').map(Number);
-      if (modifier === 'PM' && hours < 12) hours += 12;
-      if (modifier === 'AM' && hours === 12) hours = 0;
+      const [time, modifier] = timeVal.split(" ");
+      let [hours, minutes] = time.split(":").map(Number);
+      if (modifier === "PM" && hours < 12) hours += 12;
+      if (modifier === "AM" && hours === 12) hours = 0;
       d.setHours(hours, minutes, 0, 0);
     }
     setTempTime(d);
@@ -311,7 +407,9 @@ export default function CreateLessonTimetable() {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={brandColor} />
-        <Text style={{ marginTop: 10, color: neutralDark }}>Fetching Classes...</Text>
+        <Text style={{ marginTop: 10, color: neutralDark }}>
+          Fetching Classes...
+        </Text>
       </View>
     );
   }
@@ -326,10 +424,18 @@ export default function CreateLessonTimetable() {
         <Text style={styles.headerTitle}>Manage Timetable</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
           <TouchableOpacity onPress={handleExportPDF} disabled={exportingPDF}>
-            {exportingPDF ? <ActivityIndicator size="small" color="#fff" /> : <SVGIcon name="document-text-outline" size={24} color="#fff" />}
+            {exportingPDF ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <SVGIcon name="document-text-outline" size={24} color="#fff" />
+            )}
           </TouchableOpacity>
           <TouchableOpacity onPress={saveTimetable} disabled={saving}>
-            {saving ? <ActivityIndicator size="small" color="#fff" /> : <SVGIcon name="save" size={24} color="#fff" />}
+            {saving ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <SVGIcon name="save" size={24} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -344,7 +450,9 @@ export default function CreateLessonTimetable() {
                 onValueChange={(val) => setSelectedClass(val)}
                 style={styles.picker}
               >
-                {classes.map(c => <Picker.Item key={c.id} label={c.name} value={c.id} />)}
+                {classes.map((c) => (
+                  <Picker.Item key={c.id} label={c.name} value={c.id} />
+                ))}
               </Picker>
             </View>
           </View>
@@ -356,7 +464,9 @@ export default function CreateLessonTimetable() {
                 onValueChange={(v) => setNumColumns(v)}
                 style={styles.picker}
               >
-                {[4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => <Picker.Item key={n} label={n.toString()} value={n} />)}
+                {[4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => (
+                  <Picker.Item key={n} label={n.toString()} value={n} />
+                ))}
               </Picker>
             </View>
           </View>
@@ -374,7 +484,16 @@ export default function CreateLessonTimetable() {
             <View>
               {/* Header Row */}
               <View style={styles.gridHeader}>
-                <View style={[styles.gridCell, { width: DAY_COLUMN_WIDTH, backgroundColor: "#F1F5F9", height: 110 }]}>
+                <View
+                  style={[
+                    styles.gridCell,
+                    {
+                      width: DAY_COLUMN_WIDTH,
+                      backgroundColor: "#F1F5F9",
+                      height: 110,
+                    },
+                  ]}
+                >
                   <Text style={styles.gridHeaderText}>DAY</Text>
                 </View>
                 {Array.from({ length: numColumns }).map((_, i) => {
@@ -384,31 +503,49 @@ export default function CreateLessonTimetable() {
                   const getWebTimeValue = (timeStr?: string) => {
                     if (!timeStr) return "";
                     try {
-                      const [time, modifier] = timeStr.split(' ');
-                      let [hours, minutes] = time.split(':').map(Number);
-                      if (modifier === 'PM' && hours < 12) hours += 12;
-                      if (modifier === 'AM' && hours === 12) hours = 0;
-                      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                    } catch (e) { return ""; }
+                      const [time, modifier] = timeStr.split(" ");
+                      let [hours, minutes] = time.split(":").map(Number);
+                      if (modifier === "PM" && hours < 12) hours += 12;
+                      if (modifier === "AM" && hours === 12) hours = 0;
+                      return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+                    } catch (e) {
+                      return "";
+                    }
                   };
 
                   return (
-                    <View key={i} style={[styles.gridCell, { width: COLUMN_WIDTH, backgroundColor: "#F1F5F9", height: 110 }]}>
+                    <View
+                      key={i}
+                      style={[
+                        styles.gridCell,
+                        {
+                          width: COLUMN_WIDTH,
+                          backgroundColor: "#F1F5F9",
+                          height: 110,
+                        },
+                      ]}
+                    >
                       <Text style={styles.gridHeaderText}>PERIOD {i + 1}</Text>
                       <View style={styles.timeControlRow}>
-                        {Platform.OS === 'web' ? (
-                          <View style={{ gap: 4, alignItems: 'center' }}>
+                        {Platform.OS === "web" ? (
+                          <View style={{ gap: 4, alignItems: "center" }}>
                             <input
                               type="time"
                               value={getWebTimeValue(firstDayPeriod?.startTime)}
-                              onChange={(e) => handleWebTimeChange(i, "start", e.target.value)}
+                              onChange={(e) =>
+                                handleWebTimeChange(i, "start", e.target.value)
+                              }
                               style={webTimeStyles}
                             />
-                            <Text style={{fontSize: 10, color: "#94A3B8"}}>-</Text>
+                            <Text style={{ fontSize: 10, color: "#94A3B8" }}>
+                              -
+                            </Text>
                             <input
                               type="time"
                               value={getWebTimeValue(firstDayPeriod?.endTime)}
-                              onChange={(e) => handleWebTimeChange(i, "end", e.target.value)}
+                              onChange={(e) =>
+                                handleWebTimeChange(i, "end", e.target.value)
+                              }
                               style={webTimeStyles}
                             />
                           </View>
@@ -418,14 +555,20 @@ export default function CreateLessonTimetable() {
                               style={styles.timeInputBtn}
                               onPress={() => openTimePicker(i, "start")}
                             >
-                              <Text style={styles.timeInputText}>{firstDayPeriod?.startTime || "Start"}</Text>
+                              <Text style={styles.timeInputText}>
+                                {firstDayPeriod?.startTime || "Start"}
+                              </Text>
                             </TouchableOpacity>
-                            <Text style={{fontSize: 10, color: "#94A3B8"}}>-</Text>
+                            <Text style={{ fontSize: 10, color: "#94A3B8" }}>
+                              -
+                            </Text>
                             <TouchableOpacity
                               style={styles.timeInputBtn}
                               onPress={() => openTimePicker(i, "end")}
                             >
-                              <Text style={styles.timeInputText}>{firstDayPeriod?.endTime || "End"}</Text>
+                              <Text style={styles.timeInputText}>
+                                {firstDayPeriod?.endTime || "End"}
+                              </Text>
                             </TouchableOpacity>
                           </>
                         )}
@@ -436,10 +579,17 @@ export default function CreateLessonTimetable() {
               </View>
 
               <ScrollView showsVerticalScrollIndicator={false}>
-                {DAYS.map(day => (
+                {DAYS.map((day) => (
                   <View key={day} style={styles.gridRow}>
-                    <View style={[styles.gridCell, { width: DAY_COLUMN_WIDTH, backgroundColor: "#fff" }]}>
-                      <Text style={styles.dayText}>{day.substring(0, 3).toUpperCase()}</Text>
+                    <View
+                      style={[
+                        styles.gridCell,
+                        { width: DAY_COLUMN_WIDTH, backgroundColor: "#fff" },
+                      ]}
+                    >
+                      <Text style={styles.dayText}>
+                        {day.substring(0, 3).toUpperCase()}
+                      </Text>
                     </View>
                     {Array.from({ length: numColumns }).map((_, i) => {
                       const period = timetableDays[day]?.[i] || { subject: "" };
@@ -447,10 +597,19 @@ export default function CreateLessonTimetable() {
                       return (
                         <TouchableOpacity
                           key={i}
-                          style={[styles.gridCell, { width: COLUMN_WIDTH, backgroundColor: bgColor }]}
+                          style={[
+                            styles.gridCell,
+                            { width: COLUMN_WIDTH, backgroundColor: bgColor },
+                          ]}
                           onPress={() => setPickerModal({ day, col: i })}
                         >
-                          <Text style={[styles.periodText, !period.subject && { color: "#94A3B8" }]} numberOfLines={2}>
+                          <Text
+                            style={[
+                              styles.periodText,
+                              !period.subject && { color: "#94A3B8" },
+                            ]}
+                            numberOfLines={2}
+                          >
                             {period.subject || "Select Activity"}
                           </Text>
                         </TouchableOpacity>
@@ -463,11 +622,18 @@ export default function CreateLessonTimetable() {
           </ScrollView>
 
           <View style={styles.legend}>
-            <Text style={styles.legendTitle}>Subject Grouping (based on {curriculum} curriculum)</Text>
+            <Text style={styles.legendTitle}>
+              Subject Grouping (based on {curriculum} curriculum)
+            </Text>
             <View style={styles.legendGrid}>
-              {availableSubjects.slice(0, 6).map(s => (
+              {availableSubjects.slice(0, 6).map((s) => (
                 <View key={s} style={styles.legendItem}>
-                  <View style={[styles.legendColor, { backgroundColor: getSubjectColor(s) }]} />
+                  <View
+                    style={[
+                      styles.legendColor,
+                      { backgroundColor: getSubjectColor(s) },
+                    ]}
+                  />
                   <Text style={styles.legendText}>{s}</Text>
                 </View>
               ))}
@@ -486,21 +652,28 @@ export default function CreateLessonTimetable() {
           <ActivityIndicator color="#fff" />
         ) : (
           <View style={styles.fabContent}>
-            <Text style={styles.saveFabText}>SAVE TIMETABLE & SET REMINDERS</Text>
+            <Text style={styles.saveFabText}>
+              SAVE TIMETABLE & SET REMINDERS
+            </Text>
             <SVGIcon name="checkmark-done" size={20} color="#fff" />
           </View>
         )}
       </TouchableOpacity>
 
-      {timeModal && (
-        Platform.OS === 'ios' ? (
+      {timeModal &&
+        DateTimePicker &&
+        (Platform.OS === "ios" ? (
           <Modal visible transparent animationType="fade">
             <View style={styles.modalOverlay}>
               <View style={styles.timePickerContainer}>
                 <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Set {timeModal.type === "start" ? "Start" : "End"} Time</Text>
+                  <Text style={styles.modalTitle}>
+                    Set {timeModal.type === "start" ? "Start" : "End"} Time
+                  </Text>
                   <TouchableOpacity onPress={() => setTimeModal(null)}>
-                    <Text style={{color: brandColor, fontWeight: '700'}}>Done</Text>
+                    <Text style={{ color: brandColor, fontWeight: "700" }}>
+                      Done
+                    </Text>
                   </TouchableOpacity>
                 </View>
                 <DateTimePicker
@@ -519,8 +692,7 @@ export default function CreateLessonTimetable() {
             display="default"
             onChange={handleTimeChange}
           />
-        )
-      )}
+        ))}
     </SafeAreaView>
   );
 }
@@ -538,22 +710,39 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: "900", color: "#fff" },
   backBtn: { padding: 5 },
-  controls: { padding: 15, backgroundColor: "#F8FAFC", borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
+  controls: {
+    padding: 15,
+    backgroundColor: "#F8FAFC",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
   controlRow: { flexDirection: "row", alignItems: "center" },
-  label: { fontSize: 10, fontWeight: "900", color: "#64748B", position: 'absolute', top: 12, left: 12, zIndex: 1 },
+  label: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#64748B",
+    position: "absolute",
+    top: 12,
+    left: 12,
+    zIndex: 1,
+  },
   pickerContainer: {
     backgroundColor: "#fff",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#CBD5E1",
     minHeight: 65,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingTop: 12,
-    position: 'relative'
+    position: "relative",
   },
   picker: { height: 45, width: "100%", marginLeft: -10 },
   gridHeader: { flexDirection: "row" },
-  gridRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
+  gridRow: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
   gridCell: {
     height: 80,
     padding: 10,
@@ -564,42 +753,69 @@ const styles = StyleSheet.create({
   },
   gridHeaderText: { fontSize: 11, fontWeight: "900", color: "#64748B" },
   dayText: { fontSize: 13, fontWeight: "900", color: "#1E293B" },
-  periodText: { fontSize: 12, fontWeight: "700", textAlign: "center", color: "#1E293B" },
+  periodText: {
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+    color: "#1E293B",
+  },
   timeControlRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 4,
-    marginTop: 8
+    marginTop: 8,
   },
   timeInputBtn: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingHorizontal: 6,
     paddingVertical: 4,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
     minWidth: 60,
-    alignItems: 'center'
+    alignItems: "center",
   },
   timeInputText: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#1E293B'
+    fontWeight: "700",
+    color: "#1E293B",
   },
   timePickerContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,
-    paddingBottom: 20
+    paddingBottom: 20,
   },
   legend: { padding: 15, backgroundColor: "#F1F5F9" },
-  legendTitle: { fontSize: 10, fontWeight: "900", color: "#64748B", marginBottom: 10, textTransform: "uppercase" },
+  legendTitle: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#64748B",
+    marginBottom: 10,
+    textTransform: "uppercase",
+  },
   legendGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
   legendItem: { flexDirection: "row", alignItems: "center", width: "45%" },
-  legendColor: { width: 12, height: 12, borderRadius: 3, marginRight: 6, borderWidth: 1, borderColor: "#E2E8F0" },
+  legendColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 3,
+    marginRight: 6,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
   legendText: { fontSize: 11, color: "#475569", fontWeight: "600" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 25, borderTopRightRadius: 25, height: "60%" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    height: "60%",
+  },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -683,13 +899,13 @@ const styles = StyleSheet.create({
 });
 
 const webTimeStyles = {
-  border: '1px solid #E2E8F0',
-  borderRadius: '4px',
-  padding: '2px 4px',
-  fontSize: '10px',
-  fontWeight: '700',
-  color: '#1E293B',
-  fontFamily: 'inherit',
-  width: '80px',
-  textAlign: 'center' as const
+  border: "1px solid #E2E8F0",
+  borderRadius: "4px",
+  padding: "2px 4px",
+  fontSize: "10px",
+  fontWeight: "700",
+  color: "#1E293B",
+  fontFamily: "inherit",
+  width: "80px",
+  textAlign: "center" as const,
 };

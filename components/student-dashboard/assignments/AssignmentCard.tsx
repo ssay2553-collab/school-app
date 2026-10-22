@@ -28,7 +28,7 @@ const AssignmentCard = ({ item, index, onStart }: AssignmentCardProps) => {
   };
 
   return (
-    <Animatable.View animation="fadeInUp" delay={index * 100} style={styles.card}>
+    <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 100} style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.title}>{item.title}</Text>
         <View style={[

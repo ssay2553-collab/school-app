@@ -410,7 +410,7 @@ export default function StudentAcademicReport() {
                 });
               }}
             >
-              <Text style={styles.payNowBtnText}>View Financial Statement</Text>
+              <Text style={styles.payNowBtnText}>View School Fees</Text>
             </TouchableOpacity>
           </View>
         )}

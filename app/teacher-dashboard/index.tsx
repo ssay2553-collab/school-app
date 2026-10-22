@@ -388,7 +388,7 @@ export default function TeacherDashboard() {
           {isAlertVisible && (
             <Animatable.View
               animation="pulse"
-              iterationCount="infinite"
+              iterationCount={3}
               style={styles.attendanceAlertBanner}
             >
               <View style={styles.alertLeft}>

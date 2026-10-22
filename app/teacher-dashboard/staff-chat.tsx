@@ -43,7 +43,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
 
 const { width } = Dimensions.get("window");
 const isLargeScreen = width > 768;
@@ -85,6 +85,12 @@ const generateChatId = (uid1: string, uid2: string) =>
 export default function StaffChat() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (appUser?.uid) {
+      markNotificationsAsRead(appUser.uid, "chat");
+    }
+  }, [appUser?.uid]);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [stage, setStage] = useState<"list" | "chat">("list");
@@ -639,7 +645,7 @@ export default function StaffChat() {
         columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
         contentContainerStyle={styles.listContent}
         renderItem={({ item, index }) => (
-          <Animatable.View animation="fadeInUp" delay={index * 50}>
+          <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50}>
             <TouchableOpacity
               style={[styles.staffCard, isLargeScreen && { flex: 1, marginBottom: 0 }]}
               onPress={() => handleSelectStaff(item)}

@@ -41,7 +41,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
 
 const QUICK_EMOJIS = [
   "😀",
@@ -90,6 +90,12 @@ export default function StaffChat() {
   const [loading, setLoading] = useState(true);
   const isMounted = useRef(true);
   const isNavigating = useRef(false);
+
+  useEffect(() => {
+    if (appUser?.uid) {
+      markNotificationsAsRead(appUser.uid, "chat");
+    }
+  }, [appUser?.uid]);
 
   useEffect(() => {
     isMounted.current = true;
@@ -585,7 +591,7 @@ export default function StaffChat() {
         keyExtractor={(item) => item.uid}
         contentContainerStyle={styles.listContent}
         renderItem={({ item, index }) => (
-          <Animatable.View animation="fadeInUp" delay={index * 50}>
+          <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50}>
             <TouchableOpacity
               style={styles.staffCard}
               onPress={() => handleSelectStaff(item)}

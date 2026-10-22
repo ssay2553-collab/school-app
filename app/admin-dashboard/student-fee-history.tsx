@@ -1,4 +1,3 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
 import moment from "moment";
 import {
     ActivityIndicator,
@@ -15,6 +14,11 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+
+const DateTimePicker =
+  Platform.OS !== "web"
+    ? require("@react-native-community/datetimepicker").default
+    : null;
 import LedgerFilters from "../../components/admin-dashboard/fee-history/LedgerFilters";
 import LedgerReceipt from "../../components/admin-dashboard/fee-history/LedgerReceipt";
 import SVGIcon from "../../components/SVGIcon";
@@ -480,12 +484,12 @@ export default function StudentFeeHistoryScreen() {
                       </View>
                     </TouchableOpacity>
 
-                    {showDatePicker && (
+                    {showDatePicker && DateTimePicker && (
                       <DateTimePicker
                         value={paymentDate}
                         mode="date"
                         display="default"
-                        onChange={(event, selectedDate) => {
+                        onChange={(event: any, selectedDate?: Date) => {
                           setShowDatePicker(Platform.OS === "ios");
                           if (selectedDate) {
                             setPaymentDate(selectedDate);

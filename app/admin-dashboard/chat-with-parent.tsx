@@ -41,7 +41,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
-import { sendNotification } from "../../src/services/notificationService";
+import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
 
 interface ChatMessage {
   id: string;
@@ -85,6 +85,12 @@ export default function ChatWithParent() {
   const [uploading, setUploading] = useState(false);
   const isMounted = useRef(true);
   const isNavigating = useRef(false);
+
+  useEffect(() => {
+    if (appUser?.uid) {
+      markNotificationsAsRead(appUser.uid, "chat");
+    }
+  }, [appUser?.uid]);
 
   useEffect(() => {
     isMounted.current = true;

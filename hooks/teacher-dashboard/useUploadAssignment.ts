@@ -9,7 +9,7 @@ import {
     query,
     serverTimestamp,
     where,
-    writeBatch
+    writeBatch,
 } from "firebase/firestore";
 import {
     deleteObject,
@@ -24,7 +24,11 @@ import { SentAssignment } from "./useSentAssignments";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
-import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
+import {
+    dedupeSubjects,
+    getTeacherClasses,
+    sortClasses,
+} from "../../lib/classHelpers";
 import { sendNotification } from "../../src/services/notificationService";
 
 /* -------------------------------------------------------------------------- */
@@ -35,7 +39,7 @@ import {
     AssignmentType,
     PreschoolQuestionType,
     PublicQuestion,
-    Question
+    Question,
 } from "../../types/assignments";
 
 export type { AssignmentType, Question };
@@ -386,12 +390,10 @@ export const useUploadAssignment = () => {
           // Fetch ALL subjects for managers/admins
           const subQ = query(collection(db, "subjects"));
           const subSnap = await getDocs(subQ);
-          subjectList = Array.from(
-            new Set([
-              ...subSnap.docs.map((d) => d.id),
-              ...(appUser.subjects || []),
-            ]),
-          );
+          subjectList = dedupeSubjects([
+            ...subSnap.docs.map((d) => d.id),
+            ...(appUser.subjects || []),
+          ]);
         } else {
           // Fetch assigned classes for teachers
           if (teacherClassIds.length > 0) {
@@ -412,7 +414,7 @@ export const useUploadAssignment = () => {
             }
             sortedClasses = sortClasses(results);
           }
-          subjectList = appUser.subjects || [];
+          subjectList = dedupeSubjects(appUser.subjects || []);
         }
 
         if (!mounted) return;
@@ -698,13 +700,27 @@ export const useUploadAssignment = () => {
     }
 
     if (questions.length === 0) {
-      return "Please add at least one question.";
+      return "Please add at least one question or essay prompt.";
+    }
+
+    if (type === "rich-text") {
+      const hasPromptText = questions.some(
+        (q) => q.text && q.text.trim().length > 0,
+      );
+      if (!hasPromptText && !description.trim()) {
+        return "Please enter an essay prompt or instructions for the essay assignment.";
+      }
     }
 
     for (let i = 0; i < questions.length; i++) {
       const error = getQuestionValidationError(questions[i], type);
       if (error) {
-        const prefix = type === "preschool" ? "Activity" : "Question";
+        const prefix =
+          type === "preschool"
+            ? "Activity"
+            : type === "rich-text"
+              ? "Essay Prompt"
+              : "Question";
         return `${prefix} ${i + 1}: ${error}`;
       }
     }

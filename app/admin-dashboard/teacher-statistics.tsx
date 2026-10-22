@@ -348,7 +348,7 @@ export default function TeacherStatistics() {
   };
 
   const renderTeacherItem = ({ item, index }: { item: TeacherStats, index: number }) => (
-    <Animatable.View animation="fadeInUp" delay={index * 100} style={styles.teacherCard}>
+    <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 100} style={styles.teacherCard}>
       <View style={styles.cardHeader}>
         <View style={styles.teacherInfo}>
           {item.profileImage ? (

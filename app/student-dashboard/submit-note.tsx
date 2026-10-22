@@ -36,6 +36,8 @@ export default function SubmitNote() {
   const { prefillNoteId, prefillTitle, prefillContent, assignmentCode: passedCode } = useLocalSearchParams();
 
   const [assignmentCode, setAssignmentCode] = useState((passedCode as string) || "");
+  const [loadedAssignment, setLoadedAssignment] = useState<any>(null);
+  const [fetchingAssignment, setFetchingAssignment] = useState(false);
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -51,6 +53,48 @@ export default function SubmitNote() {
       if (redirectTimer.current) clearTimeout(redirectTimer.current);
     };
   }, []);
+
+  // Fetch assignment prompt/details when assignmentCode is provided or typed
+  useEffect(() => {
+    const cleanCode = assignmentCode.trim().toUpperCase();
+    if (!cleanCode || cleanCode.length < 3) {
+      setLoadedAssignment(null);
+      return;
+    }
+
+    let isSubscribed = true;
+    setFetchingAssignment(true);
+
+    const fetchAssignmentDetails = async () => {
+      try {
+        const q = query(
+          collection(db, "assignments"),
+          where("code", "==", cleanCode)
+        );
+        const snap = await getDocs(q);
+        if (isSubscribed && isMounted.current) {
+          if (!snap.empty) {
+            const docData = snap.docs[0].data();
+            setLoadedAssignment({ id: snap.docs[0].id, ...docData });
+          } else {
+            setLoadedAssignment(null);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching assignment details:", err);
+      } finally {
+        if (isSubscribed && isMounted.current) {
+          setFetchingAssignment(false);
+        }
+      }
+    };
+
+    fetchAssignmentDetails();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, [assignmentCode]);
 
   const primary = SCHOOL_CONFIG.primaryColor;
 
@@ -188,6 +232,67 @@ export default function SubmitNote() {
             autoCapitalize="characters"
           />
 
+          {fetchingAssignment ? (
+            <View style={styles.promptLoadingBox}>
+              <ActivityIndicator size="small" color={primary} />
+              <Text style={styles.promptLoadingText}>Loading assignment prompt...</Text>
+            </View>
+          ) : loadedAssignment ? (
+            <View style={styles.promptCard}>
+              <View style={styles.promptCardHeader}>
+                <SVGIcon name="document-text-outline" size={22} color={primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.promptTitle}>{loadedAssignment.title}</Text>
+                  <Text style={styles.promptSubject}>
+                    {loadedAssignment.subjectId || "General Subject"}
+                  </Text>
+                </View>
+              </View>
+
+              {(loadedAssignment.questions?.[0]?.text || loadedAssignment.description) ? (
+                <View style={styles.promptContentBox}>
+                  <Text style={styles.promptLabel}>Essay Prompt / Instructions:</Text>
+                  <Text style={styles.promptText}>
+                    {loadedAssignment.questions?.[0]?.text || loadedAssignment.description}
+                  </Text>
+                </View>
+              ) : null}
+
+              {loadedAssignment.description && loadedAssignment.questions?.[0]?.text ? (
+                <View style={[styles.promptContentBox, { marginTop: 8 }]}>
+                  <Text style={styles.promptLabel}>Additional Details:</Text>
+                  <Text style={styles.promptText}>{loadedAssignment.description}</Text>
+                </View>
+              ) : null}
+
+              {loadedAssignment.fileUrl ? (
+                <TouchableOpacity
+                  style={styles.attachmentBtn}
+                  onPress={() => {
+                    if (Platform.OS === 'web') {
+                      window.open(loadedAssignment.fileUrl, '_blank');
+                    } else {
+                      router.push({
+                        pathname: '/shared/web-view',
+                        params: { url: loadedAssignment.fileUrl, title: loadedAssignment.fileName || 'Attachment' },
+                      });
+                    }
+                  }}
+                >
+                  <SVGIcon name="attach" size={18} color={primary} />
+                  <Text style={[styles.attachmentBtnText, { color: primary }]}>
+                    Attachment: {loadedAssignment.fileName || "View Document"}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : assignmentCode.trim().length >= 4 ? (
+            <View style={styles.promptErrorBox}>
+              <SVGIcon name="alert-circle-outline" size={18} color={COLORS.error || "#EF4444"} />
+              <Text style={styles.promptErrorText}>No matching assignment found for code "{assignmentCode.trim().toUpperCase()}".</Text>
+            </View>
+          ) : null}
+
           <Text style={styles.label}>Selected Note</Text>
 
           {prefillNoteId ? (
@@ -248,7 +353,7 @@ export default function SubmitNote() {
           >
             <Animatable.View
               animation="rotate"
-              iterationCount="infinite"
+              iterationCount={3}
               duration={4000}
               easing="linear"
               style={styles.successRing}
@@ -466,4 +571,94 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium,
   },
   submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  promptLoadingBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  promptLoadingText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  promptCard: {
+    backgroundColor: '#EEF2FF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  promptCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  promptTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  promptSubject: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6366F1',
+  },
+  promptContentBox: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  promptLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#6366F1',
+    textTransform: 'uppercase',
+    marginBottom: 4,
+  },
+  promptText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+    lineHeight: 20,
+  },
+  attachmentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+  },
+  attachmentBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  promptErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#FEE2E2',
+  },
+  promptErrorText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontWeight: '600',
+    flex: 1,
+  },
 });

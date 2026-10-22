@@ -15,17 +15,21 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import * as Animatable from "react-native-animatable";
+
 import { SafeAreaView } from "react-native-safe-area-context";
-import SVGIcon from "../../components/SVGIcon";
-import { COLORS, SHADOWS } from "../../constants/theme";
-import { useToast } from "../../contexts/ToastContext";
-import { useFeedingFeeLogic, DailyRecord, TabType } from "../../hooks/shared/useFeedingFeeLogic";
 import { VIBE } from "../../components/feeding-fees/FeedingFeeConstants";
 import { FeedingFeeStats } from "../../components/feeding-fees/FeedingFeeStats";
 import { StudentRow } from "../../components/feeding-fees/StudentRow";
 import { AdvancePaymentModal } from "../../components/shared/AdvancePaymentModal";
+import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { COLORS, SHADOWS } from "../../constants/theme";
+import { useToast } from "../../contexts/ToastContext";
+import {
+    DailyRecord,
+    TabType,
+    useFeedingFeeLogic,
+} from "../../hooks/shared/useFeedingFeeLogic";
 
 // Guarded import for native-only library
 const DateTimePicker =
@@ -84,7 +88,9 @@ export default function FeedingFees() {
     handleAdvancePayment,
   } = useFeedingFeeLogic();
 
-  const [paymentModalStudent, setPaymentModalStudent] = useState<any | null>(null);
+  const [paymentModalStudent, setPaymentModalStudent] = useState<any | null>(
+    null,
+  );
 
   const handleBack = () => {
     router.replace("/shared/daily-financials");
@@ -93,7 +99,8 @@ export default function FeedingFees() {
   useEffect(() => {
     if (appUser && !canView) {
       showToast({
-        message: "Access Denied: You do not have permission to view Feeding Fees.",
+        message:
+          "Access Denied: You do not have permission to view Feeding Fees.",
         type: "error",
       });
       handleBack();
@@ -109,14 +116,15 @@ export default function FeedingFees() {
   const renderRecordItem = useCallback(({ item }: { item: DailyRecord }) => {
     const isPaid = item.feedingPaid === true;
     return (
-      <Animatable.View animation="fadeInUp" duration={300}>
+      <View>
         <View style={styles.recordCard}>
           <View
             style={[
               styles.recordStatus,
               {
-                backgroundColor:
-                  isPaid ? VIBE.success + "20" : VIBE.danger + "20",
+                backgroundColor: isPaid
+                  ? VIBE.success + "20"
+                  : VIBE.danger + "20",
               },
             ]}
           />
@@ -127,11 +135,32 @@ export default function FeedingFees() {
             <Text style={styles.recordClass}>{item.className}</Text>
             <View style={styles.recordDetails}>
               <View style={styles.recordFeeItem}>
-                <SVGIcon name="restaurant" size={14} color={isPaid ? VIBE.success : VIBE.danger} />
-                <Text style={styles.recordFeeText}>₵{item.feedingPaidAmount ?? item.feedingFee}</Text>
+                <SVGIcon
+                  name="restaurant"
+                  size={14}
+                  color={isPaid ? VIBE.success : VIBE.danger}
+                />
+                <Text style={styles.recordFeeText}>
+                  ₵{item.feedingPaidAmount ?? item.feedingFee}
+                </Text>
               </View>
-              <View style={[styles.statusBadge, { backgroundColor: isPaid ? VIBE.success + "15" : VIBE.danger + "15" }]}>
-                <Text style={{ fontSize: 10, fontWeight: "800", color: isPaid ? VIBE.success : VIBE.danger }}>
+              <View
+                style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: isPaid
+                      ? VIBE.success + "15"
+                      : VIBE.danger + "15",
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "800",
+                    color: isPaid ? VIBE.success : VIBE.danger,
+                  }}
+                >
                   {isPaid ? "PAID" : "UNPAID"}
                 </Text>
               </View>
@@ -147,7 +176,7 @@ export default function FeedingFees() {
             <Text style={styles.recordRecordedBy}>{item.recordedBy}</Text>
           </View>
         </View>
-      </Animatable.View>
+      </View>
     );
   }, []);
 
@@ -185,7 +214,9 @@ export default function FeedingFees() {
           </TouchableOpacity>
           <View style={styles.headerTitle}>
             <Text style={styles.headerTitleText}>Feeding Fees</Text>
-            <Text style={styles.headerSubtitle}>Record daily meal payments</Text>
+            <Text style={styles.headerSubtitle}>
+              Record daily meal payments
+            </Text>
           </View>
         </View>
 
@@ -212,7 +243,11 @@ export default function FeedingFees() {
               onPress={() => changeDate(1)}
               style={styles.dateArrow}
             >
-              <SVGIcon name="chevron-forward" size={20} color={COLORS.primary} />
+              <SVGIcon
+                name="chevron-forward"
+                size={20}
+                color={COLORS.primary}
+              />
             </TouchableOpacity>
           </View>
         </View>
@@ -284,7 +319,10 @@ export default function FeedingFees() {
               }
             >
               {/* Statistics */}
-              <FeedingFeeStats totalFeeding={stats.totalFeeding} recordsCount={stats.recordsCount} />
+              <FeedingFeeStats
+                totalFeeding={stats.totalFeeding}
+                recordsCount={stats.recordsCount}
+              />
 
               {/* Filters */}
               <View style={styles.filterSection}>
@@ -331,21 +369,22 @@ export default function FeedingFees() {
                               styles.classChipTextActive,
                           ]}
                         >
-                          {isSuperAdmin ? "All Classes" : "All Assigned Classes"}
+                          {isSuperAdmin
+                            ? "All Classes"
+                            : "All Assigned Classes"}
                         </Text>
                       </TouchableOpacity>
                     )}
                     {classes
-                      .filter((c) =>
-                        isSuperAdmin || teacherClasses.includes(c.id)
+                      .filter(
+                        (c) => isSuperAdmin || teacherClasses.includes(c.id),
                       )
                       .map((c) => (
                         <TouchableOpacity
                           key={c.id}
                           style={[
                             styles.classChip,
-                            selectedClassId === c.id &&
-                              styles.classChipActive,
+                            selectedClassId === c.id && styles.classChipActive,
                           ]}
                           onPress={() => setSelectedClassId(c.id)}
                         >
@@ -378,9 +417,7 @@ export default function FeedingFees() {
                 {/* Rate Management (Super Admin only) */}
                 {isSuperAdmin && (
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>
-                      Update Rate for Class
-                    </Text>
+                    <Text style={styles.inputLabel}>Update Rate for Class</Text>
                     <View style={styles.amountInputContainer}>
                       <SVGIcon name="cash" size={20} color={VIBE.info} />
                       <TextInput
@@ -392,10 +429,7 @@ export default function FeedingFees() {
                         placeholderTextColor={VIBE.muted}
                       />
                       <TouchableOpacity
-                        style={[
-                          styles.miniBtn,
-                          { backgroundColor: VIBE.info },
-                        ]}
+                        style={[styles.miniBtn, { backgroundColor: VIBE.info }]}
                         onPress={handleSaveClassRate}
                         disabled={saving}
                       >
@@ -403,7 +437,9 @@ export default function FeedingFees() {
                       </TouchableOpacity>
                     </View>
                     {selectedClassId === "all" && (
-                      <Text style={styles.rateHint}>Select a specific class to update its rate</Text>
+                      <Text style={styles.rateHint}>
+                        Select a specific class to update its rate
+                      </Text>
                     )}
                   </View>
                 )}
@@ -411,18 +447,24 @@ export default function FeedingFees() {
                 {/* Student List */}
                 <View style={styles.studentListHeader}>
                   <TouchableOpacity
-                    style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
                     onPress={() => handleSelectAll(filteredStudents)}
                   >
                     <SVGIcon
-                        name={
-                            filteredStudents.length > 0 &&
-                            filteredStudents.every((s) => selectedStudentUids.has(s.uid))
-                                ? "checkbox"
-                                : "square-outline"
-                        }
-                        size={20}
-                        color={COLORS.primary}
+                      name={
+                        filteredStudents.length > 0 &&
+                        filteredStudents.every((s) =>
+                          selectedStudentUids.has(s.uid),
+                        )
+                          ? "checkbox"
+                          : "square-outline"
+                      }
+                      size={20}
+                      color={COLORS.primary}
                     />
                     <Text style={styles.studentListTitle}>Students List</Text>
                   </TouchableOpacity>
@@ -438,12 +480,18 @@ export default function FeedingFees() {
                       item={item}
                       existingRecord={getExistingRecord(item.uid)}
                       attendanceStatus={attendanceMap[item.uid]?.status}
-                      rate={classRates[item.classId] || SCHOOL_CONFIG.defaultFeedingRate || 10}
+                      rate={
+                        classRates[item.classId] ||
+                        SCHOOL_CONFIG.defaultFeedingRate ||
+                        10
+                      }
                       canEdit={canEdit}
                       overrideValue={overrideMap[item.uid]}
                       onMarkPaid={markStudentPaid}
                       onMarkNotPaid={markStudentNotPaid}
-                      onSetOverride={(uid, val) => setOverrideMap(m => ({...m, [uid]: val}))}
+                      onSetOverride={(uid, val) =>
+                        setOverrideMap((m) => ({ ...m, [uid]: val }))
+                      }
                       isSelected={selectedStudentUids.has(item.uid)}
                       onToggleSelection={toggleStudentSelection}
                       isSelectionMode={selectedStudentUids.size > 0}
@@ -464,7 +512,10 @@ export default function FeedingFees() {
 
           {activeTab === "history" && (
             <View style={{ flex: 1 }}>
-              <FeedingFeeStats totalFeeding={stats.totalFeeding} recordsCount={stats.recordsCount} />
+              <FeedingFeeStats
+                totalFeeding={stats.totalFeeding}
+                recordsCount={stats.recordsCount}
+              />
               <FlatList
                 data={dailyRecords.filter((r) => (r.feedingFee || 0) > 0)}
                 keyExtractor={(item) => item.id}
@@ -505,7 +556,9 @@ export default function FeedingFees() {
 
                 <View style={styles.reportStats}>
                   <View style={styles.reportRow}>
-                    <Text style={styles.reportLabel}>Total Feeding Collected</Text>
+                    <Text style={styles.reportLabel}>
+                      Total Feeding Collected
+                    </Text>
                     <Text style={[styles.reportValue, { color: VIBE.success }]}>
                       ₵{stats.totalFeeding.toFixed(2)}
                     </Text>
@@ -530,7 +583,11 @@ export default function FeedingFees() {
           studentName={paymentModalStudent.fullName}
           className={paymentModalStudent.className}
           feeType="Feeding"
-          dailyRate={classRates[paymentModalStudent.classId] || SCHOOL_CONFIG.defaultFeedingRate || 10}
+          dailyRate={
+            classRates[paymentModalStudent.classId] ||
+            SCHOOL_CONFIG.defaultFeedingRate ||
+            10
+          }
           currentArrears={paymentModalStudent.dailyArrears || 0}
           saving={saving}
           onConfirmPayment={async (amt) => {
@@ -869,7 +926,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, justifyContent: "center" },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    justifyContent: "center",
+  },
   recordFeeText: { fontSize: 13, fontWeight: "700", color: VIBE.text },
   recordTotal: {
     flexDirection: "row",

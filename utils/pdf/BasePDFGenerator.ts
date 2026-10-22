@@ -547,11 +547,76 @@ export class BasePDFGenerator {
         type: "application/pdf",
       });
       const url = URL.createObjectURL(blob);
+
+      // Detect mobile browsers / Android / iOS / PWA environment
+      const isMobile =
+        typeof navigator !== "undefined" &&
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+          navigator.userAgent,
+        );
+
+      // Check for Web Share API support on mobile devices
+      if (
+        isMobile &&
+        typeof navigator !== "undefined" &&
+        typeof (navigator as any).canShare === "function"
+      ) {
+        try {
+          const file = new File([blob], fileName, { type: "application/pdf" });
+          if ((navigator as any).canShare({ files: [file] })) {
+            await (navigator as any).share({
+              files: [file],
+              title: fileName,
+            });
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+            return fileName;
+          }
+        } catch (shareError) {
+          console.log("Web Share cancelled or failed, falling back to link download:", shareError);
+        }
+      }
+
+      // Create download link attached to document body for Mobile WebKit & Android PWA compatibility
       const link = document.createElement("a");
       link.href = url;
       link.download = fileName;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+
+      if (typeof document !== "undefined" && document.body) {
+        document.body.appendChild(link);
+      }
+
+      // Trigger download click
       link.click();
-      URL.revokeObjectURL(url);
+
+      // Clean up DOM link element after brief delay
+      setTimeout(() => {
+        if (typeof document !== "undefined" && document.body && document.body.contains(link)) {
+          document.body.removeChild(link);
+        }
+      }, 500);
+
+      // Fallback for Android PWA / standalone mode where programmatic <a> click might be suppressed
+      if (isMobile && typeof window !== "undefined") {
+        setTimeout(() => {
+          try {
+            const newWindow = window.open(url, "_blank");
+            if (!newWindow) {
+              window.location.href = url;
+            }
+          } catch (e) {
+            console.warn("Fallback window.open failed:", e);
+          }
+        }, 300);
+      }
+
+      // CRITICAL FOR ANDROID PWA: Delay URL.revokeObjectURL
+      // Do NOT revoke immediately because mobile Chrome downloads asynchronously in background
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 60000);
+
       return fileName;
     }
 

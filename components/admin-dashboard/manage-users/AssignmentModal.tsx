@@ -1,29 +1,32 @@
 import { Picker } from "@react-native-picker/picker";
 import React from "react";
 import {
-  ActivityIndicator,
-  Dimensions,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Dimensions,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import SVGIcon from "../../../components/SVGIcon";
-import { CAMBRIDGE_SUBJECTS, GES_SUBJECTS } from "../../../constants/Curriculum";
+import {
+    CAMBRIDGE_SUBJECTS,
+    GES_SUBJECTS,
+} from "../../../constants/Curriculum";
 import { COLORS, SHADOWS } from "../../../constants/theme";
 import {
-  AssignmentModalState,
-  PermissionLevel,
-  PERMISSION_KEYS,
-  PERMISSION_LEVELS,
-  User,
+    AssignmentModalState,
+    PERMISSION_KEYS,
+    PERMISSION_LEVELS,
+    PermissionLevel,
+    User,
 } from "../../../hooks/admin-dashboard/manage-users-types";
 
 const { width } = Dimensions.get("window");
@@ -43,7 +46,9 @@ interface AssignmentModalProps {
   setIsTeacherOnDuty: (val: boolean) => void;
   handleAssignRole: (role: string) => void;
   tempPermissions: Record<string, PermissionLevel>;
-  setTempPermissions: React.Dispatch<React.SetStateAction<Record<string, PermissionLevel>>>;
+  setTempPermissions: React.Dispatch<
+    React.SetStateAction<Record<string, PermissionLevel>>
+  >;
   handleUpdatePermissions: () => void;
   selectedClasses: string[];
   setSelectedClasses: React.Dispatch<React.SetStateAction<string[]>>;
@@ -123,7 +128,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   if (state.type === "none") return null;
 
   return (
-    <Modal visible={true} transparent animationType="slide">
+    <Modal visible={true} transparent animationType="none">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.modalOverlay}
@@ -147,32 +152,54 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   state.target?.role === "staff" ||
                   state.target?.role === "admin") && (
                   <View style={{ marginBottom: 30 }}>
-                    <Text style={styles.sectionHeader}>Authority & Assignments</Text>
+                    <Text style={styles.sectionHeader}>
+                      Authority & Assignments
+                    </Text>
                     <View style={styles.actionGrid}>
                       <TouchableOpacity
                         style={styles.actionCard}
-                        onPress={() => onSetType({ ...state, type: "class_teacher" })}
+                        onPress={() =>
+                          onSetType({ ...state, type: "class_teacher" })
+                        }
                       >
-                        <SVGIcon name="school" size={24} color={COLORS.primary} />
+                        <SVGIcon
+                          name="school"
+                          size={24}
+                          color={COLORS.primary}
+                        />
                         <Text style={styles.actionLabel}>Class Master</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.actionCard}
-                        onPress={() => onSetType({ ...state, type: "dept_head" })}
+                        onPress={() =>
+                          onSetType({ ...state, type: "dept_head" })
+                        }
                       >
-                        <SVGIcon name="business" size={24} color={COLORS.primary} />
+                        <SVGIcon
+                          name="business"
+                          size={24}
+                          color={COLORS.primary}
+                        />
                         <Text style={styles.actionLabel}>Dept Head</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.actionCard}
-                        onPress={() => onSetType({ ...state, type: "manage_classes" })}
+                        onPress={() =>
+                          onSetType({ ...state, type: "manage_classes" })
+                        }
                       >
-                        <SVGIcon name="layers" size={24} color={COLORS.primary} />
+                        <SVGIcon
+                          name="layers"
+                          size={24}
+                          color={COLORS.primary}
+                        />
                         <Text style={styles.actionLabel}>Teaching Classes</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.actionCard}
-                        onPress={() => onSetType({ ...state, type: "manage_subjects" })}
+                        onPress={() =>
+                          onSetType({ ...state, type: "manage_subjects" })
+                        }
                       >
                         <SVGIcon name="book" size={24} color={COLORS.primary} />
                         <Text style={styles.actionLabel}>Subjects</Text>
@@ -191,8 +218,12 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                 <View style={styles.switchRow}>
                   <View style={styles.switchInfo}>
-                    <Text style={styles.switchLabel}>News Broadcast Authority</Text>
-                    <Text style={styles.switchSub}>Allow user to post school news & alerts</Text>
+                    <Text style={styles.switchLabel}>
+                      News Broadcast Authority
+                    </Text>
+                    <Text style={styles.switchSub}>
+                      Allow user to post school news & alerts
+                    </Text>
                   </View>
                   <Switch
                     value={newsPermission}
@@ -201,11 +232,17 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   />
                 </View>
 
-                {(state.target?.role === "teacher" || state.target?.role === "staff") && (
+                {(state.target?.role === "teacher" ||
+                  state.target?.role === "staff") && (
                   <View style={[styles.switchRow, { marginTop: 15 }]}>
                     <View style={styles.switchInfo}>
-                      <Text style={styles.switchLabel}>Teacher on Duty (TOD)</Text>
-                      <Text style={styles.switchSub}>Grants permission to mark attendance for ALL classes (Auto-revokes in 6 days)</Text>
+                      <Text style={styles.switchLabel}>
+                        Teacher on Duty (TOD)
+                      </Text>
+                      <Text style={styles.switchSub}>
+                        Grants permission to mark attendance for ALL classes
+                        (Auto-revokes in 6 days)
+                      </Text>
                     </View>
                     <Switch
                       value={isTeacherOnDuty}
@@ -220,11 +257,16 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                     <View style={styles.permPickerBox}>
                       <Text style={styles.pickerLabel}>{pk.label}</Text>
                       <Picker
-                        selectedValue={(tempPermissions[pk.key] || "deny") as any}
+                        selectedValue={
+                          (tempPermissions[pk.key] || "deny") as any
+                        }
                         style={{ marginLeft: -10 }}
                         onValueChange={(v) => {
                           const safe =
-                            v === "full" || v === "view" || v === "edit" || v === "deny"
+                            v === "full" ||
+                            v === "view" ||
+                            v === "edit" ||
+                            v === "deny"
                               ? (v as PermissionLevel)
                               : "deny";
                           setTempPermissions((prev) => ({
@@ -279,7 +321,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                           setSelectedClasses((prev) =>
                             isSelected
                               ? prev.filter((id) => id !== c.id)
-                              : [...prev, c.id]
+                              : [...prev, c.id],
                           );
                         }}
                       >
@@ -331,7 +373,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                             setSelectedSubjects((prev) =>
                               isSelected
                                 ? prev.filter((sub) => sub !== s)
-                                : [...prev, s]
+                                : [...prev, s],
                             );
                           }}
                         >
@@ -358,7 +400,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   {updating ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.saveBtnText}>Save Subject Selection</Text>
+                    <Text style={styles.saveBtnText}>
+                      Save Subject Selection
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -484,7 +528,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                       <TextInput
                         style={styles.textInput}
                         value={editForm.firstName}
-                        onChangeText={(t) => setEditForm((p: any) => ({ ...p, firstName: t }))}
+                        onChangeText={(t) =>
+                          setEditForm((p: any) => ({ ...p, firstName: t }))
+                        }
                         placeholder="Enter first name"
                       />
                     </View>
@@ -496,7 +542,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                       <TextInput
                         style={styles.textInput}
                         value={editForm.lastName}
-                        onChangeText={(t) => setEditForm((p: any) => ({ ...p, lastName: t }))}
+                        onChangeText={(t) =>
+                          setEditForm((p: any) => ({ ...p, lastName: t }))
+                        }
                         placeholder="Enter last name"
                       />
                     </View>
@@ -504,11 +552,20 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                   <View style={styles.inputGroup}>
                     <View style={styles.permPickerBox}>
-                      <Text style={[styles.pickerLabel, { position: 'absolute', top: 8, left: 12 }]}>Gender</Text>
+                      <Text
+                        style={[
+                          styles.pickerLabel,
+                          { position: "absolute", top: 8, left: 12 },
+                        ]}
+                      >
+                        Gender
+                      </Text>
                       <Picker
                         selectedValue={editForm.gender}
                         style={{ marginLeft: -10 }}
-                        onValueChange={(t) => setEditForm((p: any) => ({ ...p, gender: t }))}
+                        onValueChange={(t) =>
+                          setEditForm((p: any) => ({ ...p, gender: t }))
+                        }
                       >
                         <Picker.Item label="Select Gender" value="" />
                         <Picker.Item label="Male" value="Male" />
@@ -529,7 +586,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                         <TextInput
                           style={styles.textInput}
                           value={editForm.phone}
-                          onChangeText={(t) => setEditForm((p: any) => ({ ...p, phone: t }))}
+                          onChangeText={(t) =>
+                            setEditForm((p: any) => ({ ...p, phone: t }))
+                          }
                           keyboardType="phone-pad"
                           placeholder="User's phone number"
                         />
@@ -541,11 +600,18 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                     <>
                       <View style={styles.inputGroup}>
                         <View style={styles.inputWrapper}>
-                          <Text style={styles.pickerLabel}>Emergency Number</Text>
+                          <Text style={styles.pickerLabel}>
+                            Emergency Number
+                          </Text>
                           <TextInput
                             style={styles.textInput}
                             value={editForm.emergencyPhone}
-                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, emergencyPhone: t }))}
+                            onChangeText={(t) =>
+                              setEditForm((p: any) => ({
+                                ...p,
+                                emergencyPhone: t,
+                              }))
+                            }
                             keyboardType="phone-pad"
                             placeholder="Emergency contact number"
                           />
@@ -554,11 +620,15 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                       <View style={styles.inputGroup}>
                         <View style={styles.inputWrapper}>
-                          <Text style={styles.pickerLabel}>Parent 1 Full Name</Text>
+                          <Text style={styles.pickerLabel}>
+                            Parent 1 Full Name
+                          </Text>
                           <TextInput
                             style={styles.textInput}
                             value={editForm.parentName}
-                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, parentName: t }))}
+                            onChangeText={(t) =>
+                              setEditForm((p: any) => ({ ...p, parentName: t }))
+                            }
                             placeholder="Primary parent full name"
                           />
                         </View>
@@ -566,11 +636,18 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                       <View style={styles.inputGroup}>
                         <View style={styles.inputWrapper}>
-                          <Text style={styles.pickerLabel}>Parent 1 Phone Number</Text>
+                          <Text style={styles.pickerLabel}>
+                            Parent 1 Phone Number
+                          </Text>
                           <TextInput
                             style={styles.textInput}
                             value={editForm.parentPhone}
-                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, parentPhone: t }))}
+                            onChangeText={(t) =>
+                              setEditForm((p: any) => ({
+                                ...p,
+                                parentPhone: t,
+                              }))
+                            }
                             keyboardType="phone-pad"
                             placeholder="Primary parent phone number"
                           />
@@ -579,11 +656,18 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                       <View style={styles.inputGroup}>
                         <View style={styles.inputWrapper}>
-                          <Text style={styles.pickerLabel}>Parent 2 Full Name (Optional)</Text>
+                          <Text style={styles.pickerLabel}>
+                            Parent 2 Full Name (Optional)
+                          </Text>
                           <TextInput
                             style={styles.textInput}
                             value={editForm.parent2Name}
-                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, parent2Name: t }))}
+                            onChangeText={(t) =>
+                              setEditForm((p: any) => ({
+                                ...p,
+                                parent2Name: t,
+                              }))
+                            }
                             placeholder="Secondary parent full name"
                           />
                         </View>
@@ -591,11 +675,19 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                       <View style={styles.inputGroup}>
                         <View style={styles.inputWrapper}>
-                          <Text style={styles.pickerLabel}>Parent 2 Phone Number (Optional)</Text>
+                          <Text style={styles.pickerLabel}>
+                            Parent 2 Phone Number (Optional)
+                          </Text>
                           <TextInput
                             style={styles.textInput}
                             value={editForm.parent2Phone}
-                            onChangeText={(t) => setEditForm((p: any) => ({ ...p, parent22Phone: t, parent2Phone: t }))}
+                            onChangeText={(t) =>
+                              setEditForm((p: any) => ({
+                                ...p,
+                                parent22Phone: t,
+                                parent2Phone: t,
+                              }))
+                            }
                             keyboardType="phone-pad"
                             placeholder="Secondary parent phone number"
                           />
@@ -609,25 +701,40 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   <>
                     {/* Logistics & Services */}
                     <View style={styles.formSection}>
-                      <Text style={styles.sectionHeader}>Logistics & Services</Text>
+                      <Text style={styles.sectionHeader}>
+                        Logistics & Services
+                      </Text>
 
                       <View style={styles.switchRowContainer}>
                         <View style={styles.switchInfo}>
                           <Text style={styles.switchTitle}>School Bus</Text>
-                          <Text style={styles.switchSubtext}>Uses school transportation</Text>
+                          <Text style={styles.switchSubtext}>
+                            Uses school transportation
+                          </Text>
                         </View>
                         <Switch
                           value={editForm.takesBus}
-                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, takesBus: v }))}
-                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                          onValueChange={(v) =>
+                            setEditForm((p: any) => ({ ...p, takesBus: v }))
+                          }
+                          trackColor={{
+                            false: "#CBD5E1",
+                            true: COLORS.primary,
+                          }}
                         />
                       </View>
 
                       {editForm.takesBus && (
                         <View style={[styles.inputGroup, { marginTop: 10 }]}>
                           <View style={styles.labelRow}>
-                            <Text style={styles.pickerLabel}>Bus Location / Stop</Text>
-                            <TouchableOpacity onPress={() => setIsAddingNewBusLoc(!isAddingNewBusLoc)}>
+                            <Text style={styles.pickerLabel}>
+                              Bus Location / Stop
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() =>
+                                setIsAddingNewBusLoc(!isAddingNewBusLoc)
+                              }
+                            >
                               <Text style={styles.linkText}>
                                 {isAddingNewBusLoc ? "Cancel" : "+ Add New"}
                               </Text>
@@ -644,22 +751,39 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                               />
                               <TouchableOpacity
                                 style={styles.actionBtnSmall}
-                                onPress={() => handleSaveNewBusLocation(state.target)}
+                                onPress={() =>
+                                  handleSaveNewBusLocation(state.target)
+                                }
                               >
-                                <Text style={{ color: "#fff", fontWeight: "700" }}>Save</Text>
+                                <Text
+                                  style={{ color: "#fff", fontWeight: "700" }}
+                                >
+                                  Save
+                                </Text>
                               </TouchableOpacity>
                             </View>
                           ) : (
                             <View style={styles.permPickerBox}>
-                              <Text style={styles.pickerLabel}>Current Stop</Text>
+                              <Text style={styles.pickerLabel}>
+                                Current Stop
+                              </Text>
                               <Picker
                                 selectedValue={editForm.busLocation}
                                 style={{ marginLeft: -10 }}
-                                onValueChange={(v) => setEditForm((p: any) => ({ ...p, busLocation: v }))}
+                                onValueChange={(v) =>
+                                  setEditForm((p: any) => ({
+                                    ...p,
+                                    busLocation: v,
+                                  }))
+                                }
                               >
                                 <Picker.Item label="Select Location" value="" />
                                 {busLocations.map((loc) => (
-                                  <Picker.Item key={loc} label={loc} value={loc} />
+                                  <Picker.Item
+                                    key={loc}
+                                    label={loc}
+                                    value={loc}
+                                  />
                                 ))}
                               </Picker>
                             </View>
@@ -669,25 +793,44 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
 
                       <View style={styles.switchRowContainer}>
                         <View style={styles.switchInfo}>
-                          <Text style={styles.switchTitle}>Feeding Program</Text>
-                          <Text style={styles.switchSubtext}>Enrolled in school meals</Text>
+                          <Text style={styles.switchTitle}>
+                            Feeding Program
+                          </Text>
+                          <Text style={styles.switchSubtext}>
+                            Enrolled in school meals
+                          </Text>
                         </View>
                         <Switch
                           value={editForm.isFeeding}
-                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, isFeeding: v }))}
-                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                          onValueChange={(v) =>
+                            setEditForm((p: any) => ({ ...p, isFeeding: v }))
+                          }
+                          trackColor={{
+                            false: "#CBD5E1",
+                            true: COLORS.primary,
+                          }}
                         />
                       </View>
 
                       <View style={styles.switchRowContainer}>
                         <View style={styles.switchInfo}>
                           <Text style={styles.switchTitle}>Extra Classes</Text>
-                          <Text style={styles.switchSubtext}>Enrolled in after-school classes</Text>
+                          <Text style={styles.switchSubtext}>
+                            Enrolled in after-school classes
+                          </Text>
                         </View>
                         <Switch
                           value={editForm.takesExtraClasses}
-                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, takesExtraClasses: v }))}
-                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                          onValueChange={(v) =>
+                            setEditForm((p: any) => ({
+                              ...p,
+                              takesExtraClasses: v,
+                            }))
+                          }
+                          trackColor={{
+                            false: "#CBD5E1",
+                            true: COLORS.primary,
+                          }}
                         />
                       </View>
                     </View>
@@ -699,24 +842,41 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                       <View style={styles.switchRowContainer}>
                         <View style={styles.switchInfo}>
                           <Text style={styles.switchTitle}>Scholarship</Text>
-                          <Text style={styles.switchSubtext}>Under scholarship program</Text>
+                          <Text style={styles.switchSubtext}>
+                            Under scholarship program
+                          </Text>
                         </View>
                         <Switch
                           value={editForm.onScholarship}
-                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, onScholarship: v }))}
-                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                          onValueChange={(v) =>
+                            setEditForm((p: any) => ({
+                              ...p,
+                              onScholarship: v,
+                            }))
+                          }
+                          trackColor={{
+                            false: "#CBD5E1",
+                            true: COLORS.primary,
+                          }}
                         />
                       </View>
 
                       <View style={styles.switchRowContainer}>
                         <View style={styles.switchInfo}>
                           <Text style={styles.switchTitle}>Fee Discount</Text>
-                          <Text style={styles.switchSubtext}>Eligible for fee reduction</Text>
+                          <Text style={styles.switchSubtext}>
+                            Eligible for fee reduction
+                          </Text>
                         </View>
                         <Switch
                           value={editForm.onDiscount}
-                          onValueChange={(v) => setEditForm((p: any) => ({ ...p, onDiscount: v }))}
-                          trackColor={{ false: "#CBD5E1", true: COLORS.primary }}
+                          onValueChange={(v) =>
+                            setEditForm((p: any) => ({ ...p, onDiscount: v }))
+                          }
+                          trackColor={{
+                            false: "#CBD5E1",
+                            true: COLORS.primary,
+                          }}
                         />
                       </View>
                     </View>
@@ -736,8 +896,22 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                 </TouchableOpacity>
 
                 {/* Security Section */}
-                <View style={[styles.formSection, { marginTop: 40, borderTopWidth: 1, borderTopColor: '#E2E8F0', paddingTop: 20 }]}>
-                  <Text style={[styles.sectionHeader, { color: COLORS.secondary }]}>Security & Authentication</Text>
+                <View
+                  style={[
+                    styles.formSection,
+                    {
+                      marginTop: 40,
+                      borderTopWidth: 1,
+                      borderTopColor: "#E2E8F0",
+                      paddingTop: 20,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.sectionHeader, { color: COLORS.secondary }]}
+                  >
+                    Security & Authentication
+                  </Text>
 
                   <View style={styles.inputGroup}>
                     <View style={styles.inputWrapper}>
@@ -745,7 +919,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                       <TextInput
                         style={styles.textInput}
                         value={editForm.email}
-                        onChangeText={(t) => setEditForm((p: any) => ({ ...p, email: t }))}
+                        onChangeText={(t) =>
+                          setEditForm((p: any) => ({ ...p, email: t }))
+                        }
                         placeholder="Enter new email address"
                         keyboardType="email-address"
                         autoCapitalize="none"
@@ -757,7 +933,10 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   </View>
 
                   <TouchableOpacity
-                    style={[styles.saveBtn, { backgroundColor: COLORS.secondary, marginTop: 10 }]}
+                    style={[
+                      styles.saveBtn,
+                      { backgroundColor: COLORS.secondary, marginTop: 10 },
+                    ]}
                     onPress={handleUpdateEmail}
                     disabled={updating}
                   >
@@ -771,14 +950,15 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
               </View>
             )}
 
-
             {state.type === "upgrade_staff" && (
               <View>
                 <Text style={styles.pickerLabel}>Staff Email (Login)</Text>
                 <TextInput
                   style={[styles.textInput, { marginBottom: 15 }]}
                   value={upgradeForm.email}
-                  onChangeText={(t) => setUpgradeForm((p: any) => ({ ...p, email: t }))}
+                  onChangeText={(t) =>
+                    setUpgradeForm((p: any) => ({ ...p, email: t }))
+                  }
                   placeholder="staff@edueaz.com"
                   autoCapitalize="none"
                   keyboardType="email-address"
@@ -787,7 +967,9 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                 <TextInput
                   style={[styles.textInput, { marginBottom: 15 }]}
                   value={upgradeForm.password}
-                  onChangeText={(t) => setUpgradeForm((p: any) => ({ ...p, password: t }))}
+                  onChangeText={(t) =>
+                    setUpgradeForm((p: any) => ({ ...p, password: t }))
+                  }
                   placeholder="••••••••"
                   secureTextEntry
                 />
@@ -795,14 +977,18 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                 <TextInput
                   style={[styles.textInput, { marginBottom: 15 }]}
                   value={upgradeForm.roleText}
-                  onChangeText={(t) => setUpgradeForm((p: any) => ({ ...p, roleText: t }))}
+                  onChangeText={(t) =>
+                    setUpgradeForm((p: any) => ({ ...p, roleText: t }))
+                  }
                   placeholder="e.g. Driver, Cook, Security"
                 />
                 <Text style={styles.pickerLabel}>Phone Number</Text>
                 <TextInput
                   style={[styles.textInput, { marginBottom: 15 }]}
                   value={upgradeForm.phone}
-                  onChangeText={(t) => setUpgradeForm((p: any) => ({ ...p, phone: t }))}
+                  onChangeText={(t) =>
+                    setUpgradeForm((p: any) => ({ ...p, phone: t }))
+                  }
                   placeholder="024XXXXXXX"
                   keyboardType="phone-pad"
                 />
@@ -843,7 +1029,10 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                   <TouchableOpacity
                     style={[
                       styles.saveBtn,
-                      { flex: 1, backgroundColor: COLORS.secondary || "#c53b59" },
+                      {
+                        flex: 1,
+                        backgroundColor: COLORS.secondary || "#c53b59",
+                      },
                     ]}
                     onPress={() => handlePromoteRepeat("Repeat")}
                     disabled={updating}
@@ -944,8 +1133,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     ...SHADOWS.small,
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   actionLabel: {
@@ -973,17 +1162,17 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     overflow: "hidden",
     minHeight: 65,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: 12,
-    paddingTop: 15
+    paddingTop: 15,
   },
   pickerLabel: {
     fontSize: 10,
     fontWeight: "900",
     color: "#64748B",
     marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   textInput: {
     backgroundColor: "#f8fafc",
@@ -1005,8 +1194,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 20,
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   saveBtnText: { color: "#fff", fontWeight: "800", fontSize: 16 },
@@ -1024,8 +1213,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e2e8f0",
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   chipText: {
@@ -1042,8 +1231,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignItems: "center",
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   selectBtnText: { fontSize: 16, fontWeight: "700", color: "#1E293B" },
@@ -1113,8 +1302,8 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     ...SHADOWS.small,
     ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
+      web: { cursor: "pointer" } as any,
+      default: {},
     }),
   },
   imageActionText: {
@@ -1127,7 +1316,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   inputWrapper: {
-    position: 'relative',
+    position: "relative",
   },
   switchRowContainer: {
     flexDirection: "row",
@@ -1159,4 +1348,3 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
 });
-

@@ -28,10 +28,12 @@ import { auth, db } from "../../firebaseConfig";
 import { sendNotification } from "../../src/services/notificationService";
 import * as Animatable from "react-native-animatable";
 import { useToast } from "../../contexts/ToastContext";
+import { useAuth } from "../../contexts/AuthContext";
 import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEditor";
 
 export default function SubmitNote() {
   const router = useRouter();
+  const { appUser } = useAuth();
   const { showToast } = useToast();
   const { prefillNoteId, prefillTitle, prefillContent, assignmentCode: passedCode } = useLocalSearchParams();
 
@@ -153,13 +155,17 @@ export default function SubmitNote() {
       const submissionId = `${assignmentId}_${studentId}`;
       const submissionRef = doc(db, "submissions", submissionId);
 
+      const studentName = appUser
+        ? `${appUser.profile?.firstName || ''} ${appUser.profile?.lastName || ''}`.trim() || appUser.fullName || auth.currentUser?.displayName || "Student"
+        : auth.currentUser?.displayName || "Student";
+
       // 2. Prepare submission data
       // If we have an attached note, use its content as contentHtml and editor as 'note' (comment).
       // If no attached note, use editor as 'contentHtml'.
       const submissionData: any = {
         assignmentId,
         studentId,
-        studentName: auth.currentUser?.displayName || "Student",
+        studentName,
         submittedAt: serverTimestamp(),
         status: "submitted",
         note: prefillNoteId ? (htmlComment || "") : "",

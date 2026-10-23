@@ -13,7 +13,7 @@ import {
     where,
 } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -28,8 +28,6 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    Dimensions,
-    BackHandler,
 } from "react-native";
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
@@ -44,9 +42,6 @@ import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
-
-const { width } = Dimensions.get("window");
-const isLargeScreen = width > 768;
 
 const QUICK_EMOJIS = [
   "😀",
@@ -70,6 +65,14 @@ interface StaffMember {
   profileImage?: string;
 }
 
+interface StaffGroup {
+  id: string;
+  name: string;
+  createdBy: string;
+  members: string[];
+  createdAt: any;
+}
+
 interface Message {
   id: string;
   text?: string;
@@ -85,20 +88,31 @@ const generateChatId = (uid1: string, uid2: string) =>
 export default function StaffChat() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [stage, setStage] = useState<"list" | "chat" | "createGroup">("list");
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [filteredStaff, setFilteredStaff] = useState<StaffMember[]>([]);
+  const [staffGroups, setStaffGroups] = useState<StaffGroup[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<StaffGroup | null>(null);
+  const [newGroupName, setNewGroupName] = useState("");
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const isMounted = useRef(true);
+  const isNavigating = useRef(false);
 
   useEffect(() => {
     if (appUser?.uid) {
       markNotificationsAsRead(appUser.uid, "chat");
     }
   }, [appUser?.uid]);
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const [stage, setStage] = useState<"list" | "chat">("list");
-  const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [filteredStaff, setFilteredStaff] = useState<StaffMember[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
   const [chatId, setChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -114,19 +128,6 @@ export default function StaffChat() {
   const soundRef = useRef<Audio.Sound | null>(null);
   const isFirstLoad = useRef(true);
   const messagesLenRef = useRef(0);
-  const isMounted = useRef(true);
-  const isNavigating = useRef(false);
-
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-      if (soundRef.current) soundRef.current.unloadAsync();
-      if (webStream) {
-        webStream.getTracks().forEach((t) => t.stop());
-      }
-    };
-  }, [webStream]);
 
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
@@ -142,37 +143,14 @@ export default function StaffChat() {
     }
   }, [staff, appUser?.uid]);
 
-  const handleBack = useCallback(() => {
-    if (stage === "chat") {
-      setStage("list");
-      setSelectedStaff(null);
-      setChatId(null);
-      return;
-    }
-
-    if (isNavigating.current) return;
-    isNavigating.current = true;
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace("/teacher-dashboard");
-    }
-  }, [stage, router]);
-
-  useEffect(() => {
-    const onBackPress = () => {
-      handleBack();
-      return true;
-    };
-    const sub = BackHandler.addEventListener("hardwareBackPress", onBackPress);
-    return () => sub.remove();
-  }, [handleBack]);
-
   useEffect(() => {
     return () => {
       if (soundRef.current) soundRef.current.unloadAsync();
+      if (webStream) {
+        webStream.getTracks().forEach((t) => t.stop());
+      }
     };
-  }, []);
+  }, [webStream]);
 
   const playSound = async (type: "sent" | "received") => {
     try {
@@ -182,8 +160,12 @@ export default function StaffChat() {
           ? require("../../assets/message_sent.mp3")
           : require("../../assets/message_received.mp3");
       const { sound } = await Audio.Sound.createAsync(soundFile);
-      soundRef.current = sound;
-      await sound.playAsync();
+      if (isMounted.current) {
+        soundRef.current = sound;
+        await sound.playAsync();
+      } else {
+        await sound.unloadAsync();
+      }
     } catch (e) {
       console.log("Audio error:", e);
     }
@@ -199,7 +181,7 @@ export default function StaffChat() {
         const snap = await getDocs(q);
         const list = snap.docs
           .map((d) => {
-            const data = d.data();
+            const data = d.data() as any;
             return {
               uid: d.id,
               fullName:
@@ -226,6 +208,21 @@ export default function StaffChat() {
   }, [appUser?.uid]);
 
   useEffect(() => {
+    if (!appUser?.uid) return;
+    const q = query(collection(db, "staffGroups"));
+    const unsub = onSnapshot(q, (snap) => {
+      if (!isMounted.current) return;
+      const groups = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as any) }) as StaffGroup)
+        .filter((g) => g.members && g.members.includes(appUser.uid));
+      setStaffGroups(groups);
+    }, (err) => {
+      console.error("Error fetching staff groups:", err);
+    });
+    return () => unsub();
+  }, [appUser?.uid]);
+
+  useEffect(() => {
     const q = searchQuery.toLowerCase();
     setFilteredStaff(
       staff.filter(
@@ -239,14 +236,16 @@ export default function StaffChat() {
 
   useEffect(() => {
     if (!chatId) return;
-    registerDirectChat(chatId);
-    markChatRead("direct", chatId);
+    if (selectedStaff) {
+      registerDirectChat(chatId);
+      markChatRead("direct", chatId);
+    }
 
-    const q = query(
-      collection(db, "directMessages", chatId, "messages"),
-      orderBy("createdAt", "desc"),
-      limit(50),
-    );
+    const collectionPath = selectedGroup
+      ? collection(db, "staffGroups", chatId, "messages")
+      : collection(db, "directMessages", chatId, "messages");
+
+    const q = query(collectionPath, orderBy("createdAt", "desc"), limit(50));
 
     const unsub = onSnapshot(q, (snap) => {
       if (!isMounted.current) return;
@@ -258,7 +257,7 @@ export default function StaffChat() {
         const lastMsg = msgs[msgs.length - 1];
         if (lastMsg.senderId !== appUser?.uid) {
           playSound("received");
-          markChatRead("direct", chatId);
+          if (selectedStaff) markChatRead("direct", chatId);
         }
       }
 
@@ -269,26 +268,66 @@ export default function StaffChat() {
 
     return () => {
       unsub();
-      unregisterDirectChat(chatId);
+      if (selectedStaff) unregisterDirectChat(chatId);
     };
-  }, [chatId]);
+  }, [chatId, selectedGroup, selectedStaff]);
 
   const handleSelectStaff = (member: StaffMember) => {
     if (!appUser?.uid) return;
+    setSelectedGroup(null);
     setSelectedStaff(member);
     setChatId(generateChatId(appUser.uid, member.uid));
     setStage("chat");
     isFirstLoad.current = true;
   };
 
+  const handleSelectGroup = (group: StaffGroup) => {
+    setSelectedStaff(null);
+    setSelectedGroup(group);
+    setChatId(group.id);
+    setStage("chat");
+    isFirstLoad.current = true;
+  };
+
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim() || selectedGroupMembers.length === 0 || !appUser?.uid) {
+      showToast({ message: "Please enter a group name and select at least one staff member.", type: "error" });
+      return;
+    }
+    try {
+      const allMembers = Array.from(new Set([...selectedGroupMembers, appUser.uid]));
+      const docRef = await addDoc(collection(db, "staffGroups"), {
+        name: newGroupName.trim(),
+        createdBy: appUser.uid,
+        members: allMembers,
+        createdAt: serverTimestamp(),
+      });
+      showToast({ message: "Staff group created successfully!", type: "success" });
+      setNewGroupName("");
+      setSelectedGroupMembers([]);
+      const newGroup: StaffGroup = {
+        id: docRef.id,
+        name: newGroupName.trim(),
+        createdBy: appUser.uid,
+        members: allMembers,
+        createdAt: new Date(),
+      };
+      setSelectedStaff(null);
+      setSelectedGroup(newGroup);
+      setChatId(docRef.id);
+      setStage("chat");
+      isFirstLoad.current = true;
+    } catch (e) {
+      console.error(e);
+      showToast({ message: "Failed to create staff group", type: "error" });
+    }
+  };
+
   const startRecording = async () => {
     try {
       if (Platform.OS === "web") {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          showToast({
-            message: "Audio recording is not supported in this browser.",
-            type: "warning",
-          });
+          showToast({ message: "Audio recording is not supported in this browser.", type: "error" });
           return;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -307,9 +346,13 @@ export default function StaffChat() {
           if (ev.data && ev.data.size > 0) webChunksRef.current.push(ev.data);
         };
         mediaRecorder.start();
-        setWebStream(stream);
-        setWebRecorder(mediaRecorder);
-        setRecording({ web: true });
+        if (isMounted.current) {
+          setWebStream(stream);
+          setWebRecorder(mediaRecorder);
+          setRecording({ web: true });
+        } else {
+          stream.getTracks().forEach((t) => t.stop());
+        }
         return;
       }
 
@@ -341,33 +384,26 @@ export default function StaffChat() {
         webChunksRef.current = [];
         const audioRef = ref(
           storage,
-          `chats/staff/${chatId}/${Date.now()}.webm`,
+          selectedGroup
+            ? `chats/staff_groups/${chatId}/${Date.now()}.webm`
+            : `chats/staff/${chatId}/${Date.now()}.webm`,
         );
         await uploadBytes(audioRef, blob);
         if ((blob as any).close) (blob as any).close();
         const audioUrl = await getDownloadURL(audioRef);
-        if (!isMounted.current) return;
-        await addDoc(collection(db, "directMessages", chatId!, "messages"), {
+
+        const collectionPath = selectedGroup
+          ? collection(db, "staffGroups", chatId!, "messages")
+          : collection(db, "directMessages", chatId!, "messages");
+
+        await addDoc(collectionPath, {
           type: "audio",
           fileUrl: audioUrl,
           senderId: appUser!.uid,
           createdAt: serverTimestamp(),
         });
-
-        if (selectedStaff && isMounted.current) {
-          await sendNotification({
-            recipientId: selectedStaff.uid,
-            senderId: appUser!.uid,
-            senderName: appUser!.displayName || "Teacher",
-            type: "chat",
-            title: "New Voice Message",
-            body: `${appUser!.displayName || "Teacher"} sent you a voice message`,
-            data: { chatId, type: "audio" },
-          });
-        }
-
+        playSound("sent");
         if (isMounted.current) {
-          playSound("sent");
           setRecording(null);
           if (webStream) {
             webStream.getTracks().forEach((t) => t.stop());
@@ -385,39 +421,36 @@ export default function StaffChat() {
       if (!uri) return;
 
       const blob = await (await fetch(uri)).blob();
-      const audioRef = ref(storage, `chats/staff/${chatId}/${Date.now()}.m4a`);
+      const audioRef = ref(
+        storage,
+        selectedGroup
+          ? `chats/staff_groups/${chatId}/${Date.now()}.m4a`
+          : `chats/staff/${chatId}/${Date.now()}.m4a`,
+      );
       await uploadBytes(audioRef, blob);
       if ((blob as any).close) (blob as any).close();
       const audioUrl = await getDownloadURL(audioRef);
 
-      if (!isMounted.current) return;
-      await addDoc(collection(db, "directMessages", chatId!, "messages"), {
+      const collectionPath = selectedGroup
+        ? collection(db, "staffGroups", chatId!, "messages")
+        : collection(db, "directMessages", chatId!, "messages");
+
+      await addDoc(collectionPath, {
         type: "audio",
         fileUrl: audioUrl,
         senderId: appUser!.uid,
         createdAt: serverTimestamp(),
       });
-
-      if (selectedStaff && isMounted.current) {
-        await sendNotification({
-          recipientId: selectedStaff.uid,
-          senderId: appUser!.uid,
-          senderName: appUser!.displayName || "Teacher",
-          type: "chat",
-          title: "New Voice Message",
-          body: `${appUser!.displayName || "Teacher"} sent you a voice message`,
-          data: { chatId, type: "audio" },
-        });
-      }
-
-      if (isMounted.current) playSound("sent");
+      playSound("sent");
     } catch (e) {
       if (isMounted.current) {
         console.error(e);
         showToast({ message: "Failed to send voice message", type: "error" });
       }
     } finally {
-      if (isMounted.current) setUploading(false);
+      if (isMounted.current) {
+        setUploading(false);
+      }
     }
   };
 
@@ -427,7 +460,11 @@ export default function StaffChat() {
     setInput("");
     setShowEmojis(false);
     try {
-      await addDoc(collection(db, "directMessages", chatId, "messages"), {
+      const collectionPath = selectedGroup
+        ? collection(db, "staffGroups", chatId, "messages")
+        : collection(db, "directMessages", chatId, "messages");
+
+      await addDoc(collectionPath, {
         type: "text",
         text,
         senderId: appUser!.uid,
@@ -438,18 +475,34 @@ export default function StaffChat() {
         await sendNotification({
           recipientId: selectedStaff.uid,
           senderId: appUser!.uid,
-          senderName: appUser!.displayName || "Teacher",
+          senderName: appUser!.displayName || "Staff",
           type: "chat",
           title: "New Message",
           body: text.length > 50 ? text.substring(0, 47) + "..." : text,
           data: { chatId, type: "text" },
         });
+      } else if (selectedGroup) {
+        for (const memberId of selectedGroup.members) {
+          if (memberId !== appUser!.uid) {
+            await sendNotification({
+              recipientId: memberId,
+              senderId: appUser!.uid,
+              senderName: appUser!.displayName || "Staff",
+              type: "chat",
+              title: `New Message in ${selectedGroup.name}`,
+              body: text.length > 50 ? text.substring(0, 47) + "..." : text,
+              data: { chatId, type: "text" },
+            });
+          }
+        }
       }
 
       playSound("sent");
     } catch (e) {
-      console.error(e);
-      showToast({ message: "Failed to send message", type: "error" });
+      if (isMounted.current) {
+        console.error(e);
+        showToast({ message: "Failed to send message", type: "error" });
+      }
     }
   };
 
@@ -465,7 +518,85 @@ export default function StaffChat() {
     );
   }
 
-  if (stage === "chat" && selectedStaff) {
+  if (stage === "createGroup") {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+        <StatusBar barStyle="dark-content" />
+        <View style={[styles.chatHeader, { borderBottomColor: primary + "20" }]}>
+          <TouchableOpacity
+            onPress={() => setStage("list")}
+            style={styles.backBtn}
+          >
+            <SVGIcon name="arrow-back" size={24} color={primary} />
+          </TouchableOpacity>
+          <View style={{ flex: 1, alignItems: "center" }}>
+            <Text style={styles.chatHeaderTitle}>Create Staff Group</Text>
+          </View>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={{ padding: 20 }}>
+          <Text style={styles.label}>Group Name</Text>
+          <TextInput
+            style={styles.groupInput}
+            placeholder="e.g. Mathematics Department"
+            placeholderTextColor="#94A3B8"
+            value={newGroupName}
+            onChangeText={setNewGroupName}
+          />
+
+          <Text style={[styles.label, { marginTop: 20 }]}>Select Members</Text>
+          {staff.map((member) => {
+            const isSelected = selectedGroupMembers.includes(member.uid);
+            return (
+              <TouchableOpacity
+                key={member.uid}
+                style={[styles.memberSelectRow, isSelected && { borderColor: primary, backgroundColor: primary + "05" }]}
+                onPress={() => {
+                  if (isSelected) {
+                    setSelectedGroupMembers(selectedGroupMembers.filter((id) => id !== member.uid));
+                  } else {
+                    setSelectedGroupMembers([...selectedGroupMembers, member.uid]);
+                  }
+                }}
+              >
+                <View style={[styles.avatar, { backgroundColor: primary + "10", width: 40, height: 40, marginRight: 12 }]}>
+                  <Text style={[styles.avatarText, { color: primary, fontSize: 16 }]}>
+                    {member.fullName.charAt(0)}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.staffName}>{member.fullName}</Text>
+                  <Text style={styles.roleTextSmall}>
+                    {member.role === "admin" ? member.adminRole || "Admin" : "Teacher"}
+                  </Text>
+                </View>
+                <View style={[styles.checkbox, isSelected && { backgroundColor: primary, borderColor: primary }]}>
+                  {isSelected && <SVGIcon name="checkmark" size={14} color="#fff" />}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+          <TouchableOpacity
+            style={[styles.createGroupBtn, { backgroundColor: primary }]}
+            onPress={handleCreateGroup}
+          >
+            <Text style={styles.createGroupBtnText}>Create Group</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  if (stage === "chat" && (selectedStaff || selectedGroup)) {
+    const chatTitle = selectedStaff ? selectedStaff.fullName : selectedGroup?.name;
+    const chatSubtitle = selectedStaff
+      ? selectedStaff.role === "admin"
+        ? selectedStaff.adminRole || "Admin"
+        : "Teacher"
+      : `${selectedGroup?.members.length} Members`;
+
     return (
       <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
         <StatusBar barStyle="dark-content" />
@@ -478,19 +609,15 @@ export default function StaffChat() {
             style={[styles.chatHeader, { borderBottomColor: primary + "20" }]}
           >
             <TouchableOpacity
-              onPress={handleBack}
+              onPress={() => setStage("list")}
               style={styles.backBtn}
             >
               <SVGIcon name="arrow-back" size={24} color={primary} />
             </TouchableOpacity>
             <View style={{ flex: 1, alignItems: "center" }}>
-              <Text style={styles.chatHeaderTitle}>
-                {selectedStaff.fullName}
-              </Text>
+              <Text style={styles.chatHeaderTitle}>{chatTitle}</Text>
               <Text style={[styles.headerSub, { color: primary }]}>
-                {selectedStaff.role === "admin"
-                  ? selectedStaff.adminRole || "Admin"
-                  : "Teacher"}
+                {chatSubtitle}
               </Text>
             </View>
             <View style={{ width: 40 }} />
@@ -617,13 +744,22 @@ export default function StaffChat() {
       >
         <View style={styles.headerTitleRow}>
           <TouchableOpacity
-            onPress={handleBack}
+            onPress={() => {
+              if (isNavigating.current) return;
+              isNavigating.current = true;
+              router.back();
+            }}
             style={styles.backBtnHeader}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
-          <Text style={styles.headerTitleMain}>Staff Directory</Text>
-          <SVGIcon name="people" size={24} color={secondary} />
+          <Text style={styles.headerTitleMain}>Staff Chat & Directory</Text>
+          <TouchableOpacity
+            onPress={() => setStage("createGroup")}
+            style={styles.addGroupHeaderBtn}
+          >
+            <SVGIcon name="add-circle" size={26} color={secondary} />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.searchContainer}>
@@ -638,16 +774,36 @@ export default function StaffChat() {
         </View>
       </LinearGradient>
 
-      <FlatList
-        data={filteredStaff}
-        keyExtractor={(item) => item.uid}
-        numColumns={isLargeScreen ? 2 : 1}
-        columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item, index }) => (
-          <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50}>
+      <ScrollView contentContainerStyle={styles.listContent}>
+        {staffGroups.length > 0 && (
+          <View style={{ marginBottom: 20 }}>
+            <Text style={styles.sectionHeader}>Staff Groups</Text>
+            {staffGroups.map((group) => (
+              <TouchableOpacity
+                key={group.id}
+                style={styles.staffCard}
+                onPress={() => handleSelectGroup(group)}
+              >
+                <View style={[styles.avatar, { backgroundColor: secondary + "20" }]}>
+                  <SVGIcon name="people" size={24} color={secondary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.staffName}>{group.name}</Text>
+                  <Text style={[styles.roleText, { color: secondary }]}>
+                    {group.members.length} Members
+                  </Text>
+                </View>
+                <SVGIcon name="chevron-forward" size={20} color="#94A3B8" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <Text style={styles.sectionHeader}>Staff Members</Text>
+        {filteredStaff.map((item, index) => (
+          <Animatable.View key={item.uid} animation="fadeInUp" delay={Math.min(index, 8) * 50}>
             <TouchableOpacity
-              style={[styles.staffCard, isLargeScreen && { flex: 1, marginBottom: 0 }]}
+              style={styles.staffCard}
               onPress={() => handleSelectStaff(item)}
             >
               <View
@@ -678,14 +834,15 @@ export default function StaffChat() {
               </View>
             </TouchableOpacity>
           </Animatable.View>
-        )}
-        ListEmptyComponent={() => (
+        ))}
+
+        {filteredStaff.length === 0 && staffGroups.length === 0 && (
           <View style={styles.emptyCenter}>
             <SVGIcon name="people" size={64} color="#CBD5E1" />
             <Text style={styles.emptyText}>No staff members found.</Text>
           </View>
         )}
-      />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -707,8 +864,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  headerTitleMain: { fontSize: 22, fontWeight: "900", color: "#fff" },
-  backBtnHeader: { padding: 5 },
+  headerTitleMain: { fontSize: 20, fontWeight: "900", color: "#fff" },
+  backBtnHeader: {
+    padding: 5,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
+  addGroupHeaderBtn: {
+    padding: 5,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -725,6 +895,15 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   listContent: { padding: 16 },
+  sectionHeader: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#64748B",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    marginTop: 5,
+  },
   staffCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -735,6 +914,10 @@ const styles = StyleSheet.create({
     ...SHADOWS.small,
     borderWidth: 1,
     borderColor: "#F1F5F9",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   avatar: {
     width: 48,
@@ -753,6 +936,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
+  roleTextSmall: { fontSize: 12, color: "#64748B", fontWeight: "600" },
   emptyCenter: {
     alignItems: "center",
     justifyContent: "center",
@@ -774,6 +958,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   chatHeaderTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B" },
   headerSub: { fontSize: 11, fontWeight: "700", textTransform: "uppercase" },
@@ -786,7 +974,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#F1F5F9",
   },
-  emojiBtn: { padding: 8, marginRight: 10 },
+  emojiBtn: {
+    padding: 8,
+    marginRight: 10,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   emojiText: { fontSize: 24 },
   inputArea: {
     padding: 15,
@@ -796,7 +991,13 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 25 : 20,
   },
   inputRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  emojiToggle: { padding: 5 },
+  emojiToggle: {
+    padding: 5,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
   textInput: {
     flex: 1,
     backgroundColor: "#F1F5F9",
@@ -814,6 +1015,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
   recordingBtn: { backgroundColor: "#EF4444" },
   sendBtn: {
@@ -822,5 +1027,48 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     justifyContent: "center",
     alignItems: "center",
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
   },
+  label: { fontSize: 14, fontWeight: "800", color: "#1E293B", marginBottom: 8 },
+  groupInput: {
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    paddingHorizontal: 15,
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    fontSize: 15,
+    color: "#1E293B",
+  },
+  memberSelectRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    backgroundColor: "#fff",
+    borderRadius: 15,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "#CBD5E1",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  createGroupBtn: {
+    marginTop: 20,
+    height: 50,
+    borderRadius: 15,
+    justifyContent: "center",
+    alignItems: "center",
+    ...SHADOWS.medium,
+  },
+  createGroupBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
 });

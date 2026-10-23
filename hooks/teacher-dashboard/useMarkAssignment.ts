@@ -397,10 +397,31 @@ export const useMarkAssignment = () => {
         const snap = await getDocs(q);
         if (!isMounted.current) return;
 
-        const fetchedSubmissions = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        })) as Submission[];
+        const fetchedSubmissions = await Promise.all(
+          snap.docs.map(async (d) => {
+            const data = d.data() as any;
+            let studentName = data.studentName;
+            if ((!studentName || studentName === "Student") && data.studentId) {
+              try {
+                const userSnap = await getDoc(doc(db, "users", data.studentId));
+                if (userSnap.exists()) {
+                  const uData = userSnap.data() as any;
+                  studentName =
+                    `${uData.profile?.firstName || ""} ${uData.profile?.lastName || ""}`.trim() ||
+                    uData.fullName ||
+                    "Student";
+                }
+              } catch (err) {
+                // ignore
+              }
+            }
+            return {
+              id: d.id,
+              ...data,
+              studentName,
+            };
+          })
+        ) as Submission[];
 
         fetchedSubmissions.sort(
           (a, b) =>

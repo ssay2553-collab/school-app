@@ -8,7 +8,10 @@ import { SCHOOL_CONFIG } from '../constants/Config';
 export type OperationalType = 'open' | 'holiday' | 'mid_term' | 'vacation';
 
 export interface SchoolHolidayItem {
-  date: string; // YYYY-MM-DD
+  id?: string;
+  date?: string; // YYYY-MM-DD
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
   title: string;
   type?: OperationalType;
 }
@@ -139,7 +142,10 @@ export function useSchoolOperations() {
       }
 
       // 1. Global Admin Trigger Override
-      if (override !== 'open') {
+      if (
+        override !== 'open' &&
+        (!config.startDate || moment(todayStr).isSameOrAfter(moment(config.startDate), 'day'))
+      ) {
         let defaultTitle = 'School Operations Paused';
         if (override === 'holiday') defaultTitle = 'Official School Holiday';
         if (override === 'mid_term') defaultTitle = 'Mid-Term Break';
@@ -156,8 +162,21 @@ export function useSchoolOperations() {
         };
       }
 
-      // 2. Specific Date Off-Days Calendar
-      const dateHoliday = config.holidays?.find((h) => h.date === dateToCheck);
+      // 2. Specific Date / Scheduled Off-Days Calendar
+      const dateHoliday = config.holidays?.find((h) => {
+        const check = moment(dateToCheck, 'YYYY-MM-DD');
+        if (h.date && h.date === dateToCheck) return true;
+        if (h.startDate && h.endDate) {
+          const start = moment(h.startDate, 'YYYY-MM-DD');
+          const end = moment(h.endDate, 'YYYY-MM-DD');
+          return check.isBetween(start, end, 'day', '[]');
+        }
+        if (h.startDate && !h.endDate && h.startDate === dateToCheck) {
+          return true;
+        }
+        return false;
+      });
+
       if (dateHoliday) {
         const type = dateHoliday.type || 'holiday';
         return {

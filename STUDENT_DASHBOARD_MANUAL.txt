@@ -1,0 +1,355 @@
+================================================================================
+                       EDUEAZ SCHOOL MANAGEMENT SYSTEM
+                      STUDENT DASHBOARD USER MANUAL
+================================================================================
+
+WELCOME TO THE EDUEAZ STUDENT DASHBOARD USER MANUAL. THIS MANUAL PROVIDES FUN, EASY,
+AND COMPREHENSIVE STEP-BY-STEP GUIDANCE FOR STUDENTS AND EXPLORERS TO NAVIGATE ALL
+SCREENS, ACCESS HOMEWORK, SUBMIT NOTES, VIEW GRADES, AND PARTICIPATE IN SCHOOL LIFE.
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1.  Student Portal Home / Explorer Hub (`/student-dashboard`)
+2.  Homework & Assignments (`/student-dashboard/assignments`)
+3.  Submit Note / Upload Homework (`/student-dashboard/submit-note`)
+4.  My Stars & Assignment Scores (`/student-dashboard/assignment-scores`)
+5.  Study Resources & Past Questions (`/student-dashboard/study-resources`)
+6.  Class Schedule & Timetable (`/student-dashboard/StudentTimetable`)
+7.  Personal Study Schedule & Plan (`/student-dashboard/personal-timetable`)
+8.  Weekly Topics & Curriculum (`/student-dashboard/weekly-topics`)
+9.  Magic Notes & Scratchpad (`/student-dashboard/note`)
+10. Create Magic Note (`/student-dashboard/create-note`)
+11. My Daily Attendance (`/student-dashboard/daily-attendance`)
+12. My Teams / Study Groups (`/student-dashboard/StudentGroups`)
+13. Group Chat / Student Messaging (`/student-dashboard/GroupChat`)
+14. News Box & Announcements (`/student-dashboard/NewsScreen`)
+15. Educational Games & Mind Challenges (`/student-dashboard/games`)
+16. Upgrade / Learning Pass (`/student-dashboard/upgrade`)
+17. Profile & Portal Settings (`/student-dashboard/settings`)
+18. Account Sign Out (`/student-dashboard/logout`)
+19. Shared Student Features:
+    a. Coding & Robotics Hub (`/coding-robotics`)
+    b. Academic Calendar (`/academic-calendar`)
+
+================================================================================
+1. STUDENT PORTAL HOME / EXPLORER HUB (`/student-dashboard`)
+================================================================================
+OVERVIEW:
+The Student Dashboard is a vibrant, easy-to-use homepage that welcomes students,
+displays their Magic Code (for parent linking), highlights upcoming school events,
+and provides shortcuts across three main sections: Learning Hub, My World, and Community.
+
+KEY FEATURES & CONTROLS:
+- Explorer Welcome Header: Displays student profile photo, greeting, and role tag.
+- Magic Code Badge:
+  * Shows student's unique parent linking code (e.g., "ED-98214").
+  * Clickable Badge: Tap to copy magic code to clipboard instantly to share with parents.
+  * Sibling / Family Connected Indicator: Displays "FAMILY CONNECTED!" once two parents are linked.
+- Event Stats Banner: Live carousel showing upcoming holidays, term events, and exams.
+- Categorized Navigation Cards:
+  * LEARNING HUB: Homework, Submit Note, My Stars, Study Hub, Class Times, Weekly Topics, Coding & Robotics.
+  * MY WORLD: Calendar, My Plan, Magic Notes, Attendance, Settings.
+  * COMMUNITY: My Teams, News Box, Play Games.
+- Unread Homework Badge: Red indicator showing pending unsubmitted assignments.
+
+HOW TO OPERATE:
+1. Tap on any card in the Learning Hub, My World, or Community grids to launch a feature.
+2. Tap the "Magic Code" badge to copy your linking code and send it to your parents.
+3. Pull down on the screen to refresh homework alerts and announcements.
+
+================================================================================
+2. HOMEWORK & ASSIGNMENTS (`/student-dashboard/assignments`)
+================================================================================
+OVERVIEW:
+Your homework station! Lists all homework tasks assigned by your subject teachers,
+showing due dates, total points, instructions, and submission status.
+
+KEY FEATURES & CONTROLS:
+- Filter Tabs:
+  * Pending (Active homework requiring submission)
+  * Submitted (Homework already turned in)
+  * Overdue (Past due deadline)
+- Assignment Card: Shows Subject, Title, Due Date, Total Score Points, and Status Badge.
+- Tap to Open: Opens complete homework instructions and attached worksheet files.
+- Direct "Submit Answer" Button: Quick shortcut to upload completed work.
+
+HOW TO OPERATE:
+1. Tap "Pending" tab to view new homework.
+2. Click on an assignment card to read teacher instructions and view attached files.
+3. Tap "Submit Answer" to start uploading your completed work.
+
+================================================================================
+3. SUBMIT NOTE / UPLOAD HOMEWORK (`/student-dashboard/submit-note`)
+================================================================================
+OVERVIEW:
+Upload and submit your completed homework, assignment notes, or worksheet answers
+directly to your teacher.
+
+KEY FEATURES & CONTROLS:
+- Assignment Selector: Choose the assignment task you are submitting.
+- Typed Text Response Box: Type your answer or notes directly into the app.
+- Photo / Document Attachment Uploader:
+  * Take a photo of handwritten homework using device camera.
+  * Select document/PDF file from device memory.
+- Submit Work Button: Sends your submission to the teacher's grading desk.
+
+HOW TO OPERATE:
+1. Select assignment from dropdown.
+2. Type your answer or tap "Attach Photo/File" to upload a picture of your handwritten exercise book.
+3. Click "Submit Homework". A confirmation prompt will verify successful turn-in.
+
+================================================================================
+4. MY STARS & ASSIGNMENT SCORES (`/student-dashboard/assignment-scores`)
+================================================================================
+OVERVIEW:
+Check your grades, scores awarded, and teacher feedback comments for all marked
+assignments and quizzes.
+
+KEY FEATURES & CONTROLS:
+- Score Summary Cards: Shows overall average score percentage and total completed homework.
+- Graded Items List: Subject, Assignment Title, Score Awarded (e.g. 18 / 20 Stars), and Grade Badge.
+- Teacher Comment Box: View encouragement and correction advice written by your teacher.
+- View Returned Submission: Re-open your uploaded file alongside teacher correction marks.
+
+HOW TO OPERATE:
+1. Scroll through graded assignments.
+2. Tap a graded card to expand and read full teacher feedback notes.
+
+================================================================================
+5. STUDY RESOURCES & PAST QUESTIONS (`/student-dashboard/study-resources`)
+================================================================================
+OVERVIEW:
+A digital library stocked with revision materials, past examination questions,
+e-books, and study guides.
+
+KEY FEATURES & CONTROLS:
+- Resource Categories: Mathematics, English Science, Social Studies, Technology, Past Questions.
+- Search Bar: Search by topic keyword or year.
+- In-App Document Previewer: Read study documents directly on screen.
+- Offline Download Button: Save study guides to device memory for offline reading.
+
+HOW TO OPERATE:
+1. Select subject category or type a keyword in Search Bar.
+2. Tap a resource item to open and study the materials.
+
+================================================================================
+6. CLASS SCHEDULE & TIMETABLE (`/student-dashboard/StudentTimetable`)
+================================================================================
+OVERVIEW:
+Your official daily class schedule! View subject periods, lesson times, assigned teachers,
+and classroom locations throughout the week.
+
+KEY FEATURES & CONTROLS:
+- Weekday Tabs: Monday through Friday selector.
+- Period Card: Period Number, Subject Name, Time Window, Educator Name, Room/Arm.
+- Current Active Period Highlight: Highlights the subject period taking place right now.
+- Break Time Display: Clearly shows recess and lunch break times.
+
+HOW TO OPERATE:
+1. Select current day tab (e.g., "Tuesday").
+2. Check the schedule to know which books to prepare for your next class.
+
+================================================================================
+7. PERSONAL STUDY SCHEDULE & PLAN (`/student-dashboard/personal-timetable`)
+================================================================================
+OVERVIEW:
+Build your own personalized home study timetable, revision routines, and homework plan.
+
+KEY FEATURES & CONTROLS:
+- Add Study Slot Form: Day, Time Window, Subject/Activity Title (e.g. "Maths Revision", "Reading Storybook").
+- Personal Routine Grid: Daily checklist of personal study goals.
+- Alarm / Reminder Toggle: Get notified when it's time for home study.
+
+HOW TO OPERATE:
+1. Tap "+ Add Study Slot".
+2. Set time (e.g. 5:00 PM - 6:00 PM) and subject topic.
+3. Tap "Save Schedule".
+
+================================================================================
+8. WEEKLY TOPICS & CURRICULUM (`/student-dashboard/weekly-topics`)
+================================================================================
+OVERVIEW:
+Preview what you will be learning each week across all subjects during the academic term.
+
+KEY FEATURES & CONTROLS:
+- Term Week Selector: Select Week 1 to Week 12.
+- Subject Topic Cards: Displays weekly main topic, learning goals, and recommended reading.
+
+HOW TO OPERATE:
+1. Select target week.
+2. Read upcoming lesson topics to prepare ahead for class discussions.
+
+================================================================================
+9. MAGIC NOTES & SCRATCHPAD (`/student-dashboard/note`)
+================================================================================
+OVERVIEW:
+Your personal digital notebook for saving quick thoughts, class rough work, creative ideas,
+and study reminders.
+
+KEY FEATURES & CONTROLS:
+- Saved Notes Grid: Organized by date.
+- Search Notes: Quickly find saved notes.
+- Open Note Reader: View, edit, or delete notes.
+
+HOW TO OPERATE:
+1. Tap any saved note card to read or edit.
+2. Tap "+ New Note" to create a new entry.
+
+================================================================================
+10. CREATE MAGIC NOTE (`/student-dashboard/create-note`)
+================================================================================
+OVERVIEW:
+Screen to write and save a new note in your personal digital scratchpad.
+
+KEY FEATURES & CONTROLS:
+- Note Title Field: Type title of note.
+- Note Content Area: Multiline text workspace for drafting ideas or class notes.
+- Color Tag Selector: Choose background note color (Yellow, Blue, Green, Pink).
+- Save Button: Stores note securely in your student account.
+
+HOW TO OPERATE:
+1. Enter title and type note text.
+2. Pick a note color tag.
+3. Tap "Save Note".
+
+================================================================================
+11. MY DAILY ATTENDANCE (`/student-dashboard/daily-attendance`)
+================================================================================
+OVERVIEW:
+Track your personal school attendance history, total present days, and attendance
+percentage.
+
+KEY FEATURES & CONTROLS:
+- Attendance Meter: Shows overall term attendance percentage (e.g. 96% Present).
+- Calendar Heatmap: Visual monthly calendar showing Green (Present), Red (Absent), Yellow (Late), and Blue (Excused).
+- Detailed History List: List of past dates and attendance marks.
+
+HOW TO OPERATE:
+1. Review overall attendance percentage.
+2. Tap on calendar dates to inspect attendance marks.
+
+================================================================================
+12. MY TEAMS / STUDY GROUPS (`/student-dashboard/StudentGroups`)
+================================================================================
+OVERVIEW:
+View and join study groups, class teams, and project channels organized by your teachers.
+
+KEY FEATURES & CONTROLS:
+- Enrolled Groups List: Study groups where you are a member.
+- Group Cards: Group Name, Subject, Member Count, and Teacher Moderator.
+- Launch Chat Button: Opens group discussion room.
+
+HOW TO OPERATE:
+1. Tap a group card to enter the team chat channel.
+
+================================================================================
+13. GROUP CHAT / STUDENT MESSAGING (`/student-dashboard/GroupChat`)
+================================================================================
+OVERVIEW:
+Interactive study discussion room to chat with classmates, collaborate on group projects,
+and ask questions guided by your teacher.
+
+KEY FEATURES & CONTROLS:
+- Chat Message Stream: Real-time messaging window.
+- Sender Badges: Easily distinguish classmate messages from teacher moderator posts.
+- Send Text Message: Type and send study inquiries.
+
+HOW TO OPERATE:
+1. Type message in chat input bar.
+2. Tap "Send" button to post message to study group members.
+
+================================================================================
+14. NEWS BOX & ANNOUNCEMENTS (`/student-dashboard/NewsScreen`)
+================================================================================
+OVERVIEW:
+Your school bulletin board! Read announcements, event notices, holiday notices,
+and campus stories.
+
+KEY FEATURES & CONTROLS:
+- News Feed: Cards showing headline, date, and news content.
+- Read Full Notice: Tap card to expand announcement and view attached flyers/images.
+
+HOW TO OPERATE:
+1. Scroll through news feed items.
+2. Tap on notice cards to read complete updates.
+
+================================================================================
+15. EDUCATIONAL GAMES & MIND CHALLENGES (`/student-dashboard/games`)
+================================================================================
+OVERVIEW:
+Fun brain games, logic puzzles, word challenges, and cognitive math quizzes designed
+to make learning fun and rewarding!
+
+KEY FEATURES & CONTROLS:
+- Game Selection Grid:
+  * Math Wizard Quiz
+  * Word Explorer Puzzle
+  * Memory Challenger
+- High Score Leaderboard: Track your personal game achievements and stars earned.
+
+HOW TO OPERATE:
+1. Select a game card.
+2. Follow on-screen rules to play, solve puzzles, and earn star points!
+
+================================================================================
+16. UPGRADE / LEARNING PASS (`/student-dashboard/upgrade`)
+================================================================================
+OVERVIEW:
+Information screen showing premium student learning passes, advanced STEM tool
+access, and extra library resource privileges.
+
+KEY FEATURES & CONTROLS:
+- Feature Tier Comparison: Free Explorer vs Pro Learning Pass benefits.
+- Request Upgrade Button: Sends upgrade request notification to connected parent portal.
+
+HOW TO OPERATE:
+1. Read pass benefits.
+2. Tap "Request Parent Upgrade" to invite parents to unlock extended learning features.
+
+================================================================================
+17. PROFILE & PORTAL SETTINGS (`/student-dashboard/settings`)
+================================================================================
+OVERVIEW:
+Manage your student profile, view your registration details, change theme options,
+and update account security.
+
+KEY FEATURES & CONTROLS:
+- Profile Summary: Displays Full Name, Student ID, Class Arm, and Linked Parent Status.
+- App Theme Switch: Toggle between Light and Dark visual modes.
+- Sound Effects Toggle: Enable/Disable fun button sound effects.
+- Security / Password Update: Change login password.
+
+HOW TO OPERATE:
+1. Review profile and class details.
+2. Adjust theme or sound settings to your preference.
+3. Click "Save Settings".
+
+================================================================================
+18. ACCOUNT SIGN OUT (`/student-dashboard/logout`)
+================================================================================
+OVERVIEW:
+Safely logs out of your student portal account.
+
+KEY FEATURES & CONTROLS:
+- Confirmation Dialog: Confirms if you wish to exit student portal.
+- Sign Out Action: Clears active session and returns to main sign-in screen.
+
+HOW TO OPERATE:
+1. Tap "Log Out".
+2. Confirm prompt to return safely to the EduEaz login screen.
+
+================================================================================
+19. SHARED STUDENT FEATURES
+================================================================================
+a. CODING & ROBOTICS HUB (`/coding-robotics`)
+   - Overview: Interactive STEM learning portal covering robotics programming, block coding, and AI projects.
+   - Operations: Select coding lesson, follow interactive step-by-step logic exercises, and run simulated robotics programs.
+
+b. ACADEMIC CALENDAR (`/academic-calendar`)
+   - Overview: Calendar showing term dates, exam schedules, sports days, and school holidays.
+   - Operations: Check upcoming term dates and plan study routines.
+
+================================================================================
+END OF STUDENT DASHBOARD USER MANUAL
+================================================================================

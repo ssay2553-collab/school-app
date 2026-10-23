@@ -36,10 +36,11 @@ import { repairMissingSignupCodes } from "../../scratch/repair_signup_codes";
 import { broadcastFeeReminders } from "../../src/services/feeReminderService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import Constants from "expo-constants";
+import { SchoolHolidayItem, OperationalType } from "../../hooks/useSchoolOperations";
 
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 
-type DatePickerTarget = 'vacationNextTerm' | 'midTermStart' | 'midTermEnd' | 'holidayDate' | null;
+type DatePickerTarget = 'vacationNextTerm' | 'midTermStart' | 'midTermEnd' | 'holidayDate' | 'holidayStart' | 'holidayEnd' | null;
 
 export default function AdminSettingsScreen() {
   const { theme } = useTheme();
@@ -54,18 +55,26 @@ export default function AdminSettingsScreen() {
   const isNavigating = useRef(false);
 
   // Operational Switches State
-  const [activeOverride, setActiveOverride] = useState<'open' | 'holiday' | 'mid_term' | 'vacation'>('open');
+  const [activeOverride, setActiveOverride] = useState<OperationalType>('open');
   const [overrideTitle, setOverrideTitle] = useState('');
   const [unlockDate, setUnlockDate] = useState('');
   const [savingOperations, setSavingOperations] = useState(false);
 
-  // Modal states for Off-Day triggers
-  const [modalMode, setModalMode] = useState<'none' | 'holiday' | 'mid_term' | 'vacation'>('none');
+  // Scheduled Holidays / Off-Days List
+  const [holidays, setHolidays] = useState<SchoolHolidayItem[]>([]);
+  const [deletingHolidayId, setDeletingHolidayId] = useState<string | null>(null);
+
+  // Modal states for Off-Day triggers & Advance Scheduling
+  const [modalMode, setModalMode] = useState<'none' | 'holiday' | 'mid_term' | 'vacation' | 'off_day'>('none');
+  const [holidayDateType, setHolidayDateType] = useState<'single' | 'range'>('single');
   const [vacationNextTermBegins, setVacationNextTermBegins] = useState('');
   const [midTermStartDate, setMidTermStartDate] = useState(moment().format('YYYY-MM-DD'));
   const [midTermEndDate, setMidTermEndDate] = useState(moment().add(5, 'days').format('YYYY-MM-DD'));
   const [holidayDate, setHolidayDate] = useState(moment().format('YYYY-MM-DD'));
+  const [holidayStartDate, setHolidayStartDate] = useState(moment().format('YYYY-MM-DD'));
+  const [holidayEndDate, setHolidayEndDate] = useState(moment().format('YYYY-MM-DD'));
   const [modalTitleInput, setModalTitleInput] = useState('');
+  const [activateImmediately, setActivateImmediately] = useState(false);
 
   // DatePicker state
   const [activeDatePickerTarget, setActiveDatePickerTarget] = useState<DatePickerTarget>(null);
@@ -90,6 +99,7 @@ export default function AdminSettingsScreen() {
         if (data.activeOverride) setActiveOverride(data.activeOverride);
         if (data.overrideTitle) setOverrideTitle(data.overrideTitle);
         if (data.unlockDate) setUnlockDate(data.unlockDate);
+        if (Array.isArray(data.holidays)) setHolidays(data.holidays);
       }
 
       // Also fetch nextTermBegins from academic_config
@@ -126,6 +136,10 @@ export default function AdminSettingsScreen() {
         setMidTermEndDate(formatted);
       } else if (activeDatePickerTarget === 'holidayDate') {
         setHolidayDate(formatted);
+      } else if (activeDatePickerTarget === 'holidayStart') {
+        setHolidayStartDate(formatted);
+      } else if (activeDatePickerTarget === 'holidayEnd') {
+        setHolidayEndDate(formatted);
       }
       setActiveDatePickerDate(selectedDate);
     }
@@ -184,158 +198,198 @@ export default function AdminSettingsScreen() {
 
   const { cleaning: isFinanceCleaning, runCleanup: runFinanceCleanup, report: financeReport } = useFinanceCleanup(showToast);
 
-  const openTriggerModal = async (type: 'holiday' | 'mid_term' | 'vacation') => {
+  const openTriggerModal = async (type: 'holiday' | 'mid_term' | 'vacation' | 'off_day') => {
     setModalMode(type);
+    const todayStr = moment().format('YYYY-MM-DD');
+
     if (type === 'vacation') {
       setModalTitleInput(overrideTitle || 'School Vacation / Term Break');
-      // Fetch latest nextTermBegins date
+      setHolidayDateType('range');
+      setHolidayStartDate(todayStr);
       try {
         const acadSnap = await getDoc(doc(db, 'school_settings', 'academic_config'));
         if (acadSnap.exists() && acadSnap.data()?.nextTermBegins) {
-          setVacationNextTermBegins(acadSnap.data().nextTermBegins.toString().trim());
+          const nextTerm = acadSnap.data().nextTermBegins.toString().trim();
+          setVacationNextTermBegins(nextTerm);
+          setHolidayEndDate(nextTerm);
+        } else {
+          setHolidayEndDate(moment().add(1, 'month').format('YYYY-MM-DD'));
         }
       } catch (e) {
         console.error(e);
       }
     } else if (type === 'mid_term') {
-      setModalTitleInput(overrideTitle || 'Mid-Term Break');
-      setMidTermStartDate(moment().format('YYYY-MM-DD'));
+      setModalTitleInput('Mid-Term Break');
+      setHolidayDateType('range');
+      setMidTermStartDate(todayStr);
       setMidTermEndDate(moment().add(5, 'days').format('YYYY-MM-DD'));
-    } else if (type === 'holiday') {
-      setModalTitleInput(overrideTitle || 'Public / School Holiday');
-      setHolidayDate(moment().format('YYYY-MM-DD'));
+      setHolidayStartDate(todayStr);
+      setHolidayEndDate(moment().add(5, 'days').format('YYYY-MM-DD'));
+    } else if (type === 'holiday' || type === 'off_day') {
+      setModalTitleInput('Public / School Holiday');
+      setHolidayDateType('single');
+      setHolidayDate(todayStr);
+      setHolidayStartDate(todayStr);
+      setHolidayEndDate(todayStr);
     }
+    setActivateImmediately(false);
   };
 
-  const handleConfirmVacation = async () => {
-    if (!vacationNextTermBegins.trim()) {
-      showToast({ message: 'Please set the Next Term Begins date (YYYY-MM-DD).', type: 'error' });
+  const handleSaveHolidayOrBreak = async () => {
+    if (!modalTitleInput.trim()) {
+      showToast({ message: 'Please enter a title / reason for the off-day.', type: 'error' });
       return;
+    }
+
+    let start = '';
+    let end = '';
+    let itemType: OperationalType = 'holiday';
+
+    if (modalMode === 'vacation') {
+      itemType = 'vacation';
+      start = holidayDateType === 'single' ? holidayDate : holidayStartDate;
+      end = vacationNextTermBegins.trim();
+      if (!end) {
+        showToast({ message: 'Please set Next Term Begins date.', type: 'error' });
+        return;
+      }
+    } else if (modalMode === 'mid_term') {
+      itemType = 'mid_term';
+      start = midTermStartDate.trim();
+      end = midTermEndDate.trim();
+      if (!start || !end) {
+        showToast({ message: 'Please set start and end dates.', type: 'error' });
+        return;
+      }
+    } else {
+      itemType = 'holiday';
+      if (holidayDateType === 'single') {
+        start = holidayDate.trim();
+        end = holidayDate.trim();
+      } else {
+        start = holidayStartDate.trim();
+        end = holidayEndDate.trim();
+      }
+      if (!start) {
+        showToast({ message: 'Please select valid off-day date(s).', type: 'error' });
+        return;
+      }
     }
 
     setSavingOperations(true);
     try {
-      const nextTermDateStr = vacationNextTermBegins.trim();
+      const calculatedUnlockDate = moment(end).add(1, 'day').format('YYYY-MM-DD');
 
-      // 1. Update academic_config in Firestore so Academic Calendar and app settings are synchronized
-      await setDoc(doc(db, 'school_settings', 'academic_config'), {
-        nextTermBegins: nextTermDateStr,
-        updatedAt: serverTimestamp(),
-      }, { merge: true });
+      const newItem: SchoolHolidayItem = {
+        id: `hol_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        title: modalTitleInput.trim(),
+        type: itemType,
+        date: start,
+        startDate: start,
+        endDate: end,
+      };
 
-      // 2. Update teacherAttendanceConfig operational status with unlockDate = nextTermDateStr
-      const payload = {
-        activeOverride: 'vacation',
-        overrideTitle: modalTitleInput.trim() || 'Vacation / End of Term Break',
-        startDate: moment().format('YYYY-MM-DD'),
-        unlockDate: nextTermDateStr,
+      // Filter existing item with exact same ID or duplicate date/range
+      const updatedHolidays = [
+        ...holidays.filter(h => (h.id && h.id !== newItem.id) || (!h.id && h.date !== newItem.date)),
+        newItem
+      ];
+
+      const todayStr = moment().format('YYYY-MM-DD');
+      const isTodayInWindow = moment(todayStr).isBetween(moment(start), moment(end), 'day', '[]');
+      const shouldActivateNow = activateImmediately || isTodayInWindow;
+
+      const payload: any = {
+        holidays: updatedHolidays,
         updatedAt: serverTimestamp(),
       };
+
+      if (modalMode === 'vacation' && vacationNextTermBegins.trim()) {
+        await setDoc(doc(db, 'school_settings', 'academic_config'), {
+          nextTermBegins: vacationNextTermBegins.trim(),
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+
+      if (shouldActivateNow) {
+        payload.activeOverride = itemType;
+        payload.overrideTitle = newItem.title;
+        payload.startDate = start;
+        payload.endDate = end;
+        payload.unlockDate = calculatedUnlockDate;
+      }
 
       await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload, { merge: true });
 
       if (isMounted.current) {
-        setActiveOverride('vacation');
-        setOverrideTitle(payload.overrideTitle);
-        setUnlockDate(nextTermDateStr);
+        setHolidays(updatedHolidays);
+        if (shouldActivateNow) {
+          setActiveOverride(itemType);
+          setOverrideTitle(newItem.title);
+          setUnlockDate(calculatedUnlockDate);
+        }
         setModalMode('none');
-        showToast({
-          message: `🌴 Vacation Mode Activated! Attendance & fees collection paused. App will auto-unlock on ${nextTermDateStr}.`,
-          type: 'success',
-        });
+
+        const dateRangeStr = start === end ? start : `${start} to ${end}`;
+        if (shouldActivateNow) {
+          showToast({
+            message: `🎉 Mode Activated for ${dateRangeStr}! App will auto-unlock on ${calculatedUnlockDate}.`,
+            type: 'success',
+          });
+        } else {
+          showToast({
+            message: `📅 Scheduled ${newItem.title} for ${dateRangeStr}! It will automatically trigger on the due date.`,
+            type: 'success',
+          });
+        }
       }
     } catch (err) {
       if (isMounted.current) {
-        console.error(err);
-        showToast({ message: 'Failed to activate Vacation mode.', type: 'error' });
+        console.error('Error saving scheduled holiday:', err);
+        showToast({ message: 'Failed to save off-day schedule.', type: 'error' });
       }
     } finally {
       if (isMounted.current) setSavingOperations(false);
     }
   };
 
-  const handleConfirmMidTerm = async () => {
-    if (!midTermStartDate.trim() || !midTermEndDate.trim()) {
-      showToast({ message: 'Please enter both start and end dates.', type: 'error' });
-      return;
-    }
+  const handleDeleteHoliday = async (holidayItem: SchoolHolidayItem) => {
+    const confirmMsg = `Remove scheduled off-day "${holidayItem.title}" (${holidayItem.startDate || holidayItem.date})?`;
 
-    setSavingOperations(true);
-    try {
-      const startStr = midTermStartDate.trim();
-      const endStr = midTermEndDate.trim();
-      const calculatedUnlockDate = moment(endStr).add(1, 'day').format('YYYY-MM-DD');
+    const performDelete = async () => {
+      setDeletingHolidayId(holidayItem.id || holidayItem.date || 'delete');
+      try {
+        const updated = holidays.filter(h =>
+          (holidayItem.id && h.id !== holidayItem.id) ||
+          (!holidayItem.id && h.date !== holidayItem.date)
+        );
 
-      const payload = {
-        activeOverride: 'mid_term',
-        overrideTitle: modalTitleInput.trim() || 'Mid-Term Break',
-        startDate: startStr,
-        endDate: endStr,
-        unlockDate: calculatedUnlockDate,
-        updatedAt: serverTimestamp(),
-      };
+        await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), {
+          holidays: updated,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
 
-      await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload, { merge: true });
-
-      if (isMounted.current) {
-        setActiveOverride('mid_term');
-        setOverrideTitle(payload.overrideTitle);
-        setUnlockDate(calculatedUnlockDate);
-        setModalMode('none');
-        showToast({
-          message: `🏖️ Mid-Term Break Activated (${startStr} to ${endStr})! App will auto-unlock on ${calculatedUnlockDate}.`,
-          type: 'success',
-        });
+        if (isMounted.current) {
+          setHolidays(updated);
+          showToast({ message: `Removed off-day "${holidayItem.title}".`, type: 'success' });
+        }
+      } catch (err) {
+        console.error('Error removing holiday:', err);
+        showToast({ message: 'Failed to remove off-day.', type: 'error' });
+      } finally {
+        if (isMounted.current) setDeletingHolidayId(null);
       }
-    } catch (err) {
-      if (isMounted.current) {
-        console.error(err);
-        showToast({ message: 'Failed to activate Mid-Term Break.', type: 'error' });
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(confirmMsg)) {
+        performDelete();
       }
-    } finally {
-      if (isMounted.current) setSavingOperations(false);
-    }
-  };
-
-  const handleConfirmHoliday = async () => {
-    if (!holidayDate.trim()) {
-      showToast({ message: 'Please enter the holiday date (YYYY-MM-DD).', type: 'error' });
-      return;
-    }
-
-    setSavingOperations(true);
-    try {
-      const hDateStr = holidayDate.trim();
-      const calculatedUnlockDate = moment(hDateStr).add(1, 'day').format('YYYY-MM-DD');
-
-      const payload = {
-        activeOverride: 'holiday',
-        overrideTitle: modalTitleInput.trim() || 'Public / School Holiday',
-        startDate: hDateStr,
-        endDate: hDateStr,
-        unlockDate: calculatedUnlockDate,
-        updatedAt: serverTimestamp(),
-      };
-
-      await setDoc(doc(db, 'teacherAttendanceConfig', schoolId), payload, { merge: true });
-
-      if (isMounted.current) {
-        setActiveOverride('holiday');
-        setOverrideTitle(payload.overrideTitle);
-        setUnlockDate(calculatedUnlockDate);
-        setModalMode('none');
-        showToast({
-          message: `🎈 Holiday Activated for ${hDateStr}! App will auto-unlock on ${calculatedUnlockDate}.`,
-          type: 'success',
-        });
-      }
-    } catch (err) {
-      if (isMounted.current) {
-        console.error(err);
-        showToast({ message: 'Failed to activate Holiday mode.', type: 'error' });
-      }
-    } finally {
-      if (isMounted.current) setSavingOperations(false);
+    } else {
+      Alert.alert('Delete Scheduled Off-Day', confirmMsg, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: performDelete }
+      ]);
     }
   };
 
@@ -653,6 +707,8 @@ export default function AdminSettingsScreen() {
     },
   ];
 
+  const todayStr = moment().format('YYYY-MM-DD');
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <StatusBar barStyle="dark-content" />
@@ -679,7 +735,7 @@ export default function AdminSettingsScreen() {
             <Text style={[styles.opTitle, { color: theme.text }]}>Academic Off-Days & Auto-Unlock Controls</Text>
           </View>
           <Text style={styles.opSub}>
-            Trigger official school off-days (Holiday, Mid-Term Break, Vacation). Activating a trigger automatically pauses student/staff attendance marking and daily fees taking. Operations automatically resume/unlock on the set return date.
+            Set holidays, midterm breaks, and off-days in advance. When due, attendance and daily fee requirements pause automatically and auto-unlock when the day/period ends.
           </Text>
 
           <View style={styles.opBtnGrid}>
@@ -741,7 +797,7 @@ export default function AdminSettingsScreen() {
               <SVGIcon name="lock-closed" size={16} color="#d97706" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.activeOpBannerText}>
-                  Active Mode: <Text style={{ fontWeight: '800' }}>{activeOverride.toUpperCase()}</Text> ({overrideTitle || 'Off-Day'})
+                  Active Mode Today: <Text style={{ fontWeight: '800' }}>{activeOverride.toUpperCase()}</Text> ({overrideTitle || 'Off-Day'})
                 </Text>
                 {unlockDate ? (
                   <Text style={styles.activeOpUnlockText}>
@@ -749,6 +805,92 @@ export default function AdminSettingsScreen() {
                   </Text>
                 ) : null}
               </View>
+            </View>
+          )}
+        </View>
+
+        {/* Scheduled Holidays & Off-Days Calendar Card */}
+        <View style={[styles.opCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <SVGIcon name="calendar-outline" size={22} color={COLORS.primary} />
+              <Text style={[styles.opTitle, { color: theme.text }]}>📅 Scheduled Off-Days & Holidays</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.addScheduleBtn}
+              onPress={() => openTriggerModal('off_day')}
+            >
+              <Text style={styles.addScheduleBtnText}>+ Schedule Off-Day</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.opSub}>
+            Admins can set future holidays and breaks in advance. When the set date arrives, the system automatically pauses daily attendance & fees, and auto-unlocks when done.
+          </Text>
+
+          {holidays.length === 0 ? (
+            <View style={styles.emptyHolidaysBox}>
+              <Text style={styles.emptyHolidaysText}>No holidays or breaks scheduled in advance yet.</Text>
+            </View>
+          ) : (
+            <View style={styles.holidayListContainer}>
+              {holidays.map((item, idx) => {
+                const startDateStr = item.startDate || item.date || todayStr;
+                const endDateStr = item.endDate || item.date || startDateStr;
+                const isSingle = startDateStr === endDateStr;
+
+                const isTodayActive = moment(todayStr).isBetween(moment(startDateStr), moment(endDateStr), 'day', '[]');
+                const isFuture = moment(todayStr).isBefore(moment(startDateStr), 'day');
+                const daysUntil = moment(startDateStr).diff(moment(todayStr), 'days');
+
+                const iconName = item.type === 'vacation' ? '🌴' : item.type === 'mid_term' ? '🏖️' : '🎈';
+
+                return (
+                  <View key={item.id || item.date || idx} style={styles.holidayItemRow}>
+                    <View style={styles.holidayItemLeft}>
+                      <Text style={{ fontSize: 18, marginRight: 8 }}>{iconName}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.holidayItemTitle}>{item.title || 'Official Off-Day'}</Text>
+                        <Text style={styles.holidayItemDates}>
+                          {isSingle
+                            ? moment(startDateStr).format('ddd, MMM D, YYYY')
+                            : `${moment(startDateStr).format('MMM D')} – ${moment(endDateStr).format('MMM D, YYYY')}`}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.holidayItemRight}>
+                      {isTodayActive ? (
+                        <View style={[styles.badge, { backgroundColor: '#fef2f2', borderColor: '#fca5a5' }]}>
+                          <Text style={[styles.badgeText, { color: '#dc2626' }]}>🔴 Active Today</Text>
+                        </View>
+                      ) : isFuture ? (
+                        <View style={[styles.badge, { backgroundColor: '#eff6ff', borderColor: '#93c5fd' }]}>
+                          <Text style={[styles.badgeText, { color: '#2563eb' }]}>
+                            {daysUntil === 1 ? '⏳ Tomorrow' : `⏳ In ${daysUntil} days`}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={[styles.badge, { backgroundColor: '#f1f5f9', borderColor: '#cbd5e1' }]}>
+                          <Text style={[styles.badgeText, { color: '#64748b' }]}>🏁 Passed</Text>
+                        </View>
+                      )}
+
+                      <TouchableOpacity
+                        style={styles.deleteBtn}
+                        onPress={() => handleDeleteHoliday(item)}
+                        disabled={deletingHolidayId === (item.id || item.date)}
+                      >
+                        {deletingHolidayId === (item.id || item.date) ? (
+                          <ActivityIndicator size="small" color="#ef4444" />
+                        ) : (
+                          <SVGIcon name="trash-outline" size={18} color="#ef4444" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })}
             </View>
           )}
         </View>
@@ -789,15 +931,16 @@ export default function AdminSettingsScreen() {
         <Text style={[styles.versionText, { color: theme.gray }]}>Version 2.2.0 • EduEaze Platform</Text>
       </ScrollView>
 
-      {/* Trigger Modals */}
+      {/* Trigger & Advance Schedule Modal */}
       <Modal visible={modalMode !== 'none'} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>
-                {modalMode === 'vacation' && '🌴 Trigger Vacation / Term Break'}
-                {modalMode === 'mid_term' && '🏖️ Trigger Mid-Term Break'}
-                {modalMode === 'holiday' && '🎈 Trigger Public / School Holiday'}
+                {modalMode === 'vacation' && '🌴 Schedule Vacation / Term Break'}
+                {modalMode === 'mid_term' && '🏖️ Schedule Mid-Term Break'}
+                {modalMode === 'holiday' && '🎈 Schedule Public / School Holiday'}
+                {modalMode === 'off_day' && '📅 Schedule School Off-Day'}
               </Text>
               <TouchableOpacity onPress={() => setModalMode('none')}>
                 <SVGIcon name="close" size={22} color="#64748b" />
@@ -805,9 +948,7 @@ export default function AdminSettingsScreen() {
             </View>
 
             <Text style={styles.modalSub}>
-              {modalMode === 'vacation' && 'Vacation mode pauses daily attendance & fee taking until the Next Term Begins.'}
-              {modalMode === 'mid_term' && 'Select the break start and end dates. The system automatically unlocks on the day after.'}
-              {modalMode === 'holiday' && 'Set the holiday date and title. Operations automatically resume the next day.'}
+              Set off-days in advance. When the set date arrives, app operations pause automatically and auto-unlock when school resumes.
             </Text>
 
             <Text style={styles.inputLabel}>Reason / Title</Text>
@@ -819,12 +960,33 @@ export default function AdminSettingsScreen() {
               onChangeText={setModalTitleInput}
             />
 
+            {(modalMode === 'holiday' || modalMode === 'off_day') && (
+              <View style={styles.typeToggleRow}>
+                <TouchableOpacity
+                  style={[styles.typeToggleBtn, holidayDateType === 'single' && styles.typeToggleBtnActive]}
+                  onPress={() => setHolidayDateType('single')}
+                >
+                  <Text style={[styles.typeToggleText, holidayDateType === 'single' && styles.typeToggleTextActive]}>
+                    Single Day
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.typeToggleBtn, holidayDateType === 'range' && styles.typeToggleBtnActive]}
+                  onPress={() => setHolidayDateType('range')}
+                >
+                  <Text style={[styles.typeToggleText, holidayDateType === 'range' && styles.typeToggleTextActive]}>
+                    Multi-Day Range
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             {modalMode === 'vacation' && (
               <View style={styles.fieldBox}>
                 {renderDateField('Next Term Begins Date', vacationNextTermBegins, setVacationNextTermBegins, 'vacationNextTerm')}
                 {!vacationNextTermBegins ? (
                   <Text style={styles.warningNote}>
-                    ⚠️ Next Term Begins date is not set. Please set the date above so the app auto-unlocks when school resumes.
+                    ⚠️ Next Term Begins date is not set. Set the date above so the app auto-unlocks when school resumes.
                   </Text>
                 ) : (
                   <Text style={styles.infoNote}>
@@ -844,14 +1006,31 @@ export default function AdminSettingsScreen() {
               </View>
             )}
 
-            {modalMode === 'holiday' && (
+            {(modalMode === 'holiday' || modalMode === 'off_day') && (
               <View style={styles.fieldBox}>
-                {renderDateField('Holiday Date', holidayDate, setHolidayDate, 'holidayDate')}
+                {holidayDateType === 'single' ? (
+                  renderDateField('Holiday Date', holidayDate, setHolidayDate, 'holidayDate')
+                ) : (
+                  <>
+                    {renderDateField('Start Date', holidayStartDate, setHolidayStartDate, 'holidayStart')}
+                    {renderDateField('End Date', holidayEndDate, setHolidayEndDate, 'holidayEnd')}
+                  </>
+                )}
                 <Text style={styles.infoNote}>
-                  🔓 App will automatically unlock on <Text style={{ fontWeight: '800' }}>{moment(holidayDate).add(1, 'day').format('YYYY-MM-DD')}</Text>.
+                  🔓 App will automatically unlock on <Text style={{ fontWeight: '800' }}>{moment(holidayDateType === 'single' ? holidayDate : holidayEndDate).add(1, 'day').format('YYYY-MM-DD')}</Text>.
                 </Text>
               </View>
             )}
+
+            <TouchableOpacity
+              style={styles.checkboxRow}
+              onPress={() => setActivateImmediately(!activateImmediately)}
+            >
+              <View style={[styles.checkbox, activateImmediately && styles.checkboxChecked]}>
+                {activateImmediately && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>✓</Text>}
+              </View>
+              <Text style={styles.checkboxText}>⚡ Activate override mode immediately today</Text>
+            </TouchableOpacity>
 
             <View style={styles.modalBtnRow}>
               <TouchableOpacity
@@ -864,19 +1043,13 @@ export default function AdminSettingsScreen() {
 
               <TouchableOpacity
                 style={[styles.modalSaveBtn, { backgroundColor: COLORS.primary }]}
-                onPress={
-                  modalMode === 'vacation'
-                    ? handleConfirmVacation
-                    : modalMode === 'mid_term'
-                    ? handleConfirmMidTerm
-                    : handleConfirmHoliday
-                }
+                onPress={handleSaveHolidayOrBreak}
                 disabled={savingOperations}
               >
                 {savingOperations ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text style={styles.modalSaveText}>Activate & Set Auto-Unlock</Text>
+                  <Text style={styles.modalSaveText}>Save & Schedule Off-Day</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -955,6 +1128,31 @@ const styles = StyleSheet.create({
   activeOpBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fffbeb', borderRadius: 10, padding: 12, marginTop: 12, borderWidth: 1, borderColor: '#fde68a' },
   activeOpBannerText: { fontSize: 12, color: '#d97706', fontWeight: '600' },
   activeOpUnlockText: { fontSize: 11, color: '#059669', marginTop: 2, fontWeight: '600' },
+
+  // Scheduled Holidays Section
+  addScheduleBtn: { backgroundColor: COLORS.primary, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  addScheduleBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  emptyHolidaysBox: { padding: 14, backgroundColor: '#f8fafc', borderRadius: 10, alignItems: 'center' },
+  emptyHolidaysText: { fontSize: 12, color: '#94a3b8', fontStyle: 'italic' },
+  holidayListContainer: { gap: 8 },
+  holidayItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  holidayItemLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  holidayItemTitle: { fontSize: 13, fontWeight: '700', color: '#0f172a' },
+  holidayItemDates: { fontSize: 11, color: '#64748b', marginTop: 2 },
+  holidayItemRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1 },
+  badgeText: { fontSize: 10, fontWeight: '800' },
+  deleteBtn: { padding: 4 },
+
   list: {
     borderRadius: 20,
     overflow: 'hidden',
@@ -1020,6 +1218,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+
   // Modal styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContainer: { backgroundColor: '#fff', borderRadius: 20, padding: 20, width: '100%', maxWidth: 450 },
@@ -1028,9 +1227,18 @@ const styles = StyleSheet.create({
   modalSub: { fontSize: 12, color: '#64748b', lineHeight: 16, marginBottom: 16 },
   inputLabel: { fontSize: 12, fontWeight: '700', color: '#334155', marginBottom: 6 },
   modalInput: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 12, height: 44, fontSize: 13, color: '#0f172a', marginBottom: 12 },
-  fieldBox: { marginTop: 8 },
+  typeToggleRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  typeToggleBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#f8fafc', alignItems: 'center' },
+  typeToggleBtnActive: { backgroundColor: '#e0f2fe', borderColor: '#0284c7' },
+  typeToggleText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
+  typeToggleTextActive: { color: '#0284c7', fontWeight: '800' },
+  fieldBox: { marginTop: 4 },
   warningNote: { fontSize: 11, color: '#dc2626', fontStyle: 'italic', marginBottom: 12 },
   infoNote: { fontSize: 11, color: '#059669', marginBottom: 12 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16, marginTop: 4 },
+  checkbox: { width: 18, height: 18, borderRadius: 4, borderWidth: 1, borderColor: '#cbd5e1', backgroundColor: '#f8fafc', justifyContent: 'center', alignItems: 'center' },
+  checkboxChecked: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  checkboxText: { fontSize: 12, color: '#334155', fontWeight: '600' },
   modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   modalCancelBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#f1f5f9', alignItems: 'center' },
   modalCancelText: { fontSize: 13, fontWeight: '700', color: '#475569' },

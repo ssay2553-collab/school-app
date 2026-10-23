@@ -1,26 +1,36 @@
-import React, { useState } from "react";
-import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  ActivityIndicator,
-  TextInput,
-  Alert,
-  StyleSheet,
-  Platform,
-  Dimensions
-} from "react-native";
-import { doc, updateDoc, serverTimestamp, query, collection, where, getDocs } from "firebase/firestore";
 import { useRouter } from "expo-router";
-import SVGIcon from "../SVGIcon";
-import QuestionResponseItem from "../student-dashboard/assignments/QuestionResponseItem";
-import { db } from "../../firebaseConfig";
-import { useAuth } from "../../contexts/AuthContext";
-import { sendNotification } from "../../src/services/notificationService";
+import {
+    collection,
+    doc,
+    getDocs,
+    query,
+    serverTimestamp,
+    updateDoc,
+    where,
+} from "firebase/firestore";
+import { useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from "react-native";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
+import { useAuth } from "../../contexts/AuthContext";
+import { db } from "../../firebaseConfig";
+import {
+    markNotificationsForResolvedItem,
+    sendNotification,
+} from "../../src/services/notificationService";
+import SVGIcon from "../SVGIcon";
+import QuestionResponseItem from "../student-dashboard/assignments/QuestionResponseItem";
 
 interface AssignmentReviewModalProps {
   assignment: any;
@@ -33,7 +43,7 @@ export default function AssignmentReviewModal({
   assignment,
   visible,
   onClose,
-  onStatusUpdate
+  onStatusUpdate,
 }: AssignmentReviewModalProps) {
   const { appUser } = useAuth();
   const router = useRouter();
@@ -60,21 +70,33 @@ export default function AssignmentReviewModal({
         updatedAt: serverTimestamp(),
       });
 
-      const updatedAssignment = { ...assignment, status: 'approved', updatedAt: new Date() };
+      const updatedAssignment = {
+        ...assignment,
+        status: "approved",
+        updatedAt: new Date(),
+      };
       onStatusUpdate(updatedAssignment);
+
+      await markNotificationsForResolvedItem({
+        type: "assignment",
+        itemId: assignment.id,
+        status: "pending",
+      });
 
       // Send notifications to students & parents
       const studentsQuery = query(
         collection(db, "users"),
         where("role", "==", "student"),
-        where("classId", "==", assignment.classId)
+        where("classId", "==", assignment.classId),
       );
 
       const studentsSnap = await getDocs(studentsQuery);
 
       for (const studentDoc of studentsSnap.docs) {
         const sData = studentDoc.data();
-        const studentName = `${sData.profile?.firstName || ''} ${sData.profile?.lastName || ''}`.trim() || "Your ward";
+        const studentName =
+          `${sData.profile?.firstName || ""} ${sData.profile?.lastName || ""}`.trim() ||
+          "Your ward";
 
         // Notify Student
         sendNotification({
@@ -93,7 +115,7 @@ export default function AssignmentReviewModal({
         // Notify Parents
         const parentUids = sData.parentUids;
         if (Array.isArray(parentUids) && parentUids.length > 0) {
-          parentUids.forEach(parentId => {
+          parentUids.forEach((parentId) => {
             sendNotification({
               recipientId: parentId,
               senderId: appUser?.uid || "admin",
@@ -104,7 +126,7 @@ export default function AssignmentReviewModal({
               data: {
                 assignmentId: assignment.id,
                 classId: assignment.classId,
-                studentId: studentDoc.id
+                studentId: studentDoc.id,
               },
             });
           });
@@ -136,8 +158,19 @@ export default function AssignmentReviewModal({
         updatedAt: serverTimestamp(),
       });
 
-      const updatedAssignment = { ...assignment, status: 'rejected', feedback: rejectionFeedback, updatedAt: new Date() };
+      const updatedAssignment = {
+        ...assignment,
+        status: "rejected",
+        feedback: rejectionFeedback,
+        updatedAt: new Date(),
+      };
       onStatusUpdate(updatedAssignment);
+
+      await markNotificationsForResolvedItem({
+        type: "assignment",
+        itemId: assignment.id,
+        status: "pending",
+      });
 
       // Notify teacher
       await sendNotification({
@@ -149,7 +182,7 @@ export default function AssignmentReviewModal({
         body: `Your assignment "${assignment.title}" requires corrections. Feedback: ${rejectionFeedback}`,
         data: {
           assignmentId: assignment.id,
-          status: "rejected"
+          status: "rejected",
         },
       });
 
@@ -173,43 +206,58 @@ export default function AssignmentReviewModal({
       onRequestClose={handleClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={[styles.modalContent, { height: '95%' }]}>
+        <View style={[styles.modalContent, { height: "95%" }]}>
           <View style={styles.modalHeader}>
             <View style={{ flex: 1 }}>
               <Text style={styles.modalTitle}>Review Assignment</Text>
-              <Text style={styles.modalSubtitle}>{assignment?.title} • {assignment?.subjectId || assignment?.subject}</Text>
+              <Text style={styles.modalSubtitle}>
+                {assignment?.title} •{" "}
+                {assignment?.subjectId || assignment?.subject}
+              </Text>
             </View>
             <TouchableOpacity onPress={handleClose}>
               <SVGIcon name="close-circle" size={28} color="#64748B" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 120 }}
+          >
             <View style={styles.reviewContentBox}>
               <Text style={styles.reviewLabel}>Instructions / Description</Text>
-              <Text style={styles.reviewDescription}>{assignment?.description || "No description provided."}</Text>
+              <Text style={styles.reviewDescription}>
+                {assignment?.description || "No description provided."}
+              </Text>
 
               {assignment?.fileUrl && (
                 <TouchableOpacity
                   style={styles.attachmentLink}
                   onPress={() => {
-                    if (Platform.OS === 'web') {
-                      window.open(assignment.fileUrl, '_blank');
+                    if (Platform.OS === "web") {
+                      window.open(assignment.fileUrl, "_blank");
                     } else {
                       router.push({
-                        pathname: '/shared/web-view',
-                        params: { url: assignment.fileUrl, title: assignment.fileName || 'Attachment' },
+                        pathname: "/shared/web-view",
+                        params: {
+                          url: assignment.fileUrl,
+                          title: assignment.fileName || "Attachment",
+                        },
                       });
                     }
                   }}
                 >
                   <SVGIcon name="attach" size={18} color={primary} />
-                  <Text style={[styles.attachmentLinkText, { color: primary }]}>View Attachment: {assignment.fileName}</Text>
+                  <Text style={[styles.attachmentLinkText, { color: primary }]}>
+                    View Attachment: {assignment.fileName}
+                  </Text>
                 </TouchableOpacity>
               )}
             </View>
 
-            <Text style={styles.sectionTitle}>Interactive Questions ({assignment?.questions?.length || 0})</Text>
+            <Text style={styles.sectionTitle}>
+              Interactive Questions ({assignment?.questions?.length || 0})
+            </Text>
 
             {assignment?.questions?.map((q: any, idx: number) => (
               <QuestionResponseItem
@@ -223,10 +271,14 @@ export default function AssignmentReviewModal({
               />
             ))}
 
-            {assignment?.status === 'rejected' && assignment.feedback && (
+            {assignment?.status === "rejected" && assignment.feedback && (
               <View style={styles.feedbackAlert}>
-                 <Text style={styles.feedbackAlertTitle}>Previous Feedback:</Text>
-                 <Text style={styles.feedbackAlertText}>{assignment.feedback}</Text>
+                <Text style={styles.feedbackAlertTitle}>
+                  Previous Feedback:
+                </Text>
+                <Text style={styles.feedbackAlertText}>
+                  {assignment.feedback}
+                </Text>
               </View>
             )}
           </ScrollView>
@@ -249,33 +301,55 @@ export default function AssignmentReviewModal({
                     <Text style={styles.cancelRejectText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.confirmRejectBtn, approvingId && { opacity: 0.5 }]}
+                    style={[
+                      styles.confirmRejectBtn,
+                      approvingId && { opacity: 0.5 },
+                    ]}
                     onPress={rejectAssignment}
                     disabled={!!approvingId}
                   >
-                    {approvingId ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.confirmRejectText}>Send Feedback</Text>}
+                    {approvingId ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.confirmRejectText}>
+                        Send Feedback
+                      </Text>
+                    )}
                   </TouchableOpacity>
                 </View>
               </View>
             ) : (
               <View style={styles.reviewActionRow}>
                 <TouchableOpacity
-                  style={[styles.rejectBtn, assignment?.status === 'approved' && { opacity: 0.5 }]}
+                  style={[
+                    styles.rejectBtn,
+                    assignment?.status === "approved" && { opacity: 0.5 },
+                  ]}
                   onPress={() => setShowRejectionInput(true)}
-                  disabled={assignment?.status === 'approved'}
+                  disabled={assignment?.status === "approved"}
                 >
-                  <Text style={styles.rejectBtnText}>Return for Correction</Text>
+                  <Text style={styles.rejectBtnText}>
+                    Return for Correction
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.approveFullBtn, { backgroundColor: primary }, assignment?.status === 'approved' && { opacity: 0.5 }]}
+                  style={[
+                    styles.approveFullBtn,
+                    { backgroundColor: primary },
+                    assignment?.status === "approved" && { opacity: 0.5 },
+                  ]}
                   onPress={approveAssignment}
-                  disabled={!!approvingId || assignment?.status === 'approved'}
+                  disabled={!!approvingId || assignment?.status === "approved"}
                 >
                   {approvingId ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text style={styles.approveFullBtnText}>{assignment?.status === 'approved' ? 'Approved' : 'Approve & Publish'}</Text>
+                    <Text style={styles.approveFullBtnText}>
+                      {assignment?.status === "approved"
+                        ? "Approved"
+                        : "Approve & Publish"}
+                    </Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -324,112 +398,112 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   reviewContentBox: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: "#F8FAFC",
     padding: 15,
     borderRadius: 15,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
   },
   reviewLabel: {
     fontSize: 12,
-    fontWeight: '800',
-    color: '#64748B',
+    fontWeight: "800",
+    color: "#64748B",
     marginBottom: 5,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   reviewDescription: {
     fontSize: 15,
-    color: '#1E293B',
+    color: "#1E293B",
     lineHeight: 22,
   },
   attachmentLink: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 15,
     gap: 6,
     padding: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: "#F1F5F9",
   },
   attachmentLinkText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   feedbackAlert: {
     marginTop: 20,
     padding: 15,
-    backgroundColor: '#EF444410',
+    backgroundColor: "#EF444410",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#EF444420',
+    borderColor: "#EF444420",
   },
   feedbackAlertTitle: {
     fontSize: 12,
-    fontWeight: '900',
-    color: '#EF4444',
+    fontWeight: "900",
+    color: "#EF4444",
     marginBottom: 5,
   },
   feedbackAlertText: {
     fontSize: 13,
-    color: '#EF4444',
-    fontStyle: 'italic',
+    color: "#EF4444",
+    fontStyle: "italic",
   },
   reviewFooter: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    borderTopColor: "#F1F5F9",
+    paddingBottom: Platform.OS === "ios" ? 40 : 20,
   },
   rejectionContainer: {
     gap: 12,
   },
   rejectionInput: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: "#F1F5F9",
     borderRadius: 12,
     padding: 15,
     fontSize: 14,
-    color: '#1E293B',
+    color: "#1E293B",
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
   },
   rejectionActionRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   cancelRejectBtn: {
     flex: 1,
     padding: 14,
     borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: '#F1F5F9',
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
   },
   cancelRejectText: {
-    color: '#64748B',
-    fontWeight: '800',
+    color: "#64748B",
+    fontWeight: "800",
   },
   confirmRejectBtn: {
     flex: 2,
     padding: 14,
     borderRadius: 12,
-    alignItems: 'center',
-    backgroundColor: '#EF4444',
+    alignItems: "center",
+    backgroundColor: "#EF4444",
   },
   confirmRejectText: {
-    color: '#fff',
-    fontWeight: '800',
+    color: "#fff",
+    fontWeight: "800",
   },
   reviewActionRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
   },
   rejectBtn: {
@@ -437,24 +511,24 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#EF4444',
-    alignItems: 'center',
+    borderColor: "#EF4444",
+    alignItems: "center",
   },
   rejectBtnText: {
-    color: '#EF4444',
+    color: "#EF4444",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   approveFullBtn: {
     flex: 1.5,
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     ...SHADOWS.small,
   },
   approveFullBtnText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });

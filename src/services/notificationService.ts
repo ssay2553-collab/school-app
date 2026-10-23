@@ -1,14 +1,14 @@
 import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  getDoc,
-  doc,
-  query,
-  where,
-  getDocs,
-  writeBatch,
-  updateDoc,
+    addDoc,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    query,
+    serverTimestamp,
+    updateDoc,
+    where,
+    writeBatch,
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
 
@@ -53,12 +53,15 @@ export async function sendNotification(payload: NotificationPayload) {
 /**
  * Marks notifications as read for a specific user and optionally a specific type.
  */
-export async function markNotificationsAsRead(recipientId: string, type?: NotificationType) {
+export async function markNotificationsAsRead(
+  recipientId: string,
+  type?: NotificationType,
+) {
   try {
     let q = query(
       collection(db, "notifications"),
       where("recipientId", "==", recipientId),
-      where("read", "==", false)
+      where("read", "==", false),
     );
 
     if (type) {
@@ -72,7 +75,7 @@ export async function markNotificationsAsRead(recipientId: string, type?: Notifi
     snapshot.docs.forEach((d) => {
       batch.update(d.ref, {
         read: true,
-        readAt: serverTimestamp()
+        readAt: serverTimestamp(),
       });
     });
 
@@ -94,6 +97,51 @@ export async function markSingleNotificationAsRead(notificationId: string) {
     });
   } catch (error) {
     console.error("Error marking single notification as read:", error);
+  }
+}
+
+/**
+ * Marks all unread notifications for a specific item/status combination as read.
+ * Useful for clearing stale pending notices once the underlying item is resolved.
+ */
+export async function markNotificationsForResolvedItem({
+  recipientId,
+  type,
+  itemId,
+  status,
+}: {
+  recipientId?: string;
+  type: NotificationType;
+  itemId: string;
+  status: string;
+}) {
+  try {
+    let q = query(
+      collection(db, "notifications"),
+      where("read", "==", false),
+      where("type", "==", type),
+      where("data.assignmentId", "==", itemId),
+      where("data.status", "==", status),
+    );
+
+    if (recipientId) {
+      q = query(q, where("recipientId", "==", recipientId));
+    }
+
+    const snapshot = await getDocs(q);
+    if (snapshot.empty) return;
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((d) => {
+      batch.update(d.ref, {
+        read: true,
+        readAt: serverTimestamp(),
+      });
+    });
+
+    await batch.commit();
+  } catch (error) {
+    console.error("Error clearing resolved item notifications:", error);
   }
 }
 
@@ -146,10 +194,13 @@ export async function notifyStudentAndParentsPayment({
         title,
         body,
         type: "payment",
-        data: { studentUid, amount, receiptNo, paymentType }
+        data: { studentUid, amount, receiptNo, paymentType },
       });
     }
   } catch (e) {
-    console.error("Error sending payment notifications to student & parents:", e);
+    console.error(
+      "Error sending payment notifications to student & parents:",
+      e,
+    );
   }
 }

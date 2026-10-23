@@ -39,8 +39,14 @@ export const useDailyAttendance = (initialClassId: string | null, initialDate: s
     return () => { isMounted.current = false; };
   }, []);
 
-  const academicYear = acadConfig.academicYear || "";
-  const term = acadConfig.currentTerm || "";
+  const currentYearNum = new Date().getFullYear();
+  const currentMonthNum = new Date().getMonth(); // 0-indexed (0 is Jan, 7 is Aug)
+  const defaultYear = currentMonthNum >= 7
+    ? `${currentYearNum}/${currentYearNum + 1}`
+    : `${currentYearNum - 1}/${currentYearNum}`;
+
+  const academicYear = (acadConfig.academicYear || "").trim() || defaultYear;
+  const term = (acadConfig.currentTerm || "").trim() || "Term 1";
 
   const hasUnsavedChanges = useMemo(() => {
     const localKeys = Object.keys(localAttendance);

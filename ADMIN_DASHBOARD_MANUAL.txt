@@ -1,0 +1,893 @@
+================================================================================
+                       EDUEAZ SCHOOL MANAGEMENT SYSTEM
+                 ADMIN DASHBOARD STEP-BY-STEP OPERATING MANUAL
+================================================================================
+
+WELCOME TO THE EDUEAZ ADMIN DASHBOARD OPERATING MANUAL. THIS DOCUMENT PROVIDES
+EXHAUSTIVE, STEP-BY-STEP OPERATING PROCEDURES FOR EVERY FEATURE, BUTTON, FORM FIELD,
+MODAL DIALOG, AND ACTION ACROSS ALL SCREENS IN THE ADMIN PORTAL.
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1.  Admin Home / Command Center (`/admin-dashboard`)
+2.  Manage Users (`/admin-dashboard/manage-users`)
+3.  Class Registry / Create Class (`/admin-dashboard/create-class`)
+4.  Generate Code (`/admin-dashboard/generate-code`)
+5.  Student Attendance Overview (`/admin-dashboard/attendance-overview`)
+6.  Attendance Details (`/admin-dashboard/attendance-details`)
+7.  Student Attendance Details (`/admin-dashboard/student-attendance-details`)
+8.  Staff Attendance Config (`/admin-dashboard/teacher-attendance-config`)
+9.  Staff Attendance Logs (`/admin-dashboard/teacher-attendance-logs`)
+10. Teacher Statistics & Performance (`/admin-dashboard/teacher-statistics`)
+11. Manage Fees & Billing Center (`/admin-dashboard/ManageFees`)
+12. Student Charges Configuration (`/admin-dashboard/StudentCharges`)
+13. Admission Charges (`/admin-dashboard/AdmissionCharges`)
+14. Books Charges & Inventory (`/admin-dashboard/BooksCharges`)
+15. Uniform Charges & Billing (`/admin-dashboard/UniformCharges`)
+16. PTA Dues & Charges (`/admin-dashboard/PTACharges`)
+17. Maintenance Dues & Charges (`/admin-dashboard/MaintenanceCharges`)
+18. Other Charges & Levies (`/admin-dashboard/OtherCharges`)
+19. Fee Reports & Financial Audit (`/admin-dashboard/FeeReports`)
+20. Financial Summary & Revenue Metrics (`/admin-dashboard/FinancialSummary`)
+21. Student Fee History (`/admin-dashboard/student-fee-history`)
+22. School Expenditure Tracking (`/admin-dashboard/expenditure`)
+23. Staff Payroll & Salaries (`/admin-dashboard/staff-payroll`)
+24. View Academic Records (`/admin-dashboard/view-academic-records`)
+25. View Academic Record Details (`/admin-dashboard/view-academic-record-details`)
+26. Edit / Override Student Scores (`/admin-dashboard/EditStudentScores`)
+27. Announcements & Broadcasts (`/admin-dashboard/news`)
+28. Staff Chat & Internal Comms (`/admin-dashboard/staff-chat`)
+29. Parent Chat & Live Support (`/admin-dashboard/chat-with-parent`)
+30. School Settings & System Configuration (`/admin-dashboard/settings`)
+31. Shared Operational Hubs:
+    a. Daily Financials (`/shared/daily-financials`)
+    b. Daily Ledger (`/shared/daily-ledger`)
+    c. Feeding Fees Management (`/shared/feeding-fees`)
+    d. Bus / Transport Fees Management (`/shared/bus-fees`)
+    e. Extra Classes Fees Management (`/shared/extra-classes-fees`)
+    f. Receipt View & Printing (`/shared/receipt-view`)
+    g. Staff GPS / QR Attendance Check-In (`/shared/scan-attendance`)
+    h. Academic Calendar (`/academic-calendar`)
+
+================================================================================
+1. ADMIN HOME / COMMAND CENTER (`/admin-dashboard`)
+================================================================================
+OVERVIEW:
+The central operational dashboard providing metric overviews, live alerts, unread
+notification counts, and instant access grid cards across four modules:
+School Ops, Finance Hub, Academic Management, and Communication.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. PROFILE & ROLE NAVIGATION:
+   Step 1: Observe top header bar showing Administrator Avatar, Full Name, and "Admin" role tag.
+   Step 2: To inspect account settings, tap the Profile Avatar or Settings icon in the header.
+   Step 3: If you hold a dual role as an Educator/Teacher, tap the "Teacher View" button in the header to switch to the Teacher Metro Dashboard.
+
+B. INTERACTING WITH THE EVENT STATS WIDGET:
+   Step 1: Locate the "Upcoming Events" banner carousel directly below the header.
+   Step 2: Swipe left or right on the widget to view upcoming holidays, mid-term breaks, and exam dates.
+   Step 3: Tap "View All" or click directly on any event card to launch the full Academic Calendar screen (`/academic-calendar`).
+
+C. NAVIGATING THE QUICK LAUNCH GRID:
+   Step 1: Scroll through the four color-coded operational pillars:
+           - SCHOOL OPS (Blue/Purple): Manage Users, Class Registry, Generate Code, Student Attendance, Teacher Stats, Staff Att. Setup, Staff Attendance.
+           - FINANCE HUB (Green/Emerald): Fees, Other Fees, Daily Financials, Financial Summary, Expenses, Payroll.
+           - ACADEMIC MGMT (Purple/Indigo): Groups, Results, Approve Score, Timetables, Term Calendar.
+           - COMMUNICATION (Yellow/Rose): Announcements, Staff Chat, Parent Chat.
+   Step 2: Tap any menu card to navigate immediately to that module.
+   Step 3: Pay attention to red badge counters on tiles (e.g., "Staff Chat", "Parent Chat", "Approve Score") indicating unread messages or pending score edit requests.
+
+D. REFRESHING DASHBOARD DATA:
+   Step 1: Touch the screen top and pull downwards until the refresh spinner appears.
+   Step 2: Release to fetch latest unread message counts, attendance alerts, and event updates.
+
+================================================================================
+2. MANAGE USERS (`/admin-dashboard/manage-users`)
+================================================================================
+OVERVIEW:
+The complete administrative console for searching, creating, editing, assigning permissions,
+upgrading roles, graduating, and archiving Students, Teachers, Staff, and Parents.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. FILTERING & SEARCHING USERS:
+   Step 1: Tap one of the top Role Selector tabs: "Students", "Teachers", "Staff", or "Parents".
+   Step 2: To search for a specific user, tap the Search Input box and type a name, email address, phone number, or student ID.
+   Step 3: For student queries, tap the "Class Filter" dropdown and select a specific class arm (e.g., "Primary 3 Gold") to narrow down results.
+   Step 4: Toggle the "Show Archived" switch if you need to locate deactivated or archived accounts.
+
+B. INSPECTING & EDITING USER PROFILES:
+   Step 1: Tap any user card in the list to open the User Detail Modal.
+   Step 2: Review user details (Full Name, Role, Email, Phone, Linked Children/Parents, Class Assignment, Access Status).
+   Step 3: Tap "Edit Profile" button.
+   Step 4: Modify fields as needed: Full Name, Phone Number, Email Address.
+   Step 5: Tap "Save Profile Changes" to update the database.
+
+C. ASSIGNING TEACHER ROLES, CLASSES, & SUBJECTS:
+   Step 1: Switch to the "Teachers" tab and select a teacher's card.
+   Step 2: Tap "Assign Class Teacher". Select the target class arm from the dropdown list and click "Save Assignment".
+   Step 3: Tap "Assign Subjects". Check the checkboxes for all subjects taught by this teacher (e.g. Mathematics, Science) and click "Save Subjects".
+   Step 4: Tap "Assign Department Head" (if applicable) to designate the teacher as head of Science, Arts, or Commercial departments.
+
+D. CONFIGURING GRANULAR PERMISSIONS MATRIX:
+   Step 1: Open a Staff or Teacher user detail modal and tap "Manage Permissions".
+   Step 2: Configure access rights for financial desks:
+           - Feeding Dues Permission: Choose "None", "View Only", "Edit", or "Full Access".
+           - Bus Transport Permission: Choose "None", "View Only", "Edit", or "Full Access".
+           - Extra Classes Permission: Choose "None", "View Only", "Edit", or "Full Access".
+   Step 3: Configure administrative privileges:
+           - News Broadcasts: Toggle "Allowed to post news".
+           - Score Corrections: Toggle "Allowed to approve score edits".
+           - Teacher on Duty: Toggle "Set as Teacher on Duty" for campus oversight.
+   Step 4: Tap "Save Permissions".
+
+E. MANAGING ONBOARDING & LINK CODES:
+   Step 1: To regenerate a student's or staff member's signup code, open their profile and tap "Regenerate Code".
+   Step 2: To regenerate a parent link token (for connecting parents to students), tap "Regenerate Parent Link Code".
+   Step 3: Tap "Copy Code" to copy the 6-character token to your clipboard, or tap "Share" to send via WhatsApp/Email directly to the parent.
+
+F. PROMOTION, GRADUATION, & ARCHIVING:
+   Step 1: To promote a student to the next class, open their profile, tap "Promote/Repeat Class", select target class, and click "Confirm Promotion".
+   Step 2: To graduate an entire senior class, select the class, tap "Graduate Class", confirm the prompt, and accounts will be set to Alumnus status.
+   Step 3: To deactivate an account without deleting data, tap "Archive Account".
+   Step 4: To unlink a parent from a student, tap "Linked Parents", locate the parent name, and click "Unlink Parent".
+
+G. BULK USER OPERATIONS:
+   Step 1: Tap the "Select" checkbox on multiple user cards, or tap "Select All" in the bulk action bar.
+   Step 2: Choose a bulk action:
+           - "Bulk Clear Arrears": Clears balance debts for all selected students.
+           - "Bulk Delete": Permanently purges selected accounts (requires confirmation).
+           - "Bulk Import": Upload a formatted CSV/Excel file to create multiple student or teacher accounts at once.
+
+================================================================================
+3. CLASS REGISTRY / CREATE CLASS (`/admin-dashboard/create-class`)
+================================================================================
+OVERVIEW:
+Management desk to define institutional class arms, set educational categories,
+map subjects, and assign classroom teachers.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. CREATING A NEW CLASS ARM:
+   Step 1: Locate the "Create New Class" form at the top of the screen.
+   Step 2: Tap the "Class Name" input field and enter the grade level (e.g., "Basic 4", "JSS 1", "Grade 2").
+   Step 3: Tap the "Arm Designation" input field and enter the arm identifier (e.g., "Gold", "Ruby", "Blue", "A").
+   Step 4: Tap the "Category" dropdown selector and choose the appropriate educational level:
+           - Preschool / Nursery
+           - Primary / Basic
+           - Junior Secondary (JSS)
+           - Senior Secondary (SSS)
+   Step 5: Tap the "Class Teacher" dropdown menu and select an active teacher from the list to oversee roll call and remarks.
+   Step 6: Tap the "Create Class" button. The system validates the inputs and adds the class arm to the registry.
+
+B. MANAGING EXISTING CLASS ARMS:
+   Step 1: Scroll through the "Registered Classes" list below the creation form.
+   Step 2: Observe each class card showing Class Name, Category, Total Enrolled Students, Assigned Class Teacher, and Subject Count.
+   Step 3: To edit a class, tap the "Edit Class" button on its card. Modify the name, arm designation, or assigned teacher, then tap "Save Changes".
+   Step 4: To reassign subjects to a class arm, tap "Manage Subjects", select required subject checkboxes, and click "Save Subject Roster".
+   Step 5: To archive an obsolete class arm, tap the "Archive" button and confirm.
+
+================================================================================
+4. GENERATE CODE (`/admin-dashboard/generate-code`)
+================================================================================
+OVERVIEW:
+Secure code generation engine used to onboard new students, teachers, staff, and
+connect parents to student accounts.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. GENERATING REGISTRATION & LINK CODES:
+   Step 1: Tap the "Code Type" dropdown menu and select the required token type:
+           - Student Signup Code (For new student self-registration)
+           - Staff Onboarding Code (For new teacher/staff account setup)
+           - Parent Link Code (For linking parent accounts to an existing student profile)
+   Step 2: If generating a student code, tap the "Target Class" dropdown and select the target class arm.
+   Step 3: Tap the "Expiration Window" dropdown and select validity duration (e.g. 24 Hours, 7 Days, 30 Days, or Never Expire).
+   Step 4: Enter the "Quantity of Codes" to generate (e.g., 1 for single user, or 30 for an entire new class intake).
+   Step 5: Tap the "Generate Code(s)" button.
+
+B. COPYING, SHARING, & EXPORTING CODES:
+   Step 1: Review generated codes displayed in the output table.
+   Step 2: To copy an individual code, tap the "Copy" icon next to the code.
+   Step 3: To share a code via messaging apps, tap "Share Code", choose WhatsApp, Email, or SMS, and send to the parent/candidate.
+   Step 4: To download a batch list of codes, tap "Export Codes CSV" to download an Excel-compatible list for printing.
+
+================================================================================
+5. STUDENT ATTENDANCE OVERVIEW (`/admin-dashboard/attendance-overview`)
+================================================================================
+OVERVIEW:
+Executive attendance tracking dashboard monitoring daily roll call compliance across
+all classes, present/absent counts, and pending class submissions.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. SELECTING DATE & FILTERS:
+   Step 1: Locate the top Date Bar. Defaults to "Today".
+   Step 2: To inspect past records, tap the Calendar icon, select target date, and tap "Apply Date".
+   Step 3: Tap Category Pills ("All", "Preschool", "Primary", "Secondary") to filter class lists.
+
+B. READING ATTENDANCE SUMMARY METRICS:
+   Step 1: Inspect the top summary cards:
+           - Total Enrolled Students (Total active student population)
+           - Total Present Today (Students marked present)
+           - Total Absent Today (Students marked absent)
+           - Late Arrival Count (Students arriving after official start time)
+           - Unmarked Classes Count (Classes whose teachers have not submitted roll call)
+
+C. MONITORING CLASS ROLL CALL STATUS:
+   Step 1: Scroll down to the "Class Attendance Roster" section.
+   Step 2: Check status indicators next to each class arm:
+           - Green Badge ("Completed"): Teacher has marked and submitted roll call.
+           - Red/Yellow Badge ("Pending"): Teacher has not submitted roll call today.
+   Step 3: Tap on any class row to navigate directly to its detailed attendance sheet (`/admin-dashboard/attendance-details`).
+
+D. SENDING TEACHER REMINDERS:
+   Step 1: If pending classes exist, tap the red "Send Alert to Pending Teachers" button.
+   Step 2: Confirm prompt. The system broadcasts an immediate push notification to all class teachers who haven't marked attendance.
+
+================================================================================
+6. ATTENDANCE DETAILS (`/admin-dashboard/attendance-details`)
+================================================================================
+OVERVIEW:
+Class-level attendance register displaying individual student roll call statuses,
+timestamps, teacher notes, and administrative manual override controls.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. SELECTING CLASS & DATE:
+   Step 1: Tap the "Class Arm" selector dropdown and choose the target class (e.g., "JSS 2 Gold").
+   Step 2: Tap the Date Bar to change the inspection date if reviewing historical roll call.
+
+B. REVIEWING STUDENT ROLL CALL SHEET:
+   Step 1: Scroll through the student list.
+   Step 2: Observe status badges next to each student name:
+           - "Present" (Green)
+           - "Absent" (Red)
+           - "Late" (Yellow)
+           - "Excused" (Blue)
+   Step 3: Read notes in the "Teacher Remarks" column (e.g., "Parent called - sick leave").
+
+C. EXECUTING ADMINISTRATIVE MANUAL OVERRIDE:
+   Step 1: If an attendance record requires administrative correction, tap the "Edit / Override" button next to the student's name.
+   Step 2: In the pop-up modal, select the correct status (e.g., change "Absent" to "Excused").
+   Step 3: Type an administrative reason in the "Override Reason" field (e.g., "Doctor's note submitted by parent").
+   Step 4: Tap "Save Attendance Override". The system updates the record and logs the administrative change.
+
+================================================================================
+7. STUDENT ATTENDANCE DETAILS (`/admin-dashboard/student-attendance-details`)
+================================================================================
+OVERVIEW:
+Individual attendance transcript for a selected student, featuring cumulative
+attendance percentage meters, monthly calendar heatmaps, and printable transcripts.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. OPENING A STUDENT ATTENDANCE FILE:
+   Step 1: Enter student name or ID in the top Search Field.
+   Step 2: Tap the student's name from search results to load their attendance file.
+
+B. ANALYZING ATTENDANCE METRICS & HEATMAP:
+   Step 1: Review the "Cumulative Term Attendance Percentage" gauge. Compare against the school threshold (e.g., 85%).
+   Step 2: Inspect the "Monthly Calendar Heatmap":
+           - Green dots represent Present days.
+           - Red dots represent Absent days.
+           - Yellow dots represent Late days.
+           - Blue dots represent Excused days.
+   Step 3: Scroll down to the "Absence History Log" to read exact dates and recorded teacher remarks for every missed day.
+
+C. EXPORTING ATTENDANCE TRANSCRIPT:
+   Step 1: Tap the "Export Official Attendance Transcript" button.
+   Step 2: Select format ("PDF" or "Print").
+   Step 3: Download or print the formatted transcript for parent conferences or disciplinary reviews.
+
+================================================================================
+8. STAFF ATTENDANCE CONFIG (`/admin-dashboard/teacher-attendance-config`)
+================================================================================
+OVERVIEW:
+Configuration module to establish campus GPS geofencing, allowable clock-in perimeter,
+official working hours, lateness thresholds, and verification methods.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. SETTING CAMPUS GPS GEOFENCE COORDINATES:
+   Step 1: If you are currently physically located at the center of the campus grounds, tap the "Use Current GPS Location" button. The app fetches device latitude and longitude automatically.
+   Step 2: Alternatively, manually enter values in the "Campus Latitude" and "Campus Longitude" text fields.
+
+B. SETTING PERIMETER RADIUS:
+   Step 1: Locate the "Allowed Radius (Meters)" slider or text input.
+   Step 2: Set acceptable perimeter radius (e.g., enter "100" for a 100-meter radius around the campus center). Staff attempting to clock in outside this perimeter will be blocked.
+
+C. CONFIGURING WORKING HOURS & LATENESS THRESHOLDS:
+   Step 1: Tap "Official Arrival Time" picker and set start of work day (e.g., "07:30 AM").
+   Step 2: Tap "Late Threshold Time" picker and set late cutoff (e.g., "08:00 AM"). Clock-ins after this time are marked "Late" and flagged for payroll deduction.
+   Step 3: Tap "Official Closing Time" picker and set end of work day (e.g., "03:30 PM").
+
+D. ENABLING VERIFICATION METHODS & SAVING:
+   Step 1: Toggle verification switches:
+           - "GPS Location Check" (Mandatory location verification)
+           - "QR Code Scanning" (Scan campus QR code at gate)
+           - "Face Recognition Check" (Facial verification)
+   Step 2: Tap the "Save Geofence Configuration" button.
+
+================================================================================
+9. STAFF ATTENDANCE LOGS (`/admin-dashboard/teacher-attendance-logs`)
+================================================================================
+OVERVIEW:
+Daily audit log of staff clock-in/out records, arrival timestamps, GPS distance from campus,
+punctuality badges, and monthly payroll export tools.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. FILTERING LOGS:
+   Step 1: Select date or date range using the top Date Picker.
+   Step 2: Tap the "Department Filter" dropdown to filter by Teaching Staff, Administrative Staff, Maintenance, or Support.
+   Step 3: Use the Search Bar to query a specific staff member's name.
+
+B. AUDITING CLOCK-IN ENTRIES:
+   Step 1: Inspect each row in the log table:
+           - Staff Name & Role
+           - Clock-In Time (e.g., "07:24 AM")
+           - Clock-Out Time (e.g., "03:35 PM")
+           - Status Badge ("On Time", "Late", "Absent", "Left Early")
+           - Distance from Campus Center (e.g. "12 meters from center")
+   Step 2: Tap the "Location Map" icon next to an entry to open GPS coordinates on a map and verify clock-in location.
+
+C. EXPORTING MONTHLY LOGS FOR PAYROLL:
+   Step 1: Tap the "Export Attendance Summary" button.
+   Step 2: Select month and session.
+   Step 3: Click "Download Excel Report". This spreadsheet integrates directly with the Payroll Module for calculating lateness deductions.
+
+================================================================================
+10. TEACHER STATISTICS & PERFORMANCE (`/admin-dashboard/teacher-statistics`)
+================================================================================
+OVERVIEW:
+Analytics module evaluating educator performance, class coverage, assignment creation
+frequency, grading promptness, and attendance consistency.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. REVIEWING THE PERFORMANCE LEADERBOARD:
+   Step 1: Observe top metric overview cards: Overall Staff Punctuality Rate, Total Classes Taught, Total Homework Published, Average Marking Speed.
+   Step 2: Scroll through the "Teacher Performance Ranking" table sorted by overall operational score.
+
+B. INSPECTING INDIVIDUAL TEACHER METRICS:
+   Step 1: Tap a teacher's row in the leaderboard to open their Individual Performance File.
+   Step 2: Review detailed metrics:
+           - Attendance Rate (Punctuality percentage)
+           - Syllabus & Lesson Plan Completion (Percentage of weekly topics published)
+           - Assignment Frequency (Homework created per week)
+           - Grading Speed (Average time taken to mark submitted work)
+   Step 3: Tap "Generate Performance Appraisal PDF" to download an official evaluation summary for staff reviews.
+
+================================================================================
+11. MANAGE FEES & BILLING CENTER (`/admin-dashboard/ManageFees`)
+================================================================================
+OVERVIEW:
+The core bursary management console used to configure term tuition bills, record
+student fee payments, grant discounts/waivers, and audit daily transactions.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. SELECTING SESSION, TERM, & OPERATIONAL MODE:
+   Step 1: Ensure active Academic Session (e.g., "2024/2025") and Active Term (e.g., "1st Term") are selected in top header.
+   Step 2: Tap mode tab:
+           - "Set Term Bills" (Configure default tuition per class)
+           - "Record Payments" (Process cash/online/POS payments)
+           - "Manage Discounts" (Apply waivers & scholarships)
+           - "Daily Transactions" (Audit today's income)
+
+B. SETTING TERM BASE BILLS:
+   Step 1: Select "Set Term Bills" mode.
+   Step 2: Select target educational category or class arm (e.g. "Primary Tier").
+   Step 3: Enter amounts for default fee components: Base Tuition Amount, Development Fee, Technology Fee, Sports/Activity Fee.
+   Step 4: Tap "Save & Publish Term Bills". The bill is automatically assigned to all enrolled students in those classes.
+
+C. RECORDING STUDENT PAYMENTS:
+   Step 1: Select "Record Payments" mode.
+   Step 2: Type student name or ID in the Search Strip, or filter by Class Arm.
+   Step 3: Tap "Record Payment" on the student's fee card.
+   Step 4: In the Payment Modal:
+           - Enter Amount Received (e.g., "50000").
+           - Select Payment Method: "Cash", "Bank Transfer", "POS", or "Cheque".
+           - Enter Reference / Teller Number if bank transfer or POS.
+           - Enter Name of Payer in "Received From" field.
+   Step 5: Tap "Submit Payment". The system updates the student's balance, logs transaction, and displays a "Print Receipt" prompt.
+
+D. APPLYING DISCOUNTS & SCHOLARSHIPS:
+   Step 1: Select "Manage Discounts" mode.
+   Step 2: Search and locate target student.
+   Step 3: Tap "Apply Discount".
+   Step 4: Enter Discount Amount or Percentage (e.g. "20% Sibling Waiver" or "10000 Staff Discount").
+   Step 5: Select Reason for Discount from dropdown.
+   Step 6: Click "Save Discount Waiver".
+
+E. AUDITING DAILY TRANSACTIONS:
+   Step 1: Select "Daily Transactions" mode.
+   Step 2: Select date from calendar.
+   Step 3: Review itemized table of all payments received on that day.
+   Step 4: To void an erroneous payment entry, tap "Delete Transaction", enter administrative authorization password, and confirm.
+
+================================================================================
+12. STUDENT CHARGES CONFIGURATION (`/admin-dashboard/StudentCharges`)
+================================================================================
+OVERVIEW:
+Navigation hub to manage non-tuition auxiliary charges including Admission, Books,
+Uniform, PTA Dues, Maintenance, and Other Levies.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. ACCESSING AUXILIARY CHARGE DESKS:
+   Step 1: Observe the Category Grid displaying six main auxiliary fee desks:
+           - Admission Charges
+           - Books Charges
+           - Uniform Charges
+           - PTA Charges
+           - Maintenance Charges
+           - Other Charges
+   Step 2: Review high-level collection progress indicators displayed below each card.
+   Step 3: Tap any category card to launch its specialized management screen.
+
+================================================================================
+13. ADMISSION CHARGES (`/admin-dashboard/AdmissionCharges`)
+================================================================================
+OVERVIEW:
+Manages registration fees, prospectus charges, application form pricing, and applicant
+payment records for new students.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. SETTING ADMISSION FEE STRUCTURE:
+   Step 1: Tap "Configure Admission Fee".
+   Step 2: Enter Application Form Price (e.g. "5000") and Acceptance Deposit (e.g. "20000").
+   Step 3: Tap "Save Admission Schedule".
+
+B. RECORDING APPLICANT PAYMENTS:
+   Step 1: Locate applicant in the "Prospective Students List".
+   Step 2: Tap "Record Admission Payment".
+   Step 3: Select payment method (Cash, Transfer, POS), enter amount, and click "Confirm Payment".
+   Step 4: Tap "Issue Admission Receipt" to generate receipt PDF.
+
+================================================================================
+14. BOOKS CHARGES & INVENTORY (`/admin-dashboard/BooksCharges`)
+================================================================================
+OVERVIEW:
+Configures textbook set pricing per class level, manages bookstore inventory, and
+tracks book package handover to students.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. CONFIGURING BOOK PACKAGE PRICES & INVENTORY:
+   Step 1: Select class arm (e.g. "JSS 1").
+   Step 2: Enter total price for required book bundle (e.g. "35000").
+   Step 3: Enter current available stock quantity in "Bookstore Stock" field.
+   Step 4: Click "Save Book Configuration".
+
+B. RECORDING SALES & MARKING HANDOVER:
+   Step 1: Search student name.
+   Step 2: Tap "Record Book Payment" when parent pays for books.
+   Step 3: Once books are physically delivered to the student, check the "Items Handed Over" checkbox.
+   Step 4: Tap "Save Handover Record". The system decrements bookstore stock count automatically.
+
+================================================================================
+15. UNIFORM CHARGES & BILLING (`/admin-dashboard/UniformCharges`)
+================================================================================
+OVERVIEW:
+Manages prices, size selections, billing, and distribution of school uniforms,
+PE wear, cardigans, and badges.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. SETTING UNIFORM ITEM PRICING:
+   Step 1: Enter prices for individual uniform items:
+           - Regular Uniform Pair (e.g. "15000")
+           - Sports Wear / PE Kit (e.g. "8000")
+           - School Cardigan / Jacket (e.g. "10000")
+           - Badges & Accessories (e.g. "2000")
+   Step 2: Click "Save Uniform Price List".
+
+B. PROCESSING UNIFORM ORDERS & SIZES:
+   Step 1: Select student name.
+   Step 2: Select uniform size (e.g., Size 28, Small, Medium, Large).
+   Step 3: Record payment details and check items handed over.
+   Step 4: Click "Issue Uniform Receipt".
+
+================================================================================
+16. PTA DUES & CHARGES (`/admin-dashboard/PTACharges`)
+================================================================================
+OVERVIEW:
+Oversees Parent-Teacher Association levy collection, household sibling grouping,
+and compliant vs defaulting household logs.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. CONFIGURING TERM PTA LEVY:
+   Step 1: Enter Term PTA Amount (e.g. "5000").
+   Step 2: Select Billing Rule: "Per Student" or "Per Household (Flat Family Rate)".
+   Step 3: Click "Save PTA Schedule".
+
+B. MANAGING HOUSEHOLD SIBLING DUES & PAYMENTS:
+   Step 1: Enable "Household Auto-Group". Siblings linked to the same parent are combined under a single household PTA bill.
+   Step 2: When a parent pays PTA dues, search any child's name or parent name.
+   Step 3: Click "Record PTA Payment". The system marks PTA dues as cleared for all linked siblings in that family.
+
+================================================================================
+17. MAINTENANCE DUES & CHARGES (`/admin-dashboard/MaintenanceCharges`)
+================================================================================
+OVERVIEW:
+Tracks campus infrastructure levies, facility maintenance contributions, and dedicated
+development fund collections.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. CONFIGURING MAINTENANCE LEVY:
+   Step 1: Enter Term Maintenance Levy Amount (e.g. "3000").
+   Step 2: Select Target Classes (e.g., "All Classes" or "New Entrants Only").
+   Step 3: Click "Publish Maintenance Levy".
+
+B. RECORDING PAYMENTS:
+   Step 1: Search student name in the maintenance ledger.
+   Step 2: Tap "Record Payment", select payment method, and confirm transaction.
+
+================================================================================
+18. OTHER CHARGES & LEVIES (`/admin-dashboard/OtherCharges`)
+================================================================================
+OVERVIEW:
+Flexible fee creation desk for ad-hoc levies such as excursion fees, party dues,
+graduation fees, or club memberships.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. CREATING A CUSTOM AD-HOC CHARGE:
+   Step 1: Tap "Create New Charge".
+   Step 2: Type Charge Title (e.g. "Science Center Excursion", "Graduation Gown Fee").
+   Step 3: Enter Amount (e.g. "7500").
+   Step 4: Select Target Audience: Choose specific class arms or select "All Students".
+   Step 5: Tap "Publish Charge". The levy appears on target student billing statements immediately.
+
+B. RECORDING PAYMENTS & TRACKING COLLECTIONS:
+   Step 1: Select the active charge from the dropdown.
+   Step 2: Check off students who have paid the fee.
+   Step 3: Tap "Record Bulk Payment" or record individual payments.
+
+================================================================================
+19. FEE REPORTS & FINANCIAL AUDIT (`/admin-dashboard/FeeReports`)
+================================================================================
+OVERVIEW:
+Financial audit console providing collection breakdowns, debt analysis, payment method
+audits, and exportable balance sheets.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. GENERATING FINANCIAL AUDIT REPORTS:
+   Step 1: Set Date Parameters: Select "Start Date" and "End Date".
+   Step 2: Select Class Filter ("All Classes" or specific class arm).
+   Step 3: Select Fee Category ("All Fees", "Tuition Only", "Feeding", "Bus", "Auxiliary").
+   Step 4: Select Payment Method ("All", "Cash", "Bank Transfer", "POS").
+   Step 5: Tap "Generate Audit Report".
+
+B. AUDITING DEBTORS & EXPORTING DATA:
+   Step 1: To view outstanding balances, tap the "Debtors Summary" tab.
+   Step 2: Review student debtor list sorted by highest balance owed.
+   Step 3: Tap "Export Report" and choose export format:
+           - Export Excel Spreadsheet (.xlsx)
+           - Export CSV Ledger (.csv)
+           - Export PDF Audit Report (.pdf)
+
+================================================================================
+20. FINANCIAL SUMMARY & REVENUE METRICS (`/admin-dashboard/FinancialSummary`)
+================================================================================
+OVERVIEW:
+Executive visual dashboard featuring income vs expenditure graphs, net revenue gauges,
+and collection rate percentages.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. SWITCHING VIEW PERIODS:
+   Step 1: Tap top toggle button to switch between "Current Term View" and "Full Session View".
+
+B. ANALYZING VISUAL FINANCIAL GAUGES:
+   Step 1: Observe the "Collection Gauge" showing total expected revenue vs actual cash collected vs outstanding debts.
+   Step 2: Inspect the "Income vs Outflow Chart" comparing total tuition/fee income against school expenditures.
+   Step 3: Review the "Revenue Breakdown Pie Chart" showing income percentages across Tuition, Feeding, Bus Transport, and Auxiliary Fees.
+
+================================================================================
+21. STUDENT FEE HISTORY (`/admin-dashboard/student-fee-history`)
+================================================================================
+OVERVIEW:
+Complete historical bursary ledger for a selected student across all terms enrolled,
+including receipt re-issuance and credit/debit adjustments.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. OPENING A STUDENT LEDGER:
+   Step 1: Type student name or ID in the top search bar.
+   Step 2: Select student from results to load their complete transaction timeline.
+
+B. INSPECTING TRANSACTIONS & RE-ISSUING RECEIPTS:
+   Step 1: Scroll through the itemized ledger table: Date, Term, Fee Category, Amount Billed, Amount Paid, Remaining Balance, Receipt Number.
+   Step 2: To reprint a payment receipt, tap the "Print Receipt" icon next to any transaction row.
+
+C. MAKING ADMINISTRATIVE CREDIT/DEBIT ADJUSTMENTS:
+   Step 1: If a manual adjustment is required (e.g., error correction or manual credit), tap "Adjust Ledger Balance".
+   Step 2: Select Adjustment Type ("Credit Waiver" or "Debit Charge").
+   Step 3: Enter Adjustment Amount.
+   Step 4: Enter mandatory explanation in "Reason for Adjustment" field.
+   Step 5: Tap "Save Ledger Adjustment". The system logs the change alongside the administrator's ID stamp.
+
+================================================================================
+22. SCHOOL EXPENDITURE TRACKING (`/admin-dashboard/expenditure`)
+================================================================================
+OVERVIEW:
+Outflow logging desk to record operational expenses, utility bills, maintenance,
+vendor payouts, supplies, and petty cash.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. RECORDING A NEW EXPENSE OUTFLOW:
+   Step 1: Tap the "Add New Expense" button.
+   Step 2: In the Expense Form:
+           - Enter Expense Title (e.g., "Diesel Fuel for Generator", "Plumbing Repairs").
+           - Select Category dropdown: "Utilities", "Maintenance", "Office Supplies", "Fuel", "Salaries", "Events", "Miscellaneous".
+           - Enter Amount Spent (e.g., "45000").
+           - Select Payment Date using date picker.
+           - Enter Voucher / Invoice Number.
+           - Enter Vendor / Recipient Name.
+   Step 3: Tap "Attach Receipt Image", allow camera/file permission, and snap a photo or upload PDF of the vendor invoice.
+   Step 4: Tap "Save Outflow Record".
+
+B. REVIEWING EXPENSE ANALYTICS:
+   Step 1: Scroll down to "Monthly Outflow Breakdown".
+   Step 2: Review totals spent per category for the current month.
+   Step 3: Tap "Export Outflows CSV" to export expense logs for accounting audits.
+
+================================================================================
+23. STAFF PAYROLL & SALARIES (`/admin-dashboard/staff-payroll`)
+================================================================================
+OVERVIEW:
+Monthly payroll processing console to configure staff salary structures, run automatic
+attendance/lateness penalty calculations, generate payslips, and record disbursements.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. SETTING STAFF SALARY STRUCTURES:
+   Step 1: Select a staff member from the payroll directory and tap "Configure Salary".
+   Step 2: Enter Base Monthly Salary (e.g. "120000").
+   Step 3: Enter Allowances: Transport Allowance, Housing Allowance, Subject Head Bonus.
+   Step 4: Enter Fixed Deductions: Tax, Pension, Welfare Dues.
+   Step 5: Tap "Save Salary Structure".
+
+B. PROCESSING MONTHLY PAYROLL & ATTENDANCE DEDUCTIONS:
+   Step 1: Select Payroll Month & Academic Session from top dropdowns.
+   Step 2: Tap "Run Attendance Penalty Calculation". The system scans Staff Attendance Logs for the selected month, calculates lateness/absenteeism counts, and applies penalty deductions automatically.
+   Step 3: Review calculated Net Salary Payable for each staff member.
+   Step 4: If manual adjustments are needed, tap "Edit Payslip", adjust bonus or deduction, and click "Save Payslip".
+
+C. APPROVING & GENERATING PAYSLIPS:
+   Step 1: Tap "Approve Monthly Payroll".
+   Step 2: Tap "Generate All Payslips". The system pushes digital payslips to individual staff portals.
+   Step 3: Once bank disbursements are completed, tap "Mark All as Disbursed".
+
+================================================================================
+24. VIEW ACADEMIC RECORDS (`/admin-dashboard/view-academic-records`)
+================================================================================
+OVERVIEW:
+Master academic result console displaying compiled class master sheets, subject grades,
+class averages, and report card publishing toggles.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. SELECTING CLASS & TERM MASTER SHEET:
+   Step 1: Select Academic Session, Term, and Class Arm (e.g. "JSS 3 Ruby").
+   Step 2: Tap "Fetch Master Sheet".
+
+B. REVIEWING COMPILED ACADEMIC MARKS:
+   Step 1: Inspect the Master Grade Table:
+           - Student Name
+           - Subject Marks: Continuous Assessment 1 (CA1), CA2, Examination Score
+           - Total Score (Auto-sum out of 100)
+           - Assigned Grade (A, B, C, D, F)
+           - Term Total Score, Average Percentage, and Position in Class.
+   Step 2: Identify unsubmitted or incomplete subject grades flagged in yellow.
+
+C. APPROVING & PUBLISHING REPORT CARDS:
+   Step 1: To grant parents access to report cards, locate the "Publish Report Cards" toggle switch at top right.
+   Step 2: Switch toggle to "ON / Approved".
+   Step 3: Confirm prompt. Report cards become instantly viewable on parent and student portals.
+
+================================================================================
+25. VIEW ACADEMIC RECORD DETAILS (`/admin-dashboard/view-academic-record-details`)
+================================================================================
+OVERVIEW:
+Individual student transcript preview screen showing full subject breakdowns, class high/low
+averages, behavioral trait ratings, and principal terminal comments.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. INSPECTING STUDENT REPORT CARD FILE:
+   Step 1: Select student from the academic records list to open their complete transcript preview.
+   Step 2: Review Subject Performance Table: Subject Title, CA1, CA2, Exam Score, Total, Grade, Class Highest, Class Lowest, Class Average.
+   Step 3: Review Behavioral Ratings Table: Affective Domains (Punctuality, Neatness, Politeness) and Psychomotor Skills (Handwriting, Sports).
+
+B. ENTERING PRINCIPAL'S OFFICIAL TERMINAL COMMENT:
+   Step 1: Locate the "Principal's Comment" box at bottom of transcript.
+   Step 2: Select a preset comment from dropdown (e.g., "An impressive result, keep up the high standard!"), or type a custom remark in text area.
+   Step 3: Tap "Save Principal Comment".
+
+C. GENERATING PRINTABLE REPORT CARD PDF:
+   Step 1: Tap "Download Official Report Card PDF".
+   Step 2: The system compiles school logo, student photo, subject table, conduct scores, principal signature, and generates a formatted PDF document ready for printing or sharing.
+
+================================================================================
+26. EDIT / OVERRIDE STUDENT SCORES (`/admin-dashboard/EditStudentScores`)
+================================================================================
+OVERVIEW:
+Administrative override console allowing authorized administrators to correct student
+test or exam scores after deadlines, with mandatory reason logging.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. REVIEWING PENDING TEACHER SCORE EDIT REQUESTS:
+   Step 1: Look at the top "Pending Correction Requests" queue.
+   Step 2: Read teacher request notes (e.g., "Teacher omitted 5 marks for CA2 in Science").
+   Step 3: Tap "Review Request" to accept or reject the proposal.
+
+B. EXECUTING MANUAL SCORE OVERRIDE:
+   Step 1: Select Student Name, Class Arm, Subject, and Assessment Component (1st CA, 2nd CA, or Exam).
+   Step 2: Enter Corrected Score Value in the "New Score" field.
+   Step 3: Tap "Reason for Override" text field and enter mandatory justification (e.g., "Remarking approved by Academic Committee").
+   Step 4: Tap "Save Score Override". The system updates student total, recalculates position/grade, and logs the administrative override in the audit trail.
+
+================================================================================
+27. ANNOUNCEMENTS & BROADCASTS (`/admin-dashboard/news`)
+================================================================================
+OVERVIEW:
+Publishing suite to create, pin, and broadcast announcements, news bulletins, and emergency
+circulars to selected user groups.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. COMPOSING A NEW BROADCAST:
+   Step 1: Tap the "Compose Announcement" button.
+   Step 2: Type Headline / Title in "Post Title" field.
+   Step 3: Select Target Audience dropdown:
+           - "All Users" (Students, Staff, Parents)
+           - "Parents Only"
+           - "Teachers & Staff Only"
+           - "Students Only"
+   Step 4: Type announcement text in the "Post Content" area.
+   Step 5: To attach an event flyer or document, tap "Attach Image/PDF", select file from device.
+   Step 6: Toggle "Pin Announcement to Top" if this notice should remain pinned at top of user dashboards.
+   Step 7: Tap "Publish Broadcast". The notice is posted immediately and triggers push notifications to target user mobile apps.
+
+B. MANAGING PAST ANNOUNCEMENTS:
+   Step 1: Scroll through active post feed.
+   Step 2: To edit a notice, tap "Edit Post", update text, and click "Save Changes".
+   Step 3: To delete an notice, tap "Delete Post" and confirm.
+
+================================================================================
+28. STAFF CHAT & INTERNAL COMMS (`/admin-dashboard/staff-chat`)
+================================================================================
+OVERVIEW:
+Internal messaging suite connecting administrators, school management, teachers,
+and staff for internal coordination.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. INITIATING & MANAGE STAFF CONVERSATIONS:
+   Step 1: Select a staff member or group channel from the left Staff Directory list.
+   Step 2: View message history in central chat window.
+   Step 3: Tap message input bar at bottom, type message, and tap "Send".
+   Step 4: To share a document or lesson plan, tap the Attachment paperclip icon, choose file, and send.
+
+B. CREATING STAFF CHAT GROUPS:
+   Step 1: Tap "+ New Staff Group".
+   Step 2: Type Group Name (e.g. "Exams & Timetable Committee").
+   Step 3: Select participating staff members and tap "Create Channel".
+
+================================================================================
+29. PARENT CHAT & LIVE SUPPORT (`/admin-dashboard/chat-with-parent`)
+================================================================================
+OVERVIEW:
+Direct messaging portal connecting administrators with parents for support inquiries,
+fee discussions, and parent feedback.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. RESPONDING TO PARENT INQUIRIES:
+   Step 1: Review left panel sorted by unread parent messages.
+   Step 2: Tap a parent's conversation row to open chat.
+   Step 3: Observe top Context Banner displaying parent's name, phone number, and linked children's names and classes.
+   Step 4: Type response in text box and tap "Send".
+
+B. SEARCHING HISTORICAL PARENT CHATS:
+   Step 1: Type parent name or student name in Search Bar to locate past conversation logs.
+
+================================================================================
+30. SCHOOL SETTINGS & SYSTEM CONFIGURATION (`/admin-dashboard/settings`)
+================================================================================
+OVERVIEW:
+Master configuration console for institution identity, motto, contact info, logo uploads,
+branding colors, academic session setup, grading scales, and admin security.
+
+STEP-BY-STEP OPERATING INSTRUCTIONS:
+
+A. UPDATING INSTITUTION PROFILE & CONTACT INFO:
+   Step 1: Tap "School Profile" section.
+   Step 2: Enter or update: Institution Name, School Motto, Physical Campus Address, Primary Phone Number, Official Support Email.
+
+B. UPLOADING SCHOOL LOGO & BRANDING COLORS:
+   Step 1: Tap "Branding & Logo" section.
+   Step 2: Tap "Upload School Logo", select high-resolution logo image (PNG/JPG) from device, and crop as needed.
+   Step 3: Tap "Brand Primary Color" picker or enter Hex Code (e.g., "#6366F1").
+   Step 4: Tap "Brand Secondary Color" picker or enter Hex Code (e.g., "#4338CA").
+   Step 5: App theme and PDF header colors update automatically across all user portals.
+
+C. SETTING CURRENT ACADEMIC SESSION & ACTIVE TERM:
+   Step 1: Tap "Academic Session Setup" section.
+   Step 2: Select Current Academic Session from dropdown (e.g. "2024/2025").
+   Step 3: Select Active Term from dropdown ("1st Term", "2nd Term", or "3rd Term").
+   Step 4: All attendance sheets, fee bills, and score sheets automatically synchronize to this active term.
+
+D. CONFIGURING GRADING SCALE BOUNDARIES:
+   Step 1: Tap "Grading Scale Manager" section.
+   Step 2: Set lower and upper score boundaries for letter grades:
+           - Grade A: Minimum Score (e.g. 70), Maximum Score (100), Remark ("Excellent")
+           - Grade B: Minimum Score (e.g. 60), Maximum Score (69), Remark ("Very Good")
+           - Grade C: Minimum Score (e.g. 50), Maximum Score (59), Remark ("Good")
+           - Grade D: Minimum Score (e.g. 40), Maximum Score (49), Remark ("Fair")
+           - Grade F: Minimum Score (e.g. 0), Maximum Score (39), Remark ("Fail")
+   Step 3: Tap "Save Grading Scale".
+
+E. ADMIN SECURITY & PASSWORD UPDATE:
+   Step 1: Tap "Account Security".
+   Step 2: Enter Current Password, New Password, and Confirm New Password.
+   Step 3: Tap "Save Configuration" at bottom of screen to update all system settings.
+
+================================================================================
+31. SHARED OPERATIONAL HUBS
+================================================================================
+
+a. DAILY FINANCIALS (`/shared/daily-financials`)
+   Step 1: Open screen and tap target Desk Tab: "Feeding Fees", "Bus Fees", or "Extra Classes".
+   Step 2: Search student name or filter by Class Arm.
+   Step 3: Tap "Record Payment", enter amount paid, choose payment method, and tap "Issue Token/Receipt".
+
+b. DAILY LEDGER (`/shared/daily-ledger`)
+   Step 1: Open screen to view real-time list of all payments gathered today across all bursary desks.
+   Step 2: Filter transactions by payment mode (Cash, Transfer, POS) to cross-check daily cash in hand against bank transfer slips.
+
+c. FEEDING FEES MANAGEMENT (`/shared/feeding-fees`)
+   Step 1: Select class arm.
+   Step 2: Check off students participating in the daily or weekly meal program.
+   Step 3: Record cash or online meal payment and update feeding roster.
+
+d. BUS / TRANSPORT FEES MANAGEMENT (`/shared/bus-fees`)
+   Step 1: Select bus route from route dropdown.
+   Step 2: Assign students subscribing to transport.
+   Step 3: Record transport fee payment and issue digital bus pass.
+
+e. EXTRA CLASSES FEES MANAGEMENT (`/shared/extra-classes-fees`)
+   Step 1: Select subject / extra lesson program.
+   Step 2: Search participating student and record extra class fee payment.
+
+f. RECEIPT VIEW & PRINTING (`/shared/receipt-view`)
+   Step 1: Inspect generated digital receipt showing school logo, transaction date, receipt number, student details, itemized breakdown, and cash stamp.
+   Step 2: Tap "Print Receipt" to print directly to a connected printer, or tap "Export PDF" to save or share.
+
+g. STAFF GPS / QR ATTENDANCE CHECK-IN (`/shared/scan-attendance`)
+   Step 1: Open screen on arrival at campus.
+   Step 2: Tap "Check In Now". Allow location access.
+   Step 3: System verifies device GPS location against campus geofence perimeter and records arrival timestamp.
+   Step 4: At closing time, tap "Check Out Now" to complete daily work record.
+
+h. ACADEMIC CALENDAR (`/academic-calendar`)
+   Step 1: Tap "+ Add Event" button.
+   Step 2: Enter Event Title (e.g. "Mid-Term Break", "Term Examinations", "Sports Day").
+   Step 3: Select Start Date, End Date, and Event Category.
+   Step 4: Tap "Publish Event". The event appears on all student, staff, parent, and admin calendars.
+
+================================================================================
+END OF ADMIN DASHBOARD STEP-BY-STEP OPERATING MANUAL
+================================================================================

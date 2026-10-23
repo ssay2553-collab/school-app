@@ -1,0 +1,500 @@
+================================================================================
+                       EDUEAZ SCHOOL MANAGEMENT SYSTEM
+                       STAFF DASHBOARD USER MANUAL
+================================================================================
+
+WELCOME TO THE EDUEAZ STAFF & TEACHER DASHBOARD USER MANUAL. THIS MANUAL OFFERS
+COMPREHENSIVE, SCREEN-BY-SCREEN INSTRUCTIONS, FEATURE OVERVIEWS, AND OPERATING
+PROCEDURES FOR ALL NON-TEACHING STAFF, CLASSROOM TEACHERS, AND SUBJECT EDUCATORS.
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1.  Staff Utilities Portal (`/staff-dashboard`)
+2.  Educator Classroom Hub / Teacher Metro Dashboard (`/teacher-dashboard`)
+3.  Daily Classroom Attendance (`/teacher-dashboard/daily-attendance`)
+4.  My Classes & Subject Assignments (`/teacher-dashboard/profile-edit`)
+5.  Teacher Timetable & Schedule (`/teacher-dashboard/teacher-timetable`)
+6.  Classroom Timetable Management (`/teacher-dashboard/manage-timetable`)
+7.  Personal Scratchpad & Digital Notes (`/teacher-dashboard/note`)
+8.  Weekly Topics & Lesson Planning (`/teacher-dashboard/weekly-topics`)
+9.  Term Score & Grade Records (`/teacher-dashboard/student-academic-records`)
+10. Student Academic Report Cards (`/teacher-dashboard/student-academic-report`)
+11. Behavioral Remarks & Conduct Logs (`/teacher-dashboard/preschool-remarks`)
+12. Manage Homework & Assignments (`/teacher-dashboard/manage-assignments`)
+13. Upload Assignments & Learning Materials (`/teacher-dashboard/upload-assignment`)
+14. Mark Assignments & Student Grading (`/teacher-dashboard/mark-assignment`)
+15. Study Groups & Collaborations (`/teacher-dashboard/create-student-group`)
+16. Staff Chat & Internal Collaboration (`/teacher-dashboard/staff-chat`)
+17. Parent Chat & Direct Messaging (`/teacher-dashboard/chat-with-parent`)
+18. Broadcasts & School News Screen (`/teacher-dashboard/news-screen`)
+19. Curriculum PDF Viewer & Offline Guides (`/teacher-dashboard/curriculum-pdf-viewer`)
+20. Pedagogy & Resource Hub (`/teacher-dashboard/pedagogy`)
+21. Review Learning Documents (`/teacher-dashboard/review-document`)
+22. Educator Profile & Account Settings (`/teacher-dashboard/settings`)
+23. Shared Staff Operations:
+    a. Staff Attendance GPS Check-In (`/shared/scan-attendance`)
+    b. Daily Financial Operations (`/shared/daily-financials`)
+    c. Daily Ledger View (`/shared/daily-ledger`)
+    d. Feeding Fees Collection (`/shared/feeding-fees`)
+    e. Bus Fees Collection (`/shared/bus-fees`)
+    f. Extra Classes Fees Collection (`/shared/extra-classes-fees`)
+    g. Coding & Robotics Hub (`/coding-robotics`)
+    h. Academic Calendar (`/academic-calendar`)
+
+================================================================================
+1. STAFF UTILITIES PORTAL (`/staff-dashboard`)
+================================================================================
+OVERVIEW:
+The primary portal for general school staff members and support personnel. It
+provides access to administrative support channels, daily financial recording tools
+(if authorized), and event notifications.
+
+KEY FEATURES & CONTROLS:
+- Staff Header: Displays staff name, role tag, and administrative switch button (for admins).
+- Staff Support Card: Direct chat link to communicate with school administration.
+- Daily Financials Card (Permission-Based): Access point for recording feeding, bus, and extra lesson payments.
+- Upcoming Events Banner: Real-time display of institutional events and term schedules.
+
+HOW TO OPERATE:
+1. Tap "Staff Support" to send an inquiry or message to school leadership.
+2. Tap "Daily Financials" (if assigned financial permissions) to access fee collection tools.
+3. Pull down on the screen to refresh notifications.
+
+================================================================================
+2. EDUCATOR CLASSROOM HUB / TEACHER METRO DASHBOARD (`/teacher-dashboard`)
+================================================================================
+OVERVIEW:
+A Windows 8 Metro-style dashboard designed for teachers and subject educators. It
+organizes daily teaching workflows into three main blocks: Classroom Hub, Teaching Tools,
+and Campus Life.
+
+KEY FEATURES & CONTROLS:
+- Missing Attendance Alert Banner: Automatic pop-up alert warning teachers if daily attendance for their assigned class has not been marked between 6:00 AM and 10:00 AM.
+- Classroom Hub Metro Tiles:
+  * Attendance (Daily tracking)
+  * My Classes (Subjects & arms setup)
+  * Daily Financials (Feeding, Bus & Extra class collection - if permitted)
+  * Timetable (Teacher schedule)
+  * My Notes (Digital scratchpad)
+  * Weekly Topics (Lesson planning)
+- Teaching Tools Metro Tiles:
+  * Term Records (Grade entry)
+  * Exam Reports (Approved reports)
+  * Behavioral Remarks (Conduct & skills)
+  * Assignments (Upload & manage)
+  * Grading (Mark student work)
+  * Study Groups (Class channels)
+  * Staff Attendance (GPS check-in)
+  * Coding & Robotics (STEM projects)
+  * Curriculum PDFs (Offline resources)
+  * Pedagogy & Resources (Teaching aids)
+- Campus Life Metro Tiles:
+  * Calendar (Events & terms)
+  * Broadcasts (School news)
+  * Staff Chat (Staff messaging)
+  * Parent Chat (Direct parent comms)
+- Unread Notification Badges: Live counters for pending assignment submissions and parent messages.
+
+HOW TO OPERATE:
+1. Tap any Metro tile to launch the corresponding tool.
+2. If the red "Attendance Missing!" alert is visible, tap "MARK NOW" to immediately take roll call.
+
+================================================================================
+3. DAILY CLASSROOM ATTENDANCE (`/teacher-dashboard/daily-attendance`)
+================================================================================
+OVERVIEW:
+Allows classroom teachers to mark daily attendance for enrolled students, recording
+presence, absence, lateness, or excused status.
+
+KEY FEATURES & CONTROLS:
+- Class Selector Dropdown: Choose from assigned class arms.
+- Date Picker: Defaults to current day, with back-date capabilities (if permitted).
+- Student Roster List: Displays student photo, full name, and interactive status buttons:
+  * Present (Green)
+  * Absent (Red)
+  * Late (Yellow)
+  * Excused (Blue)
+- Batch Actions: "Mark All Present" button for rapid roll call.
+- Remark Field: Input notes regarding illness or parental excuse.
+- Submit Roll Call Button: Saves attendance to the central database.
+
+HOW TO OPERATE:
+1. Select class arm.
+2. Tap "Mark All Present" or tap individual status buttons for each student.
+3. Add remarks for absent or late students if necessary.
+4. Click "Submit Attendance".
+
+================================================================================
+4. MY CLASSES & SUBJECT ASSIGNMENTS (`/teacher-dashboard/profile-edit`)
+================================================================================
+OVERVIEW:
+Enables educators to review their assigned class arms, view enrolled student lists,
+and configure subjects taught.
+
+KEY FEATURES & CONTROLS:
+- Assigned Classes Card: List of classes where the user is designated as class teacher or subject teacher.
+- Subject Roster List: Mathematics, English, General Science, etc.
+- Enrolled Student Roster: View photos, IDs, and parent contact details for students in assigned classes.
+
+HOW TO OPERATE:
+1. Navigate to the "Work & Classes" section of your profile.
+2. Review assigned class rosters and verify enrolled student count.
+
+================================================================================
+5. TEACHER TIMETABLE & SCHEDULE (`/teacher-dashboard/teacher-timetable`)
+================================================================================
+OVERVIEW:
+Displays the educator's personal weekly teaching schedule, highlighting class periods,
+subject locations, break times, and free periods.
+
+KEY FEATURES & CONTROLS:
+- Day Selector Tabs: Monday through Friday schedule view.
+- Period Cards: Period number, start/end time, subject title, and assigned class arm (e.g. 08:30 AM - Period 1: Maths - JSS 2 Gold).
+- Next Class Highlight: Visual indicator for the upcoming period.
+
+HOW TO OPERATE:
+1. Tap day tabs (e.g. "Wednesday") to view that day's lecture schedule.
+2. Check class locations and period timings.
+
+================================================================================
+6. CLASSROOM TIMETABLE MANAGEMENT (`/teacher-dashboard/manage-timetable`)
+================================================================================
+OVERVIEW:
+Allows class teachers or academic coordinators to build, edit, and publish weekly
+class schedules for students.
+
+KEY FEATURES & CONTROLS:
+- Class Selector: Choose class arm to manage.
+- Grid Builder: Assign subjects, teachers, and time slots for each period.
+- Break Time Inserter: Add recess, lunch break, or assembly slots.
+- Save & Publish Button: Pushes updated schedule to student and parent portals.
+
+HOW TO OPERATE:
+1. Select class arm.
+2. Tap a period cell, select subject and educator from dropdowns.
+3. Click "Publish Timetable".
+
+================================================================================
+7. PERSONAL SCRATCHPAD & DIGITAL NOTES (`/teacher-dashboard/note`)
+================================================================================
+OVERVIEW:
+A private digital notebook for teachers to draft lesson ideas, meeting notes, or
+reminders.
+
+KEY FEATURES & CONTROLS:
+- Create New Note Button: Title and rich body text fields.
+- Note Cards Grid: Organized by date created.
+- Search Notes: Quick search through saved scratchpad items.
+- Pin / Favorite Toggle: Keep vital notes at top of list.
+
+HOW TO OPERATE:
+1. Tap "+ New Note".
+2. Type title and notes, then click "Save".
+
+================================================================================
+8. WEEKLY TOPICS & LESSON PLANNING (`/teacher-dashboard/weekly-topics`)
+================================================================================
+OVERVIEW:
+A curriculum mapping tool where teachers outline weekly topic objectives, learning
+materials, and scheme of work for the entire term.
+
+KEY FEATURES & CONTROLS:
+- Term & Week Selector: Select Week 1 through Week 12.
+- Subject Selector: Choose assigned subject.
+- Topic & Sub-Topic Form: Enter Main Topic, Sub-Topic, Objectives, Teaching Aids, and Homework Summary.
+- Submission Status: Mark scheme of work as "Draft" or "Submitted to Admin".
+
+HOW TO OPERATE:
+1. Select subject and target week (e.g., Week 3).
+2. Fill in topic details and learning objectives.
+3. Tap "Submit Lesson Plan".
+
+================================================================================
+9. TERM SCORE & GRADE RECORDS (`/teacher-dashboard/student-academic-records`)
+================================================================================
+OVERVIEW:
+The primary grade entry console where teachers record Continuous Assessment (CA) scores
+and Examination marks for students.
+
+KEY FEATURES & CONTROLS:
+- Class & Subject Selection: Filter roster by class arm and subject.
+- Grade Input Table:
+  * 1st CA Score (e.g., max 15)
+  * 2nd CA Score (e.g., max 15)
+  * Exam Score (e.g., max 70)
+  * Calculated Total (auto-computed sum)
+  * Grade Interpretation (auto-assigned A, B, C, D, F)
+- Excel / Bulk Import Option: Upload scores using a formatted spreadsheet template.
+- Submit to Admin Button: Lock grades for administrative review.
+
+HOW TO OPERATE:
+1. Select class arm, term, and subject.
+2. Input 1st CA, 2nd CA, and Exam marks for each student.
+3. System automatically calculates totals and assigns letter grades.
+4. Click "Submit Grades to Admin".
+
+================================================================================
+10. STUDENT ACADEMIC REPORT CARDS (`/teacher-dashboard/student-academic-report`)
+================================================================================
+OVERVIEW:
+View approved term report cards, generate class result sheets, and enter class teacher
+terminal remarks.
+
+KEY FEATURES & CONTROLS:
+- Report Card Preview: Displays full subject summary, student average, position in class, and total attendance.
+- Class Teacher Remark Input: Select preset remarks or type custom comments (e.g. "An excellent performance, keep it up!").
+- PDF Exporter: Download printable report card documents.
+
+HOW TO OPERATE:
+1. Select student from class roster.
+2. Review calculated averages.
+3. Type class teacher remark and click "Save Remark".
+
+================================================================================
+11. BEHAVIORAL REMARKS & CONDUCT LOGS (`/teacher-dashboard/preschool-remarks`)
+================================================================================
+OVERVIEW:
+Evaluates non-academic growth, including affective traits (punctuality, neatness,
+honesty, relationship with peers) and psychomotor skills (handwriting, sports, craft).
+
+KEY FEATURES & CONTROLS:
+- Student Selector: Choose student from assigned class.
+- Rating Scale Grid (1 to 5):
+  * 5 = Excellent
+  * 4 = Good
+  * 3 = Fair
+  * 2 = Poor
+  * 1 = Very Poor
+- Behavioral Category Ratings: Punctuality, Neatness, Politeness, Leadership, Sports, Musical Skills.
+- Custom Behavioral Comment: Free-text field for observational notes.
+
+HOW TO OPERATE:
+1. Select student.
+2. Tap numeric rating scores for each behavioral skill.
+3. Click "Save Conduct Evaluation".
+
+================================================================================
+12. MANAGE HOMEWORK & ASSIGNMENTS (`/teacher-dashboard/manage-assignments`)
+================================================================================
+OVERVIEW:
+Central management console for created homework tasks, submission deadlines, and
+grading statuses.
+
+KEY FEATURES & CONTROLS:
+- Active Assignments List: Displays subject, assignment title, class target, due date, and submission count (e.g., 18/25 Submitted).
+- Create New Assignment Button: Shortcut to upload screen.
+- Delete / Archive Action: Remove obsolete homework tasks.
+
+HOW TO OPERATE:
+1. Review active assignment cards.
+2. Tap on an assignment to view student submissions.
+
+================================================================================
+13. UPLOAD ASSIGNMENTS & LEARNING MATERIALS (`/teacher-dashboard/upload-assignment`)
+================================================================================
+OVERVIEW:
+Form to create new homework tasks, set submission deadlines, attach resource files,
+and publish to students.
+
+KEY FEATURES & CONTROLS:
+- Assignment Creation Form:
+  * Assignment Title (e.g. "Algebra Equations - Exercise 4")
+  * Class Arm Target Dropdown
+  * Subject Selector
+  * Maximum Score Points (e.g. 20 Points)
+  * Due Date & Time Picker
+  * Assignment Description / Instructions
+- Attachment Uploader: Attach PDF worksheets, image diagrams, or reference documents.
+
+HOW TO OPERATE:
+1. Enter title, select target class and subject.
+2. Set due date and total score points.
+3. Attach homework PDF or image worksheet if available.
+4. Tap "Publish Homework".
+
+================================================================================
+14. MARK ASSIGNMENTS & STUDENT GRADING (`/teacher-dashboard/mark-assignment`)
+================================================================================
+OVERVIEW:
+Review student homework submissions, inspect attached student files, record marks,
+and provide written feedback.
+
+KEY FEATURES & CONTROLS:
+- Submission List: Filter by Pending Marking vs Graded.
+- Student Answer Viewer: View typed responses or student uploaded worksheet photos.
+- Score Input Field: Enter score awarded out of total points.
+- Teacher Feedback Box: Provide construct feedback or correction guidance.
+- Return Grade Button: Push score and comments to student dashboard.
+
+HOW TO OPERATE:
+1. Select assignment submission card.
+2. Inspect student answer document.
+3. Enter score and write feedback comment.
+4. Click "Submit Grade".
+
+================================================================================
+15. STUDY GROUPS & COLLABORATIONS (`/teacher-dashboard/create-student-group`)
+================================================================================
+OVERVIEW:
+Allows teachers to create collaborative class channels, project groups, or subject
+discussion forums for students.
+
+KEY FEATURES & CONTROLS:
+- Group Creation Form: Group Title, Category, Target Class Arm, Description.
+- Student Selection List: Select specific students or add entire class roster.
+- Group Chat Window: Moderated chat channel where teacher can share announcements and guide study discussions.
+
+HOW TO OPERATE:
+1. Tap "Create New Group".
+2. Name group (e.g., "JSS 3 Science Project Team A").
+3. Select participating students and click "Create Group".
+
+================================================================================
+16. STAFF CHAT & INTERNAL COLLABORATION (`/teacher-dashboard/staff-chat`)
+================================================================================
+OVERVIEW:
+Internal communication channel for teachers and school staff to coordinate events,
+share updates, and communicate with administration.
+
+KEY FEATURES & CONTROLS:
+- Staff Messaging Directory: List of administrators and fellow teachers.
+- Attachment Support: Share document files, lesson plans, or timetable PDFs.
+
+HOW TO OPERATE:
+1. Select colleague or admin from directory.
+2. Type message and tap send.
+
+================================================================================
+17. PARENT CHAT & DIRECT MESSAGING (`/teacher-dashboard/chat-with-parent`)
+================================================================================
+OVERVIEW:
+Direct messaging portal connecting teachers with parents of students in their assigned
+classes.
+
+KEY FEATURES & CONTROLS:
+- Parent Directory: Lists parents of students in assigned classes.
+- Unread Message Counters: Flags new parent inquiries.
+- Sibling / Student Info Banner: Displays student name and class at top of chat screen.
+
+HOW TO OPERATE:
+1. Select parent from chat directory.
+2. Type response regarding student academic progress or conduct and send.
+
+================================================================================
+18. BROADCASTS & SCHOOL NEWS SCREEN (`/teacher-dashboard/news-screen`)
+================================================================================
+OVERVIEW:
+News reader screen displaying school announcements, official circulars, event updates,
+and administrative notices.
+
+KEY FEATURES & CONTROLS:
+- News Feed Stream: Title, publishing date, author badge, and post contents.
+- Filter by Category: General Announcements, Academic Notices, Holiday Updates.
+- Image Preview: Expand attached notice flyers or photos.
+
+HOW TO OPERATE:
+1. Scroll through news feed items.
+2. Tap on an announcement to read complete text.
+
+================================================================================
+19. CURRICULUM PDF VIEWER & OFFLINE GUIDES (`/teacher-dashboard/curriculum-pdf-viewer`)
+================================================================================
+OVERVIEW:
+A digital repository of official curriculum guidebooks, syllabus documents, and
+subject standards accessible offline.
+
+KEY FEATURES & CONTROLS:
+- Curriculum Category Selector: Primary, Junior Secondary, Senior Secondary.
+- Embedded PDF Reader: Pinch-to-zoom, page navigation, and bookmarking.
+- Offline Cache: Download curriculum PDFs for reference without active internet connection.
+
+HOW TO OPERATE:
+1. Select educational tier and subject.
+2. Tap curriculum document to open embedded reader.
+
+================================================================================
+20. PEDAGOGY & RESOURCE HUB (`/teacher-dashboard/pedagogy`)
+================================================================================
+OVERVIEW:
+A resource bank featuring external educational links, examination board syllabus
+references, teaching aids, and professional development guides.
+
+KEY FEATURES & CONTROLS:
+- External Exam Links: Quick access to national and international exam body portals.
+- Teaching Aid Library: Downloadable worksheets, lesson plans, and instructional diagrams.
+
+HOW TO OPERATE:
+1. Browse resource categories.
+2. Tap external link or resource download button.
+
+================================================================================
+21. REVIEW LEARNING DOCUMENTS (`/teacher-dashboard/review-document`)
+================================================================================
+OVERVIEW:
+Review and verify learning materials or project files uploaded by students before
+publishing them to class study hubs.
+
+KEY FEATURES & CONTROLS:
+- Pending Review Queue: List of student uploaded resource files.
+- Approve / Reject Buttons: Approve for class access or return with edit notes.
+
+HOW TO OPERATE:
+1. Select document from queue.
+2. Inspect contents and tap "Approve Document".
+
+================================================================================
+22. EDUCATOR PROFILE & ACCOUNT SETTINGS (`/teacher-dashboard/settings`)
+================================================================================
+OVERVIEW:
+Personal configuration screen to update teacher bio, contact details, profile photo,
+security credentials, and app notification preferences.
+
+KEY FEATURES & CONTROLS:
+- Profile Info Editor: Full Name, Phone Number, Email, Bio.
+- Avatar Image Uploader: Take or select profile picture.
+- Change Password Section: Secure password update.
+- Dark / Light Theme Toggle: Switch app visual appearance.
+
+HOW TO OPERATE:
+1. Edit profile fields.
+2. Tap "Save Settings".
+
+================================================================================
+23. SHARED STAFF OPERATIONS
+================================================================================
+a. STAFF ATTENDANCE GPS CHECK-IN (`/shared/scan-attendance`)
+   - Overview: GPS location and QR code clock-in tool for staff daily arrival verification.
+   - Operations: Open screen, tap "Check In Now", system checks campus geofence perimeter, records timestamp, and updates attendance log.
+
+b. DAILY FINANCIAL OPERATIONS (`/shared/daily-financials`)
+   - Overview: Daily collection console for staff assigned fee collection roles.
+   - Operations: Select Fee Type (Feeding, Bus, Extra Class), search student, mark payment, and generate collection ledger entry.
+
+c. DAILY LEDGER VIEW (`/shared/daily-ledger`)
+   - Overview: Real-time itemized list of fee payments recorded today.
+   - Operations: Review daily collection totals.
+
+d. FEEDING FEES COLLECTION (`/shared/feeding-fees`)
+   - Overview: Specialized desk to collect and verify daily or weekly student feeding fees.
+   - Operations: Check off students participating in lunch program and record fees.
+
+e. BUS FEES COLLECTION (`/shared/bus-fees`)
+   - Overview: Manage shuttle transport payments and verify bus pass validity.
+   - Operations: Mark student transport dues as paid.
+
+f. EXTRA CLASSES FEES COLLECTION (`/shared/extra-classes-fees`)
+   - Overview: Record payments for after-school extra lessons.
+   - Operations: Search student name and record lesson fee payment.
+
+g. CODING & ROBOTICS HUB (`/coding-robotics`)
+   - Overview: STEM instructional portal for robotics projects, coding exercises, and logic games.
+   - Operations: Select lesson module and guide students through interactive exercises.
+
+h. ACADEMIC CALENDAR (`/academic-calendar`)
+   - Overview: Institutional calendar detailing term start/end dates, exam weeks, and holidays.
+   - Operations: View upcoming academic events and term dates.
+
+================================================================================
+END OF STAFF DASHBOARD USER MANUAL
+================================================================================

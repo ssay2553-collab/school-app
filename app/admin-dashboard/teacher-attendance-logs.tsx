@@ -138,8 +138,34 @@ export default function TeacherAttendanceLogsScreen() {
     }
   };
 
-  const isSelectedDateHoliday = holidays.some(h => h.date === selectedDate);
-  const selectedHolidayObj = holidays.find(h => h.date === selectedDate);
+  const checkIsHolidayDate = (dateStr: string) => {
+    const check = moment(dateStr, 'YYYY-MM-DD');
+    return holidays.some(h => {
+      if (h.date && h.date === dateStr) return true;
+      const s = (h as any).startDate || h.date;
+      const e = (h as any).endDate || h.date;
+      if (s && e) {
+        return check.isBetween(moment(s, 'YYYY-MM-DD'), moment(e, 'YYYY-MM-DD'), 'day', '[]');
+      }
+      return false;
+    });
+  };
+
+  const checkGetHolidayObj = (dateStr: string) => {
+    const check = moment(dateStr, 'YYYY-MM-DD');
+    return holidays.find(h => {
+      if (h.date && h.date === dateStr) return true;
+      const s = (h as any).startDate || h.date;
+      const e = (h as any).endDate || h.date;
+      if (s && e) {
+        return check.isBetween(moment(s, 'YYYY-MM-DD'), moment(e, 'YYYY-MM-DD'), 'day', '[]');
+      }
+      return false;
+    });
+  };
+
+  const isSelectedDateHoliday = checkIsHolidayDate(selectedDate);
+  const selectedHolidayObj = checkGetHolidayObj(selectedDate);
 
   const handleToggleSelectedDateHoliday = async () => {
     let updatedHolidays: { date: string; title: string }[];
@@ -349,8 +375,7 @@ export default function TeacherAttendanceLogsScreen() {
       }
     });
 
-    const holidayDatesSet = new Set(holidays.map(h => h.date));
-    const nonHolidayDates = Array.from(uniqueDatesSet).filter(d => !holidayDatesSet.has(d));
+    const nonHolidayDates = Array.from(uniqueDatesSet).filter(d => !checkIsHolidayDate(d));
     const totalWorkingDays = nonHolidayDates.length || 1;
 
     Object.keys(statsMap).forEach((tid) => {
@@ -373,7 +398,6 @@ export default function TeacherAttendanceLogsScreen() {
       return { name, date: d.format('YYYY-MM-DD') };
     });
 
-    const holidayDatesSet = new Set(holidays.map(h => h.date));
     const teacherMap: Record<string, TeacherWeeklyDayStats> = {};
 
     const filtered = getFilteredRecordsForStats();
@@ -387,7 +411,7 @@ export default function TeacherAttendanceLogsScreen() {
           days: weekDays.map(wd => ({
             name: wd.name,
             date: wd.date,
-            status: holidayDatesSet.has(wd.date) ? 'Holiday' : 'Not Logged',
+            status: checkIsHolidayDate(wd.date) ? 'Holiday' : 'Not Logged',
           })),
         };
       }

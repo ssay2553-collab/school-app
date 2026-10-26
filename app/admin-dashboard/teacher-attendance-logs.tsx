@@ -431,7 +431,7 @@ export default function TeacherAttendanceLogsScreen() {
           days: weekDays.map(wd => ({
             name: wd.name,
             date: wd.date,
-            status: holidayDatesSet.has(wd.date) ? 'Holiday' : 'Not Logged',
+            status: checkIsHolidayDate(wd.date) ? 'Holiday' : 'Not Logged',
           })),
         };
       }

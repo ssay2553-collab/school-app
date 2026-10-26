@@ -80,8 +80,23 @@ export default function AssignmentReviewModal({
       await markNotificationsForResolvedItem({
         type: "assignment",
         itemId: assignment.id,
-        status: "pending",
       });
+
+      // Notify Teacher
+      if (assignment.teacherId) {
+        await sendNotification({
+          recipientId: assignment.teacherId,
+          senderId: appUser?.uid || "admin",
+          senderName: "School Admin",
+          type: "assignment",
+          title: "Assignment Approved 🎉",
+          body: `Your assignment "${assignment.title}" for ${assignment.subjectId || assignment.subject} has been approved and published to students.`,
+          data: {
+            assignmentId: assignment.id,
+            status: "approved",
+          },
+        });
+      }
 
       // Send notifications to students & parents
       const studentsQuery = query(
@@ -169,7 +184,6 @@ export default function AssignmentReviewModal({
       await markNotificationsForResolvedItem({
         type: "assignment",
         itemId: assignment.id,
-        status: "pending",
       });
 
       // Notify teacher

@@ -1,7 +1,7 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { sendPasswordResetEmail } from "firebase/auth";
-import { collection, getDocs, limit, or, query, where } from "firebase/firestore";
+import { collection, getDocs, limit, or, query, where, setDoc, updateDoc, doc, serverTimestamp } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import React, { useState } from "react";
 import {
@@ -87,7 +87,7 @@ export default function ForgotPasswordScreen() {
   };
 
   /**
-   * Method 1: Send Firebase Password Reset Email
+   * Method 1: Send Firebase Password Reset Email or Create Admin Reset Request
    */
   const handleEmailReset = async () => {
     if (!emailInput.trim()) {
@@ -97,18 +97,81 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
-      const targetEmail = await resolveTargetEmail(emailInput);
+      const cleanInput = emailInput.trim();
+      const targetEmail = await resolveTargetEmail(cleanInput);
 
-      // Synthetic student emails (@*.edueaz.com) cannot receive external emails
-      if (targetEmail.includes(".edueaz.com")) {
-        showToast({
-          message: "Student accounts use internal handles. Please use the Link Code tab to reset or ask your Teacher/Admin.",
-          type: "info",
+      // Search Firestore to see if user exists
+      let userDoc: any = null;
+      let userData: any = null;
+
+      try {
+        const usersRef = collection(db, "users");
+        const q = query(
+          usersRef,
+          or(
+            where("profile.email", "==", targetEmail),
+            where("email", "==", targetEmail),
+            where("username", "==", cleanInput.toLowerCase()),
+            where("profile.username", "==", cleanInput.toLowerCase())
+          ),
+          limit(1)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          userDoc = snap.docs[0];
+          userData = userDoc.data();
+        }
+      } catch (err) {
+        console.warn("User lookup error:", err);
+      }
+
+      // Check if it's a real external email or synthetic student handle
+      const isSynthetic = targetEmail.includes(".edueaz.com") || !targetEmail.includes("@");
+
+      if (isSynthetic || userData?.role === "student") {
+        // Create Password Reset Request in Firestore for School Super Admin
+        const studentUid = userDoc?.id || "unknown";
+        const studentName =
+          userData?.profile?.fullName ||
+          `${userData?.profile?.firstName || ""} ${userData?.profile?.lastName || ""}`.trim() ||
+          cleanInput;
+
+        const reqRef = doc(collection(db, "passwordResetRequests"));
+        await setDoc(reqRef, {
+          requestId: reqRef.id,
+          studentUid: studentUid,
+          studentName: studentName,
+          identifier: cleanInput,
+          targetEmail: targetEmail,
+          status: "pending",
+          schoolId: SCHOOL_CONFIG.schoolId || "school",
+          createdAt: serverTimestamp(),
         });
-        setLoading(false);
+
+        // Create Notification for Admin
+        const notifRef = doc(collection(db, "notifications"));
+        await setDoc(notifRef, {
+          id: notifRef.id,
+          title: "🔑 Student Password Reset Request",
+          body: `Password reset requested for student ${studentName} (${cleanInput}). Please approve in Manage Users.`,
+          type: "password_reset_request",
+          recipientRole: "admin",
+          schoolId: SCHOOL_CONFIG.schoolId || "school",
+          studentUid: studentUid,
+          requestId: reqRef.id,
+          read: false,
+          createdAt: serverTimestamp(),
+        });
+
+        showToast({
+          message: "Password reset request submitted! The administrators have been notified.",
+          type: "success",
+        });
+        router.back();
         return;
       }
 
+      // External email address -> Send standard Firebase reset email
       await sendPasswordResetEmail(auth, targetEmail);
       showToast({
         message: `Password reset link sent to ${targetEmail}. Please check your inbox!`,
@@ -117,13 +180,7 @@ export default function ForgotPasswordScreen() {
       router.back();
     } catch (error: any) {
       console.error("Email reset error:", error);
-      let msg = error.message || "Failed to send reset email.";
-      if (error.code === "auth/user-not-found") {
-        msg = "No account found matching this email or username.";
-      } else if (error.code === "auth/invalid-email") {
-        msg = "Invalid email format. Please check your input.";
-      }
-      showToast({ message: msg, type: "error" });
+      showToast({ message: error.message || "Failed to send reset request.", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -150,13 +207,15 @@ export default function ForgotPasswordScreen() {
 
     setLoading(true);
     try {
+      const cleanInput = emailInput.trim();
       const cleanToken = tokenInput.trim().toUpperCase();
+      const targetEmail = await resolveTargetEmail(cleanInput);
 
-      // 1. Try Cloud Function if deployed
+      // Try Cloud Function if deployed first
       try {
         const updatePasswordFn = httpsCallable(functions, "resetUserPasswordWithToken");
         await updatePasswordFn({
-          identifier: emailInput.trim(),
+          identifier: cleanInput,
           token: cleanToken,
           newPassword: newPassword,
         });
@@ -165,17 +224,17 @@ export default function ForgotPasswordScreen() {
         router.back();
         return;
       } catch (cfErr) {
-        console.warn("Cloud function unavailable (Free Spark Plan mode), trying client-side token verification:", cfErr);
+        console.warn("Cloud function unavailable, trying client-side verification:", cfErr);
       }
 
-      // 2. Client-Side Firestore Link Code Verification (100% Free Spark Plan)
-      const targetEmail = await resolveTargetEmail(emailInput);
+      // Client-Side Link Code Verification
       const usersRef = collection(db, "users");
       const q = query(
         usersRef,
         or(
           where("profile.email", "==", targetEmail),
           where("email", "==", targetEmail),
+          where("username", "==", cleanInput.toLowerCase()),
           where("parentLinkCode", "==", cleanToken),
           where("signupCode", "==", cleanToken)
         ),
@@ -189,26 +248,51 @@ export default function ForgotPasswordScreen() {
 
       const userDoc = snap.docs[0];
       const userData = userDoc.data();
-      const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toString().trim().toUpperCase();
+      const storedToken = (
+        userData.signupCode ||
+        userData.secretCode ||
+        userData.parentLinkCode ||
+        ""
+      )
+        .toString()
+        .trim()
+        .toUpperCase();
 
       if (!storedToken || storedToken !== cleanToken) {
         throw new Error("Invalid Link Code. Please check your official school code.");
       }
 
-      // Check if user has a real parent email linked
-      const parentRealEmail = userData.profile?.parentEmail || userData.parentEmail;
-      if (parentRealEmail && !parentRealEmail.includes(".edueaz.com") && parentRealEmail.includes("@")) {
-        await sendPasswordResetEmail(auth, parentRealEmail);
-        showToast({
-          message: `Link Code verified! Reset instructions sent to linked parent email (${parentRealEmail}).`,
-          type: "success",
-        });
-      } else {
-        showToast({
-          message: `Link Code (${cleanToken}) verified! You can now log in using your Link Code as your password on the Student Login screen.`,
-          type: "success",
-        });
-      }
+      const studentName =
+        userData?.profile?.fullName ||
+        `${userData?.profile?.firstName || ""} ${userData?.profile?.lastName || ""}`.trim() ||
+        cleanInput;
+
+      // Update student's Firestore user document with the new password
+      await updateDoc(doc(db, "users", userDoc.id), {
+        resetPassword: newPassword.trim(),
+        tempPassword: newPassword.trim(),
+        resetPasswordPending: false,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Send Admin Notification alert that the student reset password via Link Code
+      const notifRef = doc(collection(db, "notifications"));
+      await setDoc(notifRef, {
+        id: notifRef.id,
+        title: "🔑 Link Code Password Reset",
+        body: `Student ${studentName} (${cleanInput}) successfully reset their password using valid Link Code ${cleanToken}.`,
+        type: "password_reset_notice",
+        recipientRole: "admin",
+        schoolId: SCHOOL_CONFIG.schoolId || "school",
+        studentUid: userDoc.id,
+        read: false,
+        createdAt: serverTimestamp(),
+      });
+
+      showToast({
+        message: "Password reset successfully! You can now log in with your new password.",
+        type: "success",
+      });
 
       router.back();
     } catch (error: any) {

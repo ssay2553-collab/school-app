@@ -107,6 +107,16 @@ export const StudentScoreCard = React.memo(
                   <Text style={styles.modifiedText}>EDITED</Text>
                 </View>
               )}
+              {localItem.status === "draft" && (
+                <View style={styles.draftBadge}>
+                  <Text style={styles.draftText}>DRAFT</Text>
+                </View>
+              )}
+              {localItem.status === "pending" && (
+                <View style={styles.pendingBadge}>
+                  <Text style={styles.pendingText}>PENDING</Text>
+                </View>
+              )}
             </View>
             <Text style={styles.studentIdLabel}>ID: {localItem.studentId}</Text>
           </View>
@@ -255,6 +265,34 @@ const styles = StyleSheet.create({
   },
   modifiedText: {
     color: '#fff',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  draftBadge: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 6,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  draftText: {
+    color: '#B45309',
+    fontSize: 8,
+    fontWeight: '900',
+  },
+  pendingBadge: {
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 6,
+    borderWidth: 1,
+    borderColor: '#0284C7',
+  },
+  pendingText: {
+    color: '#0369A1',
     fontSize: 8,
     fontWeight: '900',
   },

@@ -54,76 +54,69 @@ export default function StudentLoginScreen() {
 
     setLoading(true);
     const finalEmail = getStudentFinalEmail(email);
+    const cleanInput = email.trim().toLowerCase();
 
     try {
-      // 1. Try standard login
+      // 1. Try standard login first
       const cred = await signInWithEmailAndPassword(auth, finalEmail, password);
       await finishLogin(cred.user.uid, finalEmail);
     } catch (error: any) {
-      console.log("Standard login failed, checking for Token Login...");
+      console.log("Standard login failed, checking Firestore reset password or link code...");
 
       try {
-        // 2. Secondary check: Token / Link Code Verification (Free Spark Plan compatible)
-        const cleanToken = password.trim().toUpperCase();
-        if (cleanToken.length >= 4) {
-          // A. Try Cloud Function first if active
-          try {
-            const updatePasswordFn = httpsCallable(functions, "resetUserPasswordWithToken");
-            const res: any = await updatePasswordFn({
-              identifier: finalEmail,
-              token: cleanToken,
-              newPassword: password,
-            });
+        // 2. Secondary check: Match resetPassword, tempPassword, signupCode, or parentLinkCode in Firestore
+        const cleanPass = password.trim();
+        const cleanPassUpper = cleanPass.toUpperCase();
 
-            if (res?.data?.email || res?.data?.status === 200) {
-              showToast({ message: "Token verified! Logging in...", type: "info" });
-              const targetEmail = res.data.email || finalEmail;
-              const cred = await signInWithEmailAndPassword(auth, targetEmail, password);
+        const usersRef = collection(db, "users");
+        const q = query(
+          usersRef,
+          or(
+            where("profile.email", "==", finalEmail),
+            where("email", "==", finalEmail),
+            where("username", "==", cleanInput),
+            where("profile.username", "==", cleanInput),
+            where("parentLinkCode", "==", cleanPassUpper),
+            where("signupCode", "==", cleanPassUpper)
+          ),
+          limit(1)
+        );
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+          const userDoc = snap.docs[0];
+          const userData = userDoc.data();
+          const targetUid = userDoc.id;
+          const targetEmail = userData.profile?.email || userData.email || finalEmail;
+
+          // Stored candidate passwords/codes
+          const storedResetPass = userData.resetPassword || userData.tempPassword || "";
+          const storedSignupCode = (userData.signupCode || "").toString().trim().toUpperCase();
+          const storedLinkCode = (userData.parentLinkCode || "").toString().trim().toUpperCase();
+          const storedSecretCode = (userData.secretCode || "").toString().trim().toUpperCase();
+
+          const isPasswordMatch =
+            (storedResetPass && storedResetPass === cleanPass) ||
+            (storedSignupCode && storedSignupCode === cleanPassUpper) ||
+            (storedLinkCode && storedLinkCode === cleanPassUpper) ||
+            (storedSecretCode && storedSecretCode === cleanPassUpper);
+
+          if (isPasswordMatch) {
+            // Try Firebase Auth login with the cleanPass if possible
+            try {
+              const cred = await signInWithEmailAndPassword(auth, targetEmail, cleanPass);
               await finishLogin(cred.user.uid, targetEmail);
               return;
-            }
-          } catch (cfErr) {
-            console.warn("Cloud function unavailable (Free Spark plan), trying client-side link code match:", cfErr);
-          }
-
-          // B. Client-side Firestore Link Code fallback (100% Free Spark Plan)
-          const usersRef = collection(db, "users");
-          const q = query(
-            usersRef,
-            or(
-              where("profile.email", "==", finalEmail),
-              where("email", "==", finalEmail),
-              where("parentLinkCode", "==", cleanToken),
-              where("signupCode", "==", cleanToken)
-            ),
-            limit(1)
-          );
-          const snap = await getDocs(q);
-
-          if (!snap.empty) {
-            const userData = snap.docs[0].data();
-            const storedToken = (userData.signupCode || userData.secretCode || userData.parentLinkCode || "").toString().trim().toUpperCase();
-
-            if (storedToken && storedToken === cleanToken) {
-              const targetEmail = userData.profile?.email || userData.email || finalEmail;
-              try {
-                const cred = await signInWithEmailAndPassword(auth, targetEmail, storedToken);
-                await finishLogin(cred.user.uid, targetEmail);
-                return;
-              } catch {
-                await sendPasswordResetEmail(auth, targetEmail);
-                showToast({
-                  message: `Code matched! Password reset link sent to ${targetEmail}. Check your inbox!`,
-                  type: "info",
-                });
-                setLoading(false);
-                return;
-              }
+            } catch (authErr) {
+              // Finish login directly using verified Firestore profile
+              showToast({ message: "Identity verified! Logging in...", type: "info" });
+              await finishLogin(targetUid, targetEmail);
+              return;
             }
           }
         }
       } catch (tokenErr) {
-        console.error("Token login attempt failed:", tokenErr);
+        console.error("Token / Reset login attempt failed:", tokenErr);
       }
 
       // If both fail, show original error

@@ -10,6 +10,8 @@ interface MessageBubbleProps {
     type?: "text" | "image" | "file" | "audio";
     text?: string;
     senderName?: string;
+    senderFirstName?: string;
+    senderImage?: string;
     fileUrl?: string;
     fileName?: string;
     createdAt?: any;
@@ -89,6 +91,8 @@ export default function MessageBubble({
     }
   };
 
+  const displayName = message.senderFirstName || message.senderName;
+
   return (
     <View
       style={[
@@ -96,8 +100,22 @@ export default function MessageBubble({
         isYou ? styles.sentWrapper : styles.receivedWrapper,
       ]}
     >
-      {!isYou && message.senderName && (
-        <Text style={styles.senderName}>{message.senderName}</Text>
+      {!isYou && displayName && (
+        <View style={styles.senderHeaderRow}>
+          {message.senderImage ? (
+            <Image
+              source={{ uri: message.senderImage }}
+              style={styles.senderAvatarImage}
+            />
+          ) : (
+            <View style={styles.senderAvatarFallback}>
+              <Text style={styles.senderAvatarText}>
+                {displayName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
+          <Text style={styles.senderName}>{displayName}</Text>
+        </View>
       )}
       <View
         style={[
@@ -144,12 +162,36 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     paddingRight: 40,
   },
-  senderName: {
+  senderHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+    marginLeft: 4,
+    gap: 6,
+  },
+  senderAvatarImage: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#E2E8F0",
+  },
+  senderAvatarFallback: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: COLORS.primary + "20",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  senderAvatarText: {
     fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+  senderName: {
+    fontSize: 12,
     color: COLORS.gray,
-    marginBottom: 2,
-    marginLeft: 12,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   bubble: {
     paddingHorizontal: 12,

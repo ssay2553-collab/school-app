@@ -27,7 +27,9 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { useManageUsers } from "../../hooks/admin-dashboard/useManageUsers";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
-import { useEffect, useRef } from "react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../../firebaseConfig";
+import { useEffect, useRef, useState } from "react";
 
 export default function ManageUsers() {
   const router = useRouter();
@@ -111,6 +113,7 @@ export default function ManageUsers() {
     handleGraduateClass,
     handleDeleteUser,
     handleBulkDeleteUsers,
+    handleBulkRestoreUsers,
     handleUpdateProfile,
     handleUpgradeStaff,
     handleRegenerateSignupCode,
@@ -125,6 +128,7 @@ export default function ManageUsers() {
     clearTermArrears,
     handleBulkClearArrears,
     handleRegenerateParentLinkCode,
+    handleResetStudentPassword,
     isSuperAdmin,
     hasManageUsersAccess,
     handlePromoteRepeat,
@@ -132,6 +136,26 @@ export default function ManageUsers() {
     runFinanceCleanup,
     isFinanceCleaning,
   } = useManageUsers({ appUser, acadConfig, showToast, router });
+
+  const [pendingResetRequests, setPendingResetRequests] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!appUser) return;
+    try {
+      const q = query(
+        collection(db, "passwordResetRequests"),
+        where("status", "==", "pending")
+      );
+      const unsub = onSnapshot(q, (snap) => {
+        if (!isMounted.current) return;
+        const reqs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setPendingResetRequests(reqs);
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn("Error subscribing to reset requests:", err);
+    }
+  }, [appUser]);
 
   if (!hasManageUsersAccess && appUser) {
     return (
@@ -240,6 +264,39 @@ export default function ManageUsers() {
                   </TouchableOpacity>
                 </View>
               </View>
+
+              {pendingResetRequests.length > 0 && (
+                <View style={styles.resetRequestBanner}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                    <View style={styles.resetIconBadge}>
+                      <SVGIcon name="key" size={18} color="#fff" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.resetBannerTitle}>
+                        🔑 {pendingResetRequests.length} Reset Request{pendingResetRequests.length > 1 ? "s" : ""}
+                      </Text>
+                      <Text style={styles.resetBannerSub} numberOfLines={1}>
+                        {pendingResetRequests[0].studentName || pendingResetRequests[0].identifier} requested password reset
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.reviewResetBtn}
+                    onPress={() => {
+                      const targetReq = pendingResetRequests[0];
+                      const targetUser = users.find((u) => u.uid === targetReq.studentUid) || {
+                        uid: targetReq.studentUid,
+                        username: targetReq.identifier,
+                        profile: { firstName: targetReq.studentName },
+                        role: "student",
+                      };
+                      setViewingUser(targetUser as any);
+                    }}
+                  >
+                    <Text style={styles.reviewResetText}>Review</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
               <View style={styles.searchContainer}>
                 <View style={styles.searchBar}>
@@ -366,7 +423,7 @@ export default function ManageUsers() {
                 </ScrollView>
               )}
 
-              {selectedRole === "student" && !showArchived && (
+              {selectedRole === "student" && (
                 <View style={styles.selectAllRow}>
                   <TouchableOpacity
                     style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
@@ -480,6 +537,8 @@ export default function ManageUsers() {
           onClearArrears={handleBulkClearArrears}
           onPromoteRepeat={() => openPromoteRepeat(null)}
           onBulkDelete={handleBulkDeleteUsers}
+          showArchived={showArchived}
+          onBulkRestore={handleBulkRestoreUsers}
         />
 
         <UserDetailModal
@@ -505,6 +564,7 @@ export default function ManageUsers() {
           onShareCode={handleShareCode}
           onRegenerateCode={handleRegenerateSignupCode}
           onRegenerateParentCode={handleRegenerateParentLinkCode}
+          onResetPassword={handleResetStudentPassword}
           onClearArrears={clearServiceArrears}
           onClearTermArrears={clearTermArrears}
           onRemoveAssignedRole={handleRemoveAssignedRole}
@@ -817,5 +877,50 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 16,
     fontWeight: "700",
+  },
+  resetRequestBanner: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 6,
+    padding: 12,
+    backgroundColor: "#FEF3C7",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    ...SHADOWS.small,
+  },
+  resetIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#D97706",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  resetBannerTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#92400E",
+  },
+  resetBannerSub: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#B45309",
+    marginTop: 1,
+  },
+  reviewResetBtn: {
+    backgroundColor: "#D97706",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  reviewResetText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+    fontSize: 12,
   },
 });

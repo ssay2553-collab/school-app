@@ -12,6 +12,7 @@ import {
     doc,
     documentId,
     getDoc,
+    getDocs,
     getDocsFromServer,
     increment,
     limit,
@@ -1218,6 +1219,92 @@ export function useManageUsers({
     }
   };
 
+  const handleBulkRestoreUsers = () => {
+    const uidsArray = Array.from(selectedUserUids);
+    if (uidsArray.length === 0 || !hasManageUsersAccess) return;
+
+    const targetUsers = users.filter((u) => uidsArray.includes(u.uid) && u.status === "archived");
+
+    if (targetUsers.length === 0) {
+      showToast?.({
+        message: "No archived users selected for restoration.",
+        type: "error",
+      });
+      return;
+    }
+
+    const performBulkRestore = async () => {
+      setUpdating(true);
+      try {
+        const batch = writeBatch(db);
+        let restoredCount = 0;
+
+        for (const user of targetUsers) {
+          const updates: any = {
+            status: "active",
+            archivedAt: null,
+            classId:
+              user.previousClassId ||
+              (selectedClassId !== "all"
+                ? selectedClassId
+                : allClasses[0]?.id || ""),
+            previousClassId: null,
+          };
+
+          batch.update(doc(db, "users", user.uid), updates);
+          restoredCount++;
+        }
+
+        const statsRef = doc(db, "stats", "global");
+        if (restoredCount > 0) {
+          batch.set(
+            statsRef,
+            { totalStudents: increment(restoredCount) },
+            { merge: true },
+          );
+        }
+
+        await batch.commit();
+
+        setSelectedUserUids(new Set());
+        showToast?.({
+          message: `Successfully restored ${restoredCount} student(s).`,
+          type: "success",
+        });
+      } catch (error: any) {
+        console.error("Bulk restore failed:", error);
+        showToast?.({
+          message: "Failed to restore selected accounts: " + error.message,
+          type: "error",
+        });
+      } finally {
+        setUpdating(false);
+      }
+    };
+
+    if (Platform.OS === "web") {
+      if (
+        window.confirm(
+          `Restore ${targetUsers.length} selected student(s) to active status?`,
+        )
+      ) {
+        performBulkRestore();
+      }
+    } else {
+      Alert.alert(
+        "Bulk Restore Students",
+        `Restore ${targetUsers.length} selected student(s) to active status?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Restore",
+            onPress: performBulkRestore,
+          },
+        ],
+      );
+    }
+  };
+
   const handleBulkDeleteUsers = () => {
     const uidsArray = Array.from(selectedUserUids);
     if (uidsArray.length === 0 || !hasManageUsersAccess) return;
@@ -1511,6 +1598,53 @@ export function useManageUsers({
       console.error(err);
       showToast?.({
         message: "Failed to update parent link code.",
+        type: "error",
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleResetStudentPassword = async (user: User, customNewPassword?: string) => {
+    if (!user || !user.uid) return;
+    setUpdating(true);
+    try {
+      const newPass = (customNewPassword || Math.random().toString(36).substring(2, 8).toUpperCase()).trim();
+      const userRef = doc(db, "users", user.uid);
+      await updateDoc(userRef, {
+        resetPassword: newPass,
+        tempPassword: newPass,
+        resetPasswordPending: false,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Mark any pending passwordResetRequests for this user as approved
+      const qReq = query(
+        collection(db, "passwordResetRequests"),
+        where("studentUid", "==", user.uid),
+        where("status", "==", "pending")
+      );
+      const snapReq = await getDocs(qReq);
+      for (const reqDoc of snapReq.docs) {
+        await updateDoc(reqDoc.ref, {
+          status: "approved",
+          approvedBy: appUser?.uid || "admin",
+          approvedAt: serverTimestamp(),
+        });
+      }
+
+      if (viewingUser?.uid === user.uid) {
+        setViewingUser({ ...user, resetPassword: newPass, tempPassword: newPass } as User);
+      }
+
+      showToast?.({
+        message: `Password reset to '${newPass}' for ${user.profile?.firstName || user.username || 'student'}!`,
+        type: "success",
+      });
+    } catch (err: any) {
+      console.error("Failed to reset student password:", err);
+      showToast?.({
+        message: err.message || "Failed to reset password.",
         type: "error",
       });
     } finally {
@@ -2160,6 +2294,7 @@ export function useManageUsers({
     handleGraduateClass,
     handleDeleteUser,
     handleBulkDeleteUsers,
+    handleBulkRestoreUsers,
     handleUpdateProfile,
     handleUpgradeStaff,
     handleRegenerateSignupCode,
@@ -2174,6 +2309,7 @@ export function useManageUsers({
     clearTermArrears,
     handleBulkClearArrears,
     handleRegenerateParentLinkCode,
+    handleResetStudentPassword,
     isSuperAdmin,
     hasManageUsersAccess,
     handlePromoteRepeat,

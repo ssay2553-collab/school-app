@@ -414,25 +414,31 @@ export const useEditScoresLogic = ({
         total: parseFloat(s.finalScore) || 0,
       }));
 
+      const savedStudents = studentsToSave.map((s) => {
+        const rankInfo = calculateCompetitionRanking(
+          subjectScoresList,
+          s.studentId,
+        );
+
+        return {
+          ...s,
+          position: `${rankInfo.rank}/${rankInfo.total}`,
+          status: s.status === "draft" ? "draft" : "approved",
+        };
+      });
+
       batch.update(recordRef, {
         maxScore:
           selectedReportType === "End of Term" ||
           selectedReportType === "Mock Exams"
             ? 100
             : maxScore,
-        students: studentsToSave.map((s) => {
-          const rankInfo = calculateCompetitionRanking(
-            subjectScoresList,
-            s.studentId,
-          );
-          return {
-            ...s,
-            position: `${rankInfo.rank}/${rankInfo.total}`,
-          };
-        }),
-        status: studentsToSave.every((s) => s.status === "approved")
+        students: savedStudents,
+        status: savedStudents.every((s) => s.status === "approved")
           ? "approved"
-          : "partially_approved",
+          : savedStudents.some((s) => s.status === "approved")
+            ? "partially_approved"
+            : "pending",
         approvedAt: serverTimestamp(),
         approvedBy: appUser?.uid,
       });
@@ -456,6 +462,8 @@ export const useEditScoresLogic = ({
           student.studentId,
         );
 
+        const studentStatus = student.status === "draft" ? "draft" : "approved";
+
         batch.set(
           summaryRef,
           {
@@ -469,10 +477,34 @@ export const useEditScoresLogic = ({
                 grade: student.grade,
                 position: `${rankInfo.rank}/${rankInfo.total}`,
                 reportType: selectedReportType,
-                status: student.status || "pending",
+                status: studentStatus,
                 lastUpdated: serverTimestamp(),
               },
             },
+          },
+          { merge: true },
+        );
+
+        const reportSlug = selectedReportType.replace(/\s+/g, "");
+        const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) ? selectedReportNumber : "";
+        const reportId =
+          `${student.studentId}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
+            /\//g,
+            "-",
+          );
+        const reportRef = doc(db, "student-reports", reportId);
+
+        batch.set(
+          reportRef,
+          {
+            studentId: student.studentId,
+            studentName: student.fullName,
+            academicYear: selectedYear,
+            term: term,
+            reportType: selectedReportType,
+            classId: selectedClassId,
+            status: studentStatus === "draft" ? "pending" : "approved",
+            updatedAt: serverTimestamp(),
           },
           { merge: true },
         );

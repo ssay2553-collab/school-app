@@ -149,6 +149,7 @@ export default function ParentDashboardLayout() {
         <Tabs.Screen name="student-fee-history" options={{ href: null }} />
         <Tabs.Screen name="student-academic-report" options={{ href: null }} />
         <Tabs.Screen name="view-teachers" options={{ href: null }} />
+        <Tabs.Screen name="digital-wellbeing" options={{ href: null }} />
       </Tabs>
     </View>
   );

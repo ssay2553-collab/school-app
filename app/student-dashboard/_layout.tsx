@@ -3,6 +3,7 @@ import React, { useRef } from "react";
 import { Platform, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
+import ScreenTimeGuard from "../../components/student-dashboard/ScreenTimeGuard";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 
@@ -19,26 +20,28 @@ export default function StudentLayout() {
     : (Platform.OS === 'ios' ? 20 : 8);
 
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: primary,
-        tabBarInactiveTintColor: "#94A3B8",
-        tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopWidth: 0,
-          elevation: 10,
-          height: tabHeight,
-          paddingBottom: paddingBottom,
-          paddingTop: 8,
-          ...SHADOWS.medium,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: "700",
-        },
-      }}
-    >
+    <>
+      <ScreenTimeGuard />
+      <Tabs
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: primary,
+          tabBarInactiveTintColor: "#94A3B8",
+          tabBarStyle: {
+            backgroundColor: "#FFFFFF",
+            borderTopWidth: 0,
+            elevation: 10,
+            height: tabHeight,
+            paddingBottom: paddingBottom,
+            paddingTop: 8,
+            ...SHADOWS.medium,
+          },
+          tabBarLabelStyle: {
+            fontSize: 11,
+            fontWeight: "700",
+          },
+        }}
+      >
       <Tabs.Screen
         name="index"
         options={{
@@ -109,6 +112,7 @@ export default function StudentLayout() {
       <Tabs.Screen name="logout" options={{ href: null }} />
       <Tabs.Screen name="GroupChat" options={{ href: null }} />
     </Tabs>
+    </>
   );
 }
 

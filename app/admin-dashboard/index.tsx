@@ -26,6 +26,7 @@ export default function AdminDashboard() {
     authLoading,
     totalUnread,
     academicRecordUnread,
+    pendingAssignmentApprovalCount,
     upcomingEvents,
     eventsLoading,
     refreshing,
@@ -308,6 +309,7 @@ export default function AdminDashboard() {
                       numColumns={numColumns}
                       totalUnread={totalUnread}
                       academicRecordUnread={academicRecordUnread}
+                      pendingAssignmentApprovalCount={pendingAssignmentApprovalCount}
                       onPress={() => {
                         if (isNavigating.current) return;
                         isNavigating.current = true;

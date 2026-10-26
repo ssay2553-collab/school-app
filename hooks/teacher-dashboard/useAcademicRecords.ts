@@ -16,7 +16,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAcademicConfig } from '../useAcademicConfig';
 import { useToast } from '../../contexts/ToastContext';
 import { getGradeDetails, sortClasses } from '../../lib/classHelpers';
-import { sendNotification } from '../../src/services/notificationService';
+import { isEligibleAdminRecipient, sendNotification } from '../../src/services/notificationService';
 
 export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams" | "Class Assessment Task (CAT)" | "Trial Test";
 
@@ -380,20 +380,15 @@ export const useAcademicRecords = () => {
 
           const adminQuery = query(
             collection(db, "users"),
-            where("role", "in", ["admin", "superadmin", "super admin", "staff"])
+            where("role", "in", ["admin", "superadmin", "super admin", "staff", "teacher"])
           );
           const adminSnap = await getDocs(adminQuery);
 
           for (const adminDoc of adminSnap.docs) {
             const adminData = adminDoc.data();
-            const role = String(adminData?.role || "").toLowerCase();
-            const adminRole = String(adminData?.adminRole || "").toLowerCase();
-            const isEligible = ["admin", "superadmin", "super admin"].includes(role) ||
-              (role === "staff" && !!adminRole);
+            if (!isEligibleAdminRecipient(adminData) || adminDoc.id === firebaseUser.uid) continue;
 
-            if (!isEligible || adminDoc.id === firebaseUser.uid) continue;
-
-            sendNotification({
+            await sendNotification({
               recipientId: adminDoc.id,
               senderId: firebaseUser.uid,
               senderName: staffName,

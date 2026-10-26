@@ -30,6 +30,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useDataFreshness } from "../../hooks/useDataFreshness";
+import { useSchoolOperations } from "../../hooks/useSchoolOperations";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { useUpcomingEvents } from "../../hooks/useUpcomingEvents";
 import { getTeacherClasses } from "../../lib/classHelpers";
@@ -44,6 +45,7 @@ export default function TeacherDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const { totalUnread, submissionUnread, assignmentUnread } = useUnreadCounts();
   const { upcomingEvents, loading: eventsLoading } = useUpcomingEvents(2);
+  const { getOperationalStatus } = useSchoolOperations();
 
   // Attendance Alert Logic
   const [missingAttendance, setMissingAttendance] = useState<string[]>([]);
@@ -63,6 +65,15 @@ export default function TeacherDashboard() {
   useEffect(() => {
     if (!appUser?.uid || teacherClasses.length === 0) return;
 
+    const opStatus = getOperationalStatus();
+    const isWeekend = moment().day() === 0 || moment().day() === 6;
+
+    if (opStatus.isBlocked || isWeekend) {
+      setMissingAttendance([]);
+      setIsAlertVisible(false);
+      return;
+    }
+
     const today = moment().format("YYYY-MM-DD");
     const q = query(
       collection(db, "attendance"),
@@ -73,6 +84,15 @@ export default function TeacherDashboard() {
     const unsub = onSnapshot(
       q,
       (snap) => {
+        const currentOpStatus = getOperationalStatus();
+        const currentIsWeekend = moment().day() === 0 || moment().day() === 6;
+
+        if (currentOpStatus.isBlocked || currentIsWeekend) {
+          setMissingAttendance([]);
+          setIsAlertVisible(false);
+          return;
+        }
+
         const markedClassIds = snap.docs.map((d) => d.data().classId);
         const unmarked = teacherClasses.filter(
           (id) => !markedClassIds.includes(id),
@@ -92,7 +112,7 @@ export default function TeacherDashboard() {
     );
 
     return () => unsub();
-  }, [appUser?.uid, teacherClasses]);
+  }, [appUser?.uid, teacherClasses, getOperationalStatus]);
 
   const brandPrimary = config.brandPrimary || COLORS.primary || "#6366F1";
   const brandSecondary =
@@ -223,6 +243,13 @@ export default function TeacherDashboard() {
         title: "TEACHING TOOLS",
         color: "#D84315", // Warm Coral
         items: [
+          {
+            title: "Student Profiles",
+            subtitle: "Edit Student Info",
+            route: "/teacher-dashboard/manage-students",
+            icon: "person",
+            color: "#D84315", // Warm Coral
+          },
           {
             title: "Term Records",
             subtitle: "Manage grades",

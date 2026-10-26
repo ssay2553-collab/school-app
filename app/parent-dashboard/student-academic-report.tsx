@@ -2,24 +2,24 @@ import { Picker } from "@react-native-picker/picker";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import {
-  collection,
-  documentId,
-  getDocsFromServer,
-  query,
-  where,
+    collection,
+    documentId,
+    getDocsFromServer,
+    query,
+    where,
 } from "firebase/firestore";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { AcademicReportPreview } from "../../components/admin-dashboard/AcademicReportPreview";
 import SVGIcon from "../../components/SVGIcon";
@@ -30,8 +30,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import {
-  ReportType,
-  useAcademicRecordDetails,
+    ReportType,
+    useAcademicRecordDetails,
 } from "../../hooks/admin-dashboard/useAcademicRecordDetails";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
@@ -52,7 +52,9 @@ export default function StudentAcademicReport() {
     } else {
       router.replace("/parent-dashboard");
     }
-    setTimeout(() => { isNavigating.current = false; }, 500);
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
   };
 
   const [children, setChildren] = useState<any[]>([]);
@@ -112,6 +114,7 @@ export default function StudentAcademicReport() {
     AGGREGATE,
     classIdState,
     termBalance,
+    isReportApproved,
   } = useAcademicRecordDetails({
     studentId: selectedChildId,
     term: selectedTerm,
@@ -132,7 +135,7 @@ export default function StudentAcademicReport() {
       const q = query(
         collection(db, "student-reports"),
         where("studentId", "==", selectedChildId),
-        where("status", "==", "approved"),
+        where("status", "in", ["approved", "partially_approved"]),
       );
       const snap = await getDocsFromServer(q);
       const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -184,7 +187,9 @@ export default function StudentAcademicReport() {
       if (isMounted) setLoading(false);
     };
     fetchData();
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+    };
   }, [appUser]);
 
   useEffect(() => {
@@ -223,7 +228,10 @@ export default function StudentAcademicReport() {
               alignItems: "center",
             }}
           >
-            <TouchableOpacity onPress={handleBack} style={{ marginRight: 12, padding: 4 }}>
+            <TouchableOpacity
+              onPress={handleBack}
+              style={{ marginRight: 12, padding: 4 }}
+            >
               <SVGIcon name="arrow-back" size={24} color="#1E293B" />
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
@@ -278,7 +286,13 @@ export default function StudentAcademicReport() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipRow}
           >
-            {["End of Term", "Mid-Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"].map((type) => (
+            {[
+              "End of Term",
+              "Mid-Term",
+              "Mock Exams",
+              "Class Assessment Task (CAT)",
+              "Trial Test",
+            ].map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
@@ -302,7 +316,9 @@ export default function StudentAcademicReport() {
             ))}
           </ScrollView>
 
-          {["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) && (
+          {["Class Assessment Task (CAT)", "Trial Test"].includes(
+            selectedReportType,
+          ) && (
             <>
               <Text style={styles.label}>Assessment Number</Text>
               <ScrollView
@@ -389,63 +405,74 @@ export default function StudentAcademicReport() {
           </View>
         )}
 
-        {selectedChildId && !fetchingReport && selectedReportType === "End of Term" && termBalance !== null && termBalance > 0 && (
-          <View style={styles.debtWarningCard}>
-            <View style={styles.debtIconContainer}>
-              <SVGIcon name="alert-circle" size={40} color="#EF4444" />
+        {selectedChildId &&
+          !fetchingReport &&
+          selectedReportType === "End of Term" &&
+          termBalance !== null &&
+          termBalance > 0 && (
+            <View style={styles.debtWarningCard}>
+              <View style={styles.debtIconContainer}>
+                <SVGIcon name="alert-circle" size={40} color="#EF4444" />
+              </View>
+              <Text style={styles.debtTitle}>Access Restricted</Text>
+              <Text style={styles.debtMessage}>
+                End of Term academic reports for {selectedTerm} ({selectedYear})
+                are currently unavailable due to outstanding fees for this
+                specific period (₵{(termBalance || 0).toLocaleString()}).
+              </Text>
+              <Text style={styles.debtSubMessage}>
+                Please clear the balance for this term at the accounts office or
+                via the payments section to restore access to this report.
+              </Text>
+              <TouchableOpacity
+                style={[styles.payNowBtn, { backgroundColor: primary }]}
+                onPress={() => {
+                  router.push({
+                    pathname: "/parent-dashboard/student-fee-history",
+                    params: { studentId: selectedChildId },
+                  });
+                }}
+              >
+                <Text style={styles.payNowBtnText}>View School Fees</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.debtTitle}>Access Restricted</Text>
-            <Text style={styles.debtMessage}>
-              End of Term academic reports for {selectedTerm} ({selectedYear}) are currently unavailable due to outstanding fees for this specific period (₵{(termBalance || 0).toLocaleString()}).
-            </Text>
-            <Text style={styles.debtSubMessage}>
-              Please clear the balance for this term at the accounts office or via the payments section to restore access to this report.
-            </Text>
-            <TouchableOpacity
-              style={[styles.payNowBtn, { backgroundColor: primary }]}
-              onPress={() => {
-                router.push({
-                  pathname: "/parent-dashboard/student-fee-history",
-                  params: { studentId: selectedChildId }
-                });
-              }}
-            >
-              <Text style={styles.payNowBtnText}>View School Fees</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          )}
 
-        {!fetchingReport && subjectsData.length > 0 && (selectedReportType !== "End of Term" || (termBalance !== null && termBalance <= 0)) && (
-          <AcademicReportPreview
-            primary={primary}
-            schoolLogo={schoolLogo}
-            reportType={selectedReportType}
-            studentName={studentName}
-            className={className}
-            classIdState={classIdState}
-            academicYearState={selectedYear}
-            termState={selectedTerm}
-            overallPosition={overallPosition}
-            attendance={attendance}
-            isFullReport={isFullReport}
-            subjectsData={subjectsData}
-            TRS={TRS}
-            TAS={TAS}
-            AGGREGATE={AGGREGATE}
-            isPreschool={isPreschool}
-            conduct={conduct}
-            attitude={attitude}
-            interest={interest}
-            physicalDev={physicalDev}
-            preschoolAssessments={preschoolAssessments}
-            teacherRemarks={teacherRemarks}
-            adminRemarks={adminRemarks}
-            nextTermBegins={nextTermBegins}
-            promotedTo={promotedTo}
-            adminSig={adminSig}
-            hideDownload={true}
-          />
-        )}
+        {!fetchingReport &&
+          subjectsData.length > 0 &&
+          (selectedReportType !== "End of Term" ||
+            (termBalance !== null && termBalance <= 0)) && (
+            <AcademicReportPreview
+              primary={primary}
+              schoolLogo={schoolLogo}
+              reportType={selectedReportType}
+              studentName={studentName}
+              className={className}
+              classIdState={classIdState}
+              academicYearState={selectedYear}
+              termState={selectedTerm}
+              overallPosition={overallPosition}
+              attendance={attendance}
+              isFullReport={isFullReport}
+              subjectsData={subjectsData}
+              TRS={TRS}
+              TAS={TAS}
+              AGGREGATE={AGGREGATE}
+              isPreschool={isPreschool}
+              conduct={conduct}
+              attitude={attitude}
+              interest={interest}
+              physicalDev={physicalDev}
+              preschoolAssessments={preschoolAssessments}
+              teacherRemarks={teacherRemarks}
+              adminRemarks={adminRemarks}
+              nextTermBegins={nextTermBegins}
+              promotedTo={promotedTo}
+              adminSig={adminSig}
+              isReportApproved={isReportApproved}
+              hideDownload={true}
+            />
+          )}
       </ScrollView>
 
       <Modal
@@ -483,21 +510,28 @@ export default function StudentAcademicReport() {
                   <TouchableOpacity
                     style={styles.historyItem}
                     onPress={() => {
-                  if (isNavigating.current) return;
-                  isNavigating.current = true;
-                  setSelectedYear(item.academicYear);
-                  setSelectedTerm(item.term);
-                  if (
-                    ["End of Term", "Mid-Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"].includes(
-                      item.reportType,
-                    )
-                  ) {
-                    setSelectedReportType(item.reportType as ReportType);
-                    if (item.reportNumber) setSelectedReportNumber(item.reportNumber);
-                  }
-                  setHistoryModalVisible(false);
-                  setTimeout(() => { isNavigating.current = false; }, 500);
-                }}
+                      if (isNavigating.current) return;
+                      isNavigating.current = true;
+                      setSelectedYear(item.academicYear);
+                      setSelectedTerm(item.term);
+                      if (
+                        [
+                          "End of Term",
+                          "Mid-Term",
+                          "Mock Exams",
+                          "Class Assessment Task (CAT)",
+                          "Trial Test",
+                        ].includes(item.reportType)
+                      ) {
+                        setSelectedReportType(item.reportType as ReportType);
+                        if (item.reportNumber)
+                          setSelectedReportNumber(item.reportNumber);
+                      }
+                      setHistoryModalVisible(false);
+                      setTimeout(() => {
+                        isNavigating.current = false;
+                      }, 500);
+                    }}
                   >
                     <View style={styles.historyItemIcon}>
                       <SVGIcon name="document-text" size={20} color={primary} />

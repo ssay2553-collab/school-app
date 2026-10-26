@@ -12,7 +12,7 @@ import {
   getDoc,
   getCountFromServer,
 } from "firebase/firestore";
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -46,24 +46,58 @@ import moment from "moment";
 
 const { width } = Dimensions.get("window");
 
-interface TeacherStats {
+export interface CategoryBreakdown {
+  attScore: number;       // Max 20 pts
+  academicScore: number;  // Max 10 pts
+  topicScore: number;     // Max 20 pts
+  assignmentScore: number;// Max 25 pts
+  groupScore: number;     // Max 10 pts
+  submissionScore: number;// Max 10 pts
+  notesScore: number;     // Max 5 pts
+}
+
+export interface ActivitySet {
+  assignments: any[];
+  topics: any[];
+  groups: any[];
+  totalAttendance: number;
+  totalMarkedSubmissions: number;
+  totalNotes: number;
+  totalAcademicRecords: number;
+  usageScore: number;
+  usageBreakdown: CategoryBreakdown;
+}
+
+export interface TeacherStats {
   uid: string;
   fullName: string;
   email: string;
   profileImage?: string;
   role: string;
+  lastActive?: any;
+  onlineTimeMinutes: number;
+  assignedClasses: string[];
+  assignedClassIds: string[];
+
+  // Statistics for active display mode
   totalAssignments: number;
   pendingAssignmentsCount: number;
   totalGroups: number;
   totalTopics: number;
-  lastActive?: any;
-  onlineTimeMinutes: number; // Simulated or calculated if available
-  usageScore: number; // Percentage
-  assignedClasses: string[];
-  assignedClassIds: string[];
+  totalAttendance: number;
+  totalMarkedSubmissions: number;
+  totalNotes: number;
+  totalAcademicRecords: number;
+  usageScore: number;
+  usageBreakdown: CategoryBreakdown;
+
+  // Stored sets
+  weeklyStats: ActivitySet;
+  allTimeStats: ActivitySet;
+
   assignments: any[];
   allTopics: any[];
-  groups: { name: string, className: string, memberCount: number }[];
+  groups: { name: string; className: string; memberCount: number }[];
   assignmentBreakdown: {
     subject: string;
     className: string;
@@ -90,12 +124,110 @@ const safeFormat = (date: any, format: string) => {
   }
 };
 
+/**
+ * Gets Sunday 00:00:00 to Saturday 23:59:59 for current week
+ */
+const getWeekRange = () => {
+  const startOfWeek = moment().day(0).startOf('day'); // Sunday 00:00:00
+  const endOfWeek = moment().day(6).endOf('day');     // Saturday 23:59:59
+  return { startOfWeek, endOfWeek };
+};
+
+/**
+ * Extracts a moment Date object from various Firestore doc formats
+ */
+const getDocDate = (data: any): moment.Moment | null => {
+  if (!data) return null;
+  const raw = data.createdAt || data.date || data.timestamp || data.markedAt || data.submittedAt || data.updatedAt;
+  if (!raw) return null;
+
+  try {
+    if (typeof raw.toDate === 'function') {
+      return moment(raw.toDate());
+    }
+    if (raw instanceof Date) {
+      return moment(raw);
+    }
+    if (typeof raw === 'number') {
+      return moment(raw);
+    }
+    if (typeof raw === 'string') {
+      const m = moment(raw);
+      if (m.isValid()) return m;
+    }
+    if (raw.seconds) {
+      return moment(raw.seconds * 1000);
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+};
+
+/**
+ * Checks if document timestamp falls in current week
+ */
+const isDocInCurrentWeek = (data: any, startOfWeek: moment.Moment, endOfWeek: moment.Moment) => {
+  const m = getDocDate(data);
+  if (!m) return false;
+  return m.isSameOrAfter(startOfWeek) && m.isSameOrBefore(endOfWeek);
+};
+
+/**
+ * Weighted scoring formula:
+ * - Attendance: 4 pts each, CAP 20 pts (20%)
+ * - Daily Financials / Academic Records: 2.5 pts each, CAP 10 pts (10%)
+ * - Assignments: 8 pts each, CAP 25 pts (25%)
+ * - Weekly Topics: 10 pts each, CAP 20 pts (20%)
+ * - Student Groups: 5 pts each, CAP 10 pts (10%)
+ * - Graded Submissions: 2 pts each, CAP 10 pts (10%)
+ * - Teacher Notes: 2.5 pts each, CAP 5 pts (5%)
+ * Total Max = 100%
+ */
+const computeUsageScore = (stats: {
+  assignmentsCount: number;
+  topicsCount: number;
+  groupsCount: number;
+  attendanceCount: number;
+  markedSubmissionsCount: number;
+  notesCount: number;
+  academicRecordsCount: number;
+}): { usageScore: number; breakdown: CategoryBreakdown } => {
+  const attScore = Math.min(stats.attendanceCount * 4, 20);
+  const academicScore = Math.min(stats.academicRecordsCount * 2.5, 10);
+  const topicScore = Math.min(stats.topicsCount * 10, 20);
+  const assignmentScore = Math.min(stats.assignmentsCount * 8, 25);
+  const groupScore = Math.min(stats.groupsCount * 5, 10);
+  const submissionScore = Math.min(stats.markedSubmissionsCount * 2, 10);
+  const notesScore = Math.min(stats.notesCount * 2.5, 5);
+
+  const usageScore = Math.min(
+    100,
+    Math.round(attScore + academicScore + topicScore + assignmentScore + groupScore + submissionScore + notesScore)
+  );
+
+  return {
+    usageScore,
+    breakdown: {
+      attScore,
+      academicScore,
+      topicScore,
+      assignmentScore,
+      groupScore,
+      submissionScore,
+      notesScore,
+    }
+  };
+};
+
 export default function TeacherStatistics() {
   const router = useRouter();
   const { appUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [timePeriod, setTimePeriod] = useState<"weekly" | "all_time">("weekly");
   const [teachers, setTeachers] = useState<TeacherStats[]>([]);
+  const [classMap, setClassMap] = useState<Record<string, string>>({});
   const [selectedTeacher, setSelectedTeacher] = useState<TeacherStats | null>(null);
   const lastFetchRef = useRef<number>(0);
   const isMounted = useRef(true);
@@ -104,6 +236,13 @@ export default function TeacherStatistics() {
   const [reviewingAssignment, setReviewingAssignment] = useState<any | null>(null);
   const [viewingTopicsList, setViewingTopicsList] = useState<any[] | null>(null);
   const [selectedTopicDetail, setSelectedTopicDetail] = useState<any | null>(null);
+  const [selectedClassFilter, setSelectedClassFilter] = useState<string>("all");
+
+  const weekRangeText = useMemo(() => {
+    const start = moment().day(0); // Sunday
+    const end = moment().day(6);   // Saturday
+    return `${start.format("MMM D")} - ${end.format("MMM D, YYYY")}`;
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
@@ -116,37 +255,43 @@ export default function TeacherStatistics() {
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
 
-  const getStartOfWeek = () => {
-    const now = new Date();
-    const day = now.getDay(); // 0 (Sun) to 6 (Sat)
-    const diff = now.getDate() - day;
-    const startOfWeek = new Date(now.setDate(diff));
-    startOfWeek.setHours(0, 0, 0, 0);
-    return startOfWeek;
-  };
-
   const fetchStatistics = useCallback(async () => {
     if (!appUser) return;
     try {
       setLoading(true);
 
+      const { startOfWeek, endOfWeek } = getWeekRange();
+
       // 0. Fetch metadata once
       const classesSnap = await getDocsFromServer(collection(db, "classes"));
-      const classMap: Record<string, string> = {};
+      const newClassMap: Record<string, string> = {};
       classesSnap.forEach((doc: any) => {
         const data = doc.data() as any;
-        classMap[doc.id] = data.name || data.className || doc.id;
+        newClassMap[doc.id] = data.name || data.className || doc.id;
       });
+      if (isMounted.current) setClassMap(newClassMap);
 
       // 1. Batch Fetch all required collections for the school
-      const [teacherSnap, allAssignmentsSnap, allGroupsSnap, allTopicsSnap] = await Promise.all([
+      const [
+        teacherSnap,
+        allAssignmentsSnap,
+        allGroupsSnap,
+        allTopicsSnap,
+        allAttendanceSnap,
+        allSubmissionsSnap,
+        allNotesSnap,
+        allAcademicRecordsSnap
+      ] = await Promise.all([
         getDocsFromServer(query(collection(db, "users"), where("role", "in", ["teacher", "admin", "superadmin", "super admin"]))),
         getDocsFromServer(collection(db, "assignments")),
         getDocsFromServer(collection(db, "studentGroups")),
         getDocsFromServer(collection(db, "weeklyTopics")),
+        getDocsFromServer(collection(db, "attendance")),
+        getDocsFromServer(query(collection(db, "submissions"), where("marked", "==", true))),
+        getDocsFromServer(collection(db, "teacher_notes")),
+        getDocsFromServer(collection(db, "academicRecords")),
       ]);
 
-      // 2. Map data to teachers in memory (O(1) lookup)
       const now = new Date();
       const isExpired = (a: any) => {
         if (!a.dueDate) return false;
@@ -154,69 +299,182 @@ export default function TeacherStatistics() {
         return due.getTime() < now.getTime();
       };
 
+      // Map collections into All-Time and Weekly datasets per teacher
       const assignmentMap: Record<string, any[]> = {};
+      const weeklyAssignmentMap: Record<string, any[]> = {};
       allAssignmentsSnap.docs.forEach((d: any) => {
-        const data = d.data();
+        const data = d.id ? { id: d.id, ...d.data() } : d.data();
         if (isExpired(data)) return;
-        if (!assignmentMap[data.teacherId]) assignmentMap[data.teacherId] = [];
-        assignmentMap[data.teacherId].push({ id: d.id, ...data });
+        const tId = data.teacherId;
+        if (!tId) return;
+        const className = newClassMap[data.classId] || data.className || data.classId;
+        const item = { ...data, className };
+
+        if (!assignmentMap[tId]) assignmentMap[tId] = [];
+        assignmentMap[tId].push(item);
+
+        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+          if (!weeklyAssignmentMap[tId]) weeklyAssignmentMap[tId] = [];
+          weeklyAssignmentMap[tId].push(item);
+        }
       });
 
       const groupMap: Record<string, any[]> = {};
+      const weeklyGroupMap: Record<string, any[]> = {};
       allGroupsSnap.docs.forEach((d: any) => {
         const data = d.data();
-        if (!groupMap[data.teacherId]) groupMap[data.teacherId] = [];
-        groupMap[data.teacherId].push(data);
+        const tId = data.teacherId;
+        if (!tId) return;
+
+        if (!groupMap[tId]) groupMap[tId] = [];
+        groupMap[tId].push(data);
+
+        // Include in weekly if created/updated this week or active doc
+        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek) || !getDocDate(data)) {
+          if (!weeklyGroupMap[tId]) weeklyGroupMap[tId] = [];
+          weeklyGroupMap[tId].push(data);
+        }
       });
 
       const topicMap: Record<string, any[]> = {};
+      const weeklyTopicMap: Record<string, any[]> = {};
       allTopicsSnap.docs.forEach((d: any) => {
         const data = d.data();
-        if (!topicMap[data.teacherId]) topicMap[data.teacherId] = [];
-        topicMap[data.teacherId].push(data);
+        const tId = data.teacherId;
+        if (!tId) return;
+
+        if (!topicMap[tId]) topicMap[tId] = [];
+        topicMap[tId].push(data);
+
+        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+          if (!weeklyTopicMap[tId]) weeklyTopicMap[tId] = [];
+          weeklyTopicMap[tId].push(data);
+        }
       });
 
-      // 3. Assemble final teacher list
+      const attendanceMap: Record<string, number> = {};
+      const weeklyAttendanceMap: Record<string, number> = {};
+      allAttendanceSnap.docs.forEach((d: any) => {
+        const data = d.data();
+        const tId = data.markedBy || data.teacherId;
+        if (!tId) return;
+
+        attendanceMap[tId] = (attendanceMap[tId] || 0) + 1;
+
+        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+          weeklyAttendanceMap[tId] = (weeklyAttendanceMap[tId] || 0) + 1;
+        }
+      });
+
+      const markedSubmissionsMap: Record<string, number> = {};
+      const weeklyMarkedSubmissionsMap: Record<string, number> = {};
+      allSubmissionsSnap.docs.forEach((d: any) => {
+        const data = d.data();
+        const tId = data.teacherId || data.markedBy;
+        if (!tId) return;
+
+        markedSubmissionsMap[tId] = (markedSubmissionsMap[tId] || 0) + 1;
+
+        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+          weeklyMarkedSubmissionsMap[tId] = (weeklyMarkedSubmissionsMap[tId] || 0) + 1;
+        }
+      });
+
+      const notesMap: Record<string, number> = {};
+      const weeklyNotesMap: Record<string, number> = {};
+      allNotesSnap.docs.forEach((d: any) => {
+        const data = d.data();
+        const tId = data.teacherId || data.userId;
+        if (!tId) return;
+
+        notesMap[tId] = (notesMap[tId] || 0) + 1;
+
+        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+          weeklyNotesMap[tId] = (weeklyNotesMap[tId] || 0) + 1;
+        }
+      });
+
+      const academicRecordsMap: Record<string, number> = {};
+      const weeklyAcademicRecordsMap: Record<string, number> = {};
+      allAcademicRecordsSnap.docs.forEach((d: any) => {
+        const data = d.data();
+        const tId = data.teacherId || data.classTeacherId || data.enteredBy;
+        if (!tId) return;
+
+        academicRecordsMap[tId] = (academicRecordsMap[tId] || 0) + 1;
+
+        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+          weeklyAcademicRecordsMap[tId] = (weeklyAcademicRecordsMap[tId] || 0) + 1;
+        }
+      });
+
+      // Assemble final teacher list
       const teacherList: TeacherStats[] = teacherSnap.docs.map(tDoc => {
         const t = { uid: tDoc.id, ...tDoc.data() } as any;
-        const tAssignments = assignmentMap[t.uid] || [];
-        const tGroups = groupMap[t.uid] || [];
-        const tTopics = topicMap[t.uid] || [];
 
-        // Calculate assignment breakdown
-        const breakdownMap: Record<string, number> = {};
-        tAssignments.forEach(a => {
-          const key = `${a.classId}|||${a.subjectId || a.subject}`;
-          breakdownMap[key] = (breakdownMap[key] || 0) + 1;
+        // All-Time Data
+        const allAssignments = assignmentMap[t.uid] || [];
+        const allGroups = groupMap[t.uid] || [];
+        const allTopics = topicMap[t.uid] || [];
+        const allAttendance = attendanceMap[t.uid] || 0;
+        const allMarkedSubmissions = markedSubmissionsMap[t.uid] || 0;
+        const allNotes = notesMap[t.uid] || 0;
+        const allAcademicRecords = academicRecordsMap[t.uid] || 0;
+
+        const allTimeCalculated = computeUsageScore({
+          assignmentsCount: allAssignments.length,
+          topicsCount: allTopics.length,
+          groupsCount: allGroups.length,
+          attendanceCount: allAttendance,
+          markedSubmissionsCount: allMarkedSubmissions,
+          notesCount: allNotes,
+          academicRecordsCount: allAcademicRecords,
         });
 
-        const assignmentBreakdown = Object.entries(breakdownMap).map(([key, count]) => {
-          const [classId, subject] = key.split("|||");
-          return { subject, className: classMap[classId] || classId, count };
+        const allTimeStats: ActivitySet = {
+          assignments: allAssignments,
+          topics: allTopics,
+          groups: allGroups,
+          totalAttendance: allAttendance,
+          totalMarkedSubmissions: allMarkedSubmissions,
+          totalNotes: allNotes,
+          totalAcademicRecords: allAcademicRecords,
+          usageScore: allTimeCalculated.usageScore,
+          usageBreakdown: allTimeCalculated.breakdown,
+        };
+
+        // Weekly Data (Resets on Sunday)
+        const wAssignments = weeklyAssignmentMap[t.uid] || [];
+        const wGroups = weeklyGroupMap[t.uid] || [];
+        const wTopics = weeklyTopicMap[t.uid] || [];
+        const wAttendance = weeklyAttendanceMap[t.uid] || 0;
+        const wMarkedSubmissions = weeklyMarkedSubmissionsMap[t.uid] || 0;
+        const wNotes = weeklyNotesMap[t.uid] || 0;
+        const wAcademicRecords = weeklyAcademicRecordsMap[t.uid] || 0;
+
+        const weeklyCalculated = computeUsageScore({
+          assignmentsCount: wAssignments.length,
+          topicsCount: wTopics.length,
+          groupsCount: wGroups.length,
+          attendanceCount: wAttendance,
+          markedSubmissionsCount: wMarkedSubmissions,
+          notesCount: wNotes,
+          academicRecordsCount: wAcademicRecords,
         });
 
-        // Calculate topic breakdown
-        const topicBreakdownMap: Record<string, any[]> = {};
-        tTopics.forEach(top => {
-          const key = `${top.classId}|||${top.subject}`;
-          if (!topicBreakdownMap[key]) topicBreakdownMap[key] = [];
-          topicBreakdownMap[key].push(top);
-        });
-
-        const topicBreakdown = Object.entries(topicBreakdownMap).map(([key, topics]) => {
-          const [classId, subject] = key.split("|||");
-          return {
-            subject,
-            classId,
-            className: classMap[classId] || classId,
-            count: topics.length,
-            topics: topics.sort((a, b) => (b.weekNumber || 0) - (a.weekNumber || 0))
-          };
-        });
+        const weeklyStats: ActivitySet = {
+          assignments: wAssignments,
+          topics: wTopics,
+          groups: wGroups,
+          totalAttendance: wAttendance,
+          totalMarkedSubmissions: wMarkedSubmissions,
+          totalNotes: wNotes,
+          totalAcademicRecords: wAcademicRecords,
+          usageScore: weeklyCalculated.usageScore,
+          usageBreakdown: weeklyCalculated.breakdown,
+        };
 
         const teacherClasses = getTeacherClasses(t);
-        const usageScore = Math.min(100, (tAssignments.length * 8) + (tGroups.length * 12) + (tTopics.length * 15));
-        const pendingAssignmentsCount = tAssignments.filter(a => a.status === 'pending').length;
 
         return {
           uid: t.uid,
@@ -224,44 +482,57 @@ export default function TeacherStatistics() {
           fullName: `${t.profile?.firstName || ""} ${t.profile?.lastName || ""}`.trim() || "Teacher",
           email: t.profile?.email || "",
           profileImage: t.profile?.profileImage,
-          totalAssignments: tAssignments.length,
-          pendingAssignmentsCount,
-          totalGroups: tGroups.length,
-          totalTopics: tTopics.length,
           lastActive: t.lastActive,
           onlineTimeMinutes: t.onlineTimeMinutes || 0,
-          usageScore,
-          assignedClasses: teacherClasses.map((cid: string) => classMap[cid] || cid),
+          assignedClasses: teacherClasses.map((cid: string) => newClassMap[cid] || cid),
           assignedClassIds: teacherClasses,
-          assignments: tAssignments,
-          allTopics: tTopics,
-          groups: tGroups.map(g => ({
+
+          // Default placeholder fields (overridden dynamically by displayTeachers)
+          totalAssignments: wAssignments.length,
+          pendingAssignmentsCount: wAssignments.filter(a => a.status === 'pending').length,
+          totalGroups: wGroups.length,
+          totalTopics: wTopics.length,
+          totalAttendance: wAttendance,
+          totalMarkedSubmissions: wMarkedSubmissions,
+          totalNotes: wNotes,
+          totalAcademicRecords: wAcademicRecords,
+          usageScore: weeklyCalculated.usageScore,
+          usageBreakdown: weeklyCalculated.breakdown,
+
+          weeklyStats,
+          allTimeStats,
+
+          assignments: wAssignments,
+          allTopics: wTopics,
+          groups: wGroups.map(g => ({
             name: g.name || "Unnamed Group",
-            className: classMap[g.classId] || g.classId || "General",
+            className: newClassMap[g.classId] || g.classId || "General",
             memberCount: (g.studentIds || []).length
           })),
-          assignmentBreakdown,
-          topicBreakdown
+          assignmentBreakdown: [],
+          topicBreakdown: []
         };
       });
 
       if (isMounted.current) {
-        // Filter: Keep all teachers, but only include admins who have some teaching activity
+        // Keep active teachers or admins with teaching duties
         const filteredList = teacherList.filter(t =>
           t.role === 'teacher' ||
-          t.totalAssignments > 0 ||
-          t.totalGroups > 0 ||
-          t.totalTopics > 0 ||
+          t.allTimeStats.totalAttendance > 0 ||
+          t.allTimeStats.assignments.length > 0 ||
+          t.allTimeStats.topics.length > 0 ||
+          t.allTimeStats.groups.length > 0 ||
+          t.allTimeStats.totalAcademicRecords > 0 ||
           (t.assignedClasses && t.assignedClasses.length > 0)
         );
 
-        filteredList.sort((a, b) => b.usageScore - a.usageScore);
         setTeachers(filteredList);
         lastFetchRef.current = Date.now();
 
         await AsyncStorage.setItem(CACHE_KEY, JSON.stringify({
           timestamp: Date.now(),
-          data: filteredList
+          data: filteredList,
+          classMap: newClassMap
         }));
       }
     } catch (error) {
@@ -278,10 +549,11 @@ export default function TeacherStatistics() {
     try {
       const cached = await AsyncStorage.getItem(CACHE_KEY);
       if (cached) {
-        const { timestamp, data } = JSON.parse(cached);
+        const { timestamp, data, classMap: cachedClassMap } = JSON.parse(cached);
         const age = Date.now() - timestamp;
 
         if (isMounted.current) {
+          if (cachedClassMap) setClassMap(cachedClassMap);
           setTeachers(data);
           lastFetchRef.current = timestamp;
 
@@ -308,7 +580,6 @@ export default function TeacherStatistics() {
     };
     init();
 
-    // Re-fetch when app comes to foreground if cache is old
     const subscription = AppState.addEventListener("change", nextAppState => {
       if (nextAppState === "active" && appUser) {
         const age = Date.now() - lastFetchRef.current;
@@ -321,25 +592,128 @@ export default function TeacherStatistics() {
     return () => subscription.remove();
   }, [fetchStatistics, appUser]);
 
-  const handleStatusUpdate = (updatedAssignment: any) => {
-    // Update local state for the teachers list
-    setTeachers(prev => prev.map(t => {
-      if (t.uid === updatedAssignment.teacherId) {
-        return {
-          ...t,
-          assignments: t.assignments.map(a => a.id === updatedAssignment.id ? updatedAssignment : a)
-        };
-      }
-      return t;
-    }));
+  // Derived teacher list based on current timePeriod filter
+  const displayTeachers = useMemo(() => {
+    return teachers.map(t => {
+      const isWeekly = timePeriod === "weekly";
+      const sourceStats = isWeekly ? t.weeklyStats : t.allTimeStats;
 
-    // Update local state for the selected teacher if applicable
-    if (selectedTeacher?.uid === updatedAssignment.teacherId) {
-      setSelectedTeacher(prev => prev ? ({
-        ...prev,
-        assignments: prev.assignments.map(a => a.id === updatedAssignment.id ? updatedAssignment : a)
-      }) : null);
-    }
+      const breakdownMap: Record<string, number> = {};
+      sourceStats.assignments.forEach((a: any) => {
+        const key = `${a.classId}|||${a.subjectId || a.subject}`;
+        breakdownMap[key] = (breakdownMap[key] || 0) + 1;
+      });
+
+      const assignmentBreakdown = Object.entries(breakdownMap).map(([key, count]) => {
+        const [classId, subject] = key.split("|||");
+        return { subject, className: classMap[classId] || classId, count };
+      });
+
+      const topicBreakdownMap: Record<string, any[]> = {};
+      sourceStats.topics.forEach((top: any) => {
+        const key = `${top.classId}|||${top.subject}`;
+        if (!topicBreakdownMap[key]) topicBreakdownMap[key] = [];
+        topicBreakdownMap[key].push(top);
+      });
+
+      const topicBreakdown = Object.entries(topicBreakdownMap).map(([key, topics]) => {
+        const [classId, subject] = key.split("|||");
+        return {
+          subject,
+          classId,
+          className: classMap[classId] || classId,
+          count: topics.length,
+          topics: topics.sort((a, b) => (b.weekNumber || 0) - (a.weekNumber || 0))
+        };
+      });
+
+      return {
+        ...t,
+        totalAssignments: sourceStats.assignments.length,
+        pendingAssignmentsCount: sourceStats.assignments.filter((a: any) => a.status === 'pending').length,
+        totalGroups: sourceStats.groups.length,
+        totalTopics: sourceStats.topics.length,
+        totalAttendance: sourceStats.totalAttendance,
+        totalMarkedSubmissions: sourceStats.totalMarkedSubmissions,
+        totalNotes: sourceStats.totalNotes,
+        totalAcademicRecords: sourceStats.totalAcademicRecords,
+        usageScore: sourceStats.usageScore,
+        usageBreakdown: sourceStats.usageBreakdown,
+        assignments: sourceStats.assignments,
+        allTopics: sourceStats.topics,
+        groups: sourceStats.groups.map((g: any) => ({
+          name: g.name || "Unnamed Group",
+          className: classMap[g.classId] || g.classId || "General",
+          memberCount: (g.studentIds || []).length
+        })),
+        assignmentBreakdown,
+        topicBreakdown,
+      };
+    }).sort((a, b) => b.usageScore - a.usageScore);
+  }, [teachers, timePeriod, classMap]);
+
+  // Selected teacher currently rendered in Modal
+  const activeSelectedTeacher = useMemo(() => {
+    if (!selectedTeacher) return null;
+    return displayTeachers.find(t => t.uid === selectedTeacher.uid) || selectedTeacher;
+  }, [selectedTeacher, displayTeachers]);
+
+  const teacherClassFilterTabs = useMemo(() => {
+    if (!activeSelectedTeacher?.assignments || activeSelectedTeacher.assignments.length === 0) return [];
+    const classMapObj: Record<string, { id: string; name: string; count: number }> = {};
+    activeSelectedTeacher.assignments.forEach((a: any) => {
+      const cId = a.classId || "unknown";
+      const cName = a.className || a.classId || "Class";
+      if (!classMapObj[cId]) {
+        classMapObj[cId] = { id: cId, name: cName, count: 0 };
+      }
+      classMapObj[cId].count += 1;
+    });
+    return Object.values(classMapObj);
+  }, [activeSelectedTeacher]);
+
+  const filteredTeacherAssignments = useMemo(() => {
+    if (!activeSelectedTeacher?.assignments) return [];
+    if (selectedClassFilter === "all") return activeSelectedTeacher.assignments;
+    return activeSelectedTeacher.assignments.filter(
+      (a: any) => a.classId === selectedClassFilter || a.className === selectedClassFilter
+    );
+  }, [activeSelectedTeacher, selectedClassFilter]);
+
+  const handleStatusUpdate = (updatedAssignment: any) => {
+    setTeachers(prev => {
+      const updatedList = prev.map(t => {
+        if (t.uid === updatedAssignment.teacherId) {
+          const updateSet = (set: ActivitySet) => {
+            const updatedAssignments = (set.assignments || []).map(a =>
+              a.id === updatedAssignment.id ? { ...a, ...updatedAssignment } : a
+            );
+            return {
+              ...set,
+              assignments: updatedAssignments,
+            };
+          };
+
+          return {
+            ...t,
+            weeklyStats: updateSet(t.weeklyStats),
+            allTimeStats: updateSet(t.allTimeStats),
+          };
+        }
+        return t;
+      });
+
+      AsyncStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          timestamp: Date.now(),
+          data: updatedList,
+          classMap,
+        })
+      ).catch(e => console.error("Error updating stats cache:", e));
+
+      return updatedList;
+    });
   };
 
   const onRefresh = () => {
@@ -347,7 +721,14 @@ export default function TeacherStatistics() {
     fetchStatistics();
   };
 
-  const renderTeacherItem = ({ item, index }: { item: TeacherStats, index: number }) => (
+  const getUsageColor = (score: number) => {
+    if (score >= 75) return "#10B981"; // Emerald
+    if (score >= 45) return "#3B82F6"; // Blue
+    if (score >= 20) return "#F59E0B"; // Amber / Yellow
+    return "#EF4444"; // Red
+  };
+
+  const renderTeacherItem = ({ item, index }: { item: TeacherStats; index: number }) => (
     <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 100} style={styles.teacherCard}>
       <View style={styles.cardHeader}>
         <View style={styles.teacherInfo}>
@@ -358,13 +739,15 @@ export default function TeacherStatistics() {
               <Text style={[styles.avatarText, { color: primary }]}>{item.fullName.charAt(0)}</Text>
             </View>
           )}
-          <View>
+          <View style={{ flex: 1, paddingRight: 10 }}>
             <Text style={styles.teacherName}>{item.fullName}</Text>
-            <Text style={styles.teacherEmail}>{item.email}</Text>
+            <Text style={styles.teacherEmail} numberOfLines={1}>{item.email}</Text>
           </View>
         </View>
         <View style={[styles.usageBadge, { backgroundColor: getUsageColor(item.usageScore) + "15" }]}>
-          <Text style={[styles.usageText, { color: getUsageColor(item.usageScore) }]}>{Math.round(item.usageScore)}% Usage</Text>
+          <Text style={[styles.usageText, { color: getUsageColor(item.usageScore) }]}>
+            {Math.round(item.usageScore)}% Usage
+          </Text>
         </View>
       </View>
 
@@ -374,8 +757,18 @@ export default function TeacherStatistics() {
           <Text style={styles.statLabel}>Tasks</Text>
         </View>
         <View style={styles.statBox}>
-          <Text style={[styles.statValue, item.pendingAssignmentsCount > 0 && { color: '#F59E0B' }]}>{item.pendingAssignmentsCount}</Text>
+          <Text style={[styles.statValue, item.pendingAssignmentsCount > 0 && { color: '#F59E0B' }]}>
+            {item.pendingAssignmentsCount}
+          </Text>
           <Text style={styles.statLabel}>Pending</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>{item.totalAttendance || 0}</Text>
+          <Text style={styles.statLabel}>Att. Logs</Text>
+        </View>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>{item.totalMarkedSubmissions || 0}</Text>
+          <Text style={styles.statLabel}>Graded</Text>
         </View>
         <View style={styles.statBox}>
           <Text style={styles.statValue}>{item.totalTopics}</Text>
@@ -388,19 +781,12 @@ export default function TeacherStatistics() {
           Last Active: {item.lastActive ? moment(item.lastActive.toDate()).fromNow() : "Never"}
         </Text>
         <TouchableOpacity style={styles.viewBtn} onPress={() => setSelectedTeacher(item)}>
-            <Text style={[styles.viewBtnText, { color: primary }]}>Detailed Report</Text>
-            <SVGIcon name="chevron-forward" size={16} color={primary} />
+          <Text style={[styles.viewBtnText, { color: primary }]}>Detailed Report</Text>
+          <SVGIcon name="chevron-forward" size={16} color={primary} />
         </TouchableOpacity>
       </View>
     </Animatable.View>
   );
-
-  const getUsageColor = (score: number) => {
-    if (score > 80) return "#10B981"; // Emerald
-    if (score > 50) return "#3B82F6"; // Blue
-    if (score > 20) return "#F59E0B"; // Amber
-    return "#EF4444"; // Red
-  };
 
   if (loading && !refreshing) {
     return (
@@ -429,11 +815,70 @@ export default function TeacherStatistics() {
           <Text style={styles.headerTitle}>Teacher Analytics</Text>
           <SVGIcon name="analytics" size={24} color={secondary} />
         </View>
-        <Text style={styles.headerSubtitle}>Performance and engagement overview across all departments.</Text>
+        <Text style={styles.headerSubtitle}>
+          Performance and engagement overview across all departments.
+        </Text>
+
+        {/* Time Period Filter Tabs */}
+        <View style={styles.periodToggleContainer}>
+          <TouchableOpacity
+            style={[
+              styles.periodTab,
+              timePeriod === "weekly" && { backgroundColor: "#FFFFFF" }
+            ]}
+            onPress={() => setTimePeriod("weekly")}
+          >
+            <SVGIcon
+              name="calendar"
+              size={15}
+              color={timePeriod === "weekly" ? primary : "rgba(255,255,255,0.8)"}
+            />
+            <Text
+              style={[
+                styles.periodTabText,
+                timePeriod === "weekly" ? { color: primary, fontWeight: "900" } : { color: "rgba(255,255,255,0.9)" }
+              ]}
+            >
+              This Week (Resets Sun)
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.periodTab,
+              timePeriod === "all_time" && { backgroundColor: "#FFFFFF" }
+            ]}
+            onPress={() => setTimePeriod("all_time")}
+          >
+            <SVGIcon
+              name="analytics"
+              size={15}
+              color={timePeriod === "all_time" ? primary : "rgba(255,255,255,0.8)"}
+            />
+            <Text
+              style={[
+                styles.periodTabText,
+                timePeriod === "all_time" ? { color: primary, fontWeight: "900" } : { color: "rgba(255,255,255,0.9)" }
+              ]}
+            >
+              All-Time
+            </Text>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
+      {/* Weekly Date Range Banner */}
+      {timePeriod === "weekly" && (
+        <View style={styles.weeklyInfoBanner}>
+          <SVGIcon name="time-outline" size={18} color={primary} />
+          <Text style={styles.weeklyInfoText}>
+            Current Weekly Period: <Text style={{ fontWeight: "800", color: primary }}>{weekRangeText}</Text> • Resets every Sunday
+          </Text>
+        </View>
+      )}
+
       <FlatList
-        data={teachers}
+        data={displayTeachers}
         keyExtractor={(item) => item.uid}
         renderItem={renderTeacherItem}
         contentContainerStyle={styles.listContent}
@@ -448,6 +893,7 @@ export default function TeacherStatistics() {
         }
       />
 
+      {/* Detailed Teacher Report Modal */}
       <Modal
         visible={!!selectedTeacher}
         transparent
@@ -458,8 +904,10 @@ export default function TeacherStatistics() {
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>{selectedTeacher?.fullName}</Text>
-                <Text style={styles.modalSubtitle}>Teacher Activity Report</Text>
+                <Text style={styles.modalTitle}>{activeSelectedTeacher?.fullName}</Text>
+                <Text style={styles.modalSubtitle}>
+                  Teacher Activity Report • {timePeriod === "weekly" ? "This Week (Resets Sun)" : "All-Time"}
+                </Text>
               </View>
               <TouchableOpacity onPress={() => setSelectedTeacher(null)}>
                 <SVGIcon name="close-circle" size={28} color="#64748B" />
@@ -467,10 +915,98 @@ export default function TeacherStatistics() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
+              {/* Rating & Category Breakdown Section */}
+              <Text style={styles.sectionTitle}>Usage Rating Breakdown ({timePeriod === "weekly" ? "This Week" : "All Time"})</Text>
+              <View style={styles.breakdownCard}>
+                <View style={styles.breakdownCardHeader}>
+                  <Text style={styles.breakdownCardTitle}>Overall Score</Text>
+                  <View style={[styles.usageBadge, { backgroundColor: getUsageColor(activeSelectedTeacher?.usageScore || 0) + "20" }]}>
+                    <Text style={[styles.usageText, { color: getUsageColor(activeSelectedTeacher?.usageScore || 0), fontSize: 14 }]}>
+                      {Math.round(activeSelectedTeacher?.usageScore || 0)}% Usage
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Score Categories Progress */}
+                <View style={styles.categoryRow}>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryLabel}>Assignments / Tasks</Text>
+                    <Text style={styles.categoryVal}>{activeSelectedTeacher?.usageBreakdown?.assignmentScore || 0} / 25 pts</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${((activeSelectedTeacher?.usageBreakdown?.assignmentScore || 0) / 25) * 100}%`, backgroundColor: '#3B82F6' }]} />
+                  </View>
+                </View>
+
+                <View style={styles.categoryRow}>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryLabel}>Weekly Topics / Plans</Text>
+                    <Text style={styles.categoryVal}>{activeSelectedTeacher?.usageBreakdown?.topicScore || 0} / 20 pts</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${((activeSelectedTeacher?.usageBreakdown?.topicScore || 0) / 20) * 100}%`, backgroundColor: '#10B981' }]} />
+                  </View>
+                </View>
+
+                <View style={styles.categoryRow}>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryLabel}>Attendance Logs</Text>
+                    <Text style={styles.categoryVal}>{activeSelectedTeacher?.usageBreakdown?.attScore || 0} / 20 pts (Cap 20%)</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${((activeSelectedTeacher?.usageBreakdown?.attScore || 0) / 20) * 100}%`, backgroundColor: '#F59E0B' }]} />
+                  </View>
+                </View>
+
+                <View style={styles.categoryRow}>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryLabel}>Financials & Academic Reports</Text>
+                    <Text style={styles.categoryVal}>{activeSelectedTeacher?.usageBreakdown?.academicScore || 0} / 10 pts (Cap 10%)</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${((activeSelectedTeacher?.usageBreakdown?.academicScore || 0) / 10) * 100}%`, backgroundColor: '#8B5CF6' }]} />
+                  </View>
+                </View>
+
+                <View style={styles.categoryRow}>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryLabel}>Student Groups</Text>
+                    <Text style={styles.categoryVal}>{activeSelectedTeacher?.usageBreakdown?.groupScore || 0} / 10 pts</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${((activeSelectedTeacher?.usageBreakdown?.groupScore || 0) / 10) * 100}%`, backgroundColor: '#EC4899' }]} />
+                  </View>
+                </View>
+
+                <View style={styles.categoryRow}>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryLabel}>Graded Submissions</Text>
+                    <Text style={styles.categoryVal}>{activeSelectedTeacher?.usageBreakdown?.submissionScore || 0} / 10 pts</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${((activeSelectedTeacher?.usageBreakdown?.submissionScore || 0) / 10) * 100}%`, backgroundColor: '#06B6D4' }]} />
+                  </View>
+                </View>
+
+                <View style={styles.categoryRow}>
+                  <View style={styles.categoryInfo}>
+                    <Text style={styles.categoryLabel}>Teacher Notes</Text>
+                    <Text style={styles.categoryVal}>{activeSelectedTeacher?.usageBreakdown?.notesScore || 0} / 5 pts</Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${((activeSelectedTeacher?.usageBreakdown?.notesScore || 0) / 5) * 100}%`, backgroundColor: '#64748B' }]} />
+                  </View>
+                </View>
+
+                <Text style={styles.breakdownNote}>
+                  * Attendance and routine logs contribute up to 30% max. Full usage rating requires active curriculum tasks, weekly plans, and student group engagement.
+                </Text>
+              </View>
+
               <Text style={styles.sectionTitle}>Assigned Classes</Text>
               <View style={styles.tagContainer}>
-                {selectedTeacher?.assignedClasses && selectedTeacher.assignedClasses.length > 0 ? (
-                  selectedTeacher.assignedClasses.map((c, i) => (
+                {activeSelectedTeacher?.assignedClasses && activeSelectedTeacher.assignedClasses.length > 0 ? (
+                  activeSelectedTeacher.assignedClasses.map((c, i) => (
                     <View key={i} style={[styles.classTag, { backgroundColor: primary + "10" }]}>
                       <Text style={[styles.classTagText, { color: primary }]}>{c}</Text>
                     </View>
@@ -480,10 +1016,85 @@ export default function TeacherStatistics() {
                 )}
               </View>
 
+              <Text style={styles.sectionTitle}>Dashboard Activity Overview</Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{activeSelectedTeacher?.totalAssignments || 0}</Text>
+                  <Text style={styles.statLabel}>Assignments</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{activeSelectedTeacher?.totalAttendance || 0}</Text>
+                  <Text style={styles.statLabel}>Att. Logs</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{activeSelectedTeacher?.totalMarkedSubmissions || 0}</Text>
+                  <Text style={styles.statLabel}>Graded</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{activeSelectedTeacher?.totalTopics || 0}</Text>
+                  <Text style={styles.statLabel}>Weekly Plans</Text>
+                </View>
+              </View>
+              <View style={[styles.statsGrid, { marginTop: 10 }]}>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{activeSelectedTeacher?.totalAcademicRecords || 0}</Text>
+                  <Text style={styles.statLabel}>Financials</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{activeSelectedTeacher?.totalNotes || 0}</Text>
+                  <Text style={styles.statLabel}>Notes</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statValue}>{activeSelectedTeacher?.totalGroups || 0}</Text>
+                  <Text style={styles.statLabel}>Groups</Text>
+                </View>
+              </View>
+
               <Text style={styles.sectionTitle}>Assignments & Approval</Text>
+
+              {teacherClassFilterTabs.length > 1 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8, marginBottom: 12, paddingVertical: 4 }}
+                >
+                  <TouchableOpacity
+                    style={[
+                      styles.classFilterChip,
+                      selectedClassFilter === "all" && { backgroundColor: primary, borderColor: primary }
+                    ]}
+                    onPress={() => setSelectedClassFilter("all")}
+                  >
+                    <Text style={[
+                      styles.classFilterChipText,
+                      selectedClassFilter === "all" && { color: "#FFFFFF" }
+                    ]}>
+                      All Classes ({activeSelectedTeacher?.assignments?.length || 0})
+                    </Text>
+                  </TouchableOpacity>
+                  {teacherClassFilterTabs.map((tab) => (
+                    <TouchableOpacity
+                      key={tab.id}
+                      style={[
+                        styles.classFilterChip,
+                        selectedClassFilter === tab.id && { backgroundColor: primary, borderColor: primary }
+                      ]}
+                      onPress={() => setSelectedClassFilter(tab.id)}
+                    >
+                      <Text style={[
+                        styles.classFilterChipText,
+                        selectedClassFilter === tab.id && { color: "#FFFFFF" }
+                      ]}>
+                        {tab.name} ({tab.count})
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+
               <View style={styles.breakdownList}>
-                {selectedTeacher?.assignments && selectedTeacher.assignments.length > 0 ? (
-                  selectedTeacher.assignments.map((item, idx) => (
+                {filteredTeacherAssignments && filteredTeacherAssignments.length > 0 ? (
+                  filteredTeacherAssignments.map((item, idx) => (
                     <View key={idx} style={styles.breakdownItem}>
                       <View style={styles.breakdownInfo}>
                         <Text style={styles.breakdownClass}>{item.title}</Text>
@@ -504,15 +1115,15 @@ export default function TeacherStatistics() {
                   ))
                 ) : (
                   <View style={styles.noDataBox}>
-                    <Text style={styles.noDataText}>No assignments posted yet.</Text>
+                    <Text style={styles.noDataText}>No assignments found for this period.</Text>
                   </View>
                 )}
               </View>
 
               <Text style={styles.sectionTitle}>Weekly Lesson Plans</Text>
               <View style={styles.breakdownList}>
-                {selectedTeacher?.topicBreakdown && selectedTeacher.topicBreakdown.length > 0 ? (
-                  selectedTeacher.topicBreakdown.map((item, idx) => (
+                {activeSelectedTeacher?.topicBreakdown && activeSelectedTeacher.topicBreakdown.length > 0 ? (
+                  activeSelectedTeacher.topicBreakdown.map((item, idx) => (
                     <View key={idx} style={styles.breakdownItem}>
                       <View style={styles.breakdownInfo}>
                         <Text style={styles.breakdownClass}>{item.className}</Text>
@@ -529,15 +1140,15 @@ export default function TeacherStatistics() {
                   ))
                 ) : (
                   <View style={styles.noDataBox}>
-                    <Text style={styles.noDataText}>No weekly topics recorded.</Text>
+                    <Text style={styles.noDataText}>No weekly topics recorded for this period.</Text>
                   </View>
                 )}
               </View>
 
               <Text style={styles.sectionTitle}>Student Groups</Text>
               <View style={styles.breakdownList}>
-                {selectedTeacher?.groups && selectedTeacher.groups.length > 0 ? (
-                  selectedTeacher.groups.map((group, idx) => (
+                {activeSelectedTeacher?.groups && activeSelectedTeacher.groups.length > 0 ? (
+                  activeSelectedTeacher.groups.map((group, idx) => (
                     <View key={idx} style={styles.breakdownItem}>
                       <View style={styles.breakdownInfo}>
                         <Text style={styles.breakdownClass}>{group.name}</Text>
@@ -550,7 +1161,7 @@ export default function TeacherStatistics() {
                   ))
                 ) : (
                   <View style={styles.noDataBox}>
-                    <Text style={styles.noDataText}>No groups created yet.</Text>
+                    <Text style={styles.noDataText}>No groups recorded.</Text>
                   </View>
                 )}
               </View>
@@ -566,6 +1177,7 @@ export default function TeacherStatistics() {
         </View>
       </Modal>
 
+      {/* Modal for Weekly Topics Detail */}
       <Modal
         visible={!!viewingTopicsList}
         transparent
@@ -738,7 +1350,7 @@ const styles = StyleSheet.create({
   headerGradient: {
     paddingTop: Platform.OS === "ios" ? 60 : 40,
     paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingBottom: 20,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
   },
@@ -768,6 +1380,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "rgba(255,255,255,0.8)",
     lineHeight: 20,
+    marginBottom: 15,
+  },
+  periodToggleContainer: {
+    flexDirection: "row",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 14,
+    padding: 4,
+    gap: 4,
+  },
+  periodTab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 10,
+    gap: 6,
+    ...Platform.select({
+      web: { cursor: 'pointer' } as any,
+      default: {}
+    }),
+  },
+  periodTabText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  weeklyInfoBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginHorizontal: 20,
+    marginTop: 15,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    gap: 8,
+  },
+  weeklyInfoText: {
+    fontSize: 13,
+    color: "#1E3A8A",
+    flex: 1,
   },
   center: {
     flex: 1,
@@ -896,63 +1551,112 @@ const styles = StyleSheet.create({
     marginTop: 100,
   },
   emptyText: {
+    marginTop: 15,
     fontSize: 16,
     color: "#94A3B8",
-    marginTop: 15,
     fontWeight: "600",
+  },
+  emptyTextSmall: {
+    fontSize: 13,
+    color: "#94A3B8",
+    fontStyle: "italic",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
     justifyContent: "flex-end",
-    alignItems: "center",
   },
   modalContent: {
     backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     padding: 24,
-    width: width > 600 ? 600 : "100%",
     maxHeight: "90%",
-  },
-  backToTopicsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginTop: 10,
-    alignSelf: 'flex-start'
-  },
-  backBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 25,
+    marginBottom: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
   modalTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "900",
     color: "#1E293B",
   },
   modalSubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#64748B",
     marginTop: 2,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800",
     color: "#1E293B",
     marginTop: 20,
     marginBottom: 12,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  breakdownCard: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  breakdownCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  breakdownCardTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  categoryRow: {
+    marginBottom: 12,
+  },
+  categoryInfo: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  categoryLabel: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  categoryVal: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#64748B",
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: "#E2E8F0",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 4,
+  },
+  breakdownNote: {
+    fontSize: 11,
+    color: "#64748B",
+    fontStyle: "italic",
+    marginTop: 10,
+    lineHeight: 16,
   },
   tagContainer: {
     flexDirection: "row",
@@ -962,36 +1666,45 @@ const styles = StyleSheet.create({
   classTag: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   classTagText: {
     fontSize: 13,
     fontWeight: "700",
   },
-  emptyTextSmall: {
-    fontSize: 13,
-    color: "#94A3B8",
-    fontStyle: "italic",
+  classFilterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    backgroundColor: "#F8FAFC",
+  },
+  classFilterChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
   },
   breakdownList: {
-    gap: 12,
+    gap: 10,
   },
   breakdownItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 12,
+    padding: 14,
     backgroundColor: "#F8FAFC",
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#F1F5F9",
   },
   breakdownInfo: {
     flex: 1,
+    paddingRight: 10,
   },
   breakdownClass: {
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "800",
     color: "#1E293B",
   },
   breakdownSubject: {
@@ -999,103 +1712,99 @@ const styles = StyleSheet.create({
     color: "#64748B",
     marginTop: 2,
   },
-  countBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    minWidth: 70,
-    alignItems: "center",
-  },
-  countText: {
-    fontSize: 12,
-    fontWeight: "800",
-  },
   statusBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 6,
     marginTop: 6,
   },
   statusText: {
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: "800",
   },
   reviewBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    marginLeft: 10,
-    ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
-    }),
   },
   reviewBtnText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: "800",
   },
   noDataBox: {
     padding: 20,
     alignItems: "center",
     backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    borderStyle: "dashed",
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#CBD5E1",
+    borderColor: "#F1F5F9",
   },
   noDataText: {
     fontSize: 13,
     color: "#94A3B8",
   },
   closeModalBtn: {
-    marginVertical: 30,
-    padding: 16,
+    paddingVertical: 14,
     borderRadius: 16,
     alignItems: "center",
-    ...SHADOWS.medium,
-    ...Platform.select({
-      web: { cursor: 'pointer' } as any,
-      default: {}
-    }),
+    marginTop: 25,
+    marginBottom: 10,
   },
   closeModalBtnText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
   },
-  detailLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#94A3B8',
-    letterSpacing: 1,
-    marginTop: 15,
-    marginBottom: 5,
-    textTransform: 'uppercase',
+  backToTopicsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    padding: 12,
   },
-  detailValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1E293B',
-    lineHeight: 22,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    gap: 15,
+  backBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
   },
   detailCurriculumBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.primary + '15',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    alignSelf: "flex-start",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   detailCurriculumText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: COLORS.primary,
-    letterSpacing: 1,
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#2563EB",
+  },
+  detailRow: {
+    flexDirection: "row",
+    marginBottom: 15,
+    gap: 15,
+  },
+  detailLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#94A3B8",
+    marginBottom: 4,
+    letterSpacing: 0.5,
+  },
+  detailValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 15,
   },
 });

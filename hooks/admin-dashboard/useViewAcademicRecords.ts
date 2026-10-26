@@ -463,6 +463,9 @@ export function useViewAcademicRecords() {
         /\//g,
         "-",
       );
+      const existingSnap = await getDoc(doc(db, "student-reports", reportId));
+      const existingStatus = (existingSnap.exists() && (existingSnap.data() as any).status) ? (existingSnap.data() as any).status : "approved";
+
       await setDoc(
         doc(db, "student-reports", reportId),
         {
@@ -481,6 +484,7 @@ export function useViewAcademicRecords() {
           nextTermBegins: mNextTermBegins,
           adminRemarks: mAdminRemarks,
           teacherRemarks: mTeacherRemarks,
+          status: existingStatus,
           updatedAt: serverTimestamp(),
         },
         { merge: true },
@@ -558,6 +562,8 @@ export function useViewAcademicRecords() {
         const autoAdminRemarks = getAutoRemarks(agg, false);
         const autoTeacherRemarks = getAutoRemarks(agg, true);
 
+        const existingStatus = (existingData as any).status || "approved";
+
         batch.set(
           reportRef,
           {
@@ -565,6 +571,7 @@ export function useViewAcademicRecords() {
             promotedTo: globalPromotedTo || mPromotedTo,
             adminRemarks: existingData.adminRemarks || autoAdminRemarks,
             teacherRemarks: existingData.teacherRemarks || autoTeacherRemarks,
+            status: existingStatus,
             updatedAt: serverTimestamp(),
           },
           { merge: true },

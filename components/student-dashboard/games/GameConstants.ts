@@ -997,16 +997,71 @@ export const WORD_DATA = [
 ];
 
 export const SCRAMBLE_DATA = [
-  { word: "APPLE", level: 1 },
-  { word: "BANANA", level: 1 },
-  { word: "CHAIR", level: 1 },
-  { word: "TABLE", level: 1 },
-  { word: "WINDOW", level: 1 },
-  { word: "COMPUTER", level: 2 },
-  { word: "ELEPHANT", level: 2 },
-  { word: "MOUNTAIN", level: 2 },
-  { word: "UNIVERSE", level: 2 },
-  { word: "FOOTBALL", level: 2 },
+  // Level 1
+  { word: "APPLE", hint: "A sweet red or green fruit that grows on trees", level: 1 },
+  { word: "BANANA", hint: "A long yellow fruit that monkeys love to eat", level: 1 },
+  { word: "CHAIR", hint: "A piece of furniture designed for one person to sit on", level: 1 },
+  { word: "TABLE", hint: "Furniture with a flat top and legs used for eating or working", level: 1 },
+  { word: "WINDOW", hint: "An opening in a wall filled with glass to see outside", level: 1 },
+  { word: "ORANGE", hint: "A round juicy citrus fruit and also a warm color", level: 1 },
+  { word: "SCHOOL", hint: "A place where children go to learn from teachers", level: 1 },
+  { word: "PENCIL", hint: "A tool used for writing and drawing with graphite", level: 1 },
+
+  // Level 2
+  { word: "COMPUTER", hint: "An electronic device used to store and process information", level: 2 },
+  { word: "ELEPHANT", hint: "The largest living land animal with a trunk and big ears", level: 2 },
+  { word: "MOUNTAIN", hint: "A very high natural elevation of the Earth's surface", level: 2 },
+  { word: "UNIVERSE", hint: "All of space and time and everything in it including stars", level: 2 },
+  { word: "FOOTBALL", hint: "A popular sport played by kicking a round ball into a net", level: 2 },
+  { word: "TEACHER", hint: "A person who guides students in learning new knowledge", level: 2 },
+  { word: "GIRAFFE", hint: "A tall African animal with a very long neck and spots", level: 2 },
+
+  // Level 3
+  { word: "TRIANGLE", hint: "A geometric shape with 3 sides and 3 internal angles", level: 3 },
+  { word: "SATELLITE", hint: "An object that orbits around a planet in outer space", level: 3 },
+  { word: "RAINBOW", hint: "A colorful arc in the sky formed by sunlight and raindrops", level: 3 },
+  { word: "BUTTERFLY", hint: "An insect with colorful wings born from a caterpillar", level: 3 },
+  { word: "TELESCOPE", hint: "An optical instrument used to view distant objects in space", level: 3 },
+  { word: "DINOSAUR", hint: "Extinct prehistoric reptile that lived millions of years ago", level: 3 },
+
+  // Level 4
+  { word: "GRAVITY", hint: "The invisible force that pulls objects toward the center of Earth", level: 4 },
+  { word: "ATMOSPHERE", hint: "The protective layer of gases surrounding planet Earth", level: 4 },
+  { word: "REPUBLIC", hint: "A country governed by elected representatives of the citizens", level: 4 },
+  { word: "KNOWLEDGE", hint: "Facts, information, and skills acquired through learning", level: 4 },
+  { word: "PHOTOSYNTHESIS", hint: "Process green plants use to create food using sunlight", level: 4 },
+
+  // Level 5
+  { word: "THERMOMETER", hint: "An instrument used for measuring body or air temperature", level: 5 },
+  { word: "VOLCANO", hint: "A mountain that can erupt with hot lava, gas, and ash", level: 5 },
+  { word: "INDEPENDENCE", hint: "Freedom from control or rule by another country", level: 5 },
+  { word: "ALGORITHM", hint: "A step-by-step mathematical set of rules for solving a problem", level: 5 },
+
+  // Level 6
+  { word: "PRONOUN", hint: "A grammar word used to replace a noun in a sentence", level: 6 },
+  { word: "AFADJATO", hint: "The highest mountain peak located in Ghana", level: 6 },
+  { word: "MITOCHONDRIA", hint: "Cellular organelle known as the powerhouse of the cell", level: 6 },
+  { word: "INTERNET", hint: "Global computer network providing vast digital information", level: 6 },
+
+  // Level 7
+  { word: "CHLOROPHYLL", hint: "Green pigment in plant leaves that absorbs sunlight for photosynthesis", level: 7 },
+  { word: "BAROMETER", hint: "A scientific instrument used to measure atmospheric pressure", level: 7 },
+  { word: "SYNONYM", hint: "A word that has the same or nearly the same meaning as another", level: 7 },
+
+  // Level 8
+  { word: "PALINDROME", hint: "A word or phrase that reads the same backward as forward", level: 8 },
+  { word: "INSULIN", hint: "A hormone produced by the pancreas that regulates blood sugar", level: 8 },
+  { word: "PERSONIFICATION", hint: "Giving human qualities or emotions to non-human things", level: 8 },
+
+  // Level 9
+  { word: "HYDROGEN", hint: "The chemical element that is the most abundant in the universe", level: 9 },
+  { word: "CLIMAX", hint: "The most intense or exciting turning point in a story", level: 9 },
+  { word: "COVALENT", hint: "A chemical bond formed by the sharing of electron pairs", level: 9 },
+
+  // Level 10
+  { word: "KILIMANJARO", hint: "The highest mountain peak on the continent of Africa", level: 10 },
+  { word: "KOFIANNAN", hint: "Ghanaian UN Secretary-General and Nobel Peace Prize laureate", level: 10 },
+  { word: "RECURSION", hint: "A programming technique where a function calls itself", level: 10 },
 ];
 
 export const MEMORY_EMOJIS = [

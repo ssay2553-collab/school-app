@@ -48,6 +48,7 @@ interface UserDetailModalProps {
   onToggleArchive?: (user: User) => void;
   onRunFinanceCleanup?: (user: User) => void;
   isFinanceCleaning?: boolean;
+  onResetPassword?: (user: User) => void;
 }
 
 export const UserDetailModal: React.FC<UserDetailModalProps> = ({
@@ -77,6 +78,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onToggleArchive,
   onRunFinanceCleanup,
   isFinanceCleaning,
+  onResetPassword,
 }) => {
   if (!user) return null;
 
@@ -431,8 +433,39 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                               </Text>
                             </TouchableOpacity>
                           )}
+                        {user.role === "student" && onResetPassword && (
+                          <TouchableOpacity
+                            onPress={() => onResetPassword(user)}
+                            style={{
+                              backgroundColor: "#0284c7",
+                              paddingHorizontal: 12,
+                              paddingVertical: 6,
+                              borderRadius: 8,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontSize: 10,
+                                fontWeight: "800",
+                              }}
+                            >
+                              RESET PASSWORD
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     </View>
+                    {(user.resetPassword || user.tempPassword) && (
+                      <View style={{ marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#fde68a" }}>
+                        <Text style={{ fontSize: 10, color: "#b45309", fontWeight: "700" }}>
+                          ACTIVE RESET PASSWORD:
+                        </Text>
+                        <Text style={{ fontSize: 16, color: "#1e293b", fontWeight: "800", marginTop: 2, letterSpacing: 1 }}>
+                          {user.resetPassword || user.tempPassword}
+                        </Text>
+                      </View>
+                    )}
                     <Text
                       style={{
                         fontSize: 10,

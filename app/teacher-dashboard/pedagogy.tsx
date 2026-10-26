@@ -69,6 +69,15 @@ const RESOURCES = [
     tag: "GLOBAL",
     image: "https://cdn.kastatic.org/images/khan-logo-vertical-transparent.png",
   },
+  {
+    title: "Starfall Education",
+    description: "Interactive phonics, reading, math, and learning games for young learners.",
+    url: "https://www.starfall.com/h/",
+    icon: "star",
+    color: "#FF8C00",
+    tag: "READING & MATH",
+    image: "https://s.starfall.com/assets/images/logo_starfall.png",
+  },
 ];
 
 const PEDAGOGY_TIERS: { id: string; name: string; data: PedagogyTier; icon: string }[] = [
@@ -80,6 +89,7 @@ const PEDAGOGY_TIERS: { id: string; name: string; data: PedagogyTier; icon: stri
 const QUICK_SEARCHES = [
   "BECE Past Questions",
   "NaCCA Lesson Plans",
+  "Starfall Phonics & Math",
   "WASSCE Chief Examiner Reports",
   "JHS Science Diagrams",
   "Primary Math Games",

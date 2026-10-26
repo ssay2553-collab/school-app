@@ -17,6 +17,8 @@ interface BulkActionBarProps {
   onClearArrears: () => void;
   onPromoteRepeat: () => void;
   onBulkDelete?: () => void;
+  showArchived?: boolean;
+  onBulkRestore?: () => void;
 }
 
 export const BulkActionBar: React.FC<BulkActionBarProps> = ({
@@ -26,6 +28,8 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
   onClearArrears,
   onPromoteRepeat,
   onBulkDelete,
+  showArchived,
+  onBulkRestore,
 }) => {
   if (selectedCount === 0) return null;
 
@@ -42,53 +46,78 @@ export const BulkActionBar: React.FC<BulkActionBarProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.bulkActionButtons}
       >
-        <TouchableOpacity
-          style={styles.bulkActionBtn}
-          onPress={() => onBulkUpdate("isFeeding", true)}
-        >
-          <SVGIcon name="restaurant" size={20} color="#fff" />
-          <Text style={styles.bulkActionText}>Feeding</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkActionBtn}
-          onPress={() => onBulkUpdate("takesBus", true)}
-        >
-          <SVGIcon name="bus" size={20} color="#fff" />
-          <Text style={styles.bulkActionText}>Bus</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkActionBtn}
-          onPress={() => onBulkUpdate("takesExtraClasses", true)}
-        >
-          <SVGIcon name="book" size={20} color="#fff" />
-          <Text style={styles.bulkActionText}>Extra</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.bulkActionBtn} onPress={onClearArrears}>
-          <SVGIcon name="refresh-circle" size={20} color="#fff" />
-          <Text style={styles.bulkActionText}>Clear Arrears</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.bulkActionBtn}
-          onPress={() => onBulkUpdate("onDiscount", true)}
-        >
-          <SVGIcon name="pricetag" size={20} color="#fff" />
-          <Text style={styles.bulkActionText}>Discount</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.bulkActionBtn, { backgroundColor: COLORS.secondary }]}
-          onPress={onPromoteRepeat}
-        >
-          <SVGIcon name="trending-up" size={20} color="#fff" />
-          <Text style={styles.bulkActionText}>Promote</Text>
-        </TouchableOpacity>
-        {onBulkDelete && (
-          <TouchableOpacity
-            style={[styles.bulkActionBtn, { backgroundColor: "#EF4444" }]}
-            onPress={onBulkDelete}
-          >
-            <SVGIcon name="trash" size={20} color="#fff" />
-            <Text style={styles.bulkActionText}>Delete</Text>
-          </TouchableOpacity>
+        {showArchived ? (
+          <>
+            {onBulkRestore && (
+              <TouchableOpacity
+                style={[styles.bulkActionBtn, { backgroundColor: "#10B981" }]}
+                onPress={onBulkRestore}
+              >
+                <SVGIcon name="refresh" size={20} color="#fff" />
+                <Text style={styles.bulkActionText}>Restore</Text>
+              </TouchableOpacity>
+            )}
+            {onBulkDelete && (
+              <TouchableOpacity
+                style={[styles.bulkActionBtn, { backgroundColor: "#EF4444" }]}
+                onPress={onBulkDelete}
+              >
+                <SVGIcon name="trash" size={20} color="#fff" />
+                <Text style={styles.bulkActionText}>Delete</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        ) : (
+          <>
+            <TouchableOpacity
+              style={styles.bulkActionBtn}
+              onPress={() => onBulkUpdate("isFeeding", true)}
+            >
+              <SVGIcon name="restaurant" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Feeding</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bulkActionBtn}
+              onPress={() => onBulkUpdate("takesBus", true)}
+            >
+              <SVGIcon name="bus" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Bus</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bulkActionBtn}
+              onPress={() => onBulkUpdate("takesExtraClasses", true)}
+            >
+              <SVGIcon name="book" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Extra</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bulkActionBtn} onPress={onClearArrears}>
+              <SVGIcon name="refresh-circle" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Clear Arrears</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.bulkActionBtn}
+              onPress={() => onBulkUpdate("onDiscount", true)}
+            >
+              <SVGIcon name="pricetag" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Discount</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.bulkActionBtn, { backgroundColor: COLORS.secondary }]}
+              onPress={onPromoteRepeat}
+            >
+              <SVGIcon name="trending-up" size={20} color="#fff" />
+              <Text style={styles.bulkActionText}>Promote</Text>
+            </TouchableOpacity>
+            {onBulkDelete && (
+              <TouchableOpacity
+                style={[styles.bulkActionBtn, { backgroundColor: "#EF4444" }]}
+                onPress={onBulkDelete}
+              >
+                <SVGIcon name="trash" size={20} color="#fff" />
+                <Text style={styles.bulkActionText}>Delete</Text>
+              </TouchableOpacity>
+            )}
+          </>
         )}
       </ScrollView>
     </View>

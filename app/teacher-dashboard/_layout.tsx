@@ -177,6 +177,7 @@ export default function TeacherDashboardLayout() {
           <Tabs.Screen name="profile-edit" options={{ href: null }} />
           <Tabs.Screen name="review-document" options={{ href: null }} />
           <Tabs.Screen name="preschool-remarks" options={{ href: null }} />
+          <Tabs.Screen name="manage-students" options={{ href: null }} />
           <Tabs.Screen name="curriculum-pdf-viewer" options={{ href: null }} />
           <Tabs.Screen name="pedagogy" options={{ href: null }} />
         </Tabs>

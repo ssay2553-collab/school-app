@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useAuth } from "../contexts/AuthContext";
 import { NotificationPayload, markNotificationsAsRead } from "../src/services/notificationService";
@@ -24,22 +24,30 @@ export function useUnreadNotifications() {
       return;
     }
 
+    // Query without orderBy("timestamp", "desc") to prevent Firestore composite index requirements
+    // and local optimistic write exclusions when timestamp is serverTimestamp().
     const q = query(
       collection(db, "notifications"),
       where("recipientId", "==", appUser.uid),
-      where("read", "==", false),
-      orderBy("timestamp", "desc")
+      where("read", "==", false)
     );
 
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
-        const items: ExtendedNotification[] = snapshot.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as NotificationPayload),
-          read: d.data().read ?? false,
-          timestamp: d.data().timestamp,
-        }));
+        const items: ExtendedNotification[] = snapshot.docs
+          .map((d) => ({
+            id: d.id,
+            ...(d.data() as NotificationPayload),
+            read: d.data().read ?? false,
+            timestamp: d.data().timestamp,
+          }))
+          .sort((a, b) => {
+            const tA = a.timestamp?.toMillis ? a.timestamp.toMillis() : (a.timestamp ? new Date(a.timestamp).getTime() : Date.now());
+            const tB = b.timestamp?.toMillis ? b.timestamp.toMillis() : (b.timestamp ? new Date(b.timestamp).getTime() : Date.now());
+            return tB - tA;
+          });
+
         setUnreadNotifications(items);
         setUnreadCount(items.length);
         setLoading(false);
@@ -61,3 +69,4 @@ export function useUnreadNotifications() {
 
   return { unreadNotifications, unreadCount, loading, clearAll };
 }
+

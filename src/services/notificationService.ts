@@ -33,6 +33,34 @@ export interface NotificationPayload {
   data?: Record<string, any>;
 }
 
+export const ADMIN_ROLE_NAMES = [
+  "manager",
+  "headmaster",
+  "headmistress",
+  "administrator",
+  "director",
+  "proprietor",
+  "proprietress",
+  "accountant",
+  "bursar",
+];
+
+export function isEligibleAdminRecipient(userData: any): boolean {
+  if (!userData) return false;
+  const adminRole = String(userData?.adminRole || "")
+    .toLowerCase()
+    .trim();
+  const role = String(userData?.role || "")
+    .toLowerCase()
+    .trim();
+
+  if (["admin", "superadmin", "super admin"].includes(role)) return true;
+  if (!!adminRole && ADMIN_ROLE_NAMES.includes(adminRole)) return true;
+  if (role === "staff" && !!adminRole) return true;
+
+  return false;
+}
+
 /**
  * Creates a notification document in Firestore.
  * This will trigger a Cloud Function (if enabled) or be picked up by the client listener.
@@ -113,15 +141,13 @@ export async function markNotificationsForResolvedItem({
   recipientId?: string;
   type: NotificationType;
   itemId: string;
-  status: string;
+  status?: string;
 }) {
   try {
     let q = query(
       collection(db, "notifications"),
       where("read", "==", false),
       where("type", "==", type),
-      where("data.assignmentId", "==", itemId),
-      where("data.status", "==", status),
     );
 
     if (recipientId) {
@@ -131,8 +157,21 @@ export async function markNotificationsForResolvedItem({
     const snapshot = await getDocs(q);
     if (snapshot.empty) return;
 
+    const matchingDocs = snapshot.docs.filter((d) => {
+      const data = d.data();
+      const notifData = data?.data || {};
+      const matchesItem =
+        notifData.assignmentId === itemId ||
+        notifData.itemId === itemId ||
+        notifData.id === itemId;
+      const matchesStatus = !status || notifData.status === status;
+      return matchesItem && matchesStatus;
+    });
+
+    if (matchingDocs.length === 0) return;
+
     const batch = writeBatch(db);
-    snapshot.docs.forEach((d) => {
+    matchingDocs.forEach((d) => {
       batch.update(d.ref, {
         read: true,
         readAt: serverTimestamp(),

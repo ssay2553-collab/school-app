@@ -253,6 +253,20 @@ export default function StudentDashboard() {
     <View style={[styles.container, { backgroundColor: "#FDFCF0" }]}>
       <StationaryBackground />
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      {appUser?.role === "parent" && (
+        <SafeAreaView style={styles.parentBannerContainer}>
+          <TouchableOpacity
+            style={styles.parentBannerBtn}
+            onPress={() => router.replace("/parent-dashboard")}
+            activeOpacity={0.8}
+          >
+            <SVGIcon name="arrow-back" size={18} color="#fff" />
+            <Text style={styles.parentBannerText}>
+              PARENT ACCOUNT DETECTED • TAP TO RETURN TO PARENT DASHBOARD
+            </Text>
+          </TouchableOpacity>
+        </SafeAreaView>
+      )}
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={{ flex: 1 }}
@@ -550,4 +564,22 @@ const styles = StyleSheet.create({
     overflow: 'hidden'
   },
   badgePos: { position: "absolute", top: 15, right: 15 },
+  parentBannerContainer: {
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    zIndex: 999,
+  },
+  parentBannerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  parentBannerText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
 });

@@ -18,9 +18,11 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useStudentWeeklyTopics } from "../../hooks/student-dashboard/useStudentWeeklyTopics";
 import { SCHOOL_CONFIG } from "../../constants/Config";
+import { useAuth } from "../../contexts/AuthContext";
 import { useRef } from "react";
 
 export default function StudentWeeklyTopicsScreen() {
+  const { appUser } = useAuth();
   const router = useRouter();
   const { width } = useWindowDimensions();
   const isLargeScreen = width > 768;
@@ -86,14 +88,16 @@ export default function StudentWeeklyTopicsScreen() {
     if (isNavigating.current) return;
     isNavigating.current = true;
 
+    const fallbackRoute = appUser?.role === "parent" ? "/parent-dashboard" : "/student-dashboard";
+
     try {
       if (router.canGoBack()) {
         router.back();
       } else {
-        router.replace("/student-dashboard");
+        router.replace(fallbackRoute as any);
       }
     } catch (e) {
-      router.replace("/student-dashboard");
+      router.replace(fallbackRoute as any);
     }
 
     setTimeout(() => {

@@ -1,15 +1,15 @@
 import Constants from "expo-constants";
 import { useLocalSearchParams } from "expo-router";
 import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  getDocsFromServer,
-  query,
-  where,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    getDocsFromServer,
+    query,
+    where,
 } from "firebase/firestore";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
@@ -17,16 +17,22 @@ import { getSchoolSignature } from "../../constants/Signatures";
 import { COLORS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import {
-  calculateCompetitionRanking,
-  calculatePerformanceFromList,
-  calculateStudentTotalScore,
-  getAutoRemarks,
-  getGradeDetails,
+    calculateCompetitionRanking,
+    calculatePerformanceFromList,
+    calculateStudentTotalScore,
+    getAutoRemarks,
+    getGradeDetails,
 } from "../../lib/classHelpers";
+import { isApprovedAcademicRecordStatus } from "../../utils/academicRecordStatus";
 import { generateAcademicReportPDF } from "../../utils/pdfGenerator";
 import { useAcademicConfig } from "../useAcademicConfig";
 
-export type ReportType = "End of Term" | "Mid-Term" | "Mock Exams" | "Class Assessment Task (CAT)" | "Trial Test";
+export type ReportType =
+  | "End of Term"
+  | "Mid-Term"
+  | "Mock Exams"
+  | "Class Assessment Task (CAT)"
+  | "Trial Test";
 
 interface UseAcademicRecordDetailsProps {
   studentId?: string;
@@ -49,7 +55,8 @@ export const useAcademicRecordDetails = (
     props?.academicYear || (params.academicYear as string);
   const reportType =
     props?.reportType || (params.reportType as ReportType) || "End of Term";
-  const reportNumber = props?.reportNumber || parseInt(params.reportNumber as string) || 1;
+  const reportNumber =
+    props?.reportNumber || parseInt(params.reportNumber as string) || 1;
 
   const isFullReport = reportType === "End of Term";
 
@@ -62,7 +69,9 @@ export const useAcademicRecordDetails = (
 
   useEffect(() => {
     isMounted.current = true;
-    return () => { isMounted.current = false; };
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const [adminRemarks, setAdminRemarks] = useState("");
@@ -143,8 +152,27 @@ export const useAcademicRecordDetails = (
         where("reportType", "==", reportType),
       );
 
-      const rawScoresSnap = await getDocsFromServer(qScores);
-      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType);
+      let rawScoresSnap = await getDocsFromServer(qScores);
+
+      // Fallback: If studentIds query returns 0 docs (e.g. legacy records or missing studentIds array), query by classId
+      if (rawScoresSnap.empty && classIdState) {
+        try {
+          const qFallback = query(
+            collection(db, "academicRecords"),
+            where("classId", "==", classIdState),
+            where("academicYear", "==", academicYearState),
+            where("term", "==", termState),
+            where("reportType", "==", reportType),
+          );
+          rawScoresSnap = await getDocsFromServer(qFallback);
+        } catch (e) {
+          console.error("Fallback scores query error:", e);
+        }
+      }
+
+      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(
+        reportType,
+      );
       const scoresDocs = rawScoresSnap.docs.filter((d) => {
         const data = d.data() as any;
         if (isNumbered) {
@@ -163,7 +191,11 @@ export const useAcademicRecordDetails = (
       if (!effectiveClassId) effectiveClassId = classIdState;
 
       const reportSlug = reportType.replace(/\s+/g, "");
-      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? reportNumber : "";
+      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(
+        reportType,
+      )
+        ? reportNumber
+        : "";
       const reportId =
         `${studentId}_${academicYearState}_${termState}_${reportSlug}${numSuffix}`.replace(
           /\//g,
@@ -177,15 +209,7 @@ export const useAcademicRecordDetails = (
         if (reportSnap.exists()) {
           r = reportSnap.data();
           if (r.classId) effectiveClassId = r.classId;
-          if (isMounted.current) {
-            setReportStatus(r.status || "pending");
-            setIsReportApproved(r.status === "approved");
-          }
         } else {
-          if (isMounted.current) {
-            setReportStatus("pending");
-            setIsReportApproved(false);
-          }
           // Fallback to summary for classId if report doc doesn't exist
           const summaryId = `${studentId}_${academicYearState.replace(/\//g, "_")}_${termState.replace(/\s+/g, "")}`;
           const summarySnap = await getDoc(
@@ -197,10 +221,6 @@ export const useAcademicRecordDetails = (
         }
       } catch (e) {
         // If permission denied (common for parents on unapproved reports), continue with defaults
-        if (isMounted.current) {
-          setReportStatus("pending");
-          setIsReportApproved(false);
-        }
       }
 
       if (isMounted.current) {
@@ -209,39 +229,48 @@ export const useAcademicRecordDetails = (
 
       const resultsMap = new Map();
       let nameFound = "";
-      let allApproved = scoresDocs.length > 0;
+      let studentHasScores = false;
+      let allStudentScoresApproved = scoresDocs.length > 0;
 
       scoresDocs.forEach((d) => {
         const data = d.data() as any;
-        if (data.status !== "approved") allApproved = false;
-        // Records should be visible in the Admin Portal regardless of approval status.
-        // We only restrict this if we specifically want to enforce a "Parent-only" view,
-        // but this hook is inside the admin-dashboard folder.
         const subjectName = data.subject;
         if (!subjectName) return;
 
         const studentsList = Array.isArray(data.students) ? data.students : [];
-
-        const subjectRankData = calculateCompetitionRanking(
-          studentsList.map((s: any) => ({
-            id: s.studentId,
-            total: calculateStudentTotalScore(s, reportType),
-          })),
-          studentId,
-        );
-        const posInSub = subjectRankData.rank;
-
         const studentEntry = studentsList.find(
           (s: any) => s.studentId === studentId,
         );
+
         if (studentEntry) {
+          studentHasScores = true;
+          const isEntryApproved =
+            isApprovedAcademicRecordStatus(studentEntry.status) ||
+            isApprovedAcademicRecordStatus(data.status);
+
+          if (!isEntryApproved) {
+            allStudentScoresApproved = false;
+          }
+
           if (!nameFound) nameFound = studentEntry.fullName;
+
+          const subjectRankData = calculateCompetitionRanking(
+            studentsList.map((s: any) => ({
+              id: s.studentId,
+              total: calculateStudentTotalScore(s, reportType),
+            })),
+            studentId,
+          );
+          const posInSub = subjectRankData.rank;
+
           const scoreValue = calculateStudentTotalScore(
             studentEntry,
             reportType,
           );
 
-          const maxScore = Number(data.maxScore || studentEntry.maxScore || 100);
+          const maxScore = Number(
+            data.maxScore || studentEntry.maxScore || 100,
+          );
           const gradeObj = getGradeDetails(scoreValue, maxScore);
           resultsMap.set(subjectName, {
             subject: subjectName,
@@ -279,7 +308,12 @@ export const useAcademicRecordDetails = (
             ? d.data().students
             : [];
           const typeKey = reportType.replace(/\s+/g, "");
-          const reportSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? reportNumber : "";
+          const reportSuffix = [
+            "Class Assessment Task (CAT)",
+            "Trial Test",
+          ].includes(reportType)
+            ? reportNumber
+            : "";
           const typeMatchKey = `${typeKey}${reportSuffix}`;
 
           students.forEach((s: any) => {
@@ -399,6 +433,30 @@ export const useAcademicRecordDetails = (
         } catch (e) {}
       }
 
+      // Determine final report approval status
+      const isStudentApproved = studentHasScores && allStudentScoresApproved;
+      let finalReportApproved = false;
+      let finalReportStatus = "pending";
+
+      if (isApprovedAcademicRecordStatus(r?.status)) {
+        finalReportApproved = true;
+        finalReportStatus = r.status;
+      } else if (r?.status === "rejected") {
+        finalReportApproved = false;
+        finalReportStatus = "rejected";
+      } else if (isStudentApproved) {
+        finalReportApproved = true;
+        finalReportStatus = "approved";
+      } else {
+        finalReportApproved = false;
+        finalReportStatus = r?.status || "pending";
+      }
+
+      if (isMounted.current) {
+        setIsReportApproved(finalReportApproved);
+        setReportStatus(finalReportStatus);
+      }
+
       if (r && isMounted.current) {
         // Respect overrides from student-reports (Works for ALL report types)
         if (r.overallPosition) setOverallPosition(r.overallPosition);
@@ -436,12 +494,6 @@ export const useAcademicRecordDetails = (
           }
         }
       } else if (isMounted.current) {
-        // If report record doesn't exist, check if all individual subject records are approved
-        if (allApproved && rawScoresSnap.docs.length > 0) {
-          setReportStatus("approved");
-          setIsReportApproved(true);
-        }
-
         // If report record doesn't exist, set auto remarks
         setAdminRemarks(getAutoRemarks(localAggregate, false));
         if (isFullReport) {
@@ -481,11 +533,14 @@ export const useAcademicRecordDetails = (
     tas: TAS,
     aggregate: AGGREGATE,
   } = useMemo(
-    () => calculatePerformanceFromList(
-      subjectsData,
-      isPreschool,
-      ["Class Assessment Task (CAT)", "Trial Test", "Mid-Term"].includes(reportType)
-    ),
+    () =>
+      calculatePerformanceFromList(
+        subjectsData,
+        isPreschool,
+        ["Class Assessment Task (CAT)", "Trial Test", "Mid-Term"].includes(
+          reportType,
+        ),
+      ),
     [subjectsData, isPreschool, reportType],
   );
 
@@ -504,12 +559,16 @@ export const useAcademicRecordDetails = (
           studentName,
           className,
           academicYear: academicYearState,
-          term: ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType)
+          term: ["Class Assessment Task (CAT)", "Trial Test"].includes(
+            reportType,
+          )
             ? `${reportType === "Trial Test" ? "TEST" : "CAT"} ${reportNumber}`
             : termState,
           overallPosition,
           attendance: attendance || "N/A",
-          reportType: ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType)
+          reportType: ["Class Assessment Task (CAT)", "Trial Test"].includes(
+            reportType,
+          )
             ? `${reportType === "Trial Test" ? "TEST" : "CAT"} ${reportNumber}`
             : reportType,
           isFullReport,

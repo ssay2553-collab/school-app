@@ -15,19 +15,23 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, ToastAndroid } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../firebaseConfig";
+import { isEligibleAdminRecipient } from "../src/services/notificationService";
 
 type CountsMap = Record<string, number>;
 
 const GROUP_SEEN_KEY = (id: string) => `@lastSeen_group_${id}`;
 const DIRECT_SEEN_KEY = (id: string) => `@lastSeen_direct_${id}`;
+const STAFF_GROUP_SEEN_KEY = (id: string) => `@lastSeen_staff_group_${id}`;
 
 export default function useUnreadCounts() {
   const { appUser } = useAuth();
   const [groupUnread, setGroupUnread] = useState<CountsMap>({});
   const [directUnread, setDirectUnread] = useState<CountsMap>({});
+  const [staffGroupUnread, setStaffGroupUnread] = useState<CountsMap>({});
 
   const groupUnsubs = useRef<Record<string, () => void>>({});
   const directUnsubs = useRef<Record<string, () => void>>({});
+  const staffGroupUnsubs = useRef<Record<string, () => void>>({});
 
   useEffect(() => {
     if (!appUser?.uid) return;
@@ -216,11 +220,66 @@ export default function useUnreadCounts() {
     }
   };
 
-  const markChatRead = async (type: "group" | "direct", id: string) => {
+  const registerStaffGroup = (groupId: string) => {
+    if (staffGroupUnsubs.current[groupId]) return;
+    const messagesRef = collection(db, "staffGroups", groupId, "messages");
+    const latestQ = query(messagesRef, orderBy("createdAt", "desc"), limit(1));
+    const unsub = onSnapshot(latestQ, async (snap) => {
+      const lastMsg = snap.docs[0]?.data();
+      if (lastMsg?.senderId === appUser?.uid) {
+        setStaffGroupUnread((g) => ({ ...g, [groupId]: 0 }));
+        return;
+      }
+
+      const latestTs = lastMsg?.createdAt?.toMillis?.() || 0;
+      const seenKey = STAFF_GROUP_SEEN_KEY(groupId);
+      const seenStr = await AsyncStorage.getItem(seenKey);
+      const seen = seenStr ? parseInt(seenStr, 10) : 0;
+      if (!latestTs || latestTs <= seen) {
+        setStaffGroupUnread((g) => ({ ...g, [groupId]: 0 }));
+        return;
+      }
+      try {
+        const countQ = query(
+          messagesRef,
+          where("createdAt", ">", Timestamp.fromMillis(seen)),
+          orderBy("createdAt", "asc"),
+        );
+        const snapCount = await getCountFromServer(countQ as any);
+        setStaffGroupUnread((g) => ({
+          ...g,
+          [groupId]: snapCount.data().count || 0,
+        }));
+      } catch (err: any) {
+        if (err.code !== 'permission-denied') {
+          setStaffGroupUnread((g) => ({ ...g, [groupId]: 1 }));
+        }
+      }
+    }, (err) => {
+      if (err.code === 'permission-denied') return;
+      console.warn("registerStaffGroup onSnapshot error", err);
+    });
+    staffGroupUnsubs.current[groupId] = unsub;
+  };
+
+  const unregisterStaffGroup = (groupId: string) => {
+    if (staffGroupUnsubs.current[groupId]) {
+      staffGroupUnsubs.current[groupId]?.();
+      delete staffGroupUnsubs.current[groupId];
+      setStaffGroupUnread((g) => {
+        const copy = { ...g };
+        delete copy[groupId];
+        return copy;
+      });
+    }
+  };
+
+  const markChatRead = async (type: "group" | "direct" | "staffGroup", id: string) => {
     try {
-      const key = type === "group" ? GROUP_SEEN_KEY(id) : DIRECT_SEEN_KEY(id);
+      const key = type === "group" ? GROUP_SEEN_KEY(id) : type === "staffGroup" ? STAFF_GROUP_SEEN_KEY(id) : DIRECT_SEEN_KEY(id);
       await AsyncStorage.setItem(key, Date.now().toString());
       if (type === "group") setGroupUnread((g) => ({ ...g, [id]: 0 }));
+      else if (type === "staffGroup") setStaffGroupUnread((g) => ({ ...g, [id]: 0 }));
       else setDirectUnread((d) => ({ ...d, [id]: 0 }));
     } catch (err) {
       console.warn("markChatRead error", err);
@@ -324,7 +383,8 @@ export default function useUnreadCounts() {
 
   const totalUnread =
     Object.values(groupUnread).reduce((s, v) => s + (v || 0), 0) +
-    Object.values(directUnread).reduce((s, v) => s + (v || 0), 0);
+    Object.values(directUnread).reduce((s, v) => s + (v || 0), 0) +
+    Object.values(staffGroupUnread).reduce((s, v) => s + (v || 0), 0);
 
   // Assignment Notification Trigger
   const prevAssignmentUnreadRef = useRef<number>(0);
@@ -380,17 +440,18 @@ export default function useUnreadCounts() {
   }, [totalUnread, appUser?.uid]);
 
   const [academicRecordUnread, setAcademicRecordUnread] = useState<number>(0);
+  const [pendingAssignmentApprovalCount, setPendingAssignmentApprovalCount] = useState<number>(0);
 
   // Watch Pending Academic Records Awaiting Approval (for Admins & Staff)
   useEffect(() => {
-    if (!appUser?.uid || (appUser.role !== "admin" && appUser.role !== "staff")) {
+    if (!appUser?.uid || !isEligibleAdminRecipient(appUser)) {
       setAcademicRecordUnread(0);
       return;
     }
 
     const q = query(
       collection(db, "academicRecords"),
-      where("status", "==", "pending")
+      where("status", "in", ["pending", "partially_approved"])
     );
 
     const unsub = onSnapshot(q, (snap) => {
@@ -401,17 +462,43 @@ export default function useUnreadCounts() {
     });
 
     return () => unsub();
-  }, [appUser?.uid, appUser?.role]);
+  }, [appUser]);
+
+  // Watch Pending Assignments Awaiting Approval (for Admins & Staff)
+  useEffect(() => {
+    if (!appUser?.uid || !isEligibleAdminRecipient(appUser)) {
+      setPendingAssignmentApprovalCount(0);
+      return;
+    }
+
+    const q = query(
+      collection(db, "assignments"),
+      where("status", "==", "pending")
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      setPendingAssignmentApprovalCount(snap.docs.length);
+    }, (err) => {
+      if (err.code === 'permission-denied') return;
+      console.warn("Watch Pending Assignments Approval error", err);
+    });
+
+    return () => unsub();
+  }, [appUser]);
 
   return {
     totalUnread,
     groupUnread,
     directUnread,
+    staffGroupUnread,
     assignmentUnread,
     submissionUnread,
     academicRecordUnread,
+    pendingAssignmentApprovalCount,
     registerDirectChat,
     unregisterDirectChat,
+    registerStaffGroup,
+    unregisterStaffGroup,
     markChatRead,
   };
 }

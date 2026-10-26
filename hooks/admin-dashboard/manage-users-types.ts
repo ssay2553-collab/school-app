@@ -37,6 +37,8 @@ export interface User {
   permissions?: Record<string, PermissionLevel>;
   signupCode?: string;
   secretCode?: string;
+  resetPassword?: string;
+  tempPassword?: string;
   dateOfBirth?: any;
   walletBalance?: number;
   dailyArrears?: number;

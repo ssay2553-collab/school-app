@@ -518,11 +518,11 @@ export default function TeacherStatistics() {
         // Keep active teachers or admins with teaching duties
         const filteredList = teacherList.filter(t =>
           t.role === 'teacher' ||
-          t.allTimeStats.totalAttendance > 0 ||
-          t.allTimeStats.assignments.length > 0 ||
-          t.allTimeStats.topics.length > 0 ||
-          t.allTimeStats.groups.length > 0 ||
-          t.allTimeStats.totalAcademicRecords > 0 ||
+          (t.allTimeStats?.totalAttendance || 0) > 0 ||
+          (t.allTimeStats?.assignments?.length || 0) > 0 ||
+          (t.allTimeStats?.topics?.length || 0) > 0 ||
+          (t.allTimeStats?.groups?.length || 0) > 0 ||
+          (t.allTimeStats?.totalAcademicRecords || 0) > 0 ||
           (t.assignedClasses && t.assignedClasses.length > 0)
         );
 
@@ -596,11 +596,14 @@ export default function TeacherStatistics() {
   const displayTeachers = useMemo(() => {
     return teachers.map(t => {
       const isWeekly = timePeriod === "weekly";
-      const sourceStats = isWeekly ? t.weeklyStats : t.allTimeStats;
+      const sourceStats = isWeekly ? (t.weeklyStats || {}) : (t.allTimeStats || {});
+      const assignments = sourceStats.assignments || [];
+      const topics = sourceStats.topics || [];
+      const groups = sourceStats.groups || [];
 
       const breakdownMap: Record<string, number> = {};
-      sourceStats.assignments.forEach((a: any) => {
-        const key = `${a.classId}|||${a.subjectId || a.subject}`;
+      assignments.forEach((a: any) => {
+        const key = `${a.classId || "unknown"}|||${a.subjectId || a.subject || "General"}`;
         breakdownMap[key] = (breakdownMap[key] || 0) + 1;
       });
 
@@ -610,38 +613,38 @@ export default function TeacherStatistics() {
       });
 
       const topicBreakdownMap: Record<string, any[]> = {};
-      sourceStats.topics.forEach((top: any) => {
-        const key = `${top.classId}|||${top.subject}`;
+      topics.forEach((top: any) => {
+        const key = `${top.classId || "unknown"}|||${top.subject || "General"}`;
         if (!topicBreakdownMap[key]) topicBreakdownMap[key] = [];
         topicBreakdownMap[key].push(top);
       });
 
-      const topicBreakdown = Object.entries(topicBreakdownMap).map(([key, topics]) => {
+      const topicBreakdown = Object.entries(topicBreakdownMap).map(([key, topicsList]) => {
         const [classId, subject] = key.split("|||");
         return {
           subject,
           classId,
           className: classMap[classId] || classId,
-          count: topics.length,
-          topics: topics.sort((a, b) => (b.weekNumber || 0) - (a.weekNumber || 0))
+          count: topicsList.length,
+          topics: topicsList.sort((a, b) => (b.weekNumber || 0) - (a.weekNumber || 0))
         };
       });
 
       return {
         ...t,
-        totalAssignments: sourceStats.assignments.length,
-        pendingAssignmentsCount: sourceStats.assignments.filter((a: any) => a.status === 'pending').length,
-        totalGroups: sourceStats.groups.length,
-        totalTopics: sourceStats.topics.length,
-        totalAttendance: sourceStats.totalAttendance,
-        totalMarkedSubmissions: sourceStats.totalMarkedSubmissions,
-        totalNotes: sourceStats.totalNotes,
-        totalAcademicRecords: sourceStats.totalAcademicRecords,
-        usageScore: sourceStats.usageScore,
-        usageBreakdown: sourceStats.usageBreakdown,
-        assignments: sourceStats.assignments,
-        allTopics: sourceStats.topics,
-        groups: sourceStats.groups.map((g: any) => ({
+        totalAssignments: assignments.length,
+        pendingAssignmentsCount: assignments.filter((a: any) => a.status === 'pending').length,
+        totalGroups: groups.length,
+        totalTopics: topics.length,
+        totalAttendance: sourceStats.totalAttendance || 0,
+        totalMarkedSubmissions: sourceStats.totalMarkedSubmissions || 0,
+        totalNotes: sourceStats.totalNotes || 0,
+        totalAcademicRecords: sourceStats.totalAcademicRecords || 0,
+        usageScore: sourceStats.usageScore || 0,
+        usageBreakdown: sourceStats.usageBreakdown || {},
+        assignments,
+        allTopics: topics,
+        groups: groups.map((g: any) => ({
           name: g.name || "Unnamed Group",
           className: classMap[g.classId] || g.classId || "General",
           memberCount: (g.studentIds || []).length
@@ -649,13 +652,23 @@ export default function TeacherStatistics() {
         assignmentBreakdown,
         topicBreakdown,
       };
-    }).sort((a, b) => b.usageScore - a.usageScore);
+    }).sort((a, b) => (b.usageScore || 0) - (a.usageScore || 0));
   }, [teachers, timePeriod, classMap]);
 
   // Selected teacher currently rendered in Modal
   const activeSelectedTeacher = useMemo(() => {
     if (!selectedTeacher) return null;
-    return displayTeachers.find(t => t.uid === selectedTeacher.uid) || selectedTeacher;
+    const found = displayTeachers.find(t => t.uid === selectedTeacher.uid);
+    if (found) return found;
+    return {
+      ...selectedTeacher,
+      assignments: selectedTeacher.assignments || [],
+      allTopics: selectedTeacher.allTopics || [],
+      groups: selectedTeacher.groups || [],
+      usageBreakdown: selectedTeacher.usageBreakdown || {},
+      totalAssignments: selectedTeacher.totalAssignments || 0,
+      pendingAssignmentsCount: selectedTeacher.pendingAssignmentsCount || 0,
+    };
   }, [selectedTeacher, displayTeachers]);
 
   const teacherClassFilterTabs = useMemo(() => {
@@ -684,12 +697,31 @@ export default function TeacherStatistics() {
     setTeachers(prev => {
       const updatedList = prev.map(t => {
         if (t.uid === updatedAssignment.teacherId) {
-          const updateSet = (set: ActivitySet) => {
-            const updatedAssignments = (set.assignments || []).map(a =>
+          const updateSet = (set: ActivitySet | undefined) => {
+            const currentSet = set || {
+              assignments: [],
+              topics: [],
+              groups: [],
+              totalAttendance: 0,
+              totalMarkedSubmissions: 0,
+              totalNotes: 0,
+              totalAcademicRecords: 0,
+              usageScore: 0,
+              usageBreakdown: {
+                attScore: 0,
+                academicScore: 0,
+                topicScore: 0,
+                assignmentScore: 0,
+                groupScore: 0,
+                submissionScore: 0,
+                notesScore: 0,
+              },
+            };
+            const updatedAssignments = (currentSet.assignments || []).map(a =>
               a.id === updatedAssignment.id ? { ...a, ...updatedAssignment } : a
             );
             return {
-              ...set,
+              ...currentSet,
               assignments: updatedAssignments,
             };
           };

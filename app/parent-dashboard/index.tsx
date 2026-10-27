@@ -387,6 +387,27 @@ export default function ParentDashboard() {
 
         <View style={styles.contentContainer}>
           <View style={styles.mainContent}>
+            {assignmentUnread > 0 && (
+              <Animatable.View animation="fadeInDown" duration={600} style={styles.notificationBanner}>
+                <TouchableOpacity
+                  style={styles.bannerContent}
+                  onPress={() => router.push("/parent-dashboard/assignment-scores" as any)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.bannerIconBox}>
+                    <SVGIcon name="alert-circle" size={22} color="#F59E0B" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.bannerTitle}>Pending Child Assignment(s)!</Text>
+                    <Text style={styles.bannerText}>
+                      Your child has {assignmentUnread} unattended assignment(s) waiting to be completed.
+                    </Text>
+                  </View>
+                  <SVGIcon name="chevron-forward" size={18} color="#94A3B8" />
+                </TouchableOpacity>
+              </Animatable.View>
+            )}
+
             {sections.map((section, sIndex) => (
               <View key={section.title} style={{ marginBottom: 40 }}>
                 <View style={styles.sectionHeader}>
@@ -459,6 +480,41 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "center",
     gap: 12,
+  },
+  notificationBanner: {
+    backgroundColor: "#FEF3C7",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#F59E0B",
+    marginBottom: 25,
+    overflow: "hidden",
+    ...SHADOWS.medium,
+  },
+  bannerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 12,
+  },
+  bannerIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "#FDE68A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  bannerTitle: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#92400E",
+    marginBottom: 2,
+  },
+  bannerText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#B45309",
+    lineHeight: 16,
   },
   menuCard: {
     backgroundColor: "#fff",

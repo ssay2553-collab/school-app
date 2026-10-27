@@ -61,6 +61,18 @@ export const useAcademicRecords = () => {
   const academicYear = acadConfig.academicYear || "";
   const term = acadConfig.currentTerm || "";
 
+  const hasJHSClasses = useMemo(() => {
+    return teacherClasses.some(c => (c as any).department === "JHS" || /jhs|basic\s*[7-9]/i.test(c.name || ""));
+  }, [teacherClasses]);
+
+  const availableReportTypes = useMemo(() => {
+    const base = ["End of Term", "Mid-Term", "Class Assessment Task (CAT)", "Trial Test"];
+    if (hasJHSClasses || appUser?.role === "admin" || (appUser?.role as string) === "superadmin") {
+      base.splice(2, 0, "Mock Exams");
+    }
+    return base as ReportType[];
+  }, [hasJHSClasses, appUser?.role]);
+
   const calculateScores = useCallback((student: StudentScoreRecord, type: ReportType, customMaxScore?: number) => {
     const updated = { ...student };
     const effectiveMaxScore = (type === "End of Term" || type === "Mock Exams") ? 100 : (customMaxScore || maxScore || 100);
@@ -102,6 +114,7 @@ export const useAcademicRecords = () => {
             id: d.id,
             name: (d.data() as any).name || d.id,
             classTeacherId: (d.data() as any).classTeacherId,
+            department: (d.data() as any).department || "",
           }));
           if (isMounted.current) {
             const sorted = sortClasses(list);
@@ -143,7 +156,7 @@ export const useAcademicRecords = () => {
       try {
         const yearSlug = academicYear.replace(/\//g, "-");
         const reportSlug = reportType.replace(/\s+/g, "");
-        const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType);
+        const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType);
         const numSuffix = isNumbered ? `_${reportNumber || 1}` : "";
         const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
 
@@ -298,7 +311,7 @@ export const useAcademicRecords = () => {
       const batch = writeBatch(db);
       const yearSlug = academicYear.replace(/\//g, "-");
       const reportSlug = reportType.replace(/\s+/g, "");
-      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? `_${reportNumber}` : "";
+      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `_${reportNumber}` : "";
       const docId = `${selectedClassId}_${selectedSubject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
 
       const effectiveMax = (reportType === "End of Term" || reportType === "Mock Exams") ? 100 : maxScore;
@@ -334,7 +347,7 @@ export const useAcademicRecords = () => {
         academicYear,
         term,
         reportType,
-        reportNumber: ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? reportNumber : null,
+        reportNumber: ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? reportNumber : null,
         maxScore: effectiveMax,
         students: updatedStudents,
         studentIds: updatedStudents.map(s => s.studentId),
@@ -349,7 +362,7 @@ export const useAcademicRecords = () => {
 
         const summaryId = `${student.studentId}_${academicYear.replace(/\//g, "_")}_${term.replace(/\s+/g, "")}`;
         const typeKey = reportType.replace(/\s+/g, "");
-        const subKey = ["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? `${typeKey}${reportNumber}` : typeKey;
+        const subKey = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `${typeKey}${reportNumber}` : typeKey;
         const subjectKey = `${selectedSubject.replace(/\s+/g, "_")}_${subKey}`;
         batch.set(doc(db, "academicRecordsSummary", summaryId), {
           teacherId: firebaseUser.uid,
@@ -504,5 +517,6 @@ export const useAcademicRecords = () => {
     term,
     subjects: appUser?.subjects || [],
     recordStatus,
+    availableReportTypes,
   };
 };

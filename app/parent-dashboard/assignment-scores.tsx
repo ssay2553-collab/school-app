@@ -74,7 +74,7 @@ export default function AssignmentScores() {
   const childrenIdsKey = JSON.stringify(appUser?.childrenIds || []);
 
   const fetchScores = useCallback(
-    async (isNextPage = false) => {
+    async () => {
       const childrenIds = appUser?.childrenIds || [];
       if (childrenIds.length === 0) {
         setLoading(false);
@@ -82,50 +82,37 @@ export default function AssignmentScores() {
         return;
       }
 
-      if (isNextPage && !hasMore.current) return;
-
-      if (isNextPage) setLoadingMore(true);
-      else {
-        setLoading(true);
-        lastVisible.current = null;
-        hasMore.current = true;
-      }
-
       try {
-        const qConstraints: any[] = [
+        const q = query(
+          collection(db, "submissions"),
           where("studentId", "in", childrenIds.slice(0, 30)),
           where("marked", "==", true),
-          where("markedAt", ">=", cutoff),
-          orderBy("markedAt", "desc"),
-          limit(PAGE_SIZE),
-        ];
-
-        if (isNextPage && lastVisible.current) {
-          qConstraints.push(startAfter(lastVisible.current));
-        }
-
-        const q = query(collection(db, "submissions"), ...qConstraints);
+          limit(50)
+        );
 
         let snap;
         try {
-          // For complex queries with 'in' and 'orderBy', cache results can be flaky or slow.
-          // We'll try server first if cache is likely to be empty or outdated.
           snap = await getDocsFromServer(q);
         } catch (serverError) {
-          console.warn("Server fetch failed, trying cache...", serverError);
-          snap = await getDocsFromCache(q);
+          try {
+            snap = await getDocsFromCache(q);
+          } catch (cacheErr) {
+            snap = { docs: [] };
+          }
         }
 
-        const data = snap.docs.map((d) => ({
+        const data = (snap.docs || []).map((d: any) => ({
           id: d.id,
           ...(d.data() as any),
         })) as ScoreRecord[];
 
-        if (isNextPage) setScores((prev) => [...prev, ...data]);
-        else setScores(data);
+        data.sort((a, b) => {
+          const timeA = a.markedAt?.toMillis?.() || new Date(a.markedAt || 0).getTime();
+          const timeB = b.markedAt?.toMillis?.() || new Date(b.markedAt || 0).getTime();
+          return timeB - timeA;
+        });
 
-        lastVisible.current = snap.docs[snap.docs.length - 1];
-        hasMore.current = snap.docs.length === PAGE_SIZE;
+        setScores(data);
       } catch (error) {
         console.error("Error fetching parent scores:", error);
       } finally {
@@ -134,17 +121,17 @@ export default function AssignmentScores() {
         setLoadingMore(false);
       }
     },
-    [childrenIdsKey, cutoff],
+    [appUser?.childrenIds?.join(",")]
   );
 
   useEffect(() => {
     if (appUser) {
+      setLoading(true);
       fetchScores();
     } else {
-      // If no user, stop loading to show empty state
       setLoading(false);
     }
-  }, [fetchScores, appUser]);
+  }, [appUser?.uid]);
 
   const toggleExpand = async (item: ScoreRecord) => {
     if (expandedId === item.id) {

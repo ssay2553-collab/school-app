@@ -66,6 +66,18 @@ export default function TeacherStudentAcademicReport() {
 
   const assignedClassIds = useMemo(() => getTeacherClasses(appUser), [appUser]);
 
+  const hasJHSClasses = useMemo(() => {
+    return teacherClassesList.some(c => (c as any).department === "JHS" || /jhs|basic\s*[7-9]/i.test(c.name || ""));
+  }, [teacherClassesList]);
+
+  const teacherReportTypes = useMemo(() => {
+    const base = ["End of Term", "Mid-Term", "Class Assessment Task (CAT)", "Trial Test"];
+    if (hasJHSClasses || appUser?.role === "admin" || (appUser?.role as string) === "superadmin") {
+      base.splice(2, 0, "Mock Exams");
+    }
+    return base as ReportType[];
+  }, [hasJHSClasses, appUser?.role]);
+
   const academicYears = useMemo(() => {
     const start = 2024;
     const currentYear = new Date().getFullYear();
@@ -118,6 +130,7 @@ export default function TeacherStudentAcademicReport() {
         const list = snap.docs.map((d) => ({
           id: d.id,
           name: (d.data() as any).name || (d.data() as any).className || d.id,
+          department: (d.data() as any).department || "",
         }));
         const sorted = sortClasses(list);
         setTeacherClassesList(sorted);
@@ -351,7 +364,7 @@ export default function TeacherStudentAcademicReport() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipRow}
           >
-            {["End of Term", "Mid-Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"].map((type) => (
+            {teacherReportTypes.map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
@@ -375,7 +388,7 @@ export default function TeacherStudentAcademicReport() {
             ))}
           </ScrollView>
 
-          {["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) && (
+          {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) && (
             <>
               <Text style={styles.label}>Assessment Number</Text>
               <ScrollView

@@ -236,7 +236,9 @@ export default function ForgotPasswordScreen() {
           where("email", "==", targetEmail),
           where("username", "==", cleanInput.toLowerCase()),
           where("parentLinkCode", "==", cleanToken),
-          where("signupCode", "==", cleanToken)
+          where("signupCode", "==", cleanToken),
+          where("profile.parentLinkCode", "==", cleanToken),
+          where("profile.signupCode", "==", cleanToken)
         ),
         limit(1)
       );
@@ -252,6 +254,9 @@ export default function ForgotPasswordScreen() {
         userData.signupCode ||
         userData.secretCode ||
         userData.parentLinkCode ||
+        userData.profile?.signupCode ||
+        userData.profile?.secretCode ||
+        userData.profile?.parentLinkCode ||
         ""
       )
         .toString()

@@ -1,4 +1,5 @@
 import Constants from "expo-constants";
+import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { useRouter } from "expo-router";
@@ -31,6 +32,32 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { useSchoolOperations } from "../../hooks/useSchoolOperations";
+
+const uriToBase64 = async (uri: string): Promise<string> => {
+  if (!uri) return "";
+  if (uri.startsWith("data:")) return uri;
+
+  try {
+    if (Platform.OS === "web") {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      const base64Data = await FileSystem.readAsStringAsync(uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      return `data:image/jpeg;base64,${base64Data}`;
+    }
+  } catch (e) {
+    console.error("Error converting URI to base64:", e);
+    return uri;
+  }
+};
 
 const sanitizeStorageImageUri = (value?: string | null): string | null => {
   if (!value) return null;
@@ -721,12 +748,13 @@ export default function SharedScanAttendanceScreen() {
   };
 
   const processCapturedFace = async (
-    rawBase64Image: string,
+    rawInputImage: string,
     isFromFile = false,
   ) => {
     setVerifyingFace(true);
 
     try {
+      const rawBase64Image = await uriToBase64(rawInputImage);
       // Compress image to ~25KB max to prevent Firestore 1MB document size limit errors
       const base64Image = await compressBase64Image(
         rawBase64Image,
@@ -742,8 +770,8 @@ export default function SharedScanAttendanceScreen() {
         );
       const hasExistingBaseline = Boolean(currentBaseline);
 
-      if (!hasExistingBaseline) {
-        // ENROLMENT: Set this first face record as permanent Source of Truth and profile image!
+      if (!hasExistingBaseline || isFromFile) {
+        // ENROLMENT or FILE UPDATE: Set/update this face record as permanent Source of Truth and profile image!
         setFacePhotoUri(base64Image);
         let finalImageUrl = base64Image;
 
@@ -762,22 +790,13 @@ export default function SharedScanAttendanceScreen() {
         }
         setFaceVerified(true);
         showToast({
-          message: `Source of Truth Face Enrolled ${isFromFile ? "from File" : "via Camera"}! 🔒`,
+          message: hasExistingBaseline
+            ? `Source of Truth Profile Image Updated from File! 🔒`
+            : `Source of Truth Face Enrolled ${isFromFile ? "from File" : "via Camera"}! 🔒`,
           type: "success",
         });
       } else {
         // VERIFICATION MODE: Compare scanned face against saved Source of Truth baseline
-        if (isFromFile) {
-          const title = "Security Lock 🔒";
-          const msg =
-            "File uploads are strictly prohibited for attendance when a Source of Truth face baseline is registered. You must use live camera scanning.";
-          if (Platform.OS === "web") {
-            alert(`${title}\n\n${msg}`);
-          } else {
-            Alert.alert(title, msg);
-          }
-          return;
-        }
 
         setFacePhotoUri(base64Image);
 
@@ -903,15 +922,19 @@ export default function SharedScanAttendanceScreen() {
         (targetUser?.profile as any)?.faceBaselineImage || null,
       );
     if (currentBaseline) {
-      const title = "Security Lock 🔒";
+      const title = "Update Source of Truth Image 📁";
       const msg =
-        "File uploads are disabled because a Source of Truth face baseline is registered. You must use live camera scanning for attendance.";
-      if (Platform.OS === "web") {
-        alert(`${title}\n\n${msg}`);
-      } else {
-        Alert.alert(title, msg);
-      }
-      return;
+        "A Source of Truth face baseline / profile image is already registered. Do you want to update and replace your Source of Truth profile image with the selected file?";
+      const confirmReplace =
+        Platform.OS === "web"
+          ? window.confirm(`${title}\n\n${msg}`)
+          : await new Promise((resolve) => {
+              Alert.alert(title, msg, [
+                { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
+                { text: "Update & Replace", style: "default", onPress: () => resolve(true) },
+              ]);
+            });
+      if (!confirmReplace) return;
     }
 
     try {
@@ -926,9 +949,10 @@ export default function SharedScanAttendanceScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const base64Image = asset.base64
+        const imageUri = asset.base64
           ? `data:image/jpeg;base64,${asset.base64}`
           : asset.uri;
+        const base64Image = await uriToBase64(imageUri);
         await processCapturedFace(base64Image, true);
       } else {
         setVerifyingFace(false);
@@ -1192,10 +1216,11 @@ export default function SharedScanAttendanceScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const base64Image = asset.base64
+        const imageUri = asset.base64
           ? `data:image/jpeg;base64,${asset.base64}`
           : asset.uri;
-        processCapturedFace(base64Image, isFromFile);
+        const base64Image = await uriToBase64(imageUri);
+        await processCapturedFace(base64Image, isFromFile);
       } else {
         setVerifyingFace(false);
       }
@@ -1791,25 +1816,23 @@ export default function SharedScanAttendanceScreen() {
                         )}
                       </TouchableOpacity>
 
-                      {!hasSourceOfTruth && (
-                        <TouchableOpacity
+                      <TouchableOpacity
+                        style={[
+                          styles.faceScanFileBtn,
+                          { borderColor: primary },
+                        ]}
+                        onPress={launchFileExplorerPicker}
+                        disabled={verifyingFace || opStatus.isBlocked}
+                      >
+                        <Text
                           style={[
-                            styles.faceScanFileBtn,
-                            { borderColor: primary },
+                            styles.faceScanFileBtnText,
+                            { color: primary },
                           ]}
-                          onPress={launchFileExplorerPicker}
-                          disabled={verifyingFace || opStatus.isBlocked}
                         >
-                          <Text
-                            style={[
-                              styles.faceScanFileBtnText,
-                              { color: primary },
-                            ]}
-                          >
-                            Pick File 📁
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                          {hasSourceOfTruth ? "Update from File 📁" : "Pick File 📁"}
+                        </Text>
+                      </TouchableOpacity>
 
                       {hasSourceOfTruth && (
                         <TouchableOpacity
@@ -1817,7 +1840,7 @@ export default function SharedScanAttendanceScreen() {
                           onPress={handleResetBaseline}
                         >
                           <Text style={styles.resetBaselineBtnText}>
-                            Reset / New Face Record 🔄
+                            Reset Record 🔄
                           </Text>
                         </TouchableOpacity>
                       )}

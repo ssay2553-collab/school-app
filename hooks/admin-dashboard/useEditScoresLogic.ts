@@ -191,10 +191,20 @@ export const useEditScoresLogic = ({
           hasBehavioral: data.containsBehavioralData,
         };
 
+        const statusRank = (s: string) => {
+          switch (s) {
+            case "approved": return 4;
+            case "partially_approved": return 3;
+            case "pending": return 2;
+            case "draft": return 1;
+            default: return 0;
+          }
+        };
+
         const existing = subsMap.get(key);
         if (
           !existing ||
-          (existing.status === "pending" && subjectInfo.status !== "pending")
+          statusRank(subjectInfo.status) > statusRank(existing.status)
         ) {
           subsMap.set(key, subjectInfo);
         }
@@ -423,7 +433,7 @@ export const useEditScoresLogic = ({
         return {
           ...s,
           position: `${rankInfo.rank}/${rankInfo.total}`,
-          status: s.status === "draft" ? "draft" : "approved",
+          status: "approved",
         };
       });
 
@@ -434,11 +444,7 @@ export const useEditScoresLogic = ({
             ? 100
             : maxScore,
         students: savedStudents,
-        status: savedStudents.every((s) => s.status === "approved")
-          ? "approved"
-          : savedStudents.some((s) => s.status === "approved")
-            ? "partially_approved"
-            : "pending",
+        status: "approved",
         approvedAt: serverTimestamp(),
         approvedBy: appUser?.uid,
       });
@@ -462,7 +468,7 @@ export const useEditScoresLogic = ({
           student.studentId,
         );
 
-        const studentStatus = student.status === "draft" ? "draft" : "approved";
+        const studentStatus = "approved";
 
         batch.set(
           summaryRef,
@@ -503,7 +509,7 @@ export const useEditScoresLogic = ({
             term: term,
             reportType: selectedReportType,
             classId: selectedClassId,
-            status: studentStatus === "draft" ? "pending" : "approved",
+            status: "approved",
             updatedAt: serverTimestamp(),
           },
           { merge: true },

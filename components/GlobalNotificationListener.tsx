@@ -3,6 +3,7 @@ import * as Notifications from "expo-notifications";
 import {
     collection,
     doc,
+    getDoc,
     getDocs,
     onSnapshot,
     query,
@@ -248,6 +249,17 @@ export const GlobalNotificationListener = () => {
     const pendingRecordsUnsubscribe = onSnapshot(
       pendingRecordsQuery,
       async (snapshot) => {
+        let currentYear = "";
+        let currentTerm = "";
+        try {
+          const configSnap = await getDoc(doc(db, "school_settings", "academic_config"));
+          if (configSnap.exists()) {
+            const configData = configSnap.data();
+            currentYear = configData.academicYear || "";
+            currentTerm = configData.currentTerm || "";
+          }
+        } catch (e) {}
+
         snapshot.docChanges().forEach(async (change) => {
           if (change.type !== "added" && change.type !== "modified") return;
 
@@ -259,7 +271,13 @@ export const GlobalNotificationListener = () => {
           const reportType = record?.reportType || "Academic Report";
           const status = record?.status;
 
-          if (status !== "pending" && status !== "partially_approved") return;
+          // Ensure draft records do not trigger alert or count, only pending records must trigger
+          if (status === "draft" || (status !== "pending" && status !== "partially_approved")) return;
+
+          // Ensure previous term pending records do not trigger the notification alert
+          if (currentYear && record?.academicYear && record.academicYear !== currentYear) return;
+          if (currentTerm && record?.term && record.term !== currentTerm) return;
+
           if (!teacherId) return;
 
           const recordKey = `${docId}_${status}`;

@@ -3,7 +3,9 @@ import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import {
     collection,
+    doc,
     documentId,
+    getDoc,
     getDocsFromServer,
     query,
     where,
@@ -85,6 +87,16 @@ export default function StudentAcademicReport() {
 
   const [selectedYear, setSelectedYear] = useState("");
   const [hasSetDefaults, setHasSetDefaults] = useState(false);
+
+  const selectedChild = children.find(c => c.id === selectedChildId);
+  const isChildJHS = selectedChild?.department === "JHS" || /jhs|basic\s*[7-9]/i.test(selectedChild?.className || selectedChild?.name || "");
+  const parentReportTypes = useMemo(() => {
+    const base = ["End of Term", "Mid-Term", "Class Assessment Task (CAT)", "Trial Test"];
+    if (isChildJHS) {
+      base.splice(2, 0, "Mock Exams");
+    }
+    return base as ReportType[];
+  }, [isChildJHS]);
 
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
   const [reportHistory, setReportHistory] = useState<any[]>([]);
@@ -169,15 +181,29 @@ export default function StudentAcademicReport() {
           );
           const snap = await getDocsFromServer(q as any);
           if (!isMounted) return;
-          const list = snap.docs.map((d) => {
+          const list = await Promise.all(snap.docs.map(async (d) => {
             const data = d.data() as any;
+            const classId = data.classId || data.profile?.classId || "";
+            let department = data.department || data.profile?.department || "";
+            let className = "";
+            if (classId) {
+              try {
+                const classSnap = await getDoc(doc(db, "classes", classId));
+                if (classSnap.exists()) {
+                  department = department || classSnap.data().department || "";
+                  className = classSnap.data().name || "";
+                }
+              } catch (e) {}
+            }
             return {
               id: d.id,
               name: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
-              classId: data.classId || data.profile?.classId || "",
+              classId,
+              department,
+              className,
               walletBalance: data.walletBalance || 0,
             };
-          });
+          }));
           setChildren(list);
           if (list.length > 0) setSelectedChildId(list[0].id);
         } catch (e) {
@@ -286,13 +312,7 @@ export default function StudentAcademicReport() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipRow}
           >
-            {[
-              "End of Term",
-              "Mid-Term",
-              "Mock Exams",
-              "Class Assessment Task (CAT)",
-              "Trial Test",
-            ].map((type) => (
+            {parentReportTypes.map((type) => (
               <TouchableOpacity
                 key={type}
                 style={[
@@ -316,7 +336,7 @@ export default function StudentAcademicReport() {
             ))}
           </ScrollView>
 
-          {["Class Assessment Task (CAT)", "Trial Test"].includes(
+          {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(
             selectedReportType,
           ) && (
             <>

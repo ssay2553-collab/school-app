@@ -94,6 +94,7 @@ export default function StudentAcademicRecords() {
     term,
     subjects,
     recordStatus,
+    availableReportTypes,
   } = useAcademicRecords();
 
   const isApproved = recordStatus === "approved";
@@ -150,8 +151,8 @@ export default function StudentAcademicRecords() {
           <View style={styles.lockedConfigItem}><Text style={styles.miniLabel}>YEAR</Text><View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{academicYear || "---"}</Text></View></View>
           <View style={styles.lockedConfigItem}><Text style={styles.miniLabel}>TERM</Text><View style={styles.lockedBadge}><Text style={styles.lockedBadgeText}>{term || "---"}</Text></View></View>
         </View>
-        <SelectionGroup label="REPORT TYPE" items={["End of Term", "Mid-Term", "Mock Exams", "Class Assessment Task (CAT)", "Trial Test"]} selectedId={reportType} onSelect={setReportType} />
-        {["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) && (
+        <SelectionGroup label="REPORT TYPE" items={availableReportTypes} selectedId={reportType} onSelect={setReportType} />
+        {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) && (
           <SelectionGroup
             label="ASSESSMENT NUMBER"
             items={[1, 2, 3, 4, 5]}
@@ -161,7 +162,7 @@ export default function StudentAcademicRecords() {
             getId={(item) => item.toString()}
           />
         )}
-        {reportType !== "End of Term" && reportType !== "Mock Exams" && (
+        {reportType !== "End of Term" && (
           <SelectionGroup
             label="TEST TOTAL MARKS (OVER SCORE)"
             items={[20, 30, 50, 100]}
@@ -187,7 +188,7 @@ export default function StudentAcademicRecords() {
           <View style={{ flex: 1, marginLeft: 15 }}>
             <Text style={styles.headerTitle}>Academic Ledger</Text>
             <Text style={styles.headerSubtitle}>
-              {academicYear} • {term} {["Class Assessment Task (CAT)", "Trial Test"].includes(reportType) ? `• ${reportType === "Trial Test" ? "TEST" : "CAT"} ${reportNumber}` : ""}
+              {academicYear} • {term} {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(reportType) ? `• ${reportType === "Trial Test" ? "TEST" : reportType === "Mock Exams" ? "MOCK" : "CAT"} ${reportNumber}` : ""}
             </Text>
           </View>
         </View>

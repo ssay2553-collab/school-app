@@ -75,43 +75,46 @@ export default function PaymentReceipts() {
     if (!selectedChildId) return;
     setRefreshing(true);
     try {
-      const q = query(
+      const q1 = query(
         collection(db, "feePayments"),
-        where("studentUid", "==", selectedChildId),
-        orderBy("createdAt", "desc")
+        where("studentUid", "==", selectedChildId)
       );
-      const snap = await getDocs(q);
-      const list = snap.docs
-        .map((d) => ({
-          id: d.id,
-          ...(d.data() as any),
-        }))
+      const q2 = query(
+        collection(db, "feePayments"),
+        where("studentId", "==", selectedChildId)
+      );
+
+      const [snap1, snap2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+
+      const docsMap = new Map<string, any>();
+      snap1.docs.forEach(d => docsMap.set(d.id, { id: d.id, ...d.data() }));
+      snap2.docs.forEach(d => docsMap.set(d.id, { id: d.id, ...d.data() }));
+
+      const list = Array.from(docsMap.values())
         .filter((t: any) => {
-          const type = (t.type || "tuition").toLowerCase();
           const method = (t.method || "").toLowerCase();
           const receivedFrom = (t.receivedFrom || "").toLowerCase();
+          const type = (t.type || "").toLowerCase();
+          const amount = Number(t.amount || 0);
 
-          // STRICT PAYMENT IDENTIFICATION (Aligns with reconciler.ts and receipt-view.tsx)
-          return (
-            !(
-              method === "bulk charge" ||
-              method === "system billing" ||
-              receivedFrom === "system billing" ||
-              method.includes("bill")
-            ) &&
-            (type.endsWith("_payment") ||
-              type === "tuition" ||
-              type === "tuition_credit" ||
-              (!["pta", "maintenance", "admission", "books", "uniform", "other"].includes(type) &&
-                method !== "bulk charge"))
-          );
+          if (
+            method === "bulk charge" ||
+            method === "system billing" ||
+            receivedFrom === "system billing" ||
+            method.includes("bill") ||
+            type === "bill" ||
+            amount <= 0
+          ) {
+            return false;
+          }
+          return true;
         })
         .map((t: any) => ({
           ...t,
-          _displayDate: moment(t.createdAt || t.timestamp?.toDate()).format(
+          _displayDate: moment(t.createdAt || t.timestamp?.toDate() || t.date).format(
             "MMM DD, YYYY",
           ),
-          _displayTime: moment(t.createdAt || t.timestamp?.toDate()).format(
+          _displayTime: moment(t.createdAt || t.timestamp?.toDate() || t.date).format(
             "h:mm A",
           ),
           _title: (t.otherCategory || t.type || "Payment")
@@ -119,6 +122,13 @@ export default function PaymentReceipts() {
             .replace("_", " ")
             .toUpperCase(),
         }));
+
+      list.sort((a: any, b: any) => {
+        const timeA = a.createdAt?.toMillis?.() || new Date(a.createdAt || a.date || 0).getTime();
+        const timeB = b.createdAt?.toMillis?.() || new Date(b.createdAt || b.date || 0).getTime();
+        return timeB - timeA;
+      });
+
       setPayments(list);
     } catch (e) {
       console.error("Error fetching payments:", e);

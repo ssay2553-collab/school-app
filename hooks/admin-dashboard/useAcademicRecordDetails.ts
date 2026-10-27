@@ -170,7 +170,7 @@ export const useAcademicRecordDetails = (
         }
       }
 
-      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(
+      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(
         reportType,
       );
       const scoresDocs = rawScoresSnap.docs.filter((d) => {
@@ -191,7 +191,7 @@ export const useAcademicRecordDetails = (
       if (!effectiveClassId) effectiveClassId = classIdState;
 
       const reportSlug = reportType.replace(/\s+/g, "");
-      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(
+      const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(
         reportType,
       )
         ? reportNumber
@@ -537,7 +537,7 @@ export const useAcademicRecordDetails = (
       calculatePerformanceFromList(
         subjectsData,
         isPreschool,
-        ["Class Assessment Task (CAT)", "Trial Test", "Mid-Term"].includes(
+        ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams", "Mid-Term"].includes(
           reportType,
         ),
       ),
@@ -559,17 +559,17 @@ export const useAcademicRecordDetails = (
           studentName,
           className,
           academicYear: academicYearState,
-          term: ["Class Assessment Task (CAT)", "Trial Test"].includes(
+          term: ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(
             reportType,
           )
-            ? `${reportType === "Trial Test" ? "TEST" : "CAT"} ${reportNumber}`
+            ? `${reportType === "Trial Test" ? "TEST" : reportType === "Mock Exams" ? "MOCK" : "CAT"} ${reportNumber}`
             : termState,
           overallPosition,
           attendance: attendance || "N/A",
-          reportType: ["Class Assessment Task (CAT)", "Trial Test"].includes(
+          reportType: ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(
             reportType,
           )
-            ? `${reportType === "Trial Test" ? "TEST" : "CAT"} ${reportNumber}`
+            ? `${reportType === "Trial Test" ? "TEST" : reportType === "Mock Exams" ? "MOCK" : "CAT"} ${reportNumber}`
             : reportType,
           isFullReport,
           subjectsData,

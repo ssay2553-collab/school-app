@@ -805,11 +805,19 @@ match /feePayments/{paymentId} {
          }
 
      /* ===============================
+       PASSWORD RESET REQUESTS
+    =============================== */
+    match /passwordResetRequests/{requestId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin() || (isSignedIn() && uid() == resource.data.studentUid);
+    }
+
+     /* ===============================
        NOTIFICATIONS COLLECTION
     =============================== */
     match /notifications/{notificationId} {
       allow read: if isSignedIn() && (isAdmin() || resource.data.recipientId == uid());
-      allow create: if isAdmin() || isTeacher();
+      allow create: if isAdmin() || isTeacher() || request.resource.data.type == 'password_reset_request';
       allow update: if uid() == resource.data.recipientId && request.resource.data.diff(resource.data).changedKeys().hasOnly(['read']);
       allow delete: if isAdmin() || uid() == resource.data.recipientId;
     }

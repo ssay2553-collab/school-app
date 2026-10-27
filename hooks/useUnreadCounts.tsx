@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
     collection,
     doc,
+    getDoc,
     getCountFromServer,
     limit,
     onSnapshot,
@@ -454,8 +455,29 @@ export default function useUnreadCounts() {
       where("status", "in", ["pending", "partially_approved"])
     );
 
-    const unsub = onSnapshot(q, (snap) => {
-      setAcademicRecordUnread(snap.docs.length);
+    const unsub = onSnapshot(q, async (snap) => {
+      try {
+        const configSnap = await getDoc(doc(db, "school_settings", "academic_config"));
+        const configData = configSnap.exists() ? configSnap.data() : {};
+        const currentYear = configData.academicYear || "";
+        const currentTerm = configData.currentTerm || "";
+
+        const filteredDocs = snap.docs.filter(d => {
+          const data = d.data() as any;
+          const status = data.status;
+          if (status === "draft" || status === "approved") return false;
+          if (!status || (status !== "pending" && status !== "partially_approved")) return false;
+
+          if (currentYear && data.academicYear && data.academicYear !== currentYear) return false;
+          if (currentTerm && data.term && data.term !== currentTerm) return false;
+
+          return true;
+        });
+
+        setAcademicRecordUnread(filteredDocs.length);
+      } catch (e) {
+        setAcademicRecordUnread(snap.docs.length);
+      }
     }, (err) => {
       if (err.code === 'permission-denied') return;
       console.warn("Watch Pending Academic Records error", err);

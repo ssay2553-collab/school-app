@@ -77,7 +77,9 @@ export default function StudentLoginScreen() {
             where("username", "==", cleanInput),
             where("profile.username", "==", cleanInput),
             where("parentLinkCode", "==", cleanPassUpper),
-            where("signupCode", "==", cleanPassUpper)
+            where("signupCode", "==", cleanPassUpper),
+            where("profile.parentLinkCode", "==", cleanPassUpper),
+            where("profile.signupCode", "==", cleanPassUpper)
           ),
           limit(1)
         );
@@ -91,9 +93,9 @@ export default function StudentLoginScreen() {
 
           // Stored candidate passwords/codes
           const storedResetPass = userData.resetPassword || userData.tempPassword || "";
-          const storedSignupCode = (userData.signupCode || "").toString().trim().toUpperCase();
-          const storedLinkCode = (userData.parentLinkCode || "").toString().trim().toUpperCase();
-          const storedSecretCode = (userData.secretCode || "").toString().trim().toUpperCase();
+          const storedSignupCode = (userData.signupCode || userData.profile?.signupCode || "").toString().trim().toUpperCase();
+          const storedLinkCode = (userData.parentLinkCode || userData.profile?.parentLinkCode || "").toString().trim().toUpperCase();
+          const storedSecretCode = (userData.secretCode || userData.profile?.secretCode || "").toString().trim().toUpperCase();
 
           const isPasswordMatch =
             (storedResetPass && storedResetPass === cleanPass) ||
@@ -108,10 +110,26 @@ export default function StudentLoginScreen() {
               await finishLogin(cred.user.uid, targetEmail);
               return;
             } catch (authErr) {
-              // Finish login directly using verified Firestore profile
-              showToast({ message: "Identity verified! Logging in...", type: "info" });
-              await finishLogin(targetUid, targetEmail);
-              return;
+              // Sync Firebase Auth password using resetUserPasswordWithToken cloud function, then sign in
+              try {
+                const updatePasswordFn = httpsCallable(functions, "resetUserPasswordWithToken");
+                await updatePasswordFn({
+                  uid: targetUid,
+                  identifier: cleanInput || targetEmail,
+                  token: cleanPassUpper,
+                  newPassword: cleanPass,
+                });
+
+                const cred = await signInWithEmailAndPassword(auth, targetEmail, cleanPass);
+                showToast({ message: "Identity verified! Logging in...", type: "info" });
+                await finishLogin(cred.user.uid, targetEmail);
+                return;
+              } catch (syncErr) {
+                console.warn("Cloud function password sync failed, attempting direct finish:", syncErr);
+                showToast({ message: "Identity verified! Logging in...", type: "info" });
+                await finishLogin(targetUid, targetEmail);
+                return;
+              }
             }
           }
         }

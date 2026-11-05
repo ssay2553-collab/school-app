@@ -22,8 +22,10 @@ import {
     FlatList,
     Keyboard,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     SafeAreaView,
+    ScrollView,
     StatusBar,
     StyleSheet,
     Text,
@@ -37,6 +39,8 @@ import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
+import UnreadBadge from "../../components/UnreadBadge";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -112,7 +116,251 @@ export default function TeacherChatWithParent() {
     };
   }, [webStream]);
 
+  // Broadcast states
+  const [isBroadcastMode, setIsBroadcastMode] = useState(false);
+  const [classParents, setClassParents] = useState<Parent[]>([]);
+  const [selectedParentUids, setSelectedParentUids] = useState<string[]>([]);
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [broadcastText, setBroadcastText] = useState("");
+  const [broadcastUploading, setBroadcastUploading] = useState(false);
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+
+  // Broadcast Audio recording states
+  const [broadcastRecording, setBroadcastRecording] = useState<any | null>(null);
+  const [broadcastPreviewUri, setBroadcastPreviewUri] = useState<string | null>(null);
+  const [broadcastWebRecorder, setBroadcastWebRecorder] = useState<any | null>(null);
+  const [broadcastWebStream, setBroadcastWebStream] = useState<MediaStream | null>(null);
+  const broadcastWebChunksRef = React.useRef<any[]>([]);
+  const broadcastWebBlobRef = React.useRef<Blob | null>(null);
+
+  const fetchClassParents = async (studentList: Student[]) => {
+    if (studentList.length === 0) {
+      setClassParents([]);
+      return [];
+    }
+    setLoading(true);
+    try {
+      const studentUids = studentList.map((s) => s.uid);
+      const q = query(collection(db, "users"), where("role", "==", "parent"));
+      const snap = await getDocsFromServer(q);
+      const parentList: Parent[] = snap.docs
+        .map((d) => {
+          const data = d.data() as any;
+          return {
+            uid: d.id,
+            fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim() || "Parent",
+            email: data.profile?.email || "",
+            phone: data.profile?.phone || "",
+            childrenIds: data.childrenIds || [],
+          };
+        })
+        .filter((p: any) => p.childrenIds?.some((cId: string) => studentUids.includes(cId)));
+      if (isMounted.current) {
+        setClassParents(parentList);
+      }
+      return parentList;
+    } catch (e) {
+      console.error(e);
+      return [];
+    } finally {
+      if (isMounted.current) setLoading(false);
+    }
+  };
+
+  const handleToggleBroadcastMode = async () => {
+    if (isBroadcastMode) {
+      setIsBroadcastMode(false);
+      setSelectedParentUids([]);
+      return;
+    }
+
+    if (stage === "select_parent" && parents.length > 0) {
+      setClassParents(parents);
+      setIsBroadcastMode(true);
+      setSelectedParentUids([]);
+    } else if (students.length > 0) {
+      await fetchClassParents(students);
+      setIsBroadcastMode(true);
+      setSelectedParentUids([]);
+    } else {
+      showToast({ message: "No students or parents found in this class.", type: "error" });
+    }
+  };
+
+  const toggleSelectParentForBroadcast = (uid: string) => {
+    setSelectedParentUids((prev) =>
+      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]
+    );
+  };
+
+  const handleSelectAllClassParents = () => {
+    if (selectedParentUids.length === classParents.length && classParents.length > 0) {
+      setSelectedParentUids([]);
+    } else {
+      setSelectedParentUids(classParents.map((p) => p.uid));
+    }
+  };
+
+  const startBroadcastRecording = async () => {
+    try {
+      if (Platform.OS === "web") {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showToast({ message: "Audio recording is not supported in this browser.", type: "error" });
+          return;
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        broadcastWebChunksRef.current = [];
+        const MediaRec = (window as any).MediaRecorder || (global as any).MediaRecorder;
+        if (!MediaRec) {
+          showToast({ message: "MediaRecorder is not available.", type: "error" });
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        const mediaRecorder = new MediaRec(stream);
+        mediaRecorder.ondataavailable = (ev: any) => {
+          if (ev.data && ev.data.size > 0) broadcastWebChunksRef.current.push(ev.data);
+        };
+        mediaRecorder.start();
+        setBroadcastWebStream(stream);
+        setBroadcastWebRecorder(mediaRecorder);
+        setBroadcastRecording({ web: true });
+        setBroadcastPreviewUri(null);
+        return;
+      }
+
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) return;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setBroadcastRecording(recording);
+      setBroadcastPreviewUri(null);
+    } catch (e) {
+      console.error(e);
+      showToast({ message: "Failed to start recording.", type: "error" });
+    }
+  };
+
+  const stopBroadcastRecording = async () => {
+    if (!broadcastRecording) return;
+    try {
+      if (Platform.OS === "web") {
+        if (!broadcastWebRecorder) return;
+        broadcastWebRecorder.stop();
+        await new Promise((r) => setTimeout(r, 200));
+        const blob = new Blob(broadcastWebChunksRef.current, { type: "audio/webm" });
+        broadcastWebChunksRef.current = [];
+        broadcastWebBlobRef.current = blob;
+        const url = URL.createObjectURL(blob);
+        setBroadcastPreviewUri(url);
+        setBroadcastRecording(null);
+        return;
+      }
+
+      await broadcastRecording.stopAndUnloadAsync();
+      const uri = broadcastRecording.getURI();
+      setBroadcastRecording(null);
+      setBroadcastPreviewUri(uri);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSendTeacherBroadcast = async () => {
+    if (selectedParentUids.length === 0) return;
+    const hasText = !!broadcastText.trim();
+    const hasAudio = !!(broadcastPreviewUri || broadcastWebBlobRef.current);
+
+    if (!hasText && !hasAudio) {
+      showToast({ message: "Please enter text or record voice to broadcast.", type: "error" });
+      return;
+    }
+
+    setSendingBroadcast(true);
+    try {
+      let uploadedAudioUrl: string | undefined = undefined;
+
+      if (hasAudio) {
+        setBroadcastUploading(true);
+        let blob: Blob | null = null;
+        if (Platform.OS === "web") {
+          blob = broadcastWebBlobRef.current;
+        } else if (broadcastPreviewUri) {
+          blob = await (await fetch(broadcastPreviewUri)).blob();
+        }
+
+        if (blob) {
+          const ext = Platform.OS === "web" ? "webm" : "m4a";
+          const audioRef = ref(storage, `chats/parents/broadcasts/${Date.now()}.${ext}`);
+          await uploadBytes(audioRef, blob);
+          uploadedAudioUrl = await getDownloadURL(audioRef);
+        }
+        setBroadcastUploading(false);
+      }
+
+      const isAudio = !!uploadedAudioUrl;
+
+      for (const pUid of selectedParentUids) {
+        const parentObj = classParents.find((p) => p.uid === pUid);
+        const chatIdToUse = generateChatId(appUser!.uid, pUid);
+
+        await addDoc(collection(db, "directMessages", chatIdToUse, "messages"), {
+          type: isAudio ? "audio" : "text",
+          ...(isAudio ? { fileUrl: uploadedAudioUrl } : { text: broadcastText.trim() }),
+          senderId: appUser!.uid,
+          createdAt: serverTimestamp(),
+        });
+
+        if (parentObj) {
+          const messagePreview = isAudio ? "🎵 Voice broadcast message" : broadcastText.trim();
+          sendNotification({
+            recipientId: pUid,
+            senderId: appUser!.uid,
+            senderName: appUser!.displayName || "Teacher",
+            type: "chat",
+            title: "Broadcast Message from Teacher 📢",
+            body: messagePreview,
+            data: { chatId: chatIdToUse, type: isAudio ? "audio" : "text" },
+          });
+        }
+      }
+
+      playSound("sent");
+      showToast({
+        message: `Broadcast successfully sent to ${selectedParentUids.length} parent(s)!`,
+        type: "success",
+      });
+
+      setBroadcastText("");
+      setBroadcastPreviewUri(null);
+      broadcastWebBlobRef.current = null;
+      if (broadcastWebStream) {
+        broadcastWebStream.getTracks().forEach((t) => t.stop());
+        setBroadcastWebStream(null);
+      }
+      setIsBroadcastModalOpen(false);
+      setIsBroadcastMode(false);
+      setSelectedParentUids([]);
+    } catch (e) {
+      console.error("Teacher broadcast send error:", e);
+      showToast({ message: "Failed to send broadcast message.", type: "error" });
+    } finally {
+      setSendingBroadcast(false);
+    }
+  };
+
   const handleBack = useCallback(() => {
+    if (isBroadcastMode) {
+      setIsBroadcastMode(false);
+      setSelectedParentUids([]);
+      return true;
+    }
     if (stage === "chat") {
       setStage("select_parent");
       setChatId(null);
@@ -125,14 +373,20 @@ export default function TeacherChatWithParent() {
     } else {
       if (isNavigating.current) return true;
       isNavigating.current = true;
-      if (router.canGoBack()) {
+      setTimeout(() => {
+        isNavigating.current = false;
+      }, 500);
+
+      if (Platform.OS === "web") {
+        router.replace("/teacher-dashboard");
+      } else if (router.canGoBack()) {
         router.back();
       } else {
         router.replace("/teacher-dashboard");
       }
     }
     return true;
-  }, [stage, router]);
+  }, [stage, isBroadcastMode, router]);
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener("hardwareBackPress", handleBack);
@@ -224,15 +478,23 @@ export default function TeacherChatWithParent() {
       );
       const snap = await getDocsFromServer(q);
       if (isMounted.current) {
-        setParents(
-          snap.docs.map((d) => ({
-            uid: d.id,
-            fullName:
-              `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
-            email: (d.data() as any).profile?.email || "",
-            phone: (d.data() as any).profile?.phone || "",
-          })),
-        );
+        const fetchedParents = snap.docs.map((d) => ({
+          uid: d.id,
+          fullName:
+            `${(d.data() as any).profile?.firstName || ""} ${(d.data() as any).profile?.lastName || ""}`.trim(),
+          email: (d.data() as any).profile?.email || "",
+          phone: (d.data() as any).profile?.phone || "",
+        }));
+        fetchedParents.sort((a, b) => {
+          const chatIdA = generateChatId(appUser!.uid, a.uid);
+          const chatIdB = generateChatId(appUser!.uid, b.uid);
+          const unreadA = directUnread[chatIdA] || 0;
+          const unreadB = directUnread[chatIdB] || 0;
+          if (unreadA > 0 && unreadB === 0) return -1;
+          if (unreadB > 0 && unreadA === 0) return 1;
+          return a.fullName.localeCompare(b.fullName);
+        });
+        setParents(fetchedParents);
         setStage("select_parent");
       }
     } finally {
@@ -242,8 +504,11 @@ export default function TeacherChatWithParent() {
 
   const handleSelectParent = (parent: Parent) => {
     if (!appUser?.uid) return;
+    const chatId = generateChatId(appUser.uid, parent.uid);
+    markChatRead("direct", chatId);
+    markNotificationsAsRead(appUser.uid, "chat");
     setSelectedParent(parent);
-    setChatId(generateChatId(appUser.uid, parent.uid));
+    setChatId(chatId);
     setStage("chat");
     isFirstLoad.current = true;
   };
@@ -271,7 +536,7 @@ export default function TeacherChatWithParent() {
     return () => unsubscribe();
   }, [chatId, appUser?.uid]);
 
-  const { registerDirectChat, markChatRead, unregisterDirectChat } =
+  const { registerDirectChat, markChatRead, unregisterDirectChat, directUnread } =
     useUnreadCounts();
   useEffect(() => {
     if (!chatId) return;
@@ -358,6 +623,18 @@ export default function TeacherChatWithParent() {
             createdAt: serverTimestamp(),
           });
 
+          if (selectedParent) {
+            await sendNotification({
+              recipientId: selectedParent.uid,
+              senderId: appUser!.uid,
+              senderName: appUser!.displayName || "Teacher",
+              type: "chat",
+              title: "New Voice Message from Teacher 🎙️",
+              body: "Sent a voice message",
+              data: { chatId: chatId!, type: "audio" },
+            });
+          }
+
           playSound("sent");
 
           // cleanup
@@ -392,6 +669,19 @@ export default function TeacherChatWithParent() {
         senderId: appUser!.uid,
         createdAt: serverTimestamp(),
       });
+
+      if (selectedParent) {
+        await sendNotification({
+          recipientId: selectedParent.uid,
+          senderId: appUser!.uid,
+          senderName: appUser!.displayName || "Teacher",
+          type: "chat",
+          title: "New Voice Message from Teacher 🎙️",
+          body: "Sent a voice message",
+          data: { chatId: chatId!, type: "audio" },
+        });
+      }
+
       playSound("sent");
     } catch (e) {
       console.error(e);
@@ -440,7 +730,8 @@ export default function TeacherChatWithParent() {
 
   if (stage === "chat" && selectedParent) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
+      <TierProtectedRoute featureId="teacher_parent_chat">
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#F8FAFC" }}>
         <StatusBar barStyle="dark-content" />
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -549,36 +840,47 @@ export default function TeacherChatWithParent() {
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
+      </TierProtectedRoute>
     );
   }
 
-  const listData =
-    stage === "select_class"
+  const listData = isBroadcastMode
+    ? classParents
+    : stage === "select_class"
       ? teacherClasses
       : stage === "select_student"
         ? students
         : parents;
-  const stageTitle =
-    stage === "select_class"
+
+  const stageTitle = isBroadcastMode
+    ? "Broadcast to Parents"
+    : stage === "select_class"
       ? "Select Class"
       : stage === "select_student"
         ? "Select Student"
         : "Select Parent";
-  const stageSub =
-    stage === "select_class"
+
+  const stageSub = isBroadcastMode
+    ? `Parents in ${selectedClass?.name || "Class"}`
+    : stage === "select_class"
       ? "Choose a classroom to begin"
       : stage === "select_student"
         ? `Students in ${selectedClass?.name}`
         : `Guardians of ${selectedStudent?.fullName}`;
-  const stageIcon =
-    stage === "select_class"
+
+  const stageIcon = isBroadcastMode
+    ? "megaphone"
+    : stage === "select_class"
       ? "school"
       : stage === "select_student"
         ? "people"
         : "person";
 
+  const canShowBroadcastToggle = stage === "select_student" || stage === "select_parent" || isBroadcastMode;
+
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="teacher_parent_chat">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient
         colors={[primary, "#1E293B"]}
@@ -595,42 +897,158 @@ export default function TeacherChatWithParent() {
             <Text style={styles.headerTitle}>{stageTitle}</Text>
             <Text style={styles.headerSubtitle}>{stageSub}</Text>
           </View>
-          <SVGIcon name={stageIcon} size={24} color={secondary} />
+
+          {canShowBroadcastToggle ? (
+            <TouchableOpacity
+              onPress={handleToggleBroadcastMode}
+              style={[
+                styles.broadcastToggleHeaderBtn,
+                isBroadcastMode && { backgroundColor: secondary },
+              ]}
+            >
+              <SVGIcon name="megaphone" size={16} color="#fff" />
+              <Text style={styles.broadcastToggleHeaderText}>
+                {isBroadcastMode ? "Exit" : "Broadcast"}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <SVGIcon name={stageIcon} size={24} color={secondary} />
+          )}
         </View>
+
+        {isBroadcastMode && (
+          <Animatable.View animation="fadeInDown" duration={250} style={styles.broadcastActionBar}>
+            <TouchableOpacity onPress={handleSelectAllClassParents} style={styles.selectAllBtn}>
+              <SVGIcon
+                name={
+                  selectedParentUids.length === classParents.length && classParents.length > 0
+                    ? "checkbox"
+                    : "square-outline"
+                }
+                size={18}
+                color="#fff"
+              />
+              <Text style={styles.selectAllText}>
+                {selectedParentUids.length === classParents.length && classParents.length > 0
+                  ? "Deselect All"
+                  : "Select All"}
+              </Text>
+            </TouchableOpacity>
+
+            <Text style={styles.selectedCountBadge}>
+              {selectedParentUids.length} Selected
+            </Text>
+
+            <TouchableOpacity
+              disabled={selectedParentUids.length === 0}
+              onPress={() => setIsBroadcastModalOpen(true)}
+              style={[
+                styles.composeBroadcastBtn,
+                { backgroundColor: secondary },
+                selectedParentUids.length === 0 && { opacity: 0.5 },
+              ]}
+            >
+              <SVGIcon name="send" size={14} color="#fff" />
+              <Text style={styles.composeBroadcastText}>Compose</Text>
+            </TouchableOpacity>
+          </Animatable.View>
+        )}
       </LinearGradient>
+
       <FlatList
         data={listData as any}
         keyExtractor={(item, index) => item.id || item.uid || index.toString()}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item, index }) => (
-          <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50}>
-            <TouchableOpacity
-              style={styles.listItem}
-              onPress={() => {
-                if (stage === "select_class") handleSelectClass(item);
-                else if (stage === "select_student") handleSelectStudent(item);
-                else handleSelectParent(item);
-              }}
-            >
-              <View
+        renderItem={({ item, index }) => {
+          if (isBroadcastMode) {
+            const isSelectedForBroadcast = selectedParentUids.includes(item.uid);
+            return (
+              <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50}>
+                <TouchableOpacity
+                  style={[
+                    styles.listItem,
+                    isSelectedForBroadcast && styles.selectedListItem,
+                  ]}
+                  onPress={() => toggleSelectParentForBroadcast(item.uid)}
+                >
+                  <View style={{ marginRight: 12 }}>
+                    <SVGIcon
+                      name={isSelectedForBroadcast ? "checkbox" : "square-outline"}
+                      size={22}
+                      color={isSelectedForBroadcast ? primary : "#94A3B8"}
+                    />
+                  </View>
+                  <View
+                    style={[
+                      styles.listIconBox,
+                      { backgroundColor: primary + "10" },
+                    ]}
+                  >
+                    <SVGIcon name="person" size={20} color={primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.listItemText}>{item.fullName}</Text>
+                    {item.email ? (
+                      <Text style={styles.listItemSubText}>{item.email}</Text>
+                    ) : null}
+                  </View>
+                </TouchableOpacity>
+              </Animatable.View>
+            );
+          }
+
+          const chatId = stage === "select_parent" && !isBroadcastMode ? generateChatId(appUser!.uid, item.uid) : "";
+          const unread = chatId ? (directUnread[chatId] || 0) : 0;
+          const hasUnread = unread > 0;
+
+          return (
+            <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50}>
+              <TouchableOpacity
                 style={[
-                  styles.listIconBox,
-                  { backgroundColor: primary + "10" },
+                  styles.listItem,
+                  hasUnread && { backgroundColor: primary + "0D", borderColor: primary + "40", borderWidth: 1.5 },
                 ]}
+                onPress={() => {
+                  if (stage === "select_class") handleSelectClass(item);
+                  else if (stage === "select_student") handleSelectStudent(item);
+                  else handleSelectParent(item);
+                }}
               >
-                <SVGIcon
-                  name={stage === "select_class" ? "school" : "person"}
-                  size={20}
-                  color={primary}
-                />
-              </View>
-              <Text style={styles.listItemText}>
-                {item.name || item.fullName}
-              </Text>
-              <SVGIcon name="chevron-forward" size={18} color="#CBD5E1" />
-            </TouchableOpacity>
-          </Animatable.View>
-        )}
+                <View
+                  style={[
+                    styles.listIconBox,
+                    { backgroundColor: primary + "10" },
+                  ]}
+                >
+                  <SVGIcon
+                    name={stage === "select_class" ? "school" : "person"}
+                    size={20}
+                    color={primary}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <Text style={[styles.listItemText, hasUnread && { fontWeight: "800", color: primary }]}>
+                      {item.name || item.fullName}
+                    </Text>
+                    {hasUnread && (
+                      <View style={styles.newBadgePill}>
+                        <Text style={styles.newBadgeText}>New</Text>
+                      </View>
+                    )}
+                  </View>
+                  {stage === "select_parent" && item.email ? (
+                    <Text style={styles.listItemSubText}>{item.email}</Text>
+                  ) : null}
+                </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  {hasUnread && <UnreadBadge count={unread} />}
+                  <SVGIcon name="chevron-forward" size={18} color="#CBD5E1" />
+                </View>
+              </TouchableOpacity>
+            </Animatable.View>
+          );
+        }}
         ListEmptyComponent={() => (
           <View style={styles.emptyCenter}>
             <SVGIcon name="chatbubbles" size={64} color="#CBD5E1" />
@@ -638,7 +1056,123 @@ export default function TeacherChatWithParent() {
           </View>
         )}
       />
+
+      <Modal
+        visible={isBroadcastModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsBroadcastModalOpen(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Broadcast Message 📢</Text>
+                <Text style={styles.modalSubTitle}>
+                  Sending to {selectedParentUids.length} selected parent(s)
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setIsBroadcastModalOpen(false)}
+                style={styles.modalCloseBtn}
+              >
+                <SVGIcon name="close" size={22} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
+              <Text style={styles.modalInputLabel}>MESSAGE TEXT</Text>
+              <TextInput
+                style={styles.modalTextInput}
+                placeholder="Type your broadcast message here..."
+                placeholderTextColor="#94A3B8"
+                value={broadcastText}
+                onChangeText={setBroadcastText}
+                multiline
+                numberOfLines={4}
+              />
+
+              <Text style={[styles.modalInputLabel, { marginTop: 16 }]}>
+                VOICE MESSAGE (OPTIONAL)
+              </Text>
+              {broadcastPreviewUri ? (
+                <View style={styles.broadcastAudioPreviewRow}>
+                  <View style={{ flex: 1 }}>
+                    <AudioPlayer url={broadcastPreviewUri} />
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setBroadcastPreviewUri(null)}
+                    style={styles.deleteAudioBtn}
+                  >
+                    <SVGIcon name="close-circle" size={24} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={broadcastRecording ? stopBroadcastRecording : startBroadcastRecording}
+                  style={[
+                    styles.broadcastMicBtn,
+                    broadcastRecording && styles.broadcastRecordingActive,
+                  ]}
+                >
+                  <SVGIcon
+                    name={broadcastRecording ? "square" : "mic"}
+                    size={20}
+                    color={broadcastRecording ? "#fff" : primary}
+                  />
+                  <Text
+                    style={[
+                      styles.broadcastMicText,
+                      broadcastRecording && { color: "#fff" },
+                    ]}
+                  >
+                    {broadcastRecording ? "Stop Recording" : "Record Voice Message"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+
+            {broadcastUploading && (
+              <View style={styles.uploadingBox}>
+                <ActivityIndicator size="small" color={primary} />
+                <Text style={styles.uploadingText}>Uploading audio...</Text>
+              </View>
+            )}
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                onPress={() => setIsBroadcastModalOpen(false)}
+                style={styles.modalCancelBtn}
+                disabled={sendingBroadcast}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSendTeacherBroadcast}
+                style={[styles.modalSubmitBtn, { backgroundColor: primary }]}
+                disabled={sendingBroadcast}
+              >
+                {sendingBroadcast ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <SVGIcon name="send" size={16} color="#fff" />
+                    <Text style={styles.modalSubmitText}>
+                      Send ({selectedParentUids.length})
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 
@@ -745,4 +1279,195 @@ const styles = StyleSheet.create({
     marginTop: 150,
   },
   emptyText: { color: "#94A3B8", marginTop: 15, fontWeight: "600" },
+  listItemSubText: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  selectedListItem: {
+    borderColor: "#3B82F6",
+    borderWidth: 1,
+    backgroundColor: "#F0F6FF",
+  },
+  broadcastToggleHeaderBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  broadcastToggleHeaderText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  broadcastActionBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  selectAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  selectAllText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  selectedCountBadge: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  composeBroadcastBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  composeBroadcastText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 20,
+    ...SHADOWS.medium,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  modalSubTitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+    fontWeight: "600",
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalInputLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#64748B",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  modalTextInput: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 16,
+    padding: 12,
+    fontSize: 14,
+    color: "#1E293B",
+    textAlignVertical: "top",
+    minHeight: 90,
+  },
+  broadcastAudioPreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    padding: 10,
+    borderRadius: 16,
+    gap: 10,
+  },
+  deleteAudioBtn: {
+    padding: 4,
+  },
+  broadcastMicBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F1F5F9",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+  },
+  broadcastRecordingActive: {
+    backgroundColor: "#EF4444",
+  },
+  broadcastMicText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  uploadingBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginVertical: 10,
+  },
+  uploadingText: {
+    fontSize: 12,
+    color: "#64748B",
+  },
+  modalFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 12,
+    marginTop: 20,
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  modalCancelText: {
+    color: "#64748B",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  modalSubmitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    gap: 8,
+  },
+  modalSubmitText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  newBadgePill: {
+    backgroundColor: "#ef4444",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  newBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "800",
+  },
 });

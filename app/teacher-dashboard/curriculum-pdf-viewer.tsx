@@ -29,6 +29,7 @@ import * as FileSystem from 'expo-file-system';
 import { WebView } from 'react-native-webview';
 import SVGIcon from '../../components/SVGIcon';
 import StationaryBackground from '../../components/StationaryBackground';
+import { TierProtectedRoute } from '../../components/TierProtectedRoute';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { db } from '../../firebaseConfig';
@@ -225,7 +226,8 @@ export default function CurriculumPdfViewerScreen() {
   }, [curriculums, selectedCurrType, selectedSubject, searchQuery]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="teacher_curriculum_pdf">
+      <SafeAreaView style={styles.container}>
       <StationaryBackground />
       <StatusBar barStyle="dark-content" />
 
@@ -509,6 +511,7 @@ export default function CurriculumPdfViewerScreen() {
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

@@ -39,6 +39,7 @@ import { db } from "../../firebaseConfig";
 import { useToast } from "../../contexts/ToastContext";
 import { Audience, NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { fetchCategories, fetchNewsForAudience } from "../../lib/newsFetcher";
 
@@ -122,8 +123,13 @@ export default function TeacherNewsScreen() {
 
     if (isNavigating.current) return true;
     isNavigating.current = true;
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
 
-    if (router.canGoBack()) {
+    if (Platform.OS === "web") {
+      router.replace("/teacher-dashboard");
+    } else if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/teacher-dashboard");
@@ -340,7 +346,8 @@ export default function TeacherNewsScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="teacher_broadcasts">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       {renderHeader()}
       
@@ -391,6 +398,7 @@ export default function TeacherNewsScreen() {
         )}
       />
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

@@ -1,13 +1,18 @@
 import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDoc, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "../firebaseConfig";
 import { useAuth } from "../contexts/AuthContext";
-import { NotificationPayload, markNotificationsAsRead } from "../src/services/notificationService";
+import {
+  NotificationPayload,
+  markNotificationsAsRead,
+  markSingleNotificationAsRead,
+} from "../src/services/notificationService";
 
 export interface ExtendedNotification extends NotificationPayload {
   id: string;
   read: boolean;
   timestamp: any;
+  resolved?: boolean;
 }
 
 export function useUnreadNotifications() {
@@ -24,8 +29,6 @@ export function useUnreadNotifications() {
       return;
     }
 
-    // Query without orderBy("timestamp", "desc") to prevent Firestore composite index requirements
-    // and local optimistic write exclusions when timestamp is serverTimestamp().
     const q = query(
       collection(db, "notifications"),
       where("recipientId", "==", appUser.uid),
@@ -34,8 +37,8 @@ export function useUnreadNotifications() {
 
     const unsubscribe = onSnapshot(
       q,
-      (snapshot) => {
-        const items: ExtendedNotification[] = snapshot.docs
+      async (snapshot) => {
+        const rawItems: ExtendedNotification[] = snapshot.docs
           .map((d) => ({
             id: d.id,
             ...(d.data() as NotificationPayload),
@@ -48,8 +51,42 @@ export function useUnreadNotifications() {
             return tB - tA;
           });
 
-        setUnreadNotifications(items);
-        setUnreadCount(items.length);
+        // Smart check: Verify whether pending items have already been attended to/approved
+        const validItems: ExtendedNotification[] = [];
+
+        for (const item of rawItems) {
+          let isResolved = false;
+          try {
+            if (item.type === "score" && item.data?.docId) {
+              const recSnap = await getDoc(doc(db, "academicRecords", item.data.docId));
+              if (recSnap.exists() && recSnap.data()?.status === "approved") {
+                isResolved = true;
+              }
+            } else if (item.type === "assignment" && item.data?.assignmentId) {
+              const asgSnap = await getDoc(doc(db, "assignments", item.data.assignmentId));
+              if (asgSnap.exists() && asgSnap.data()?.status === "approved") {
+                isResolved = true;
+              }
+            } else if (item.type === "submission" && item.data?.submissionId) {
+              const subSnap = await getDoc(doc(db, "submissions", item.data.submissionId));
+              if (subSnap.exists() && subSnap.data()?.marked === true) {
+                isResolved = true;
+              }
+            }
+          } catch (e) {
+            // Ignore error and retain item
+          }
+
+          if (isResolved) {
+            // Silently mark resolved notification as read in Firestore
+            markSingleNotificationAsRead(item.id);
+          } else {
+            validItems.push(item);
+          }
+        }
+
+        setUnreadNotifications(validItems);
+        setUnreadCount(validItems.length);
         setLoading(false);
       },
       (error) => {

@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import {
   collection,
   getDocsFromServer,
+  getDocs,
   query,
   where,
   orderBy,
@@ -36,6 +37,7 @@ import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import QuestionResponseItem from "../../components/student-dashboard/assignments/QuestionResponseItem";
 import AssignmentReviewModal from "../../components/admin-dashboard/AssignmentReviewModal";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
@@ -134,29 +136,29 @@ const getWeekRange = () => {
 };
 
 /**
- * Extracts a moment Date object from various Firestore doc formats
+ * Fast timestamp extractor from various Firestore doc formats
  */
-const getDocDate = (data: any): moment.Moment | null => {
+const getDocTimestampMs = (data: any): number | null => {
   if (!data) return null;
   const raw = data.createdAt || data.date || data.timestamp || data.markedAt || data.submittedAt || data.updatedAt;
   if (!raw) return null;
 
   try {
     if (typeof raw.toDate === 'function') {
-      return moment(raw.toDate());
+      return raw.toDate().getTime();
     }
     if (raw instanceof Date) {
-      return moment(raw);
+      return raw.getTime();
     }
     if (typeof raw === 'number') {
-      return moment(raw);
-    }
-    if (typeof raw === 'string') {
-      const m = moment(raw);
-      if (m.isValid()) return m;
+      return raw;
     }
     if (raw.seconds) {
-      return moment(raw.seconds * 1000);
+      return raw.seconds * 1000;
+    }
+    if (typeof raw === 'string') {
+      const t = Date.parse(raw);
+      return isNaN(t) ? null : t;
     }
   } catch (e) {
     return null;
@@ -165,12 +167,20 @@ const getDocDate = (data: any): moment.Moment | null => {
 };
 
 /**
- * Checks if document timestamp falls in current week
+ * Extracts a moment Date object from various Firestore doc formats
  */
-const isDocInCurrentWeek = (data: any, startOfWeek: moment.Moment, endOfWeek: moment.Moment) => {
-  const m = getDocDate(data);
-  if (!m) return false;
-  return m.isSameOrAfter(startOfWeek) && m.isSameOrBefore(endOfWeek);
+const getDocDate = (data: any): moment.Moment | null => {
+  const ts = getDocTimestampMs(data);
+  return ts ? moment(ts) : null;
+};
+
+/**
+ * Checks if document timestamp falls in current week using fast numeric comparison
+ */
+const isDocInCurrentWeek = (data: any, startMs: number, endMs: number) => {
+  const ts = getDocTimestampMs(data);
+  if (ts === null) return false;
+  return ts >= startMs && ts <= endMs;
 };
 
 /**
@@ -255,15 +265,16 @@ export default function TeacherStatistics() {
   const primary = SCHOOL_CONFIG.primaryColor;
   const secondary = SCHOOL_CONFIG.secondaryColor;
 
-  const fetchStatistics = useCallback(async () => {
+  const fetchStatistics = useCallback(async (showLoading = true) => {
     if (!appUser) return;
     try {
-      setLoading(true);
+      if (showLoading && isMounted.current) setLoading(true);
 
-      const { startOfWeek, endOfWeek } = getWeekRange();
+      const startOfWeekMs = moment().day(0).startOf('day').valueOf();
+      const endOfWeekMs = moment().day(6).endOf('day').valueOf();
 
-      // 0. Fetch metadata once
-      const classesSnap = await getDocsFromServer(collection(db, "classes"));
+      // 0. Fetch metadata once using cached Firestore query
+      const classesSnap = await getDocs(collection(db, "classes"));
       const newClassMap: Record<string, string> = {};
       classesSnap.forEach((doc: any) => {
         const data = doc.data() as any;
@@ -271,7 +282,7 @@ export default function TeacherStatistics() {
       });
       if (isMounted.current) setClassMap(newClassMap);
 
-      // 1. Batch Fetch all required collections for the school
+      // 1. Batch Fetch all required collections for the school using getDocs (cache-friendly)
       const [
         teacherSnap,
         allAssignmentsSnap,
@@ -282,21 +293,21 @@ export default function TeacherStatistics() {
         allNotesSnap,
         allAcademicRecordsSnap
       ] = await Promise.all([
-        getDocsFromServer(query(collection(db, "users"), where("role", "in", ["teacher", "admin", "superadmin", "super admin"]))),
-        getDocsFromServer(collection(db, "assignments")),
-        getDocsFromServer(collection(db, "studentGroups")),
-        getDocsFromServer(collection(db, "weeklyTopics")),
-        getDocsFromServer(collection(db, "attendance")),
-        getDocsFromServer(query(collection(db, "submissions"), where("marked", "==", true))),
-        getDocsFromServer(collection(db, "teacher_notes")),
-        getDocsFromServer(collection(db, "academicRecords")),
+        getDocs(query(collection(db, "users"), where("role", "in", ["teacher", "admin", "superadmin", "super admin"]))),
+        getDocs(collection(db, "assignments")),
+        getDocs(collection(db, "studentGroups")),
+        getDocs(collection(db, "weeklyTopics")),
+        getDocs(collection(db, "attendance")),
+        getDocs(query(collection(db, "submissions"), where("marked", "==", true))),
+        getDocs(collection(db, "teacher_notes")),
+        getDocs(collection(db, "academicRecords")),
       ]);
 
-      const now = new Date();
+      const nowMs = Date.now();
       const isExpired = (a: any) => {
         if (!a.dueDate) return false;
-        const due = a.dueDate.toDate ? a.dueDate.toDate() : new Date(a.dueDate);
-        return due.getTime() < now.getTime();
+        const dueMs = getDocTimestampMs({ createdAt: a.dueDate });
+        return dueMs !== null && dueMs < nowMs;
       };
 
       // Map collections into All-Time and Weekly datasets per teacher
@@ -313,7 +324,7 @@ export default function TeacherStatistics() {
         if (!assignmentMap[tId]) assignmentMap[tId] = [];
         assignmentMap[tId].push(item);
 
-        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+        if (isDocInCurrentWeek(data, startOfWeekMs, endOfWeekMs)) {
           if (!weeklyAssignmentMap[tId]) weeklyAssignmentMap[tId] = [];
           weeklyAssignmentMap[tId].push(item);
         }
@@ -330,7 +341,7 @@ export default function TeacherStatistics() {
         groupMap[tId].push(data);
 
         // Include in weekly if created/updated this week or active doc
-        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek) || !getDocDate(data)) {
+        if (isDocInCurrentWeek(data, startOfWeekMs, endOfWeekMs) || !getDocTimestampMs(data)) {
           if (!weeklyGroupMap[tId]) weeklyGroupMap[tId] = [];
           weeklyGroupMap[tId].push(data);
         }
@@ -346,7 +357,7 @@ export default function TeacherStatistics() {
         if (!topicMap[tId]) topicMap[tId] = [];
         topicMap[tId].push(data);
 
-        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+        if (isDocInCurrentWeek(data, startOfWeekMs, endOfWeekMs)) {
           if (!weeklyTopicMap[tId]) weeklyTopicMap[tId] = [];
           weeklyTopicMap[tId].push(data);
         }
@@ -361,7 +372,7 @@ export default function TeacherStatistics() {
 
         attendanceMap[tId] = (attendanceMap[tId] || 0) + 1;
 
-        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+        if (isDocInCurrentWeek(data, startOfWeekMs, endOfWeekMs)) {
           weeklyAttendanceMap[tId] = (weeklyAttendanceMap[tId] || 0) + 1;
         }
       });
@@ -375,7 +386,7 @@ export default function TeacherStatistics() {
 
         markedSubmissionsMap[tId] = (markedSubmissionsMap[tId] || 0) + 1;
 
-        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+        if (isDocInCurrentWeek(data, startOfWeekMs, endOfWeekMs)) {
           weeklyMarkedSubmissionsMap[tId] = (weeklyMarkedSubmissionsMap[tId] || 0) + 1;
         }
       });
@@ -389,7 +400,7 @@ export default function TeacherStatistics() {
 
         notesMap[tId] = (notesMap[tId] || 0) + 1;
 
-        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+        if (isDocInCurrentWeek(data, startOfWeekMs, endOfWeekMs)) {
           weeklyNotesMap[tId] = (weeklyNotesMap[tId] || 0) + 1;
         }
       });
@@ -403,7 +414,7 @@ export default function TeacherStatistics() {
 
         academicRecordsMap[tId] = (academicRecordsMap[tId] || 0) + 1;
 
-        if (isDocInCurrentWeek(data, startOfWeek, endOfWeek)) {
+        if (isDocInCurrentWeek(data, startOfWeekMs, endOfWeekMs)) {
           weeklyAcademicRecordsMap[tId] = (weeklyAcademicRecordsMap[tId] || 0) + 1;
         }
       });
@@ -545,52 +556,43 @@ export default function TeacherStatistics() {
     }
   }, [appUser, CACHE_KEY]);
 
-  const loadCachedData = async () => {
-    try {
-      const cached = await AsyncStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const { timestamp, data, classMap: cachedClassMap } = JSON.parse(cached);
-        const age = Date.now() - timestamp;
-
-        if (isMounted.current) {
-          if (cachedClassMap) setClassMap(cachedClassMap);
-          setTeachers(data);
-          lastFetchRef.current = timestamp;
-
-          if (age < CACHE_EXPIRY) {
-            setLoading(false);
-            return true;
-          }
-        }
-      }
-    } catch (e) {
-      console.error("Cache load error:", e);
-    }
-    return false;
-  };
-
   useEffect(() => {
     if (!appUser) return;
 
     const init = async () => {
-      const isCacheValid = await loadCachedData();
-      if (!isCacheValid) {
-        fetchStatistics();
+      let hasCachedData = false;
+      try {
+        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        if (cached && isMounted.current) {
+          const { data, classMap: cachedClassMap } = JSON.parse(cached);
+          if (cachedClassMap) setClassMap(cachedClassMap);
+          if (data && Array.isArray(data) && data.length > 0) {
+            setTeachers(data);
+            setLoading(false);
+            hasCachedData = true;
+          }
+        }
+      } catch (e) {
+        console.error("Cache load error:", e);
       }
+
+      // Fetch fresh data in background if cache loaded, or show spinner if no cache
+      fetchStatistics(!hasCachedData);
     };
+
     init();
 
     const subscription = AppState.addEventListener("change", nextAppState => {
       if (nextAppState === "active" && appUser) {
         const age = Date.now() - lastFetchRef.current;
-        if (age > CACHE_EXPIRY) {
-          fetchStatistics();
+        if (age > 10 * 60 * 1000) {
+          fetchStatistics(false);
         }
       }
     });
 
     return () => subscription.remove();
-  }, [fetchStatistics, appUser]);
+  }, [fetchStatistics, appUser, CACHE_KEY]);
 
   // Derived teacher list based on current timePeriod filter
   const displayTeachers = useMemo(() => {
@@ -830,7 +832,8 @@ export default function TeacherStatistics() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="admin_teacher_stats">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[primary, "#1E293B"]} style={styles.headerGradient}>
         <View style={styles.headerTitleRow}>
@@ -1371,6 +1374,7 @@ export default function TeacherStatistics() {
         onStatusUpdate={handleStatusUpdate}
       />
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

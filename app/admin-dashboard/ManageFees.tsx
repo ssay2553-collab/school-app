@@ -1,6 +1,6 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Animated,
@@ -26,6 +26,7 @@ import { FeePaymentModal } from "../../components/admin-dashboard/FeePaymentModa
 import { FeeSearchStrip } from "../../components/admin-dashboard/FeeSearchStrip";
 import { FeeStatsDashboard } from "../../components/admin-dashboard/FeeStatsDashboard";
 import { FeeStudentCard } from "../../components/admin-dashboard/FeeStudentCard";
+import { FeeAddDiscountModal } from "../../components/admin-dashboard/FeeAddDiscountModal";
 import SVGIcon from "../../components/SVGIcon";
 
 // Constants & Hooks
@@ -54,6 +55,8 @@ export default function ManageFees() {
       isMounted.current = false;
     };
   }, []);
+
+  const [addDiscountModalVisible, setAddDiscountModalVisible] = useState(false);
 
   const {
     saving,
@@ -401,7 +404,27 @@ export default function ManageFees() {
               />
 
               <View style={styles.listHeaderRow}>
-                <Text style={styles.listTitle}>Student Directory</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.listTitle}>Student Directory</Text>
+                  {activeMode === "discounts" && canEdit && (
+                    <TouchableOpacity
+                      onPress={() => setAddDiscountModalVisible(true)}
+                      style={{
+                        marginLeft: 10,
+                        backgroundColor: VIBE.primary,
+                        borderRadius: 16,
+                        width: 28,
+                        height: 28,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        flexDirection: 'row',
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <SVGIcon name="add" size={16} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
                 <View style={styles.filterChips}>
                   {["all", "debt", "cleared"].map((f) => (
                     <TouchableOpacity
@@ -576,6 +599,17 @@ export default function ManageFees() {
         onDateChange={setSelectedDailyDate}
         dailyPayments={dailyPayments}
         loading={loadingDaily}
+      />
+
+      <FeeAddDiscountModal
+        visible={addDiscountModalVisible}
+        onClose={() => setAddDiscountModalVisible(false)}
+        students={students}
+        academicYear={academicYear}
+        term={term}
+        showToast={showToast}
+        fetchStudents={fetchStudents}
+        canEdit={canEdit}
       />
     </SafeAreaView>
   );

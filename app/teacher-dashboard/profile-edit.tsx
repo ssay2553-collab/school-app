@@ -96,6 +96,9 @@ export default function TeacherProfileEdit() {
           onPress={() => {
             if (isNavigating.current) return;
             isNavigating.current = true;
+            setTimeout(() => {
+              isNavigating.current = false;
+            }, 500);
             handleBack();
           }}
           style={styles.backBtn}

@@ -17,6 +17,7 @@ import {
 import * as Animatable from "react-native-animatable";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { LessonCard } from "../../components/teacher-dashboard/LessonCard";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -190,7 +191,8 @@ export default function TeacherTimetable() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+    <TierProtectedRoute featureId="teacher_timetable">
+      <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <LinearGradient
         colors={[brandColor, "#1E293B"]}
@@ -342,6 +344,7 @@ export default function TeacherTimetable() {
         )}
       </ScrollView>
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

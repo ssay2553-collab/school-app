@@ -18,6 +18,7 @@ import {
   or,
 } from "firebase/firestore";
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import {
   ActivityIndicator,
   Alert,
@@ -42,14 +43,26 @@ import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import { LinearGradient } from "expo-linear-gradient";
 import moment from "moment";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
+import { AudioPlayer } from "../../components/AudioPlayer";
+import { LiveCallBanner } from "../../components/LiveCallBanner";
+import { GroupMeetingModal } from "../../components/GroupMeetingModal";
+import { StartMeetingModal } from "../../components/StartMeetingModal";
+import {
+  GroupMeeting,
+  subscribeToActiveMeeting,
+  startGroupMeeting,
+  joinGroupMeeting,
+  endGroupMeeting,
+} from "../../src/services/groupMeetingService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
-import { db } from "../../firebaseConfig";
+import { db, storage } from "../../firebaseConfig";
 import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
@@ -59,7 +72,7 @@ type Message = {
   from: string;
   senderName: string;
   text?: string;
-  type: "text" | "image" | "file";
+  type: "text" | "image" | "file" | "audio";
   fileUrl?: string;
   fileName?: string;
   timestamp: any;
@@ -90,6 +103,9 @@ type Staff = {
 /* ======================================================
    CHAT VIEW — COST OPTIMIZED + AUDIO FEEDBACK
 ====================================================== */
+/* ======================================================
+   CHAT VIEW — COST OPTIMIZED + AUDIO FEEDBACK
+====================================================== */
 const GroupChatView = ({
   group,
   onBack,
@@ -98,6 +114,7 @@ const GroupChatView = ({
   onBack: () => void;
 }) => {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const { markChatRead } = useUnreadCounts();
   const [messages, setMessages] = useState<Message[]>([]);
   const messagesRef = useRef<Message[]>([]);
@@ -106,6 +123,15 @@ const GroupChatView = ({
 
   const soundRef = useRef<Audio.Sound | null>(null);
   const isFirstLoad = useRef(true);
+
+  // Meeting state
+  const [activeMeeting, setActiveMeeting] = useState<GroupMeeting | null>(null);
+  const [startMeetingModalVisible, setStartMeetingModalVisible] = useState(false);
+  const [inCallModalVisible, setInCallModalVisible] = useState(false);
+
+  // Voice note recording state
+  const [recording, setRecording] = useState<any | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const primary = SCHOOL_CONFIG.primaryColor;
 
@@ -122,6 +148,83 @@ const GroupChatView = ({
       if (soundRef.current) soundRef.current.unloadAsync();
     };
   }, []);
+
+  // Subscribe to active meeting for group
+  useEffect(() => {
+    if (!group.id) return;
+    const unsub = subscribeToActiveMeeting(group.id, (meeting) => {
+      setActiveMeeting(meeting);
+    });
+    return () => unsub();
+  }, [group.id]);
+
+  const currentUserInfo = {
+    uid: appUser?.uid || "guest",
+    fullName: senderName,
+    userType: appUser?.role || "teacher",
+  };
+
+  const handleStartClassroom = async (title: string) => {
+    if (!group.id || !appUser) return;
+    const meetingId = await startGroupMeeting(
+      group.id,
+      "student",
+      title,
+      currentUserInfo
+    );
+    setInCallModalVisible(true);
+  };
+
+  const handleJoinClassroom = async () => {
+    if (!activeMeeting || !appUser) return;
+    await joinGroupMeeting(activeMeeting.id, currentUserInfo);
+    setInCallModalVisible(true);
+  };
+
+  const handleEndClassroom = async () => {
+    if (!activeMeeting) return;
+    await endGroupMeeting(activeMeeting.id);
+  };
+
+  const startVoiceRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) return;
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setRecording(recording);
+    } catch (e) {
+      console.error("Error starting recording:", e);
+    }
+  };
+
+  const stopVoiceRecordingAndSend = async () => {
+    if (!recording) return;
+    try {
+      setUploading(true);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setRecording(null);
+      if (!uri) return;
+
+      const blob = await (await fetch(uri)).blob();
+      const audioRef = ref(storage, `chats/groups/${group.id}/${Date.now()}.m4a`);
+      await uploadBytes(audioRef, blob);
+      const audioUrl = await getDownloadURL(audioRef);
+
+      await send("audio", { fileUrl: audioUrl, text: "🎵 Voice note" });
+    } catch (e) {
+      console.error("Failed to send voice note:", e);
+      showToast({ message: "Failed to send voice note", type: "error" });
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const playSound = async (type: "sent" | "received") => {
     try {
@@ -144,7 +247,7 @@ const GroupChatView = ({
     const q = query(
       collection(db, "studentGroups", group.id, "messages"),
       orderBy("timestamp", "asc"),
-      limit(50),
+      limit(50)
     );
 
     const unsubscribe = onSnapshot(
@@ -166,12 +269,12 @@ const GroupChatView = ({
         isFirstLoad.current = false;
         setTimeout(
           () => flatListRef.current?.scrollToEnd({ animated: true }),
-          100,
+          100
         );
       },
       (err) => {
         console.error("Teacher Group Chat Error:", err);
-      },
+      }
     );
     return () => unsubscribe();
   }, [group.id, appUser?.uid]);
@@ -180,7 +283,7 @@ const GroupChatView = ({
     messagesRef.current = messages;
   }, [messages]);
 
-  const send = async (type: "text" | "image" | "file", content: any) => {
+  const send = async (type: "text" | "image" | "file" | "audio", content: any) => {
     if (!appUser) return;
     const data: any = {
       from: appUser.uid,
@@ -212,8 +315,25 @@ const GroupChatView = ({
           <Text style={styles.chatTitle}>{group.name}</Text>
           <Text style={styles.chatSubTitle}>Collaborative Study Group</Text>
         </View>
-        <View style={{ width: 40 }} />
+
+        <TouchableOpacity
+          style={styles.callHeaderBtn}
+          onPress={() => setStartMeetingModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <SVGIcon name="call" size={16} color="#FFFFFF" />
+          <Text style={styles.callHeaderBtnText}>Classroom</Text>
+        </TouchableOpacity>
       </View>
+
+      {activeMeeting && (
+        <LiveCallBanner
+          meeting={activeMeeting}
+          onJoin={handleJoinClassroom}
+          onEnd={handleEndClassroom}
+          isHost={activeMeeting.hostUid === currentUserInfo.uid}
+        />
+      )}
 
       <FlatList
         ref={flatListRef}
@@ -223,7 +343,11 @@ const GroupChatView = ({
           <MessageBubble
             message={{ ...item, createdAt: item.timestamp }}
             isYou={item.from === appUser?.uid}
-          />
+          >
+            {item.type === "audio" && item.fileUrl ? (
+              <AudioPlayer url={item.fileUrl} />
+            ) : null}
+          </MessageBubble>
         )}
         contentContainerStyle={{ padding: 16 }}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
@@ -231,6 +355,22 @@ const GroupChatView = ({
       />
 
       <View style={styles.inputBar}>
+        {uploading && (
+          <ActivityIndicator size="small" color={primary} style={{ marginRight: 8 }} />
+        )}
+
+        <TouchableOpacity
+          onPressIn={startVoiceRecording}
+          onPressOut={stopVoiceRecordingAndSend}
+          style={[styles.iconBtn, recording && styles.recordingBtn]}
+        >
+          <SVGIcon
+            name={recording ? "mic" : "mic-outline"}
+            size={24}
+            color={recording ? "#fff" : primary}
+          />
+        </TouchableOpacity>
+
         <TextInput
           style={styles.input}
           placeholder="Type your message..."
@@ -239,6 +379,7 @@ const GroupChatView = ({
           onChangeText={setMessageText}
           multiline
         />
+
         <TouchableOpacity
           onPress={() => {
             if (messageText.trim()) {
@@ -252,6 +393,23 @@ const GroupChatView = ({
           <SVGIcon name="send" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
+
+      {/* Start Meeting Modal */}
+      <StartMeetingModal
+        visible={startMeetingModalVisible}
+        onClose={() => setStartMeetingModalVisible(false)}
+        onStartMeeting={handleStartClassroom}
+        groupType="student"
+        groupName={group.name}
+      />
+
+      {/* Live Voice Meeting Room Modal */}
+      <GroupMeetingModal
+        visible={inCallModalVisible}
+        meeting={activeMeeting}
+        currentUser={currentUserInfo}
+        onClose={() => setInCallModalVisible(false)}
+      />
     </KeyboardAvoidingView>
   );
 };
@@ -303,14 +461,17 @@ export default function TeacherStudentGroups() {
     } else {
       if (isNavigating.current) return true;
       isNavigating.current = true;
-      if (router.canGoBack()) {
+      setTimeout(() => {
+        isNavigating.current = false;
+      }, 500);
+
+      const targetRoute = appUser?.role === "admin" ? "/admin-dashboard" : "/teacher-dashboard";
+      if (Platform.OS === "web") {
+        router.replace(targetRoute as any);
+      } else if (router.canGoBack()) {
         router.back();
       } else {
-        if (appUser?.role === "admin") {
-          router.replace("/admin-dashboard");
-        } else {
-          router.replace("/teacher-dashboard");
-        }
+        router.replace(targetRoute as any);
       }
     }
     return true;
@@ -535,7 +696,8 @@ export default function TeacherStudentGroups() {
     return <GroupChatView group={activeGroup} onBack={handleBack} />;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="teacher_study_group">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
       {view === "LIST" && (
@@ -819,6 +981,7 @@ export default function TeacherStudentGroups() {
         </ScrollView>
       )}
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 
@@ -934,6 +1097,36 @@ const styles = StyleSheet.create({
   },
   chatTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B" },
   chatSubTitle: { fontSize: 11, color: "#94A3B8", fontWeight: "700" },
+  callHeaderBtn: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  callHeaderBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  iconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#F1F5F9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  recordingBtn: {
+    backgroundColor: "#EF4444",
+  },
   inputBar: {
     flexDirection: "row",
     padding: 15,

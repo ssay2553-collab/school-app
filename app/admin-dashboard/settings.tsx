@@ -37,6 +37,7 @@ import { broadcastFeeReminders } from "../../src/services/feeReminderService";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import Constants from "expo-constants";
 import { SchoolHolidayItem, OperationalType } from "../../hooks/useSchoolOperations";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 
@@ -46,6 +47,8 @@ export default function AdminSettingsScreen() {
   const { theme } = useTheme();
   const { showToast } = useToast();
   const router = useRouter();
+  const acadConfig = useAcademicConfig();
+  const tierCategory = (acadConfig.category || "premium").toUpperCase();
 
   const [isCleaning, setIsCleaning] = useState(false);
   const [repairLoading, setRepairLoading] = useState(false);
@@ -728,6 +731,22 @@ export default function AdminSettingsScreen() {
       </View>
       
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* School Plan & Tier Card */}
+        <View style={[styles.opCard, { backgroundColor: theme.card, borderColor: theme.border, marginBottom: 16 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <SVGIcon name="ribbon" size={22} color={COLORS.primary} />
+              <Text style={[styles.opTitle, { color: theme.text }]}>School Plan & Subscription Tier</Text>
+            </View>
+            <View style={{ backgroundColor: COLORS.primary + "20", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+              <Text style={{ color: COLORS.primary, fontWeight: "900", fontSize: 12 }}>{tierCategory} PLAN</Text>
+            </View>
+          </View>
+          <Text style={styles.opSub}>
+            Your school is currently running on the <Text style={{ fontWeight: "bold" }}>EduEaz {tierCategory}</Text> tier. This defines the available feature sets, staff tools, and portal modules across your institution.
+          </Text>
+        </View>
+
         {/* Academic Off-Day & Data Preservation Triggers Card */}
         <View style={[styles.opCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>

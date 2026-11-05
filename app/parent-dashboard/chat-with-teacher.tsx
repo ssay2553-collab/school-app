@@ -31,6 +31,7 @@ import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
@@ -480,7 +481,8 @@ export default function ParentChatWithTeacher() {
   }
 
   return (
-    <View style={styles.container}>
+    <TierProtectedRoute featureId="parent_chat_teacher">
+      <View style={styles.container}>
       <Text style={[styles.header, { color: primary }]}>
         {stage === "select_child" ? "Select Student" : "Select Teacher"}
       </Text>
@@ -503,6 +505,7 @@ export default function ParentChatWithTeacher() {
         )}
       />
     </View>
+  </TierProtectedRoute>
   );
 }
 

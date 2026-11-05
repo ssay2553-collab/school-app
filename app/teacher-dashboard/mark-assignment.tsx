@@ -21,6 +21,7 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useToast } from "../../contexts/ToastContext";
 import { useMarkAssignment, Submission, Assignment } from "../../hooks/teacher-dashboard/useMarkAssignment";
@@ -260,15 +261,40 @@ const SubmissionItem = React.memo(({
                       style={styles.qScoreInput}
                       keyboardType="numeric"
                       placeholder="0"
-                      value={String(qScoreValue?.[idx] || "")}
+                      value={
+                        qScoreValue?.[idx] !== undefined && qScoreValue?.[idx] !== null
+                          ? String(qScoreValue[idx])
+                          : ""
+                      }
                       onChangeText={(t) => onUpdateQScore(item.id, idx, t)}
                     />
-                    <TouchableOpacity
-                      style={styles.quickFullScore}
-                      onPress={() => onUpdateQScore(item.id, idx, String(q.points || 1))}
-                    >
-                      <SVGIcon name="checkmark-circle" size={16} color={COLORS.primary} />
-                    </TouchableOpacity>
+                    <View style={styles.quickScoreActions}>
+                      <TouchableOpacity
+                        style={[
+                          styles.quickScoreBtn,
+                          styles.quickCorrectBtn,
+                          String(qScoreValue?.[idx]) === String(q.points || 1) &&
+                            styles.quickCorrectActive,
+                        ]}
+                        onPress={() =>
+                          onUpdateQScore(item.id, idx, String(q.points || 1))
+                        }
+                      >
+                        <SVGIcon name="checkmark-circle" size={18} color="#166534" />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.quickScoreBtn,
+                          styles.quickIncorrectBtn,
+                          String(qScoreValue?.[idx]) === "0" &&
+                            styles.quickIncorrectActive,
+                        ]}
+                        onPress={() => onUpdateQScore(item.id, idx, "0")}
+                      >
+                        <SVGIcon name="close-circle" size={18} color="#991B1B" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -320,7 +346,34 @@ const SubmissionItem = React.memo(({
       )}
 
       <View style={styles.feedbackSection}>
-        <Text style={styles.label}>TEACHER'S FEEDBACK</Text>
+        <Text style={styles.label}>TEACHER'S FEEDBACK & REMARKS</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.feedbackChipsRow}
+        >
+          {[
+            "💡 Review Concept",
+            "✏️ Check Calculation",
+            "📝 Incomplete Steps",
+            "🎯 Close Effort!",
+            "⚠️ Wrong Selection",
+            "🌟 Great Work!",
+          ].map((chip) => (
+            <TouchableOpacity
+              key={chip}
+              style={styles.feedbackChip}
+              onPress={() => {
+                const current = feedbackValue || "";
+                const updated = current ? `${current} | ${chip}` : chip;
+                onUpdateFeedback(item.id, updated);
+              }}
+            >
+              <Text style={styles.feedbackChipText}>{chip}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         <TextInput
           style={styles.feedbackInput}
           placeholder="Add comments or feedback for the student/parent..."
@@ -377,7 +430,13 @@ export default function MarkAssignment() {
   const handleBack = useCallback(() => {
     if (isNavigating.current) return true;
     isNavigating.current = true;
-    if (router.canGoBack()) {
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
+
+    if (Platform.OS === "web") {
+      router.replace("/teacher-dashboard");
+    } else if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/teacher-dashboard");
@@ -453,7 +512,8 @@ export default function MarkAssignment() {
   }, [selectedAssignment, submitMark, qScoreInputs, standardMarksInput, feedbackInputs, answerKey, updateQScore, updateStandardMark, updateFeedback, router]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="teacher_grading">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
       <View style={styles.headerArea}>
@@ -626,6 +686,7 @@ export default function MarkAssignment() {
         }
       />
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 
@@ -953,13 +1014,61 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
+  quickScoreActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 8,
+  },
+  quickScoreBtn: {
+    padding: 6,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  quickCorrectBtn: {
+    backgroundColor: "#F0FDF4",
+    borderColor: "#BBF7D0",
+  },
+  quickCorrectActive: {
+    backgroundColor: "#DCFCE7",
+    borderColor: "#22C55E",
+  },
+  quickIncorrectBtn: {
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FECACA",
+  },
+  quickIncorrectActive: {
+    backgroundColor: "#FEE2E2",
+    borderColor: "#EF4444",
+  },
+  feedbackChipsRow: {
+    paddingVertical: 6,
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  feedbackChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  feedbackChipText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#334155",
+  },
   quickFullScore: {
     marginTop: 8,
     padding: 6,
     backgroundColor: COLORS.primary + '10',
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   totalStats: {
     flexDirection: 'row',

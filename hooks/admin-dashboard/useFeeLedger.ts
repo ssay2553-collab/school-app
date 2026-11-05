@@ -657,14 +657,32 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                 batch.update(doc(db, "users", selectedStudentUid), { walletBalance: increment(-amount) });
             }
 
-            batch.update(doc(db, "studentFeeRecords", recordId), { payments: arrayRemove(payment) });
-            if (payment.receiptNo) batch.delete(doc(db, "feePayments", payment.receiptNo));
+            const currentPayments = record?.payments || [];
+            const updatedPayments = currentPayments.filter((p: any) => {
+                if (payment.receiptNo && p.receiptNo) {
+                    return p.receiptNo !== payment.receiptNo;
+                }
+                return !(
+                    Number(p.amount) === Number(payment.amount) &&
+                    (p.type || "").toLowerCase() === (payment.type || "").toLowerCase() &&
+                    String(p.createdAt || p.date || "") === String(payment.createdAt || payment.date || "")
+                );
+            });
+
+            batch.update(doc(db, "studentFeeRecords", recordId), {
+                payments: updatedPayments,
+                lastUpdated: serverTimestamp()
+            });
+
+            if (payment.receiptNo && !payment.receiptNo.startsWith("ADJ-")) {
+                batch.delete(doc(db, "feePayments", payment.receiptNo));
+            }
             await batch.commit();
 
             // Propagate balance reversal to future terms
             const propagationAmount = isPayment ? amount : -amount;
-            const type = (payment.type || "tuition").toLowerCase();
-            const category = type.replace("_payment", "").replace("_credit", "");
+            const txType = (payment.type || "tuition").toLowerCase();
+            const category = txType.replace("_payment", "").replace("_credit", "");
             const pType = isPayment ? 'payment' : 'bill';
             propagateArrears(selectedStudentUid, selectedYear, selectedTerm, propagationAmount, pType, category === 'tuition' ? undefined : category);
 

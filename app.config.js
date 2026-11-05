@@ -22,6 +22,7 @@ module.exports = ({ config }) => {
   const schools = {
     afahjoy: {
       name: "Gilead App",
+      category: "core",
       slug: "afahjoy",
       package: "com.eduease.afahjoy",
       scheme: "afahjoy",
@@ -48,6 +49,7 @@ module.exports = ({ config }) => {
     },
     beano: {
       name: "Beano App",
+      category: "core",
       slug: "beano",
       package: "com.saysmanage.beanoapp",
       scheme: "beano",
@@ -74,6 +76,7 @@ module.exports = ({ config }) => {
     },
     morgis: {
       name: "Kings Kids",
+      category: "core",
       slug: "morgis",
       package: "com.saysmanage.morgisapp",
       scheme: "morgis",
@@ -100,6 +103,7 @@ module.exports = ({ config }) => {
     },
     IBS: {
       name: "A R I app",
+      category: "core",
       slug: "IBS",
       package: "com.saysmanage.jeiriver",
       scheme: "IBS",
@@ -126,13 +130,14 @@ module.exports = ({ config }) => {
     },
     eagles: {
       name: "EduEaz",
+      category: "core",
       slug: "eagles",
       package: "com.saysmanage.eagleapp",
       scheme: "eagle",
       logo: "./assets/icon-aps.jpeg",
       hotline: "0554715716",
       fullName: "EduEaz Schools",
-      motto: "Your Complete Digital System",
+      mottro: "Your Complete Digital System",
       address: "GHANA",
       email: "edueazgh@gmail.com",
       primaryColor: "#148241",
@@ -152,6 +157,7 @@ module.exports = ({ config }) => {
     },
     perfect: {
       name: "Angels Pride",
+      category: "nova",
       slug: "perfect",
       package: "com.saysmanage.peiapp",
       scheme: "perfect",
@@ -178,6 +184,7 @@ module.exports = ({ config }) => {
     },
     creation: {
       name: "Creation Star",
+      category: "nova",
       slug: "creation",
       package: "com.saysmanage.creation",
       scheme: "creation",
@@ -205,6 +212,7 @@ module.exports = ({ config }) => {
 
     jewel: {
       name: "Jewel App",
+      category: "premium",
       slug: "jewel",
       package: "com.saysmanage.jewel",
       scheme: "jewels",
@@ -232,6 +240,7 @@ module.exports = ({ config }) => {
 
     clis: {
       name: "ASAPH APP",
+      category: "core",
       slug: "clis",
       package: "com.saysmanage.clis",
       scheme: "clis",
@@ -258,6 +267,7 @@ module.exports = ({ config }) => {
     },
     model: {
       name: "Model Power",
+      category: "core",
       slug: "model",
       package: "com.saysmanage.modelpower",
       scheme: "modelpower",
@@ -284,6 +294,7 @@ module.exports = ({ config }) => {
     },
     lilies: {
       name: "Lillies App",
+      category: "nova",
       slug: "lilies",
       package: "com.saysmanage.lilies",
       scheme: "lilies",
@@ -311,6 +322,7 @@ module.exports = ({ config }) => {
 
     stone: {
       name: "JOSEPAC APP",
+      category: "premium",
       slug: "stone",
       package: "com.saysmanage.stone",
       scheme: "stone",
@@ -337,6 +349,7 @@ module.exports = ({ config }) => {
     },
     brain: {
       name: "BBMS APP",
+      category: "nova",
       slug: "brain",
       package: "com.saysmanage.brain",
       scheme: "brain",
@@ -363,6 +376,7 @@ module.exports = ({ config }) => {
     },
     cascom: {
       name: "CASCOM App",
+      category: "premium",
       slug: "cascom",
       package: "com.saysmanage.cascom",
       scheme: "cascom",
@@ -390,6 +404,7 @@ module.exports = ({ config }) => {
 
     abijah: {
       name: "Abijah Adesua",
+      category: "premium",
       slug: "abijah",
       package: "com.saysmanage.abijah",
       scheme: "abijah",
@@ -417,6 +432,7 @@ module.exports = ({ config }) => {
 
     bms: {
       name: "BMS App",
+      category: "premium",
       slug: "bms",
       package: "com.saysmanage.bms",
       scheme: "bms",
@@ -443,6 +459,7 @@ module.exports = ({ config }) => {
     },
     kent: {
       name: "World Sage",
+      category: "core",
       slug: "kent",
       package: "com.saysmanage.martbeck",
       scheme: "kent",
@@ -469,6 +486,7 @@ module.exports = ({ config }) => {
     },
     bishops: {
       name: "Bishop App",
+      category: "core",
       slug: "bishops",
       package: "com.saysmanage.firstapp",
       scheme: "bishops",
@@ -556,6 +574,8 @@ module.exports = ({ config }) => {
     ],
     extra: {
       schoolId: selected.slug,
+      category: selected.category || "core",
+      schoolCategory: selected.category || "core",
       schoolData: null, // Hard-disable embedding all schools to prevent leakage
       schoolFullName: selected.fullName,
       schoolHotline: selected.hotline,

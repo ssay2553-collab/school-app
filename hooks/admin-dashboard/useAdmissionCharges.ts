@@ -65,6 +65,7 @@ export const useAdmissionCharges = ({
   selectedTerm,
 }: UseAdmissionChargesProps) => {
   const [loading, setLoading] = useState(false);
+  const isImportingRef = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [students, setStudents] = useState<Student[]>([]);
@@ -706,6 +707,8 @@ export const useAdmissionCharges = ({
   };
 
   const handleBulkImport = async () => {
+    if (isImportingRef.current || loading) return;
+    isImportingRef.current = true;
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "text/comma-separated-values",
@@ -907,6 +910,7 @@ export const useAdmissionCharges = ({
       showToast?.({ message: `Import Failed: ${error.message}`, type: "error" });
     } finally {
       setLoading(false);
+      isImportingRef.current = false;
     }
   };
 

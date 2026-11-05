@@ -86,7 +86,7 @@ export const useFeeDiscounts = ({
               lastUpdated: serverTimestamp(),
             });
           }
-          batch.update(doc(db, "users", uid), { walletBalance: increment(-totalDiscountToApply) });
+          batch.update(doc(db, "users", uid), { walletBalance: increment(-totalDiscountToApply), onDiscount: true });
         }
         await batch.commit();
       }

@@ -25,6 +25,7 @@ import {
 } from "react-native";
 import { AcademicReportPreview } from "../../components/admin-dashboard/AcademicReportPreview";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
 import { SHADOWS } from "../../constants/theme";
@@ -240,7 +241,8 @@ export default function StudentAcademicReport() {
     );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="parent_student_score">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -574,6 +576,7 @@ export default function StudentAcademicReport() {
         </View>
       </Modal>
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

@@ -121,16 +121,22 @@ export default function EditStudentScores() {
   };
 
   const handleDeleteRecord = () => {
-    if (!recordId) return;
+    if (!recordId || deleting) return;
+
+    const performDelete = () => {
+      deleteSubmission();
+    };
 
     if (Platform.OS === "web") {
-      if (
-        window.confirm(
-          "This will permanently delete this subject's scores for this class.",
-        )
-      ) {
-        deleteSubmission();
-      }
+      setTimeout(() => {
+        if (
+          window.confirm(
+            "This will permanently delete this subject's scores for this class.",
+          )
+        ) {
+          performDelete();
+        }
+      }, 50);
     } else {
       Alert.alert(
         "Delete Records?",
@@ -140,7 +146,7 @@ export default function EditStudentScores() {
           {
             text: "Delete Permanently",
             style: "destructive",
-            onPress: deleteSubmission,
+            onPress: performDelete,
           },
         ],
       );
@@ -250,6 +256,7 @@ export default function EditStudentScores() {
                       const isNumbered = [
                         "Class Assessment Task (CAT)",
                         "Trial Test",
+                        "Mock Exams",
                       ].includes(s.reportType);
                       const reportLabel =
                         isNumbered && s.reportNumber
@@ -459,7 +466,7 @@ export default function EditStudentScores() {
 
       {recordId && allStudents.length > 0 && (
         <Animatable.View
-          animation="slideInUp"
+          animation={Platform.OS === "web" ? undefined : "slideInUp"}
           duration={400}
           style={[
             styles.footer,
@@ -700,6 +707,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     ...SHADOWS.large,
+    ...Platform.select({
+      web: { zIndex: 100, pointerEvents: "auto" } as any,
+      default: {},
+    }),
   },
   deleteBtn: {
     width: 48,
@@ -711,7 +722,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FEE2E2",
     ...Platform.select({
-      web: { cursor: "pointer" } as any,
+      web: { cursor: "pointer", touchAction: "manipulation", userSelect: "none" } as any,
       default: {},
     }),
   },

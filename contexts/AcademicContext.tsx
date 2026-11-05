@@ -3,6 +3,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { AppState, AppStateStatus } from "react-native";
 import { db } from "../firebaseConfig";
 import { useAuth } from "./AuthContext";
+import { SCHOOL_CONFIG } from "../constants/Config";
 
 export interface AcademicConfig {
   academicYear: string;
@@ -12,6 +13,7 @@ export interface AcademicConfig {
   nextTermBegins: string;
   schoolName: string;
   extraClassesRate: number;
+  category: string;
   loading: boolean;
 }
 
@@ -27,6 +29,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     nextTermBegins: "",
     schoolName: "",
     extraClassesRate: 0,
+    category: SCHOOL_CONFIG.category || "premium",
     loading: true,
   });
 
@@ -56,6 +59,7 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             nextTermBegins: data.nextTermBegins || "",
             schoolName: data.schoolName || "",
             extraClassesRate: data.extraClassesRate || 0,
+            category: data.category || data.schoolCategory || SCHOOL_CONFIG.category || "premium",
             loading: false,
           });
         } else {
@@ -64,6 +68,10 @@ export const AcademicProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
       }, (error) => {
         console.error("[AcademicContext] Error fetching:", error);
+        if (unsubRef.current) {
+          unsubRef.current();
+          unsubRef.current = null;
+        }
         setConfig(prev => ({ ...prev, loading: false }));
       });
     };

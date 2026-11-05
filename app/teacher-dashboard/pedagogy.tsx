@@ -15,6 +15,7 @@ import {
 import { useRouter } from "expo-router";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useSchoolConfig } from "../../constants/Config";
 import { useToast } from "../../contexts/ToastContext";
@@ -150,7 +151,8 @@ export default function PedagogyScreen() {
   const selectedPedagogy = PEDAGOGY_TIERS.find((t) => t.id === selectedPedagogyId)?.data || JHS_PEDAGOGY;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="teacher_pedagogy_resources">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
       {/* HEADER */}
@@ -429,6 +431,7 @@ export default function PedagogyScreen() {
         )}
       </ScrollView>
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

@@ -218,8 +218,17 @@ export default function CreateLessonTimetable() {
   const handleBack = useCallback(() => {
     if (isNavigating.current) return true;
     isNavigating.current = true;
-    if (router.canGoBack()) router.back();
-    else router.replace("/teacher-dashboard");
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
+
+    if (Platform.OS === "web") {
+      router.replace("/teacher-dashboard");
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/teacher-dashboard");
+    }
     return true;
   }, [router]);
 

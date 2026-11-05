@@ -33,118 +33,122 @@ export const UserCard = React.memo(({
     : [];
 
   return (
-    <TouchableOpacity
-      style={[styles.userCard, isSelected && styles.selectedCard]}
-      onLongPress={() => onLongPress(user)}
-      onPress={() => onPress(user)}
-      activeOpacity={0.7}
-    >
-      {isSelectionActive && user.role === "student" && (
-        <View style={styles.selectionIndicator}>
-          <SVGIcon
-            name={isSelected ? "checkbox" : "square-outline"}
-            size={24}
-            color={isSelected ? COLORS.primary : COLORS.gray}
+    <View style={[styles.userCard, isSelected && styles.selectedCard]}>
+      <TouchableOpacity
+        style={styles.cardMain}
+        onLongPress={() => onLongPress(user)}
+        onPress={() => onPress(user)}
+        activeOpacity={0.7}
+      >
+        {isSelectionActive && user.role === "student" && (
+          <View style={styles.selectionIndicator}>
+            <SVGIcon
+              name={isSelected ? "checkbox" : "square-outline"}
+              size={24}
+              color={isSelected ? COLORS.primary : COLORS.gray}
+            />
+          </View>
+        )}
+        <View style={styles.avatar}>
+          <Image
+            source={
+              user.profile?.profileImage
+                ? { uri: user.profile.profileImage }
+                : DEFAULT_AVATAR
+            }
+            style={styles.avatarImg}
+            resizeMode="cover"
           />
         </View>
-      )}
-      <View style={styles.avatar}>
-        <Image
-          source={
-            user.profile?.profileImage
-              ? { uri: user.profile.profileImage }
-              : DEFAULT_AVATAR
-          }
-          style={styles.avatarImg}
-          resizeMode="cover"
-        />
-      </View>
-      <View style={{ flex: 1, marginLeft: 15 }}>
-        <Text style={styles.userName}>
-          {user.profile?.firstName} {user.profile?.lastName}
-        </Text>
-        <Text style={styles.userSubText}>
-          {user.status === "archived"
-            ? `Archived (${user.archivedInYear || "N/A"})`
-            : user.status === "pending_activation"
-            ? `Pending Activation (Code: ${user.signupCode})`
-            : allClasses.find((c) => c.id === user.classId)?.name ||
-              user.adminRole ||
-              user.role.toUpperCase()}
-        </Text>
-        <View style={styles.badgeRow}>
-          {teacherClasses.length > 0 && (
-            <View style={[styles.badge, { backgroundColor: "#10b98115" }]}>
-              <Text style={[styles.badgeText, { color: "#10b981" }]}>
-                {teacherClasses.length === 1
-                  ? `Class: ${
-                      allClasses.find((c) => c.id === teacherClasses[0])?.name ||
-                      "N/A"
-                    }`
-                  : `${teacherClasses.length} Classes Assigned`}
-              </Text>
-            </View>
-          )}
-          {user.canCreateNews && (
-            <View style={[styles.badge, { backgroundColor: "#f59e0b15" }]}>
-              <Text style={[styles.badgeText, { color: "#f59e0b" }]}>
-                News Authority
-              </Text>
-            </View>
-          )}
-          {user.onScholarship && (
-            <View style={[styles.badge, { backgroundColor: "#6366f115" }]}>
-              <Text style={[styles.badgeText, { color: "#6366f1" }]}>
-                On Scholarship
-              </Text>
-            </View>
-          )}
-          {user.role === "student" &&
-            (user.walletBalance !== undefined ||
-              user.dailyArrears !== undefined) && (
-              <View style={{ flexDirection: "row", gap: 4, flexWrap: "wrap" }}>
-                {user.walletBalance !== undefined && (
-                  <View
-                    style={[
-                      styles.badge,
-                      {
-                        backgroundColor:
-                          user.walletBalance > 0 ? "#ef444415" : "#10b98115",
-                      },
-                    ]}
-                  >
-                    <Text
+        <View style={{ flex: 1, marginLeft: 15 }}>
+          <Text style={styles.userName}>
+            {user.profile?.firstName} {user.profile?.lastName}
+          </Text>
+          <Text style={styles.userSubText}>
+            {user.status === "archived"
+              ? `Archived (${user.archivedInYear || "N/A"})`
+              : user.status === "pending_activation"
+              ? `Pending Activation (Code: ${user.signupCode})`
+              : allClasses.find((c) => c.id === user.classId)?.name ||
+                user.adminRole ||
+                user.role.toUpperCase()}
+          </Text>
+          <View style={styles.badgeRow}>
+            {teacherClasses.length > 0 && (
+              <View style={[styles.badge, { backgroundColor: "#10b98115" }]}>
+                <Text style={[styles.badgeText, { color: "#10b981" }]}>
+                  {teacherClasses.length === 1
+                    ? `Class: ${
+                        allClasses.find((c) => c.id === teacherClasses[0])?.name ||
+                        "N/A"
+                      }`
+                    : `${teacherClasses.length} Classes Assigned`}
+                </Text>
+              </View>
+            )}
+            {user.canCreateNews && (
+              <View style={[styles.badge, { backgroundColor: "#f59e0b15" }]}>
+                <Text style={[styles.badgeText, { color: "#f59e0b" }]}>
+                  News Authority
+                </Text>
+              </View>
+            )}
+            {user.onScholarship && (
+              <View style={[styles.badge, { backgroundColor: "#6366f115" }]}>
+                <Text style={[styles.badgeText, { color: "#6366f1" }]}>
+                  On Scholarship
+                </Text>
+              </View>
+            )}
+            {user.role === "student" &&
+              (user.walletBalance !== undefined ||
+                user.dailyArrears !== undefined) && (
+                <View style={{ flexDirection: "row", gap: 4, flexWrap: "wrap" }}>
+                  {user.walletBalance !== undefined && (
+                    <View
                       style={[
-                        styles.badgeText,
+                        styles.badge,
                         {
-                          color: user.walletBalance > 0 ? "#ef4444" : "#10b981",
+                          backgroundColor:
+                            user.walletBalance > 0 ? "#ef444415" : "#10b98115",
                         },
                       ]}
                     >
-                      {user.walletBalance > 0
-                        ? `Tuition: ₵${(user.walletBalance || 0).toLocaleString()}`
-                        : "Tuition Cleared"}
-                    </Text>
-                  </View>
-                )}
-                {(user.dailyArrears || 0) > 0 && (
-                  <View style={[styles.badge, { backgroundColor: "#f59e0b15" }]}>
-                    <Text style={[styles.badgeText, { color: "#f59e0b" }]}>
-                      Arrears: ₵{(user.dailyArrears || 0).toLocaleString()}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
+                      <Text
+                        style={[
+                          styles.badgeText,
+                          {
+                            color: user.walletBalance > 0 ? "#ef4444" : "#10b981",
+                          },
+                        ]}
+                      >
+                        {user.walletBalance > 0
+                          ? `Tuition: ₵${(user.walletBalance || 0).toLocaleString()}`
+                          : "Tuition Cleared"}
+                      </Text>
+                    </View>
+                  )}
+                  {(user.dailyArrears || 0) > 0 && (
+                    <View style={[styles.badge, { backgroundColor: "#f59e0b15" }]}>
+                      <Text style={[styles.badgeText, { color: "#f59e0b" }]}>
+                        Arrears: ₵{(user.dailyArrears || 0).toLocaleString()}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+          </View>
         </View>
-      </View>
+        <SVGIcon
+          name="chevron-forward"
+          size={20}
+          color={COLORS.gray || "#9ca3af"}
+        />
+      </TouchableOpacity>
       {user.role === "student" && onToggleArchive && (
         <TouchableOpacity
-          onPress={(e) => {
-            e.stopPropagation?.();
-            onToggleArchive(user);
-          }}
-          style={{ padding: 10, marginRight: 4 }}
+          onPress={() => onToggleArchive(user)}
+          style={{ padding: 10, marginLeft: 4 }}
           activeOpacity={0.7}
         >
           <SVGIcon
@@ -154,12 +158,7 @@ export const UserCard = React.memo(({
           />
         </TouchableOpacity>
       )}
-      <SVGIcon
-        name="chevron-forward"
-        size={20}
-        color={COLORS.gray || "#9ca3af"}
-      />
-    </TouchableOpacity>
+    </View>
   );
 }, (prev, next) => {
   return prev.isSelected === next.isSelected &&
@@ -170,6 +169,11 @@ export const UserCard = React.memo(({
 });
 
 const styles = StyleSheet.create({
+  cardMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
   userCard: {
     flexDirection: "row",
     alignItems: "center",

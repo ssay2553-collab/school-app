@@ -105,12 +105,15 @@ export default function ClassManagementScreen() {
       studentsSnap.docs.forEach((d) => {
         const data = d.data() as any;
         const cid = data.classId;
-        const gender = data.gender;
+        const gender = String(data.gender || data.profile?.gender || "").trim().toLowerCase();
         if (!cid) return;
         if (!counts[cid]) counts[cid] = { total: 0, male: 0, female: 0 };
         counts[cid].total++;
-        if (gender === "Male") counts[cid].male++;
-        else if (gender === "Female") counts[cid].female++;
+        if (gender === "male" || gender === "m" || gender.startsWith("male")) {
+          counts[cid].male++;
+        } else if (gender === "female" || gender === "f" || gender.startsWith("female")) {
+          counts[cid].female++;
+        }
       });
 
       const merged = baseClasses.map((c) => ({

@@ -50,20 +50,49 @@ export const GlobalNotificationListener = () => {
   const { appUser } = useAuth();
   const { showToast } = useToast();
   const lastNotifiedId = useRef<string | null>(null);
+  const isInitialSnapshot = useRef<boolean>(true);
+  const lastSoundTime = useRef<number>(0);
   const notifForPendingAssignments = useRef<Set<string>>(new Set());
   const notifForPendingRecords = useRef<Set<string>>(new Set());
+
+  const playChimeSound = async () => {
+    const now = Date.now();
+    if (now - lastSoundTime.current < 1500) return; // Throttle sound within 1.5s
+    lastSoundTime.current = now;
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require("../assets/notification.mp3"),
+      );
+      await sound.playAsync();
+    } catch (e) {
+      // Audio focus or Web autoplay restrictions
+    }
+  };
 
   useEffect(() => {
     if (!appUser?.uid) return;
 
-    // Request Web / Desktop OS Notification permission if supported
+    // Reset initial snapshot flag on user change
+    isInitialSnapshot.current = true;
+
+    // Request Web / Desktop OS Notification permission safely on user gesture if supported
     if (
       Platform.OS === "web" &&
       typeof window !== "undefined" &&
       "Notification" in window
     ) {
       if (Notification.permission === "default") {
-        Notification.requestPermission().catch(() => {});
+        const handleUserGesture = () => {
+          if (Notification.permission === "default") {
+            Notification.requestPermission().catch(() => {});
+          }
+          window.removeEventListener("click", handleUserGesture);
+          window.removeEventListener("keydown", handleUserGesture);
+          window.removeEventListener("touchstart", handleUserGesture);
+        };
+        window.addEventListener("click", handleUserGesture);
+        window.addEventListener("keydown", handleUserGesture);
+        window.addEventListener("touchstart", handleUserGesture);
       }
     }
 
@@ -71,8 +100,6 @@ export const GlobalNotificationListener = () => {
     checkAndSendMonthlyFeeReminders(appUser.role);
 
     // Listen for in-app Firestore notifications for current user.
-    // NOTE: We deliberately DO NOT use orderBy("timestamp", "desc") in the Firestore query
-    // to avoid index-requirement errors and local optimistic write exclusion (serverTimestamp() is null locally).
     const q = query(
       collection(db, "notifications"),
       where("recipientId", "==", appUser.uid),
@@ -82,6 +109,26 @@ export const GlobalNotificationListener = () => {
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
+        // Handle initial snapshot load upon login: play ONE chime and ONE summary toast
+        if (isInitialSnapshot.current) {
+          isInitialSnapshot.current = false;
+          const unreadCount = snapshot.docs.length;
+          if (unreadCount > 0) {
+            playChimeSound();
+            showToast({
+              message:
+                unreadCount === 1
+                  ? `${snapshot.docs[0].data().title}: ${snapshot.docs[0].data().body}`
+                  : `🔔 You have ${unreadCount} unattended notification(s) to review`,
+              type: "info",
+            });
+            snapshot.docs.forEach((docSnap) => {
+              lastNotifiedId.current = docSnap.id;
+            });
+          }
+          return;
+        }
+
         snapshot.docChanges().forEach(async (change) => {
           if (change.type === "added") {
             const data = change.doc.data();
@@ -97,18 +144,8 @@ export const GlobalNotificationListener = () => {
               type: "info",
             });
 
-            // Note: We deliberately DO NOT automatically mark as read here!
-            // This keeps the notification unread so it stays in the Unattended Notification Center & Bell badge.
-
-            // 2. Play audio sound chime
-            try {
-              const { sound } = await Audio.Sound.createAsync(
-                require("../assets/notification.mp3"),
-              );
-              await sound.playAsync();
-            } catch (e) {
-              // Web autoplay restrictions might require user interaction first
-            }
+            // 2. Play audio sound chime (throttled to 1 chime)
+            playChimeSound();
 
             // 3. Tab title flashing & Desktop OS Notification for Web / Desktop
             if (Platform.OS === "web") {

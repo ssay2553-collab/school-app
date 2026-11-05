@@ -34,6 +34,7 @@ import {
 import * as Animatable from "react-native-animatable";
 import { useRef } from "react";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
@@ -415,7 +416,8 @@ export default function StaffPayrollScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="admin_payroll">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient
         colors={[COLORS.primary, "#1E293B"]}
@@ -671,6 +673,7 @@ export default function StaffPayrollScreen() {
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

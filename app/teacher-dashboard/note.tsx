@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEditor";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useTeacherNotes, Note } from "../../hooks/teacher-dashboard/useTeacherNotes";
 
@@ -80,8 +81,13 @@ export default function TeacherNoteScreen() {
 
     if (isNavigating.current) return;
     isNavigating.current = true;
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
 
-    if (router.canGoBack()) {
+    if (Platform.OS === "web") {
+      router.replace("/teacher-dashboard");
+    } else if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/teacher-dashboard");
@@ -136,7 +142,8 @@ export default function TeacherNoteScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <TierProtectedRoute featureId="teacher_note">
+      <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>
           {isAdding ? (editingId ? "Edit Note" : "New Note") : "My Notes 🗒️"}
@@ -274,6 +281,7 @@ export default function TeacherNoteScreen() {
         </View>
       )}
     </View>
+  </TierProtectedRoute>
   );
 }
 

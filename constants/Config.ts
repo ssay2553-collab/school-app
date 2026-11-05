@@ -35,6 +35,9 @@ const mapConfig = (id: string, data: any) => ({
   defaultBusRate: data.defaultBusRate || 0,
   defaultExtraClassesRate: data.defaultExtraClassesRate || 0,
 
+  // School usage category tier (core | nova | premium)
+  category: (data.category || data.schoolCategory || "premium") as string,
+
   firebase: data.firebase || {},
 });
 

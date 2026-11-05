@@ -27,6 +27,7 @@ interface DashboardHeaderProps {
   showAdminButton?: boolean;
   welcomeText: string;
   roleTag: string;
+  tierLabel?: string;
   children?: React.ReactNode;
 }
 
@@ -43,6 +44,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   showAdminButton,
   welcomeText,
   roleTag,
+  tierLabel,
   children,
 }) => {
   const insets = useSafeAreaInsets();
@@ -102,11 +104,19 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
                 {appUser?.profile?.firstName || roleTag || "User"}
               </Text>
 
-              <View style={styles.roleBadge}>
-                <SVGIcon name="checkmark-seal" size={12} color="#fff" />
-                <Text style={styles.roleBadgeText}>
-                  {appUser?.adminRole || (roleTag ? roleTag.toUpperCase() : "USER")}
-                </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" }}>
+                <View style={styles.roleBadge}>
+                  <SVGIcon name="checkmark-seal" size={12} color="#fff" />
+                  <Text style={styles.roleBadgeText}>
+                    {appUser?.adminRole || (roleTag ? roleTag.toUpperCase() : "USER")}
+                  </Text>
+                </View>
+                {tierLabel && (
+                  <View style={[styles.roleBadge, { backgroundColor: "rgba(255,255,255,0.25)" }]}>
+                    <SVGIcon name="ribbon" size={12} color="#fff" />
+                    <Text style={styles.roleBadgeText}>{tierLabel.toUpperCase()}</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>

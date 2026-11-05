@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -47,6 +48,7 @@ export const useFeePayments = ({
   const [selectedDailyDate, setSelectedDailyDate] = useState(new Date());
   const [dailyPayments, setDailyPayments] = useState<any[]>([]);
   const [loadingDaily, setLoadingDaily] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   const isConfigMissing = !academicYear || !term;
 
@@ -89,7 +91,7 @@ export const useFeePayments = ({
   }, [dailyModalVisible, selectedDailyDate, academicYear, term]);
 
   const handleLogPayment = async () => {
-    if (saving) return;
+    if (isSubmittingRef.current || saving) return;
     if (!canEdit) {
       showToast({ message: "Access Denied: You don't have permission to log payments.", type: "error" });
       return;
@@ -103,6 +105,7 @@ export const useFeePayments = ({
       return;
     }
 
+    isSubmittingRef.current = true;
     setSaving(true);
     try {
       const amount = parseFloat(paymentAmount);
@@ -305,13 +308,15 @@ export const useFeePayments = ({
       showToast({ message: "Failed to log payment", type: "error" });
     } finally {
       setSaving(false);
+      isSubmittingRef.current = false;
     }
   };
 
   const handleDeletePayment = async (student: StudentDraft | null, payment: any) => {
-    if (saving || !canEdit || !student) return;
+    if (isSubmittingRef.current || saving || !canEdit || !student || !payment) return;
 
     const performDelete = async () => {
+      isSubmittingRef.current = true;
       setSaving(true);
       try {
         const cleanYear = academicYear.replace(/\//g, "-");
@@ -323,8 +328,22 @@ export const useFeePayments = ({
 
         const isPayment = type.endsWith("_payment") || type === "tuition" || type === "tuition_credit";
 
+        // Fetch current fee record for robust removal using receiptNo filtering instead of strict arrayRemove equality
+        const recordRef = doc(db, "studentFeeRecords", recordId);
+        const recordSnap = await getDoc(recordRef);
+        let paymentsUpdate: any;
+        if (recordSnap.exists()) {
+          const data = recordSnap.data();
+          const existingPayments = data.payments || [];
+          paymentsUpdate = payment.receiptNo
+            ? existingPayments.filter((p: any) => p.receiptNo !== payment.receiptNo)
+            : existingPayments.filter((p: any) => p !== payment);
+        } else {
+          paymentsUpdate = arrayRemove(payment);
+        }
+
         const feeRecordUpdate: any = {
-          payments: arrayRemove(payment),
+          payments: paymentsUpdate,
           lastUpdated: serverTimestamp(),
         };
 
@@ -456,6 +475,7 @@ export const useFeePayments = ({
         showToast({ message: "Deletion failed", type: "error" });
       } finally {
         setSaving(false);
+        isSubmittingRef.current = false;
       }
     };
 
@@ -463,7 +483,12 @@ export const useFeePayments = ({
     const title = "Confirm Deletion";
 
     if (Platform.OS === 'web') {
-      if (window.confirm(`${title}\n\n${msg}`)) {
+      try {
+        if (window.confirm(`${title}\n\n${msg}`)) {
+          await performDelete();
+        }
+      } catch (err) {
+        console.error("Web confirm error:", err);
         await performDelete();
       }
     } else {

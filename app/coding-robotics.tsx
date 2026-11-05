@@ -18,6 +18,7 @@ import * as Animatable from 'react-native-animatable';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import SVGIcon from '../components/SVGIcon';
+import { TierProtectedRoute } from '../components/TierProtectedRoute';
 import { COLORS, SHADOWS } from '../constants/theme';
 import { useSchoolConfig } from '../constants/Config';
 import { useToast } from '../contexts/ToastContext';
@@ -159,7 +160,8 @@ export default function CodingRobotics() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="teacher_coding_robotics">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
       <LinearGradient
@@ -235,6 +237,7 @@ export default function CodingRobotics() {
         }
       />
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

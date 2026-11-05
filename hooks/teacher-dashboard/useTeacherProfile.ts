@@ -110,7 +110,9 @@ export const useTeacherProfile = () => {
       setWorkModalVisible(false);
       return true;
     }
-    if (router.canGoBack()) {
+    if (Platform.OS === "web") {
+      router.replace("/teacher-dashboard");
+    } else if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/teacher-dashboard");

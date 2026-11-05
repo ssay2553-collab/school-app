@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 import { SHADOWS } from "../../constants/theme";
+import { isFeatureEnabled } from "../../constants/tierPermissions";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { getTeacherClasses } from "../../lib/classHelpers";
 import { AdminEventStats } from "../../components/admin-dashboard/AdminEventStats";
 import { AdminMenuCard } from "../../components/admin-dashboard/AdminMenuCard";
@@ -38,6 +40,7 @@ export default function AdminDashboard() {
     isSmallScreen,
   } = useAdminDashboard();
 
+  const acadConfig = useAcademicConfig();
   const scrollRef = useRef<ScrollView>(null);
   const isNavigating = useRef(false);
 
@@ -57,7 +60,7 @@ export default function AdminDashboard() {
     lastDashboardScrollY = event.nativeEvent.contentOffset.y;
   };
 
-  const sections = [
+  const rawSections = [
     {
       title: "SCHOOL OPS 🏫",
       color: brandPrimary,
@@ -96,6 +99,7 @@ export default function AdminDashboard() {
           route: "/admin-dashboard/teacher-statistics",
           icon: "analytics",
           color: "#f59e0b",
+          featureId: "admin_teacher_stats",
         },
         {
           title: "Staff Att. Setup",
@@ -103,6 +107,7 @@ export default function AdminDashboard() {
           route: "/admin-dashboard/teacher-attendance-config",
           icon: "qr-code",
           color: "#3b82f6",
+          featureId: "admin_staff_attendance",
         },
         {
           title: "Staff Attendance",
@@ -110,6 +115,7 @@ export default function AdminDashboard() {
           route: "/shared/scan-attendance",
           icon: "checkmark-done-circle",
           color: "#10b981",
+          featureId: "admin_staff_attendance",
         },
       ],
     },
@@ -162,6 +168,7 @@ export default function AdminDashboard() {
           route: "/admin-dashboard/staff-payroll",
           icon: "wallet",
           color: "#0ea5e9",
+          featureId: "admin_payroll",
         },
       ],
     },
@@ -175,6 +182,7 @@ export default function AdminDashboard() {
           route: "/teacher-dashboard/create-student-group",
           icon: "chatbubbles",
           color: "#06b6d4",
+          featureId: "admin_groups",
         },
         {
           title: "Results",
@@ -196,6 +204,7 @@ export default function AdminDashboard() {
           route: "/teacher-dashboard/manage-timetable",
           icon: "calendar",
           color: "#84cc16",
+          featureId: "admin_timetable",
         },
         {
           title: "Term Calendar",
@@ -223,6 +232,7 @@ export default function AdminDashboard() {
           route: "/admin-dashboard/staff-chat",
           icon: "chatbubbles",
           color: "#6366f1",
+          featureId: "admin_staff_chat",
         },
         {
           title: "Parent Chat",
@@ -234,6 +244,16 @@ export default function AdminDashboard() {
       ],
     },
   ];
+
+  const sections = rawSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) =>
+          !item.featureId || isFeatureEnabled(acadConfig.category, item.featureId),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
 
   if (authLoading || !appUser) {
     return (
@@ -268,6 +288,7 @@ export default function AdminDashboard() {
           isSmallScreen={isSmallScreen}
           welcomeText="WELCOME BACK, CHIEF! 🛡️"
           roleTag="Admin"
+          tierLabel={`${(acadConfig.category || "premium").toUpperCase()} PLAN`}
           onProfilePress={() => router.push("/admin-dashboard/settings")}
           onSettingsPress={() => router.push("/admin-dashboard/settings")}
           onTeacherDashboardPress={() => router.push("/teacher-dashboard")}

@@ -15,9 +15,10 @@ import {
     StatusBar,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     useWindowDimensions,
-    View
+    View,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import { AdminEventStats } from "../../components/admin-dashboard/AdminEventStats";
@@ -26,9 +27,11 @@ import StationaryBackground from "../../components/StationaryBackground";
 import SVGIcon from "../../components/SVGIcon";
 import { MetroTile } from "../../components/teacher-dashboard/MetroTile";
 import { useSchoolConfig } from "../../constants/Config";
+import { isFeatureEnabled } from "../../constants/tierPermissions";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import { useDataFreshness } from "../../hooks/useDataFreshness";
 import { useSchoolOperations } from "../../hooks/useSchoolOperations";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
@@ -38,11 +41,14 @@ import { getTeacherClasses } from "../../lib/classHelpers";
 export default function TeacherDashboard() {
   const router = useRouter();
   const { appUser, firebaseUser, loading: authLoading } = useAuth();
+  const acadConfig = useAcademicConfig();
   const config = useSchoolConfig();
   const { width: windowWidth } = useWindowDimensions();
 
   const [assignmentCount, setAssignmentCount] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("ALL");
   const { totalUnread, submissionUnread, assignmentUnread } = useUnreadCounts();
   const { upcomingEvents, loading: eventsLoading } = useUpcomingEvents(2);
   const { getOperationalStatus } = useSchoolOperations();
@@ -182,15 +188,16 @@ export default function TeacherDashboard() {
 
   const isAssignedTeacher = getTeacherClasses(appUser).length > 0;
 
-  // Rich Warm Windows 8 Metro Palette & Sections
-  const sections = useMemo(
+  // Well-Balanced Categorization to Prevent Overcrowding
+  const rawSections = useMemo(
     () => [
       {
+        id: "classroom",
         title: "CLASSROOM HUB",
         color: "#00838F", // Warm Deep Teal
         items: [
           {
-            title: "Attendance",
+            title: "Students Attendance",
             subtitle: "Daily tracking",
             route: "/teacher-dashboard/daily-attendance",
             icon: "checkmark-done-circle",
@@ -198,11 +205,20 @@ export default function TeacherDashboard() {
             isWide: true,
           },
           {
+            title: "Timetable",
+            subtitle: "My schedule",
+            route: "/teacher-dashboard/teacher-timetable",
+            icon: "calendar",
+            color: "#1565C0", // Warm Royal Sapphire
+            featureId: "teacher_timetable",
+          },
+          {
             title: "My Classes",
             subtitle: "Set subjects",
             route: "/teacher-dashboard/profile-edit?focus=work",
             icon: "book",
             color: "#E65100", // Warm Terracotta
+            featureId: "teacher_my_classes",
           },
           ...(isAssignedTeacher && (hasFinancialAccess || canEditFinancials)
             ? [
@@ -216,53 +232,35 @@ export default function TeacherDashboard() {
               ]
             : []),
           {
-            title: "Timetable",
-            subtitle: "My schedule",
-            route: "/teacher-dashboard/teacher-timetable",
-            icon: "calendar",
-            color: "#1565C0", // Warm Royal Sapphire
+            title: "Staff Attendance",
+            subtitle: "GPS Check-In",
+            route: "/shared/scan-attendance",
+            icon: "checkmark-done-circle",
+            color: "#388E3C", // Warm Forest Green
+            featureId: "teacher_staff_attendance",
           },
-          {
-            title: "My Notes",
-            subtitle: "Scratchpad",
-            route: "/teacher-dashboard/note",
-            icon: "document-text",
-            color: "#6A1B9A", // Warm Plum
-          },
-          {
-            title: "Weekly Topics",
-            subtitle: "Lesson Planning",
-            route: "/teacher-dashboard/weekly-topics",
-            icon: "book",
-            color: "#C62828", // Warm Crimson
-            isWide: true,
-          },
-        ],
-      },
-      {
-        title: "TEACHING TOOLS",
-        color: "#D84315", // Warm Coral
-        items: [
           {
             title: "Student Profiles",
             subtitle: "Edit Student Info",
             route: "/teacher-dashboard/manage-students",
             icon: "person",
             color: "#D84315", // Warm Coral
+            isWide: true,
+            featureId: "teacher_student_profile",
           },
+        ],
+      },
+      {
+        id: "academics",
+        title: "ACADEMICS & GRADING",
+        color: "#D84315", // Warm Coral
+        items: [
           {
             title: "Term Records",
             subtitle: "Manage grades",
             route: "/teacher-dashboard/student-academic-records",
             icon: "library",
             color: "#4527A0", // Warm Deep Violet
-          },
-          {
-            title: "Exam Reports",
-            subtitle: "Approved reports",
-            route: "/teacher-dashboard/student-academic-report",
-            icon: "document-text",
-            color: "#2E7D32", // Warm Emerald
           },
           {
             title: "Behavioral Remarks",
@@ -272,12 +270,11 @@ export default function TeacherDashboard() {
             color: "#0277BD", // Warm Ocean Blue
           },
           {
-            title: "Assignments",
-            subtitle: "Manage & Upload",
-            route: "/teacher-dashboard/manage-assignments",
+            title: "Exam Reports",
+            subtitle: "Approved reports",
+            route: "/teacher-dashboard/student-academic-report",
             icon: "document-text",
-            color: "#AD1457", // Warm Mulberry
-            isWide: true,
+            color: "#2E7D32", // Warm Emerald
           },
           {
             title: "Grading",
@@ -285,20 +282,40 @@ export default function TeacherDashboard() {
             route: "/teacher-dashboard/mark-assignment",
             icon: "create",
             color: "#C62828", // Warm Crimson
+            featureId: "teacher_grading",
           },
           {
-            title: "Study Groups",
-            subtitle: "Collaborations",
-            route: "/teacher-dashboard/create-student-group",
-            icon: "chatbubbles",
-            color: "#00838F", // Warm Deep Teal
+            title: "Assignments",
+            subtitle: "Manage & Upload",
+            route: "/teacher-dashboard/manage-assignments",
+            icon: "document-text",
+            color: "#AD1457", // Warm Mulberry
+            isWide: true,
+            featureId: "teacher_assignments",
+          },
+        ],
+      },
+      {
+        id: "resources",
+        title: "LESSONS & RESOURCES",
+        color: "#6A1B9A", // Warm Plum
+        items: [
+          {
+            title: "Weekly Topics",
+            subtitle: "Lesson Planning",
+            route: "/teacher-dashboard/weekly-topics",
+            icon: "book",
+            color: "#C62828", // Warm Crimson
+            isWide: true,
+            featureId: "teacher_weekly_topics",
           },
           {
-            title: "Staff Attendance",
-            subtitle: "GPS Check-In",
-            route: "/shared/scan-attendance",
-            icon: "checkmark-done-circle",
-            color: "#388E3C", // Warm Forest Green
+            title: "My Notes",
+            subtitle: "Scratchpad",
+            route: "/teacher-dashboard/note",
+            icon: "document-text",
+            color: "#6A1B9A", // Warm Plum
+            featureId: "teacher_note",
           },
           {
             title: "Coding & Robotics",
@@ -306,6 +323,7 @@ export default function TeacherDashboard() {
             route: "/coding-robotics",
             icon: "code-slash",
             color: "#5E35B1", // Warm Violet
+            featureId: "teacher_coding_robotics",
           },
           {
             title: "Curriculum PDFs",
@@ -313,6 +331,7 @@ export default function TeacherDashboard() {
             route: "/teacher-dashboard/curriculum-pdf-viewer",
             icon: "document-text",
             color: "#1565C0", // Warm Royal Blue
+            featureId: "teacher_curriculum_pdf",
           },
           {
             title: "Pedagogy & Resources",
@@ -321,26 +340,22 @@ export default function TeacherDashboard() {
             icon: "bulb",
             color: "#E65100", // Warm Terracotta
             isWide: true,
+            featureId: "teacher_pedagogy_resources",
           },
         ],
       },
       {
-        title: "CAMPUS LIFE",
+        id: "communication",
+        title: "COMMUNICATION & CAMPUS",
         color: "#F57F17", // Warm Gold
         items: [
           {
-            title: "Calendar",
-            subtitle: "Events & Terms",
-            route: "/academic-calendar",
-            icon: "calendar-outline",
-            color: "#E65100", // Warm Terracotta
-          },
-          {
-            title: "Broadcasts",
-            subtitle: "School news",
-            route: "/teacher-dashboard/news-screen",
-            icon: "megaphone",
-            color: "#C62828", // Warm Crimson
+            title: "Parent Chat",
+            subtitle: "Direct comms",
+            route: "/teacher-dashboard/chat-with-parent",
+            icon: "chatbubble-ellipses",
+            color: "#00838F", // Warm Teal
+            featureId: "teacher_parent_chat",
           },
           {
             title: "Staff Chat",
@@ -349,19 +364,85 @@ export default function TeacherDashboard() {
             icon: "chatbubbles",
             color: "#1565C0", // Warm Royal Blue
             isWide: true,
+            featureId: "teacher_staff_chat",
           },
           {
-            title: "Parent Chat",
-            subtitle: "Direct comms",
-            route: "/teacher-dashboard/chat-with-parent",
-            icon: "chatbubble-ellipses",
-            color: "#00838F", // Warm Teal
+            title: "Study Groups",
+            subtitle: "Collaborations",
+            route: "/teacher-dashboard/create-student-group",
+            icon: "chatbubbles",
+            color: "#00838F", // Warm Deep Teal
+            featureId: "teacher_study_group",
+          },
+          {
+            title: "Broadcasts",
+            subtitle: "School news",
+            route: "/teacher-dashboard/news-screen",
+            icon: "megaphone",
+            color: "#C62828", // Warm Crimson
+            featureId: "teacher_broadcasts",
+          },
+          {
+            title: "Calendar",
+            subtitle: "Events & Terms",
+            route: "/academic-calendar",
+            icon: "calendar-outline",
+            color: "#E65100", // Warm Terracotta
           },
         ],
       },
     ],
     [isAssignedTeacher, hasFinancialAccess, canEditFinancials],
   );
+
+  const categories = useMemo(
+    () => [
+      { id: "ALL", label: "All Tools" },
+      { id: "classroom", label: "Classroom" },
+      { id: "academics", label: "Academics" },
+      { id: "resources", label: "Lessons & Resources" },
+      { id: "communication", label: "Campus & Comms" },
+    ],
+    [],
+  );
+
+  const filteredSections = useMemo(() => {
+    return rawSections
+      .map((section) => {
+        if (selectedCategory !== "ALL" && section.id !== selectedCategory) {
+          return null;
+        }
+
+        let enabledItems = section.items.filter(
+          (item) =>
+            !item.featureId ||
+            isFeatureEnabled(acadConfig.category, item.featureId),
+        );
+
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          enabledItems = enabledItems.filter(
+            (item) =>
+              item.title.toLowerCase().includes(q) ||
+              item.subtitle.toLowerCase().includes(q),
+          );
+        }
+
+        return {
+          ...section,
+          items: enabledItems,
+        };
+      })
+      .filter(
+        (section) =>
+          section !== null && section.items.length > 0,
+      ) as {
+        id: string;
+        title: string;
+        color: string;
+        items: any[];
+      }[];
+  }, [rawSections, selectedCategory, searchQuery, acadConfig.category]);
 
   if (authLoading || !appUser) {
     return (
@@ -449,52 +530,125 @@ export default function TeacherDashboard() {
           />
         </DashboardHeader>
 
-        {/* WINDOWS 8 WARM METRO START TILES GRID */}
+        {/* WINDOWS 8 WARM METRO START TILES GRID WITH QUICK NAV */}
         <View style={styles.contentContainer}>
           <View style={styles.content}>
-            {sections.map((section, sIndex) => (
-              <View key={section.title} style={{ marginBottom: 35 }}>
-                <View style={styles.sectionHeader}>
-                  <View
-                    style={[
-                      styles.sectionBar,
-                      { backgroundColor: section.color },
-                    ]}
-                  />
-                  <Text style={styles.sectionTitle}>{section.title}</Text>
-                </View>
-
-                <View style={styles.metroGrid}>
-                  {section.items.map((item, iIndex) => {
-                    const isWideTile = Boolean(item.isWide && numColumns > 1);
-                    const calcWidth = isWideTile
-                      ? unitTileWidth * 2 + gap
-                      : unitTileWidth;
-
-                    return (
-                      <MetroTile
-                        key={item.title}
-                        item={item}
-                        index={sIndex * 4 + iIndex}
-                        tileWidth={calcWidth}
-                        tileHeight={tileHeight}
-                        totalUnread={totalUnread}
-                        submissionUnread={submissionUnread}
-                        assignmentUnread={assignmentUnread}
-                        onPress={() => {
-                          if (isNavigating.current || !item.route) return;
-                          isNavigating.current = true;
-                          router.push(item.route as any);
-                          setTimeout(() => {
-                            isNavigating.current = false;
-                          }, 500);
-                        }}
-                      />
-                    );
-                  })}
-                </View>
+            {/* SEARCH & CATEGORY FILTER BAR */}
+            <View style={styles.navBarContainer}>
+              <View style={styles.searchBox}>
+                <SVGIcon name="search" size={18} color="#94A3B8" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Search tools & features..."
+                  placeholderTextColor="#94A3B8"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery("")}>
+                    <SVGIcon name="close-circle" size={18} color="#94A3B8" />
+                  </TouchableOpacity>
+                )}
               </View>
-            ))}
+
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.categoryScroll}
+              >
+                {categories.map((cat) => {
+                  const active = selectedCategory === cat.id;
+                  return (
+                    <TouchableOpacity
+                      key={cat.id}
+                      style={[
+                        styles.categoryChip,
+                        active && {
+                          backgroundColor: brandPrimary,
+                          borderColor: brandPrimary,
+                        },
+                      ]}
+                      onPress={() => setSelectedCategory(cat.id)}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          active && { color: "#FFFFFF", fontWeight: "900" },
+                        ]}
+                      >
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+
+            {filteredSections.length === 0 ? (
+              <View style={styles.emptySearchContainer}>
+                <SVGIcon name="search-outline" size={40} color="#CBD5E1" />
+                <Text style={styles.emptySearchTitle}>No matching tools found</Text>
+                <Text style={styles.emptySearchSub}>
+                  Try clearing your search or switching categories.
+                </Text>
+                <TouchableOpacity
+                  style={[styles.resetSearchBtn, { backgroundColor: brandPrimary }]}
+                  onPress={() => {
+                    setSearchQuery("");
+                    setSelectedCategory("ALL");
+                  }}
+                >
+                  <Text style={styles.resetSearchText}>Show All Tools</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              filteredSections.map((section, sIndex) => (
+                <View key={section.title} style={{ marginBottom: 35 }}>
+                  <View style={styles.sectionHeader}>
+                    <View
+                      style={[
+                        styles.sectionBar,
+                        { backgroundColor: section.color },
+                      ]}
+                    />
+                    <Text style={styles.sectionTitle}>{section.title}</Text>
+                    <View style={styles.countBadge}>
+                      <Text style={styles.countBadgeText}>{section.items.length}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.metroGrid}>
+                    {section.items.map((item, iIndex) => {
+                      const isWideTile = Boolean(item.isWide && numColumns > 1);
+                      const calcWidth = isWideTile
+                        ? unitTileWidth * 2 + gap
+                        : unitTileWidth;
+
+                      return (
+                        <MetroTile
+                          key={item.title}
+                          item={item}
+                          index={sIndex * 4 + iIndex}
+                          tileWidth={calcWidth}
+                          tileHeight={tileHeight}
+                          totalUnread={totalUnread}
+                          submissionUnread={submissionUnread}
+                          assignmentUnread={assignmentUnread}
+                          onPress={() => {
+                            if (isNavigating.current || !item.route) return;
+                            isNavigating.current = true;
+                            router.push(item.route as any);
+                            setTimeout(() => {
+                              isNavigating.current = false;
+                            }, 500);
+                          }}
+                        />
+                      );
+                    })}
+                  </View>
+                </View>
+              ))
+            )}
           </View>
         </View>
         <View style={{ height: 100 }} />
@@ -514,6 +668,50 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 1200,
   },
+  navBarContainer: {
+    marginBottom: 20,
+    gap: 12,
+  },
+  searchBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    gap: 10,
+    ...SHADOWS.medium,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1E293B",
+    fontWeight: "600",
+    padding: 0,
+  },
+  categoryScroll: {
+    paddingVertical: 4,
+    gap: 8,
+    alignItems: "center",
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.medium,
+  },
+  categoryChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
+  },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -532,10 +730,54 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
+  countBadge: {
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  countBadgeText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#475569",
+  },
   metroGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
+  },
+  emptySearchContainer: {
+    padding: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  emptySearchTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginTop: 12,
+  },
+  emptySearchSub: {
+    fontSize: 13,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  resetSearchBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  resetSearchText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
   },
   attendanceAlertBanner: {
     backgroundColor: "rgba(229, 20, 0, 0.85)",

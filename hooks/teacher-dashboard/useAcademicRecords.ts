@@ -51,6 +51,8 @@ export const useAcademicRecords = () => {
   const [allStudents, setAllStudents] = useState<StudentScoreRecord[]>([]);
   const [serverStudents, setServerStudents] = useState<StudentScoreRecord[]>([]);
   const [recordStatus, setRecordStatus] = useState<string>("pending");
+  const [localAcadYear, setLocalAcadYear] = useState("");
+  const [localTerm, setLocalTerm] = useState("");
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -58,8 +60,26 @@ export const useAcademicRecords = () => {
     return () => { isMounted.current = false; };
   }, []);
 
-  const academicYear = acadConfig.academicYear || "";
-  const term = acadConfig.currentTerm || "";
+  useEffect(() => {
+    if (!acadConfig.academicYear || !acadConfig.currentTerm) {
+      const fetchFallbackConfig = async () => {
+        try {
+          const docSnap = await getDoc(doc(db, "school_settings", "academic_config"));
+          if (docSnap.exists() && isMounted.current) {
+            const data = docSnap.data();
+            if (data.academicYear) setLocalAcadYear(data.academicYear);
+            if (data.currentTerm) setLocalTerm(data.currentTerm);
+          }
+        } catch (err) {
+          console.error("Error fetching fallback academic config:", err);
+        }
+      };
+      fetchFallbackConfig();
+    }
+  }, [acadConfig.academicYear, acadConfig.currentTerm]);
+
+  const academicYear = acadConfig.academicYear || localAcadYear;
+  const term = acadConfig.currentTerm || localTerm;
 
   const hasJHSClasses = useMemo(() => {
     return teacherClasses.some(c => (c as any).department === "JHS" || /jhs|basic\s*[7-9]/i.test(c.name || ""));
@@ -180,8 +200,17 @@ export const useAcademicRecords = () => {
 
         const activeClassStudents = userSnap.docs.map((d: any) => {
           const data = d.data();
-          const status = data.status || (data.profile && data.profile.status) || "active";
-          if (!["active", "pending_activation"].includes(status)) return null;
+          const rawStatus = (data.status || (data.profile && data.profile.status) || "active").toString().toLowerCase();
+          const isArchived =
+            rawStatus === "archived" ||
+            rawStatus === "inactive" ||
+            rawStatus === "graduated" ||
+            rawStatus === "deleted" ||
+            data.classId === "archived" ||
+            data.archived === true ||
+            data.isArchived === true;
+
+          if (isArchived || !["active", "pending_activation"].includes(rawStatus)) return null;
 
           return {
             studentId: d.id,

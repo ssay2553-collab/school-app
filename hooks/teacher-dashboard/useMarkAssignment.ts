@@ -19,8 +19,9 @@ import { useToast } from "../../contexts/ToastContext";
 import { db } from "../../firebaseConfig";
 import { dedupeSubjects, getTeacherClasses } from "../../lib/classHelpers";
 import {
-    markNotificationsAsRead,
-    sendNotification,
+  markNotificationsAsRead,
+  markNotificationsForResolvedItem,
+  sendNotification,
 } from "../../src/services/notificationService";
 
 export interface Question {
@@ -29,6 +30,15 @@ export interface Question {
   type?: string;
   visualGroup?: any[];
 }
+
+export const parseDeadlineDate = (dl: any): Date | null => {
+  if (!dl) return null;
+  if (typeof dl.toDate === "function") return dl.toDate();
+  if (dl instanceof Date) return dl;
+  if (dl.seconds !== undefined) return new Date(dl.seconds * 1000);
+  const parsed = new Date(dl);
+  return !isNaN(parsed.getTime()) ? parsed : null;
+};
 
 export interface Assignment {
   id: string;
@@ -307,10 +317,45 @@ export const useMarkAssignment = () => {
         const q = query(collection(db, "assignments"), ...queryConstraints);
         const snap = await getDocs(q);
 
-        const data = snap.docs.map((d) => ({
+        const rawAssignments = snap.docs.map((d) => ({
           id: d.id,
           ...(d.data() as any),
         })) as Assignment[];
+
+        // Query pending unmarked submissions for fetched assignments
+        const assignmentIds = rawAssignments.map((a) => a.id);
+        const pendingCountMap = new Map<string, number>();
+
+        if (assignmentIds.length > 0) {
+          for (let i = 0; i < assignmentIds.length; i += 30) {
+            const chunk = assignmentIds.slice(i, i + 30);
+            const pendingQ = query(
+              collection(db, "submissions"),
+              where("assignmentId", "in", chunk),
+              where("marked", "==", false),
+            );
+            const pendingSnap = await getDocs(pendingQ);
+            pendingSnap.docs.forEach((doc) => {
+              const aId = doc.data().assignmentId;
+              pendingCountMap.set(aId, (pendingCountMap.get(aId) || 0) + 1);
+            });
+          }
+        }
+
+        const now = Date.now();
+        const data = rawAssignments.filter((a) => {
+          const deadlineDate = parseDeadlineDate(a.deadline);
+          const isPastDue = deadlineDate
+            ? deadlineDate.getTime() < now
+            : false;
+          const pendingCount = pendingCountMap.get(a.id) || 0;
+
+          // Remove assignment from header if due date has passed AND there are no pending unmarked submissions
+          if (isPastDue && pendingCount === 0) {
+            return false;
+          }
+          return true;
+        });
 
         if (isMounted.current) {
           if (isFirstLoad) {
@@ -318,7 +363,11 @@ export const useMarkAssignment = () => {
             if (data.length > 0) setSelectedAssignment(data[0]);
             else setSelectedAssignment(null);
           } else {
-            setAssignments((prev) => [...prev, ...data]);
+            setAssignments((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id));
+              const newItems = data.filter((item) => !existingIds.has(item.id));
+              return [...prev, ...newItems];
+            });
           }
 
           lastVisibleRef.current = snap.docs[snap.docs.length - 1] || null;
@@ -481,7 +530,12 @@ export const useMarkAssignment = () => {
         for (const idx of questionIndices) {
           const i = parseInt(idx);
           const scoreStr = submissionQInputs[i];
-          if (!scoreStr || isNaN(Number(scoreStr))) {
+          if (
+            scoreStr === undefined ||
+            scoreStr === null ||
+            scoreStr.trim() === "" ||
+            isNaN(Number(scoreStr))
+          ) {
             showToast({
               message: `Please score question ${i + 1}.`,
               type: "error",
@@ -501,6 +555,12 @@ export const useMarkAssignment = () => {
           marked: true,
           feedback: currentFeedback[sub.id] || "",
           markedAt: serverTimestamp(),
+        });
+
+        // Clear any pending submission notifications for this marked submission
+        markNotificationsForResolvedItem({
+          type: "submission",
+          itemId: sub.id,
         });
 
         const studentSnap = await getDoc(doc(db, "users", sub.studentId));
@@ -544,7 +604,34 @@ export const useMarkAssignment = () => {
         }
 
         if (isMounted.current) {
-          setSubmissions((prev) => prev.filter((s) => s.id !== sub.id));
+          setSubmissions((prev) => {
+            const nextSubmissions = prev.filter((s) => s.id !== sub.id);
+
+            // If no more unmarked submissions remain for this assignment and its deadline is past, remove it from assignments list
+            if (nextSubmissions.length === 0 && selectedAssignment) {
+              const deadlineDate = parseDeadlineDate(selectedAssignment.deadline);
+              const isPastDue = deadlineDate
+                ? deadlineDate.getTime() < Date.now()
+                : false;
+
+              if (isPastDue) {
+                setAssignments((prevAssignments) => {
+                  const updated = prevAssignments.filter(
+                    (a) => a.id !== selectedAssignment.id,
+                  );
+                  if (updated.length > 0) {
+                    setSelectedAssignment(updated[0]);
+                  } else {
+                    setSelectedAssignment(null);
+                  }
+                  return updated;
+                });
+              }
+            }
+
+            return nextSubmissions;
+          });
+
           showToast({
             message: `Assignment marked! Total Score: ${totalScore}. Parent has been notified.`,
             type: "success",

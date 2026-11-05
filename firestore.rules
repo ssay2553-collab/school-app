@@ -1121,12 +1121,11 @@ match /feePayments/{paymentId} {
       allow delete: if isAdmin();
     }
     /* ===============================
-           FALLBACK & CATCH-ALL
-        =============================== */
-        match /{path=**} {
-          allow read: if isSignedIn();
-          allow write: if isSignedIn();
-
-        }
+       FALLBACK & CATCH-ALL
+    =============================== */
+    match /{path=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
   }
 }

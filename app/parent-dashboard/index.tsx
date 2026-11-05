@@ -22,9 +22,11 @@ import SVGIcon from "../../components/SVGIcon";
 import UnreadBadge from "../../components/UnreadBadge";
 import { useSchoolConfig } from "../../constants/Config";
 import { getSchoolLogo } from "../../constants/Logos";
+import { isFeatureEnabled } from "../../constants/tierPermissions";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 
 import { AdminEventStats } from "../../components/admin-dashboard/AdminEventStats";
@@ -37,6 +39,7 @@ const { width } = Dimensions.get("window");
 export default function ParentDashboard() {
   const router = useRouter();
   const { appUser } = useAuth();
+  const acadConfig = useAcademicConfig();
   const config = useSchoolConfig();
   const { totalUnread, assignmentUnread } = useUnreadCounts();
   const { upcomingEvents, loading: eventsLoading } = useUpcomingEvents(2);
@@ -44,6 +47,7 @@ export default function ParentDashboard() {
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(true);
   const [hasPreschoolChild, setHasPreschoolChild] = useState(false);
+  const [outstandingFeeBalance, setOutstandingFeeBalance] = useState<number>(0);
   const isNavigating = useRef(false);
 
   const {
@@ -68,11 +72,41 @@ export default function ParentDashboard() {
           const p = userData.profile;
           if (p) setFullName(`${p.firstName || ""} ${p.lastName || ""}`);
 
-          // Check for preschool children
+          // Check for preschool children & calculate outstanding fees
           const childrenIds = userData.childrenIds || [];
           if (childrenIds.length > 0) {
-            const q = query(collection(db, "users"), where(documentId(), "in", childrenIds));
-            const cSnap = await getDocsFromServer(q);
+            const childrenQuery = query(
+              collection(db, "users"),
+              where(documentId(), "in", childrenIds.slice(0, 30))
+            );
+            const cSnap = await getDocsFromServer(childrenQuery);
+
+            let totalFeeBalance = 0;
+            cSnap.docs.forEach((dSnap) => {
+              const childData = dSnap.data() as any;
+              const tuitionBal = Math.max(0, childData.balance || 0);
+              const serviceArrears = Math.max(0, childData.dailyArrears || 0);
+              totalFeeBalance += (tuitionBal + serviceArrears);
+            });
+
+            try {
+              const feeRecordsQ = query(
+                collection(db, "studentFeeRecords"),
+                where("studentUid", "in", childrenIds.slice(0, 30))
+              );
+              const feeRecordsSnap = await getDocsFromServer(feeRecordsQ);
+              feeRecordsSnap.docs.forEach((fDoc) => {
+                const fData = fDoc.data() as any;
+                if (fData.balance && fData.balance > 0) {
+                  totalFeeBalance = Math.max(totalFeeBalance, fData.balance);
+                }
+              });
+            } catch (feeErr) {
+              // Ignore if feeRecords query is inaccessible
+            }
+
+            if (isMounted) setOutstandingFeeBalance(totalFeeBalance);
+
             const classIds = cSnap.docs.map(d => (d.data() as any).classId).filter(id => !!id);
 
             if (classIds.length > 0) {
@@ -128,7 +162,7 @@ export default function ParentDashboard() {
     ? config.hotline.split("/").map((n: string) => n.trim()).filter((n: string) => !!n)
     : [];
 
-  const sections = [
+  const rawSections = [
     {
       title: "STUDENT MONITORING 📊",
       color: "#4ECDC4",
@@ -139,6 +173,7 @@ export default function ParentDashboard() {
           icon: "document-text",
           color: "#6366f1",
           path: "/parent-dashboard/student-academic-report",
+          featureId: "parent_student_score",
         },
         ...(hasPreschoolChild ? [{
           title: "Behavioral Remarks",
@@ -153,6 +188,7 @@ export default function ParentDashboard() {
           icon: "ribbon",
           color: "#f43f5e",
           path: "/parent-dashboard/assignment-scores",
+          featureId: "parent_student_score",
         },
         {
           title: "Attendance",
@@ -208,6 +244,7 @@ export default function ParentDashboard() {
           icon: "megaphone",
           color: "#8b5cf6",
           path: "/parent-dashboard/NewsScreen",
+          featureId: "parent_news",
         },
       ],
     },
@@ -221,6 +258,7 @@ export default function ParentDashboard() {
           icon: "chatbubbles",
           color: "#3b82f6",
           path: "/parent-dashboard/chat-with-teacher",
+          featureId: "parent_chat_teacher",
         },
         {
           title: "Admin Support",
@@ -232,6 +270,17 @@ export default function ParentDashboard() {
       ],
     },
   ];
+
+  const sections = rawSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) =>
+          !item.featureId ||
+          isFeatureEnabled(acadConfig.category, item.featureId),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
 
   if (loading)
     return (
@@ -387,6 +436,27 @@ export default function ParentDashboard() {
 
         <View style={styles.contentContainer}>
           <View style={styles.mainContent}>
+            {outstandingFeeBalance > 0 && (
+              <Animatable.View animation="fadeInDown" duration={600} style={[styles.notificationBanner, { backgroundColor: "#FEF2F2", borderColor: "#FCA5A5", marginBottom: 16 }]}>
+                <TouchableOpacity
+                  style={styles.bannerContent}
+                  onPress={() => router.push("/parent-dashboard/student-fee-history" as any)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.bannerIconBox, { backgroundColor: "#FEE2E2" }]}>
+                    <SVGIcon name="wallet" size={22} color="#EF4444" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.bannerTitle, { color: "#991B1B" }]}>Outstanding School Fees Notice 💳</Text>
+                    <Text style={[styles.bannerText, { color: "#7F1D1D" }]}>
+                      You have an unpaid balance of ₵{outstandingFeeBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}. Tap to view balance breakdown.
+                    </Text>
+                  </View>
+                  <SVGIcon name="chevron-forward" size={18} color="#EF4444" />
+                </TouchableOpacity>
+              </Animatable.View>
+            )}
+
             {assignmentUnread > 0 && (
               <Animatable.View animation="fadeInDown" duration={600} style={styles.notificationBanner}>
                 <TouchableOpacity

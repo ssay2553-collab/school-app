@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Platform,
   RefreshControl,
   SafeAreaView,
   StatusBar,
@@ -188,7 +189,13 @@ export default function TeacherManageStudentsScreen() {
   const handleBack = () => {
     if (isNavigating.current) return;
     isNavigating.current = true;
-    if (router.canGoBack()) {
+    setTimeout(() => {
+      isNavigating.current = false;
+    }, 500);
+
+    if (Platform.OS === "web") {
+      router.replace("/teacher-dashboard");
+    } else if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/teacher-dashboard");
@@ -263,10 +270,14 @@ export default function TeacherManageStudentsScreen() {
         displayName: `${data.firstName} ${data.lastName}`,
       };
 
-      if (data.dob) {
-        const isoDate = data.dob.toISOString();
-        updates["profile.dob"] = isoDate;
-        updates["dateOfBirth"] = isoDate;
+      const validIsoDate =
+        data.dob && data.dob instanceof Date && !isNaN(data.dob.getTime())
+          ? data.dob.toISOString()
+          : null;
+
+      if (validIsoDate) {
+        updates["profile.dob"] = validIsoDate;
+        updates["dateOfBirth"] = validIsoDate;
       } else {
         updates["profile.dob"] = null;
         updates["dateOfBirth"] = null;
@@ -296,10 +307,10 @@ export default function TeacherManageStudentsScreen() {
                 parent2Phone: data.parent2Phone,
                 profileImage: data.profileImage || s.profile.profileImage,
                 photoURL: data.profileImage || s.profile.photoURL,
-                dob: data.dob ? data.dob.toISOString() : null,
+                dob: validIsoDate,
               },
               photoURL: data.profileImage || s.photoURL,
-              dateOfBirth: data.dob ? data.dob.toISOString() : null,
+              dateOfBirth: validIsoDate,
             };
           }
           return s;

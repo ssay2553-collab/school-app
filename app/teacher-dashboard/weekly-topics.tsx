@@ -15,6 +15,7 @@ import {
   BackHandler,
   Modal,
 } from "react-native";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 // Conditional import for DateTimePicker to support Web/Electron
 const DateTimePicker = Platform.OS !== 'web' ? require('@react-native-community/datetimepicker').default : null;
 
@@ -194,7 +195,9 @@ Curriculum: ${curriculum}
     isNavigating.current = true;
 
     const performBack = () => {
-      if (router.canGoBack()) {
+      if (Platform.OS === "web") {
+        router.replace("/teacher-dashboard");
+      } else if (router.canGoBack()) {
         router.back();
       } else {
         router.replace("/teacher-dashboard");
@@ -279,7 +282,8 @@ Curriculum: ${curriculum}
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="teacher_weekly_topics">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <View style={[styles.headerInner, isLargeScreen && styles.maxContent]}>
@@ -999,6 +1003,7 @@ Curriculum: ${curriculum}
         initialClass={teacherClasses.find(c => c.id === selectedClassId)?.name}
       />
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

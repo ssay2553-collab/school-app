@@ -126,11 +126,8 @@ export default function StudentAcademicRecords() {
       Alert.alert("Locked", "This record has been approved by the Admin and cannot be edited.");
       return;
     }
-    if (saving || isNavigating.current) return;
-    isNavigating.current = true;
-    const success = await saveRecord();
-    if (success) router.back();
-    else isNavigating.current = false;
+    if (saving) return;
+    await saveRecord();
   };
 
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;

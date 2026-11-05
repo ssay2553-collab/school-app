@@ -21,6 +21,7 @@ import {
     FlatList,
     Keyboard,
     KeyboardAvoidingView,
+    Modal,
     Platform,
     ScrollView,
     StatusBar,
@@ -31,17 +32,19 @@ import {
     View,
 } from "react-native";
 import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Animatable from "react-native-animatable";
 import { AudioPlayer } from "../../components/AudioPlayer";
 import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
+import UnreadBadge from "../../components/UnreadBadge";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
-import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
+import { sendNotification, markNotificationsAsRead, markNotificationsForResolvedItem } from "../../src/services/notificationService";
 
 interface ChatMessage {
   id: string;
@@ -85,6 +88,206 @@ export default function ChatWithParent() {
   const [uploading, setUploading] = useState(false);
   const isMounted = useRef(true);
   const isNavigating = useRef(false);
+
+  // Broadcast mode states
+  const [isBroadcastMode, setIsBroadcastMode] = useState(false);
+  const [selectedParentUids, setSelectedParentUids] = useState<string[]>([]);
+  const [isBroadcastModalOpen, setIsBroadcastModalOpen] = useState(false);
+  const [broadcastText, setBroadcastText] = useState("");
+  const [broadcastUploading, setBroadcastUploading] = useState(false);
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+
+  // Broadcast Audio states
+  const [broadcastRecording, setBroadcastRecording] = useState<any | null>(null);
+  const [broadcastPreviewUri, setBroadcastPreviewUri] = useState<string | null>(null);
+  const [broadcastWebRecorder, setBroadcastWebRecorder] = useState<any | null>(null);
+  const [broadcastWebStream, setBroadcastWebStream] = useState<MediaStream | null>(null);
+  const broadcastWebChunksRef = React.useRef<any[]>([]);
+  const broadcastWebBlobRef = React.useRef<Blob | null>(null);
+
+  const toggleSelectParentForBroadcast = (uid: string) => {
+    setSelectedParentUids((prev) =>
+      prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]
+    );
+  };
+
+  const handleSelectAllFiltered = () => {
+    if (selectedParentUids.length === filteredParents.length && filteredParents.length > 0) {
+      setSelectedParentUids([]);
+    } else {
+      setSelectedParentUids(filteredParents.map((p) => p.uid));
+    }
+  };
+
+  const startBroadcastRecording = async () => {
+    try {
+      if (Platform.OS === "web") {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showToast({ message: "Audio recording is not supported in this browser.", type: "error" });
+          return;
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        broadcastWebChunksRef.current = [];
+        const MediaRec = (window as any).MediaRecorder || (global as any).MediaRecorder;
+        if (!MediaRec) {
+          showToast({ message: "MediaRecorder not available.", type: "error" });
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        const mediaRecorder = new MediaRec(stream);
+        mediaRecorder.ondataavailable = (ev: any) => {
+          if (ev.data && ev.data.size > 0) broadcastWebChunksRef.current.push(ev.data);
+        };
+        mediaRecorder.start();
+        setBroadcastWebStream(stream);
+        setBroadcastWebRecorder(mediaRecorder);
+        setBroadcastRecording({ web: true });
+        setBroadcastPreviewUri(null);
+        return;
+      }
+
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) return;
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      setBroadcastRecording(recording);
+      setBroadcastPreviewUri(null);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const stopBroadcastRecording = async () => {
+    if (!broadcastRecording) return;
+    try {
+      if (Platform.OS === "web") {
+        if (!broadcastWebRecorder) return;
+        broadcastWebRecorder.stop();
+        await new Promise((r) => setTimeout(r, 200));
+        const blob = new Blob(broadcastWebChunksRef.current, { type: "audio/webm" });
+        broadcastWebChunksRef.current = [];
+        broadcastWebBlobRef.current = blob;
+        const url = URL.createObjectURL(blob);
+        setBroadcastPreviewUri(url);
+        setBroadcastRecording(null);
+        return;
+      }
+
+      await broadcastRecording.stopAndUnloadAsync();
+      const uri = broadcastRecording.getURI();
+      setBroadcastRecording(null);
+      setBroadcastPreviewUri(uri);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSendBroadcast = async () => {
+    if (selectedParentUids.length === 0) return;
+    const hasText = !!broadcastText.trim();
+    const hasAudio = !!(broadcastPreviewUri || broadcastWebBlobRef.current);
+
+    if (!hasText && !hasAudio) {
+      showToast({ message: "Please enter a text message or record voice to broadcast.", type: "error" });
+      return;
+    }
+
+    setSendingBroadcast(true);
+    try {
+      let uploadedAudioUrl: string | undefined = undefined;
+
+      if (hasAudio) {
+        setBroadcastUploading(true);
+        let blob: Blob | null = null;
+        if (Platform.OS === "web") {
+          blob = broadcastWebBlobRef.current;
+        } else if (broadcastPreviewUri) {
+          blob = await (await fetch(broadcastPreviewUri)).blob();
+        }
+
+        if (blob) {
+          const ext = Platform.OS === "web" ? "webm" : "m4a";
+          const audioRef = ref(storage, `chats/broadcasts/${Date.now()}.${ext}`);
+          await uploadBytes(audioRef, blob);
+          uploadedAudioUrl = await getDownloadURL(audioRef);
+        }
+        setBroadcastUploading(false);
+      }
+
+      const timestamp = Date.now();
+      const isAudio = !!uploadedAudioUrl;
+      const msgType = isAudio ? "audio" : "text";
+
+      for (const pUid of selectedParentUids) {
+        const parentObj = parents.find((p) => p.uid === pUid);
+        const msg: any = {
+          id: `${timestamp}_${pUid}`,
+          type: msgType,
+          sender: "admin",
+          createdAt: timestamp,
+        };
+
+        if (isAudio) {
+          msg.fileUrl = uploadedAudioUrl;
+        } else {
+          msg.text = broadcastText.trim();
+        }
+
+        const chatRef = doc(db, "chats", pUid);
+        await setDoc(
+          chatRef,
+          {
+            messages: arrayUnion(msg),
+            lastUpdated: timestamp,
+            lastMessageFrom: "admin",
+            parentUid: pUid,
+            parentName: parentObj?.fullName || "Parent",
+          },
+          { merge: true }
+        );
+
+        const messagePreview = isAudio ? "🎵 Voice broadcast message" : broadcastText.trim();
+        sendNotification({
+          recipientId: pUid,
+          senderId: appUser?.uid || "admin",
+          senderName: appUser?.fullName || "School Administration",
+          type: "chat",
+          title: "Broadcast Message from School Admin 📢",
+          body: messagePreview,
+          data: { chatWith: appUser?.uid || "admin", parentUid: pUid },
+        });
+      }
+
+      playSound("sent");
+      showToast({
+        message: `Broadcast successfully sent to ${selectedParentUids.length} parent(s)!`,
+        type: "success",
+      });
+
+      setBroadcastText("");
+      setBroadcastPreviewUri(null);
+      broadcastWebBlobRef.current = null;
+      if (broadcastWebStream) {
+        broadcastWebStream.getTracks().forEach((t) => t.stop());
+        setBroadcastWebStream(null);
+      }
+      setIsBroadcastModalOpen(false);
+      setIsBroadcastMode(false);
+      setSelectedParentUids([]);
+    } catch (err) {
+      console.error("Broadcast send error:", err);
+      showToast({ message: "Failed to send broadcast message.", type: "error" });
+    } finally {
+      setSendingBroadcast(false);
+    }
+  };
 
   useEffect(() => {
     if (appUser?.uid) {
@@ -202,9 +405,55 @@ export default function ChatWithParent() {
     fetchData();
   }, []);
 
-  // Filtering Logic
+  const [parentUnreads, setParentUnreads] = useState<Record<string, number>>({});
+
   useEffect(() => {
-    let result = parents;
+    const unsub = onSnapshot(collection(db, "chats"), async (snapshot) => {
+      const unreads: Record<string, number> = {};
+      for (const docSnap of snapshot.docs) {
+        const parentUid = docSnap.id;
+        const data = docSnap.data();
+        const msgs = data.messages || [];
+        if (msgs.length === 0) continue;
+
+        const seenKey = `@lastSeen_admin_parent_${parentUid}`;
+        const seenStr = await AsyncStorage.getItem(seenKey);
+        const seen = seenStr ? parseInt(seenStr, 10) : 0;
+
+        const unreadCount = msgs.filter((m: any) => {
+          const msgTime = m.createdAt || m.timestamp?.toMillis?.() || 0;
+          return m.sender === "parent" && msgTime > seen;
+        }).length;
+
+        if (unreadCount > 0) {
+          unreads[parentUid] = unreadCount;
+        }
+      }
+      setParentUnreads(unreads);
+    }, (err) => {
+      console.warn("Error listening to admin parent unreads:", err);
+    });
+
+    return () => unsub();
+  }, []);
+
+  const markParentChatRead = async (parentUid: string) => {
+    try {
+      const seenKey = `@lastSeen_admin_parent_${parentUid}`;
+      await AsyncStorage.setItem(seenKey, Date.now().toString());
+      setParentUnreads((prev) => ({ ...prev, [parentUid]: 0 }));
+      if (appUser?.uid) {
+        markNotificationsAsRead(appUser.uid, "chat");
+        markNotificationsForResolvedItem({ recipientId: appUser.uid, type: "chat", itemId: parentUid });
+      }
+    } catch (e) {
+      console.warn("markParentChatRead error:", e);
+    }
+  };
+
+  // Filtering & Sorting Logic
+  useEffect(() => {
+    let result = [...parents];
     if (selectedClassId !== "all") {
       result = result.filter((p) =>
         p.childrenClassIds?.includes(selectedClassId),
@@ -219,8 +468,16 @@ export default function ChatWithParent() {
           p.children?.some((c) => c.name.toLowerCase().includes(q)),
       );
     }
+    // Sort unread parents to the top
+    result.sort((a, b) => {
+      const unreadA = parentUnreads[a.uid] || 0;
+      const unreadB = parentUnreads[b.uid] || 0;
+      if (unreadA > 0 && unreadB === 0) return -1;
+      if (unreadB > 0 && unreadA === 0) return 1;
+      return a.fullName.localeCompare(b.fullName);
+    });
     setFilteredParents(result);
-  }, [selectedClassId, searchQuery, parents]);
+  }, [selectedClassId, searchQuery, parents, parentUnreads]);
 
   // Real-time chat listener
   useEffect(() => {
@@ -473,7 +730,21 @@ export default function ChatWithParent() {
               <SVGIcon name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.headerTitleMain}>Parent Relations</Text>
-            <SVGIcon name="chatbubble-ellipses" size={24} color={secondary} />
+            <TouchableOpacity
+              onPress={() => {
+                setIsBroadcastMode((prev) => !prev);
+                setSelectedParentUids([]);
+              }}
+              style={[
+                styles.broadcastToggleBtn,
+                isBroadcastMode && { backgroundColor: secondary },
+              ]}
+            >
+              <SVGIcon name="megaphone" size={16} color="#fff" />
+              <Text style={styles.broadcastToggleText}>
+                {isBroadcastMode ? "Exit" : "Broadcast"}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.searchContainer}>
@@ -514,41 +785,116 @@ export default function ChatWithParent() {
               </View>
             </View>
           </View>
+
+          {isBroadcastMode && (
+            <Animatable.View animation="fadeInDown" duration={250} style={styles.broadcastActionBar}>
+              <TouchableOpacity onPress={handleSelectAllFiltered} style={styles.selectAllBtn}>
+                <SVGIcon
+                  name={
+                    selectedParentUids.length === filteredParents.length && filteredParents.length > 0
+                      ? "checkbox"
+                      : "square-outline"
+                  }
+                  size={18}
+                  color="#fff"
+                />
+                <Text style={styles.selectAllText}>
+                  {selectedParentUids.length === filteredParents.length && filteredParents.length > 0
+                    ? "Deselect All"
+                    : "Select All"}
+                </Text>
+              </TouchableOpacity>
+
+              <Text style={styles.selectedCountBadge}>
+                {selectedParentUids.length} Selected
+              </Text>
+
+              <TouchableOpacity
+                disabled={selectedParentUids.length === 0}
+                onPress={() => setIsBroadcastModalOpen(true)}
+                style={[
+                  styles.composeBroadcastBtn,
+                  { backgroundColor: secondary },
+                  selectedParentUids.length === 0 && { opacity: 0.5 },
+                ]}
+              >
+                <SVGIcon name="send" size={14} color="#fff" />
+                <Text style={styles.composeBroadcastText}>Compose</Text>
+              </TouchableOpacity>
+            </Animatable.View>
+          )}
         </LinearGradient>
 
         <FlatList
           data={filteredParents}
           keyExtractor={(i) => i.uid}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item, index }) => (
-            <Animatable.View animation="fadeInUp" delay={index * 50}>
-              <TouchableOpacity
-                style={styles.parentCard}
-                onPress={() => setSelected(item)}
-              >
-                <View
-                  style={[styles.avatar, { backgroundColor: primary + "10" }]}
+          renderItem={({ item, index }) => {
+            const isSelectedForBroadcast = selectedParentUids.includes(item.uid);
+            const unreadCount = parentUnreads[item.uid] || 0;
+            const hasUnread = unreadCount > 0;
+            return (
+              <Animatable.View animation="fadeInUp" delay={index * 50}>
+                <TouchableOpacity
+                  style={[
+                    styles.parentCard,
+                    isBroadcastMode && isSelectedForBroadcast && styles.selectedParentCard,
+                    !isBroadcastMode && hasUnread && { backgroundColor: primary + "0D", borderColor: primary + "40", borderWidth: 1.5 },
+                  ]}
+                  onPress={() => {
+                    if (isBroadcastMode) {
+                      toggleSelectParentForBroadcast(item.uid);
+                    } else {
+                      markParentChatRead(item.uid);
+                      setSelected(item);
+                    }
+                  }}
                 >
-                  <Text style={[styles.avatarText, { color: primary }]}>
-                    {item.fullName.charAt(0)}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.parentName}>{item.fullName}</Text>
-                  <View style={styles.childrenRow}>
-                    <SVGIcon name="school" size={12} color="#94A3B8" />
-                    <Text style={styles.childrenText}>
-                      {item.children?.map((c) => c.name).join(", ") ||
-                        "No linked students"}
+                  {isBroadcastMode && (
+                    <View style={{ marginRight: 12 }}>
+                      <SVGIcon
+                        name={isSelectedForBroadcast ? "checkbox" : "square-outline"}
+                        size={22}
+                        color={isSelectedForBroadcast ? primary : "#94A3B8"}
+                      />
+                    </View>
+                  )}
+                  <View
+                    style={[styles.avatar, { backgroundColor: primary + "10" }]}
+                  >
+                    <Text style={[styles.avatarText, { color: primary }]}>
+                      {item.fullName.charAt(0)}
                     </Text>
                   </View>
-                </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <SVGIcon name="chevron-forward" size={20} color="#CBD5E1" />
-              </View>
-              </TouchableOpacity>
-            </Animatable.View>
-          )}
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      <Text style={[styles.parentName, hasUnread && { fontWeight: "800", color: primary }]}>
+                        {item.fullName}
+                      </Text>
+                      {hasUnread && (
+                        <View style={styles.newBadgePill}>
+                          <Text style={styles.newBadgeText}>New</Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.childrenRow}>
+                      <SVGIcon name="school" size={12} color="#94A3B8" />
+                      <Text style={styles.childrenText}>
+                        {item.children?.map((c) => c.name).join(", ") ||
+                          "No linked students"}
+                      </Text>
+                    </View>
+                  </View>
+                  {!isBroadcastMode && (
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                      {hasUnread && <UnreadBadge count={unreadCount} />}
+                      <SVGIcon name="chevron-forward" size={20} color="#CBD5E1" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </Animatable.View>
+            );
+          }}
           ListEmptyComponent={() => (
             <View style={styles.emptyCenter}>
               <SVGIcon name="people" size={64} color="#CBD5E1" />
@@ -556,6 +902,121 @@ export default function ChatWithParent() {
             </View>
           )}
         />
+
+        <Modal
+          visible={isBroadcastModalOpen}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setIsBroadcastModalOpen(false)}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.modalOverlay}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalTitle}>Broadcast Message 📢</Text>
+                  <Text style={styles.modalSubTitle}>
+                    Sending to {selectedParentUids.length} selected parent(s)
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setIsBroadcastModalOpen(false)}
+                  style={styles.modalCloseBtn}
+                >
+                  <SVGIcon name="close" size={22} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ maxHeight: 320 }} keyboardShouldPersistTaps="handled">
+                <Text style={styles.modalInputLabel}>MESSAGE TEXT</Text>
+                <TextInput
+                  style={styles.modalTextInput}
+                  placeholder="Type your broadcast message here..."
+                  placeholderTextColor="#94A3B8"
+                  value={broadcastText}
+                  onChangeText={setBroadcastText}
+                  multiline
+                  numberOfLines={4}
+                />
+
+                <Text style={[styles.modalInputLabel, { marginTop: 16 }]}>
+                  VOICE MESSAGE (OPTIONAL)
+                </Text>
+                {broadcastPreviewUri ? (
+                  <View style={styles.broadcastAudioPreviewRow}>
+                    <View style={{ flex: 1 }}>
+                      <AudioPlayer url={broadcastPreviewUri} />
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setBroadcastPreviewUri(null)}
+                      style={styles.deleteAudioBtn}
+                    >
+                      <SVGIcon name="close-circle" size={24} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={broadcastRecording ? stopBroadcastRecording : startBroadcastRecording}
+                    style={[
+                      styles.broadcastMicBtn,
+                      broadcastRecording && styles.broadcastRecordingActive,
+                    ]}
+                  >
+                    <SVGIcon
+                      name={broadcastRecording ? "square" : "mic"}
+                      size={20}
+                      color={broadcastRecording ? "#fff" : primary}
+                    />
+                    <Text
+                      style={[
+                        styles.broadcastMicText,
+                        broadcastRecording && { color: "#fff" },
+                      ]}
+                    >
+                      {broadcastRecording ? "Stop Recording" : "Record Voice Message"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+
+              {broadcastUploading && (
+                <View style={styles.uploadingBox}>
+                  <ActivityIndicator size="small" color={primary} />
+                  <Text style={styles.uploadingText}>Uploading audio...</Text>
+                </View>
+              )}
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  onPress={() => setIsBroadcastModalOpen(false)}
+                  style={styles.modalCancelBtn}
+                  disabled={sendingBroadcast}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleSendBroadcast}
+                  style={[styles.modalSubmitBtn, { backgroundColor: primary }]}
+                  disabled={sendingBroadcast}
+                >
+                  {sendingBroadcast ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <>
+                      <SVGIcon name="send" size={16} color="#fff" />
+                      <Text style={styles.modalSubmitText}>
+                        Send ({selectedParentUids.length})
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </SafeAreaView>
     );
   }
@@ -923,5 +1384,190 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: "center",
     alignItems: "center",
+  },
+  broadcastToggleBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  broadcastToggleText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  broadcastActionBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+  selectAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  selectAllText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  selectedCountBadge: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  composeBroadcastBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  composeBroadcastText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  selectedParentCard: {
+    borderColor: "#3B82F6",
+    backgroundColor: "#F0F6FF",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 24,
+    padding: 20,
+    ...SHADOWS.medium,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  modalSubTitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+    fontWeight: "600",
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalInputLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#64748B",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  modalTextInput: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 16,
+    padding: 12,
+    fontSize: 14,
+    color: "#1E293B",
+    textAlignVertical: "top",
+    minHeight: 90,
+  },
+  broadcastAudioPreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    padding: 10,
+    borderRadius: 16,
+    gap: 10,
+  },
+  deleteAudioBtn: {
+    padding: 4,
+  },
+  broadcastMicBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#F1F5F9",
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+  },
+  broadcastRecordingActive: {
+    backgroundColor: "#EF4444",
+  },
+  broadcastMicText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  uploadingBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginVertical: 10,
+  },
+  uploadingText: {
+    fontSize: 12,
+    color: "#64748B",
+  },
+  modalFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 12,
+    marginTop: 20,
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  modalCancelText: {
+    color: "#64748B",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  modalSubmitBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    gap: 8,
+  },
+  modalSubmitText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  newBadgePill: {
+    backgroundColor: "#ef4444",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  newBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "800",
   },
 });

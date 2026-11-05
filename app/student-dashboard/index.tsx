@@ -21,9 +21,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SVGIcon from "../../components/SVGIcon";
 import UnreadBadge from "../../components/UnreadBadge";
 import { useSchoolConfig } from "../../constants/Config";
+import { isFeatureEnabled } from "../../constants/tierPermissions";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { auth } from "../../firebaseConfig";
+import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { copyToClipboard } from "../../utils/copyToClipboard";
 import { useEffect, useRef } from "react";
@@ -36,6 +38,7 @@ import { useUpcomingEvents } from "../../hooks/useUpcomingEvents";
 
 export default function StudentDashboard() {
   const { appUser, loading: authLoading } = useAuth();
+  const acadConfig = useAcademicConfig();
   const router = useRouter();
   const config = useSchoolConfig();
   const { width: windowWidth } = useWindowDimensions();
@@ -220,11 +223,38 @@ export default function StudentDashboard() {
     },
   ];
 
-  if (authLoading || !appUser) {
+  if (authLoading || !appUser || acadConfig.loading) {
     return (
       <View style={[styles.center, { backgroundColor: surface }]}>
         <ActivityIndicator size="large" color={brandPrimary} />
       </View>
+    );
+  }
+
+  // Tier Guard: EduEaz Core schools do not have student dashboard access
+  if (!isFeatureEnabled(acadConfig.category, "student_dashboard")) {
+    return (
+      <SafeAreaView style={[styles.center, { backgroundColor: "#FDFCF0", padding: 24 }]}>
+        <StatusBar barStyle="dark-content" />
+        <View style={{ alignItems: "center", maxWidth: 360 }}>
+          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: "#FEF2F2", justifyContent: "center", alignItems: "center", marginBottom: 20 }}>
+            <SVGIcon name="lock-closed" size={40} color="#EF4444" />
+          </View>
+          <Text style={{ fontSize: 22, fontWeight: "900", color: "#1E293B", textAlign: "center", marginBottom: 10 }}>
+            Student Portal Disabled
+          </Text>
+          <Text style={{ fontSize: 14, color: "#64748B", textAlign: "center", lineHeight: 22, marginBottom: 24 }}>
+            The Student Portal is not included in your school's current plan ({acadConfig.category?.toUpperCase() || "CORE"}). Please contact your school administrator for more details.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: brandPrimary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 16, flexDirection: "row", alignItems: "center", gap: 8 }}
+            onPress={handleLogout}
+          >
+            <SVGIcon name="log-out" size={18} color="#fff" />
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 14 }}>Sign Out</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 

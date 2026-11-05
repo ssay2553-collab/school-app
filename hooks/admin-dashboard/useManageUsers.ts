@@ -101,6 +101,7 @@ export function useManageUsers({
   );
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const isImportingRef = useRef(false);
   const [refreshing, setRefreshing] = useState(false);
   const [allClasses, setAllClasses] = useState<{ id: string; name: string }[]>(
     [],
@@ -316,6 +317,8 @@ export function useManageUsers({
   }, [filteredUsers, selectedUserUids]);
 
   const handleBulkImport = async () => {
+    if (isImportingRef.current || loading) return;
+    isImportingRef.current = true;
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: "text/comma-separated-values",
@@ -603,6 +606,7 @@ export function useManageUsers({
       });
     } finally {
       setLoading(false);
+      isImportingRef.current = false;
     }
   };
 
@@ -1723,6 +1727,7 @@ export function useManageUsers({
   };
 
   const openPermissionModal = (user: User) => {
+    setViewingUser(null);
     const defaults = PERMISSION_KEYS.reduce(
       (acc, p) => ({ ...acc, [p.key]: "deny" as PermissionLevel }),
       {},
@@ -1751,6 +1756,7 @@ export function useManageUsers({
   };
 
   const openEditProfile = async (user: User) => {
+    setViewingUser(null);
     let pName = user.profile?.parentName || "";
     let pPhone = user.profile?.parentPhone || "";
     let p2Name = user.profile?.parent2Name || "";
@@ -2123,6 +2129,26 @@ export function useManageUsers({
     source: "library" | "camera",
   ) => {
     try {
+      if (source === "camera") {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== "granted") {
+          showToast?.({
+            message: "Camera permission is required to capture profile photo.",
+            type: "error",
+          });
+          return;
+        }
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+          showToast?.({
+            message: "Media library permission is required to select profile photo.",
+            type: "error",
+          });
+          return;
+        }
+      }
+
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -2137,6 +2163,7 @@ export function useManageUsers({
 
       if (result.canceled || !result.assets.length) return;
 
+      if (!isMounted.current) return;
       setUploadingImage(true);
       const uri = result.assets[0].uri;
       const base64 = result.assets[0].base64;
@@ -2148,19 +2175,25 @@ export function useManageUsers({
         "profile.profileImage": profileImageValue,
       });
 
-      if (viewingUser?.uid === user.uid) {
-        setViewingUser({
-          ...viewingUser,
-          profile: { ...viewingUser.profile, profileImage: profileImageValue },
-        });
-      }
+      if (isMounted.current) {
+        if (viewingUser?.uid === user.uid) {
+          setViewingUser({
+            ...viewingUser,
+            profile: { ...viewingUser.profile, profileImage: profileImageValue },
+          });
+        }
 
-      showToast?.({ message: "Profile image updated!", type: "success" });
+        showToast?.({ message: "Profile image updated!", type: "success" });
+      }
     } catch (err) {
       console.error(err);
-      showToast?.({ message: "Could not save image.", type: "error" });
+      if (isMounted.current) {
+        showToast?.({ message: "Could not save image.", type: "error" });
+      }
     } finally {
-      setUploadingImage(false);
+      if (isMounted.current) {
+        setUploadingImage(false);
+      }
     }
   };
 
@@ -2313,8 +2346,10 @@ export function useManageUsers({
     isSuperAdmin,
     hasManageUsersAccess,
     handlePromoteRepeat,
-    openPromoteRepeat: (target: User | null = null) =>
-      setAssignmentModal({ type: "promote_repeat", target }),
+    openPromoteRepeat: (target: User | null = null) => {
+      setViewingUser(null);
+      setAssignmentModal({ type: "promote_repeat", target });
+    },
     runFinanceCleanup,
     isFinanceCleaning,
   };

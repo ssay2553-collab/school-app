@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { collection, getDocs, doc, getDoc, setDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, updateDoc, query, orderBy, serverTimestamp, writeBatch, where } from 'firebase/firestore';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import moment from 'moment';
@@ -97,14 +97,78 @@ export default function TeacherAttendanceLogsScreen() {
       // 1. Fetch holidays from config
       const configRef = doc(db, 'teacherAttendanceConfig', schoolId);
       const configSnap = await getDoc(configRef);
+      let activeHolidays = holidays;
       if (configSnap.exists()) {
         const cData = configSnap.data();
         if (cData.holidays && Array.isArray(cData.holidays)) {
-          setHolidays(cData.holidays);
+          activeHolidays = cData.holidays;
+          setHolidays(activeHolidays);
         }
       }
 
-      // 2. Fetch logs
+      // Helper for checking holidays
+      const isHoliday = (dateStr: string) => {
+        const check = moment(dateStr, 'YYYY-MM-DD');
+        return activeHolidays.some(h => {
+          if (h.date && h.date === dateStr) return true;
+          const s = (h as any).startDate || h.date;
+          const e = (h as any).endDate || h.date;
+          if (s && e) {
+            return check.isBetween(moment(s, 'YYYY-MM-DD'), moment(e, 'YYYY-MM-DD'), 'day', '[]');
+          }
+          return false;
+        });
+      };
+
+      // 2. Auto-mark absent after 4 PM (16:00) if no attendance taken
+      const todayStr = moment().format('YYYY-MM-DD');
+      const currentHour = moment().hour();
+      const dayOfWeek = moment().day(); // 1 = Mon, 5 = Fri
+      const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+      const isHolidayToday = isHoliday(todayStr);
+
+      if (currentHour >= 16 && isWeekday && !isHolidayToday) {
+        // Fetch existing attendance records for today
+        const existingQ = query(collection(db, 'teacherAttendance'), where('date', '==', todayStr));
+        const existingSnap = await getDocs(existingQ);
+        const loggedTeacherIds = new Set(existingSnap.docs.map(d => d.data().teacherId));
+
+        // Fetch all teachers/staff
+        const staffQ = query(collection(db, 'users'), where('role', 'in', ['teacher', 'admin', 'superadmin', 'staff']));
+        const staffSnap = await getDocs(staffQ);
+
+        const batch = writeBatch(db);
+        let batchCount = 0;
+
+        staffSnap.forEach((staffDoc) => {
+          const sData = staffDoc.data();
+          const sId = staffDoc.id;
+          if (!loggedTeacherIds.has(sId)) {
+            const sName = `${sData.profile?.firstName || ''} ${sData.profile?.lastName || ''}`.trim() || sData.fullName || 'Staff Member';
+            const sEmail = sData.profile?.email || sData.email || '';
+
+            const newDocRef = doc(collection(db, 'teacherAttendance'));
+            batch.set(newDocRef, {
+              teacherId: sId,
+              teacherName: sName,
+              teacherEmail: sEmail,
+              date: todayStr,
+              status: 'Absent',
+              hasPermission: false,
+              permissionType: 'without_permission',
+              permissionReason: 'Automatically marked absent (No check-in recorded by 4:00 PM)',
+              createdAt: serverTimestamp(),
+            });
+            batchCount++;
+          }
+        });
+
+        if (batchCount > 0) {
+          await batch.commit();
+        }
+      }
+
+      // 3. Fetch logs
       const q = query(collection(db, 'teacherAttendance'), orderBy('date', 'desc'));
       const snap = await getDocs(q);
       const list: AttendanceRecord[] = [];

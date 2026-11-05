@@ -93,7 +93,7 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   };
 
   return (
-    <Modal visible={isVisible} animationType="none" transparent>
+    <Modal visible={isVisible} animationType="none" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>

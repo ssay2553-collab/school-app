@@ -17,7 +17,10 @@ import {
     getGradeDetails,
     sortClasses,
 } from "../../lib/classHelpers";
-import { sendNotification } from "../../src/services/notificationService";
+import {
+  sendNotification,
+  markNotificationsForResolvedItem,
+} from "../../src/services/notificationService";
 
 interface SubjectInfo {
   id: string;
@@ -108,7 +111,7 @@ export const useEditScoresLogic = ({
   }, [classes, selectedClassId]);
 
   const filteredStudents = useMemo(() => {
-    let list = allStudents.filter((s) => s.status !== "draft");
+    let list = allStudents;
     if (!searchQuery) return list;
     const q = searchQuery.toLowerCase();
     return list.filter(
@@ -153,6 +156,155 @@ export const useEditScoresLogic = ({
     };
   }, [appUser]);
 
+  const loadSubmission = useCallback(
+    async (
+      subjectOverride?: string,
+      overrides?: {
+        reportType?: ReportType;
+        reportNumber?: number;
+        maxScore?: number;
+      },
+    ) => {
+      const subject = subjectOverride || selectedSubject;
+      const reportType = overrides?.reportType || selectedReportType;
+      const reportNumber = overrides?.reportNumber ?? selectedReportNumber;
+      const recordMaxScore = overrides?.maxScore ?? maxScore;
+
+      if (!selectedClassId || !subject || !selectedYear || !term) {
+        return showToast({
+          message: "Please select Year, Class and Subject.",
+          type: "error",
+        });
+      }
+      setListLoading(true);
+      try {
+        const yearSlug = selectedYear.replace(/\//g, "-");
+        const reportSlug = reportType.replace(/\s+/g, "");
+        const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(
+          reportType,
+        );
+        const numSuffix = isNumbered ? `_${reportNumber || 1}` : "";
+        const docId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
+
+        let snap = await getDoc(doc(db, "academicRecords", docId));
+        if (!snap.exists() && isNumbered && Number(reportNumber) === 1) {
+          const legacyDocId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
+          snap = await getDoc(doc(db, "academicRecords", legacyDocId));
+        }
+
+        if (!snap.exists()) {
+          const fallbackQ = query(
+            collection(db, "academicRecords"),
+            where("classId", "==", selectedClassId),
+            where("academicYear", "==", selectedYear),
+            where("term", "==", term),
+            where("subject", "==", subject),
+            where("reportType", "==", reportType)
+          );
+          const querySnap = await getDocsFromServer(fallbackQ);
+          if (!querySnap.empty) {
+            let matchDoc = querySnap.docs.find((d: any) => {
+              const dNum = Number(d.data().reportNumber || 1);
+              return isNumbered ? dNum === Number(reportNumber || 1) : true;
+            });
+            if (!matchDoc) matchDoc = querySnap.docs[0];
+            snap = matchDoc;
+          }
+        }
+
+        if (snap.exists()) {
+          setRecordId(snap.id);
+          const data = snap.data() as any;
+          const docMaxScore =
+            reportType === "End of Term" || reportType === "Mock Exams"
+              ? 100
+              : Number(data.maxScore) || recordMaxScore || 100;
+          setMaxScore(docMaxScore);
+          const rawStudents = Array.isArray(data.students) ? data.students : [];
+
+          // Query active class students from users collection to filter out archived/inactive students
+          let activeStudentMap = new Map<string, boolean>();
+          try {
+            const qClassUsers = query(
+              collection(db, "users"),
+              where("role", "==", "student"),
+              where("classId", "==", selectedClassId)
+            );
+            const classUsersSnap = await getDocsFromServer(qClassUsers);
+            classUsersSnap.docs.forEach((uDoc) => {
+              const uData = uDoc.data();
+              const uStatus = (uData.status || uData.profile?.status || "active").toString().toLowerCase();
+              const isArchived =
+                uStatus === "archived" ||
+                uStatus === "inactive" ||
+                uStatus === "graduated" ||
+                uStatus === "deleted" ||
+                uData.classId === "archived" ||
+                uData.archived === true ||
+                uData.isArchived === true;
+              if (!isArchived && ["active", "pending_activation"].includes(uStatus)) {
+                activeStudentMap.set(uDoc.id, true);
+              }
+            });
+          } catch (uErr) {
+            console.error("Error checking active class students:", uErr);
+          }
+
+          const students = rawStudents
+            .filter((s: any) => activeStudentMap.size === 0 || activeStudentMap.has(s.studentId))
+            .map((s: any) => ({
+              ...s,
+              maxScore: s.maxScore || docMaxScore,
+            }));
+          masterDataRef.current = {};
+          setAllStudents(students);
+          initialDataRef.current = JSON.stringify(students);
+          initialDataMapRef.current.clear();
+          students.forEach((s: any) => {
+            if (s && s.studentId) {
+              initialDataMapRef.current.set(s.studentId, JSON.stringify(s));
+            }
+          });
+          setVisibleStudents(students.slice(0, PAGE_SIZE));
+          if (isMounted.current) {
+            setPage(1);
+          }
+        } else {
+          if (isMounted.current) {
+            showToast({
+              message: `No submissions found for ${subject} in the selected period.`,
+              type: "info",
+            });
+            setRecordId(null);
+            setAllStudents([]);
+            initialDataRef.current = "[]";
+            initialDataMapRef.current.clear();
+            setVisibleStudents([]);
+          }
+        }
+      } catch (err) {
+        if (isMounted.current) {
+          console.error(err);
+          showToast({ message: "Failed to load records.", type: "error" });
+        }
+      } finally {
+        if (isMounted.current) {
+          setListLoading(false);
+        }
+      }
+    },
+    [
+      selectedSubject,
+      selectedReportType,
+      selectedReportNumber,
+      maxScore,
+      selectedClassId,
+      selectedYear,
+      term,
+      showToast,
+    ],
+  );
+
   const fetchSubjects = useCallback(async () => {
     if (!selectedClassId || !selectedYear || !term) return;
     setFetchingSubjects(true);
@@ -165,24 +317,50 @@ export const useEditScoresLogic = ({
       );
       const snap = await getDocsFromServer(q);
 
+      if (snap.empty) {
+        if (isMounted.current) {
+          setSubjects([]);
+          setSelectedSubject("");
+          setRecordId(null);
+          setAllStudents([]);
+          setVisibleStudents([]);
+          setFetchingSubjects(false);
+        }
+        return;
+      }
+
+      const activeReportType = selectedReportType;
+      const activeReportNumber = selectedReportNumber;
+
+      const isTargetNumbered = [
+        "Class Assessment Task (CAT)",
+        "Trial Test",
+        "Mock Exams",
+      ].includes(activeReportType);
+
       const subsMap = new Map<string, SubjectInfo>();
 
       snap.docs.forEach((d) => {
         const data = d.data() as any;
         const reportType = (data.reportType as ReportType) || "End of Term";
         const reportNumber = Number(data.reportNumber || 1);
-        const isNumbered = [
-          "Class Assessment Task (CAT)",
-          "Trial Test",
-        ].includes(reportType);
-        const key = `${data.subject || "unknown"}__${reportType}__${isNumbered ? reportNumber : 0}`;
+
+        // Strict filter: treat all report types uniquely!
+        if (reportType !== activeReportType) return;
+
+        // If report type is numbered, match reportNumber as well
+        if (isTargetNumbered && reportNumber !== Number(activeReportNumber || 1)) {
+          return;
+        }
+
+        const key = `${data.subject || "unknown"}__${reportType}__${isTargetNumbered ? reportNumber : 0}`;
 
         const subjectInfo: SubjectInfo = {
           id: key,
           name: data.subject,
           status: data.status || "pending",
           reportType,
-          reportNumber: isNumbered ? reportNumber : undefined,
+          reportNumber: isTargetNumbered ? reportNumber : undefined,
           maxScore:
             Number(data.maxScore) ||
             (reportType === "End of Term" || reportType === "Mock Exams"
@@ -219,44 +397,21 @@ export const useEditScoresLogic = ({
       if (isMounted.current) {
         setSubjects(subsList);
         if (subsList.length > 0) {
-          const matchedSubject = subsList.find((s) => {
-            const sameName = s.name === selectedSubject;
-            const sameType = s.reportType === selectedReportType;
-            if (
-              ["Class Assessment Task (CAT)", "Trial Test"].includes(
-                selectedReportType,
-              )
-            ) {
-              return (
-                sameName &&
-                sameType &&
-                Number(s.reportNumber || 1) ===
-                  Number(selectedReportNumber || 1)
-              );
-            }
-            return sameName && sameType;
-          });
-
-          if (!matchedSubject) {
-            const preferredFallback =
-              subsList.find((s) => s.name === selectedSubject) || subsList[0];
-            setSelectedSubject(preferredFallback.name);
-            setSelectedReportType(preferredFallback.reportType);
-            if (
-              ["Class Assessment Task (CAT)", "Trial Test"].includes(
-                preferredFallback.reportType,
-              )
-            ) {
-              setSelectedReportNumber(
-                Number(preferredFallback.reportNumber || 1),
-              );
-            }
-            if (preferredFallback.maxScore) {
-              setMaxScore(preferredFallback.maxScore);
-            }
+          const matchedSubject = subsList.find((s) => s.name === selectedSubject) || subsList[0];
+          setSelectedSubject(matchedSubject.name);
+          if (matchedSubject.maxScore) {
+            setMaxScore(matchedSubject.maxScore);
           }
+          loadSubmission(matchedSubject.name, {
+            reportType: matchedSubject.reportType,
+            reportNumber: matchedSubject.reportNumber || 1,
+            maxScore: matchedSubject.maxScore,
+          });
         } else {
           setSelectedSubject("");
+          setRecordId(null);
+          setAllStudents([]);
+          setVisibleStudents([]);
         }
         setFetchingSubjects(false);
       }
@@ -272,7 +427,7 @@ export const useEditScoresLogic = ({
     term,
     selectedReportType,
     selectedReportNumber,
-    selectedSubject,
+    loadSubmission,
   ]);
 
   useEffect(() => {
@@ -287,92 +442,6 @@ export const useEditScoresLogic = ({
     selectedReportNumber,
     fetchSubjects,
   ]);
-
-  const loadSubmission = async (
-    subjectOverride?: string,
-    overrides?: {
-      reportType?: ReportType;
-      reportNumber?: number;
-      maxScore?: number;
-    },
-  ) => {
-    const subject = subjectOverride || selectedSubject;
-    const reportType = overrides?.reportType || selectedReportType;
-    const reportNumber = overrides?.reportNumber ?? selectedReportNumber;
-    const recordMaxScore = overrides?.maxScore ?? maxScore;
-
-    if (!selectedClassId || !subject || !selectedYear || !term) {
-      return showToast({
-        message: "Please select Year, Class and Subject.",
-        type: "error",
-      });
-    }
-    setListLoading(true);
-    try {
-      const yearSlug = selectedYear.replace(/\//g, "-");
-      const reportSlug = reportType.replace(/\s+/g, "");
-      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(
-        reportType,
-      );
-      const numSuffix = isNumbered ? `_${reportNumber || 1}` : "";
-      const docId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}${numSuffix}`;
-
-      let snap = await getDoc(doc(db, "academicRecords", docId));
-      if (!snap.exists() && isNumbered && Number(reportNumber) === 1) {
-        const legacyDocId = `${selectedClassId}_${subject.replace(/\s+/g, "")}_${yearSlug}_${term.replace(/\s+/g, "")}_${reportSlug}`;
-        snap = await getDoc(doc(db, "academicRecords", legacyDocId));
-      }
-
-      if (snap.exists()) {
-        setRecordId(snap.id);
-        const data = snap.data() as any;
-        const docMaxScore =
-          reportType === "End of Term" || reportType === "Mock Exams"
-            ? 100
-            : Number(data.maxScore) || recordMaxScore || 100;
-        setMaxScore(docMaxScore);
-        const rawStudents = Array.isArray(data.students) ? data.students : [];
-        const students = rawStudents.map((s: any) => ({
-          ...s,
-          maxScore: s.maxScore || docMaxScore,
-        }));
-        masterDataRef.current = {};
-        setAllStudents(students);
-        initialDataRef.current = JSON.stringify(students);
-        initialDataMapRef.current.clear();
-        students.forEach((s: any) => {
-          if (s && s.studentId) {
-            initialDataMapRef.current.set(s.studentId, JSON.stringify(s));
-          }
-        });
-        setVisibleStudents(students.slice(0, PAGE_SIZE));
-        if (isMounted.current) {
-          setPage(1);
-        }
-      } else {
-        if (isMounted.current) {
-          showToast({
-            message: `No submissions found for ${subject} in the selected period.`,
-            type: "info",
-          });
-          setRecordId(null);
-          setAllStudents([]);
-          initialDataRef.current = "[]";
-          initialDataMapRef.current.clear();
-          setVisibleStudents([]);
-        }
-      }
-    } catch (err) {
-      if (isMounted.current) {
-        console.error(err);
-        showToast({ message: "Failed to load records.", type: "error" });
-      }
-    } finally {
-      if (isMounted.current) {
-        setListLoading(false);
-      }
-    }
-  };
 
   const loadMoreStudents = useCallback(() => {
     setVisibleStudents((prev) => {
@@ -458,6 +527,7 @@ export const useEditScoresLogic = ({
         const reportSuffix = [
           "Class Assessment Task (CAT)",
           "Trial Test",
+          "Mock Exams",
         ].includes(selectedReportType)
           ? selectedReportNumber
           : "";
@@ -492,7 +562,7 @@ export const useEditScoresLogic = ({
         );
 
         const reportSlug = selectedReportType.replace(/\s+/g, "");
-        const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) ? selectedReportNumber : "";
+        const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
         const reportId =
           `${student.studentId}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
             /\//g,
@@ -517,6 +587,14 @@ export const useEditScoresLogic = ({
       });
 
       await batch.commit();
+
+      // Clear any pending approval notifications for this academic record across admins
+      if (recordId) {
+        markNotificationsForResolvedItem({
+          type: "score",
+          itemId: recordId,
+        });
+      }
 
       // Notify parents of updated/approved scores
       try {
@@ -595,19 +673,25 @@ export const useEditScoresLogic = ({
     setDeleting(true);
     try {
       await deleteDoc(doc(db, "academicRecords", recordId));
-      showToast({
-        message: "Submission record deleted successfully.",
-        type: "success",
-      });
-      setRecordId(null);
-      setAllStudents([]);
-      setVisibleStudents([]);
-      fetchSubjects();
+      if (isMounted.current) {
+        showToast({
+          message: "Submission record deleted successfully.",
+          type: "success",
+        });
+        setRecordId(null);
+        setAllStudents([]);
+        setVisibleStudents([]);
+        fetchSubjects();
+      }
     } catch (err) {
-      console.error(err);
-      showToast({ message: "Deletion failed.", type: "error" });
+      if (isMounted.current) {
+        console.error(err);
+        showToast({ message: "Deletion failed.", type: "error" });
+      }
     } finally {
-      setDeleting(false);
+      if (isMounted.current) {
+        setDeleting(false);
+      }
     }
   };
 

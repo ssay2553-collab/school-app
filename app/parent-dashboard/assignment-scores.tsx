@@ -27,6 +27,7 @@ import {
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
@@ -107,8 +108,8 @@ export default function AssignmentScores() {
         })) as ScoreRecord[];
 
         data.sort((a, b) => {
-          const timeA = a.markedAt?.toMillis?.() || new Date(a.markedAt || 0).getTime();
-          const timeB = b.markedAt?.toMillis?.() || new Date(b.markedAt || 0).getTime();
+          const timeA = a.markedAt?.toMillis?.() || (a.markedAt ? new Date(a.markedAt as any).getTime() : 0);
+          const timeB = b.markedAt?.toMillis?.() || (b.markedAt ? new Date(b.markedAt as any).getTime() : 0);
           return timeB - timeA;
         });
 
@@ -229,7 +230,8 @@ export default function AssignmentScores() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="parent_student_score">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -255,7 +257,7 @@ export default function AssignmentScores() {
               colors={[COLORS.primary]}
             />
           }
-          onEndReached={() => fetchScores(true)}
+          onEndReached={() => fetchScores()}
           onEndReachedThreshold={0.3}
           ListFooterComponent={() =>
             loadingMore ? (
@@ -274,6 +276,7 @@ export default function AssignmentScores() {
         />
       )}
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

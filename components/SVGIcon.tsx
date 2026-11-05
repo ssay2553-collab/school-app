@@ -350,7 +350,7 @@ const paths: Record<string, string> = {
   "play-outline": "M8 5v14l11-7z",
 };
 
-export default React.memo(function SVGIcon({
+const SVGIconComponent = React.memo(function SVGIcon({
   name,
   color = "#000",
   size = 24,
@@ -435,4 +435,7 @@ export default React.memo(function SVGIcon({
     </Svg>
   );
 });
+
+export const SVGIcon = SVGIconComponent;
+export default SVGIconComponent;
 

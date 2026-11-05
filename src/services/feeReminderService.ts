@@ -4,7 +4,8 @@ import { sendNotification } from "./notificationService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import moment from "moment";
 
-const FEE_REMINDER_MONTH_KEY = "LAST_MONTHLY_FEE_REMINDER_MONTH";
+const FEE_REMINDER_EOM1_KEY = "LAST_FEE_REMINDER_EOM1";
+const FEE_REMINDER_EOM2_KEY = "LAST_FEE_REMINDER_EOM2";
 
 export interface FeeReminderResult {
   sentCount: number;
@@ -118,21 +119,50 @@ export async function broadcastFeeReminders(senderUid?: string, senderName?: str
 }
 
 /**
- * Automatic Monthly Check: Runs once per month per client session.
+ * Automatic End-of-Month Check:
+ * Ensures fee debt reminders are sent TWICE towards the end of each month
+ * (e.g. 1st reminder ~10 days before month end, 2nd reminder ~3 days before month end).
  */
 export async function checkAndSendMonthlyFeeReminders(userRole?: string) {
   try {
-    const currentMonth = moment().format("YYYY-MM");
-    const lastSentMonth = await AsyncStorage.getItem(FEE_REMINDER_MONTH_KEY);
-
-    if (lastSentMonth === currentMonth) {
-      return; // Already dispatched for this month
+    if (userRole !== "admin" && userRole !== "staff" && userRole !== "parent") {
+      return;
     }
 
-    if (userRole === "admin" || userRole === "staff" || userRole === "parent") {
-      console.log(`[Fee Reminder] Executing monthly fee debt check for ${currentMonth}...`);
-      await broadcastFeeReminders("system", "Monthly Accounts Reminder");
-      await AsyncStorage.setItem(FEE_REMINDER_MONTH_KEY, currentMonth);
+    const now = moment();
+    const currentMonth = now.format("YYYY-MM");
+    const dayOfMonth = now.date();
+    const daysInMonth = now.daysInMonth();
+
+    const eom1TargetDay = daysInMonth - 9; // e.g. Day 21/22 of 30/31-day month
+    const eom2TargetDay = daysInMonth - 2; // e.g. Day 28/29 of 30/31-day month
+
+    const eom1Tag = `${currentMonth}-EOM1`;
+    const eom2Tag = `${currentMonth}-EOM2`;
+
+    const lastEom1 = await AsyncStorage.getItem(FEE_REMINDER_EOM1_KEY);
+    const lastEom2 = await AsyncStorage.getItem(FEE_REMINDER_EOM2_KEY);
+
+    // 1st End-of-Month Reminder (~10 to 4 days before month end)
+    if (dayOfMonth >= eom1TargetDay && dayOfMonth < eom2TargetDay) {
+      if (lastEom1 !== eom1Tag) {
+        console.log(`[Fee Reminder] Executing 1st end-of-month fee debt check for ${eom1Tag}...`);
+        await broadcastFeeReminders("system", "End of Month Fee Reminder (1/2)");
+        await AsyncStorage.setItem(FEE_REMINDER_EOM1_KEY, eom1Tag);
+      }
+    }
+
+    // 2nd End-of-Month Reminder (Final 3 days of the month)
+    if (dayOfMonth >= eom2TargetDay) {
+      if (lastEom1 !== eom1Tag) {
+        await AsyncStorage.setItem(FEE_REMINDER_EOM1_KEY, eom1Tag);
+      }
+
+      if (lastEom2 !== eom2Tag) {
+        console.log(`[Fee Reminder] Executing 2nd end-of-month fee debt check for ${eom2Tag}...`);
+        await broadcastFeeReminders("system", "End of Month Fee Reminder (2/2)");
+        await AsyncStorage.setItem(FEE_REMINDER_EOM2_KEY, eom2Tag);
+      }
     }
   } catch (e) {
     console.error("Failed automated monthly fee debt check:", e);

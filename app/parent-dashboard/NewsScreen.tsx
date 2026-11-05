@@ -10,6 +10,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../contexts/AuthContext";
 import { markNotificationsAsRead } from "../../src/services/notificationService";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 
 export default function NewsScreen() {
   const router = useRouter();
@@ -58,33 +59,35 @@ export default function NewsScreen() {
   if (loading) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>School News 📰</Text>
-          <Text style={styles.headerSubtitle}>Bulletins and announcements</Text>
+    <TierProtectedRoute featureId="parent_news">
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <SVGIcon name="arrow-back" size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>School News 📰</Text>
+            <Text style={styles.headerSubtitle}>Bulletins and announcements</Text>
+          </View>
         </View>
-      </View>
 
-      <View style={styles.content}>
-        <View style={styles.filterSection}>
-           <CategoryTabs active={category} onChange={setCategory} categories={categories} />
+        <View style={styles.content}>
+          <View style={styles.filterSection}>
+            <CategoryTabs active={category} onChange={setCategory} categories={categories} />
+          </View>
+          <SearchBar value={search} onChange={setSearch} />
+          <FlatList
+            data={filtered}
+            keyExtractor={(i) => i.id}
+            renderItem={({ item }) => <NewsCard item={item} />}
+            contentContainerStyle={{ paddingBottom: 100 }}
+            ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+            showsVerticalScrollIndicator={false}
+          />
         </View>
-        <SearchBar value={search} onChange={setSearch} />
-        <FlatList
-          data={filtered}
-          keyExtractor={(i) => i.id}
-          renderItem={({ item }) => <NewsCard item={item} />}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </TierProtectedRoute>
   );
 }
 

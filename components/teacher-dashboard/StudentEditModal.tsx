@@ -1,3 +1,5 @@
+import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import moment from "moment";
 import React, { useEffect, useState } from "react";
@@ -23,6 +25,40 @@ const DateTimePicker =
   Platform.OS !== "web"
     ? require("@react-native-community/datetimepicker").default
     : null;
+
+const uriToBase64 = async (uri: string): Promise<string> => {
+  if (!uri) return "";
+  if (uri.startsWith("data:")) return uri;
+
+  try {
+    if (Platform.OS === "web") {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 300, height: 300 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      if (manipResult.base64) {
+        return `data:image/jpeg;base64,${manipResult.base64}`;
+      }
+      const base64Data = await FileSystem.readAsStringAsync(manipResult.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      return `data:image/jpeg;base64,${base64Data}`;
+    }
+  } catch (e) {
+    console.error("Error converting URI to base64:", e);
+    return uri;
+  }
+};
 
 export interface StudentData {
   uid: string;
@@ -124,13 +160,18 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
 
       const rawDob = student.profile?.dob || student.dateOfBirth;
       if (rawDob) {
+        let parsedDate: Date | null = null;
         if (typeof rawDob.toDate === "function") {
-          setDob(rawDob.toDate());
+          parsedDate = rawDob.toDate();
         } else if (rawDob instanceof Date) {
-          setDob(rawDob);
+          parsedDate = rawDob;
         } else {
-          const parsed = new Date(rawDob);
-          setDob(isNaN(parsed.getTime()) ? null : parsed);
+          parsedDate = new Date(rawDob);
+        }
+        if (parsedDate && parsedDate instanceof Date && !isNaN(parsedDate.getTime())) {
+          setDob(parsedDate);
+        } else {
+          setDob(null);
         }
       } else {
         setDob(null);
@@ -173,15 +214,12 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5,
-        base64: true,
+        quality: 0.8,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const base64Uri = asset.base64
-          ? `data:image/jpeg;base64,${asset.base64}`
-          : asset.uri;
+        const base64Uri = await uriToBase64(asset.uri);
         setProfileImage(base64Uri);
         showToast({ message: "Photo captured!", type: "success" });
       }
@@ -211,15 +249,12 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5,
-        base64: true,
+        quality: 0.8,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const base64Uri = asset.base64
-          ? `data:image/jpeg;base64,${asset.base64}`
-          : asset.uri;
+        const base64Uri = await uriToBase64(asset.uri);
         setProfileImage(base64Uri);
         showToast({ message: "Photo selected!", type: "success" });
       }
@@ -231,11 +266,30 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
     }
   };
 
+  const formatDobForWebInput = (d: Date | null): string => {
+    if (!d || !(d instanceof Date) || isNaN(d.getTime())) return "";
+    try {
+      return d.toISOString().split("T")[0];
+    } catch {
+      return "";
+    }
+  };
+
   const handleSelectYear = (year: number) => {
-    const newDate = dob ? new Date(dob) : new Date();
+    const newDate = dob && !isNaN(dob.getTime()) ? new Date(dob) : new Date(2015, 0, 1);
     newDate.setFullYear(year);
     setDob(newDate);
     setShowYearSelector(false);
+  };
+
+  const handleNativeDateChange = (event: any, date?: Date) => {
+    setShowDatePicker(false);
+    if (event && event.type === "dismissed") {
+      return;
+    }
+    if (date && date instanceof Date && !isNaN(date.getTime())) {
+      setDob(date);
+    }
   };
 
   const handleSave = () => {
@@ -248,6 +302,8 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
       return;
     }
 
+    const validDob = dob && dob instanceof Date && !isNaN(dob.getTime()) ? dob : null;
+
     onUpdateProfile({
       firstName: firstName.trim(),
       lastName: lastName.trim(),
@@ -255,7 +311,7 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
       parentPhone: parentPhone.trim(),
       parent2Name: parent2Name.trim(),
       parent2Phone: parent2Phone.trim(),
-      dob,
+      dob: validDob,
       profileImage,
     });
   };
@@ -370,10 +426,17 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                     style={[styles.textInput, { flex: 1 }]}
                     // @ts-ignore - web date input
                     type="date"
-                    value={dob ? dob.toISOString().split("T")[0] : ""}
+                    value={formatDobForWebInput(dob)}
                     onChange={(e: any) => {
-                      const val = e.target.value;
-                      setDob(val ? new Date(val) : null);
+                      const val = e.target?.value || e.nativeEvent?.text;
+                      if (!val) {
+                        setDob(null);
+                        return;
+                      }
+                      const parsed = new Date(val);
+                      if (!isNaN(parsed.getTime())) {
+                        setDob(parsed);
+                      }
                     }}
                   />
                   {dob && (
@@ -393,7 +456,9 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                   >
                     <SVGIcon name="calendar" size={18} color={COLORS.primary} />
                     <Text style={styles.datePickerText}>
-                      {dob ? moment(dob).format("MMM DD, YYYY") : "Select Date of Birth"}
+                      {dob && !isNaN(dob.getTime())
+                        ? moment(dob).format("MMM DD, YYYY")
+                        : "Select Date of Birth"}
                     </Text>
                   </TouchableOpacity>
 
@@ -417,7 +482,7 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                 <Text style={styles.quickYearToggleText}>
                   {showYearSelector
                     ? "Hide Quick Year Selector"
-                    : `Quick Select Year (${dob ? dob.getFullYear() : "Select"})`}
+                    : `Quick Select Year (${dob && !isNaN(dob.getTime()) ? dob.getFullYear() : "Select"})`}
                 </Text>
               </TouchableOpacity>
 
@@ -428,7 +493,7 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
                   contentContainerStyle={styles.yearScroll}
                 >
                   {yearOptions.map((y) => {
-                    const isSelected = dob?.getFullYear() === y;
+                    const isSelected = dob && !isNaN(dob.getTime()) && dob.getFullYear() === y;
                     return (
                       <TouchableOpacity
                         key={y}
@@ -456,14 +521,12 @@ export const StudentEditModal: React.FC<StudentEditModalProps> = ({
             {/* NATIVE DATETIME PICKER MODAL */}
             {Platform.OS !== "web" && showDatePicker && DateTimePicker && (
               <DateTimePicker
-                value={dob || new Date(2015, 0, 1)}
+                value={dob && !isNaN(dob.getTime()) ? dob : new Date(2015, 0, 1)}
                 mode="date"
-                display="default"
+                display={Platform.OS === "ios" ? "spinner" : "default"}
                 maximumDate={new Date()}
-                onChange={(event: any, date?: Date) => {
-                  setShowDatePicker(false);
-                  if (date) setDob(date);
-                }}
+                minimumDate={new Date(1990, 0, 1)}
+                onChange={handleNativeDateChange}
               />
             )}
 

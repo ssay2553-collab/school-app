@@ -39,6 +39,16 @@ import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
+import { LiveCallBanner } from "../../components/LiveCallBanner";
+import { GroupMeetingModal } from "../../components/GroupMeetingModal";
+import { StartMeetingModal } from "../../components/StartMeetingModal";
+import {
+  GroupMeeting,
+  subscribeToActiveMeeting,
+  startGroupMeeting,
+  joinGroupMeeting,
+  endGroupMeeting,
+} from "../../src/services/groupMeetingService";
 
 export default function GroupChat() {
   const { groupId, groupName } = useLocalSearchParams();
@@ -88,6 +98,91 @@ export default function GroupChat() {
     }
   };
 
+  const [activeMeeting, setActiveMeeting] = useState<GroupMeeting | null>(null);
+  const [startMeetingModalVisible, setStartMeetingModalVisible] = useState(false);
+  const [inCallModalVisible, setInCallModalVisible] = useState(false);
+  const [isVoiceAllowed, setIsVoiceAllowed] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!groupId) return;
+    const checkEligibility = async () => {
+      try {
+        const groupSnap = await getDoc(doc(db, "studentGroups", groupId as string));
+        if (!groupSnap.exists()) return;
+        const gData = groupSnap.data();
+
+        let classData: any = null;
+        if (gData.classId) {
+          const classSnap = await getDoc(doc(db, "classes", gData.classId));
+          if (classSnap.exists()) classData = classSnap.data();
+        }
+
+        const dept = (gData.department || classData?.department || "").toLowerCase();
+        const gNameStr = (gData.name || classData?.name || groupName || "").toString().toLowerCase();
+
+        // Only restrict if explicitly Creche, Nursery, KG, or Lower Primary
+        const isRestrictedDept =
+          dept.includes("pre-school") ||
+          dept.includes("preschool") ||
+          dept.includes("creche") ||
+          dept.includes("nursery") ||
+          dept.includes("kg") ||
+          dept.includes("lower primary") ||
+          /creche|nursery|kg|kg1|kg2|primary\s*[1-3]|\bb[1-3]\b/i.test(gNameStr);
+
+        const isAllowed = !isRestrictedDept || appUser?.role === "admin" || appUser?.role === "teacher";
+
+        if (isMounted.current) {
+          setIsVoiceAllowed(isAllowed);
+        }
+      } catch (err) {
+        console.error("Error checking group voice eligibility:", err);
+      }
+    };
+    checkEligibility();
+  }, [groupId, appUser]);
+
+  useEffect(() => {
+    if (!groupId) return;
+    const unsubMeeting = subscribeToActiveMeeting(groupId as string, (meeting) => {
+      if (isMounted.current) {
+        setActiveMeeting(meeting);
+      }
+    });
+    return () => unsubMeeting();
+  }, [groupId]);
+
+  const currentUserInfo = {
+    uid: appUser?.uid || "guest",
+    fullName:
+      appUser?.fullName ||
+      `${appUser?.profile?.firstName ?? ""} ${appUser?.profile?.lastName ?? ""}`.trim() ||
+      "User",
+    userType: appUser?.role || (appUser as any)?.userType || "student",
+  };
+
+  const handleStartMeeting = async (title: string) => {
+    if (!groupId || !appUser) return;
+    const meetingId = await startGroupMeeting(
+      groupId as string,
+      "student",
+      title,
+      currentUserInfo
+    );
+    setInCallModalVisible(true);
+  };
+
+  const handleJoinMeeting = async () => {
+    if (!activeMeeting || !appUser) return;
+    await joinGroupMeeting(activeMeeting.id, currentUserInfo);
+    setInCallModalVisible(true);
+  };
+
+  const handleEndMeeting = async () => {
+    if (!activeMeeting) return;
+    await endGroupMeeting(activeMeeting.id);
+  };
+
   useEffect(() => {
     if (!groupId) return;
     const q = query(
@@ -124,6 +219,14 @@ export default function GroupChat() {
   useEffect(() => {
     if (groupId) markChatRead("group", String(groupId));
   }, [groupId]);
+
+  const handleMicPress = async () => {
+    if (recording) {
+      await stopRecordingAndSend();
+    } else {
+      await startRecording();
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -341,10 +444,33 @@ export default function GroupChat() {
             </Text>
             <Text style={styles.headerSub}>Learning together!</Text>
           </View>
-          <TouchableOpacity style={styles.headerAction}>
-            <SVGIcon name="information-circle" size={24} color={primary} />
+          <TouchableOpacity
+            style={styles.callHeaderBtn}
+            onPress={() => {
+              if (isVoiceAllowed) {
+                setStartMeetingModalVisible(true);
+              } else {
+                showToast({
+                  message: "Live voice calls are reserved for Upper Primary and JHS departments.",
+                  type: "info",
+                });
+              }
+            }}
+            activeOpacity={0.8}
+          >
+            <SVGIcon name="call" size={16} color="#FFFFFF" />
+            <Text style={styles.callHeaderBtnText}>Classroom</Text>
           </TouchableOpacity>
         </View>
+
+        {activeMeeting && (
+          <LiveCallBanner
+            meeting={activeMeeting}
+            onJoin={handleJoinMeeting}
+            onEnd={handleEndMeeting}
+            isHost={activeMeeting.hostUid === currentUserInfo.uid}
+          />
+        )}
 
         <ScrollView
           ref={scrollRef}
@@ -396,9 +522,9 @@ export default function GroupChat() {
           )}
 
           <TouchableOpacity
-            onPressIn={startRecording}
-            onPressOut={stopRecordingAndSend}
+            onPress={handleMicPress}
             style={[styles.iconBtn, recording && styles.recordingBtn]}
+            activeOpacity={0.8}
           >
             <SVGIcon
               name={recording ? "mic" : "mic-outline"}
@@ -426,6 +552,23 @@ export default function GroupChat() {
             <SVGIcon name="send" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
+
+        {/* Start Meeting Modal */}
+        <StartMeetingModal
+          visible={startMeetingModalVisible}
+          onClose={() => setStartMeetingModalVisible(false)}
+          onStartMeeting={handleStartMeeting}
+          groupType="student"
+          groupName={groupName as string}
+        />
+
+        {/* Live Voice Meeting Room Modal */}
+        <GroupMeetingModal
+          visible={inCallModalVisible}
+          meeting={activeMeeting}
+          currentUser={currentUserInfo}
+          onClose={() => setInCallModalVisible(false)}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -455,6 +598,25 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
   headerSub: { fontSize: 12, color: "#64748B", fontWeight: "600" },
   headerAction: { padding: 5 },
+  callHeaderBtn: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  callHeaderBtnText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
   chatArea: { flex: 1 },
   msgText: { fontSize: 15, lineHeight: 22 },
   inputBar: {

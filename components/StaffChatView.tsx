@@ -48,6 +48,16 @@ import { useToast } from "../contexts/ToastContext";
 import { db, storage } from "../firebaseConfig";
 import useUnreadCounts from "../hooks/useUnreadCounts";
 import { markNotificationsAsRead, sendNotification } from "../src/services/notificationService";
+import { LiveCallBanner } from "./LiveCallBanner";
+import { GroupMeetingModal } from "./GroupMeetingModal";
+import { StartMeetingModal } from "./StartMeetingModal";
+import {
+  GroupMeeting,
+  subscribeToActiveMeeting,
+  startGroupMeeting,
+  joinGroupMeeting,
+  endGroupMeeting,
+} from "../src/services/groupMeetingService";
 
 const QUICK_EMOJIS = [
   "😀", "😂", "👍", "🙌", "🔥", "✨", "📚", "🎓", "💡", "✅",
@@ -106,6 +116,50 @@ export function StaffChatView() {
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [membersToAdd, setMembersToAdd] = useState<string[]>([]);
+
+  // Meeting state
+  const [activeMeeting, setActiveMeeting] = useState<GroupMeeting | null>(null);
+  const [startMeetingModalVisible, setStartMeetingModalVisible] = useState(false);
+  const [inCallModalVisible, setInCallModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (!selectedGroup?.id) {
+      setActiveMeeting(null);
+      return;
+    }
+    const unsub = subscribeToActiveMeeting(selectedGroup.id, (meeting) => {
+      if (isMounted.current) setActiveMeeting(meeting);
+    });
+    return () => unsub();
+  }, [selectedGroup?.id]);
+
+  const currentUserInfo = {
+    uid: appUser?.uid || "guest",
+    fullName: appUser?.fullName || "Staff Member",
+    userType: appUser?.role || "teacher",
+  };
+
+  const handleStartStaffMeeting = async (title: string) => {
+    if (!selectedGroup || !appUser) return;
+    const meetingId = await startGroupMeeting(
+      selectedGroup.id,
+      "staff",
+      title,
+      currentUserInfo
+    );
+    setInCallModalVisible(true);
+  };
+
+  const handleJoinStaffMeeting = async () => {
+    if (!activeMeeting || !appUser) return;
+    await joinGroupMeeting(activeMeeting.id, currentUserInfo);
+    setInCallModalVisible(true);
+  };
+
+  const handleEndStaffMeeting = async () => {
+    if (!activeMeeting) return;
+    await endGroupMeeting(activeMeeting.id);
+  };
 
   const isMounted = useRef(true);
   const isNavigating = useRef(false);
@@ -538,6 +592,33 @@ export function StaffChatView() {
           senderImage,
           createdAt: serverTimestamp(),
         });
+
+        if (selectedStaff) {
+          await sendNotification({
+            recipientId: selectedStaff.uid,
+            senderId: appUser!.uid,
+            senderName: senderFirstName,
+            type: "chat",
+            title: `Voice Message from ${senderFirstName} 🎙️`,
+            body: "Sent a voice message",
+            data: { chatId, type: "audio" },
+          });
+        } else if (selectedGroup) {
+          for (const memberId of selectedGroup.members) {
+            if (memberId !== appUser!.uid) {
+              await sendNotification({
+                recipientId: memberId,
+                senderId: appUser!.uid,
+                senderName: senderFirstName,
+                type: "chat",
+                title: `${selectedGroup.name}: ${senderFirstName} 🎙️`,
+                body: "Sent a voice message",
+                data: { chatId: selectedGroup.id, groupId: selectedGroup.id, type: "audio" },
+              });
+            }
+          }
+        }
+
         playSound("sent");
         if (isMounted.current) {
           setRecording(null);
@@ -580,6 +661,33 @@ export function StaffChatView() {
         senderImage,
         createdAt: serverTimestamp(),
       });
+
+      if (selectedStaff) {
+        await sendNotification({
+          recipientId: selectedStaff.uid,
+          senderId: appUser!.uid,
+          senderName: senderFirstName,
+          type: "chat",
+          title: `Voice Message from ${senderFirstName} 🎙️`,
+          body: "Sent a voice message",
+          data: { chatId, type: "audio" },
+        });
+      } else if (selectedGroup) {
+        for (const memberId of selectedGroup.members) {
+          if (memberId !== appUser!.uid) {
+            await sendNotification({
+              recipientId: memberId,
+              senderId: appUser!.uid,
+              senderName: senderFirstName,
+              type: "chat",
+              title: `${selectedGroup.name}: ${senderFirstName} 🎙️`,
+              body: "Sent a voice message",
+              data: { chatId: selectedGroup.id, groupId: selectedGroup.id, type: "audio" },
+            });
+          }
+        }
+      }
+
       playSound("sent");
     } catch (e) {
       if (isMounted.current) {
@@ -882,16 +990,35 @@ export function StaffChatView() {
             </TouchableOpacity>
 
             {selectedGroup ? (
-              <TouchableOpacity
-                onPress={() => setShowMembersModal(true)}
-                style={styles.backBtn}
-              >
-                <SVGIcon name="information-circle" size={24} color={primary} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => setStartMeetingModalVisible(true)}
+                  style={styles.staffCallHeaderBtn}
+                  activeOpacity={0.8}
+                >
+                  <SVGIcon name="call" size={14} color="#FFFFFF" />
+                  <Text style={styles.staffCallHeaderBtnText}>Meeting</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowMembersModal(true)}
+                  style={styles.backBtn}
+                >
+                  <SVGIcon name="information-circle" size={24} color={primary} />
+                </TouchableOpacity>
+              </View>
             ) : (
               <View style={{ width: 40 }} />
             )}
           </View>
+
+          {selectedGroup && activeMeeting && (
+            <LiveCallBanner
+              meeting={activeMeeting}
+              onJoin={handleJoinStaffMeeting}
+              onEnd={handleEndStaffMeeting}
+              isHost={activeMeeting.hostUid === currentUserInfo.uid}
+            />
+          )}
 
           {/* Messages List */}
           <FlatList
@@ -1257,6 +1384,23 @@ export function StaffChatView() {
             </View>
           </Modal>
         )}
+
+        {/* Start Meeting Modal */}
+        <StartMeetingModal
+          visible={startMeetingModalVisible}
+          onClose={() => setStartMeetingModalVisible(false)}
+          onStartMeeting={handleStartStaffMeeting}
+          groupType="staff"
+          groupName={selectedGroup?.name}
+        />
+
+        {/* Live Voice Meeting Room Modal */}
+        <GroupMeetingModal
+          visible={inCallModalVisible}
+          meeting={activeMeeting}
+          currentUser={currentUserInfo}
+          onClose={() => setInCallModalVisible(false)}
+        />
       </SafeAreaView>
     );
   }
@@ -1576,6 +1720,29 @@ const styles = StyleSheet.create({
       web: { cursor: "pointer" } as any,
       default: {},
     }),
+  },
+  staffCallHeaderBtn: {
+    backgroundColor: "#10B981",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    shadowColor: "#10B981",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 2,
+    ...Platform.select({
+      web: { cursor: "pointer" } as any,
+      default: {},
+    }),
+  },
+  staffCallHeaderBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#FFFFFF",
   },
   chatHeaderTitle: { fontSize: 18, fontWeight: "800", color: "#1E293B" },
   headerSub: { fontSize: 11, fontWeight: "700", textTransform: "uppercase" },

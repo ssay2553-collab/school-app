@@ -128,7 +128,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
   if (state.type === "none") return null;
 
   return (
-    <Modal visible={true} transparent animationType="none">
+    <Modal visible={true} transparent animationType="none" onRequestClose={onClose}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.modalOverlay}
@@ -561,7 +561,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                         Gender
                       </Text>
                       <Picker
-                        selectedValue={editForm.gender}
+                        selectedValue={editForm.gender || ""}
                         style={{ marginLeft: -10 }}
                         onValueChange={(t) =>
                           setEditForm((p: any) => ({ ...p, gender: t }))
@@ -684,7 +684,6 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                             onChangeText={(t) =>
                               setEditForm((p: any) => ({
                                 ...p,
-                                parent22Phone: t,
                                 parent2Phone: t,
                               }))
                             }
@@ -768,7 +767,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                                 Current Stop
                               </Text>
                               <Picker
-                                selectedValue={editForm.busLocation}
+                                selectedValue={editForm.busLocation || ""}
                                 style={{ marginLeft: -10 }}
                                 onValueChange={(v) =>
                                   setEditForm((p: any) => ({
@@ -1014,7 +1013,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                 <View style={[styles.permPickerBox, { marginBottom: 15 }]}>
                   <Text style={styles.pickerLabel}>Move student(s) to:</Text>
                   <Picker
-                    selectedValue={targetClassId}
+                    selectedValue={targetClassId || ""}
                     style={{ marginLeft: -10 }}
                     onValueChange={(val) => setTargetClassId(val)}
                   >

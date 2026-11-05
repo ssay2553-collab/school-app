@@ -20,6 +20,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { db } from '../../firebaseConfig';
 import { SCHOOL_CONFIG } from '../../constants/Config';
+import { TierProtectedRoute } from '../../components/TierProtectedRoute';
 import SVGIcon from '../../components/SVGIcon';
 
 export default function TeacherAttendanceConfigScreen() {
@@ -239,7 +240,8 @@ export default function TeacherAttendanceConfigScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <TierProtectedRoute featureId="admin_staff_attendance">
+      <SafeAreaView style={styles.container} edges={['top']}>
       <View style={[styles.header, { backgroundColor: primary }]}>
         <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
           <SVGIcon name="arrow-back" size={24} color="#fff" />
@@ -436,6 +438,7 @@ export default function TeacherAttendanceConfigScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

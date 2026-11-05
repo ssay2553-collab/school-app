@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Alert, Platform, ToastAndroid } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "../contexts/ToastContext";
 import { db } from "../firebaseConfig";
 import { isEligibleAdminRecipient } from "../src/services/notificationService";
 
@@ -26,6 +27,7 @@ const STAFF_GROUP_SEEN_KEY = (id: string) => `@lastSeen_staff_group_${id}`;
 
 export default function useUnreadCounts() {
   const { appUser } = useAuth();
+  const { showToast } = useToast();
   const [groupUnread, setGroupUnread] = useState<CountsMap>({});
   const [directUnread, setDirectUnread] = useState<CountsMap>({});
   const [staffGroupUnread, setStaffGroupUnread] = useState<CountsMap>({});
@@ -107,6 +109,49 @@ export default function useUnreadCounts() {
         if (err.code === 'permission-denied') return;
         console.warn("user unreads listener failed", err);
       },
+    );
+
+    return () => unsub();
+  }, [appUser?.uid]);
+
+  // Real-time listener for unread chat notifications from notifications collection
+  useEffect(() => {
+    if (!appUser?.uid) return;
+
+    const q = query(
+      collection(db, "notifications"),
+      where("recipientId", "==", appUser.uid),
+      where("read", "==", false),
+      where("type", "==", "chat")
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const newDirect: CountsMap = {};
+        const newGroup: CountsMap = {};
+        const newStaffGroup: CountsMap = {};
+
+        snap.docs.forEach((docSnap) => {
+          const data = docSnap.data();
+          const chatId = data.data?.chatId || data.data?.parentUid || data.senderId || docSnap.id;
+          const groupId = data.data?.groupId;
+
+          if (groupId) {
+            newGroup[groupId] = (newGroup[groupId] || 0) + 1;
+          } else if (chatId) {
+            newDirect[chatId] = (newDirect[chatId] || 0) + 1;
+          }
+        });
+
+        setDirectUnread((prev) => ({ ...prev, ...newDirect }));
+        setGroupUnread((prev) => ({ ...prev, ...newGroup }));
+        setStaffGroupUnread((prev) => ({ ...prev, ...newStaffGroup }));
+      },
+      (err) => {
+        if (err.code === "permission-denied") return;
+        console.warn("unread chat notifications listener failed", err);
+      }
     );
 
     return () => unsub();
@@ -403,24 +448,19 @@ export default function useUnreadCounts() {
       if (Platform.OS === "android") {
         ToastAndroid.show(message, ToastAndroid.LONG);
       } else {
-        Alert.alert(title, message);
+        showToast({ message: `${title}: ${message}`, type: "info" });
       }
     }
     prevAssignmentUnreadRef.current = assignmentUnread;
-  }, [assignmentUnread, appUser?.uid, appUser?.role]);
+  }, [assignmentUnread, appUser?.uid, appUser?.role, showToast]);
 
   // Message Notification Trigger
   const prevTotalRef = useRef<number>(0);
   useEffect(() => {
-    // Only notify if we have valid user and the total increased
     if (!appUser?.uid) return;
 
     const prev = prevTotalRef.current || 0;
     if (totalUnread > prev) {
-      // Logic: Only notify if the last message in any of the chats was NOT sent by me
-      // This is a bit complex without the full message context here,
-      // but we can at least avoid notifying if totalUnread is 0 or if we're currently in a chat.
-
       const diff = totalUnread - prev;
       try {
         if (Platform.OS === "android") {
@@ -429,16 +469,14 @@ export default function useUnreadCounts() {
             ToastAndroid.SHORT,
           );
         } else {
-          // Alert is too intrusive for every message, but keeps consistency with previous code
-          // In a real app, this would be a Push Notification or a subtle UI indicator
-          Alert.alert("New messages", `You have ${diff} new message(s)`);
+          showToast({ message: `💬 You have ${diff} new message(s)`, type: "info" });
         }
       } catch (e) {
         /* ignore */
       }
     }
     prevTotalRef.current = totalUnread;
-  }, [totalUnread, appUser?.uid]);
+  }, [totalUnread, appUser?.uid, showToast]);
 
   const [academicRecordUnread, setAcademicRecordUnread] = useState<number>(0);
   const [pendingAssignmentApprovalCount, setPendingAssignmentApprovalCount] = useState<number>(0);

@@ -179,11 +179,14 @@ export default function ManageUsers() {
   }
 
   const handleSafeBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     if (router.canGoBack()) {
       router.back();
     } else {
       router.replace("/admin-dashboard");
     }
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   if (!selectedRole) {
@@ -265,7 +268,7 @@ export default function ManageUsers() {
                 </View>
               </View>
 
-              {pendingResetRequests.length > 0 && (
+              {pendingResetRequests.length > 0 && pendingResetRequests[0] && (
                 <View style={styles.resetRequestBanner}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
                     <View style={styles.resetIconBadge}>
@@ -276,7 +279,7 @@ export default function ManageUsers() {
                         🔑 {pendingResetRequests.length} Reset Request{pendingResetRequests.length > 1 ? "s" : ""}
                       </Text>
                       <Text style={styles.resetBannerSub} numberOfLines={1}>
-                        {pendingResetRequests[0].studentName || pendingResetRequests[0].identifier} requested password reset
+                        {pendingResetRequests[0]?.studentName || pendingResetRequests[0]?.identifier || "Student"} requested password reset
                       </Text>
                     </View>
                   </View>
@@ -284,6 +287,7 @@ export default function ManageUsers() {
                     style={styles.reviewResetBtn}
                     onPress={() => {
                       const targetReq = pendingResetRequests[0];
+                      if (!targetReq) return;
                       const targetUser = users.find((u) => u.uid === targetReq.studentUid) || {
                         uid: targetReq.studentUid,
                         username: targetReq.identifier,
@@ -484,7 +488,7 @@ export default function ManageUsers() {
           initialNumToRender={10}
           maxToRenderPerBatch={10}
           windowSize={5}
-          removeClippedSubviews={Platform.OS === "android"}
+          removeClippedSubviews={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => {}} />
           }
@@ -553,12 +557,14 @@ export default function ManageUsers() {
           deletingUid={deletingUid}
           onEditProfile={openEditProfile}
           onOpenPermissions={openPermissionModal}
-          onUpgradeStaff={(u) =>
-            setAssignmentModal({ type: "upgrade_staff", target: u })
-          }
-          onModifyAuthority={(u) =>
-            setAssignmentModal({ type: "assign_as", target: u })
-          }
+          onUpgradeStaff={(u) => {
+            setViewingUser(null);
+            setAssignmentModal({ type: "upgrade_staff", target: u });
+          }}
+          onModifyAuthority={(u) => {
+            setViewingUser(null);
+            setAssignmentModal({ type: "assign_as", target: u });
+          }}
           onDeleteUser={handleDeleteUser}
           onUnlinkParent={handleUnlinkParent}
           onShareCode={handleShareCode}

@@ -27,6 +27,7 @@ import {
   Platform
 } from "react-native";
 import SVGIcon from "../../components/SVGIcon";
+import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
@@ -156,7 +157,8 @@ export default function ManageAssignments() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <TierProtectedRoute featureId="teacher_assignments">
+      <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
       <LinearGradient colors={[primary, "#1E293B"]} style={styles.headerGradient}>
         <View style={styles.headerTitleRow}>
@@ -192,6 +194,7 @@ export default function ManageAssignments() {
         />
       )}
     </SafeAreaView>
+  </TierProtectedRoute>
   );
 }
 

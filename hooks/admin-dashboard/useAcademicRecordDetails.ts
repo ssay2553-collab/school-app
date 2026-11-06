@@ -533,15 +533,8 @@ export const useAcademicRecordDetails = (
     tas: TAS,
     aggregate: AGGREGATE,
   } = useMemo(
-    () =>
-      calculatePerformanceFromList(
-        subjectsData,
-        isPreschool,
-        ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams", "Mid-Term"].includes(
-          reportType,
-        ),
-      ),
-    [subjectsData, isPreschool, reportType],
+    () => calculatePerformanceFromList(subjectsData, isPreschool),
+    [subjectsData, isPreschool],
   );
 
   const generatePDF = async () => {

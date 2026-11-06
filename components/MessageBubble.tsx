@@ -4,6 +4,7 @@ import { Image, StyleSheet, Text, View } from "react-native";
 import moment from "moment";
 import { COLORS, SHADOWS } from "../constants/theme";
 import SVGIcon from "./SVGIcon";
+import { parseDateSafely } from "../lib/classHelpers";
 
 interface MessageBubbleProps {
   message: {
@@ -25,19 +26,9 @@ interface MessageBubbleProps {
 
 const formatTimestamp = (timestamp: any) => {
   if (!timestamp) return "Sending...";
-  let date: Date;
-  if (typeof timestamp === "number") {
-    date = new Date(timestamp);
-  } else if (timestamp.seconds) {
-    date = new Date(timestamp.seconds * 1000);
-  } else if (timestamp instanceof Date) {
-    date = timestamp;
-  } else if (timestamp.toDate) {
-    date = timestamp.toDate();
-  } else {
-    return "";
-  }
-  return moment(date).format("hh:mm A");
+  const parsed = parseDateSafely(timestamp);
+  if (!parsed) return "";
+  return moment(parsed).format("hh:mm A");
 };
 
 export default function MessageBubble({

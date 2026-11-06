@@ -7,6 +7,8 @@ import { Assignment } from "../../../types/assignments";
 import { Timestamp } from "firebase/firestore";
 import moment from "moment";
 
+import { parseDateSafely } from "../../../lib/classHelpers";
+
 interface AssignmentCardProps {
   item: Assignment;
   index: number;
@@ -18,10 +20,11 @@ const AssignmentCard = ({ item, index, onStart }: AssignmentCardProps) => {
   const isPreschool = assignmentType === 'preschool';
   const isMathematics = assignmentType === 'mathematics';
 
-  const formatDate = (ts?: Timestamp) => {
+  const formatDate = (ts?: any) => {
     if (!ts) return "Soon";
     try {
-      return moment(ts.toDate()).format("MMM DD, YYYY");
+      const parsed = parseDateSafely(ts);
+      return parsed ? moment(parsed).format("MMM DD, YYYY") : "Soon";
     } catch (e) {
       return "Soon";
     }

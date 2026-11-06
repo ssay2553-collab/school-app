@@ -92,13 +92,18 @@ export const AssessmentPreview: React.FC<Props> = ({
       <View style={styles.paperSummaryRow}>
         <View style={styles.summaryContainer}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>TOTAL SCORE</Text>
+            <Text style={styles.summaryLabel}>TOTAL RAW SCORE</Text>
             <Text style={styles.summaryValue}>{TRS}</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>TERM AVG</Text>
+            <Text style={styles.summaryLabel}>TOTAL AGGREGATE SCORE</Text>
             <Text style={[styles.summaryValue, { color: primary }]}>{TAS}</Text>
+          </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>OVERALL AGGREGATE</Text>
+            <Text style={[styles.summaryValue, { color: "#e11d48" }]}>{AGGREGATE}</Text>
           </View>
         </View>
       </View>

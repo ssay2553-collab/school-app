@@ -37,7 +37,7 @@ export const generateAssessmentHtml = (data: ReportHtmlData, styles: string, hea
           <div class="info-item"><div class="info-label">Academic Year</div><div class="info-value">${academicYearState}</div></div>
           <div class="info-item"><div class="info-label">Assessment</div><div class="info-value">${assessmentTitle}</div></div>
           <div class="info-item"><div class="info-label">Position</div><div class="info-value">${overallPosition}</div></div>
-          <div class="info-item"><div class="info-label">Term Avg</div><div class="info-value">${TAS}</div></div>
+          <div class="info-item"><div class="info-label">Total Aggregate</div><div class="info-value">${TAS}</div></div>
         </div>
 
         <table class="results">
@@ -67,11 +67,11 @@ export const generateAssessmentHtml = (data: ReportHtmlData, styles: string, hea
 
         <div class="summary-box">
           <div class="summary-left">
-            TOTAL SCORE: <span style="color: #0f172a;">${TRS}</span>
+            TRS: <span style="color: #0f172a;">${TRS}</span> | TAS: <span style="color: #0f172a;">${TAS}</span>
           </div>
           <div class="summary-right">
-            <span style="font-weight:900; margin-right:10pt;">TERM AVG:</span>
-            <span class="summary-value">${TAS}</span>
+            <span style="font-weight:900; margin-right:10pt;">AGGREGATE:</span>
+            <span class="summary-value">${AGGREGATE}</span>
           </div>
         </div>
 

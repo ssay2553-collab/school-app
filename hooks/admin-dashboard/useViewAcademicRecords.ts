@@ -126,7 +126,7 @@ export function useViewAcademicRecords() {
     if (!selectedClassId || !selectedYear || !term) return;
 
     setFetchingSubjects(true);
-    const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType);
+    const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
     const q = query(
       collection(db, "academicRecords"),
       where("classId", "==", selectedClassId),
@@ -185,7 +185,7 @@ export function useViewAcademicRecords() {
     setHasSearched(true);
 
     try {
-      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType);
+      const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
       const allRecordsSnap = await getDocsFromServer(
         query(
           collection(db, "academicRecords"),
@@ -429,7 +429,7 @@ export function useViewAcademicRecords() {
     // 3. Fetch existing metadata from student-reports if it exists (Admin overrides)
     try {
     const reportSlug = selectedReportType.replace(/\s+/g, "");
-    const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) ? selectedReportNumber : "";
+    const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
     const reportId =
       `${student.studentId}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
         /\//g,
@@ -457,7 +457,7 @@ export function useViewAcademicRecords() {
     setSavingMetadata(true);
     try {
     const reportSlug = selectedReportType.replace(/\s+/g, "");
-    const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) ? selectedReportNumber : "";
+    const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
     const reportId =
       `${editingStudent.studentId}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
         /\//g,
@@ -546,7 +546,7 @@ export function useViewAcademicRecords() {
       const batch = writeBatch(db);
       for (const student of studentScores) {
         const reportSlug = selectedReportType.replace(/\s+/g, "");
-        const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) ? selectedReportNumber : "";
+        const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
         const reportId =
           `${student.studentId}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
             /\//g,
@@ -628,7 +628,7 @@ export function useViewAcademicRecords() {
     const performRecalculate = async () => {
       setRecalculating(true);
       try {
-        const isNumbered = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType);
+        const isNumbered = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType);
         const qAll = query(
           collection(db, "academicRecords"),
           where("classId", "==", selectedClassId),
@@ -694,7 +694,7 @@ export function useViewAcademicRecords() {
           const subjectName = data.subject || "Unknown";
           const subSlug = subjectName.replace(/\s+/g, "_");
           const typeKey = selectedReportType.replace(/\s+/g, "");
-          const reportSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) ? selectedReportNumber : "";
+          const reportSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
           const subjectKey = `${subSlug}_${typeKey}${reportSuffix}`;
 
           // Pre-process scores: if finalScore is 0, try to recover from summary
@@ -778,7 +778,7 @@ export function useViewAcademicRecords() {
         overallRankData.forEach((item) => {
           const rankInfo = calculateCompetitionRanking(overallRankData, item.id);
           const reportSlug = selectedReportType.replace(/\s+/g, "");
-          const numSuffix = ["Class Assessment Task (CAT)", "Trial Test"].includes(selectedReportType) ? selectedReportNumber : "";
+          const numSuffix = ["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(selectedReportType) ? selectedReportNumber : "";
           const reportId =
             `${item.id}_${selectedYear}_${term}_${reportSlug}${numSuffix}`.replace(
               /\//g,

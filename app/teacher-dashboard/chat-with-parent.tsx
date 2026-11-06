@@ -48,6 +48,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { getTeacherClasses, sortClasses } from "../../lib/classHelpers";
+import { processMessagesWithDates } from "../../utils/chatHelpers";
 import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
 
 type TeacherClass = { id: string; name: string };
@@ -763,28 +764,40 @@ export default function TeacherChatWithParent() {
 
           <FlatList
             ref={flatListRef}
-            data={messages}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <MessageBubble
-                message={item}
-                isYou={item.senderId === appUser?.uid}
-              >
-                {item.type === "text" && (
-                  <Text
-                    style={[
-                      styles.msgText,
-                      item.senderId === appUser?.uid
-                        ? { color: "#fff" }
-                        : { color: "#1E293B" },
-                    ]}
-                  >
-                    {item.text}
-                  </Text>
-                )}
-                {item.type === "audio" && <AudioPlayer url={item.fileUrl!} />}
-              </MessageBubble>
-            )}
+            data={processMessagesWithDates(messages)}
+            keyExtractor={(item) => item.isDateHeader ? item.id : (item.id || String(Math.random()))}
+            renderItem={({ item }) => {
+              if (item.isDateHeader) {
+                return (
+                  <View style={styles.dateHeaderContainer}>
+                    <View style={styles.dateHeaderPill}>
+                      <Text style={styles.dateHeaderText}>{item.label}</Text>
+                    </View>
+                  </View>
+                );
+              }
+              const itemMsg = item;
+              return (
+                <MessageBubble
+                  message={itemMsg}
+                  isYou={itemMsg.senderId === appUser?.uid}
+                >
+                  {itemMsg.type === "text" && (
+                    <Text
+                      style={[
+                        styles.msgText,
+                        itemMsg.senderId === appUser?.uid
+                          ? { color: "#fff" }
+                          : { color: "#1E293B" },
+                      ]}
+                    >
+                      {itemMsg.text}
+                    </Text>
+                  )}
+                  {itemMsg.type === "audio" && <AudioPlayer url={itemMsg.fileUrl!} />}
+                </MessageBubble>
+              );
+            }}
             contentContainerStyle={{ padding: 16, paddingBottom: 140 }}
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: true })
@@ -1469,5 +1482,20 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 10,
     fontWeight: "800",
+  },
+  dateHeaderContainer: {
+    alignItems: "center",
+    marginVertical: 12,
+  },
+  dateHeaderPill: {
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  dateHeaderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
   },
 });

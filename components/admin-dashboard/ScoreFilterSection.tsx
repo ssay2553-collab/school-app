@@ -205,7 +205,7 @@ export const ScoreFilterSection = ({
             })}
           </View>
 
-          {["Class Assessment Task (CAT)", "Trial Test"].includes(
+          {["Class Assessment Task (CAT)", "Trial Test", "Mock Exams"].includes(
             selectedReportType,
           ) && (
             <View style={{ marginTop: 16 }}>

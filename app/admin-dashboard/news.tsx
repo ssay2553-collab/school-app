@@ -33,6 +33,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import NewsCard from "../../components/news/NewsCard";
+import { parseDateSafely } from "../../lib/classHelpers";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db, functions } from "../../firebaseConfig";
@@ -176,8 +177,9 @@ export default function NewsCenter() {
         const data = docSnap.data() as any;
         if (!data.dateOfBirth) return false;
         try {
-          const dob = moment(data.dateOfBirth.toDate());
-          return dob.format("MM-DD") === today;
+          const parsed = parseDateSafely(data.dateOfBirth);
+          if (!parsed) return false;
+          return moment(parsed).format("MM-DD") === today;
         } catch (e) {
           return false;
         }
@@ -332,7 +334,7 @@ export default function NewsCenter() {
     setTitle(item.title);
     setContent(item.content);
     setAudience(item.audience);
-    setExpiryDate(item.expiryDate ? (item.expiryDate as any).toDate() : null);
+    setExpiryDate(parseDateSafely(item.expiryDate));
     if (item.mediaUrl) {
       setMedia({ uri: item.mediaUrl, type: item.mediaType || "image" });
     } else {

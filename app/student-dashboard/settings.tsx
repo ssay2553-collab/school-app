@@ -38,6 +38,8 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { auth, db } from "../../firebaseConfig";
 
+import { parseDateSafely } from "../../lib/classHelpers";
+
 export default function StudentSettings() {
   const router = useRouter();
   const { appUser } = useAuth();
@@ -55,8 +57,16 @@ export default function StudentSettings() {
   }, []);
 
   const [dob, setDob] = useState<Date | null>(
-    appUser?.dateOfBirth ? (appUser.dateOfBirth as any).toDate() : null,
+    parseDateSafely(appUser?.dateOfBirth || appUser?.profile?.dob),
   );
+
+  useEffect(() => {
+    const rawDob = appUser?.dateOfBirth || appUser?.profile?.dob;
+    if (rawDob) {
+      const parsed = parseDateSafely(rawDob);
+      if (parsed) setDob(parsed);
+    }
+  }, [appUser?.dateOfBirth, appUser?.profile?.dob]);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Edit Name state

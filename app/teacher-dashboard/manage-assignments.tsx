@@ -32,6 +32,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { db } from "../../firebaseConfig";
 import { useAuth } from "../../contexts/AuthContext";
 import moment from "moment";
+import { parseDateSafely } from "../../lib/classHelpers";
 import { markNotificationsAsRead } from "../../src/services/notificationService";
 
 const { width } = Dimensions.get("window");
@@ -109,7 +110,7 @@ export default function ManageAssignments() {
       <View style={styles.cardHeader}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.subtitle}>{item.subjectId || item.subject} • {moment(item.createdAt?.toDate()).format("MMM DD, YYYY")}</Text>
+          <Text style={styles.subtitle}>{item.subjectId || item.subject} • {moment(parseDateSafely(item.createdAt) || item.createdAt).format("MMM DD, YYYY")}</Text>
         </View>
         <View style={[styles.statusBadge, {
           backgroundColor: item.status === 'approved' ? '#10B98120' :

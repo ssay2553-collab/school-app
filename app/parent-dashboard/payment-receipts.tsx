@@ -10,6 +10,7 @@ import {
     orderBy
 } from "firebase/firestore";
 import moment from "moment";
+import { parseDateSafely } from "../../lib/classHelpers";
 import { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator,
@@ -111,10 +112,10 @@ export default function PaymentReceipts() {
         })
         .map((t: any) => ({
           ...t,
-          _displayDate: moment(t.createdAt || t.timestamp?.toDate() || t.date).format(
+          _displayDate: moment(parseDateSafely(t.createdAt || t.timestamp || t.date) || t.date).format(
             "MMM DD, YYYY",
           ),
-          _displayTime: moment(t.createdAt || t.timestamp?.toDate() || t.date).format(
+          _displayTime: moment(parseDateSafely(t.createdAt || t.timestamp || t.date) || t.date).format(
             "h:mm A",
           ),
           _title: (t.otherCategory || t.type || "Payment")

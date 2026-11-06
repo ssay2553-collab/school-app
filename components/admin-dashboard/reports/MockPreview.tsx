@@ -97,7 +97,7 @@ export const MockPreview: React.FC<Props> = ({
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryLabel}>AVERAGE SCORE</Text>
+            <Text style={styles.summaryLabel}>TOTAL AGGREGATE SCORE</Text>
             <Text style={styles.summaryValue}>{TAS}</Text>
           </View>
           <View style={styles.summaryDivider} />

@@ -48,6 +48,7 @@ import { useToast } from "../contexts/ToastContext";
 import { db, storage } from "../firebaseConfig";
 import useUnreadCounts from "../hooks/useUnreadCounts";
 import { markNotificationsAsRead, sendNotification } from "../src/services/notificationService";
+import { processMessagesWithDates } from "../utils/chatHelpers";
 import { LiveCallBanner } from "./LiveCallBanner";
 import { GroupMeetingModal } from "./GroupMeetingModal";
 import { StartMeetingModal } from "./StartMeetingModal";
@@ -1023,41 +1024,51 @@ export function StaffChatView() {
           {/* Messages List */}
           <FlatList
             ref={flatListRef}
-            data={messages}
-            keyExtractor={(m) => m.id}
+            data={processMessagesWithDates(messages)}
+            keyExtractor={(item) => item.isDateHeader ? item.id : (item.id || String(Math.random()))}
             renderItem={({ item }) => {
-              const isYou = item.senderId === appUser?.uid;
+              if (item.isDateHeader) {
+                return (
+                  <View style={styles.dateHeaderContainer}>
+                    <View style={styles.dateHeaderPill}>
+                      <Text style={styles.dateHeaderText}>{item.label}</Text>
+                    </View>
+                  </View>
+                );
+              }
+              const itemMsg = item;
+              const isYou = itemMsg.senderId === appUser?.uid;
               const senderMember = !isYou
-                ? staff.find((s) => s.uid === item.senderId)
+                ? staff.find((s) => s.uid === itemMsg.senderId)
                 : null;
               const senderFirstName =
-                item.senderFirstName ||
+                itemMsg.senderFirstName ||
                 senderMember?.firstName ||
                 senderMember?.fullName.split(" ")[0] ||
-                item.senderName ||
+                itemMsg.senderName ||
                 "Staff";
-              const senderImage = item.senderImage || senderMember?.profileImage;
+              const senderImage = itemMsg.senderImage || senderMember?.profileImage;
 
               return (
                 <MessageBubble
                   message={{
-                    ...item,
+                    ...itemMsg,
                     senderFirstName,
                     senderImage,
                   }}
                   isYou={isYou}
                 >
-                  {item.type === "text" && (
+                  {itemMsg.type === "text" && (
                     <Text
                       style={[
                         styles.msgText,
                         isYou ? { color: "#fff" } : { color: "#1E293B" },
                       ]}
                     >
-                      {item.text}
+                      {itemMsg.text}
                     </Text>
                   )}
-                  {item.type === "audio" && <AudioPlayer url={item.fileUrl!} />}
+                  {itemMsg.type === "audio" && <AudioPlayer url={itemMsg.fileUrl!} />}
                 </MessageBubble>
               );
             }}
@@ -1898,5 +1909,20 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     backgroundColor: "#FEF2F2",
+  },
+  dateHeaderContainer: {
+    alignItems: "center",
+    marginVertical: 12,
+  },
+  dateHeaderPill: {
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  dateHeaderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
   },
 });

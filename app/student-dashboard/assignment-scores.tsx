@@ -33,6 +33,7 @@ import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import { parseDateSafely } from "../../lib/classHelpers";
 import { db } from "../../firebaseConfig";
 import { useRouter } from "expo-router";
 import * as Animatable from "react-native-animatable";
@@ -202,8 +203,9 @@ export default function AssignmentScores() {
   const renderItem = ({ item }: { item: ScoreRecord }) => {
     const isExpanded = expandedId === item.id;
     const details = assignmentMeta[item.assignmentId];
-    const displayDate = item.markedAt
-      ? moment(item.markedAt.toDate()).format("MM/DD/YYYY")
+    const parsedDate = parseDateSafely(item.markedAt);
+    const displayDate = parsedDate
+      ? moment(parsedDate).format("MM/DD/YYYY")
       : "N/A";
 
     return (

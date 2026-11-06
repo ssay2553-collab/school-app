@@ -2,7 +2,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { Timestamp } from "firebase/firestore";
 import moment from "moment";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -27,22 +27,15 @@ import { useToast } from "../../contexts/ToastContext";
 import { useMarkAssignment, Submission, Assignment } from "../../hooks/teacher-dashboard/useMarkAssignment";
 import MathCanvas from "../../components/MathCanvas";
 import FormattedText from "../../components/FormattedText";
-import { useRef } from "react";
+import { parseDateSafely } from "../../lib/classHelpers";
 
 /* ---------------- HELPERS ---------------- */
 
 const formatDate = (ts: any) => {
   if (!ts) return "date unknown";
   try {
-    if (typeof ts.toDate === "function") {
-      return moment(ts.toDate()).format("DD MMM, YYYY");
-    }
-    if (ts instanceof Date) {
-      return moment(ts).format("DD MMM, YYYY");
-    }
-    if (ts.seconds !== undefined) {
-      return moment(ts.seconds * 1000).format("DD MMM, YYYY");
-    }
+    const parsed = parseDateSafely(ts);
+    if (parsed) return moment(parsed).format("DD MMM, YYYY");
   } catch (e) {
     return "invalid date";
   }

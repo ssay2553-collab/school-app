@@ -41,7 +41,7 @@ This repository is a multi-tenant Expo + Firebase app with optional Electron pac
 - Firebase (auth, firestore, storage, functions). Client init uses `firebase` SDK; backend uses `firebase-admin` + Cloud Functions (`backend/`).
 - Expo / Expo Router (file-based routing). See `app/` for routes and `_layout.tsx` for navigation guard.
 - Electron for desktop builds; electron scripts rely on `wait-on` and `concurrently` to start web assets then the Electron process.
-- CI: GitHub Actions exist for Android and Electron builds (`.github/workflows/android-builds.yml`, `.github/workflows/electron-builds.yml`) and expect `SCHOOL_ID` per job matrix.
+- CI: GitHub Actions exist for Android builds (`.github/workflows/android-builds.yml`) and expect `SCHOOL_ID` per job matrix. (Electron builds are handled locally).
 - EAS: `eas.json` contains build profiles that set `SCHOOL_ID` for production/dev EAS builds.
 
 5. Where to look for common examples

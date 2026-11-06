@@ -126,6 +126,7 @@ module.exports = ({ config }) => {
         storageBucket: "jei-river.firebasestorage.app",
         messagingSenderId: "925332921968",
         appId: "1:925332921968:web:f84f98cb9d9d017cc6deb5",
+        vapidKey: "BNzr-oTW3Wox-SAUfHdEZzAPtLue5Vl5kDuWECTkAqjOf4CrCOq9V5W0BjQT2BKVBIoW2WCve24MyWecIoqOd0M",
       },
     },
     eagles: {
@@ -134,7 +135,7 @@ module.exports = ({ config }) => {
       slug: "eagles",
       package: "com.saysmanage.eagleapp",
       scheme: "eagle",
-      logo: "./assets/icon-aps.jpeg",
+      logo: "./assets/EduEaz-Logo.png",
       hotline: "0554715716",
       fullName: "EduEaz Schools",
       mottro: "Your Complete Digital System",
@@ -153,6 +154,7 @@ module.exports = ({ config }) => {
         storageBucket: "royal-lisben.firebasestorage.app",
         messagingSenderId: "449092727389",
         appId: "1:449092727389:web:b5c7f563fadede614053b4",
+        vapidKey: "BKZqWjDwBimKqBq5TQrZERrokR4EIY11D1CRi2BIutGf1C0sl1puC1iM6Bp8CCUbQTzNL69JaD2tw84-LyGJJG8",
       },
     },
     perfect: {
@@ -207,6 +209,7 @@ module.exports = ({ config }) => {
         storageBucket: "vince-app-c49a2.firebasestorage.app",
         messagingSenderId: "232909106721",
         appId: "1:232909106721:web:ac2f17b4c888ff7561fd60",
+        vapidKey: "BLQdH1Miawy1nN53qpi8B6x3DEJadzPaksqKSMcnCLYhkwebz4IyH8JeTjswPzP8NBBkn9nNHlJUb20-vjCiFzA",
       },
     },
 
@@ -235,6 +238,7 @@ module.exports = ({ config }) => {
         storageBucket: "jewels-app-17a30.firebasestorage.app",
         messagingSenderId: "173597685845",
         appId: "1:173597685845:web:6adc074b3e6727a9d97cdc",
+        vapidKey: "BG7qGTq9wTt6j4Cj41ai-ICvz6LJvjj_YgkUfSB-h6csxGv1G23lSj2su3Ckg1unXGx3XmLuaCt8yy_gYCYq5uM",
       },
     },
 
@@ -263,6 +267,7 @@ module.exports = ({ config }) => {
         storageBucket: "clis-app-e39e8.firebasestorage.app",
         messagingSenderId: "605761169592",
         appId: "1:605761169592:web:667ca88d55dff6f16aec4d",
+        vapidKey: "BBaucrywKsppV5BhlekrCA_9YfnewSAZd5k9xizlJ2AcQwHmOsY8HWNJlxw--e-PuMcv7um-t1oQKklEQz9O1Ss",
       },
     },
     model: {
@@ -317,6 +322,7 @@ module.exports = ({ config }) => {
         storageBucket: "bright-lilies.firebasestorage.app",
         messagingSenderId: "732349796782",
         appId: "1:732349796782:web:49980f6d6309889fd6b83f",
+        vapidKey: "BI6h1ovFBxdSFJAI_3bK3qwzb2Biy81HvOtqySpiCT2xNYR-pBzH6LxtehKPVNsxBhfIBMxaFWa55CaxrgSUki4",
       },
     },
 
@@ -345,6 +351,7 @@ module.exports = ({ config }) => {
         storageBucket: "stepping-stone-90720.firebasestorage.app",
         messagingSenderId: "42632915971",
         appId: "1:42632915971:web:9c08287a875c5987297236",
+        vapidKey: "BBbdo67Vh6Tj_MXcsphaXK_g-PcE5emouXRUSHJOsMMvOfnPVoNp7pbd5vjqUq7ZonttqkCYcLuM8jmc6l030HE",
       },
     },
     brain: {
@@ -372,6 +379,7 @@ module.exports = ({ config }) => {
         storageBucket: "bright-brains-ed4d7.firebasestorage.app",
         messagingSenderId: "214741402500",
         appId: "1:214741402500:web:d290bb530e858c1fea13d1",
+        vapidKey: "BIi4l4zddGNNNJsO6y0x2FzHJ4B30dVW0dAh9JRfvRGISqWKtfpTDNEpUTHQoQUJMHLrErGJyHg89uy71MyuHxQ",
       },
     },
     cascom: {
@@ -399,6 +407,7 @@ module.exports = ({ config }) => {
         storageBucket: "cascom-59b61.firebasestorage.app",
         messagingSenderId: "121225001260",
         appId: "1:121225001260:web:fd141544f12ae285389489",
+        vapidKey: "BLk_eRWLm7-jANk_-RCKpjZpuGc2ExGnKLsHUfTMO2wnm0_9YAFg6KqhJuchqjYzrzZWS5K7n9q8Hh38PAobq54",
       },
     },
 
@@ -427,6 +436,7 @@ module.exports = ({ config }) => {
         storageBucket: "abijah-93b3a.firebasestorage.app",
         messagingSenderId: "249787820198",
         appId: "1:249787820198:web:bcb684fa49456b61b26c67",
+        vapidKey: "BG7QnLoi8lTMnA2fLs47qHp9-RxxejRkQqOaoBpyzS7Ip3XhL__bsx3ySmAKAQROwhcRbPDnr9JexPZX6lVp6p8",
       },
     },
 
@@ -455,6 +465,7 @@ module.exports = ({ config }) => {
         storageBucket: "bms-app-f4572.firebasestorage.app",
         messagingSenderId: "705991105475",
         appId: "1:705991105475:web:d103e15b1399f38e003b76",
+        vapidKey: "BKg0LorvDUy_JMHC2z8xbPRzAwP2Fzm-A_ZCgAvAvEgwBL-TUF0P6DOIx2IYxXT_siFd9gu735rmt3Kj0n0Trt4",
       },
     },
     kent: {
@@ -482,6 +493,7 @@ module.exports = ({ config }) => {
         storageBucket: "golden-rock-16bf8.firebasestorage.app",
         messagingSenderId: "623470853110",
         appId: "1:623470853110:web:3f6545a1cd7ace1a2525d7",
+        vapidKey: "BDmYc7N7fepWKN1cPQ_Ec96BH1d8yGBxptydCFxIABmCRQg8DzHVIUXOLEP1mDDwuJ49Cr4eIEW3BvtYz7gyj4U",
       },
     },
     bishops: {
@@ -509,6 +521,7 @@ module.exports = ({ config }) => {
         storageBucket: "thess-app.firebasestorage.app",
         messagingSenderId: "151847614946",
         appId: "1:151847614946:web:123b3e2a2202a0098f9c22",
+        vapidKey: "BOgEgn0IMZiDx4R4ucF6in93u771hevMvzq1YpHb9x61THG-zBxRw3JcWb_Ab-LxR2Tttlsf8dbGT_4aa_fbpbQ",
       },
     },
   };

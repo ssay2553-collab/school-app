@@ -8,7 +8,7 @@ import {
     Timestamp,
     where,
 } from "firebase/firestore";
-import React, { useCallback, useEffect, useState, memo } from "react";
+import { parseDateSafely } from "../../lib/classHelpers";
 import moment from "moment";
 import {
     ActivityIndicator,
@@ -41,7 +41,7 @@ import { Assignment, Question, VisualItem } from "../../types/assignments";
 import QuestionResponseItem from "../../components/student-dashboard/assignments/QuestionResponseItem";
 import AssignmentCard from "../../components/student-dashboard/assignments/AssignmentCard";
 import { markNotificationsAsRead, sendNotification } from "../../src/services/notificationService";
-import { useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 
 export default function Assignments() {
   const { appUser } = useAuth();
@@ -155,7 +155,7 @@ export default function Assignments() {
   };
 
   const handleUpdateAnswer = useCallback((qIdx: number, val: any) => {
-    setAnswers((prev) => ({ ...prev, [qIdx]: val }));
+    setAnswers((prev: Record<number, any>) => ({ ...prev, [qIdx]: val }));
   }, []);
 
   const handleSubmitResponses = async () => {
@@ -254,10 +254,11 @@ export default function Assignments() {
     }
   };
 
-  const formatDate = (ts?: Timestamp) => {
+  const formatDate = (ts?: any) => {
     if (!ts) return "Soon";
     try {
-      return moment(ts.toDate()).format("MMM DD, YYYY");
+      const parsed = parseDateSafely(ts);
+      return parsed ? moment(parsed).format("MMM DD, YYYY") : "Soon";
     } catch (e) {
       return "Soon";
     }
@@ -361,7 +362,7 @@ export default function Assignments() {
                   ]}>{activeAssignment.description}</Text>
                 </View>
               ) : null}
-              {activeAssignment?.questions?.map((q, qIdx) => (
+              {activeAssignment?.questions?.map((q: Question, qIdx: number) => (
                 <QuestionResponseItem
                   key={qIdx}
                   q={q}

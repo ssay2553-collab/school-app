@@ -2,11 +2,45 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
+import { getApp } from "firebase/app";
+import { getMessaging, getToken } from "firebase/messaging";
 
 export async function registerForPushNotificationsAsync() {
-  // SILENT RETURN: Push tokens don't exist on Web, Electron, or Simulators
-  if (Platform.OS === 'web' || !Device.isDevice) {
-    console.log("ℹ️ Push Notifications skipped: Environment is Web/Electron or Simulator.");
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+      console.log("ℹ️ Web Push not supported in this browser.");
+      return null;
+    }
+
+    try {
+      const permission = await window.Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.warn("❌ Web notification permission not granted.");
+        return null;
+      }
+
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      console.log("✅ Service Worker registered for Web Push:", registration);
+
+      const app = getApp();
+      const messaging = getMessaging(app);
+
+      const token = await getToken(messaging, {
+        serviceWorkerRegistration: registration,
+        vapidKey: Constants.expoConfig?.extra?.firebase?.vapidKey || undefined
+      });
+
+      console.log("✅ Web FCM Push Token generated:", token);
+      return token || null;
+    } catch (e) {
+      console.error("❌ Failed to register web push notifications:", e);
+      return null;
+    }
+  }
+
+  // SILENT RETURN: Push tokens don't exist on Simulators
+  if (!Device.isDevice) {
+    console.log("ℹ️ Push Notifications skipped: Environment is Simulator.");
     return null;
   }
 

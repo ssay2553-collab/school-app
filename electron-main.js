@@ -234,8 +234,57 @@ function createWindow() {
     win.loadURL("app://local/");
   }
 
+  win.on("focus", () => {
+    if (win.webContents) {
+      win.webContents.focus();
+    }
+  });
+
   win.webContents.on("did-finish-load", () => {
-    win.webContents.executeJavaScript(`window.isElectron = true;`);
+    win.webContents.executeJavaScript(`
+      window.isElectron = true;
+
+      // Fix Electron native alert/confirm focus loss bug which disables text inputs/type fields
+      if (!window.__electronFocusPatched) {
+        window.__electronFocusPatched = true;
+
+        const originalAlert = window.alert;
+        window.alert = function(msg) {
+          try {
+            return originalAlert.apply(window, arguments);
+          } finally {
+            setTimeout(() => {
+              window.focus();
+              if (document.body) document.body.focus();
+              document.body.style.pointerEvents = 'auto';
+            }, 50);
+          }
+        };
+
+        const originalConfirm = window.confirm;
+        window.confirm = function(msg) {
+          try {
+            return originalConfirm.apply(window, arguments);
+          } finally {
+            setTimeout(() => {
+              window.focus();
+              if (document.body) document.body.focus();
+              document.body.style.pointerEvents = 'auto';
+            }, 50);
+          }
+        };
+
+        // Ensure text inputs can always be clicked and focused
+        window.addEventListener('click', (e) => {
+          const target = e.target;
+          if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.getAttribute('contenteditable') === 'true')) {
+            target.removeAttribute('disabled');
+            target.style.pointerEvents = 'auto';
+            target.focus();
+          }
+        }, true);
+      }
+    `);
     win.show();
   });
 }

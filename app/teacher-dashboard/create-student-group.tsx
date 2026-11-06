@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { TierProtectedRoute } from "../../components/TierProtectedRoute";
+import { parseDateSafely } from "../../lib/classHelpers";
 import {
   ActivityIndicator,
   Alert,
@@ -47,6 +48,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import MessageBubble from "../../components/MessageBubble";
 import SVGIcon from "../../components/SVGIcon";
 import { AudioPlayer } from "../../components/AudioPlayer";
+import { processMessagesWithDates } from "../../utils/chatHelpers";
 import { LiveCallBanner } from "../../components/LiveCallBanner";
 import { GroupMeetingModal } from "../../components/GroupMeetingModal";
 import { StartMeetingModal } from "../../components/StartMeetingModal";
@@ -337,18 +339,30 @@ const GroupChatView = ({
 
       <FlatList
         ref={flatListRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        renderItem={({ item }) => (
-          <MessageBubble
-            message={{ ...item, createdAt: item.timestamp }}
-            isYou={item.from === appUser?.uid}
-          >
-            {item.type === "audio" && item.fileUrl ? (
-              <AudioPlayer url={item.fileUrl} />
-            ) : null}
-          </MessageBubble>
-        )}
+        data={processMessagesWithDates(messages)}
+        keyExtractor={(item) => item.isDateHeader ? item.id : (item.id || String(Math.random()))}
+        renderItem={({ item }) => {
+          if (item.isDateHeader) {
+            return (
+              <View style={styles.dateHeaderContainer}>
+                <View style={styles.dateHeaderPill}>
+                  <Text style={styles.dateHeaderText}>{item.label}</Text>
+                </View>
+              </View>
+            );
+          }
+          const itemMsg = item;
+          return (
+            <MessageBubble
+              message={{ ...itemMsg, createdAt: itemMsg.timestamp }}
+              isYou={itemMsg.from === appUser?.uid}
+            >
+              {itemMsg.type === "audio" && itemMsg.fileUrl ? (
+                <AudioPlayer url={itemMsg.fileUrl} />
+              ) : null}
+            </MessageBubble>
+          );
+        }}
         contentContainerStyle={{ padding: 16 }}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
         showsVerticalScrollIndicator={false}
@@ -766,7 +780,7 @@ export default function TeacherStudentGroups() {
                       <Text style={styles.groupName}>{g.name}</Text>
                       <Text style={styles.groupMeta}>
                         {g.studentIds.length} Students • Created{" "}
-                        {moment(g.createdAt?.toDate()).fromNow()}
+                        {moment(parseDateSafely(g.createdAt) || g.createdAt).fromNow()}
                       </Text>
                     </View>
                     <SVGIcon name="chevron-forward" size={20} color="#CBD5E1" />
@@ -1248,6 +1262,21 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium,
   },
   mainActionText: { color: "#fff", fontSize: 16, fontWeight: "900" },
+  dateHeaderContainer: {
+    alignItems: "center",
+    marginVertical: 12,
+  },
+  dateHeaderPill: {
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  dateHeaderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
+  },
 });
 
 // moment imported via ES module at top

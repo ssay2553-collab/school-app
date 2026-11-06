@@ -38,6 +38,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
+import { processMessagesWithDates } from "../../utils/chatHelpers";
 import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
 import { LiveCallBanner } from "../../components/LiveCallBanner";
 import { GroupMeetingModal } from "../../components/GroupMeetingModal";
@@ -482,34 +483,46 @@ export default function GroupChat() {
           onScrollBeginDrag={() => Keyboard.dismiss()}
           keyboardShouldPersistTaps="handled"
         >
-          {messages.map((m, i) => (
-            <MessageBubble
-              key={i}
-              message={{
-                type: m.type || "text",
-                text: m.text,
-                senderName: m.senderName,
-                fileUrl: m.fileUrl,
-                createdAt: m.timestamp,
-              }}
-              isYou={m.senderId === appUser?.uid}
-            >
-              {m.type === "audio" ? (
-                <AudioPlayer url={m.fileUrl} />
-              ) : (
-                <Text
-                  style={[
-                    styles.msgText,
-                    m.senderId === appUser?.uid
-                      ? { color: "#fff" }
-                      : { color: "#1E293B" },
-                  ]}
-                >
-                  {m.text}
-                </Text>
-              )}
-            </MessageBubble>
-          ))}
+          {processMessagesWithDates(messages).map((item, i) => {
+            if (item.isDateHeader) {
+              return (
+                <View key={item.id} style={styles.dateHeaderContainer}>
+                  <View style={styles.dateHeaderPill}>
+                    <Text style={styles.dateHeaderText}>{item.label}</Text>
+                  </View>
+                </View>
+              );
+            }
+            const m = item;
+            return (
+              <MessageBubble
+                key={m.id || i}
+                message={{
+                  type: m.type || "text",
+                  text: m.text,
+                  senderName: m.senderName,
+                  fileUrl: m.fileUrl,
+                  createdAt: m.timestamp,
+                }}
+                isYou={m.senderId === appUser?.uid}
+              >
+                {m.type === "audio" ? (
+                  <AudioPlayer url={m.fileUrl} />
+                ) : (
+                  <Text
+                    style={[
+                      styles.msgText,
+                      m.senderId === appUser?.uid
+                        ? { color: "#fff" }
+                        : { color: "#1E293B" },
+                    ]}
+                  >
+                    {m.text}
+                  </Text>
+                )}
+              </MessageBubble>
+            );
+          })}
         </ScrollView>
 
         <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -655,5 +668,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     ...SHADOWS.medium,
+  },
+  dateHeaderContainer: {
+    alignItems: "center",
+    marginVertical: 12,
+  },
+  dateHeaderPill: {
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  dateHeaderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
   },
 });

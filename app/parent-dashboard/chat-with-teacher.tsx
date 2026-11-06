@@ -39,6 +39,7 @@ import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
+import { processMessagesWithDates } from "../../utils/chatHelpers";
 
 type Child = {
   uid: string;
@@ -384,28 +385,40 @@ export default function ParentChatWithTeacher() {
         </View>
         <FlatList
           ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <MessageBubble
-              message={item}
-              isYou={item.senderId === appUser?.uid}
-            >
-              {item.type === "text" && item.text && (
-                <Text
-                  style={{
-                    fontSize: 15,
-                    color: item.senderId === appUser?.uid ? "#fff" : "#1E293B",
-                  }}
-                >
-                  {item.text}
-                </Text>
-              )}
-              {item.type === "audio" && item.fileUrl && (
-                <AudioPlayer url={item.fileUrl} />
-              )}
-            </MessageBubble>
-          )}
+          data={processMessagesWithDates(messages)}
+          keyExtractor={(item) => item.isDateHeader ? item.id : (item.id || String(Math.random()))}
+          renderItem={({ item }) => {
+            if (item.isDateHeader) {
+              return (
+                <View style={styles.dateHeaderContainer}>
+                  <View style={styles.dateHeaderPill}>
+                    <Text style={styles.dateHeaderText}>{item.label}</Text>
+                  </View>
+                </View>
+              );
+            }
+            const itemMsg = item;
+            return (
+              <MessageBubble
+                message={itemMsg}
+                isYou={itemMsg.senderId === appUser?.uid}
+              >
+                {itemMsg.type === "text" && itemMsg.text && (
+                  <Text
+                    style={{
+                      fontSize: 15,
+                      color: itemMsg.senderId === appUser?.uid ? "#fff" : "#1E293B",
+                    }}
+                  >
+                    {itemMsg.text}
+                  </Text>
+                )}
+                {itemMsg.type === "audio" && itemMsg.fileUrl && (
+                  <AudioPlayer url={itemMsg.fileUrl} />
+                )}
+              </MessageBubble>
+            );
+          }}
           contentContainerStyle={{ padding: 10, paddingBottom: 140 }}
           keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
@@ -577,5 +590,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     borderRadius: 20,
     padding: 8,
+  },
+  dateHeaderContainer: {
+    alignItems: "center",
+    marginVertical: 12,
+  },
+  dateHeaderPill: {
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  dateHeaderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
   },
 });

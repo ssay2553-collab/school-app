@@ -27,6 +27,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { db, storage } from "../../firebaseConfig";
 import { sendNotification, markNotificationsAsRead } from "../../src/services/notificationService";
+import { processMessagesWithDates } from "../../utils/chatHelpers";
 
 interface ChatMessage {
   id: string;
@@ -285,29 +286,41 @@ export default function ChatWithAdmin() {
               </Text>
             </View>
           ) : (
-            messages.map((msg) => (
-              <MessageBubble
-                key={msg.id}
-                message={msg}
-                isYou={msg.sender === "parent"}
-              >
-                {msg.type === "text" && msg.text && (
-                  <Text
-                    style={[
-                      styles.msgText,
-                      msg.sender === "parent"
-                        ? { color: "#fff" }
-                        : { color: "#1E293B" },
-                    ]}
-                  >
-                    {msg.text}
-                  </Text>
-                )}
-                {msg.type === "audio" && msg.fileUrl && (
-                  <AudioPlayer url={msg.fileUrl} />
-                )}
-              </MessageBubble>
-            ))
+            processMessagesWithDates(messages).map((item) => {
+              if (item.isDateHeader) {
+                return (
+                  <View key={item.id} style={styles.dateHeaderContainer}>
+                    <View style={styles.dateHeaderPill}>
+                      <Text style={styles.dateHeaderText}>{item.label}</Text>
+                    </View>
+                  </View>
+                );
+              }
+              const msg = item;
+              return (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  isYou={msg.sender === "parent"}
+                >
+                  {msg.type === "text" && msg.text && (
+                    <Text
+                      style={[
+                        styles.msgText,
+                        msg.sender === "parent"
+                          ? { color: "#fff" }
+                          : { color: "#1E293B" },
+                      ]}
+                    >
+                      {msg.text}
+                    </Text>
+                  )}
+                  {msg.type === "audio" && msg.fileUrl && (
+                    <AudioPlayer url={msg.fileUrl} />
+                  )}
+                </MessageBubble>
+              );
+            })
           )}
         </ScrollView>
 
@@ -440,5 +453,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     padding: 10,
     borderRadius: 20,
+  },
+  dateHeaderContainer: {
+    alignItems: "center",
+    marginVertical: 12,
+  },
+  dateHeaderPill: {
+    backgroundColor: "#E2E8F0",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  dateHeaderText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#64748B",
   },
 });

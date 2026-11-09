@@ -174,6 +174,7 @@ export default function StudentFeeHistoryScreen() {
               categorySummary={categorySummary}
               totalBilled={totals.totalBilled}
               totalPaid={totals.totalPaid}
+              totalDiscount={totals.totalDiscount}
               totalBalance={totals.totalBalance}
               selectedStudentUid={selectedStudentUid}
               selectedYear={selectedYear}

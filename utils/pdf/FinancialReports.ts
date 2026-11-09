@@ -363,39 +363,66 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
 
     this.currentY -= 20;
     const totalX = MARGIN + PAGE_WIDTH - 250;
-    const subtotalY = this.currentY;
+    const rightX = MARGIN + PAGE_WIDTH - 100;
+    const maxWidth = 100;
+
+    const rowY1 = this.currentY;
     this.drawText("SUBTOTAL BILLED:", totalX, {
       size: 10,
       font: this.boldFont,
       color: rgb(0.39, 0.45, 0.54),
     });
-    this.currentY = subtotalY;
+    this.currentY = rowY1;
     this.drawText(
       `${finalCurrency} ${(data.totals?.billed || 0).toFixed(2)}`,
-      MARGIN + PAGE_WIDTH,
-      { size: 10, font: this.boldFont, align: "right", maxWidth: 100 }
+      rightX,
+      { size: 10, font: this.boldFont, align: "right", maxWidth }
     );
 
-    const totalPaidY = this.currentY;
+    this.currentY -= 18;
+    const rowY2 = this.currentY;
     this.drawText("TOTAL PAID:", totalX, {
       size: 10,
       font: this.boldFont,
       color: rgb(0.39, 0.45, 0.54),
     });
-    this.currentY = totalPaidY;
+    this.currentY = rowY2;
     this.drawText(
       `${finalCurrency} ${(data.totals?.paid || 0).toFixed(2)}`,
-      MARGIN + PAGE_WIDTH,
+      rightX,
       {
         size: 10,
         font: this.boldFont,
         align: "right",
-        maxWidth: 100,
+        maxWidth,
         color: rgb(0.06, 0.73, 0.5),
       }
     );
 
-    this.currentY -= 5;
+    const totalDiscount = data.totals?.discount || data.discount || 0;
+    if (totalDiscount > 0) {
+      this.currentY -= 18;
+      const rowYDisc = this.currentY;
+      this.drawText("TOTAL DISCOUNT:", totalX, {
+        size: 10,
+        font: this.boldFont,
+        color: rgb(0.05, 0.58, 0.53),
+      });
+      this.currentY = rowYDisc;
+      this.drawText(
+        `${finalCurrency} ${totalDiscount.toFixed(2)}`,
+        rightX,
+        {
+          size: 10,
+          font: this.boldFont,
+          align: "right",
+          maxWidth,
+          color: rgb(0.05, 0.58, 0.53),
+        }
+      );
+    }
+
+    this.currentY -= 12;
     this.drawLine(
       totalX,
       this.currentY,
@@ -404,9 +431,9 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
       1.5,
       this.primaryColor
     );
-    this.currentY -= 5;
+    this.currentY -= 15;
 
-    const netBalanceY = this.currentY;
+    const rowY3 = this.currentY;
     this.drawText("NET BALANCE DUE:", totalX, {
       size: 12,
       font: this.boldFont,
@@ -414,15 +441,15 @@ export class FeeStatementGenerator extends FinancialBaseGenerator {
     const totalBalance = data.totals?.balance || 0;
     const balanceColor =
       totalBalance > 0 ? rgb(0.94, 0.27, 0.27) : rgb(0.06, 0.73, 0.5);
-    this.currentY = netBalanceY;
+    this.currentY = rowY3;
     this.drawText(
       `${finalCurrency} ${totalBalance.toFixed(2)}`,
-      MARGIN + PAGE_WIDTH,
+      rightX,
       {
         size: 14,
         font: this.boldFont,
         align: "right",
-        maxWidth: 100,
+        maxWidth,
         color: balanceColor,
       }
     );

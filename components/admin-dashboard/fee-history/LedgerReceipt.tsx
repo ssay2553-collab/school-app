@@ -12,6 +12,7 @@ interface LedgerReceiptProps {
     categorySummary: Record<string, { billed: number; paid: number }>;
     totalBilled: number;
     totalPaid: number;
+    totalDiscount: number;
     totalBalance: number;
     selectedStudentUid: string;
     selectedYear: string;
@@ -25,6 +26,7 @@ const LedgerReceipt: React.FC<LedgerReceiptProps> = ({
     categorySummary,
     totalBilled,
     totalPaid,
+    totalDiscount,
     totalBalance,
     selectedStudentUid,
     selectedYear,
@@ -111,16 +113,6 @@ const LedgerReceipt: React.FC<LedgerReceiptProps> = ({
                             </View>
                         );
                     })}
-
-                {/* Added Discount Row */}
-                {record.discount > 0 && (
-                    <View style={[styles.invoiceRow, { backgroundColor: '#F0FDFA' }]}>
-                        <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10, color: '#0D9488' }]}>TERM DISCOUNT</Text>
-                        <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: '#0D9488' }]}>({SCHOOL_CONFIG.currencySymbol}{record.discount.toFixed(2)})</Text>
-                        <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right' }]}>-</Text>
-                        <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: '#0D9488', fontWeight: '700' }]}>CREDIT</Text>
-                    </View>
-                )}
             </View>
 
             {/* Totals Section */}
@@ -133,6 +125,12 @@ const LedgerReceipt: React.FC<LedgerReceiptProps> = ({
                     <Text style={styles.totalsLabel}>TOTAL PAID:</Text>
                     <Text style={[styles.totalsValue, { color: "#10B981" }]}>{SCHOOL_CONFIG.currencySymbol}{totalPaid.toFixed(2)}</Text>
                 </View>
+                {(totalDiscount > 0 || record?.discount > 0) && (
+                    <View style={styles.totalsRow}>
+                        <Text style={styles.totalsLabel}>TOTAL DISCOUNT:</Text>
+                        <Text style={[styles.totalsValue, { color: "#0D9488" }]}>{SCHOOL_CONFIG.currencySymbol}{(totalDiscount || Number(record?.discount) || 0).toFixed(2)}</Text>
+                    </View>
+                )}
                 <View style={styles.grandTotalRow}>
                     <Text style={styles.grandTotalLabel}>NET BALANCE:</Text>
                     <Text style={[styles.grandTotalValue, { color: totalBalance > 0 ? "#EF4444" : "#10B981" }]}>
@@ -157,7 +155,7 @@ const LedgerReceipt: React.FC<LedgerReceiptProps> = ({
 
 const styles = StyleSheet.create({
     receiptPaper: {
-        backgroundColor: "#fff",
+        backgroundColor: "#FAF8F5", // Warm parchment eye-comfort tone optimized for day & night reading
         borderRadius: 4,
         padding: 25,
         ...SHADOWS.medium,

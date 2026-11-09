@@ -3,6 +3,7 @@ import { collection, getDocs, limit, query, startAfter, where, onSnapshot } from
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { db } from "../../firebaseConfig";
 import { StudentDraft, FILTERS_PERSISTENCE_KEY, PAGE_SIZE } from "../../constants/admin-dashboard/ManageFeesTypes";
+import { calculateFeeBreakdown } from "./finance-cleanup/utils";
 
 export const useFeeStudents = (
   selectedClassId: string,
@@ -165,27 +166,17 @@ export const useFeeStudents = (
                 if (!feeData) return s;
 
                 const walletBalance = s.currentBalance;
-                const termImpact =
-                  (feeData.termBill || 0) +
-                  (feeData.ptaBill || 0) +
-                  (feeData.maintenanceBill || 0) +
-                  (feeData.admissionBill || 0) +
-                  (feeData.booksBill || 0) +
-                  (feeData.uniformBill || 0) +
-                  (feeData.otherBill || 0) -
-                  (feeData.amountPaid || 0) -
-                  (feeData.ptaPaid || 0) -
-                  (feeData.maintenancePaid || 0) -
-                  (feeData.admissionPaid || 0) -
-                  (feeData.booksPaid || 0) -
-                  (feeData.uniformPaid || 0) -
-                  (feeData.otherPaid || 0) -
-                  (feeData.discount || 0);
+                const breakdown = calculateFeeBreakdown(feeData, feeData.payments || []);
+                const netTermBalance = breakdown.totals.balance;
+                const totalPaid = breakdown.totals.paid;
+                const totalBilled = breakdown.totals.billed;
+                const termImpact = totalBilled - totalPaid - netTermBalance;
 
                 return {
                   ...s,
+                  currentBalance: netTermBalance,
                   previousBalance: walletBalance - termImpact,
-                  amountPaid: feeData.amountPaid || 0,
+                  amountPaid: totalPaid,
                   hasRecordInTerm: true,
                   payments: feeData.payments || [],
                   termBill: feeData.termBill || 0,
@@ -202,7 +193,7 @@ export const useFeeStudents = (
                   booksPaid: feeData.booksPaid || 0,
                   uniformPaid: feeData.uniformPaid || 0,
                   otherPaid: feeData.otherPaid || 0,
-                  totalPayable: feeData.totalPayable || walletBalance,
+                  totalPayable: totalBilled,
                   editCount: feeData.editCount || 0,
                 };
               }),
@@ -261,37 +252,46 @@ export const useFeeStudents = (
             const doc = snap.docs.find(d => d.id === s.uid);
             if (doc) {
               const userData = doc.data();
-              if (s.currentBalance !== userData.walletBalance) {
-                updated = true;
-                // Re-calculate arrears based on new walletBalance
-                const termImpact =
-                  (s.termBill || 0) +
-                  (s.ptaBill || 0) +
-                  (s.maintenanceBill || 0) +
-                  (s.admissionBill || 0) +
-                  (s.booksBill || 0) +
-                  (s.uniformBill || 0) +
-                  (s.otherBill || 0) -
-                  (s.amountPaid || 0) -
-                  (s.ptaPaid || 0) -
-                  (s.maintenancePaid || 0) -
-                  (s.admissionPaid || 0) -
-                  (s.booksPaid || 0) -
-                  (s.uniformPaid || 0) -
-                  (s.otherPaid || 0) -
-                  (s.discount || 0);
-                return {
-                  ...s,
-                  currentBalance: userData.walletBalance || 0,
-                  previousBalance: (userData.walletBalance || 0) - termImpact,
-                  ptaBalance: userData.ptaBalance || 0,
-                  admissionBalance: userData.admissionBalance || 0,
-                  maintenanceBalance: userData.maintenanceBalance || 0,
-                  booksBalance: userData.booksBalance || 0,
-                  uniformBalance: userData.uniformBalance || 0,
-                  otherBalance: userData.otherBalance || 0,
+                const feeData = {
+                  termBill: s.termBill,
+                  ptaBill: s.ptaBill,
+                  maintenanceBill: s.maintenanceBill,
+                  admissionBill: s.admissionBill,
+                  booksBill: s.booksBill,
+                  uniformBill: s.uniformBill,
+                  otherBill: s.otherBill,
+                  arrears: s.previousBalance,
+                  amountPaid: s.amountPaid,
+                  ptaPaid: s.ptaPaid,
+                  maintenancePaid: s.maintenancePaid,
+                  admissionPaid: s.admissionPaid,
+                  booksPaid: s.booksPaid,
+                  uniformPaid: s.uniformPaid,
+                  otherPaid: s.otherPaid,
+                  discount: s.discount,
+                  payments: s.payments,
                 };
-              }
+                const breakdown = calculateFeeBreakdown(feeData, s.payments || []);
+                const netTermBalance = breakdown.totals.balance;
+
+                if (s.currentBalance !== netTermBalance) {
+                  updated = true;
+                  const totalPaid = breakdown.totals.paid;
+                  const totalBilled = breakdown.totals.billed;
+                  const termImpact = totalBilled - totalPaid - netTermBalance;
+
+                  return {
+                    ...s,
+                    currentBalance: netTermBalance,
+                    previousBalance: (userData.walletBalance || 0) - termImpact,
+                    ptaBalance: userData.ptaBalance || 0,
+                    admissionBalance: userData.admissionBalance || 0,
+                    maintenanceBalance: userData.maintenanceBalance || 0,
+                    booksBalance: userData.booksBalance || 0,
+                    uniformBalance: userData.uniformBalance || 0,
+                    otherBalance: userData.otherBalance || 0,
+                  };
+                }
             }
             return s;
           });

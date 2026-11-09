@@ -566,11 +566,11 @@ export default function TeacherAttendanceLogsScreen() {
 
   const renderDailyItem = ({ item }: { item: AttendanceRecord }) => {
     const checkInFormatted = item.checkInTime
-      ? moment(item.checkInTime.toDate?.() || item.checkInTime).format('hh:mm A')
+      ? moment.utc(item.checkInTime.toDate?.() || item.checkInTime).format('hh:mm A')
       : 'Not Logged In';
 
     const checkOutFormatted = item.checkOutTime
-      ? moment(item.checkOutTime.toDate?.() || item.checkOutTime).format('hh:mm A')
+      ? moment.utc(item.checkOutTime.toDate?.() || item.checkOutTime).format('hh:mm A')
       : 'Not Logged Out';
 
     const isLate = item.status === 'Late';

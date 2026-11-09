@@ -57,36 +57,38 @@ export const useFeeDiscounts = ({
 
           const recordId = `${uid}_${cleanYear}_${cleanTerm}`;
 
-          const profileDiscount = (!s.hasRecordInTerm && s.onDiscount && s.discountAmount) ? s.discountAmount : 0;
-          const totalDiscountToApply = disc + profileDiscount;
+          const currentDiscount = s.hasRecordInTerm
+            ? (s.discount || 0)
+            : ((s.onDiscount && s.discountAmount) ? s.discountAmount : 0);
+          const newDiscount = Math.max(0, currentDiscount + disc);
+          const actualDiscDelta = newDiscount - currentDiscount;
+
+          const currentBalance = s.currentBalance !== undefined ? s.currentBalance : (s.previousBalance || 0);
+          const newBalance = currentBalance - actualDiscDelta;
+
+          const feeRecordData: any = {
+            studentUid: uid,
+            studentName: s.fullName,
+            classId: s.classId,
+            className: s.className,
+            academicYear,
+            term,
+            discount: newDiscount,
+            balance: newBalance,
+            lastUpdated: serverTimestamp(),
+          };
 
           if (!s.hasRecordInTerm) {
-            batch.set(doc(db, "studentFeeRecords", recordId), {
-              studentUid: uid,
-              studentName: s.fullName,
-              classId: s.classId,
-              className: s.className,
-              academicYear,
-              term,
-              termBill: 0,
-              arrears: s.previousBalance || 0,
-              discount: totalDiscountToApply,
-              amountPaid: 0,
-              balance: (s.previousBalance || 0) - totalDiscountToApply,
-              totalPayable: s.previousBalance || 0,
-              editCount: 1,
-              createdAt: serverTimestamp(),
-              lastUpdated: serverTimestamp(),
-              payments: [],
-            });
-          } else {
-            batch.update(doc(db, "studentFeeRecords", recordId), {
-              discount: increment(disc),
-              balance: increment(-disc),
-              lastUpdated: serverTimestamp(),
-            });
+            feeRecordData.payments = [];
+            feeRecordData.createdAt = serverTimestamp();
+            feeRecordData.termBill = s.termBill || 0;
+            feeRecordData.arrears = s.previousBalance || 0;
+            feeRecordData.amountPaid = s.amountPaid || 0;
           }
-          batch.update(doc(db, "users", uid), { walletBalance: increment(-totalDiscountToApply), onDiscount: true });
+
+          batch.set(doc(db, "studentFeeRecords", recordId), feeRecordData, { merge: true });
+          batch.update(doc(db, "users", uid), { walletBalance: increment(-actualDiscDelta), onDiscount: true });
+          batch.update(doc(db, "users", uid), { walletBalance: increment(-disc), onDiscount: true });
         }
         await batch.commit();
       }

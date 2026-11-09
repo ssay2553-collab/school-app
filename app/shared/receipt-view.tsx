@@ -63,7 +63,13 @@ export default function ReceiptViewScreen() {
       <LinearGradient colors={[primary, secondary]} style={styles.header}>
         <View style={styles.headerRow}>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/admin-dashboard");
+              }
+            }}
             style={styles.backBtn}
           >
             <SVGIcon name="arrow-back" size={24} color="#fff" />
@@ -232,38 +238,6 @@ export default function ReceiptViewScreen() {
                     </Text>
                   </View>
                 )}
-
-                {record?.discount > 0 && (
-                  <View style={[styles.itemRow, { backgroundColor: '#F0FDFA', borderBottomColor: '#CCFBF1' }]}>
-                    <Text style={[styles.itemName, { flex: 2.2, color: '#0D9488' }]}>
-                      TERM DISCOUNT
-                    </Text>
-                    <Text
-                      style={[
-                        styles.itemVal,
-                        { flex: 1.2, textAlign: "right", color: '#0D9488' },
-                      ]}
-                    >
-                      ({SCHOOL_CONFIG.currencySymbol}{Number(record.discount).toFixed(2)})
-                    </Text>
-                    <Text
-                      style={[
-                        styles.itemVal,
-                        { flex: 1.2, textAlign: "right", color: '#0D9488' },
-                      ]}
-                    >
-                      -
-                    </Text>
-                    <Text
-                      style={[
-                        styles.itemVal,
-                        { flex: 1.2, textAlign: "right", fontWeight: "900", color: '#0D9488' },
-                      ]}
-                    >
-                      CREDIT
-                    </Text>
-                  </View>
-                )}
                 <View style={styles.totalSection}>
                   <View style={styles.totalRow}>
                     <Text style={styles.totalLabel}>TOTAL BILLED</Text>
@@ -277,6 +251,14 @@ export default function ReceiptViewScreen() {
                       {SCHOOL_CONFIG.currencySymbol}{totals.paid.toFixed(2)}
                     </Text>
                   </View>
+                  {totals.discount > 0 && (
+                    <View style={styles.totalRow}>
+                      <Text style={styles.totalLabel}>TOTAL DISCOUNT</Text>
+                      <Text style={[styles.totalValue, { color: "#0D9488" }]}>
+                        {SCHOOL_CONFIG.currencySymbol}{totals.discount.toFixed(2)}
+                      </Text>
+                    </View>
+                  )}
                   <View style={[styles.totalRow, styles.grandTotal]}>
                     <Text style={styles.grandLabel}>NET BALANCE DUE</Text>
                     <Text style={[styles.grandValue, { color: totals.balance > 0 ? "#EF4444" : "#10B981" }]}>
@@ -291,7 +273,7 @@ export default function ReceiptViewScreen() {
                 <View style={styles.receiptDetailRow}>
                   <Text style={styles.receiptDetailLabel}>Category</Text>
                   <Text style={styles.receiptDetailValue}>
-                    {formatType(payment?.type, payment?.otherCategory)}
+                    SCHOOL FEES
                   </Text>
                 </View>
                 <View style={styles.receiptDetailRow}>
@@ -382,7 +364,7 @@ const styles = StyleSheet.create({
   },
   content: { padding: 20 },
   receiptCard: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FAF8F5", // Warm parchment eye-comfort tone optimized for day & night reading
     borderRadius: 20,
     padding: 25,
     ...SHADOWS.large,

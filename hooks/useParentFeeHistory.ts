@@ -50,62 +50,96 @@ export const useParentFeeHistory = () => {
   }, [appUser]);
 
   const paymentLedgerEntries = useMemo(() => {
-    return feeLedger.allTransactions
-      .map((payment: any, index: number) => {
-        const timestampValue =
-          payment.date ||
-          payment.createdAt ||
-          payment.timestamp?.toDate?.() ||
-          payment.paymentDate ||
-          payment.timestamp;
-        const parsedDate = moment(timestampValue);
-        const installmentSource =
-          payment.installmentLabel ||
-          payment.installmentName ||
-          payment.installment ||
-          payment.installmentNo ||
-          payment.installmentNumber;
-        const installmentLabel =
-          installmentSource !== undefined && installmentSource !== ""
-            ? String(installmentSource)
-            : payment.isInstallment || payment.paymentPlan
-              ? `Installment ${index + 1}`
-              : null;
+    const rawEntries = feeLedger.allTransactions.map((payment: any, index: number) => {
+      const timestampValue =
+        payment.date ||
+        payment.createdAt ||
+        payment.timestamp?.toDate?.() ||
+        payment.paymentDate ||
+        payment.timestamp;
+      const parsedDate = moment(timestampValue);
+      const installmentSource =
+        payment.installmentLabel ||
+        payment.installmentName ||
+        payment.installment ||
+        payment.installmentNo ||
+        payment.installmentNumber;
+      const installmentLabel =
+        installmentSource !== undefined && installmentSource !== ""
+          ? String(installmentSource)
+          : payment.isInstallment || payment.paymentPlan
+            ? `Installment ${index + 1}`
+            : null;
 
-        const isPayment = isPaymentEntry(payment);
+      const isPayment = isPaymentEntry(payment);
 
-        return {
-          ...payment,
-          _isPayment: isPayment,
-          _title:
-            payment.otherCategory?.toUpperCase() ||
-            payment.type
-              ?.replace("_payment", "")
-              .replace("_", " ")
-              .toUpperCase() ||
-            "PAYMENT",
-          _installmentLabel: installmentLabel,
-          _displayDate: parsedDate.isValid()
-            ? parsedDate.format("MMM DD, YYYY")
-            : "Pending",
-          _displayTime: parsedDate.isValid() ? parsedDate.format("h:mm A") : "",
-          _method: payment.method || payment.paymentMethod || "Cash",
-          _receivedFrom:
-            payment.receivedFrom ||
-            payment.paidBy ||
-            payment.customerName ||
-            "School account",
-        };
-      })
-      .sort((a: any, b: any) => {
-        const aTime = new Date(
-          a.date || a.createdAt || a.timestamp?.toDate?.() || 0,
-        ).getTime();
-        const bTime = new Date(
-          b.date || b.createdAt || b.timestamp?.toDate?.() || 0,
-        ).getTime();
-        return bTime - aTime;
-      });
+      return {
+        ...payment,
+        _isPayment: isPayment,
+        _title:
+          payment.otherCategory?.toUpperCase() ||
+          payment.type
+            ?.replace("_payment", "")
+            .replace("_", " ")
+            .toUpperCase() ||
+          "PAYMENT",
+        _installmentLabel: installmentLabel,
+        _displayDate: parsedDate.isValid()
+          ? parsedDate.format("MMM DD, YYYY")
+          : "Pending",
+        _displayTime: parsedDate.isValid() ? parsedDate.format("h:mm A") : "",
+        _method: payment.method || payment.paymentMethod || "Cash",
+        _receivedFrom:
+          payment.receivedFrom ||
+          payment.paidBy ||
+          payment.customerName ||
+          "School account",
+      };
+    });
+
+    const groupedMap = new Map<string, any>();
+    const nonPaymentEntries: any[] = [];
+
+    rawEntries.forEach((entry: any) => {
+      if (!entry._isPayment) {
+        nonPaymentEntries.push(entry);
+        return;
+      }
+
+      const groupKey = entry.paymentGroupId || `${entry.date}_${entry._receivedFrom}_${entry._method}`;
+      if (!groupedMap.has(groupKey)) {
+        groupedMap.set(groupKey, {
+          ...entry,
+          _totalAmount: Number(entry.amount) || 0,
+          _splitItems: [entry],
+        });
+      } else {
+        const group = groupedMap.get(groupKey);
+        group._totalAmount += Number(entry.amount) || 0;
+        group._splitItems.push(entry);
+      }
+    });
+
+    const combinedPayments = Array.from(groupedMap.values()).map((group: any) => {
+      const isMulti = group._splitItems.length > 1;
+      return {
+        ...group,
+        amount: group._totalAmount,
+        _title: isMulti ? "PAYMENT" : group._title,
+        receiptNo: group.paymentGroupId || group.receiptNo,
+        _isPayment: true,
+      };
+    });
+
+    return combinedPayments.sort((a: any, b: any) => {
+      const aTime = new Date(
+        a.date || a.createdAt || a.timestamp?.toDate?.() || 0,
+      ).getTime();
+      const bTime = new Date(
+        b.date || b.createdAt || b.timestamp?.toDate?.() || 0,
+      ).getTime();
+      return bTime - aTime;
+    });
   }, [feeLedger.allTransactions]);
 
   const ledgerSummary = useMemo(() => {

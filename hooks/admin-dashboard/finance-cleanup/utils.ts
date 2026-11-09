@@ -319,7 +319,7 @@ export const calculateFeeBreakdown = (
   if (record) {
     const baseTuitionBilled = Math.max(
       0,
-      (Number(record.termBill) || 0) - (Number(record.discount) || 0)
+      Number(record.termBill) || 0
     );
     summary["tuition"].billed = Math.max(summary["tuition"].billed, baseTuitionBilled);
 
@@ -361,58 +361,28 @@ export const calculateFeeBreakdown = (
     }
   }
 
-  // 5. Virtual Waterfall Settlement (general pool)
+  // 4.5. Discount Waterfall (Issue virtual discount payment to tuition first, then overflow to other items)
+  let remainingDiscount = Math.max(0, Number(record?.discount) || 0);
+  const discountOrder = ["tuition", "maintenance", "pta", "admission", "books", "uniform", "other charges"];
+  const allCatKeys = Object.keys(summary);
+  const customCatKeys = allCatKeys.filter(k => !discountOrder.includes(k) && k !== "arrears" && k !== "surplus");
+  const fullDiscountOrder = ["arrears", ...discountOrder, ...customCatKeys];
+
+  fullDiscountOrder.forEach(cat => {
+    if (summary[cat] && remainingDiscount > 0) {
+      const due = Math.max(0, summary[cat].billed - summary[cat].paid);
+      const absorb = Math.min(remainingDiscount, due);
+      summary[cat].paid += absorb;
+      remainingDiscount -= absorb;
+    }
+  });
+
+  // 5. Virtual Cash Payment Waterfall (general pool)
   let generalPool = Math.max(0, waterfallPool.reduce((a, b) => a + b, 0));
 
-  // Sequence:
-  // 1. Arrears
-  if (summary["arrears"] && generalPool > 0) {
-    const due = Math.max(0, summary["arrears"].billed - summary["arrears"].paid);
-    const settle = Math.min(generalPool, due);
-    summary["arrears"].paid += settle;
-    generalPool -= settle;
-  }
+  const settlementOrder = ["arrears", "tuition", "maintenance", "pta", ...customCatKeys, "admission", "books", "uniform"];
 
-  // 2. Tuition Fee
-  if (summary["tuition"] && generalPool > 0) {
-    const due = Math.max(0, summary["tuition"].billed - summary["tuition"].paid);
-    const settle = Math.min(generalPool, due);
-    summary["tuition"].paid += settle;
-    generalPool -= settle;
-  }
-
-  // 3. Maintenance Fee
-  if (summary["maintenance"] && generalPool > 0) {
-    const due = Math.max(0, summary["maintenance"].billed - summary["maintenance"].paid);
-    const settle = Math.min(generalPool, due);
-    summary["maintenance"].paid += settle;
-    generalPool -= settle;
-  }
-
-  // 4. PTA Dues
-  if (summary["pta"] && generalPool > 0) {
-    const due = Math.max(0, summary["pta"].billed - summary["pta"].paid);
-    const settle = Math.min(generalPool, due);
-    summary["pta"].paid += settle;
-    generalPool -= settle;
-  }
-
-  // 5. Dynamic Categories / 'other charges'
-  const fixedCategories = [
-    "arrears",
-    "tuition",
-    "maintenance",
-    "pta",
-    "admission",
-    "books",
-    "uniform",
-    "surplus",
-  ];
-  const customCategories = Object.keys(summary)
-    .filter((c) => !fixedCategories.includes(c))
-    .sort();
-
-  customCategories.forEach((cat) => {
+  settlementOrder.forEach(cat => {
     if (summary[cat] && generalPool > 0) {
       const due = Math.max(0, summary[cat].billed - summary[cat].paid);
       const settle = Math.min(generalPool, due);
@@ -421,33 +391,9 @@ export const calculateFeeBreakdown = (
     }
   });
 
-  // 6. Admission Fee
-  if (summary["admission"] && generalPool > 0) {
-    const due = Math.max(0, summary["admission"].billed - summary["admission"].paid);
-    const settle = Math.min(generalPool, due);
-    summary["admission"].paid += settle;
-    generalPool -= settle;
-  }
-
-  // 7. Books Fee
-  if (summary["books"] && generalPool > 0) {
-    const due = Math.max(0, summary["books"].billed - summary["books"].paid);
-    const settle = Math.min(generalPool, due);
-    summary["books"].paid += settle;
-    generalPool -= settle;
-  }
-
-  // 8. Uniform Fee
-  if (summary["uniform"] && generalPool > 0) {
-    const due = Math.max(0, summary["uniform"].billed - summary["uniform"].paid);
-    const settle = Math.min(generalPool, due);
-    summary["uniform"].paid += settle;
-    generalPool -= settle;
-  }
-
-  // 9. Surplus (Overpayment balance)
   if (generalPool > 0) {
-    summary["surplus"] = { billed: 0, paid: generalPool };
+    if (!summary["surplus"]) summary["surplus"] = { billed: 0, paid: 0 };
+    summary["surplus"].paid += generalPool;
   }
 
   // 6. Format and Sort Category Summary Items
@@ -483,14 +429,16 @@ export const calculateFeeBreakdown = (
     (acc, item) => acc + (item.id === "surplus" ? 0 : item.billed),
     0
   );
-  const totalPaid = categorySummaryItems.reduce((acc, item) => acc + item.paid, 0);
-  const totalBalance = Math.max(0, totalBilled - totalPaid);
+  const totalCashPaid = (transactions || []).filter(t => isPaymentEntry(t)).reduce((sum, t) => sum + Math.max(0, Number(t.amount || 0)), 0);
+  const totalDiscount = Math.max(0, Number(record?.discount) || 0);
+  const totalBalance = Math.max(0, totalBilled - totalCashPaid - totalDiscount);
 
   return {
     categorySummary: categorySummaryItems,
     totals: {
       billed: totalBilled,
-      paid: totalPaid,
+      paid: totalCashPaid,
+      discount: totalDiscount,
       balance: totalBalance,
     },
     rawSummary: orderedRawSummary,

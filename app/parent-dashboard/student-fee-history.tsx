@@ -49,7 +49,7 @@ export default function StudentFeeHistory() {
 
   const primary = SCHOOL_CONFIG.primaryColor || COLORS.primary;
   const secondary = SCHOOL_CONFIG.secondaryColor || COLORS.secondary;
-  const { totalBilled, totalPaid, totalBalance } = totals;
+  const { totalBilled, totalPaid, totalDiscount, totalBalance } = totals;
 
   if (loading || (selectedChildId && fetchingRecord && !record))
     return (
@@ -275,16 +275,6 @@ export default function StudentFeeHistory() {
                     </View>
                   );
                 })}
-
-              {/* Added Discount Row */}
-              {record.discount > 0 && (
-                <View style={[styles.invoiceRow, { backgroundColor: '#F0FDFA' }]}>
-                  <Text style={[styles.invoiceTd, { flex: 2, fontWeight: '700', fontSize: 10, color: '#0D9488' }]}>TERM DISCOUNT</Text>
-                  <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: '#0D9488' }]}>({SCHOOL_CONFIG.currencySymbol}{record.discount.toFixed(2)})</Text>
-                  <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right' }]}>-</Text>
-                  <Text style={[styles.invoiceTd, { flex: 1.2, textAlign: 'right', color: '#0D9488', fontWeight: '700' }]}>CREDIT</Text>
-                </View>
-              )}
             </View>
 
             {/* Summary */}
@@ -301,6 +291,14 @@ export default function StudentFeeHistory() {
                   {SCHOOL_CONFIG.currencySymbol} {totalPaid.toFixed(2)}
                 </Text>
               </View>
+              {(totalDiscount > 0 || record?.discount > 0) && (
+                <View style={styles.totalsRow}>
+                  <Text style={styles.totalsLabel}>TOTAL DISCOUNT:</Text>
+                  <Text style={[styles.totalsValue, { color: "#0D9488" }]}>
+                    {SCHOOL_CONFIG.currencySymbol} {(totalDiscount || Number(record?.discount) || 0).toFixed(2)}
+                  </Text>
+                </View>
+              )}
               <View style={styles.grandTotalRow}>
                 <Text style={styles.grandTotalLabel}>NET BALANCE:</Text>
                 <Text

@@ -368,6 +368,8 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
             const totalPayable = record?.totalPayable !== undefined ? record.totalPayable :
                                 (userData.totalPayable || (effectiveArrears + ptaBalance + maintenanceBalance + admissionBalance + booksBalance + uniformBalance + otherBalance));
 
+            const paymentGroupId = `PAYGRP-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
             if (remainingAmount > 0) {
                 tuitionContribution = Math.min(remainingAmount, Math.max(0, currentTuitionDue));
                 remainingAmount -= tuitionContribution;
@@ -391,6 +393,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                     academicYear: selectedYear,
                     term: selectedTerm,
                     type: "tuition",
+                    paymentGroupId,
                 };
 
                 if (!record) {
@@ -458,6 +461,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                             academicYear: selectedYear,
                             term: selectedTerm,
                             type: `${target.key}_payment`,
+                            paymentGroupId,
                         };
                         batch.set(doc(db, "feePayments", subSerial), subEntry);
                         batch.update(doc(db, "studentFeeRecords", recordId), {
@@ -518,6 +522,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                             term: selectedTerm,
                             type: "other_payment",
                             otherCategory: cat,
+                            paymentGroupId,
                         };
                         batch.set(doc(db, "feePayments", subSerial), subEntry);
                         batch.update(doc(db, "studentFeeRecords", recordId), {
@@ -556,6 +561,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
                         academicYear: selectedYear,
                         term: selectedTerm,
                         type: "tuition_credit",
+                        paymentGroupId,
                     };
                     batch.update(doc(db, "studentFeeRecords", recordId), {
                         amountPaid: increment(remainingAmount),

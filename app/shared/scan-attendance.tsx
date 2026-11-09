@@ -179,6 +179,7 @@ export default function SharedScanAttendanceScreen() {
   const [loading, setLoading] = useState(false);
   const [fetchingConfig, setFetchingConfig] = useState(true);
   const [configData, setConfigData] = useState<any>(null);
+  const [fetchedUser, setFetchedUser] = useState<any>(null);
   const [currentLocation, setCurrentLocation] = useState<{
     latitude: number;
     longitude: number;
@@ -297,6 +298,7 @@ export default function SharedScanAttendanceScreen() {
 
       if (userSnap.exists()) {
         const uData = userSnap.data();
+        setFetchedUser(uData);
         const fetchedBaseline = sanitizeStorageImageUri(
           uData?.profile?.faceBaselineImage || null,
         );
@@ -1305,14 +1307,29 @@ export default function SharedScanAttendanceScreen() {
     setLoading(true);
 
     try {
-      const adminLat = Number(configData?.latitude);
-      const adminLng = Number(configData?.longitude);
-      const allowedRadius = Number(configData?.radius) || 50;
+      // 1. Pre-fetch fresh User Profile & Attendance Config from Firestore before taking attendance
+      const userDocRef = doc(db, "users", targetUid);
+      const configRef = doc(db, "teacherAttendanceConfig", schoolId);
 
-      if (!configData || isNaN(adminLat) || isNaN(adminLng)) {
+      const [freshUserSnap, freshConfigSnap] = await Promise.all([
+        getDoc(userDocRef),
+        getDoc(configRef),
+      ]);
+
+      const activeUser = freshUserSnap.exists() ? freshUserSnap.data() : fetchedUser;
+      const activeConfig = freshConfigSnap.exists() ? freshConfigSnap.data() : configData;
+
+      if (freshUserSnap.exists()) setFetchedUser(activeUser);
+      if (freshConfigSnap.exists()) setConfigData(activeConfig);
+
+      const adminLat = Number(activeConfig?.latitude);
+      const adminLng = Number(activeConfig?.longitude);
+      const allowedRadius = Number(activeConfig?.radius) || 50;
+
+      if (!activeConfig || isNaN(adminLat) || isNaN(adminLng)) {
         showToast({
           message:
-            "No active attendance session or valid GPS coordinates configured by admin.",
+            "Attendance setup incomplete. Please ensure GPS & Late Threshold are saved in Staff Attendance Setup.",
           type: "error",
         });
         return;
@@ -1388,6 +1405,24 @@ export default function SharedScanAttendanceScreen() {
       const attDocRef = doc(db, "teacherAttendance", attendanceRecordId);
       const attSnap = await getDoc(attDocRef);
 
+      // Derive staff name & email directly from the freshly loaded user profile
+      const userSource = activeUser || targetUser;
+      const teacherDisplayName =
+        userSource?.fullName ||
+        userSource?.displayName ||
+        [userSource?.profile?.firstName, userSource?.profile?.lastName]
+          .filter(Boolean)
+          .join(" ") ||
+        targetUser?.fullName ||
+        "Staff Member";
+
+      const teacherEmail =
+        userSource?.profile?.email ||
+        userSource?.email ||
+        targetUser?.profile?.email ||
+        (targetUser as any)?.email ||
+        "";
+
       if (mode === "checkIn") {
         if (!faceVerified) {
           const faceMessage = hasSourceOfTruth
@@ -1421,27 +1456,6 @@ export default function SharedScanAttendanceScreen() {
           return;
         }
 
-        // Evaluate On Time vs Late based on admin lateTime threshold
-        const now = moment();
-        const lateThresholdStr = configData.lateTime || "08:15";
-        const [lateH, lateM] = lateThresholdStr.split(":").map(Number);
-        const currentTotalMinutes = now.hours() * 60 + now.minutes();
-        const thresholdTotalMinutes =
-          (isNaN(lateH) ? 8 : lateH) * 60 + (isNaN(lateM) ? 15 : lateM);
-
-        const attendanceStatus =
-          currentTotalMinutes <= thresholdTotalMinutes ? "On Time" : "Late";
-
-        const teacherDisplayName =
-          targetUser?.fullName ||
-          targetUser?.displayName ||
-          [targetUser?.profile?.firstName, targetUser?.profile?.lastName]
-            .filter(Boolean)
-            .join(" ") ||
-          "Staff Member";
-        const teacherEmail =
-          targetUser?.profile?.email || (targetUser as any)?.email || "";
-
         const checkInPayload = {
           teacherId: targetUid,
           teacherName: teacherDisplayName,
@@ -1452,38 +1466,55 @@ export default function SharedScanAttendanceScreen() {
           checkInLatitude: teacherLat,
           checkInLongitude: teacherLng,
           checkInDistance: distance,
-          status: attendanceStatus,
+          status: "On Time",
           faceVerified: true,
           facePhotoUri: facePhotoUri || null,
           updatedAt: serverTimestamp(),
         };
 
         await setDoc(attDocRef, checkInPayload, { merge: true });
+
+        // 2. Read back stored record to evaluate status strictly against Firestore Server Timestamp (ignoring device clock)
         const updatedSnap = await getDoc(attDocRef);
-        setAttendanceRecord(updatedSnap.data());
-        setWeeklyRecords((prev) => ({ ...prev, [today]: updatedSnap.data() }));
+        const data = updatedSnap.data();
+
+        let serverDate = new Date();
+        if (data?.checkInTime && typeof data.checkInTime.toDate === "function") {
+          serverDate = data.checkInTime.toDate();
+        }
+
+        // Convert server timestamp to UTC (GMT - Ghana School Time) to eliminate device clock & timezone tampering
+        const serverMoment = moment.utc(serverDate);
+        const lateThresholdStr = activeConfig?.lateTime || "07:15";
+        const [lateH, lateM] = lateThresholdStr.split(":").map(Number);
+        const thresholdTotalMinutes =
+          (isNaN(lateH) ? 7 : lateH) * 60 + (isNaN(lateM) ? 15 : lateM);
+        const serverTotalMinutes = serverMoment.hours() * 60 + serverMoment.minutes();
+
+        const calculatedStatus =
+          serverTotalMinutes <= thresholdTotalMinutes ? "On Time" : "Late";
+
+        // Persist server-evaluated status to Firestore if different
+        if (data?.status !== calculatedStatus) {
+          await setDoc(attDocRef, { status: calculatedStatus }, { merge: true });
+        }
+
+        const finalRecord = { ...data, status: calculatedStatus };
+        setAttendanceRecord(finalRecord);
+        setWeeklyRecords((prev) => ({ ...prev, [today]: finalRecord }));
         setMode("checkOut");
 
+        const formattedTimeStr = serverMoment.format("hh:mm A");
         const msgTitle =
-          attendanceStatus === "On Time"
+          calculatedStatus === "On Time"
             ? "Login Successful! 🎉"
             : "Logged In (Late) ⏰";
-        const msgBody = `Attendance recorded for ${teacherDisplayName} as ${attendanceStatus} (${now.format("hh:mm A")}).`;
+        const msgBody = `Attendance recorded for ${teacherDisplayName} as ${calculatedStatus} (${formattedTimeStr}).`;
         showToast({ message: `${msgTitle} - ${msgBody}`, type: "success" });
         if (Platform.OS !== "web") {
           Alert.alert(msgTitle, msgBody);
         }
       } else {
-        const teacherDisplayName =
-          targetUser?.fullName ||
-          targetUser?.displayName ||
-          [targetUser?.profile?.firstName, targetUser?.profile?.lastName]
-            .filter(Boolean)
-            .join(" ") ||
-          "Staff Member";
-        const teacherEmail =
-          targetUser?.profile?.email || (targetUser as any)?.email || "";
-
         const checkOutPayload = {
           teacherId: targetUid,
           teacherName: teacherDisplayName,
@@ -1529,7 +1560,7 @@ export default function SharedScanAttendanceScreen() {
   const isCheckedOut = Boolean(attendanceRecord?.checkOutTime);
 
   const checkInTimeFormatted = attendanceRecord?.checkInTime
-    ? moment(
+    ? moment.utc(
         attendanceRecord.checkInTime.toDate
           ? attendanceRecord.checkInTime.toDate()
           : attendanceRecord.checkInTime,
@@ -1537,7 +1568,7 @@ export default function SharedScanAttendanceScreen() {
     : null;
 
   const checkOutTimeFormatted = attendanceRecord?.checkOutTime
-    ? moment(
+    ? moment.utc(
         attendanceRecord.checkOutTime.toDate
           ? attendanceRecord.checkOutTime.toDate()
           : attendanceRecord.checkOutTime,
@@ -1555,13 +1586,14 @@ export default function SharedScanAttendanceScreen() {
   };
 
   const getTargetName = () => {
-    if (!targetUser) return "Staff Member";
+    const source = fetchedUser || targetUser;
+    if (!source) return "Staff Member";
     return (
-      targetUser.fullName ||
-      [targetUser.profile?.firstName, targetUser.profile?.lastName]
+      source.fullName ||
+      [source.profile?.firstName, source.profile?.lastName]
         .filter(Boolean)
         .join(" ") ||
-      (targetUser as any).email ||
+      (source as any).email ||
       "Staff Member"
     );
   };

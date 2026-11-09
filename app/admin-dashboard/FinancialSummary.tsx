@@ -279,12 +279,12 @@ export default function FinancialSummary() {
                   ₵{netBalance.toLocaleString()}
                 </Text>
                 <View style={styles.mainBalanceFooter}>
-                  <Text style={styles.mainBalanceSubtext}>General Fees (₵{totalRevenue.toLocaleString()}) - Expenditure (₵{totalExpenditure.toLocaleString()})</Text>
+                  <Text style={styles.mainBalanceSubtext}>General Student Fees (₵{totalRevenue.toLocaleString()}) - Expenditure (₵{totalExpenditure.toLocaleString()})</Text>
                 </View>
               </View>
               <View style={styles.secondaryOverviewRow}>
                 <View style={[styles.secondaryCard, { borderLeftColor: VIBE.success }]}>
-                  <Text style={styles.secondaryLabel}>General Fees Received</Text>
+                  <Text style={styles.secondaryLabel}>General Student Fees</Text>
                   <Text style={[styles.secondaryValue, { color: VIBE.success }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
                     ₵{totalRevenue.toLocaleString()}
                   </Text>
@@ -339,7 +339,7 @@ export default function FinancialSummary() {
                 <View style={[styles.healthBar, { width: `${totalRevenue > 0 ? Math.min((totalExpenditure / totalRevenue) * 100, 100) : 0}%`, backgroundColor: netBalance >= 0 ? VIBE.success : VIBE.danger }]} />
               </View>
               <Text style={styles.healthFooter}>
-                {netBalance >= 0 ? `Expenditure accounts for ${totalRevenue > 0 ? ((totalExpenditure / totalRevenue) * 100).toFixed(1) : 0}% of general revenue.` : "Expenditures exceed general revenue."}
+                {netBalance >= 0 ? `Expenditure accounts for ${totalRevenue > 0 ? ((totalExpenditure / totalRevenue) * 100).toFixed(1) : 0}% of general student fees revenue.` : "Expenditures exceed general student fees revenue."}
               </Text>
             </View>
           </View>

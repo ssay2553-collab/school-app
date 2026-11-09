@@ -41,7 +41,7 @@ export default function TeacherAttendanceConfigScreen() {
   const [latitude, setLatitude] = useState<string>('');
   const [longitude, setLongitude] = useState<string>('');
   const [radius, setRadius] = useState<string>('100'); // default 100 meters range for school campus coverage
-  const [lateTime, setLateTime] = useState<string>('08:15'); // default late threshold time e.g. 08:15 AM
+  const [lateTime, setLateTime] = useState<string>('07:15'); // default late threshold time e.g. 07:15 AM
   const [configId, setConfigId] = useState<string>('');
   const [savedConfig, setSavedConfig] = useState<any>(null);
 
@@ -149,15 +149,15 @@ export default function TeacherAttendanceConfigScreen() {
       return;
     }
 
-    // Normalize late time input (e.g. "8:30", "8.30", "830" -> "08:30")
+    // Normalize late time input (e.g. "7:15", "7.15", "715" -> "07:15")
     const normalizeLateTime = (input: string): string => {
       const clean = input.trim().replace('.', ':').replace(' ', '');
-      if (!clean) return '08:15';
+      if (!clean) return '07:15';
       if (clean.includes(':')) {
         const parts = clean.split(':');
         let h = parseInt(parts[0], 10);
         let m = parseInt(parts[1], 10);
-        if (isNaN(h)) h = 8;
+        if (isNaN(h)) h = 7;
         if (isNaN(m)) m = 15;
         h = Math.max(0, Math.min(23, h));
         m = Math.max(0, Math.min(59, m));
@@ -166,12 +166,12 @@ export default function TeacherAttendanceConfigScreen() {
       if (/^\d{3,4}$/.test(clean)) {
         const h = parseInt(clean.slice(0, clean.length - 2), 10);
         const m = parseInt(clean.slice(-2), 10);
-        if (isNaN(h) || isNaN(m)) return '08:15';
+        if (isNaN(h) || isNaN(m)) return '07:15';
         const normH = Math.max(0, Math.min(23, h));
         const normM = Math.max(0, Math.min(59, m));
         return `${normH.toString().padStart(2, '0')}:${normM.toString().padStart(2, '0')}`;
       }
-      return '08:15';
+      return '07:15';
     };
 
     const formattedLateTime = normalizeLateTime(lateTime);
@@ -323,7 +323,7 @@ export default function TeacherAttendanceConfigScreen() {
               <Text style={styles.label}>Late Threshold Time (HH:MM)</Text>
               <TextInput
                 style={styles.input}
-                placeholder="e.g. 08:15"
+                placeholder="e.g. 07:15"
                 placeholderTextColor="#94a3b8"
                 value={lateTime}
                 onChangeText={setLateTime}
@@ -334,7 +334,7 @@ export default function TeacherAttendanceConfigScreen() {
           {/* Preset Quick-Select Time Chips */}
           <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
             <Text style={{ fontSize: 11, fontWeight: '600', color: '#64748b' }}>Quick Select:</Text>
-            {['07:30', '08:00', '08:15', '08:30', '09:00'].map((preset) => (
+            {['07:15', '07:30', '08:00', '08:15', '08:30', '09:00'].map((preset) => (
               <TouchableOpacity
                 key={preset}
                 onPress={() => setLateTime(preset)}

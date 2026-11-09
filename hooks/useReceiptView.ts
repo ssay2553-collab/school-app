@@ -121,10 +121,92 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
 
                     setAllTransactions(termTransactions);
                 } else if (type === "payment" && paymentId) {
-                    const pDoc = await getDoc(
-                        doc(db, "feePayments", paymentId as string),
+                    const pid = paymentId as string;
+                    let groupPayments: any[] = [];
+
+                    const qGroup = query(
+                        collection(db, "feePayments"),
+                        where("paymentGroupId", "==", pid)
                     );
-                    if (pDoc.exists()) setPayment(pDoc.data());
+                    const gSnap = await getDocs(qGroup);
+                    groupPayments = gSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                    if (groupPayments.length === 0) {
+                        const pDoc = await getDoc(doc(db, "feePayments", pid));
+                        if (pDoc.exists()) {
+                            const pData = pDoc.data();
+                            if (pData.paymentGroupId) {
+                                const qSub = query(
+                                    collection(db, "feePayments"),
+                                    where("paymentGroupId", "==", pData.paymentGroupId)
+                                );
+                                const subSnap = await getDocs(qSub);
+                                groupPayments = subSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                            } else {
+                                groupPayments = [{ id: pDoc.id, ...pData }];
+                            }
+                        } else {
+                            const qReceipt = query(
+                                collection(db, "feePayments"),
+                                where("receiptNo", "==", pid)
+                            );
+                            const rSnap = await getDocs(qReceipt);
+                            if (!rSnap.empty) {
+                                const rDoc = rSnap.docs[0];
+                                const pData = rDoc.data();
+                                if (pData.paymentGroupId) {
+                                    const qSub = query(
+                                        collection(db, "feePayments"),
+                                        where("paymentGroupId", "==", pData.paymentGroupId)
+                                    );
+                                    const subSnap = await getDocs(qSub);
+                                    groupPayments = subSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+                                } else {
+                                    groupPayments = [{ id: rDoc.id, ...pData }];
+                                }
+                            }
+                        }
+                    }
+
+                    if (groupPayments.length > 0) {
+                        const primary = groupPayments[0];
+                        const studentUid = primary.studentUid;
+                        const dateStr = primary.date || (primary.createdAt ? moment(primary.createdAt).format("YYYY-MM-DD") : "");
+                        const method = primary.method || primary.paymentMethod;
+                        const receivedFrom = primary.receivedFrom || primary.paidBy;
+
+                        if (studentUid && dateStr) {
+                            const qAll = query(
+                                collection(db, "feePayments"),
+                                where("studentUid", "==", studentUid)
+                            );
+                            const allSnap = await getDocs(qAll);
+                            const matching = allSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter((p: any) => {
+                                const pDate = p.date || (p.createdAt ? moment(p.createdAt).format("YYYY-MM-DD") : "");
+                                const pMethod = p.method || p.paymentMethod;
+                                const pReceived = p.receivedFrom || p.paidBy;
+                                const sameGroup = primary.paymentGroupId && p.paymentGroupId === primary.paymentGroupId;
+                                const sameSession = pDate === dateStr && pMethod === method && pReceived === receivedFrom;
+                                let closeTime = false;
+                                if (primary.createdAt && p.createdAt) {
+                                    const diffSec = Math.abs(moment(primary.createdAt).diff(moment(p.createdAt), 'seconds'));
+                                    closeTime = diffSec <= 60;
+                                }
+                                return sameGroup || (sameSession && (closeTime || !primary.createdAt || !p.createdAt));
+                            });
+
+                            if (matching.length > groupPayments.length) {
+                                groupPayments = matching;
+                            }
+                        }
+
+                        const totalAmount = groupPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+                        setPayment({
+                            ...primary,
+                            amount: totalAmount,
+                            items: groupPayments,
+                        });
+                    }
                 }
             } catch (err) {
                 console.error("Error fetching receipt data:", err);

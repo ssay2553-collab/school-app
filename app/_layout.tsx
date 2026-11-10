@@ -164,6 +164,16 @@ function MainLayout() {
           .catch((registrationError) => {
             console.log("SW registration failed: ", registrationError);
           });
+
+        // Register Firebase Messaging Service Worker for PWA background notifications
+        navigator.serviceWorker
+          .register("/firebase-messaging-sw.js", { scope: "/" })
+          .then((fcmReg) => {
+            console.log("FCM SW registered: ", fcmReg.scope);
+          })
+          .catch((err) => {
+            console.log("FCM SW registration failed: ", err);
+          });
       });
     }
 

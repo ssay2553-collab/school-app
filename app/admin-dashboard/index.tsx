@@ -153,6 +153,13 @@ export default function AdminDashboard() {
                 icon: "analytics",
                 color: "#4F46E5",
               },
+              {
+                title: "AI Report Generator",
+                subtitle: "Executive AI Reports",
+                route: "/admin-dashboard/general-report-generator",
+                icon: "sparkles",
+                color: "#7C3AED",
+              },
             ]
           : []),
         {
@@ -225,6 +232,7 @@ export default function AdminDashboard() {
           route: "/admin-dashboard/news",
           icon: "megaphone",
           color: "#f43f5e",
+          featureId: "admin_news",
         },
         {
           title: "Staff Chat",

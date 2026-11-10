@@ -9,6 +9,7 @@ export const BLOCKED_FEATURES_BY_TIER: Record<SchoolCategory, Set<string>> = {
     "admin_payroll",
     "admin_groups",
     "admin_timetable",
+    "admin_news",
 
     // Teacher dashboard features blocked in Core
     "teacher_my_classes",
@@ -33,6 +34,7 @@ export const BLOCKED_FEATURES_BY_TIER: Record<SchoolCategory, Set<string>> = {
     // Parent dashboard features blocked in Core (academic reports now enabled for Core)
     "parent_news",
     "parent_chat_teacher",
+    "parent_weekly_topics",
   ]),
 
   nova: new Set([

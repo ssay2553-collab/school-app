@@ -166,8 +166,7 @@ function hasScreenPermission(screen, level) {
       return (get(/databases/$(database)/documents/classes/$(classId)).data.classTeacherId == request.auth.uid) ||
              (classId in userData().get('classes', [])) ||
              (userData().get('classTeacherOf', '') == classId) ||
-             (userData().get('isTeacherOnDuty', false) == true &&
-              userData().get('teacherOnDutyExpiresAt', request.time) > request.time);
+             (userData().get('isTeacherOnDuty', false) == true);
     }
 
     function isStaff() {
@@ -702,8 +701,7 @@ match /feePayments/{paymentId} {
 
       function isTeacherOnDutyActive() {
         return userData() != null &&
-               userData().get('isTeacherOnDuty', false) == true &&
-               userData().get('teacherOnDutyExpiresAt', request.time) > request.time;
+               userData().get('isTeacherOnDuty', false) == true;
       }
 
       allow read: if
@@ -721,8 +719,7 @@ match /feePayments/{paymentId} {
     match /attendanceSummary/{id} {
       function isTeacherOnDutyActive() {
         return userData() != null &&
-               userData().get('isTeacherOnDuty', false) == true &&
-               userData().get('teacherOnDutyExpiresAt', request.time) > request.time;
+               userData().get('isTeacherOnDuty', false) == true;
       }
 
       allow read: if isSignedIn() && (

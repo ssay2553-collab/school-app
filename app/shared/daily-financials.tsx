@@ -83,23 +83,26 @@ export default function DailyFinancials() {
     "superadmin",
   ].includes(currentUserRole);
 
+  const isTeacherOnDuty = !!(appUser as any)?.isTeacherOnDuty;
+  const canAccessAllClasses = isSuperAdmin || isTeacherOnDuty;
+
   const feedingPermission = appUser?.permissions?.["feeding"] || "deny";
   const busFeePermission = appUser?.permissions?.["record-bus-fee"] || "deny";
   const extraClassesPermission =
     appUser?.permissions?.["record-extra-classes"] || "deny";
 
   const canView =
-    isSuperAdmin ||
+    canAccessAllClasses ||
     feedingPermission !== "deny" ||
     busFeePermission !== "deny" ||
     extraClassesPermission !== "deny";
 
   const canViewFeeding =
-    isSuperAdmin || feedingPermission !== "deny";
+    canAccessAllClasses || feedingPermission !== "deny";
   const canViewBus =
-    isSuperAdmin || busFeePermission !== "deny";
+    canAccessAllClasses || busFeePermission !== "deny";
   const canViewExtraClasses =
-    isSuperAdmin || extraClassesPermission !== "deny";
+    canAccessAllClasses || extraClassesPermission !== "deny";
 
   const handleBack = () => {
     if (appUser?.role === "admin") {
@@ -137,18 +140,16 @@ export default function DailyFinancials() {
     return getTeacherClasses(appUser);
   }, [appUser]);
 
-  const [selectedClassId, setSelectedClassId] = useState<string>(
-    !isSuperAdmin && teacherClasses.length > 0 ? "all" : "all"
-  );
+  const [selectedClassId, setSelectedClassId] = useState<string>("all");
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
 
   // Derived effective class IDs for queries
   const effectiveClassIds = useMemo(() => {
-    if (isSuperAdmin) {
+    if (canAccessAllClasses) {
       return selectedClassId === "all" ? [] : [selectedClassId];
     }
     return selectedClassId === "all" ? teacherClasses : [selectedClassId];
-  }, [isSuperAdmin, selectedClassId, teacherClasses]);
+  }, [canAccessAllClasses, selectedClassId, teacherClasses]);
 
   const [stats, setStats] = useState<CategoryStats>({
     feeding: 0,

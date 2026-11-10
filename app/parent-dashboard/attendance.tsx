@@ -474,13 +474,13 @@ export default function AttendanceScreen() {
                         Absence Recorded Today
                       </Text>
                       <Text style={styles.absentAlertSub}>
-                        Please notify the teacher why {item.name.split(" ")[0]} is absent.
+                        Please notify the administration why {item.name.split(" ")[0]} is absent.
                       </Text>
                     </View>
                     <TouchableOpacity
                       onPress={() =>
                         router.push({
-                          pathname: "/parent-dashboard/chat-with-teacher",
+                          pathname: "/parent-dashboard/chat-with-admin",
                           params: { studentId: item.id, studentName: item.name },
                         })
                       }

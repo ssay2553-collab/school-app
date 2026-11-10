@@ -27,14 +27,9 @@ export const isClassTeacher = (
   // Admins have universal access to mark attendance
   if (isAdmin) return true;
 
-  // Check if Teacher on Duty is active (expires in future)
-  if ((user as any).isTeacherOnDuty && (user as any).teacherOnDutyExpiresAt) {
-    const expiresAt = (user as any).teacherOnDutyExpiresAt.toMillis
-      ? (user as any).teacherOnDutyExpiresAt.toMillis()
-      : new Date((user as any).teacherOnDutyExpiresAt).getTime();
-    if (expiresAt > Date.now()) {
-      return true; // Teacher on Duty has permission for all classes!
-    }
+  // Check if Teacher on Duty is active
+  if ((user as any)?.isTeacherOnDuty) {
+    return true; // Teacher on Duty has permission for all classes!
   }
 
   const classTeacherOf = user.classTeacherOf;

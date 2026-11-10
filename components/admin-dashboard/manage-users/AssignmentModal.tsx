@@ -240,8 +240,7 @@ export const AssignmentModal: React.FC<AssignmentModalProps> = ({
                         Teacher on Duty (TOD)
                       </Text>
                       <Text style={styles.switchSub}>
-                        Grants permission to mark attendance for ALL classes
-                        (Auto-revokes in 6 days)
+                        Grants permission to mark student attendance and take daily financials for ALL classes
                       </Text>
                     </View>
                     <Switch

@@ -82,10 +82,13 @@ export const useBusFeeLogic = () => {
     "superadmin",
   ].includes(currentUserRole);
 
+  const isTeacherOnDuty = !!(appUser as any)?.isTeacherOnDuty;
+  const canAccessAllClasses = isSuperAdmin || isTeacherOnDuty;
+
   const busPermission = appUser?.permissions?.["record-bus-fee"] || "deny";
 
   const canView =
-    isSuperAdmin ||
+    canAccessAllClasses ||
     busPermission === "full" ||
     busPermission === "view" ||
     busPermission === "edit";
@@ -97,7 +100,7 @@ export const useBusFeeLogic = () => {
   const [activeTab, setActiveTab] = useState<TabType>("record");
 
   const canEdit =
-    (isSuperAdmin || busPermission === "full" || busPermission === "edit") &&
+    (canAccessAllClasses || busPermission === "full" || busPermission === "edit") &&
     !moment(selectedDate).isBefore(moment(), "day");
 
   const isPastDate = moment(selectedDate).isBefore(moment(), "day");
@@ -105,7 +108,7 @@ export const useBusFeeLogic = () => {
   const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
 
   const [selectedClassId, setSelectedClassId] = useState<string>(
-    teacherClasses.length > 0 && !isSuperAdmin
+    teacherClasses.length > 0 && !canAccessAllClasses
       ? teacherClasses[0] || ""
       : "all",
   );
@@ -135,14 +138,14 @@ export const useBusFeeLogic = () => {
   const [bulkBillAmount, setBulkBillAmount] = useState("");
 
   const effectiveClassIds = useMemo(() => {
-    if (isSuperAdmin) {
+    if (canAccessAllClasses) {
       return selectedClassId === "all" ? [] : [selectedClassId];
     }
     if (teacherClasses.length > 0) {
       return selectedClassId === "all" ? teacherClasses : [selectedClassId];
     }
     return [];
-  }, [isSuperAdmin, selectedClassId, teacherClasses]);
+  }, [canAccessAllClasses, selectedClassId, teacherClasses]);
 
   // Load classes
   useEffect(() => {
@@ -180,7 +183,7 @@ export const useBusFeeLogic = () => {
               where("classId", "in", effectiveClassIds),
             );
           }
-        } else if (!isSuperAdmin) {
+        } else if (!canAccessAllClasses) {
           setStudents([]);
           return;
         }
@@ -210,7 +213,7 @@ export const useBusFeeLogic = () => {
       }
     };
     loadStudents();
-  }, [effectiveClassIds, classes, isSuperAdmin]);
+  }, [effectiveClassIds, classes, canAccessAllClasses]);
 
   // Load daily records
   useEffect(() => {
@@ -232,7 +235,7 @@ export const useBusFeeLogic = () => {
       } else {
         baseQuery = query(baseQuery, where("classId", "in", effectiveClassIds));
       }
-    } else if (!isSuperAdmin) {
+    } else if (!canAccessAllClasses) {
       setDailyRecords([]);
       setLoading(false);
       return;
@@ -257,7 +260,7 @@ export const useBusFeeLogic = () => {
     );
 
     return () => unsub();
-  }, [selectedDate, effectiveClassIds, isSuperAdmin]);
+  }, [selectedDate, effectiveClassIds, canAccessAllClasses]);
 
   // Load attendance
   useEffect(() => {

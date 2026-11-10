@@ -274,6 +274,7 @@ export interface FeeBreakdownResult {
   totals: {
     billed: number;
     paid: number;
+    discount: number;
     balance: number;
   };
   rawSummary: Record<string, { billed: number; paid: number }>;

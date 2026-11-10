@@ -138,8 +138,10 @@ export default function TeacherDashboard() {
     appUser?.permissions?.["record-extra-classes"] === "full" ||
     appUser?.permissions?.["record-extra-classes"] === "edit" ||
     appUser?.permissions?.["record-extra-classes"] === "view";
-  const hasFinancialAccess = isAdmin || canFeeding || canBus || canExtraClasses;
+  const isTeacherOnDuty = !!(appUser as any)?.isTeacherOnDuty;
+  const hasFinancialAccess = isAdmin || isTeacherOnDuty || canFeeding || canBus || canExtraClasses;
   const canEditFinancials =
+    isTeacherOnDuty ||
     appUser?.permissions?.["feeding"] === "full" ||
     appUser?.permissions?.["feeding"] === "edit" ||
     appUser?.permissions?.["record-bus-fee"] === "full" ||
@@ -186,7 +188,7 @@ export default function TeacherDashboard() {
     setRefreshing(false);
   }, [fetchStats]);
 
-  const isAssignedTeacher = getTeacherClasses(appUser).length > 0;
+  const isAssignedTeacher = getTeacherClasses(appUser).length > 0 || isTeacherOnDuty;
 
   // Well-Balanced Categorization to Prevent Overcrowding
   const rawSections = useMemo(

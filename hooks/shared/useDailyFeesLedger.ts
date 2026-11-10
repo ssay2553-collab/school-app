@@ -54,12 +54,14 @@ export const useDailyFeesLedger = () => {
     "superadmin",
   ].includes(currentUserRole);
 
+  const isTeacherOnDuty = !!(appUser as any)?.isTeacherOnDuty;
   const feedingPermission = appUser?.permissions?.["feeding"] || "deny";
   const busPermission = appUser?.permissions?.["record-bus-fee"] || "deny";
   const extraPermission = appUser?.permissions?.["record-extra-classes"] || "deny";
 
   const canView =
     isSuperAdmin ||
+    isTeacherOnDuty ||
     feedingPermission !== "deny" ||
     busPermission !== "deny" ||
     extraPermission !== "deny";

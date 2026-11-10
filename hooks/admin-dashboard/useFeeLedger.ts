@@ -712,6 +712,7 @@ export const useFeeLedger = (initialStudentUid?: string, initialYear?: string, i
         return {
             totalBilled: feeBreakdown.totals.billed,
             totalPaid: feeBreakdown.totals.paid,
+            totalDiscount: feeBreakdown.totals.discount,
             totalBalance: feeBreakdown.totals.balance,
         };
     }, [feeBreakdown]);

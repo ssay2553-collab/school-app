@@ -79,13 +79,16 @@ export const useExtraClassesFeeLogic = () => {
     "superadmin",
   ].includes(currentUserRole);
 
+  const isTeacherOnDuty = !!(appUser as any)?.isTeacherOnDuty;
+  const canAccessAllClasses = isSuperAdmin || isTeacherOnDuty;
+
   const extraClassesPermission =
     appUser?.permissions?.["record-extra-classes"] || "deny";
 
   const teacherClasses = useMemo(() => getTeacherClasses(appUser), [appUser]);
 
   const canView =
-    isSuperAdmin ||
+    canAccessAllClasses ||
     teacherClasses.length > 0 ||
     extraClassesPermission === "full" ||
     extraClassesPermission === "view" ||
@@ -100,27 +103,27 @@ export const useExtraClassesFeeLogic = () => {
   const isPastDate = moment(selectedDate).isBefore(moment(), "day");
 
   const canEdit =
-    (isSuperAdmin ||
+    (canAccessAllClasses ||
       teacherClasses.length > 0 ||
       extraClassesPermission === "full" ||
       extraClassesPermission === "edit") &&
     !isPastDate;
 
   const [selectedClassId, setSelectedClassId] = useState<string>(
-    teacherClasses.length > 0 && !isSuperAdmin
+    teacherClasses.length > 0 && !canAccessAllClasses
       ? teacherClasses[0] || ""
       : "all",
   );
 
   const effectiveClassIds = useMemo(() => {
-    if (isSuperAdmin) {
+    if (canAccessAllClasses) {
       return selectedClassId === "all" ? [] : [selectedClassId];
     }
     if (teacherClasses.length > 0) {
       return selectedClassId === "all" ? teacherClasses : [selectedClassId];
     }
     return [];
-  }, [isSuperAdmin, selectedClassId, teacherClasses]);
+  }, [canAccessAllClasses, selectedClassId, teacherClasses]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
@@ -194,7 +197,7 @@ export const useExtraClassesFeeLogic = () => {
               where("classId", "in", effectiveClassIds),
             );
           }
-        } else if (!isSuperAdmin) {
+        } else if (!canAccessAllClasses) {
           setStudents([]);
           return;
         }
@@ -224,7 +227,7 @@ export const useExtraClassesFeeLogic = () => {
     };
 
     loadStudents();
-  }, [effectiveClassIds, classes, isSuperAdmin]);
+  }, [effectiveClassIds, classes, canAccessAllClasses]);
 
   useEffect(() => {
     if (!selectedDate) return;
@@ -245,7 +248,7 @@ export const useExtraClassesFeeLogic = () => {
       } else {
         baseQuery = query(baseQuery, where("classId", "in", effectiveClassIds));
       }
-    } else if (!isSuperAdmin) {
+    } else if (!canAccessAllClasses) {
       setDailyRecords([]);
       setLoading(false);
       return;

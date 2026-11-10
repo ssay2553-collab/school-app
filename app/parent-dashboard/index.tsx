@@ -203,6 +203,7 @@ export default function ParentDashboard() {
           icon: "book-outline",
           color: "#8b5cf6",
           path: "/parent-dashboard/weekly-topics",
+          featureId: "parent_weekly_topics",
         },
         {
           title: "Digital Wellbeing",

@@ -1,4 +1,5 @@
 import moment from "moment";
+import { Platform } from "react-native";
 import {
   AcademicReportData,
   FeeReportData,
@@ -154,3 +155,42 @@ export async function generateTimetablePDF(
 
   return generator.generate(data);
 }
+
+import { AIReportPDFGenerator, AIReportPDFData } from "./pdf/AIReportPDFGenerator";
+
+export async function generateAIReportPDF(
+  report: AIReportPDFData,
+  schoolName: string,
+  schoolHotline: string,
+  schoolEmail: string,
+  schoolAddress?: string,
+  schoolMotto?: string,
+  schoolLogo?: any,
+) {
+  const generator = new AIReportPDFGenerator({
+    fileName: `AI_Report_${(report.title || "Executive_Report").replace(/\s+/g, "_")}`,
+    schoolName,
+    schoolHotline,
+    schoolEmail,
+    schoolAddress,
+    schoolMotto,
+    schoolLogo,
+    primaryColor: SCHOOL_CONFIG.primaryColor,
+    secondaryColor: SCHOOL_CONFIG.secondaryColor,
+  });
+
+  return generator.generate(dataToGenerator(report));
+}
+
+function dataToGenerator(report: AIReportPDFData): AIReportPDFData {
+  return {
+    title: report.title,
+    generatedAt: report.generatedAt,
+    executiveSummary: report.executiveSummary,
+    markdownContent: report.markdownContent,
+    keyStats: report.keyStats || [],
+    highlights: report.highlights || [],
+    recommendations: report.recommendations || [],
+  };
+}
+

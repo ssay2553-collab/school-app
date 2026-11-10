@@ -116,6 +116,7 @@ export interface FeeStatementData {
   totals: {
     billed: number;
     paid: number;
+    discount?: number;
     balance: number;
   };
   discount: number;

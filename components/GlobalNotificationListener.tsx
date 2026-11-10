@@ -21,6 +21,10 @@ import {
     isEligibleAdminRecipient,
     sendNotification,
 } from "../src/services/notificationService";
+import {
+    registerWebPushToken,
+    setupForegroundPushListener,
+} from "../src/services/webPushService";
 
 let flashInterval: any = null;
 const originalTitle =
@@ -75,6 +79,19 @@ export const GlobalNotificationListener = () => {
     // Reset initial snapshot flag on user change
     isInitialSnapshot.current = true;
 
+    // Register Web Push Token for background OS Notifications (works when PWA/tab is closed)
+    if (Platform.OS === "web") {
+      registerWebPushToken(appUser.uid);
+      setupForegroundPushListener((payload) => {
+        const title = payload?.notification?.title || "EduEaz Alert";
+        const body = payload?.notification?.body || "";
+        if (title && body) {
+          showToast({ message: `${title}: ${body}`, type: "info" });
+          playChimeSound();
+        }
+      });
+    }
+
     // Request Web / Desktop OS Notification permission safely on user gesture if supported
     if (
       Platform.OS === "web" &&
@@ -84,7 +101,9 @@ export const GlobalNotificationListener = () => {
       if (Notification.permission === "default") {
         const handleUserGesture = () => {
           if (Notification.permission === "default") {
-            Notification.requestPermission().catch(() => {});
+            Notification.requestPermission()
+              .then(() => registerWebPushToken(appUser.uid))
+              .catch(() => {});
           }
           window.removeEventListener("click", handleUserGesture);
           window.removeEventListener("keydown", handleUserGesture);

@@ -78,10 +78,13 @@ export const useFeedingFeeLogic = () => {
     "superadmin",
   ].includes(currentUserRole);
 
+  const isTeacherOnDuty = !!(appUser as any)?.isTeacherOnDuty;
+  const canAccessAllClasses = isSuperAdmin || isTeacherOnDuty;
+
   const feedingPermission = appUser?.permissions?.["feeding"] || "deny";
 
   const canView =
-    isSuperAdmin ||
+    canAccessAllClasses ||
     feedingPermission === "full" ||
     feedingPermission === "view" ||
     feedingPermission === "edit";
@@ -96,7 +99,7 @@ export const useFeedingFeeLogic = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const isPastDate = moment(selectedDate).isBefore(moment(), "day");
   const canEdit =
-    (isSuperAdmin || feedingPermission === "full" || feedingPermission === "edit") &&
+    (canAccessAllClasses || feedingPermission === "full" || feedingPermission === "edit") &&
     !isPastDate;
 
   const [selectedClassId, setSelectedClassId] = useState<string>(
@@ -136,14 +139,14 @@ export const useFeedingFeeLogic = () => {
   }, [selectedClassId, classRates]);
 
   const effectiveClassIds = useMemo(() => {
-    if (isSuperAdmin) {
+    if (canAccessAllClasses) {
       return selectedClassId === "all" ? [] : [selectedClassId];
     }
     if (teacherClasses.length > 0) {
       return selectedClassId === "all" ? teacherClasses : [selectedClassId];
     }
     return [];
-  }, [isSuperAdmin, selectedClassId, teacherClasses]);
+  }, [canAccessAllClasses, selectedClassId, teacherClasses]);
 
   useEffect(() => {
     const loadClasses = async () => {
@@ -191,7 +194,7 @@ export const useFeedingFeeLogic = () => {
           } else {
             baseQuery = query(baseQuery, where("classId", "in", effectiveClassIds));
           }
-        } else if (!isSuperAdmin) {
+        } else if (!canAccessAllClasses) {
           setStudents([]);
           return;
         }
@@ -217,7 +220,7 @@ export const useFeedingFeeLogic = () => {
       }
     };
     loadStudents();
-  }, [effectiveClassIds, classes, isSuperAdmin]);
+  }, [effectiveClassIds, classes, canAccessAllClasses]);
 
   useEffect(() => {
     if (!selectedDate) return;
@@ -231,7 +234,7 @@ export const useFeedingFeeLogic = () => {
       } else {
         baseQuery = query(baseQuery, where("classId", "in", effectiveClassIds));
       }
-    } else if (!isSuperAdmin) {
+    } else if (!canAccessAllClasses) {
       setDailyRecords([]);
       setLoading(false);
       return;

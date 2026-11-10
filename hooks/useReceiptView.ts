@@ -226,7 +226,7 @@ export const useReceiptView = ({ type, studentId, year, term, paymentId }: UseRe
         if (type !== "bill") {
             return {
                 categorySummary: [],
-                totals: { billed: 0, paid: 0, balance: 0 },
+                totals: { billed: 0, paid: 0, discount: 0, balance: 0 },
             };
         }
         return calculateFeeBreakdown(record, allTransactions);

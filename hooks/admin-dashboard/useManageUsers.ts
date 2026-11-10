@@ -714,21 +714,18 @@ export function useManageUsers({
         },
         {} as Record<string, PermissionLevel>,
       );
-      const dutyExpiresAt = isTeacherOnDuty
-        ? Timestamp.fromMillis(Date.now() + 6 * 24 * 60 * 60 * 1000)
-        : null;
       await updateDoc(doc(db, "users", assignmentModal.target.uid), {
         permissions: sanitized,
         canCreateNews: newsPermission,
         isTeacherOnDuty: isTeacherOnDuty,
-        teacherOnDutyExpiresAt: dutyExpiresAt,
+        teacherOnDutyExpiresAt: null,
       });
       const updatedUser = {
         ...assignmentModal.target,
         permissions: sanitized,
         canCreateNews: newsPermission,
         isTeacherOnDuty: isTeacherOnDuty,
-        teacherOnDutyExpiresAt: dutyExpiresAt,
+        teacherOnDutyExpiresAt: null,
       };
       if (viewingUser?.uid === updatedUser.uid) setViewingUser(updatedUser);
       setAssignmentModal({ type: "none", target: null });
@@ -1745,12 +1742,7 @@ export function useManageUsers({
     );
     setTempPermissions(merged);
     setNewsPermission(!!user.canCreateNews);
-    const isDutyActive =
-      !!user.isTeacherOnDuty &&
-      user.teacherOnDutyExpiresAt &&
-      (user.teacherOnDutyExpiresAt.toMillis
-        ? user.teacherOnDutyExpiresAt.toMillis()
-        : new Date(user.teacherOnDutyExpiresAt).getTime()) > Date.now();
+    const isDutyActive = !!user.isTeacherOnDuty;
     setIsTeacherOnDuty(isDutyActive);
     setAssignmentModal({ type: "permissions", target: user });
   };

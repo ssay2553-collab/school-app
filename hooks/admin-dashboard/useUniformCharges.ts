@@ -3,6 +3,7 @@ import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   increment,
   limit,
@@ -203,7 +204,8 @@ export const useUniformCharges = ({
     setStudents([]);
     try {
       const year = acadConfig.academicYear;
-      if (!year) return;
+      const term = acadConfig.currentTerm;
+      if (!year || !term) return;
 
       let q = query(
         collection(db, "feePayments"),
@@ -228,22 +230,49 @@ export const useUniformCharges = ({
         const batch = uids.slice(i, i + 30);
         const uq = query(collection(db, "users"), where(documentId(), "in", batch));
         const uSnap = await getDocs(uq);
+
+        // Fetch corresponding term studentFeeRecords for real-time category balances
+        const feeRecordMap = new Map<string, any>();
+        try {
+          const qFees = query(
+            collection(db, "studentFeeRecords"),
+            where("studentUid", "in", batch),
+            where("academicYear", "==", year),
+            where("term", "==", term)
+          );
+          const feeSnap = await getDocs(qFees);
+          feeSnap.docs.forEach((fDoc) => {
+            const fData = fDoc.data();
+            feeRecordMap.set(fData.studentUid, fData);
+          });
+        } catch (feeErr) {
+          console.warn("Error fetching studentFeeRecords in uniform charges:", feeErr);
+        }
+
         uSnap.docs.forEach((d) => {
           const data = d.data();
+          const feeRec = feeRecordMap.get(d.id);
+
+          const uBill = feeRec?.uniformBill ?? data.uniformBill ?? 0;
+          const uPaid = feeRec?.uniformPaid ?? data.uniformPaid ?? 0;
+          const uBal = feeRec?.uniformBalance !== undefined
+            ? feeRec.uniformBalance
+            : (feeRec ? (uBill - uPaid) : (data.uniformBalance ?? (uBill - uPaid)));
+
           list.push({
             uid: d.id,
             fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
             classId: data.classId || "unknown",
             className: data.className || "Class",
-            uniformPaid: data.uniformPaid || 0,
-            uniformBill: data.uniformBill || 0,
-            uniformBalance: data.uniformBalance || 0,
-            walletBalance: data.walletBalance || 0,
-            ptaBalance: data.ptaBalance || 0,
-            admissionBalance: data.admissionBalance || 0,
-            maintenanceBalance: data.maintenanceBalance || 0,
-            booksBalance: data.booksBalance || 0,
-            otherBalance: data.otherBalance || 0,
+            uniformPaid: uPaid,
+            uniformBill: uBill,
+            uniformBalance: uBal,
+            walletBalance: feeRec?.balance !== undefined ? feeRec.balance : (data.walletBalance || 0),
+            ptaBalance: feeRec?.ptaBalance ?? data.ptaBalance ?? 0,
+            admissionBalance: feeRec?.admissionBalance ?? data.admissionBalance ?? 0,
+            maintenanceBalance: feeRec?.maintenanceBalance ?? data.maintenanceBalance ?? 0,
+            booksBalance: feeRec?.booksBalance ?? data.booksBalance ?? 0,
+            otherBalance: feeRec?.otherBalance ?? data.otherBalance ?? 0,
           });
         });
       }
@@ -258,7 +287,7 @@ export const useUniformCharges = ({
     } finally {
       if (isMounted.current) setLoading(false);
     }
-  }, [acadConfig.academicYear, selectedClassId, showToast]);
+  }, [acadConfig.academicYear, acadConfig.currentTerm, selectedClassId, showToast]);
 
   const fetchStudents = useCallback(
     async (isFirstLoad = false) => {
@@ -297,22 +326,54 @@ export const useUniformCharges = ({
         }
 
         const snap = await getDocs(q);
+        const uids = snap.docs.map((d) => d.id);
+
+        const feeRecordMap = new Map<string, any>();
+        if (uids.length > 0 && acadConfig.academicYear && acadConfig.currentTerm) {
+          try {
+            for (let i = 0; i < uids.length; i += 30) {
+              const chunk = uids.slice(i, i + 30);
+              const qFees = query(
+                collection(db, "studentFeeRecords"),
+                where("studentUid", "in", chunk),
+                where("academicYear", "==", acadConfig.academicYear),
+                where("term", "==", acadConfig.currentTerm)
+              );
+              const feeSnap = await getDocs(qFees);
+              feeSnap.docs.forEach((fDoc) => {
+                const fData = fDoc.data();
+                feeRecordMap.set(fData.studentUid, fData);
+              });
+            }
+          } catch (feeErr) {
+            console.warn("Error fetching studentFeeRecords in search:", feeErr);
+          }
+        }
+
         const batch: Student[] = snap.docs.map((d) => {
           const data = d.data();
+          const feeRec = feeRecordMap.get(d.id);
+
+          const uBill = feeRec?.uniformBill ?? data.uniformBill ?? 0;
+          const uPaid = feeRec?.uniformPaid ?? data.uniformPaid ?? 0;
+          const uBal = feeRec?.uniformBalance !== undefined
+            ? feeRec.uniformBalance
+            : (feeRec ? (uBill - uPaid) : (data.uniformBalance ?? (uBill - uPaid)));
+
           return {
             uid: d.id,
             fullName: `${data.profile?.firstName || ""} ${data.profile?.lastName || ""}`.trim(),
             classId: data.classId || "unknown",
             className: data.className || "Class",
-            uniformPaid: data.uniformPaid || 0,
-            uniformBill: data.uniformBill || 0,
-            uniformBalance: data.uniformBalance || 0,
-            walletBalance: data.walletBalance || 0,
-            ptaBalance: data.ptaBalance || 0,
-            admissionBalance: data.admissionBalance || 0,
-            maintenanceBalance: data.maintenanceBalance || 0,
-            booksBalance: data.booksBalance || 0,
-            otherBalance: data.otherBalance || 0,
+            uniformPaid: uPaid,
+            uniformBill: uBill,
+            uniformBalance: uBal,
+            walletBalance: feeRec?.balance !== undefined ? feeRec.balance : (data.walletBalance || 0),
+            ptaBalance: feeRec?.ptaBalance ?? data.ptaBalance ?? 0,
+            admissionBalance: feeRec?.admissionBalance ?? data.admissionBalance ?? 0,
+            maintenanceBalance: feeRec?.maintenanceBalance ?? data.maintenanceBalance ?? 0,
+            booksBalance: feeRec?.booksBalance ?? data.booksBalance ?? 0,
+            otherBalance: feeRec?.otherBalance ?? data.otherBalance ?? 0,
           };
         });
 
@@ -331,7 +392,7 @@ export const useUniformCharges = ({
         }
       }
     },
-    [selectedClassId, searchQuery]
+    [selectedClassId, searchQuery, acadConfig.academicYear, acadConfig.currentTerm]
   );
 
   useEffect(() => {
@@ -376,6 +437,22 @@ export const useUniformCharges = ({
 
     setSaving(true);
     try {
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+      const recordId = `${student.uid}_${year}_${term}`;
+
+      // Fetch real-time studentFeeRecord for the current term to get accurate uniformBalance
+      const recordSnap = await getDoc(doc(db, "studentFeeRecords", recordId));
+      const recordData = recordSnap.exists() ? (recordSnap.data() as any) : null;
+
+      const currentCatBalance = recordData
+        ? (recordData.uniformBalance !== undefined
+            ? recordData.uniformBalance
+            : ((recordData.uniformBill || 0) - (recordData.uniformPaid || 0)))
+        : (student.uniformBalance !== undefined
+            ? student.uniformBalance
+            : ((student.uniformBill || 0) - (student.uniformPaid || 0)));
+
       // Check for existing uniform record of the same subType for this student/term
       const qExisting = query(
         collection(db, "feePayments"),
@@ -400,9 +477,9 @@ export const useUniformCharges = ({
       const batch = writeBatch(db);
       const serial = existing ? existing.id : `UNI-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-      // INDEPENDENT PAYMENT LOGIC:
-      // If payment exceeds current balance, auto-bill the difference so walletBalance impact is only the debt portion.
-      const currentCatBalance = student.uniformBalance || 0;
+      // PAYMENT BALANCE LOGIC:
+      // If student has an existing uniform balance (currentCatBalance > 0), the payment first clears that debt.
+      // Only the portion exceeding existing uniform debt (if any) is auto-billed for a new over-the-counter uniform item.
       const billNeeded = Math.max(0, amountVal - Math.max(0, currentCatBalance));
       const debtPaid = amountVal - billNeeded;
       const walletImpact = -debtPaid;
@@ -430,14 +507,9 @@ export const useUniformCharges = ({
 
       batch.set(doc(db, "feePayments", serial), entry);
 
-      const year = acadConfig.academicYear?.replace(/\//g, "-");
-      const term = acadConfig.currentTerm?.replace(/\s/g, "");
-      const recordId = `${student.uid}_${year}_${term}`;
-
       if (existing) {
-        // For existing payment update, the logic is slightly more complex if we want to be perfect,
-        // but typically uniforms are one-off. We'll handle the diff.
         const diffBillNeeded = Math.max(0, diff - Math.max(0, currentCatBalance));
+        const diffDebtPaid = diff - diffBillNeeded;
         batch.update(doc(db, "studentFeeRecords", recordId), {
           uniformPaid: increment(diff),
           uniformBill: increment(diffBillNeeded),
@@ -449,7 +521,7 @@ export const useUniformCharges = ({
           uniformPaid: increment(diff),
           uniformBill: increment(diffBillNeeded),
           uniformBalance: increment(diffBillNeeded - diff),
-          walletBalance: increment(-(diff - diffBillNeeded)),
+          walletBalance: increment(-diffDebtPaid),
         });
       } else {
         batch.set(
@@ -480,11 +552,20 @@ export const useUniformCharges = ({
 
       await batch.commit();
 
-      if (billNeeded > 0) {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, billNeeded, 'bill', 'uniform').catch(console.error);
-      }
-      if (amountVal > 0) {
-        propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amountVal, 'payment', 'uniform').catch(console.error);
+      if (existing) {
+        if (diffBillNeeded > 0) {
+          propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, diffBillNeeded, 'bill', 'uniform').catch(console.error);
+        }
+        if (diff !== 0) {
+          propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -diff, 'payment', 'uniform').catch(console.error);
+        }
+      } else {
+        if (billNeeded > 0) {
+          propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, billNeeded, 'bill', 'uniform').catch(console.error);
+        }
+        if (amountVal > 0) {
+          propagateArrears(student.uid, acadConfig.academicYear, acadConfig.currentTerm, -amountVal, 'payment', 'uniform').catch(console.error);
+        }
       }
 
       try {

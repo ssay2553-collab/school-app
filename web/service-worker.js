@@ -1,5 +1,5 @@
 // Enhanced service worker for EduEaz PWA with fresh data fetching
-const CACHE_NAME = "edueaz-cache-v2";
+const CACHE_NAME = "edueaz-cache-v4";
 const PRECACHE_URLS = ["/", "/index.html", "/offline.html"];
 
 // API patterns that should always use network-first

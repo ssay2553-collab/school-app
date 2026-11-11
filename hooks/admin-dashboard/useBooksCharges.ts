@@ -3,6 +3,7 @@ import { Alert, Platform } from "react-native";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   increment,
   limit,
@@ -243,12 +244,27 @@ export const useBooksCharges = ({
     }
     setSaving(true);
     try {
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+      const recordId = `${student.uid}_${year}_${term}`;
+
+      // Fetch real-time studentFeeRecord for the current term to get accurate booksBalance
+      const recordSnap = await getDoc(doc(db, "studentFeeRecords", recordId));
+      const recordData = recordSnap.exists() ? (recordSnap.data() as any) : null;
+
+      const currentCatBalance = recordData
+        ? (recordData.booksBalance !== undefined
+            ? recordData.booksBalance
+            : ((recordData.booksBill || 0) - (recordData.booksPaid || 0)))
+        : (student.booksBalance !== undefined
+            ? student.booksBalance
+            : ((student.booksBill || 0) - (student.booksPaid || 0)));
+
       const batch = writeBatch(db);
       const serial = `BK-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       // INDEPENDENT PAYMENT LOGIC:
       // If payment exceeds current balance, auto-bill the difference so walletBalance impact is only the debt portion.
-      const currentCatBalance = student.booksBalance || 0;
       const billNeeded = Math.max(0, amountVal - Math.max(0, currentCatBalance));
       const debtPaid = amountVal - billNeeded;
       const walletImpact = -debtPaid;

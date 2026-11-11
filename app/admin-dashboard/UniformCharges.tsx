@@ -192,9 +192,15 @@ export default function UniformCharges() {
               <Text style={sharedStyles.debtLabel}>{item.className}</Text>
               <View style={sharedStyles.tuitionBreakdown}>
                 <View style={sharedStyles.breakdownItem}>
-                  <Text style={sharedStyles.breakdownLabel}>TOTAL UNIFORM</Text>
-                  <Text style={[sharedStyles.breakdownValue, { color: VIBE.info }]}>₵{(item.uniformPaid || 0).toFixed(0)}</Text>
+                  <Text style={sharedStyles.breakdownLabel}>UNIFORM PAID</Text>
+                  <Text style={[sharedStyles.breakdownValue, { color: VIBE.primary }]}>₵{(item.uniformPaid || 0).toFixed(0)}</Text>
                 </View>
+                {(item.uniformBalance || 0) > 0 && (
+                  <View style={[sharedStyles.breakdownItem, { marginLeft: 15 }]}>
+                    <Text style={sharedStyles.breakdownLabel}>UNIFORM OWED</Text>
+                    <Text style={[sharedStyles.breakdownValue, { color: VIBE.danger }]}>₵{(item.uniformBalance || 0).toFixed(0)}</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>

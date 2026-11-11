@@ -496,55 +496,58 @@ Respond ONLY with a valid JSON object matching this schema:
   "recommendations": ["string"]
 }`;
 
+  const apiVersions = ["v1", "v1beta"];
   const modelsToTry = [
     "gemini-1.5-flash",
-    "gemini-pro",
     "gemini-1.5-pro",
+    "gemini-pro",
     "gemini-1.5-flash-latest",
   ];
 
-  for (const model of modelsToTry) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  for (const apiVersion of apiVersions) {
+    for (const model of modelsToTry) {
+      const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`;
 
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      });
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        });
 
-      if (!res.ok) {
-        console.warn(`[AIReport] Gemini model ${model} HTTP error: ${res.status} ${res.statusText}`);
-        continue;
+        if (!res.ok) {
+          console.warn(`[AIReport] ${apiVersion}/${model} HTTP error: ${res.status} ${res.statusText}`);
+          continue;
+        }
+
+        const jsonRes = await res.json();
+        const textContent = jsonRes?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!textContent) continue;
+
+        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+        const cleanJson = jsonMatch ? jsonMatch[0] : textContent;
+        const parsed = JSON.parse(cleanJson);
+
+        return {
+          title: parsed.title || getReportTitle(reportType, metrics),
+          reportType,
+          generatedAt: new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+          executiveSummary: parsed.executiveSummary,
+          markdownContent: parsed.markdownContent,
+          keyStats: buildKeyStats(reportType, metrics),
+          highlights: parsed.highlights || [],
+          recommendations: parsed.recommendations || [],
+        };
+      } catch (e) {
+        console.warn(`[AIReport] ${apiVersion}/${model} exception:`, e);
       }
-
-      const jsonRes = await res.json();
-      const textContent = jsonRes?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!textContent) continue;
-
-      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-      const cleanJson = jsonMatch ? jsonMatch[0] : textContent;
-      const parsed = JSON.parse(cleanJson);
-
-      return {
-        title: parsed.title || getReportTitle(reportType, metrics),
-        reportType,
-        generatedAt: new Date().toLocaleDateString("en-US", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        }),
-        executiveSummary: parsed.executiveSummary,
-        markdownContent: parsed.markdownContent,
-        keyStats: buildKeyStats(reportType, metrics),
-        highlights: parsed.highlights || [],
-        recommendations: parsed.recommendations || [],
-      };
-    } catch (e) {
-      console.warn(`[AIReport] Gemini model ${model} exception:`, e);
     }
   }
 
@@ -585,39 +588,42 @@ Respond ONLY with a valid JSON object matching this schema:
   "suggestedAction": "string"
 }`;
 
+  const apiVersions = ["v1", "v1beta"];
   const modelsToTry = [
     "gemini-1.5-flash",
-    "gemini-pro",
     "gemini-1.5-pro",
+    "gemini-pro",
     "gemini-1.5-flash-latest",
   ];
 
-  for (const model of modelsToTry) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  for (const apiVersion of apiVersions) {
+    for (const model of modelsToTry) {
+      const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`;
 
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      });
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+          }),
+        });
 
-      if (!res.ok) {
-        console.warn(`[AIReport Q&A] Gemini model ${model} HTTP error: ${res.status} ${res.statusText}`);
-        continue;
+        if (!res.ok) {
+          console.warn(`[AIReport Q&A] ${apiVersion}/${model} HTTP error: ${res.status} ${res.statusText}`);
+          continue;
+        }
+
+        const jsonRes = await res.json();
+        const textContent = jsonRes?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!textContent) continue;
+
+        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+        const cleanJson = jsonMatch ? jsonMatch[0] : textContent;
+        return JSON.parse(cleanJson);
+      } catch (e) {
+        console.warn(`[AIReport Q&A] ${apiVersion}/${model} exception:`, e);
       }
-
-      const jsonRes = await res.json();
-      const textContent = jsonRes?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!textContent) continue;
-
-      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-      const cleanJson = jsonMatch ? jsonMatch[0] : textContent;
-      return JSON.parse(cleanJson);
-    } catch (e) {
-      console.warn(`[AIReport Q&A] Gemini model ${model} exception:`, e);
     }
   }
 

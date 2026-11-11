@@ -6,6 +6,7 @@ import { createUserWithEmailAndPassword, getAuth } from "firebase/auth";
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   increment,
   limit,
@@ -399,12 +400,27 @@ export const useAdmissionCharges = ({
     }
     setSaving(true);
     try {
+      const year = acadConfig.academicYear?.replace(/\//g, "-");
+      const term = acadConfig.currentTerm?.replace(/\s/g, "");
+      const recordId = `${student.uid}_${year}_${term}`;
+
+      // Fetch real-time studentFeeRecord for the current term to get accurate admissionBalance
+      const recordSnap = await getDoc(doc(db, "studentFeeRecords", recordId));
+      const recordData = recordSnap.exists() ? (recordSnap.data() as any) : null;
+
+      const currentCatBalance = recordData
+        ? (recordData.admissionBalance !== undefined
+            ? recordData.admissionBalance
+            : ((recordData.admissionBill || 0) - (recordData.admissionPaid || 0)))
+        : (student.admissionBalance !== undefined
+            ? student.admissionBalance
+            : ((student.admissionBill || 0) - (student.admissionPaid || 0)));
+
       const batch = writeBatch(db);
       const serial = `ADM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
       // INDEPENDENT PAYMENT LOGIC:
       // If payment exceeds current balance, auto-bill the difference so walletBalance impact is only the debt portion.
-      const currentCatBalance = student.admissionBalance || 0;
       const billNeeded = Math.max(0, amount - Math.max(0, currentCatBalance));
       const debtPaid = amount - billNeeded;
       const walletImpact = -debtPaid;

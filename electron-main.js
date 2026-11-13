@@ -248,16 +248,43 @@ function createWindow() {
       if (!window.__electronFocusPatched) {
         window.__electronFocusPatched = true;
 
+        const activateAllTypeFields = () => {
+          try {
+            window.focus();
+            if (document.body) {
+              document.body.focus();
+              document.body.style.pointerEvents = 'auto';
+            }
+            const root = document.getElementById('root') || document.body;
+            if (root) root.style.pointerEvents = 'auto';
+
+            const inputs = document.querySelectorAll('input, textarea, [contenteditable="true"], [role="textbox"]');
+            inputs.forEach(el => {
+              el.removeAttribute('disabled');
+              el.readOnly = false;
+              el.style.pointerEvents = 'auto';
+              el.style.userSelect = 'text';
+              let parent = el.parentElement;
+              while (parent && parent !== document.body) {
+                const cs = window.getComputedStyle(parent);
+                if (cs.pointerEvents === 'none') {
+                  parent.style.pointerEvents = 'auto';
+                }
+                parent = parent.parentElement;
+              }
+            });
+          } catch (e) {
+            console.error("Error activating type fields:", e);
+          }
+        };
+
         const originalAlert = window.alert;
         window.alert = function(msg) {
           try {
             return originalAlert.apply(window, arguments);
           } finally {
-            setTimeout(() => {
-              window.focus();
-              if (document.body) document.body.focus();
-              document.body.style.pointerEvents = 'auto';
-            }, 50);
+            setTimeout(activateAllTypeFields, 50);
+            setTimeout(activateAllTypeFields, 250);
           }
         };
 
@@ -266,19 +293,22 @@ function createWindow() {
           try {
             return originalConfirm.apply(window, arguments);
           } finally {
-            setTimeout(() => {
-              window.focus();
-              if (document.body) document.body.focus();
-              document.body.style.pointerEvents = 'auto';
-            }, 50);
+            setTimeout(activateAllTypeFields, 50);
+            setTimeout(activateAllTypeFields, 250);
           }
         };
+
+        window.addEventListener('focus', activateAllTypeFields);
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) activateAllTypeFields();
+        });
 
         // Ensure text inputs can always be clicked and focused
         window.addEventListener('click', (e) => {
           const target = e.target;
-          if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.getAttribute('contenteditable') === 'true')) {
+          if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.getAttribute('contenteditable') === 'true' || target.getAttribute('role') === 'textbox')) {
             target.removeAttribute('disabled');
+            target.readOnly = false;
             target.style.pointerEvents = 'auto';
             target.focus();
           }

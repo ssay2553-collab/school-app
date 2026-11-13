@@ -27,6 +27,7 @@ import { db } from "../../firebaseConfig";
 import { generateFeeReportPDF } from "../../utils/pdfGenerator";
 import { getSchoolLogo } from "../../constants/Logos";
 import { useRef } from "react";
+import { calculateFeeBreakdown } from "../../hooks/admin-dashboard/finance-cleanup/utils";
 
 export default function FeeReports() {
   const { appUser } = useAuth();
@@ -150,54 +151,45 @@ export default function FeeReports() {
         });
       }
 
-      // 4. Merge Data
+      // 4. Merge Data (Using calculateFeeBreakdown as single source of truth)
       const merged = students.map((s: any) => {
         const record = feeRecords.find((r) => r.studentUid === s.uid);
         const className =
           classesList.find((c) => c.id === s.classId)?.name || "Unknown Class";
 
-        // Extract tuition and other term charges
-        const termBill = record?.termBill || 0;
-        const ptaBill = record?.ptaBill || 0;
-        const maintenanceBill = record?.maintenanceBill || 0;
-        const admissionBill = record?.admissionBill || 0;
-        const booksBill = record?.booksBill || 0;
-        const uniformBill = record?.uniformBill || 0;
-        const otherBill = record?.otherBill || 0;
-
-        // Arrears is either from the term record or the current wallet balance if no record exists yet
-        const arrears = record ? (record.arrears || 0) : (s.walletBalance || 0);
-        const discount = record?.discount || 0;
-
-        // Sum up all payments made this term
-        const tuitionPaid = record?.amountPaid || 0;
-        const ptaPaid = record?.ptaPaid || 0;
-        const maintenancePaid = record?.maintenancePaid || 0;
-        const admissionPaid = record?.admissionPaid || 0;
-        const booksPaid = record?.booksPaid || 0;
-        const uniformPaid = record?.uniformPaid || 0;
-        const otherPaid = record?.otherPaid || 0;
-
-        const totalPayable = arrears + termBill + ptaBill + maintenanceBill + admissionBill + booksBill + uniformBill + otherBill;
-        const totalPaid = tuitionPaid + ptaPaid + maintenancePaid + admissionPaid + booksPaid + uniformPaid + otherPaid;
-
-        // Calculate balance for display consistency (Payable - Discount - Paid)
-        const balance = totalPayable - discount - totalPaid;
-
-        return {
-          uid: s.uid,
-          fullName:
-            `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim() ||
-            "Student",
-          studentID: s.profile?.studentID || "N/A",
-          className,
-          termBill,
-          arrears,
-          discount,
-          amountPaid: totalPaid,
-          totalPayable,
-          balance,
-        };
+        if (record) {
+          const breakdown = calculateFeeBreakdown(record, record.payments || []);
+          return {
+            uid: s.uid,
+            fullName:
+              `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim() ||
+              "Student",
+            studentID: s.profile?.studentID || "N/A",
+            className,
+            termBill: record.termBill || 0,
+            arrears: record.arrears || 0,
+            discount: breakdown.totals.discount,
+            amountPaid: breakdown.totals.paid,
+            totalPayable: breakdown.totals.billed,
+            balance: breakdown.totals.balance,
+          };
+        } else {
+          const arrears = s.walletBalance || 0;
+          return {
+            uid: s.uid,
+            fullName:
+              `${s.profile?.firstName || ""} ${s.profile?.lastName || ""}`.trim() ||
+              "Student",
+            studentID: s.profile?.studentID || "N/A",
+            className,
+            termBill: 0,
+            arrears,
+            discount: 0,
+            amountPaid: 0,
+            totalPayable: arrears,
+            balance: arrears,
+          };
+        }
       });
 
       if (isMounted.current) {
@@ -231,15 +223,18 @@ export default function FeeReports() {
   }, [studentsData]);
 
   const schoolTotals = useMemo(() => {
-    return studentsData.reduce(
+    const raw = studentsData.reduce(
       (acc, s) => ({
         payable: acc.payable + (s.totalPayable || 0),
         discount: acc.discount + (s.discount || 0),
         paid: acc.paid + (s.amountPaid || 0),
-        balance: acc.balance + (s.balance || 0),
       }),
-      { payable: 0, discount: 0, paid: 0, balance: 0 },
+      { payable: 0, discount: 0, paid: 0 },
     );
+    return {
+      ...raw,
+      balance: Math.max(0, raw.payable - raw.discount - raw.paid),
+    };
   }, [studentsData]);
 
   const generatePDF = async () => {
@@ -321,15 +316,18 @@ export default function FeeReports() {
         <>
           <ScrollView style={styles.scroll}>
             {Object.entries(groupedData).map(([className, students]) => {
-              const classTotals = students.reduce(
+              const classRaw = students.reduce(
                 (acc, s) => ({
                   payable: acc.payable + (s.totalPayable || 0),
                   discount: acc.discount + (s.discount || 0),
                   paid: acc.paid + (s.amountPaid || 0),
-                  balance: acc.balance + (s.balance || 0),
                 }),
-                { payable: 0, discount: 0, paid: 0, balance: 0 },
+                { payable: 0, discount: 0, paid: 0 },
               );
+              const classTotals = {
+                ...classRaw,
+                balance: Math.max(0, classRaw.payable - classRaw.discount - classRaw.paid),
+              };
 
               return (
                 <View key={className} style={styles.classSection}>

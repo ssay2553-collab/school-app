@@ -479,6 +479,13 @@ export const useStudentSignup = () => {
       router.replace("/(auth)/login/student");
     } catch (err: any) {
       console.error("Student Signup Error:", err);
+      try {
+        if (auth.currentUser) {
+          await auth.signOut();
+        }
+      } catch (signOutErr) {
+        console.error("Failed to sign out after signup error:", signOutErr);
+      }
       let msg = err.message || "An unexpected error occurred.";
       if (err.code === "auth/email-already-in-use")
         msg = "This email or username is already taken.";

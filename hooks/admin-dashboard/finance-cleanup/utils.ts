@@ -231,20 +231,21 @@ export const getCategoryRank = (cat: string): number => {
 };
 
 export const categoryNameMap: Record<string, string> = {
-  tuition: "Tuition Fees",
-  maintenance: "Maintenance Fee",
-  pta: "PTA Dues",
+  tuition: "Tuition",
+  maintenance: "Maintenance",
+  pta: "PTA",
   "other charges": "Other Charges",
-  admission: "Admission Fee",
-  books: "Books Fee",
-  uniform: "Uniform Fee",
+  other: "Other Charges",
+  admission: "Admission",
+  books: "Books",
+  uniform: "Uniforms",
   arrears: "Previous Terms Arrears",
   surplus: "Surplus",
   tuition_payment: "Tuition Payment",
-  maintenance_payment: "Maintenance Fee Payment",
-  pta_payment: "PTA Dues Payment",
+  maintenance_payment: "Maintenance Payment",
+  pta_payment: "PTA Payment",
   "other charges_payment": "Other Charges Payment",
-  admission_payment: "Admission Fee Payment",
+  admission_payment: "Admission Payment",
   books_payment: "Books Payment",
   uniform_payment: "Uniform Payment",
   tuition_credit: "Tuition Credit / Overpayment",
@@ -265,6 +266,7 @@ export interface CategorySummaryItem {
   id: string;
   name: string;
   billed: number;
+  discount: number;
   paid: number;
   balance: number;
 }
@@ -284,16 +286,16 @@ export const calculateFeeBreakdown = (
   record: any,
   transactions: any[]
 ): FeeBreakdownResult => {
-  const summary: Record<string, { billed: number; paid: number }> = {};
+  const summary: Record<string, { billed: number; discount: number; paid: number }> = {};
 
   // 1. Check for Previous Terms Arrears
   const arrearsVal = Math.max(0, Number(record?.arrears) || 0);
   if (arrearsVal > 0) {
-    summary["arrears"] = { billed: arrearsVal, paid: 0 };
+    summary["arrears"] = { billed: arrearsVal, discount: 0, paid: 0 };
   }
 
   // 2. Initialize Tuition
-  summary["tuition"] = { billed: 0, paid: 0 };
+  summary["tuition"] = { billed: 0, discount: 0, paid: 0 };
 
   const waterfallPool: number[] = [];
 
@@ -306,7 +308,7 @@ export const calculateFeeBreakdown = (
     if (amount <= 0) return;
 
     if (!summary[category]) {
-      summary[category] = { billed: 0, paid: 0 };
+      summary[category] = { billed: 0, discount: 0, paid: 0 };
     }
 
     if (isPayment) {
@@ -334,7 +336,7 @@ export const calculateFeeBreakdown = (
 
     isolatedFields.forEach(({ key, bill }) => {
       const b = Math.max(0, Number(bill) || 0);
-      if (!summary[key]) summary[key] = { billed: 0, paid: 0 };
+      if (!summary[key]) summary[key] = { billed: 0, discount: 0, paid: 0 };
       summary[key].billed = Math.max(summary[key].billed, b);
     });
 
@@ -353,7 +355,7 @@ export const calculateFeeBreakdown = (
       // Only bill unassigned difference to 'other charges' if record.otherBill exceeds explicit charges
       const unassignedOtherBilled = Math.max(0, otherB - explicitOtherChargesBilled);
       if (unassignedOtherBilled > 0) {
-        if (!summary["other charges"]) summary["other charges"] = { billed: 0, paid: 0 };
+        if (!summary["other charges"]) summary["other charges"] = { billed: 0, discount: 0, paid: 0 };
         summary["other charges"].billed = Math.max(
           summary["other charges"].billed,
           unassignedOtherBilled
@@ -362,7 +364,7 @@ export const calculateFeeBreakdown = (
     }
   }
 
-  // 4.5. Discount Waterfall (Issue virtual discount payment to tuition first, then overflow to other items)
+  // 4.5. Discount Waterfall (Issue virtual discount payment to items in order)
   let remainingDiscount = Math.max(0, Number(record?.discount) || 0);
   const discountOrder = ["tuition", "maintenance", "pta", "admission", "books", "uniform", "other charges"];
   const allCatKeys = Object.keys(summary);
@@ -371,9 +373,9 @@ export const calculateFeeBreakdown = (
 
   fullDiscountOrder.forEach(cat => {
     if (summary[cat] && remainingDiscount > 0) {
-      const due = Math.max(0, summary[cat].billed - summary[cat].paid);
+      const due = Math.max(0, summary[cat].billed - summary[cat].discount - summary[cat].paid);
       const absorb = Math.min(remainingDiscount, due);
-      summary[cat].paid += absorb;
+      summary[cat].discount += absorb;
       remainingDiscount -= absorb;
     }
   });
@@ -385,7 +387,7 @@ export const calculateFeeBreakdown = (
 
   settlementOrder.forEach(cat => {
     if (summary[cat] && generalPool > 0) {
-      const due = Math.max(0, summary[cat].billed - summary[cat].paid);
+      const due = Math.max(0, summary[cat].billed - summary[cat].discount - summary[cat].paid);
       const settle = Math.min(generalPool, due);
       summary[cat].paid += settle;
       generalPool -= settle;
@@ -393,21 +395,23 @@ export const calculateFeeBreakdown = (
   });
 
   if (generalPool > 0) {
-    if (!summary["surplus"]) summary["surplus"] = { billed: 0, paid: 0 };
+    if (!summary["surplus"]) summary["surplus"] = { billed: 0, discount: 0, paid: 0 };
     summary["surplus"].paid += generalPool;
   }
 
   // 6. Format and Sort Category Summary Items
   const categorySummaryItems: CategorySummaryItem[] = Object.entries(summary)
-    .filter(([_, vals]) => Math.max(0, vals.billed) >= 0.01 || Math.max(0, vals.paid) >= 0.01)
+    .filter(([_, vals]) => Math.max(0, vals.billed) >= 0.01 || Math.max(0, vals.paid) >= 0.01 || Math.max(0, vals.discount) >= 0.01)
     .map(([cat, vals]) => {
       const billed = Math.max(0, vals.billed);
+      const discount = Math.max(0, vals.discount);
       const paid = Math.max(0, vals.paid);
-      const balance = Math.max(0, billed - paid);
+      const balance = Math.max(0, billed - discount - paid);
       return {
         id: cat,
         name: getCategoryDisplayName(cat),
         billed,
+        discount,
         paid,
         balance,
       };
@@ -430,9 +434,15 @@ export const calculateFeeBreakdown = (
     (acc, item) => acc + (item.id === "surplus" ? 0 : item.billed),
     0
   );
-  const totalCashPaid = (transactions || []).filter(t => isPaymentEntry(t)).reduce((sum, t) => sum + Math.max(0, Number(t.amount || 0)), 0);
   const totalDiscount = Math.max(0, Number(record?.discount) || 0);
-  const totalBalance = Math.max(0, totalBilled - totalCashPaid - totalDiscount);
+  const totalCashPaid = (transactions || [])
+    .filter((t) => isPaymentEntry(t))
+    .reduce(
+      (sum, t) =>
+        sum + Math.max(0, Number(t.amount ?? t.amountPaid ?? t.value) || 0),
+      0,
+    );
+  const totalBalance = Math.max(0, totalBilled - totalDiscount - totalCashPaid);
 
   return {
     categorySummary: categorySummaryItems,

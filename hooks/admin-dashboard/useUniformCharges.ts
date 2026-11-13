@@ -507,8 +507,9 @@ export const useUniformCharges = ({
 
       batch.set(doc(db, "feePayments", serial), entry);
 
+      const diffBillNeeded = existing ? Math.max(0, diff - Math.max(0, currentCatBalance)) : 0;
+
       if (existing) {
-        const diffBillNeeded = Math.max(0, diff - Math.max(0, currentCatBalance));
         const diffDebtPaid = diff - diffBillNeeded;
         batch.update(doc(db, "studentFeeRecords", recordId), {
           uniformPaid: increment(diff),

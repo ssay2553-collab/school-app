@@ -37,7 +37,9 @@ export default function StudentAttendanceScreen() {
   const acadConfig = useAcademicConfig();
 
   const [presentCount, setPresentCount] = useState(0);
+  const [lateCount, setLateCount] = useState(0);
   const [absentCount, setAbsentCount] = useState(0);
+  const [excusedCount, setExcusedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const isMounted = useRef(true);
@@ -104,19 +106,25 @@ export default function StudentAttendanceScreen() {
         const snapshot = await getDocsFromServer(q as any);
 
         let present = 0;
+        let late = 0;
         let absent = 0;
+        let excused = 0;
 
         snapshot.forEach((doc) => {
           const data = doc.data() as any;
-          const status = data.students?.[appUser.uid]?.status;
+          const status = (data.students?.[appUser.uid]?.status || "").toLowerCase();
 
           if (status === "present") present++;
-          if (status === "absent") absent++;
+          else if (status === "late") late++;
+          else if (status === "absent") absent++;
+          else if (status === "excused" || status === "permission") excused++;
         });
 
         if (isMounted.current) {
           setPresentCount(present);
+          setLateCount(late);
           setAbsentCount(absent);
+          setExcusedCount(excused);
         }
       } catch (error) {
         if (isMounted.current) {
@@ -141,9 +149,9 @@ export default function StudentAttendanceScreen() {
     }
   }, [fetchAttendanceSummary, appUser?.uid]);
 
-  const totalDays = presentCount + absentCount;
+  const totalDays = presentCount + lateCount + absentCount + excusedCount;
   const attendancePercent =
-    totalDays === 0 ? 0 : Math.round((presentCount / totalDays) * 100);
+    totalDays === 0 ? 0 : Math.round(((presentCount + lateCount) / totalDays) * 100);
 
   if (loading && !refreshing) {
     return (

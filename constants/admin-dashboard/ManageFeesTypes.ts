@@ -34,6 +34,7 @@ export type StudentDraft = {
   uniformBalance: number;
   otherBalance: number;
   totalPayable?: number;
+  arrears?: number;
 };
 
 export const FILTERS_PERSISTENCE_KEY = "@manage_fees_filters_v14";

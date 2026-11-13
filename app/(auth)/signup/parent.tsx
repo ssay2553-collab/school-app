@@ -245,6 +245,13 @@ export default function ParentSignup() {
       router.replace("/(auth)/login/parent");
     } catch (err: any) {
       console.error("Signup error:", err);
+      try {
+        if (auth.currentUser) {
+          await auth.signOut();
+        }
+      } catch (signOutErr) {
+        console.error("Sign out error:", signOutErr);
+      }
       let msg = err.message || "An unexpected error occurred.";
       if (err.code === 'auth/email-already-in-use') msg = signupMode === "email" ? "This email is already registered. Try signing in instead!" : "This phone number/username is already registered. Try logging in!";
       if (err.code === 'auth/invalid-email') msg = "The email address is not valid.";

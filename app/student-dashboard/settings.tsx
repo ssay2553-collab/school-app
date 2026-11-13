@@ -37,6 +37,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
 import { auth, db } from "../../firebaseConfig";
+import { uriToBase64 } from "../../utils/fileUtils";
 
 import { parseDateSafely } from "../../lib/classHelpers";
 
@@ -220,7 +221,10 @@ export default function StudentSettings() {
     }
     setUpdating(true);
     try {
-      const finalUrl = base64 ? `data:image/jpeg;base64,${base64}` : uri;
+      let finalUrl = base64 ? `data:image/jpeg;base64,${base64}` : uri;
+      if (!finalUrl || finalUrl.startsWith("blob:") || !finalUrl.startsWith("data:")) {
+        finalUrl = await uriToBase64(uri);
+      }
 
       const updateData = {
         "profile.profileImage": finalUrl,

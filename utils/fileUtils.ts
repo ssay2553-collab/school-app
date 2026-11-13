@@ -1,5 +1,7 @@
 import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system";
+import * as ImageManipulator from "expo-image-manipulator";
+import { Platform } from "react-native";
 import { isNative } from "./platform";
 
 /**
@@ -12,6 +14,40 @@ function ensurePngDataUri(base64: string): string {
 
   return `data:image/png;base64,${base64}`;
 }
+
+export const uriToBase64 = async (uri: string): Promise<string> => {
+  if (!uri) return "";
+  if (uri.startsWith("data:")) return uri;
+
+  try {
+    if (Platform.OS === "web") {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 300, height: 300 } }],
+        { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      if (manipResult.base64) {
+        return `data:image/jpeg;base64,${manipResult.base64}`;
+      }
+      const base64Data = await FileSystem.readAsStringAsync(manipResult.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      return `data:image/jpeg;base64,${base64Data}`;
+    }
+  } catch (e) {
+    console.error("Error converting URI to base64:", e);
+    return uri;
+  }
+};
 
 /**
  * Gets an Expo Asset from either:
@@ -126,4 +162,5 @@ export async function readAssetAsBase64(
 
 export default {
   readAssetAsBase64,
+  uriToBase64,
 };

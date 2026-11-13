@@ -23,7 +23,9 @@ export default function StudentAttendanceSummaryScreen({
   const [selectedYear, setSelectedYear] = useState(initialYear || "");
   const [selectedTerm, setSelectedTerm] = useState(initialTerm || "Term 1");
   const [presentCount, setPresentCount] = useState(0);
+  const [lateCount, setLateCount] = useState(0);
   const [absentCount, setAbsentCount] = useState(0);
+  const [excusedCount, setExcusedCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const availableYears = useMemo(() => {
@@ -60,10 +62,14 @@ export default function StudentAttendanceSummaryScreen({
       if (docSnap.exists()) {
         const data = docSnap.data();
         setPresentCount(data.present || 0);
+        setLateCount(data.late || 0);
         setAbsentCount(data.absent || 0);
+        setExcusedCount(data.excused || 0);
       } else {
         setPresentCount(0);
+        setLateCount(0);
         setAbsentCount(0);
+        setExcusedCount(0);
       }
       setLoading(false);
     }, (error) => {
@@ -74,9 +80,9 @@ export default function StudentAttendanceSummaryScreen({
     return () => unsubscribe();
   }, [studentId, classId, selectedYear, selectedTerm]);
 
-  const totalDays = presentCount + absentCount;
+  const totalDays = presentCount + lateCount + absentCount + excusedCount;
   const attendancePercent =
-    totalDays === 0 ? 0 : Math.round((presentCount / totalDays) * 100);
+    totalDays === 0 ? 0 : Math.round(((presentCount + lateCount) / totalDays) * 100);
 
   return (
     <ScrollView
@@ -135,9 +141,19 @@ export default function StudentAttendanceSummaryScreen({
 
           <View style={styles.statsGrid}>
             <View style={styles.statItem}>
+              <Text style={styles.statLabel}>DAYS IN SESSION</Text>
+              <Text style={styles.statValue}>{totalDays}</Text>
+            </View>
+            <View style={styles.statItem}>
               <Text style={styles.statLabel}>PRESENT</Text>
               <Text style={[styles.statValue, { color: "green" }]}>
                 {presentCount}
+              </Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>LATE</Text>
+              <Text style={[styles.statValue, { color: "#D97706" }]}>
+                {lateCount}
               </Text>
             </View>
             <View style={styles.statItem}>
@@ -145,10 +161,6 @@ export default function StudentAttendanceSummaryScreen({
               <Text style={[styles.statValue, { color: "red" }]}>
                 {absentCount}
               </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>TOTAL DAYS</Text>
-              <Text style={styles.statValue}>{totalDays}</Text>
             </View>
           </View>
 

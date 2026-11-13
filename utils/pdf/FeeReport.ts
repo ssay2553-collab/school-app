@@ -129,8 +129,9 @@ export class FeeReportGenerator extends BasePDFGenerator {
       });
 
       const classTotalPayable = (students || []).reduce((sum, s) => sum + (s.totalPayable || 0), 0);
+      const classTotalDiscount = (students || []).reduce((sum, s) => sum + (s.discount || 0), 0);
       const classTotalPaid = (students || []).reduce((sum, s) => sum + (s.amountPaid || 0), 0);
-      const classTotalBalance = (students || []).reduce((sum, s) => sum + (s.balance || 0), 0);
+      const classTotalBalance = Math.max(0, classTotalPayable - classTotalDiscount - classTotalPaid);
 
       this.currentY -= 15;
       const boxHeight = 26;
@@ -146,7 +147,7 @@ export class FeeReportGenerator extends BasePDFGenerator {
       const boxFontSize = 8.5;
       this.currentY = boxTopY - (boxHeight - boxFontSize) / 2 - 2;
       this.drawText(
-        `CLASS SUMMARY: ${students.length} Students | Payable: ${finalCurrency} ${classTotalPayable.toFixed(2)} | Paid: ${finalCurrency} ${classTotalPaid.toFixed(2)} | Balance: ${finalCurrency} ${classTotalBalance.toFixed(2)}`,
+        `CLASS SUMMARY: ${students.length} Students | Payable: ${finalCurrency} ${classTotalPayable.toFixed(2)} | Disc: ${finalCurrency} ${classTotalDiscount.toFixed(2)} | Paid: ${finalCurrency} ${classTotalPaid.toFixed(2)} | Balance: ${finalCurrency} ${classTotalBalance.toFixed(2)}`,
         MARGIN + 12,
         {
           size: boxFontSize,

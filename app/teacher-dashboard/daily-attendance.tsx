@@ -141,6 +141,7 @@ const AttendanceStudentCard = React.memo(
     isBlocked,
     markLocal,
     onOpenArrivalModal,
+    onOpenStudentSummary,
   }: {
     item: AppUser;
     index: number;
@@ -150,6 +151,7 @@ const AttendanceStudentCard = React.memo(
     isBlocked?: boolean;
     markLocal: (id: string, status: "present" | "absent" | "late") => void;
     onOpenArrivalModal: (student: AppUser) => void;
+    onOpenStudentSummary?: (student: AppUser) => void;
   }) => {
     const status = statusData.status || "not_marked";
     const arrivalMode = statusData.arrivalMode;
@@ -185,14 +187,23 @@ const AttendanceStudentCard = React.memo(
         ]}
       >
         <View style={styles.cardInfo}>
-          <View style={styles.avatarPlaceholder}>
+          <TouchableOpacity
+            style={styles.avatarPlaceholder}
+            onPress={() => onOpenStudentSummary && onOpenStudentSummary(item)}
+            activeOpacity={0.8}
+          >
             <Text style={styles.avatarText}>{avatarInitials}</Text>
-          </View>
+          </TouchableOpacity>
           <View style={{ flex: 1, marginLeft: 15 }}>
-            <Text style={styles.name} numberOfLines={1}>
-              {item.profile?.firstName || "Student"}{" "}
-              {item.profile?.lastName || ""}
-            </Text>
+            <TouchableOpacity
+              onPress={() => onOpenStudentSummary && onOpenStudentSummary(item)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.name} numberOfLines={1}>
+                {item.profile?.firstName || "Student"}{" "}
+                {item.profile?.lastName || ""}
+              </Text>
+            </TouchableOpacity>
             <View
               style={{
                 flexDirection: "row",
@@ -253,6 +264,15 @@ const AttendanceStudentCard = React.memo(
                             : "Set Transport"}
                   {broughtBy ? ` (${broughtBy})` : ""}
                 </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.summaryTag}
+                onPress={() => onOpenStudentSummary && onOpenStudentSummary(item)}
+                activeOpacity={0.7}
+              >
+                <SVGIcon name="stats-chart" size={12} color="#0284C7" />
+                <Text style={styles.summaryTagText}>Summary</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -505,6 +525,21 @@ export default function DailyAttendanceScreen() {
             setActiveStudentForArrival(student);
             setArrivalModalVisible(true);
           }}
+          onOpenStudentSummary={(student) => {
+            const studentName = `${student.profile?.firstName || ""}`.trim()
+              ? `${student.profile?.firstName || ""} ${student.profile?.lastName || ""}`.trim()
+              : student.fullName || "Student";
+            router.push({
+              pathname: "/admin-dashboard/student-attendance-details",
+              params: {
+                studentId: student.uid,
+                studentName,
+                classId: classId || student.classId || "",
+                academicYear,
+                term,
+              },
+            });
+          }}
         />
       );
     },
@@ -514,6 +549,10 @@ export default function DailyAttendanceScreen() {
       isOfficialClassTeacher,
       opStatus.isBlocked,
       markLocal,
+      classId,
+      academicYear,
+      term,
+      router,
     ],
   );
 
@@ -1042,5 +1081,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "900",
     color: "#fff",
+  },
+  summaryTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#E0F2FE",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  summaryTagText: {
+    fontSize: 11,
+    color: "#0284C7",
+    fontWeight: "700",
   },
 });

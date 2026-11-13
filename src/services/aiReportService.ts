@@ -5,8 +5,28 @@ import {
     where,
 } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
+import { calculateFeeBreakdown } from "../../hooks/admin-dashboard/finance-cleanup/utils";
 
 export type ReportType = "end_of_term" | "financial" | "general_term";
+
+export interface FeeItemDetail {
+  name: string;
+  billed: number;
+  paid: number;
+  discount: number;
+  balance: number;
+  collectionEfficiency: number;
+}
+
+export interface DailyPaymentsDetail {
+  feedingTotal: number;
+  feedingCount: number;
+  busTotal: number;
+  busCount: number;
+  extraTotal: number;
+  extraCount: number;
+  totalDailyAuxiliary: number;
+}
 
 export interface TermReportMetrics {
   schoolName: string;
@@ -25,7 +45,7 @@ export interface TermReportMetrics {
   totalAttendanceRecords: number;
   staffAttendanceRate: number;
 
-  // Financials
+  // Financials Overview
   tuitionBilled: number;
   chargesBilled: number;
   totalBilled: number;
@@ -36,6 +56,12 @@ export interface TermReportMetrics {
   expenditureByCategory: Record<string, number>;
   prevTermRevenue: number;
   revenueGrowthRate: number;
+
+  // Itemized Fee Ledger Breakdown (Tuition, Admission, PTA, Maintenance, Books, Uniforms, Other)
+  feeItemsBreakdown: FeeItemDetail[];
+
+  // Daily Financial Payments & Allocations (Feeding, Bus, Extra Classes)
+  dailyPaymentsBreakdown: DailyPaymentsDetail;
 
   // Academic Performance
   averageScore: number;
@@ -72,16 +98,83 @@ export interface AIAnswerResponse {
   suggestedAction: string;
 }
 
-function isValidGeminiApiKey(key?: string | null): boolean {
-  if (!key) return false;
-  const trimmed = key.trim();
-  if (trimmed === "YOUR_GEMINI_API_KEY_HERE" || trimmed.length < 20) return false;
-  return trimmed.startsWith("AIza");
+export interface FinancialOutcomeAnalysis {
+  state: "deficit_loss" | "heavy_arrears" | "surplus_cleared" | "balanced";
+  headline: string;
+  recommendations: string[];
+  riskLevel: "Critical" | "Moderate" | "Optimal" | "Stable";
+  suggestedAction: string;
+}
+
+/**
+ * Intelligent Financial & Operational Outcome Analyzer
+ * Detects whether there is a deficit/loss, heavy arrears, or 100% cleared balances,
+ * and formulates context-specific intelligent suggestions.
+ */
+function analyzeFinancialOutcome(metrics: TermReportMetrics): FinancialOutcomeAnalysis {
+  const collectionEfficiency = metrics.totalBilled > 0
+    ? Math.min(100, Math.round((metrics.totalCollected / metrics.totalBilled) * 100))
+    : 100;
+
+  if (metrics.netFinancialStanding < 0 || metrics.totalExpenditure > metrics.totalCollected) {
+    const deficitAmount = Math.abs(metrics.netFinancialStanding);
+    return {
+      state: "deficit_loss",
+      headline: `CRITICAL FINANCIAL DEFICIT: Operational expenses (₵${metrics.totalExpenditure.toLocaleString()}) exceed collected revenue (₵${metrics.totalCollected.toLocaleString()}), resulting in a net operating loss of ₵${deficitAmount.toLocaleString()}.`,
+      riskLevel: "Critical",
+      recommendations: [
+        `1. **Emergency Cost Rationalization:** Immediately freeze non-essential administrative outlays and capital expenditures to offset the ₵${deficitAmount.toLocaleString()} net deficit.`,
+        `2. **Line-by-Line Expense Audit:** Audit all auxiliary cost centers and vendor invoices to identify and eliminate recurring redundancies.`,
+        `3. **Accelerated Fee Collection & Debt Recovery:** Dispatch automated PWA and SMS payment alerts to recover outstanding arrears of ₵${metrics.totalArrears.toLocaleString()}.`,
+        `4. **Auxiliary Unit Pricing Review:** Adjust meal service, transport, and extra classes pricing to ensure auxiliary operations fully cover their direct costs.`
+      ],
+      suggestedAction: `Execute emergency budget tightening and deploy automated debt recovery notices to clear the ₵${metrics.totalArrears.toLocaleString()} arrears.`
+    };
+  } else if (metrics.totalArrears > 0 && collectionEfficiency < 75) {
+    return {
+      state: "heavy_arrears",
+      headline: `HIGH FEE ARREARS WARNING: Outstanding student fee debt stands at ₵${metrics.totalArrears.toLocaleString()}, with collection efficiency lagging at ${collectionEfficiency}%.`,
+      riskLevel: "Moderate",
+      recommendations: [
+        `1. **Structured Debt Recovery Plan:** Launch automated weekly PWA and SMS payment reminders directed at parents with outstanding arrears of ₵${metrics.totalArrears.toLocaleString()}.`,
+        `2. **Flexible Installment Workflows:** Implement structured grace periods and installment payment agreements to assist families facing cash flow constraints.`,
+        `3. **Parent-Admin Conferences:** Schedule direct administrative meetings for student accounts with arrears exceeding 30 days.`,
+        `4. **Service Access Management:** Enforce tiered access policies for non-essential auxiliary services until fee accounts are regularized.`
+      ],
+      suggestedAction: `Deploy automated SMS payment notices and schedule parent debt reconciliation sessions for the remaining ₵${metrics.totalArrears.toLocaleString()} arrears.`
+    };
+  } else if (metrics.totalArrears === 0 || collectionEfficiency >= 90) {
+    return {
+      state: "surplus_cleared",
+      headline: `OPTIMAL FINANCIAL STANDING: All student fee accounts are fully cleared or collection efficiency reached ${collectionEfficiency}%, generating a net operational surplus of ₵${metrics.netFinancialStanding.toLocaleString()}.`,
+      riskLevel: "Optimal",
+      recommendations: [
+        `1. **Strategic Surplus Reinvestment:** Reinvest a portion of the ₵${metrics.netFinancialStanding.toLocaleString()} operational surplus into smart classroom technology and library resources.`,
+        `2. **Staff Professional Development & Rewards:** Fund specialized instructional training workshops and performance recognition bonuses for teaching staff.`,
+        `3. **Early Billing Distribution:** Open early digital fee payment channels 3 weeks prior to next term reopening to maintain collection excellence.`,
+        `4. **Student Welfare Expansion:** Expand student extracurricular clubs, sports gear, and scholarship funds using available surplus.`
+      ],
+      suggestedAction: `All accounts are fully settled. Reinvest operational surplus into school IT infrastructure and teacher development programs.`
+    };
+  } else {
+    return {
+      state: "balanced",
+      headline: `STABLE FINANCIAL OPERATIONS: Total collections reached ₵${metrics.totalCollected.toLocaleString()} with a positive net standing of ₵${metrics.netFinancialStanding.toLocaleString()} and ${collectionEfficiency}% efficiency.`,
+      riskLevel: "Stable",
+      recommendations: [
+        `1. **Sustain Billing Compliance:** Continue early digital invoicing and automated payment tracking across all grade levels.`,
+        `2. **Auxiliary Revenue Monitoring:** Monitor feeding, bus, and extra classes fee allocations (₵${metrics.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()}) to ensure steady auxiliary cash flow.`,
+        `3. **Budgetary Control:** Maintain disciplined alignment between operational expenditures (₵${metrics.totalExpenditure.toLocaleString()}) and incoming revenues.`,
+        `4. **Parent Portal Engagement:** Sustain regular updates and announcements via the EduEaz Parent Portal.`
+      ],
+      suggestedAction: `Maintain financial momentum by initiating early fee billing for the upcoming term.`
+    };
+  }
 }
 
 /**
  * Aggregates live Firestore metrics across academics, attendance, population, and financials.
- * NOTE: Reports are ONLY generated when an administrator explicitly requests them.
+ * Uses the exact internal source-of-truth calculations (matching useFinancialData ledger & daily allocations).
  */
 export async function fetchTermReportMetrics(
   term: string,
@@ -96,14 +189,19 @@ export async function fetchTermReportMetrics(
     const studentsByClass: Record<string, number> = {};
     const staffByRole: Record<string, number> = {};
 
+    const validStudentDocs: any[] = [];
     usersSnap.docs.forEach((docSnap) => {
       const data = docSnap.data();
       const role = String(data.role || "").toLowerCase();
+      const status = String(data.status || "").toLowerCase();
 
       if (role === "student") {
-        totalStudents++;
-        const className = data.className || data.classId || "Unassigned";
-        studentsByClass[className] = (studentsByClass[className] || 0) + 1;
+        if (!status || status === "active" || status === "pending_activation") {
+          totalStudents++;
+          validStudentDocs.push({ id: docSnap.id, data });
+          const className = data.className || data.classId || "Unassigned";
+          studentsByClass[className] = (studentsByClass[className] || 0) + 1;
+        }
       } else if (["teacher", "staff", "admin", "superadmin"].includes(role)) {
         totalStaff++;
         const staffRole = data.adminRole || data.role || "Staff";
@@ -111,7 +209,7 @@ export async function fetchTermReportMetrics(
       }
     });
 
-    // 2. Fetch New Admissions (based on triggered admission charges / fees)
+    // 2. Fetch New Admissions
     let newAdmissionsCount = 0;
     try {
       const chargesSnap = await getDocs(collection(db, "student_charges"));
@@ -135,15 +233,18 @@ export async function fetchTermReportMetrics(
       console.warn("[AIReport] Failed to fetch admission charges:", e);
     }
 
-    // 3. Fetch Attendance Data (Parses class attendance sheets & student logs)
+    // 3. Fetch Attendance Data
     let totalAttendanceRecords = 0;
     let presentCount = 0;
     try {
       const attendanceSnap = await getDocs(collection(db, "attendance"));
       attendanceSnap.docs.forEach((docSnap) => {
         const data = docSnap.data();
+        const matchesYear = !data.academicYear || data.academicYear === academicYear;
+        const matchesTerm = !data.term || data.term === term;
+        if (!matchesYear || !matchesTerm) return;
+
         if (data.students && typeof data.students === "object") {
-          // Document stores class-wide student map: { [studentId]: { status: "present"|"absent"|"late" } }
           Object.values(data.students).forEach((s: any) => {
             const status = String(s?.status || "").toLowerCase();
             if (status === "present" || status === "late" || status === "absent") {
@@ -166,110 +267,208 @@ export async function fetchTermReportMetrics(
     }
     const studentAttendanceRate =
       totalAttendanceRecords > 0
-        ? Math.max(1, Math.min(100, Math.round((presentCount / totalAttendanceRecords) * 100)))
-        : 94;
+        ? Math.max(0, Math.min(100, Math.round((presentCount / totalAttendanceRecords) * 100)))
+        : 0;
 
-    // 4. Fetch Financial Data (Tuition Billed, Charges Billed, Total Billed, Collected, Arrears, Expenditure)
+    // 4. Financial Data - Source of Truth matching useFinancialData / Firestore
     let tuitionBilled = 0;
     let chargesBilled = 0;
-    let totalBilled = 0;
-    let totalCollected = 0;
     let totalExpenditure = 0;
     const expenditureByCategory: Record<string, number> = {};
 
+    // 4a. Expenditures (Strictly for current term & academicYear)
     try {
-      // 4a. Fee Payments (general tuition & fee payments)
-      const feePaymentsSnap = await getDocs(collection(db, "feePayments"));
-      feePaymentsSnap.docs.forEach((docSnap) => {
-        const data = docSnap.data();
-        const amt = Number(data.amount || data.paidAmount || data.amountPaid || data.total || 0);
-        totalCollected += amt;
-      });
-
-      // 4b. Daily Financials (Feeding, Bus, Extra classes)
-      const dailyFinSnap = await getDocs(collection(db, "dailyFinancials"));
-      dailyFinSnap.docs.forEach((docSnap) => {
-        const data = docSnap.data();
-        const amt = Number(
-          data.total ||
-            data.amount ||
-            (Number(data.feeding || 0) + Number(data.bus || 0) + Number(data.extra || 0)),
-        );
-        totalCollected += amt;
-      });
-
-      // 4c. Student Fee Records (Tuition, Applied Charges, Payments)
-      const feeRecordsSnap = await getDocs(collection(db, "studentFeeRecords"));
-      feeRecordsSnap.docs.forEach((docSnap) => {
-        const data = docSnap.data();
-        const tuition = Number(data.termBill || data.tuitionBill || 0);
-        const charges =
-          Number(data.ptaBill || 0) +
-          Number(data.maintenanceBill || 0) +
-          Number(data.admissionBill || 0) +
-          Number(data.booksBill || 0) +
-          Number(data.uniformBill || 0) +
-          Number(data.otherBill || 0) +
-          Number(data.arrears || 0);
-
-        const recordBilled =
-          tuition + charges + Number(data.totalBilled || data.billed || data.amount || 0);
-
-        const recordPaid =
-          Number(data.amountPaid || data.paid || 0) +
-          Number(data.ptaPaid || 0) +
-          Number(data.maintenancePaid || 0) +
-          Number(data.admissionPaid || 0) +
-          Number(data.booksPaid || 0) +
-          Number(data.uniformPaid || 0) +
-          Number(data.otherPaid || 0);
-
-        tuitionBilled += tuition;
-        chargesBilled += charges;
-        totalBilled += recordBilled;
-
-        if (feePaymentsSnap.empty) {
-          totalCollected += recordPaid;
-        }
-      });
-
-      // 4d. Student Charges
-      const chargesSnap = await getDocs(collection(db, "student_charges"));
-      chargesSnap.docs.forEach((docSnap) => {
-        const data = docSnap.data();
-        const amount = Number(data.amount || data.totalBilled || 0);
-        chargesBilled += amount;
-        totalBilled += amount;
-      });
-
-      // 4e. Expenditures
       const expSnap = await getDocs(collection(db, "expenditures"));
       expSnap.docs.forEach((docSnap) => {
         const data = docSnap.data();
-        const amount = Number(data.amount || data.cost || 0);
-        const category = data.category || "General Operations";
-        totalExpenditure += amount;
-        expenditureByCategory[category] =
-          (expenditureByCategory[category] || 0) + amount;
+        const matchesYear = !data.academicYear || data.academicYear === academicYear;
+        const matchesTerm = !data.term || data.term === term;
+        if (matchesYear && matchesTerm) {
+          const amount = Number(data.amount || data.cost || 0);
+          const category = data.category || data.subCategory || "General Operations";
+          totalExpenditure += amount;
+          expenditureByCategory[category] = (expenditureByCategory[category] || 0) + amount;
+        }
       });
     } catch (e) {
-      console.warn("[AIReport] Financial data fetch warning:", e);
+      console.warn("[AIReport] Expenditure fetch warning:", e);
     }
 
-    if (totalBilled < totalCollected && totalCollected > 0) {
-      totalBilled = Math.round(totalCollected * 1.15);
-      tuitionBilled = Math.round(totalBilled * 0.8);
-      chargesBilled = totalBilled - tuitionBilled;
+    // 4b. Daily Financial Payments & Allocations (Feeding, Bus, Extra classes)
+    let feedingTotal = 0;
+    let feedingCount = 0;
+    let busTotal = 0;
+    let busCount = 0;
+    let extraTotal = 0;
+    let extraCount = 0;
+
+    try {
+      const dailyFinSnap = await getDocs(collection(db, "dailyFinancials"));
+      dailyFinSnap.docs.forEach((docSnap) => {
+        const data = docSnap.data() as any;
+        const matchesYear = !data.academicYear || data.academicYear === academicYear;
+        const matchesTerm = !data.term || data.term === term;
+        if (!matchesYear || !matchesTerm) return;
+
+        if (data.feedingFee > 0 && data.feedingPaid === true) {
+          const fAmt = Number(data.feedingPaidAmount !== undefined ? data.feedingPaidAmount : data.feedingFee);
+          feedingTotal += fAmt;
+          feedingCount++;
+        }
+        if (data.busFee > 0 && data.busPaid === true) {
+          const bAmt = Number(data.busPaidAmount !== undefined ? data.busPaidAmount : data.busFee);
+          busTotal += bAmt;
+          busCount++;
+        }
+        if (data.extraClassesFee > 0 && data.extraPaid === true) {
+          const eAmt = Number(data.extraPaidAmount !== undefined ? data.extraPaidAmount : data.extraClassesFee);
+          extraTotal += eAmt;
+          extraCount++;
+        }
+      });
+    } catch (e) {
+      console.warn("[AIReport] Daily financials fetch warning:", e);
+    }
+    const totalDailyAuxiliary = feedingTotal + busTotal + extraTotal;
+
+    // 4c. Student Fee Records & Fee Payments Waterfall Breakdown
+    const ledgerMap: Record<string, { name: string; billed: number; discount: number; paid: number; balance: number }> = {};
+    let authoritativeBilled = 0;
+    let authoritativePaid = 0;
+    let authoritativeDiscount = 0;
+
+    try {
+      const feeRecordsSnap = await getDocs(collection(db, "studentFeeRecords"));
+      const feePaymentsSnap = await getDocs(collection(db, "feePayments"));
+
+      const recordsMap = new Map<string, any>();
+      feeRecordsSnap.docs.forEach((docSnap) => {
+        const d = docSnap.data();
+        const matchesYear = !d.academicYear || d.academicYear === academicYear;
+        const matchesTerm = !d.term || d.term === term;
+        if (matchesYear && matchesTerm) {
+          recordsMap.set(d.studentUid, d);
+        }
+      });
+
+      const feePaymentsByStudent = new Map<string, any[]>();
+      feePaymentsSnap.docs.forEach((docSnap) => {
+        const pData = docSnap.data();
+        const matchesYear = !pData.academicYear || pData.academicYear === academicYear;
+        const matchesTerm = !pData.term || pData.term === term;
+        if (matchesYear && matchesTerm && pData.studentUid) {
+          if (!feePaymentsByStudent.has(pData.studentUid)) {
+            feePaymentsByStudent.set(pData.studentUid, []);
+          }
+          feePaymentsByStudent.get(pData.studentUid)!.push({ id: docSnap.id, ...pData });
+        }
+      });
+
+      validStudentDocs.forEach(({ id: studentId, data: sData }) => {
+        const record = recordsMap.get(studentId) || { studentUid: studentId, arrears: sData.walletBalance || 0, termBill: 0, payments: [] };
+        const collectionPayments = feePaymentsByStudent.get(studentId) || [];
+        const mergedPayments = [...(record.payments || [])];
+        collectionPayments.forEach((cp: any) => {
+          const isDup = mergedPayments.some((mp: any) => mp.id === cp.id || (cp.receiptNo && mp.receiptNo === cp.receiptNo));
+          if (!isDup) mergedPayments.push(cp);
+        });
+
+        const breakdown = calculateFeeBreakdown(record, mergedPayments);
+
+        authoritativeBilled += breakdown.totals.billed;
+        authoritativePaid += breakdown.totals.paid;
+        authoritativeDiscount += breakdown.totals.discount;
+
+        breakdown.categorySummary.forEach((item) => {
+          const lowerId = item.id.toLowerCase();
+          let ledgerKey = item.name;
+
+          if (lowerId === "tuition" || lowerId === "arrears") {
+            ledgerKey = "Tuition";
+          } else if (lowerId === "admission") {
+            ledgerKey = "Admission";
+          } else if (lowerId === "pta") {
+            ledgerKey = "PTA";
+          } else if (lowerId === "maintenance") {
+            ledgerKey = "Maintenance";
+          } else if (lowerId === "books") {
+            ledgerKey = "Books";
+          } else if (lowerId === "uniform" || lowerId === "uniforms") {
+            ledgerKey = "Uniforms";
+          } else if (lowerId === "other charges" || lowerId === "other") {
+            ledgerKey = "Other Charges";
+          }
+
+          if (!ledgerMap[ledgerKey]) {
+            ledgerMap[ledgerKey] = { name: ledgerKey, billed: 0, discount: 0, paid: 0, balance: 0 };
+          }
+          ledgerMap[ledgerKey].billed += item.billed;
+          ledgerMap[ledgerKey].discount += (item.discount || 0);
+          ledgerMap[ledgerKey].paid += item.paid;
+        });
+      });
+
+      Object.keys(ledgerMap).forEach((key) => {
+        const item = ledgerMap[key];
+        item.balance = Math.max(0, item.billed - (item.discount || 0) - item.paid);
+      });
+    } catch (e) {
+      console.warn("[AIReport] Fee ledger breakdown calculation warning:", e);
     }
 
-    const totalArrears = Math.max(0, totalBilled - totalCollected);
+    const standardOrder = ["Tuition", "Admission", "PTA", "Maintenance", "Books", "Uniforms", "Other Charges"];
+    const feeItemsBreakdown: FeeItemDetail[] = Object.values(ledgerMap)
+      .filter((item) => item.billed > 0 || item.paid > 0 || item.discount > 0 || item.balance > 0)
+      .sort((a, b) => {
+        const idxA = standardOrder.indexOf(a.name);
+        const idxB = standardOrder.indexOf(b.name);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return a.name.localeCompare(b.name);
+      })
+      .map((item) => ({
+        ...item,
+        collectionEfficiency: item.billed > 0 ? Math.min(100, Math.round((item.paid / item.billed) * 100)) : 100,
+      }));
+
+    tuitionBilled = ledgerMap["Tuition"]?.billed || 0;
+    chargesBilled = Object.keys(ledgerMap)
+      .filter((k) => k !== "Tuition")
+      .reduce((sum, k) => sum + ledgerMap[k].billed, 0);
+
+    const totalBilled = authoritativeBilled;
+    const totalCollected = authoritativePaid + totalDailyAuxiliary;
+    const totalArrears = Math.max(0, totalBilled - authoritativePaid - authoritativeDiscount);
     const netFinancialStanding = totalCollected - totalExpenditure;
 
-    const prevTermRevenue = Math.round(totalCollected * 0.88);
+    // 4d. Previous Term Revenue Comparison
+    let prevTermRevenue = 0;
+    try {
+      const prevPaymentsSnap = await getDocs(collection(db, "feePayments"));
+      prevPaymentsSnap.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.term && data.term !== term) {
+          const method = String(data.method || "");
+          const isDebtEntry =
+            method.toLowerCase().includes("charge") ||
+            method.toLowerCase().includes("bill") ||
+            method === "System Billing";
+
+          if (!isDebtEntry) {
+            const amt = Number(data.amount || data.paidAmount || data.amountPaid || data.total || 0);
+            prevTermRevenue += amt;
+          }
+        }
+      });
+    } catch (e) {
+      console.warn("[AIReport] Failed to query prev term revenue:", e);
+    }
+
     const revenueGrowthRate =
       prevTermRevenue > 0
         ? Math.round(((totalCollected - prevTermRevenue) / prevTermRevenue) * 100)
-        : 12;
+        : 0;
 
     // 5. Academic Performance Data
     let totalAcademicRecords = 0;
@@ -280,8 +479,12 @@ export async function fetchTermReportMetrics(
       const academicSnap = await getDocs(collection(db, "academicRecords"));
       academicSnap.docs.forEach((docSnap) => {
         const data = docSnap.data();
+        const matchesYear = !data.academicYear || data.academicYear === academicYear;
+        const matchesTerm = !data.term || data.term === term;
+        if (!matchesYear || !matchesTerm) return;
+
         totalAcademicRecords++;
-        const score = Number(data.totalScore || data.score || data.average || 75);
+        const score = Number(data.totalScore || data.score || data.average || 0);
         scoreSum += score;
 
         const className = data.className || data.classId || "General Class";
@@ -296,7 +499,7 @@ export async function fetchTermReportMetrics(
     }
 
     const averageScore =
-      totalAcademicRecords > 0 ? Math.round(scoreSum / totalAcademicRecords) : 76;
+      totalAcademicRecords > 0 ? Math.round(scoreSum / totalAcademicRecords) : 0;
 
     const topPerformingClasses = Object.keys(classScores)
       .map((c) => ({
@@ -307,46 +510,50 @@ export async function fetchTermReportMetrics(
       .slice(0, 3)
       .map((c) => c.name);
 
-    if (topPerformingClasses.length === 0) {
-      topPerformingClasses.push("Basic 6", "JHS 2", "Primary 4");
-    }
+    const subjectsNeedingImprovement = totalAcademicRecords > 0
+      ? ["Mathematics", "Integrated Science"]
+      : [];
 
-    const subjectsNeedingImprovement = [
-      "Mathematics (Algebra & Geometry)",
-      "Integrated Science (Practical Labs)",
-    ];
+    const dailyPaymentsBreakdown: DailyPaymentsDetail = {
+      feedingTotal,
+      feedingCount,
+      busTotal,
+      busCount,
+      extraTotal,
+      extraCount,
+      totalDailyAuxiliary,
+    };
 
     return {
       schoolName,
       term,
       academicYear,
-      totalStudents: totalStudents || 240,
+      totalStudents,
       studentsByClass,
-      totalStaff: totalStaff || 12,
+      totalStaff,
       staffByRole,
-      newAdmissionsCount: newAdmissionsCount || 35,
-      studentAttendanceRate: studentAttendanceRate || 95,
+      newAdmissionsCount,
+      studentAttendanceRate,
       totalAttendanceRecords,
-      staffAttendanceRate: 98,
-      tuitionBilled: tuitionBilled || 48000,
-      chargesBilled: chargesBilled || 12000,
-      totalBilled: (tuitionBilled || 48000) + (chargesBilled || 12000),
-      totalCollected: totalCollected || 52000,
-      totalArrears: Math.max(0, ((tuitionBilled || 48000) + (chargesBilled || 12000)) - (totalCollected || 52000)),
-      totalExpenditure: totalExpenditure || 18500,
-      netFinancialStanding: (totalCollected || 52000) - (totalExpenditure || 18500),
-      expenditureByCategory:
-        Object.keys(expenditureByCategory).length > 0
-          ? expenditureByCategory
-          : { "Salaries & Allowances": 12000, "Utilities & Communications": 2500, "Maintenance & Repairs": 2000, "Instructional Materials": 2000 },
-      prevTermRevenue: prevTermRevenue || 46000,
-      revenueGrowthRate: revenueGrowthRate || 13,
+      staffAttendanceRate: totalStaff > 0 ? 98 : 0,
+      tuitionBilled,
+      chargesBilled,
+      totalBilled,
+      totalCollected,
+      totalArrears,
+      totalExpenditure,
+      netFinancialStanding,
+      expenditureByCategory,
+      prevTermRevenue,
+      revenueGrowthRate,
+      feeItemsBreakdown,
+      dailyPaymentsBreakdown,
       averageScore,
       totalAcademicRecords,
       topPerformingClasses,
       subjectsNeedingImprovement,
-      totalEventsCount: 6,
-      pendingApprovalsCount: 2,
+      totalEventsCount: 0,
+      pendingApprovalsCount: 0,
     };
   } catch (error) {
     console.error("Error aggregating term report metrics:", error);
@@ -354,60 +561,51 @@ export async function fetchTermReportMetrics(
       schoolName,
       term,
       academicYear,
-      totalStudents: 240,
-      studentsByClass: { "Primary 5": 45, "Basic 6": 50, "Junior High 1": 70, "Junior High 2": 75 },
-      totalStaff: 12,
-      staffByRole: { Teacher: 10, Admin: 2 },
-      newAdmissionsCount: 35,
-      studentAttendanceRate: 95,
-      totalAttendanceRecords: 480,
-      staffAttendanceRate: 98,
-      tuitionBilled: 48000,
-      chargesBilled: 12000,
-      totalBilled: 60000,
-      totalCollected: 52000,
-      totalArrears: 8000,
-      totalExpenditure: 18500,
-      netFinancialStanding: 33500,
-      expenditureByCategory: { "Salaries & Allowances": 12000, "Utilities & Communications": 2500, "Maintenance & Repairs": 2000, "Instructional Materials": 2000 },
-      prevTermRevenue: 46000,
-      revenueGrowthRate: 13,
-      averageScore: 78,
-      totalAcademicRecords: 140,
-      topPerformingClasses: ["Primary 5", "Basic 6", "Junior High 2"],
-      subjectsNeedingImprovement: ["Mathematics (Algebra & Geometry)", "Integrated Science (Practical Labs)"],
-      totalEventsCount: 5,
+      totalStudents: 0,
+      studentsByClass: {},
+      totalStaff: 0,
+      staffByRole: {},
+      newAdmissionsCount: 0,
+      studentAttendanceRate: 0,
+      totalAttendanceRecords: 0,
+      staffAttendanceRate: 0,
+      tuitionBilled: 0,
+      chargesBilled: 0,
+      totalBilled: 0,
+      totalCollected: 0,
+      totalArrears: 0,
+      totalExpenditure: 0,
+      netFinancialStanding: 0,
+      expenditureByCategory: {},
+      prevTermRevenue: 0,
+      revenueGrowthRate: 0,
+      feeItemsBreakdown: [],
+      dailyPaymentsBreakdown: {
+        feedingTotal: 0,
+        feedingCount: 0,
+        busTotal: 0,
+        busCount: 0,
+        extraTotal: 0,
+        extraCount: 0,
+        totalDailyAuxiliary: 0,
+      },
+      averageScore: 0,
+      totalAcademicRecords: 0,
+      topPerformingClasses: [],
+      subjectsNeedingImprovement: [],
+      totalEventsCount: 0,
       pendingApprovalsCount: 0,
     };
   }
 }
 
 /**
- * Calls Gemini AI API or invokes the local AI Synthesis engine to generate an executive report.
- * NOTE: Called ONLY when an administrator explicitly initiates report generation.
+ * Generates an executive report using the internal intelligent synthesis engine.
  */
 export async function generateAIReport(
   reportType: ReportType,
   metrics: TermReportMetrics,
 ): Promise<GeneratedAIReport> {
-  const rawKey =
-    process.env.EXPO_PUBLIC_GEMINI_API_KEY ||
-    process.env.EXPO_PUBLIC_GOOGLE_AI_KEY;
-
-  console.log("[AIReport] Checking Gemini API Key. rawKey present:", !!rawKey, "starts with AIza:", rawKey?.startsWith("AIza"));
-
-  if (isValidGeminiApiKey(rawKey)) {
-    try {
-      const response = await callGeminiAPI(reportType, metrics, rawKey!);
-      if (response) return response;
-    } catch (e) {
-      console.warn("[AIReport] Gemini API call failed, falling back to local AI engine:", e);
-    }
-  } else {
-    console.log("[AIReport] Using Intelligent Local AI Engine (No valid Google Gemini API key format starting with 'AIza').");
-  }
-
-  // Fallback / Standalone Intelligent Executive Report Engine
   return synthesizeLocalAIReport(reportType, metrics);
 }
 
@@ -418,216 +616,7 @@ export async function answerAIQuestion(
   question: string,
   metrics: TermReportMetrics,
 ): Promise<AIAnswerResponse> {
-  const rawKey =
-    process.env.EXPO_PUBLIC_GEMINI_API_KEY ||
-    process.env.EXPO_PUBLIC_GOOGLE_AI_KEY;
-
-  if (isValidGeminiApiKey(rawKey)) {
-    try {
-      const response = await callGeminiAPIForQuestion(question, metrics, rawKey!);
-      if (response) return response;
-    } catch (e) {
-      console.warn("[AIReport] Gemini Q&A call failed, using local AI synthesis:", e);
-    }
-  }
-
   return synthesizeLocalAIQuestionAnswer(question, metrics);
-}
-
-/**
- * Call Google Gemini REST endpoint directly
- */
-async function callGeminiAPI(
-  reportType: ReportType,
-  metrics: TermReportMetrics,
-  apiKey: string,
-): Promise<GeneratedAIReport | null> {
-  const isEndTerm = reportType === "end_of_term";
-  const prompt = `You are a Senior Educational Strategist and School Administrative Advisor for ${metrics.schoolName}.
-Write an elaborate, highly detailed, multi-paragraph administrative executive report for ${metrics.term} (${metrics.academicYear}) based on these live school metrics:
-
-- Total Enrolled Students: ${metrics.totalStudents}
-- Total Teaching & Admin Staff: ${metrics.totalStaff}
-- New Admissions (triggered admission fees): ${metrics.newAdmissionsCount}
-- Student Attendance Rate: ${metrics.studentAttendanceRate}%
-- Staff Attendance Rate: ${metrics.staffAttendanceRate}%
-- Tuition Fees Billed: ₵${metrics.tuitionBilled.toLocaleString()}
-- Applied Student Charges Billed (PTA, Books, Uniform, etc.): ₵${metrics.chargesBilled.toLocaleString()}
-- Total Billed Fees: ₵${metrics.totalBilled.toLocaleString()}
-- Total Revenue Collected: ₵${metrics.totalCollected.toLocaleString()}
-- Outstanding Arrears Balance: ₵${metrics.totalArrears.toLocaleString()}
-- Total Expenditure Outflow: ₵${metrics.totalExpenditure.toLocaleString()}
-- Net Financial Standing (Surplus): ₵${metrics.netFinancialStanding.toLocaleString()}
-- Revenue Growth vs Prev Term: +${metrics.revenueGrowthRate}% (Benchmark: ₵${metrics.prevTermRevenue.toLocaleString()})
-- Overall School Academic Average: ${metrics.averageScore}%
-- Top Performing Academic Classes: ${metrics.topPerformingClasses.join(", ")}
-- Subjects Needing Improvement: ${metrics.subjectsNeedingImprovement.join(", ")}
-
-${
-  isEndTerm
-    ? `CRITICAL INSTRUCTION: For End-of-Term reports, elaborate extensively under each of these exact 11 section headers:
-## 1. Introduction
-## 2. General School Overview
-## 3. Student Enrolment and Attendance
-## 4. Academic Performance
-## 5. Staff and Administrative Performance
-## 6. Parent Engagement and Communication
-## 7. Financial Performance
-### 7.1 Revenue Analysis
-### 7.2 Fee Collection
-### 7.3 Outstanding Fees
-### 7.4 Expenditure Analysis
-### 7.5 Financial Position
-## 8. Major Achievements
-## 9. Challenges Encountered
-## 10. Recommendations
-## 11. Conclusion
-
-Provide deep administrative analysis and detailed paragraphs under every section. Use '*Suggestion:*' for strategic insights.`
-    : ""
-}
-
-Respond ONLY with a valid JSON object matching this schema:
-{
-  "title": "string",
-  "executiveSummary": "string",
-  "markdownContent": "string formatted in Markdown",
-  "highlights": ["string"],
-  "recommendations": ["string"]
-}`;
-
-  const apiVersions = ["v1", "v1beta"];
-  const modelsToTry = [
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-pro",
-    "gemini-1.5-flash-latest",
-  ];
-
-  for (const apiVersion of apiVersions) {
-    for (const model of modelsToTry) {
-      const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`;
-
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-          }),
-        });
-
-        if (!res.ok) {
-          console.warn(`[AIReport] ${apiVersion}/${model} HTTP error: ${res.status} ${res.statusText}`);
-          continue;
-        }
-
-        const jsonRes = await res.json();
-        const textContent = jsonRes?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!textContent) continue;
-
-        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-        const cleanJson = jsonMatch ? jsonMatch[0] : textContent;
-        const parsed = JSON.parse(cleanJson);
-
-        return {
-          title: parsed.title || getReportTitle(reportType, metrics),
-          reportType,
-          generatedAt: new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          }),
-          executiveSummary: parsed.executiveSummary,
-          markdownContent: parsed.markdownContent,
-          keyStats: buildKeyStats(reportType, metrics),
-          highlights: parsed.highlights || [],
-          recommendations: parsed.recommendations || [],
-        };
-      } catch (e) {
-        console.warn(`[AIReport] ${apiVersion}/${model} exception:`, e);
-      }
-    }
-  }
-
-  return null;
-}
-
-async function callGeminiAPIForQuestion(
-  question: string,
-  metrics: TermReportMetrics,
-  apiKey: string,
-): Promise<AIAnswerResponse | null> {
-  const prompt = `You are a Senior Educational Executive Advisor for ${metrics.schoolName}.
-Provide an elaborate, detailed executive response to the administrator's question: "${question}".
-
-Context Metrics for ${metrics.term} (${metrics.academicYear}):
-- Total Enrolled Students: ${metrics.totalStudents}
-- New Admissions: ${metrics.newAdmissionsCount}
-- Total Staff: ${metrics.totalStaff}
-- Tuition Billed: ₵${metrics.tuitionBilled.toLocaleString()}
-- Applied Charges Billed: ₵${metrics.chargesBilled.toLocaleString()}
-- Total Billed Fees: ₵${metrics.totalBilled.toLocaleString()}
-- Total Revenue Collected: ₵${metrics.totalCollected.toLocaleString()}
-- Arrears Balance: ₵${metrics.totalArrears.toLocaleString()}
-- Total Expenditures: ₵${metrics.totalExpenditure.toLocaleString()}
-- Net Financial Standing: ₵${metrics.netFinancialStanding.toLocaleString()}
-- Revenue Growth vs Prev Term: +${metrics.revenueGrowthRate}%
-- Student Attendance Rate: ${metrics.studentAttendanceRate}%
-- Academic Average Score: ${metrics.averageScore}%
-- Top Performing Classes: ${metrics.topPerformingClasses.join(", ")}
-- Focus Subjects: ${metrics.subjectsNeedingImprovement.join(", ")}
-
-Respond ONLY with a valid JSON object matching this schema:
-{
-  "question": "string",
-  "directAnswer": "string",
-  "keyMetrics": [{"label": "string", "value": "string", "badge": "string"}],
-  "takeaways": ["string"],
-  "suggestedAction": "string"
-}`;
-
-  const apiVersions = ["v1", "v1beta"];
-  const modelsToTry = [
-    "gemini-1.5-flash",
-    "gemini-1.5-pro",
-    "gemini-pro",
-    "gemini-1.5-flash-latest",
-  ];
-
-  for (const apiVersion of apiVersions) {
-    for (const model of modelsToTry) {
-      const url = `https://generativelanguage.googleapis.com/${apiVersion}/models/${model}:generateContent?key=${apiKey}`;
-
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-          }),
-        });
-
-        if (!res.ok) {
-          console.warn(`[AIReport Q&A] ${apiVersion}/${model} HTTP error: ${res.status} ${res.statusText}`);
-          continue;
-        }
-
-        const jsonRes = await res.json();
-        const textContent = jsonRes?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!textContent) continue;
-
-        const jsonMatch = textContent.match(/\{[\s\S]*\}/);
-        const cleanJson = jsonMatch ? jsonMatch[0] : textContent;
-        return JSON.parse(cleanJson);
-      } catch (e) {
-        console.warn(`[AIReport Q&A] ${apiVersion}/${model} exception:`, e);
-      }
-    }
-  }
-
-  return null;
 }
 
 function synthesizeLocalAIQuestionAnswer(
@@ -635,45 +624,58 @@ function synthesizeLocalAIQuestionAnswer(
   metrics: TermReportMetrics,
 ): AIAnswerResponse {
   const q = question.toLowerCase();
+  const finOutcome = analyzeFinancialOutcome(metrics);
 
-  if (q.includes("financial performance") || q.includes("revenue") || q.includes("financial")) {
+  if (q.includes("financial performance") || q.includes("revenue") || q.includes("financial") || q.includes("fee")) {
     const efficiency =
       metrics.totalBilled > 0
         ? Math.min(100, Math.round((metrics.totalCollected / metrics.totalBilled) * 100))
         : 100;
 
+    const growthStr = metrics.prevTermRevenue > 0
+      ? ` This represents a +${metrics.revenueGrowthRate}% growth rate over the previous term benchmark of ₵${metrics.prevTermRevenue.toLocaleString()}.`
+      : "";
+
+    const expenditureStr = metrics.totalExpenditure > 0
+      ? `Total operational expenditure stood at ₵${metrics.totalExpenditure.toLocaleString()}, resulting in a net financial standing of ₵${metrics.netFinancialStanding.toLocaleString()} (${finOutcome.state === "deficit_loss" ? "DEFICIT" : "SURPLUS"}).`
+      : `Total operational expenditure stood at ₵0, leaving a net financial standing of ₵${metrics.netFinancialStanding.toLocaleString()}.`;
+
+    const dailyStr = metrics.dailyPaymentsBreakdown.totalDailyAuxiliary > 0
+      ? ` Daily auxiliary revenues contributed ₵${metrics.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()} (Feeding: ₵${metrics.dailyPaymentsBreakdown.feedingTotal.toLocaleString()}, Bus: ₵${metrics.dailyPaymentsBreakdown.busTotal.toLocaleString()}, Extra Classes: ₵${metrics.dailyPaymentsBreakdown.extraTotal.toLocaleString()}).`
+      : "";
+
     return {
       question,
-      directAnswer: `During ${metrics.term} (${metrics.academicYear}), ${metrics.schoolName} achieved a strong financial collection of ₵${metrics.totalCollected.toLocaleString()} out of ₵${metrics.totalBilled.toLocaleString()} billed fees (comprising Tuition Billed: ₵${metrics.tuitionBilled.toLocaleString()} and Applied Charges Billed: ₵${metrics.chargesBilled.toLocaleString()}). This represents a +${metrics.revenueGrowthRate}% growth rate compared to the previous term benchmark of ₵${metrics.prevTermRevenue.toLocaleString()}. Total operational expenditure stood at ₵${metrics.totalExpenditure.toLocaleString()}, leaving a net financial surplus buffer of ₵${metrics.netFinancialStanding.toLocaleString()}.`,
+      directAnswer: `${finOutcome.headline} During ${metrics.term} (${metrics.academicYear}), ${metrics.schoolName} collected ₵${metrics.totalCollected.toLocaleString()} out of ₵${metrics.totalBilled.toLocaleString()} billed fees.${dailyStr}${growthStr} ${expenditureStr}`,
       keyMetrics: [
-        { label: "Revenue Collected", value: `₵${metrics.totalCollected.toLocaleString()}`, badge: `+${metrics.revenueGrowthRate}%` },
-        { label: "Net Standing", value: `₵${metrics.netFinancialStanding.toLocaleString()}`, badge: "Surplus" },
-        { label: "Arrears Balance", value: `₵${metrics.totalArrears.toLocaleString()}`, badge: metrics.totalArrears > 0 ? "Pending" : "Cleared" },
+        { label: "Revenue Collected", value: `₵${metrics.totalCollected.toLocaleString()}`, badge: "Collected" },
+        { label: "Daily Auxiliary", value: `₵${metrics.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()}`, badge: "Auxiliary" },
+        { label: "Net Standing", value: `₵${metrics.netFinancialStanding.toLocaleString()}`, badge: finOutcome.state === "deficit_loss" ? "Deficit" : "Surplus" },
+        { label: "Arrears Balance", value: `₵${metrics.totalArrears.toLocaleString()}`, badge: metrics.totalArrears > 0 ? "Outstanding" : "Cleared" },
       ],
       takeaways: [
-        `Overall fee collection efficiency reached ${efficiency}% of total billed fees across all departments`,
-        `Revenue increased by +${metrics.revenueGrowthRate}% over previous term baseline revenue of ₵${metrics.prevTermRevenue.toLocaleString()}`,
-        `Net operational cash surplus stands at ₵${metrics.netFinancialStanding.toLocaleString()} after accounting for all operational expenditures`,
+        finOutcome.headline,
+        `Overall fee collection efficiency reached ${efficiency}% across general fees and daily auxiliary allocations`,
+        metrics.totalExpenditure > 0
+          ? `Net operational standing stands at ₵${metrics.netFinancialStanding.toLocaleString()} after accounting for ₵${metrics.totalExpenditure.toLocaleString()} in operational expenditures`
+          : `Net financial standing stands at ₵${metrics.netFinancialStanding.toLocaleString()} with ₵0 in recorded operational expenditure`,
       ],
-      suggestedAction:
-        metrics.totalArrears > 0
-          ? `Issue automated fee reminder notices via PWA and SMS to clear the remaining ₵${metrics.totalArrears.toLocaleString()} in fee arrears.`
-          : "All fee accounts for this term are fully settled. Reinvest operational surplus into school development.",
+      suggestedAction: finOutcome.suggestedAction,
     };
   }
 
   if (q.includes("population") || q.includes("increase") || q.includes("admissions") || q.includes("student")) {
     return {
       question,
-      directAnswer: `Yes, student enrollment expanded during ${metrics.term} (${metrics.academicYear}). The school recorded ${metrics.newAdmissionsCount} new student admissions (verified via admission fee charges), bringing the total student population to ${metrics.totalStudents} enrolled students across all divisions.`,
+      directAnswer: `During ${metrics.term} (${metrics.academicYear}), total student population stands at ${metrics.totalStudents} enrolled students across all divisions (${metrics.newAdmissionsCount} new student admissions recorded).`,
       keyMetrics: [
         { label: "Enrolled Students", value: `${metrics.totalStudents}`, badge: "Active" },
-        { label: "New Admissions", value: `+${metrics.newAdmissionsCount}`, badge: "This Term" },
-        { label: "Total Staff", value: `${metrics.totalStaff}`, badge: `1:${Math.round(metrics.totalStudents / (metrics.totalStaff || 1))}` },
+        { label: "New Admissions", value: `${metrics.newAdmissionsCount}`, badge: "This Term" },
+        { label: "Total Staff", value: `${metrics.totalStaff}`, badge: metrics.totalStaff > 0 ? `1:${Math.round(metrics.totalStudents / (metrics.totalStaff || 1))}` : "Staff" },
       ],
       takeaways: [
-        `${metrics.newAdmissionsCount} new students joined ${metrics.schoolName} this term`,
-        `Staff-to-student ratio is currently maintained at 1 teacher/staff per ${Math.round(metrics.totalStudents / (metrics.totalStaff || 1))} students`,
+        `${metrics.newAdmissionsCount} new students recorded at ${metrics.schoolName} this term`,
+        `Staff-to-student ratio is currently maintained at 1 staff member per ${Math.round(metrics.totalStudents / (metrics.totalStaff || 1))} students`,
         `Student attendance rate averaged ${metrics.studentAttendanceRate}% throughout the term`,
       ],
       suggestedAction: "Plan additional classroom furniture and learning kits for expanding grade sections next term.",
@@ -681,96 +683,65 @@ function synthesizeLocalAIQuestionAnswer(
   }
 
   if (q.includes("attention") || q.includes("risk") || q.includes("problem") || q.includes("require")) {
-    const riskMsg =
-      metrics.totalArrears > 0
-        ? `1) Clearing ₵${metrics.totalArrears.toLocaleString()} in outstanding student fee arrears, and `
-        : "";
-
     return {
       question,
-      directAnswer: `Management should focus immediate attention on: ${riskMsg}Strengthening student academic performance in ${metrics.subjectsNeedingImprovement.join(" and ")}.`,
+      directAnswer: `${finOutcome.headline} Management should prioritize: ${finOutcome.recommendations[0]} and strengthening student academic performance in core subjects.`,
       keyMetrics: [
-        { label: "Arrears Status", value: `₵${metrics.totalArrears.toLocaleString()}`, badge: metrics.totalArrears > 0 ? "Urgent" : "Cleared" },
+        { label: "Financial Health", value: finOutcome.riskLevel, badge: finOutcome.state === "deficit_loss" ? "Urgent" : "Stable" },
+        { label: "Arrears Balance", value: `₵${metrics.totalArrears.toLocaleString()}`, badge: metrics.totalArrears > 0 ? "Pending" : "Cleared" },
         { label: "Academic Average", value: `${metrics.averageScore}%`, badge: "Baseline" },
-        { label: "Attendance Rate", value: `${metrics.studentAttendanceRate}%`, badge: "Good" },
       ],
       takeaways: [
+        finOutcome.headline,
         metrics.totalArrears > 0
-          ? `₵${metrics.totalArrears.toLocaleString()} remains uncollected across billed student fee accounts`
+          ? `₵${metrics.totalArrears.toLocaleString()} remains uncollected across student fee accounts`
           : "All student fee accounts are 100% settled with 0 arrears balance",
-        `Academic performance requires targeted support in ${metrics.subjectsNeedingImprovement.join(" and ")}`,
-        `Staff attendance stands at ${metrics.staffAttendanceRate}%, requiring continued monitoring`,
+        `Academic performance requires targeted support in key subject areas`,
       ],
-      suggestedAction:
-        metrics.totalArrears > 0
-          ? "Schedule parent debt clearing sessions and set up weekly remedial sessions for core subjects."
-          : "Maintain academic remedial sessions and focus on curriculum enrichment.",
+      suggestedAction: finOutcome.suggestedAction,
     };
   }
 
   if (q.includes("compared") || q.includes("previous term") || q.includes("growth")) {
-    return {
-      question,
-      directAnswer: `${metrics.schoolName}'s performance improved significantly compared to the previous term. Total revenue collected rose by +${metrics.revenueGrowthRate}% from ₵${metrics.prevTermRevenue.toLocaleString()} to ₵${metrics.totalCollected.toLocaleString()}, accompanied by ${metrics.newAdmissionsCount} new student admissions and an average student attendance rate of ${metrics.studentAttendanceRate}%.`,
-      keyMetrics: [
-        { label: "Revenue Growth", value: `+${metrics.revenueGrowthRate}%`, badge: "Higher" },
-        { label: "Current Revenue", value: `₵${metrics.totalCollected.toLocaleString()}`, badge: "This Term" },
-        { label: "Previous Term", value: `₵${metrics.prevTermRevenue.toLocaleString()}`, badge: "Benchmark" },
-      ],
-      takeaways: [
-        `Financial collections grew by +${metrics.revenueGrowthRate}% year-on-year / term-on-term`,
-        `Student population expanded with ${metrics.newAdmissionsCount} new enrollments`,
-        `Overall school academic average held steady at ${metrics.averageScore}%`,
-      ],
-      suggestedAction: "Maintain financial momentum by opening early fee payment channels 2 weeks prior to next term reopening.",
-    };
-  }
-
-  if (q.includes("prioritise") || q.includes("prioritize") || q.includes("next term") || q.includes("future")) {
-    const p1 =
-      metrics.totalArrears > 0
-        ? `1) Early fee recovery to clear ₵${metrics.totalArrears.toLocaleString()} in arrears, `
-        : "1) Expanding instructional technology in classrooms, ";
+    const compStr = metrics.prevTermRevenue > 0
+      ? `Total revenue collected changed by +${metrics.revenueGrowthRate}% from ₵${metrics.prevTermRevenue.toLocaleString()} to ₵${metrics.totalCollected.toLocaleString()}`
+      : `Total revenue collected for this term reached ₵${metrics.totalCollected.toLocaleString()}`;
 
     return {
       question,
-      directAnswer: `For next term, management should prioritize: ${p1}2) Remedial academic clinics for ${metrics.subjectsNeedingImprovement.join(" & ")}, and 3) Reinvesting 15% of the ₵${metrics.netFinancialStanding.toLocaleString()} surplus into teacher workshops and campus upgrades.`,
+      directAnswer: `${metrics.schoolName}'s performance for ${metrics.term} (${metrics.academicYear}): ${compStr}. ${finOutcome.headline}`,
       keyMetrics: [
-        { label: "Priority 1", value: metrics.totalArrears > 0 ? "Fee Recovery" : "Campus Tech", badge: metrics.totalArrears > 0 ? `₵${metrics.totalArrears.toLocaleString()}` : "Upgrades" },
-        { label: "Priority 2", value: "Academic Support", badge: "Remedials" },
-        { label: "Priority 3", value: "Surplus Reinvestment", badge: "Development" },
+        { label: "Revenue Collected", value: `₵${metrics.totalCollected.toLocaleString()}`, badge: "This Term" },
+        { label: "Net Standing", value: `₵${metrics.netFinancialStanding.toLocaleString()}`, badge: finOutcome.state === "deficit_loss" ? "Deficit" : "Surplus" },
+        { label: "Attendance Rate", value: `${metrics.studentAttendanceRate}%`, badge: "Attendance" },
       ],
       takeaways: [
-        metrics.totalArrears > 0
-          ? `Deploy automated payment reminder schedules before the start of next term`
-          : "Sustain 100% fee collection compliance through early digital billing",
-        `Host staff professional development workshops prior to reopening`,
-        `Recognize top-performing classes (${metrics.topPerformingClasses.join(", ")}) during school assembly`,
+        `Financial collections logged at ₵${metrics.totalCollected.toLocaleString()} for ${metrics.term}`,
+        finOutcome.headline,
+        `Student population includes ${metrics.newAdmissionsCount} new enrollments`,
       ],
-      suggestedAction: "Formally approve next term's budget allocations and publish the school calendar to parents via PWA.",
+      suggestedAction: finOutcome.suggestedAction,
     };
   }
 
-  // Fallback answer for general custom questions
   return {
     question,
-    directAnswer: `Based on live metrics for ${metrics.term} (${metrics.academicYear}) at ${metrics.schoolName}: Total student population stands at ${metrics.totalStudents} (${metrics.newAdmissionsCount} new admissions), total revenue collected is ₵${metrics.totalCollected.toLocaleString()} (+${metrics.revenueGrowthRate}% growth), average student attendance is ${metrics.studentAttendanceRate}%, and average academic performance is ${metrics.averageScore}%.`,
+    directAnswer: `For next term, management should prioritize: 1) ${finOutcome.suggestedAction}, 2) Remedial academic clinics, and 3) Reinvesting operational surplus into teacher professional development and campus upgrades.`,
     keyMetrics: [
-      { label: "Students", value: `${metrics.totalStudents}`, badge: "Active" },
-      { label: "Revenue", value: `₵${metrics.totalCollected.toLocaleString()}`, badge: "Collected" },
-      { label: "Attendance", value: `${metrics.studentAttendanceRate}%`, badge: "Average" },
+      { label: "Priority 1", value: finOutcome.state === "deficit_loss" ? "Cost Control" : metrics.totalArrears > 0 ? "Fee Recovery" : "Surplus Reinvestment", badge: finOutcome.riskLevel },
+      { label: "Priority 2", value: "Academic Support", badge: "Remedials" },
+      { label: "Priority 3", value: "Staff Development", badge: "Workshops" },
     ],
     takeaways: [
-      `Net financial standing is ₵${metrics.netFinancialStanding.toLocaleString()}`,
-      `Total arrears balance is ₵${metrics.totalArrears.toLocaleString()}`,
-      `Top performing classes: ${metrics.topPerformingClasses.join(", ")}`,
+      finOutcome.headline,
+      `Formally approve next term's budget allocations and publish the school calendar to parents via PWA`,
     ],
-    suggestedAction: "Review detailed financial summary and academic breakdown reports in the admin portal.",
+    suggestedAction: finOutcome.suggestedAction,
   };
 }
 
 /**
- * Intelligent Local AI Synthesis Engine for instant offline execution and fallbacks
+ * Intelligent Internal Executive Report Synthesis Engine with Dynamic Outcome Detection
  */
 function synthesizeLocalAIReport(
   reportType: ReportType,
@@ -788,142 +759,172 @@ function synthesizeLocalAIReport(
       ? Math.min(100, Math.round((metrics.totalCollected / metrics.totalBilled) * 100))
       : 100;
 
+  const finOutcome = analyzeFinancialOutcome(metrics);
+
+  // Render Itemized Fee Ledger Breakdown Table & Text
+  const feeItemsRows = metrics.feeItemsBreakdown.length > 0
+    ? metrics.feeItemsBreakdown
+        .map((item) => `- **${item.name}:** Billed: ₵${item.billed.toLocaleString()} | Paid: ₵${item.paid.toLocaleString()} | Discount: ₵${item.discount.toLocaleString()} | Balance: ₵${item.balance.toLocaleString()} (${item.collectionEfficiency}% collection efficiency)`)
+        .join("\n")
+    : "- No itemized student fee records logged for this term.";
+
+  const feeItemsTable = metrics.feeItemsBreakdown.length > 0
+    ? `| Fee Item Category | Billed Amount | Paid Amount | Discount | Outstanding Balance | Efficiency |\n| :--- | :---: | :---: | :---: | :---: | :---: |\n` +
+      metrics.feeItemsBreakdown
+        .map((item) => `| **${item.name}** | ₵${item.billed.toLocaleString()} | ₵${item.paid.toLocaleString()} | ₵${item.discount.toLocaleString()} | ₵${item.balance.toLocaleString()} | ${item.collectionEfficiency}% |`)
+        .join("\n")
+    : "*No itemized student fee records logged for this term.*";
+
+  const dailyAllocationsMarkdown = `### 3. Daily Financial Payments & Auxiliary Allocations 🚌🍱
+- **Feeding Fees Allocation:** **₵${metrics.dailyPaymentsBreakdown.feedingTotal.toLocaleString()}** collected across ${metrics.dailyPaymentsBreakdown.feedingCount} daily student logs
+- **Bus & Transportation Fees Allocation:** **₵${metrics.dailyPaymentsBreakdown.busTotal.toLocaleString()}** collected across ${metrics.dailyPaymentsBreakdown.busCount} daily student logs
+- **Extra Classes & Academic Enrichment Allocation:** **₵${metrics.dailyPaymentsBreakdown.extraTotal.toLocaleString()}** collected across ${metrics.dailyPaymentsBreakdown.extraCount} daily student logs
+- **Total Auxiliary Daily Revenue:** **₵${metrics.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()}**
+
+*Intelligent Suggestion:* Daily financial allocations generated **₵${metrics.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()}** in auxiliary revenue. ${
+    metrics.dailyPaymentsBreakdown.totalDailyAuxiliary > 0
+      ? "Auxiliary units are actively contributing to campus catering, transit, and enrichment programs."
+      : "Ensure daily payment logging is actively maintained for bus, feeding, and extra classes."
+  }`;
+
   if (reportType === "financial") {
-    const summary = `${metrics.schoolName} demonstrated strong financial performance during ${metrics.term} (${metrics.academicYear}), generating ₵${metrics.totalCollected.toLocaleString()} in total collections with a +${metrics.revenueGrowthRate}% growth compared to the previous term. Total operational expenditure stood at ₵${metrics.totalExpenditure.toLocaleString()}, resulting in a healthy net financial standing of ₵${metrics.netFinancialStanding.toLocaleString()}.`;
+    const summary = `${metrics.schoolName} financial assessment for ${metrics.term} (${metrics.academicYear}): ${finOutcome.headline} Total revenue reached ₵${metrics.totalCollected.toLocaleString()} against ₵${metrics.totalExpenditure.toLocaleString()} in operational expenditures.`;
 
-    const markdownContent = `## Executive Financial Overview 💰
-During **${metrics.term} (${metrics.academicYear})**, ${metrics.schoolName} maintained robust revenue collection pipelines. Overall collections reached **₵${metrics.totalCollected.toLocaleString()}**, representing a **+${metrics.revenueGrowthRate}% growth rate** over the previous term benchmark of ₵${metrics.prevTermRevenue.toLocaleString()}.
+    const expenditureBreakdownMarkdown =
+      metrics.totalExpenditure > 0 && Object.keys(metrics.expenditureByCategory).length > 0
+        ? `Primary cost centers included:\n${Object.entries(metrics.expenditureByCategory)
+            .map(([cat, amt]) => `- **${cat}:** ₵${amt.toLocaleString()}`)
+            .join("\n")}`
+        : `- **Recorded Operational Expenditure:** ₵0 (No expenditures recorded by administrators for this term)`;
 
-### 1. Revenue & Fee Collection Breakdown
+    const markdownContent = `## Executive Financial Overview 💰 (${finOutcome.riskLevel} Risk Status)
+During **${metrics.term} (${metrics.academicYear})**, ${metrics.schoolName} recorded financial outcomes. **${finOutcome.headline}**
+
+### 1. Overall Revenue & Fee Collection Summary
 - **Tuition Fees Billed:** ₵${metrics.tuitionBilled.toLocaleString()}
 - **Applied Student Charges Billed:** ₵${metrics.chargesBilled.toLocaleString()}
 - **Total Billed Fees:** ₵${metrics.totalBilled.toLocaleString()}
-- **Actual Revenue Collected:** ₵${metrics.totalCollected.toLocaleString()} (${collectionEfficiency}% collection efficiency)
+- **Actual Revenue Collected (General Fees + Daily Allocations):** ₵${metrics.totalCollected.toLocaleString()} (${collectionEfficiency}% collection efficiency)
 - **Outstanding Arrears Balance:** ₵${metrics.totalArrears.toLocaleString()}
-- **Previous Term Revenue Benchmark:** ₵${metrics.prevTermRevenue.toLocaleString()}
+${metrics.prevTermRevenue > 0 ? `- **Previous Term Revenue Benchmark:** ₵${metrics.prevTermRevenue.toLocaleString()} (Growth: ${metrics.revenueGrowthRate}%)` : ""}
 
-*Suggestion:* Total revenue collections expanded by +${metrics.revenueGrowthRate}% over the prior term. Revenue streams from general student tuition and applied charges remained resilient throughout the operating period.
+*Intelligent Suggestion:* ${finOutcome.recommendations[0]}
 
-### 2. Expenditure & Operational Expenses Analysis
-Total operational expenses incurred were **₵${metrics.totalExpenditure.toLocaleString()}**, leaving a net cash buffer of **₵${metrics.netFinancialStanding.toLocaleString()}**.
+### 2. Itemized Fee Ledger Breakdown & Category Analysis 📋
+${feeItemsTable}
 
-Primary cost centers included:
-${Object.entries(metrics.expenditureByCategory)
-  .map(([cat, amt]) => `- **${cat}:** ₵${amt.toLocaleString()}`)
-  .join("\n") || "- **General Operations & Payroll:** ₵18,500"}
+${feeItemsRows}
 
-*Suggestion:* Expenditure remained well within budgeted allocations. Payroll outlays and utility expenditures constituted the primary operational cost centers.
+*Intelligent Suggestion:* Detailed fee tracking across Tuition, Admission, PTA, Maintenance, Books, and Uniforms ensures complete audit transparency.
 
-### 3. Financial Health & Strategic Risk Assessment
-- **Fee Collection Efficiency:** ${collectionEfficiency}%. ${
-      metrics.totalArrears > 0
-        ? `Outstanding arrears of ₵${metrics.totalArrears.toLocaleString()} requires automated payment reminder dispatch.`
-        : "All billed fees for this term have been fully settled with zero outstanding balance."
-    }
-- **Budgetary Control:** Operational expenses remained within designated budget thresholds.
+${dailyAllocationsMarkdown}
 
-*Suggestion:* The operational net surplus of ₵${metrics.netFinancialStanding.toLocaleString()} provides adequate fiscal headroom for next term's planned capital expenditures.
+### 4. Expenditure & Operational Expenses Analysis 💳
+Total operational expenses incurred were **₵${metrics.totalExpenditure.toLocaleString()}**, resulting in a net financial standing of **₵${metrics.netFinancialStanding.toLocaleString()}** (${finOutcome.state === "deficit_loss" ? "DEFICIT" : "SURPLUS"}).
 
-### 4. Strategic Financial Recommendations
-${
-  metrics.totalArrears > 0
-    ? "1. **Automate Debt Recovery:** Issue targeted PWA and SMS payment reminders to parents with outstanding arrears prior to next term opening."
-    : "1. **Sustain 100% Billing Compliance:** Maintain early billing distribution 2 weeks prior to next term reopening."
-}
-2. **Reinvest Operational Surplus:** Allocate 15% of the ₵${metrics.netFinancialStanding.toLocaleString()} surplus toward IT classroom upgrades and teacher instructional resources.
-3. **Streamline Utility Expenses:** Review monthly operational utility costs to optimize long-term expenditure.`;
+${expenditureBreakdownMarkdown}
+
+### 5. Financial Health & Strategic Risk Assessment (${finOutcome.riskLevel})
+- **State Classification:** ${finOutcome.state.toUpperCase()}
+- **Fee Collection Efficiency:** ${collectionEfficiency}%
+- **Net Operational Standing:** ₵${metrics.netFinancialStanding.toLocaleString()}
+
+*Intelligent Assessment:* ${finOutcome.headline}
+
+### 6. Tailored Strategic Recommendations
+${finOutcome.recommendations.join("\n")}
+5. **Auxiliary Unit Optimization:** Maintain rigorous digital logging of feeding, bus, and extra classes fees to guarantee complete revenue capture.`;
 
     return {
-      title: `${metrics.term} Comprehensive Financial Report 📈`,
+      title: `${metrics.term} Intelligent Financial Report 📈`,
       reportType,
       generatedAt: dateStr,
       executiveSummary: summary,
       markdownContent,
       keyStats: [
-        { label: "Total Revenue", value: `₵${metrics.totalCollected.toLocaleString()}`, change: `+${metrics.revenueGrowthRate}% vs prev term`, type: "positive" },
+        { label: "Total Revenue", value: `₵${metrics.totalCollected.toLocaleString()}`, type: "positive" },
+        { label: "Net Standing", value: `₵${metrics.netFinancialStanding.toLocaleString()}`, type: finOutcome.state === "deficit_loss" ? "negative" : "positive" },
         { label: "Outstanding Arrears", value: `₵${metrics.totalArrears.toLocaleString()}`, type: metrics.totalArrears > 0 ? "negative" : "positive" },
-        { label: "Net Standing", value: `₵${metrics.netFinancialStanding.toLocaleString()}`, type: "positive" },
-        { label: "Total Expenditure", value: `₵${metrics.totalExpenditure.toLocaleString()}`, type: "neutral" },
+        { label: "Daily Auxiliary", value: `₵${metrics.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()}`, type: "positive" },
       ],
       highlights: [
-        `Revenue grew by +${metrics.revenueGrowthRate}% compared to previous term`,
-        `Net operational surplus reached ₵${metrics.netFinancialStanding.toLocaleString()}`,
+        finOutcome.headline,
         `Fee collection efficiency rate recorded at ${collectionEfficiency}%`,
+        `Daily auxiliary revenue contributed ₵${metrics.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()}`,
+        `Net operational standing stands at ₵${metrics.netFinancialStanding.toLocaleString()}`,
       ],
-      recommendations: [
-        metrics.totalArrears > 0
-          ? "Issue automated payment reminder notices to clear ₵" + metrics.totalArrears.toLocaleString() + " in arrears."
-          : "Maintain 100% fee collection rate by continuing early digital billing.",
-        "Reinvest 15% of net surplus into instructional materials and classroom technology.",
-        "Establish termly spending caps on auxiliary cost centers.",
-      ],
+      recommendations: finOutcome.recommendations,
     };
   } else if (reportType === "general_term") {
-    const summary = `${metrics.schoolName} completed ${metrics.term} (${metrics.academicYear}) with a flourishing student population of ${metrics.totalStudents} students and ${metrics.totalStaff} staff members. Student attendance remained high at ${metrics.studentAttendanceRate}%, while academic performance averaged ${metrics.averageScore}%.`;
+    const summary = `${metrics.schoolName} completed ${metrics.term} (${metrics.academicYear}) with ${metrics.totalStudents} students and ${metrics.totalStaff} staff. ${finOutcome.headline} Student attendance averaged ${metrics.studentAttendanceRate}%, with academic average at ${metrics.averageScore}%.`;
+
+    const topClassesStr = metrics.topPerformingClasses.length > 0
+      ? metrics.topPerformingClasses.join(", ")
+      : "Recorded grade levels";
+
+    const focusSubjectsStr = metrics.subjectsNeedingImprovement.length > 0
+      ? metrics.subjectsNeedingImprovement.join(", ")
+      : "Core subject areas";
 
     const markdownContent = `## Executive General Term Overview 🏫
-The **${metrics.term} (${metrics.academicYear})** academic cycle was characterized by stable student growth, commendable academic engagement, and steady administrative performance at **${metrics.schoolName}**.
+The **${metrics.term} (${metrics.academicYear})** academic cycle was executed at **${metrics.schoolName}**.
 
-### 1. Population & Demographics Summary
-- **Total Enrolled Students:** ${metrics.totalStudents}
+### 1. Financial Outcome & Health (${finOutcome.riskLevel})
+${finOutcome.headline}
+
+### 2. Population & Demographics Summary
+- **Total Enrolled Students:** ${metrics.totalStudents} (${metrics.newAdmissionsCount} new admissions)
 - **Total Teaching & Admin Staff:** ${metrics.totalStaff}
-- **Staff-to-Student Ratio:** 1 : ${Math.round(metrics.totalStudents / (metrics.totalStaff || 1))}
-- **New Admissions Recorded:** ${metrics.newAdmissionsCount} new students
+- **Staff-to-Student Ratio:** 1 : ${metrics.totalStaff > 0 ? Math.round(metrics.totalStudents / metrics.totalStaff) : metrics.totalStudents}
 
-*Suggestion:* Enrollment expanded steadily due to positive word-of-mouth and parent engagement via the EduEaz mobile application.
+### 3. Financial Overview & Daily Allocations
+- **Total Revenue Collected:** **₵${metrics.totalCollected.toLocaleString()}**
+- **Daily Auxiliary Collections:** ₵${metrics.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()}
+- **Outstanding Arrears:** ₵${metrics.totalArrears.toLocaleString()}
 
-### 2. Attendance & Campus Engagement
-- **Student Attendance Rate:** **${metrics.studentAttendanceRate}%** across all grades
-- **Staff Attendance Rate:** **${metrics.staffAttendanceRate}%** punctuality
-- Daily attendance logs confirm high student retention throughout the academic term.
+### 4. Attendance & Academic Performance
+- **Student Attendance Rate:** **${metrics.studentAttendanceRate}%**
+- **Overall Academic Average:** **${metrics.averageScore}%**
+- **Top Performing Classes:** ${topClassesStr}
+- **Subjects Needing Support:** ${focusSubjectsStr}
 
-*Suggestion:* Daily digital attendance tracking significantly reduced unexcused student absences during peak academic weeks.
-
-### 3. Academic & Instructional Overview
-- **Overall Student Academic Average:** **${metrics.averageScore}%**
-- **Top Performing Classes:** ${metrics.topPerformingClasses.join(", ")}
-- **Subjects Requiring Academic Support:** ${metrics.subjectsNeedingImprovement.join(", ")}
-
-*Suggestion:* Overall grade point averages demonstrated strong subject comprehension in language and social studies, with targeted support recommended for STEM fields.
-
-### 4. Key Recommendations for School Operations
-1. **Academic Support Clinics:** Conduct targeted after-school remedial sessions for subjects requiring improvement.
-2. **Staff Professional Development:** Organize teacher workshops prior to next term reopening.
-3. **Student Retention & Engagement:** Maintain parent-teacher communication channels via PWA chat.`;
+### 5. Intelligent Recommendations
+${finOutcome.recommendations.join("\n")}
+`;
 
     return {
-      title: `${metrics.term} General Term Report 📋`,
+      title: `${metrics.term} Intelligent General Term Report 📋`,
       reportType,
       generatedAt: dateStr,
       executiveSummary: summary,
       markdownContent,
       keyStats: [
         { label: "Student Population", value: `${metrics.totalStudents}`, change: `+${metrics.newAdmissionsCount} new`, type: "positive" },
+        { label: "Net Financial Standing", value: `₵${metrics.netFinancialStanding.toLocaleString()}`, type: finOutcome.state === "deficit_loss" ? "negative" : "positive" },
         { label: "Attendance Rate", value: `${metrics.studentAttendanceRate}%`, type: "positive" },
         { label: "Academic Average", value: `${metrics.averageScore}%`, type: "positive" },
-        { label: "Total Staff", value: `${metrics.totalStaff}`, type: "neutral" },
       ],
       highlights: [
-        `Maintained an average student attendance rate of ${metrics.studentAttendanceRate}%`,
-        `Welcomed ${metrics.newAdmissionsCount} new student admissions during the term`,
-        `Academic performance averaged ${metrics.averageScore}% across all subject areas`,
+        finOutcome.headline,
+        `Maintained student attendance rate of ${metrics.studentAttendanceRate}%`,
+        `Generated ₵${metrics.totalCollected.toLocaleString()} in total revenue`,
+        `Academic performance average recorded at ${metrics.averageScore}%`,
       ],
-      recommendations: [
-        "Implement weekend and after-school remedial clinics for Mathematics and Science.",
-        "Sustain digital engagement with parents via the EduEaz parent portal.",
-        "Acknowledge top-performing classes during end-of-term assembly.",
-      ],
+      recommendations: finOutcome.recommendations,
     };
   } else {
-    // Exact 11-Section Comprehensive End of Term Administrative Report Pattern
-    const summary = `${metrics.schoolName}'s official End-of-Term Administrative Report for ${metrics.term} (${metrics.academicYear}) synthesizes student enrolment (${metrics.totalStudents}), ${metrics.newAdmissionsCount} new admissions, ${metrics.studentAttendanceRate}% attendance, ₵${metrics.totalCollected.toLocaleString()} in fee collections, and an overall academic average of ${metrics.averageScore}%.`;
+    // End-of-Term Administrative Report
+    const summary = `${metrics.schoolName}'s official End-of-Term Administrative Report for ${metrics.term} (${metrics.academicYear}): ${finOutcome.headline} Student enrolment stands at ${metrics.totalStudents} with ${metrics.studentAttendanceRate}% attendance and ${metrics.averageScore}% academic average.`;
 
-    const arrearsText =
-      metrics.totalArrears > 0
-        ? `- **Outstanding Fee Arrears Balance:** **₵${metrics.totalArrears.toLocaleString()}**\n*Suggestion:* Automated PWA payment reminders and targeted SMS notices should be scheduled prior to next term reopening to recover remaining fee arrears.`
-        : `- **Outstanding Fee Arrears Balance:** **₵0** (100% Fully Settled)\n*Suggestion:* All billed student fees for this term have been fully collected. No debt recovery action is required.`;
+    const topClassesStr = metrics.topPerformingClasses.length > 0
+      ? metrics.topPerformingClasses.join(", ")
+      : "Recorded grade levels";
 
-    const markdownContent = `## END-OF-TERM ADMINISTRATIVE REPORT 🎓
+    const focusSubjectsStr = metrics.subjectsNeedingImprovement.length > 0
+      ? metrics.subjectsNeedingImprovement.join(", ")
+      : "Core subject areas";
+
+    const markdownContent = `## END-OF-TERM ADMINISTRATIVE REPORT 🎓 (${finOutcome.riskLevel} Status)
 
 **Academic Year:** ${metrics.academicYear}
 **Term:** ${metrics.term}
@@ -931,149 +932,63 @@ The **${metrics.term} (${metrics.academicYear})** academic cycle was characteriz
 
 ---
 
-## 1. Introduction
-This official administrative report details the operational, academic, financial, and administrative performance of **${metrics.schoolName}** for **${metrics.term} (${metrics.academicYear})**. During this academic session, management focused on improving instructional quality, enhancing fee collection workflows, and expanding digital parent engagement. The institution completed all mandatory instructional weeks in full alignment with the statutory academic calendar.
+## 1. Executive Summary & Financial Health
+${finOutcome.headline}
 
-*Suggestion:* Management's strategic focus on instructional oversight and digital recordkeeping contributed significantly to smooth administrative operations throughout the term.
+*Intelligent Analysis:* Based on the current financial outcome (State: **${finOutcome.state.toUpperCase()}**), management must execute the tailored strategic recommendations below.
 
-## 2. General School Overview
-${metrics.schoolName} maintained a safe, productive, and discipline-oriented learning environment throughout the term. All scheduled academic weeks were executed smoothly, supported by active administrative oversight and consistent teacher presence. Co-curricular activities, including sports, debates, and cultural days, were successfully conducted alongside core academic learning.
-
-*Suggestion:* Sustaining a disciplined campus environment fostered strong student engagement and positive learning outcomes across all departments.
-
-## 3. Student Enrolment and Attendance
+## 2. Student Enrolment and Attendance
 - **Total Enrolled Students:** ${metrics.totalStudents} students
-- **New Admissions This Term:** **${metrics.newAdmissionsCount}** new students (verified based on triggered admission fee charges)
-- **Student Attendance Rate:** **${metrics.studentAttendanceRate}%** average daily attendance across all grade levels
-- **Total Attendance Records Logged:** ${metrics.totalAttendanceRecords} individual entries
+- **New Admissions This Term:** **${metrics.newAdmissionsCount}** new students
+- **Student Attendance Rate:** **${metrics.studentAttendanceRate}%** average daily attendance
 
-*Suggestion:* Enrollment expanded steadily due to positive word-of-mouth and PWA parent portal engagement. Attendance rates remained consistently above target operational benchmarks.
-
-## 4. Academic Performance
+## 3. Academic Performance
 - **Overall School Academic Average:** **${metrics.averageScore}%**
-- **Top Performing Classes:** ${metrics.topPerformingClasses.join(", ")}
-- **Subjects Requiring Academic Focus:** ${metrics.subjectsNeedingImprovement.join(", ")}
+- **Top Performing Classes:** ${topClassesStr}
+- **Subjects Requiring Academic Focus:** ${focusSubjectsStr}
 
-*Suggestion:* Academic benchmarks were met in most core areas. Special attention is advised for Science practical exercises and Mathematics problem-solving to raise average class performance in upcoming assessments.
-
-## 5. Staff and Administrative Performance
-- **Total Teaching & Admin Staff:** ${metrics.totalStaff} members
-- **Staff Attendance & Punctuality Rate:** **${metrics.staffAttendanceRate}%**
-- **Staff-to-Student Ratio:** 1 : ${Math.round(metrics.totalStudents / (metrics.totalStaff || 1))}
-
-*Suggestion:* Faculty dedication remained exemplary. Administrative records indicate high lesson plan compliance, timely score submissions, and reliable daily attendance tracking.
-
-## 6. Parent Engagement and Communication
-- Digital parent engagement via the EduEaz Parent Portal registered active daily interaction across mobile and web platforms.
-- Direct parent-teacher messaging enabled rapid resolution of academic, behavioral, and financial queries.
-
-*Suggestion:* Digital communication channels significantly improved parent satisfaction and reduced administrative response delays.
-
-## 7. Financial Performance
-
-### 7.1 Revenue Analysis
-- **Tuition Fees Billed:** ₵${metrics.tuitionBilled.toLocaleString()}
-- **Applied Student Charges Billed (PTA, Books, Uniform, etc.):** ₵${metrics.chargesBilled.toLocaleString()}
+## 4. Financial Performance & Fee Allocations
 - **Total Billed Fees:** ₵${metrics.totalBilled.toLocaleString()}
 - **Total Revenue Collected:** ₵${metrics.totalCollected.toLocaleString()}
-- **Revenue Growth Rate:** **+${metrics.revenueGrowthRate}%** compared to previous term benchmark (₵${metrics.prevTermRevenue.toLocaleString()})
-
-*Suggestion:* Revenue collections demonstrated strong term-on-term expansion (+${metrics.revenueGrowthRate}%), supported by early fee schedule publishing.
-
-### 7.2 Fee Collection
-- **Collection Efficiency Rate:** **${collectionEfficiency}%**
-
-*Suggestion:* Digital payment logging and automated fee receipts streamlined revenue accounting and reduced manual entry overhead.
-
-### 7.3 Outstanding Fees
-${arrearsText}
-
-### 7.4 Expenditure Analysis
+- **Outstanding Arrears Balance:** ₵${metrics.totalArrears.toLocaleString()}
 - **Total Operational Expenditure:** ₵${metrics.totalExpenditure.toLocaleString()}
-- **Primary Expense Categories:** ${Object.entries(metrics.expenditureByCategory).map(([k, v]) => `${k}: ₵${v.toLocaleString()}`).join(", ") || "Salaries, Utilities, Maintenance"}
+- **Net Financial Standing:** **₵${metrics.netFinancialStanding.toLocaleString()}** (${finOutcome.state === "deficit_loss" ? "DEFICIT" : "SURPLUS"})
 
-*Suggestion:* Operational costs were maintained within approved budgetary limits, ensuring efficient resource utilization across auxiliary departments.
+### 4.1 Itemized Fee Ledger Breakdown 📋
+${feeItemsTable}
 
-### 7.5 Financial Position
-- **Net Cash Buffer / Operational Surplus:** **₵${metrics.netFinancialStanding.toLocaleString()}**
+${feeItemsRows}
 
-*Suggestion:* The school maintains a healthy net financial buffer, providing adequate fiscal liquidity to support upcoming campus infrastructure projects and teacher instructional workshops.
+### 4.2 Daily Auxiliary Payments 🚌🍱
+- **Feeding, Bus, & Extra Classes Total:** ₵${metrics.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()}
 
-## 8. Co-Curricular & Special School Events (Graduation, Sports, etc.)
-*Suggestion:* Document major school events held during the term that extend beyond standard database records:
-- **Graduation & Speech Day:** [Record details of graduation ceremonies, promotional exercises, or speech and prize-giving days]
-- **Inter-House Sports & Athletics:** [Record inter-house sports results, athletics competitions, or trophies won]
-- **Cultural & Arts Festivals:** [Record cultural displays, debates, spelling bees, or science fair exhibitions]
-- **Stakeholder & PTA Meetings:** [Summarize key resolutions or outcomes from Parent-Teacher Association assemblies]
+## 5. Tailored Strategic Recommendations
+${finOutcome.recommendations.join("\n")}
+5. **Academic Remediation:** Implement weekly targeted clinics for ${focusSubjectsStr}.
+6. **Parent Engagement:** Sustain parent communication via EduEaz PWA portal.
 
-## 9. Major Achievements
-1. Successful enrolment of **${metrics.newAdmissionsCount} new student admissions**.
-2. Net financial operational surplus of **₵${metrics.netFinancialStanding.toLocaleString()}** with +${metrics.revenueGrowthRate}% revenue growth.
-3. Achievement of **${metrics.studentAttendanceRate}% student attendance** and **${metrics.averageScore}% overall academic average**.
-
-## 10. Challenges Encountered
-1. ${metrics.totalArrears > 0 ? `Uncollected fee arrears totaling ₵${metrics.totalArrears.toLocaleString()}` : "Managing utility and operational costs during peak term activities"}.
-2. Learning gaps in practical science lab exercises and advanced mathematics.
-
-## 11. Recommendations
-${
-  metrics.totalArrears > 0
-    ? "1. **Debt Recovery:** Deploy automated SMS and PWA fee reminder notices prior to reopening."
-    : "1. **Fee Compliance:** Sustain 100% early fee payment compliance through digital invoicing."
-}
-2. **Academic Remedials:** Conduct weekend and after-school support sessions for STEM subjects.
-3. **Faculty Development:** Host pre-term instructional technology workshops for teaching staff.
-
-## 12. Conclusion
-The **${metrics.term} (${metrics.academicYear})** academic session concluded successfully with positive financial growth, high attendance, and stable student enrollment. Management remains committed to maintaining academic excellence and operational efficiency.`;
+## 6. Conclusion
+The **${metrics.term} (${metrics.academicYear})** academic session concluded with ₵${metrics.totalCollected.toLocaleString()} collected and net standing of ₵${metrics.netFinancialStanding.toLocaleString()}. Management is instructed to execute the prioritized recommendations.`;
 
     return {
-      title: `${metrics.term} End-of-Term Administrative Report 🎓`,
+      title: `${metrics.term} Intelligent End-of-Term Report 🎓`,
       reportType,
       generatedAt: dateStr,
       executiveSummary: summary,
       markdownContent,
       keyStats: [
         { label: "Enrolled Students", value: `${metrics.totalStudents}`, change: `+${metrics.newAdmissionsCount} new`, type: "positive" },
-        { label: "Total Revenue", value: `₵${metrics.totalCollected.toLocaleString()}`, change: `+${metrics.revenueGrowthRate}%`, type: "positive" },
-        { label: "Student Attendance", value: `${metrics.studentAttendanceRate}%`, type: "positive" },
+        { label: "Net Standing", value: `₵${metrics.netFinancialStanding.toLocaleString()}`, type: finOutcome.state === "deficit_loss" ? "negative" : "positive" },
+        { label: "Arrears Balance", value: `₵${metrics.totalArrears.toLocaleString()}`, type: metrics.totalArrears > 0 ? "negative" : "positive" },
         { label: "Academic Average", value: `${metrics.averageScore}%`, type: "positive" },
       ],
       highlights: [
-        `Triggered and processed ${metrics.newAdmissionsCount} new admissions for the term`,
-        `Achieved a net financial surplus of ₵${metrics.netFinancialStanding.toLocaleString()}`,
-        `Top performing academic classes identified as ${metrics.topPerformingClasses.join(", ")}`,
+        finOutcome.headline,
+        `Recorded ${metrics.newAdmissionsCount} new student admissions`,
+        `Achieved a net operational standing of ₵${metrics.netFinancialStanding.toLocaleString()}`,
+        `Maintained ${metrics.studentAttendanceRate}% student attendance rate`,
       ],
-      recommendations: [
-        metrics.totalArrears > 0
-          ? "Issue fee reminder alerts to recover ₵" + metrics.totalArrears.toLocaleString() + " in outstanding arrears."
-          : "Maintain 100% fee collection rate by continuing early digital billing.",
-        "Conduct academic review meetings with class heads for subject area improvement.",
-        "Maintain high attendance standards through automated parent notification alerts.",
-      ],
+      recommendations: finOutcome.recommendations,
     };
   }
-}
-
-function getReportTitle(reportType: ReportType, metrics: TermReportMetrics): string {
-  if (reportType === "financial") return `${metrics.term} Financial & Revenue Report 📈`;
-  if (reportType === "general_term") return `${metrics.term} General Term Report 📋`;
-  return `${metrics.term} End-of-Term Administrative Report 🎓`;
-}
-
-function buildKeyStats(reportType: ReportType, metrics: TermReportMetrics) {
-  if (reportType === "financial") {
-    return [
-      { label: "Total Revenue", value: `₵${metrics.totalCollected.toLocaleString()}`, change: `+${metrics.revenueGrowthRate}%`, type: "positive" as const },
-      { label: "Outstanding Arrears", value: `₵${metrics.totalArrears.toLocaleString()}`, type: metrics.totalArrears > 0 ? "negative" as const : "positive" as const },
-      { label: "Net Standing", value: `₵${metrics.netFinancialStanding.toLocaleString()}`, type: "positive" as const },
-      { label: "Expenditure", value: `₵${metrics.totalExpenditure.toLocaleString()}`, type: "neutral" as const },
-    ];
-  }
-  return [
-    { label: "Total Students", value: `${metrics.totalStudents}`, change: `+${metrics.newAdmissionsCount} new`, type: "positive" as const },
-    { label: "Total Revenue", value: `₵${metrics.totalCollected.toLocaleString()}`, type: "positive" as const },
-    { label: "Attendance Rate", value: `${metrics.studentAttendanceRate}%`, type: "positive" as const },
-    { label: "Academic Average", value: `${metrics.averageScore}%`, type: "positive" as const },
-  ];
 }

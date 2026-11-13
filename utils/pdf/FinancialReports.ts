@@ -172,15 +172,17 @@ export class FinancialSummaryGenerator extends FinancialBaseGenerator {
     // 2. Fees & Charges Summary (Tuition + all items billed)
     this.drawSectionHeader("General Fees & Charges Detailed Ledger");
     const feeColumns = [
-      { header: "ITEM", width: 150 },
-      { header: "BILLED", width: 120, align: "right" as const },
-      { header: "PAID", width: 120, align: "right" as const },
-      { header: "BALANCE", width: 125, align: "right" as const },
+      { header: "ITEM", width: 135 },
+      { header: "BILLED", width: 95, align: "right" as const },
+      { header: "DISCOUNT", width: 95, align: "right" as const },
+      { header: "PAID", width: 95, align: "right" as const },
+      { header: "BALANCE", width: 95, align: "right" as const },
     ];
 
     const feeRows = (data.ledgerItems || []).map(item => [
       item?.name || "N/A",
       `${finalCurrency} ${(item?.billed || 0).toLocaleString()}`,
+      `${finalCurrency} ${(item?.discount || 0).toLocaleString()}`,
       `${finalCurrency} ${(item?.paid || 0).toLocaleString()}`,
       `${finalCurrency} ${(item?.balance || 0).toLocaleString()}`,
     ]);
@@ -189,6 +191,7 @@ export class FinancialSummaryGenerator extends FinancialBaseGenerator {
     feeRows.push([
       "TOTAL LEDGER",
       `${finalCurrency} ${totalBilled.toLocaleString()}`,
+      `${finalCurrency} ${totalDiscount.toLocaleString()}`,
       `${finalCurrency} ${totalPaid.toLocaleString()}`,
       `${finalCurrency} ${totalOutstanding.toLocaleString()}`,
     ]);

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "../../firebaseConfig";
+import { calculateFeeBreakdown } from "./finance-cleanup/utils";
 
 /**
  * Hook to fetch fee statistics.
@@ -70,32 +71,11 @@ export const useFeeStats = (
         if (!user) return;
         processedUids.add(data.studentUid);
 
-        // Sum all payments for this term record
-        const studentReceived =
-          (data.amountPaid || 0) +
-          (data.ptaPaid || 0) +
-          (data.maintenancePaid || 0) +
-          (data.admissionPaid || 0) +
-          (data.booksPaid || 0) +
-          (data.uniformPaid || 0) +
-          (data.otherPaid || 0);
+        const breakdown = calculateFeeBreakdown(data, data.payments || []);
 
-        const studentDiscount = data.discount || 0;
-
-        // Calculate Gross Expected (Payable) to match FeeReports.tsx
-        const studentPayable =
-          (data.arrears || 0) +
-          (data.termBill || 0) +
-          (data.ptaBill || 0) +
-          (data.maintenanceBill || 0) +
-          (data.admissionBill || 0) +
-          (data.booksBill || 0) +
-          (data.uniformBill || 0) +
-          (data.otherBill || 0);
-
-        totalExpected += studentPayable;
-        totalReceived += studentReceived;
-        totalDiscount += studentDiscount;
+        totalExpected += breakdown.totals.billed;
+        totalReceived += breakdown.totals.paid;
+        totalDiscount += breakdown.totals.discount;
       });
 
       // Include students who don't have a record for this specific term yet

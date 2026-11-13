@@ -4,8 +4,9 @@ import { collection, query, where, getDocsFromServer } from "firebase/firestore"
 import moment from "moment";
 import { db } from "../firebaseConfig";
 import { VIBE } from "../app/admin-dashboard/FinancialSummary.styles";
+import { calculateFeeBreakdown } from "./admin-dashboard/finance-cleanup/utils";
 
-const CACHE_KEY = "financial_summary_cache_v1";
+const CACHE_KEY = "financial_summary_cache_v3";
 const CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
 
 export type PeriodData = {
@@ -336,15 +337,7 @@ export const useFinancialData = (acadConfig: any, showToast: any) => {
         if (matchesTerm) { cat.term.total += amount; cat.term.count++; }
       });
 
-      const ledgerMap: Record<string, { billed: number; discount: number; paid: number; balance: number }> = {
-        "Tuition": { billed: 0, discount: 0, paid: 0, balance: 0 },
-        "Admission": { billed: 0, discount: 0, paid: 0, balance: 0 },
-        "PTA": { billed: 0, discount: 0, paid: 0, balance: 0 },
-        "Maintenance": { billed: 0, discount: 0, paid: 0, balance: 0 },
-        "Books": { billed: 0, discount: 0, paid: 0, balance: 0 },
-        "Uniforms": { billed: 0, discount: 0, paid: 0, balance: 0 },
-        "Other": { billed: 0, discount: 0, paid: 0, balance: 0 },
-      };
+      const ledgerMap: Record<string, { name: string; billed: number; discount: number; paid: number; balance: number }> = {};
 
       let authoritativeBilled = 0;
       let authoritativePaid = 0;
@@ -359,92 +352,89 @@ export const useFinancialData = (acadConfig: any, showToast: any) => {
           recordsMap.set(d.studentUid, d);
         });
 
+        const feePaymentsByStudent = new Map<string, any[]>();
+        feeSnap.docs.forEach((doc: any) => {
+          const pData = doc.data();
+          if (pData.studentUid) {
+            if (!feePaymentsByStudent.has(pData.studentUid)) {
+              feePaymentsByStudent.set(pData.studentUid, []);
+            }
+            feePaymentsByStudent.get(pData.studentUid)!.push({ id: doc.id, ...pData });
+          }
+        });
+
         studentsSnap.docs.forEach((sDoc: any) => {
           const sData = sDoc.data();
           // Filter: Active students
           if (!["active", "pending_activation"].includes(sData.status)) return;
 
-          const data = recordsMap.get(sDoc.id);
+          const data = recordsMap.get(sDoc.id) || { studentUid: sDoc.id, arrears: sData.walletBalance || 0, termBill: 0, payments: [] };
+          const collectionPayments = feePaymentsByStudent.get(sDoc.id) || [];
+          const mergedPayments = [...(data.payments || [])];
+          collectionPayments.forEach((cp: any) => {
+            const isDup = mergedPayments.some((mp: any) => mp.id === cp.id || (cp.receiptNo && mp.receiptNo === cp.receiptNo));
+            if (!isDup) mergedPayments.push(cp);
+          });
 
-          const termBill = data?.termBill || 0;
-          const ptaBill = data?.ptaBill || 0;
-          const maintenanceBill = data?.maintenanceBill || 0;
-          const admissionBill = data?.admissionBill || 0;
-          const booksBill = data?.booksBill || 0;
-          const uniformBill = data?.uniformBill || 0;
-          const otherBill = data?.otherBill || 0;
+          const breakdown = calculateFeeBreakdown(data, mergedPayments);
 
-          // Arrears is either from the record or student wallet (if no record exists)
-          const arrears = data ? (data.arrears || 0) : (sData.walletBalance || 0);
-          const discount = data?.discount || 0;
+          authoritativeBilled += breakdown.totals.billed;
+          authoritativePaid += breakdown.totals.paid;
+          authoritativeDiscount += breakdown.totals.discount;
+          if (breakdown.totals.discount > 0) {
+            authoritativeDiscountCount++;
+          }
 
-          const tuitionPaid = data?.amountPaid || 0;
-          const ptaPaid = data?.ptaPaid || 0;
-          const maintenancePaid = data?.maintenancePaid || 0;
-          const admissionPaid = data?.admissionPaid || 0;
-          const booksPaid = data?.booksPaid || 0;
-          const uniformPaid = data?.uniformPaid || 0;
-          const otherPaid = data?.otherPaid || 0;
+          breakdown.categorySummary.forEach((item) => {
+            const lowerId = item.id.toLowerCase();
+            let ledgerKey = item.name;
 
-          const studentTotalBilled = arrears + termBill + ptaBill + maintenanceBill + admissionBill + booksBill + uniformBill + otherBill;
-          const studentTotalPaid = tuitionPaid + ptaPaid + maintenancePaid + admissionPaid + booksPaid + uniformPaid + otherPaid;
+            if (lowerId === "tuition" || lowerId === "arrears") {
+              ledgerKey = "Tuition";
+            } else if (lowerId === "admission") {
+              ledgerKey = "Admission";
+            } else if (lowerId === "pta") {
+              ledgerKey = "PTA";
+            } else if (lowerId === "maintenance") {
+              ledgerKey = "Maintenance";
+            } else if (lowerId === "books") {
+              ledgerKey = "Books";
+            } else if (lowerId === "uniform" || lowerId === "uniforms") {
+              ledgerKey = "Uniforms";
+            } else if (lowerId === "other charges" || lowerId === "other") {
+              ledgerKey = "Other Charges";
+            }
 
-          // Total Balance = Payable - Discount - Paid
-          const studentTotalBalance = studentTotalBilled - discount - studentTotalPaid;
+            if (!ledgerMap[ledgerKey]) {
+              ledgerMap[ledgerKey] = { name: ledgerKey, billed: 0, discount: 0, paid: 0, balance: 0 };
+            }
+            ledgerMap[ledgerKey].billed += item.billed;
+            ledgerMap[ledgerKey].discount += (item.discount || 0);
+            ledgerMap[ledgerKey].paid += item.paid;
+          });
+        });
 
-          authoritativeBilled += studentTotalBilled;
-          authoritativePaid += studentTotalPaid;
-          authoritativeBalance += studentTotalBalance;
-          authoritativeDiscount += discount;
-          if (discount > 0) authoritativeDiscountCount++;
+        authoritativeBalance = Math.max(0, authoritativeBilled - authoritativePaid - authoritativeDiscount);
 
-          // Categorized balances
-          const ptaBalance = ptaBill - ptaPaid;
-          const maintenanceBalance = maintenanceBill - maintenancePaid;
-          const admissionBalance = admissionBill - admissionPaid;
-          const booksBalance = booksBill - booksPaid;
-          const uniformBalance = uniformBill - uniformPaid;
-          const otherBalance = otherBill - otherPaid;
-
-          const othersTotalBalance = ptaBalance + maintenanceBalance + admissionBalance + booksBalance + uniformBalance + otherBalance;
-
-          // Tuition absorbs Arrears and Discounts in this view
-          const tuitionBalance = studentTotalBalance - othersTotalBalance;
-
-          ledgerMap["Tuition"].billed += termBill + arrears;
-          ledgerMap["Tuition"].discount += discount;
-          ledgerMap["Tuition"].paid += tuitionPaid;
-          ledgerMap["Tuition"].balance += tuitionBalance;
-
-          ledgerMap["Admission"].billed += admissionBill;
-          ledgerMap["Admission"].paid += admissionPaid;
-          ledgerMap["Admission"].balance += admissionBalance;
-
-          ledgerMap["PTA"].billed += ptaBill;
-          ledgerMap["PTA"].paid += ptaPaid;
-          ledgerMap["PTA"].balance += ptaBalance;
-
-          ledgerMap["Maintenance"].billed += maintenanceBill;
-          ledgerMap["Maintenance"].paid += maintenancePaid;
-          ledgerMap["Maintenance"].balance += maintenanceBalance;
-
-          ledgerMap["Books"].billed += booksBill;
-          ledgerMap["Books"].paid += booksPaid;
-          ledgerMap["Books"].balance += booksBalance;
-
-          ledgerMap["Uniforms"].billed += uniformBill;
-          ledgerMap["Uniforms"].paid += uniformPaid;
-          ledgerMap["Uniforms"].balance += uniformBalance;
-
-          ledgerMap["Other"].billed += otherBill;
-          ledgerMap["Other"].paid += otherPaid;
-          ledgerMap["Other"].balance += otherBalance;
+        Object.keys(ledgerMap).forEach((key) => {
+          const item = ledgerMap[key];
+          ledgerMap[key].balance = Math.max(0, item.billed - (item.discount || 0) - item.paid);
         });
 
         catResults["General Student Fees"].term.total = authoritativePaid;
       }
 
-      const finalLedger = Object.keys(ledgerMap).map(name => ({ name, ...ledgerMap[name] }));
+      const standardOrder = ["Tuition", "Admission", "PTA", "Maintenance", "Books", "Uniforms"];
+      const finalLedger = Object.values(ledgerMap)
+        .filter(item => (item.billed > 0 || item.paid > 0 || item.discount > 0 || item.balance > 0))
+        .sort((a, b) => {
+          const idxA = standardOrder.indexOf(a.name);
+          const idxB = standardOrder.indexOf(b.name);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return a.name.localeCompare(b.name);
+        });
       const finalStats = {
         billed: authoritativeBilled,
         paid: authoritativePaid,

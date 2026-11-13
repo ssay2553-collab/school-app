@@ -297,10 +297,6 @@ export const useBooksCharges = ({
         walletBalance: increment(walletImpact),
       });
 
-      const year = acadConfig.academicYear?.replace(/\//g, "-");
-      const term = acadConfig.currentTerm?.replace(/\s/g, "");
-      const recordId = `${student.uid}_${year}_${term}`;
-
       batch.set(doc(db, "studentFeeRecords", recordId), {
         studentUid: student.uid,
         studentName: student.fullName,

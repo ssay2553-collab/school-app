@@ -22,8 +22,10 @@ import Constants from 'expo-constants';
 import { COLORS, SHADOWS } from '../../constants/theme';
 import { db } from '../../firebaseConfig';
 import { SCHOOL_CONFIG } from '../../constants/Config';
+import { getSchoolLogo } from '../../constants/Logos';
 import SVGIcon from '../../components/SVGIcon';
 import { useToast } from '../../contexts/ToastContext';
+import { generateStaffAttendancePDF } from '../../utils/pdfGenerator';
 
 interface AttendanceRecord {
   id: string;
@@ -65,11 +67,19 @@ interface TeacherWeeklyDayStats {
   }[];
 }
 
+interface StaffUser {
+  id: string;
+  name: string;
+  email: string;
+  categoryOrder?: number;
+}
+
 export default function TeacherAttendanceLogsScreen() {
   const router = useRouter();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [allStaff, setAllStaff] = useState<StaffUser[]>([]);
   const [timeFilter, setTimeFilter] = useState<'day' | 'week' | 'month' | 'term'>('month');
   const [selectedDate, setSelectedDate] = useState<string>(moment().format('YYYY-MM-DD'));
   const [viewMode, setViewMode] = useState<'daily' | 'summary'>('daily');
@@ -120,7 +130,35 @@ export default function TeacherAttendanceLogsScreen() {
         });
       };
 
-      // 2. Auto-mark absent after 4 PM (16:00) if no attendance taken
+      // 2. Fetch all staff members for complete log reporting
+      const staffQ = query(collection(db, 'users'), where('role', 'in', ['teacher', 'admin', 'superadmin', 'staff']));
+      const staffSnap = await getDocs(staffQ);
+
+      const staffList: StaffUser[] = [];
+      staffSnap.forEach((staffDoc) => {
+        const sData = staffDoc.data();
+        const sId = staffDoc.id;
+        const sName = `${sData.profile?.firstName || ''} ${sData.profile?.lastName || ''}`.trim() || sData.fullName || 'Staff Member';
+        const sEmail = sData.profile?.email || sData.email || '';
+        const role = (sData.role || '').toLowerCase();
+        const adminRole = sData.adminRole || sData.profile?.adminRole;
+
+        let categoryOrder = 3; // Non-teaching staff last
+        if (role === 'teacher' || role.includes('teacher')) {
+          categoryOrder = 1; // Teaching staff first
+        } else if (role === 'admin' || role.includes('admin') || role === 'superadmin' || adminRole) {
+          categoryOrder = 2; // Admins second
+        } else if (role === 'staff') {
+          categoryOrder = 3; // Non-teaching staff last
+        }
+
+        staffList.push({ id: sId, name: sName, email: sEmail, categoryOrder });
+      });
+
+      staffList.sort((a, b) => (a.categoryOrder || 3) - (b.categoryOrder || 3) || a.name.localeCompare(b.name));
+      setAllStaff(staffList);
+
+      // Auto-mark absent after 4 PM (16:00) if no attendance taken
       const todayStr = moment().format('YYYY-MM-DD');
       const currentHour = moment().hour();
       const dayOfWeek = moment().day(); // 1 = Mon, 5 = Fri
@@ -133,25 +171,16 @@ export default function TeacherAttendanceLogsScreen() {
         const existingSnap = await getDocs(existingQ);
         const loggedTeacherIds = new Set(existingSnap.docs.map(d => d.data().teacherId));
 
-        // Fetch all teachers/staff
-        const staffQ = query(collection(db, 'users'), where('role', 'in', ['teacher', 'admin', 'superadmin', 'staff']));
-        const staffSnap = await getDocs(staffQ);
-
         const batch = writeBatch(db);
         let batchCount = 0;
 
-        staffSnap.forEach((staffDoc) => {
-          const sData = staffDoc.data();
-          const sId = staffDoc.id;
-          if (!loggedTeacherIds.has(sId)) {
-            const sName = `${sData.profile?.firstName || ''} ${sData.profile?.lastName || ''}`.trim() || sData.fullName || 'Staff Member';
-            const sEmail = sData.profile?.email || sData.email || '';
-
+        staffList.forEach((st) => {
+          if (!loggedTeacherIds.has(st.id)) {
             const newDocRef = doc(collection(db, 'teacherAttendance'));
             batch.set(newDocRef, {
-              teacherId: sId,
-              teacherName: sName,
-              teacherEmail: sEmail,
+              teacherId: st.id,
+              teacherName: st.name,
+              teacherEmail: st.email,
               date: todayStr,
               status: 'Absent',
               hasPermission: false,
@@ -251,92 +280,189 @@ export default function TeacherAttendanceLogsScreen() {
     }
   };
 
+  const buildWeeklyBreakdownData = () => {
+    const getHoliday = (dateStr: string) => {
+      const check = moment(dateStr, 'YYYY-MM-DD');
+      return holidays.find(h => {
+        if (h.date && h.date === dateStr) return true;
+        const s = (h as any).startDate || h.date;
+        const e = (h as any).endDate || h.date;
+        if (s && e) {
+          return check.isBetween(moment(s, 'YYYY-MM-DD'), moment(e, 'YYYY-MM-DD'), 'day', '[]');
+        }
+        return false;
+      });
+    };
+
+    let rangeStart: moment.Moment;
+    let rangeEnd: moment.Moment;
+
+    const refDate = moment(selectedDate, 'YYYY-MM-DD').isValid() ? moment(selectedDate, 'YYYY-MM-DD') : moment();
+
+    if (timeFilter === 'day' || timeFilter === 'week') {
+      rangeStart = moment(refDate).startOf('isoWeek');
+      rangeEnd = moment(refDate).endOf('isoWeek');
+    } else if (timeFilter === 'month') {
+      rangeStart = moment(refDate).startOf('month').startOf('isoWeek');
+      rangeEnd = moment(refDate).endOf('month').endOf('isoWeek');
+    } else {
+      if (records.length > 0) {
+        const sortedDates = records.map(r => r.date).filter(Boolean).sort();
+        rangeStart = moment(sortedDates[0], 'YYYY-MM-DD').startOf('isoWeek');
+        rangeEnd = moment(sortedDates[sortedDates.length - 1], 'YYYY-MM-DD').endOf('isoWeek');
+      } else {
+        rangeStart = moment(refDate).startOf('month').startOf('isoWeek');
+        rangeEnd = moment(refDate).endOf('month').endOf('isoWeek');
+      }
+    }
+
+    const recordsMap: Record<string, Record<string, AttendanceRecord>> = {};
+    records.forEach(r => {
+      if (!recordsMap[r.date]) recordsMap[r.date] = {};
+      recordsMap[r.date][r.teacherId] = r;
+    });
+
+    const staffDict: Record<string, { id: string; name: string; email: string; categoryOrder?: number }> = {};
+    allStaff.forEach(s => {
+      staffDict[s.id] = { id: s.id, name: s.name, email: s.email || '', categoryOrder: s.categoryOrder || 3 };
+    });
+    records.forEach(r => {
+      if (r.teacherId && !staffDict[r.teacherId]) {
+        staffDict[r.teacherId] = {
+          id: r.teacherId,
+          name: r.teacherName || 'Staff Member',
+          email: r.teacherEmail || '',
+          categoryOrder: 3,
+        };
+      }
+    });
+
+    const staffList = Object.values(staffDict);
+    staffList.sort((a: any, b: any) => (a.categoryOrder || 3) - (b.categoryOrder || 3) || a.name.localeCompare(b.name));
+
+    const weeks: any[] = [];
+    let currMon = moment(rangeStart);
+    let weekIndex = 1;
+
+    while (currMon.isBefore(rangeEnd)) {
+      const mondayStr = currMon.format('YYYY-MM-DD');
+      const fridayDate = moment(currMon).add(4, 'days');
+      const fridayStr = fridayDate.format('YYYY-MM-DD');
+
+      const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((dayName, idx) => {
+        const d = moment(currMon).add(idx, 'days');
+        const dStr = d.format('YYYY-MM-DD');
+        const hol = getHoliday(dStr);
+        return {
+          dayName,
+          date: dStr,
+          formattedDate: d.format('MMM DD'),
+          isHoliday: Boolean(hol),
+          holidayTitle: hol?.title || undefined,
+        };
+      });
+
+      const weekHolidays = weekDays.filter(wd => wd.isHoliday).map(wd => ({
+        date: wd.date,
+        title: wd.holidayTitle || 'Holiday / Break',
+      }));
+
+      const staffLogs = staffList.map(st => {
+        const dailyLogs: Record<string, any> = {};
+
+        weekDays.forEach(wd => {
+          const rec = recordsMap[wd.date]?.[st.id];
+          const hol = getHoliday(wd.date);
+
+          if (hol) {
+            dailyLogs[wd.date] = {
+              date: wd.date,
+              dayName: wd.dayName,
+              status: 'Holiday',
+              isHoliday: true,
+              holidayTitle: hol.title,
+            };
+          } else if (rec) {
+            const inTime = rec.checkInTime
+              ? moment.utc(rec.checkInTime.toDate?.() || rec.checkInTime).format('hh:mm A')
+              : undefined;
+            const outTime = rec.checkOutTime
+              ? moment.utc(rec.checkOutTime.toDate?.() || rec.checkOutTime).format('hh:mm A')
+              : undefined;
+
+            let status: 'On Time' | 'Late' | 'Absent' | 'Excused' = 'On Time';
+            if (rec.hasPermission) {
+              status = 'Excused';
+            } else if (rec.status === 'Late') {
+              status = 'Late';
+            } else if (rec.status === 'Absent') {
+              status = 'Absent';
+            }
+
+            dailyLogs[wd.date] = {
+              date: wd.date,
+              dayName: wd.dayName,
+              status,
+              checkInTime: inTime,
+              checkOutTime: outTime,
+              permissionReason: rec.permissionReason,
+            };
+          } else {
+            const isPast = moment(wd.date, 'YYYY-MM-DD').isSameOrBefore(moment(), 'day');
+            dailyLogs[wd.date] = {
+              date: wd.date,
+              dayName: wd.dayName,
+              status: isPast ? 'Absent' : 'Not Logged',
+            };
+          }
+        });
+
+        return {
+          teacherId: st.id,
+          teacherName: st.name,
+          teacherEmail: st.email,
+          dailyLogs,
+        };
+      });
+
+      weeks.push({
+        weekLabel: `WEEK ${weekIndex}: ${moment(mondayStr).format('MMM DD, YYYY')} - ${moment(fridayStr).format('MMM DD, YYYY')}`,
+        startDate: mondayStr,
+        endDate: fridayStr,
+        holidays: weekHolidays,
+        days: weekDays,
+        staffLogs,
+      });
+
+      currMon.add(1, 'week');
+      weekIndex++;
+    }
+
+    return weeks;
+  };
+
   const handleExportAttendancePDF = async () => {
     try {
-      const statsMap = getTeacherStatsMap();
-      const statsList = Object.values(statsMap);
+      const overallStats = getTeacherStatsMap();
+      const weeks = buildWeeklyBreakdownData();
 
-      const htmlContent = `
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <style>
-              body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 30px; color: #1e293b; background: #fff; }
-              .header { text-align: center; margin-bottom: 30px; }
-              h1 { font-size: 24px; color: #0f172a; text-transform: uppercase; margin-bottom: 4px; text-align: center; }
-              h3 { font-size: 14px; color: #64748b; margin-top: 0; margin-bottom: 10px; text-align: center; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left; }
-              th, td { border: 1px solid #cbd5e1; padding: 10px 12px; font-size: 13px; text-align: left; }
-              th { background-color: #f1f5f9; color: #0f172a; font-weight: bold; }
-              tr:nth-child(even) { background-color: #f8fafc; }
-              .footer { margin-top: 30px; font-size: 11px; color: #94a3b8; text-align: center; }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>Staff Attendance Summary Report</h1>
-              <h3>Generated on ${moment().format('YYYY-MM-DD hh:mm A')} (${timeFilter.toUpperCase()} View)</h3>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Staff Name</th>
-                  <th>Working Days</th>
-                  <th>On Time</th>
-                  <th>Late</th>
-                  <th>Absent</th>
-                  <th>Excused</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${statsList.map(s => `
-                  <tr>
-                    <td><strong>${s.teacherName}</strong><br/><span style="font-size:11px; color:#64748b;">${s.teacherEmail || ''}</span></td>
-                    <td>${s.totalDays}</td>
-                    <td style="color:#059669; font-weight:bold;">${s.onTimeCount}</td>
-                    <td style="color:#d97706; font-weight:bold;">${s.lateCount}</td>
-                    <td style="color:#dc2626; font-weight:bold;">${s.absentCount}</td>
-                    <td style="color:#2563eb; font-weight:bold;">${s.excusedCount}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-            <div class="footer">
-              <p>EduEaz Academic Management System • Official Attendance Report</p>
-            </div>
-          </body>
-        </html>
-      `;
+      const pdfData = {
+        timeFilter,
+        generatedAt: moment().format('YYYY-MM-DD hh:mm A'),
+        weeks,
+        overallStats,
+      };
 
-      if (Platform.OS === 'web') {
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(htmlContent);
-          printWindow.document.close();
-          printWindow.focus();
-          setTimeout(() => {
-            printWindow.print();
-          }, 500);
-        } else {
-          window.print();
-        }
-        showToast({ message: 'Attendance report ready for PDF save!', type: 'success' });
-        return;
-      }
+      await generateStaffAttendancePDF(
+        pdfData,
+        SCHOOL_CONFIG.fullName || SCHOOL_CONFIG.name || 'EduEaz School',
+        SCHOOL_CONFIG.hotline || '',
+        SCHOOL_CONFIG.email || '',
+        SCHOOL_CONFIG.address || '',
+        getSchoolLogo(SCHOOL_CONFIG.schoolId),
+      );
 
-      const result = await Print.printToFileAsync({ html: htmlContent });
-      const uri = typeof result === 'string' ? result : (result?.uri || (result as any)?.filePath);
-
-      if (uri && await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Staff Attendance Summary Report PDF',
-          UTI: 'com.adobe.pdf',
-        });
-        showToast({ message: 'Attendance PDF exported successfully!', type: 'success' });
-      } else if (uri) {
-        showToast({ message: `PDF saved at: ${uri}`, type: 'success' });
-      }
+      showToast({ message: 'Detailed staff attendance PDF exported successfully!', type: 'success' });
     } catch (err) {
       console.error('Error generating attendance PDF:', err);
       showToast({ message: 'Failed to export attendance PDF.', type: 'error' });
@@ -403,53 +529,63 @@ export default function TeacherAttendanceLogsScreen() {
     });
   };
 
-  const getTeacherStatsMap = () => {
-    const filtered = getFilteredRecordsForStats();
+  const getTeacherStatsMap = (): TeacherStats[] => {
+    const weeks = buildWeeklyBreakdownData();
     const statsMap: Record<string, TeacherStats> = {};
-    const uniqueDatesSet = new Set<string>();
+    const todayStr = moment().format('YYYY-MM-DD');
 
-    filtered.forEach((r) => {
-      uniqueDatesSet.add(r.date);
-      const tid = r.teacherId || 'unknown';
-      if (!statsMap[tid]) {
-        statsMap[tid] = {
-          teacherId: tid,
-          teacherName: r.teacherName,
-          teacherEmail: r.teacherEmail,
-          onTimeCount: 0,
-          lateCount: 0,
-          absentCount: 0,
-          excusedCount: 0,
-          unexcusedCount: 0,
-          holidayCount: 0,
-          totalDays: 0,
-        };
-      }
+    weeks.forEach((week) => {
+      week.staffLogs.forEach((st: any) => {
+        const tid = st.teacherId || 'unknown';
+        if (!statsMap[tid]) {
+          statsMap[tid] = {
+            teacherId: tid,
+            teacherName: st.teacherName,
+            teacherEmail: st.teacherEmail,
+            onTimeCount: 0,
+            lateCount: 0,
+            absentCount: 0,
+            excusedCount: 0,
+            unexcusedCount: 0,
+            holidayCount: 0,
+            totalDays: 0,
+          };
+        }
 
-      if (r.status === 'Late') {
-        statsMap[tid].lateCount += 1;
-      } else {
-        statsMap[tid].onTimeCount += 1;
-      }
+        week.days.forEach((wd: any) => {
+          // Only evaluate working days up to today
+          if (moment(wd.date, 'YYYY-MM-DD').isAfter(moment(todayStr, 'YYYY-MM-DD'), 'day')) return;
 
-      if (r.hasPermission) {
-        statsMap[tid].excusedCount += 1;
-      } else {
-        statsMap[tid].unexcusedCount += 1;
-      }
+          const log = st.dailyLogs[wd.date];
+          if (!log) return;
+
+          if (log.status === 'Holiday') {
+            statsMap[tid].holidayCount += 1;
+          } else {
+            statsMap[tid].totalDays += 1;
+
+            if (log.status === 'On Time') {
+              statsMap[tid].onTimeCount += 1;
+            } else if (log.status === 'Late') {
+              statsMap[tid].lateCount += 1;
+            } else if (log.status === 'Excused') {
+              statsMap[tid].excusedCount += 1;
+            } else if (log.status === 'Absent') {
+              statsMap[tid].absentCount += 1;
+            }
+          }
+        });
+      });
     });
 
-    const nonHolidayDates = Array.from(uniqueDatesSet).filter(d => !checkIsHolidayDate(d));
-    const totalWorkingDays = nonHolidayDates.length || 1;
-
-    Object.keys(statsMap).forEach((tid) => {
-      const attended = statsMap[tid].onTimeCount + statsMap[tid].lateCount;
-      statsMap[tid].totalDays = totalWorkingDays;
-      // Exclude holiday days from missing/absent calculations
-      statsMap[tid].absentCount = Math.max(0, totalWorkingDays - attended);
+    const statsList = Object.values(statsMap);
+    const categoryMap = new Map(allStaff.map(s => [s.id, s.categoryOrder || 3]));
+    statsList.sort((a, b) => {
+      const catA = categoryMap.get(a.teacherId) || 3;
+      const catB = categoryMap.get(b.teacherId) || 3;
+      return catA - catB || a.teacherName.localeCompare(b.teacherName);
     });
-
-    return Object.values(statsMap);
+    return statsList;
   };
 
   const currentStatsList = getTeacherStatsMap();

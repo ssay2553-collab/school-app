@@ -182,6 +182,13 @@ export default function AdminSignup() {
         router.replace("/(auth)/login/admin");
       }, 1000);
     } catch (err: any) {
+      try {
+        if (auth.currentUser) {
+          await auth.signOut();
+        }
+      } catch (signOutErr) {
+        console.error("Sign out error:", signOutErr);
+      }
       let msg = err.message || "An unknown error occurred.";
       if (err.code === "auth/email-already-in-use") {
         msg = "This email is already registered.";

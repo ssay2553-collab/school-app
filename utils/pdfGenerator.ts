@@ -194,3 +194,31 @@ function dataToGenerator(report: AIReportPDFData): AIReportPDFData {
   };
 }
 
+import { StaffAttendancePDFGenerator } from "./pdf/StaffAttendanceReport";
+import { StaffAttendancePDFData } from "./pdf/types";
+
+export async function generateStaffAttendancePDF(
+  data: StaffAttendancePDFData,
+  schoolName: string,
+  schoolHotline: string,
+  schoolEmail: string,
+  schoolAddress?: string,
+  schoolLogo?: any,
+) {
+  const effectiveSchoolName = schoolName || SCHOOL_CONFIG.fullName || SCHOOL_CONFIG.name || "School";
+  const cleanSchoolName = effectiveSchoolName.trim().replace(/[^a-zA-Z0-9_-]+/g, "_");
+
+  const generator = new StaffAttendancePDFGenerator({
+    fileName: `${cleanSchoolName}_Staff_Attendance_Summary_${moment().format("YYYY-MM-DD")}`,
+    schoolName: effectiveSchoolName,
+    schoolHotline,
+    schoolEmail,
+    schoolAddress,
+    schoolLogo,
+    primaryColor: SCHOOL_CONFIG.primaryColor,
+    secondaryColor: SCHOOL_CONFIG.secondaryColor,
+  });
+
+  return generator.generate(data);
+}
+

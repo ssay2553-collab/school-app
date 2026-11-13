@@ -32,6 +32,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { db, functions } from "../../firebaseConfig";
 import { sortClasses } from "../../lib/classHelpers";
 import { getStudentFinalEmail } from "../../utils/authUnify";
+import { uriToBase64 } from "../../utils/fileUtils";
 import {
     AssignmentModalState,
     PERMISSION_KEYS,
@@ -2159,9 +2160,10 @@ export function useManageUsers({
       setUploadingImage(true);
       const uri = result.assets[0].uri;
       const base64 = result.assets[0].base64;
-      const profileImageValue = base64
-        ? `data:image/jpeg;base64,${base64}`
-        : uri;
+      let profileImageValue = base64 ? `data:image/jpeg;base64,${base64}` : uri;
+      if (!profileImageValue || profileImageValue.startsWith("blob:") || !profileImageValue.startsWith("data:")) {
+        profileImageValue = await uriToBase64(uri);
+      }
 
       await updateDoc(doc(db, "users", user.uid), {
         "profile.profileImage": profileImageValue,

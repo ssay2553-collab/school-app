@@ -94,7 +94,7 @@ export const useFeeBilling = ({
             academicYear,
             term,
             termBill: newBill,
-            arrears: s.previousBalance || 0,
+            arrears: s.hasRecordInTerm ? (s.arrears || 0) : (s.previousBalance || 0),
             discount: (s.discount || 0) + profileDiscount,
             amountPaid: s.amountPaid || 0,
             balance: newBalance,

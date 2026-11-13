@@ -86,6 +86,7 @@ export interface FinancialSummaryData {
   ledgerItems: Array<{
     name: string;
     billed: number;
+    discount?: number;
     paid: number;
     balance: number;
   }>;
@@ -136,6 +137,46 @@ export interface FeeReceiptData {
   receivedFrom: string;
   processedBy: string;
   currencySymbol: string;
+}
+
+export interface DailyStaffLog {
+  date: string;
+  dayName: string;
+  status: 'On Time' | 'Late' | 'Absent' | 'Excused' | 'Holiday' | 'Not Logged';
+  checkInTime?: string;
+  checkOutTime?: string;
+  isHoliday?: boolean;
+  holidayTitle?: string;
+  permissionReason?: string;
+}
+
+export interface WeeklyStaffLog {
+  weekLabel: string;
+  startDate: string;
+  endDate: string;
+  holidays: Array<{ date: string; title: string }>;
+  days: Array<{ dayName: string; date: string; formattedDate: string; isHoliday: boolean; holidayTitle?: string }>;
+  staffLogs: Array<{
+    teacherId: string;
+    teacherName: string;
+    teacherEmail?: string;
+    dailyLogs: Record<string, DailyStaffLog>;
+  }>;
+}
+
+export interface StaffAttendancePDFData {
+  timeFilter: string;
+  generatedAt: string;
+  weeks: WeeklyStaffLog[];
+  overallStats: Array<{
+    teacherName: string;
+    teacherEmail?: string;
+    totalDays: number;
+    onTimeCount: number;
+    lateCount: number;
+    absentCount: number;
+    excusedCount: number;
+  }>;
 }
 
 export interface TableColumn {

@@ -194,6 +194,7 @@ export const useFeeStudents = (
                   uniformPaid: feeData.uniformPaid || 0,
                   otherPaid: feeData.otherPaid || 0,
                   totalPayable: totalBilled,
+                  arrears: feeData.arrears || 0,
                   editCount: feeData.editCount || 0,
                 };
               }),
@@ -212,7 +213,12 @@ export const useFeeStudents = (
       } finally {
         if (myRequestId === requestIdRef.current) {
           isFetchingRef.current = false;
-          // Note: setLoading(false) moved up to Step 1 for "Quick Load"
+          if (isFirstLoad) {
+            setLoading(false);
+          } else {
+            setFetchingMore(false);
+          }
+          setRefreshing(false);
         }
       }
     },

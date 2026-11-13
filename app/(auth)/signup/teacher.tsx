@@ -184,6 +184,13 @@ export default function TeacherSignupScreen() {
       router.replace("/(auth)/login/teacher");
     } catch (err: any) {
       console.error("Teacher signup error:", err);
+      try {
+        if (auth.currentUser) {
+          await auth.signOut();
+        }
+      } catch (signOutErr) {
+        console.error("Sign out error:", signOutErr);
+      }
       let msg = err.message;
       if (err.code === 'auth/email-already-in-use') msg = "This email is already registered.";
       showToast({ message: msg, type: "error" });

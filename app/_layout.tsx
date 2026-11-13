@@ -21,6 +21,7 @@ import { AcademicProvider } from "../contexts/AcademicContext";
 import DevSchoolSwitcher from "./DevSchoolSwitcher";
 import { PWAInstallPrompt } from "../components/PWAInstallPrompt";
 import { GlobalNotificationListener } from "../components/GlobalNotificationListener";
+import { auth } from "../firebaseConfig";
 
 if (Platform.OS !== "web") {
   Notifications.setNotificationHandler({
@@ -69,24 +70,29 @@ function RouteGuard() {
     }
 
     if (appUser && inAuthGroup) {
-      switch (appUser.role) {
-        case "admin":
-          router.replace("/admin-dashboard");
-          break;
-        case "teacher":
-          router.replace("/teacher-dashboard");
-          break;
-        case "student":
-          router.replace("/student-dashboard");
-          break;
-        case "parent":
-          router.replace("/parent-dashboard");
-          break;
-        case "staff":
-          router.replace("/staff-dashboard");
-          break;
-        default:
-          router.replace("/");
+      const role = (appUser.role || "").toLowerCase();
+      const adminRole = (appUser.adminRole || "").toLowerCase();
+
+      const isAdmin = role.includes("admin") || adminRole !== "";
+      const isTeacher =
+        role === "teacher" ||
+        role === "staff" ||
+        (appUser.classes || []).length > 0 ||
+        (appUser.subjects || []).length > 0;
+      const isParent = role === "parent";
+      const isStudent = role === "student";
+
+      if (isAdmin) {
+        router.replace("/admin-dashboard");
+      } else if (isTeacher) {
+        router.replace("/teacher-dashboard");
+      } else if (isStudent) {
+        router.replace("/student-dashboard");
+      } else if (isParent) {
+        router.replace("/parent-dashboard");
+      } else {
+        // Invalid or missing role while in auth group -> sign out so user can log in/sign up without looping
+        auth.signOut().catch(() => {});
       }
     }
   }, [appUser, loading, segments, navigationState?.key]);

@@ -18,6 +18,7 @@ import { SCHOOL_CONFIG } from "../../constants/Config";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { auth } from "../../firebaseConfig";
+import { isAdminUser } from "../../utils/authUnify";
 
 export default function DashboardLayout() {
   const { appUser, loading } = useAuth();
@@ -39,12 +40,10 @@ export default function DashboardLayout() {
       return;
     }
 
-    const role = (appUser.role || "").toLowerCase();
-    const adminRole = (appUser.adminRole || "").toLowerCase();
-    const isAuthorized = role.includes("admin") || role === "superadmin" || !!adminRole;
+    const isAuthorized = isAdminUser(appUser);
 
     if (!isAuthorized) {
-      console.log(`[AdminLayout] Unauthorized: role=${role}, adminRole=${adminRole}`);
+      console.log(`[AdminLayout] Unauthorized user: role=${appUser.role}, adminRole=${appUser.adminRole}`);
       router.replace("/");
     }
   }, [appUser, isSyncing]);
@@ -108,9 +107,7 @@ export default function DashboardLayout() {
 
   if (!appUser) return null;
 
-  const role = (appUser.role || "").toLowerCase();
-  const adminRole = (appUser.adminRole || "").toLowerCase();
-  const isAuthorized = role.includes("admin") || role === "superadmin" || !!adminRole;
+  const isAuthorized = isAdminUser(appUser);
 
   if (!isAuthorized) {
     return null;

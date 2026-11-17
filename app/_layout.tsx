@@ -22,6 +22,7 @@ import DevSchoolSwitcher from "./DevSchoolSwitcher";
 import { PWAInstallPrompt } from "../components/PWAInstallPrompt";
 import { GlobalNotificationListener } from "../components/GlobalNotificationListener";
 import { auth } from "../firebaseConfig";
+import { isAdminUser } from "../utils/authUnify";
 
 if (Platform.OS !== "web") {
   Notifications.setNotificationHandler({
@@ -70,15 +71,15 @@ function RouteGuard() {
     }
 
     if (appUser && inAuthGroup) {
+      const isAdmin = isAdminUser(appUser);
       const role = (appUser.role || "").toLowerCase();
-      const adminRole = (appUser.adminRole || "").toLowerCase();
-
-      const isAdmin = role.includes("admin") || adminRole !== "";
       const isTeacher =
-        role === "teacher" ||
-        role === "staff" ||
-        (appUser.classes || []).length > 0 ||
-        (appUser.subjects || []).length > 0;
+        !isAdmin && (
+          role === "teacher" ||
+          role === "staff" ||
+          (appUser.classes || []).length > 0 ||
+          (appUser.subjects || []).length > 0
+        );
       const isParent = role === "parent";
       const isStudent = role === "student";
 

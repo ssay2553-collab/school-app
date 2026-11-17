@@ -168,39 +168,276 @@ export const getGradeDetails = (score: number, maxScore: number = 100) => {
  * Generates automated remarks based on aggregate score or average performance.
  * Suitable for Admin and Class Teacher remarks.
  */
+export interface SubjectTrendItem {
+  subject: string;
+  score: number;
+  previousScore?: number;
+  scoreChange?: number;
+  trend: "improved" | "declined" | "stable" | "new";
+  grade: string;
+  previousGrade?: string;
+  recommendation: string;
+}
+
+export interface SubjectAnalysis {
+  weakSubjects: SubjectTrendItem[];
+  decliningSubjects: SubjectTrendItem[];
+  improvedSubjects: SubjectTrendItem[];
+  strongSubjects: SubjectTrendItem[];
+  averageScore: number;
+  previousAverageScore?: number;
+  averageChange?: number;
+  overallTrend: "improved" | "declined" | "stable" | "new";
+}
+
+/**
+ * Subject-specific remediation advice generator for parents and teachers.
+ */
+export const getSubjectRemediationAdvice = (subjectName: string): string => {
+  const s = (subjectName || "").toLowerCase();
+  if (s.includes("math") || s.includes("arithmetic") || s.includes("algebra") || s.includes("geometry") || s.includes("quant")) {
+    return "Requires daily 20-minute timed problem drills, focused practice on word problems, basic formulas, and multiplication tables.";
+  }
+  if (s.includes("sci") || s.includes("physic") || s.includes("chem") || s.includes("bio") || s.includes("nature") || s.includes("environ")) {
+    return "Encourage diagram drawing, reviewing daily experiment/class notes, and using visual concept summaries.";
+  }
+  if (s.includes("eng") || s.includes("read") || s.includes("lang") || s.includes("lit") || s.includes("french") || s.includes("twi") || s.includes("ghanaian") || s.includes("verbal")) {
+    return "Daily reading for 30 minutes, keeping a vocabulary/spelling notebook, and writing short weekly summary paragraphs.";
+  }
+  if (s.includes("social") || s.includes("history") || s.includes("geography") || s.includes("civic") || s.includes("rme") || s.includes("relig") || s.includes("citizenship")) {
+    return "Review class topic summaries regularly and practice answering structured essay and past exam questions.";
+  }
+  if (s.includes("ict") || s.includes("comp") || s.includes("cod") || s.includes("tech") || s.includes("robot")) {
+    return "Combine practical computer/device drills with key terminology revision and practical exercises.";
+  }
+  if (s.includes("creative") || s.includes("art") || s.includes("draw") || s.includes("music") || s.includes("bdt")) {
+    return "Encourage project practice, sketch drawing, and hands-on assignment completion.";
+  }
+  return "Dedicated daily revision, extra practice exercises, and focused consultation with the subject teacher.";
+};
+
+/**
+ * Compares current performance against previous performance to isolate trends, declining subjects, weak subjects, and growth.
+ */
+export const analyzeSubjectPerformance = (
+  subjects: any[],
+  previousSubjects?: any[],
+): SubjectAnalysis => {
+  if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
+    return {
+      weakSubjects: [],
+      decliningSubjects: [],
+      improvedSubjects: [],
+      strongSubjects: [],
+      averageScore: 0,
+      overallTrend: "new",
+    };
+  }
+
+  const parseSubjectList = (list: any[]) => {
+    return list.map((s) => {
+      const rawScore = parseFloat(s.total ?? s.score ?? s.examsScore ?? 0);
+      const score = isNaN(rawScore) ? 0 : rawScore;
+      const name = String(s.subject || s.name || s.subjectName || "Subject").trim();
+      const grade = String(s.grade || s.gradeName || "").toUpperCase();
+      return { name, score, grade };
+    });
+  };
+
+  const currentList = parseSubjectList(subjects);
+  const prevList = previousSubjects && Array.isArray(previousSubjects) ? parseSubjectList(previousSubjects) : [];
+
+  const prevMap = new Map<string, { score: number; grade: string }>();
+  prevList.forEach((p) => {
+    prevMap.set(p.name.toLowerCase(), { score: p.score, grade: p.grade });
+  });
+
+  const totalCurrentSum = currentList.reduce((acc, c) => acc + c.score, 0);
+  const averageScore = Math.round(currentList.length > 0 ? totalCurrentSum / currentList.length : 0);
+
+  let totalPrevSum = 0;
+  let prevCount = 0;
+
+  const analyzedList: SubjectTrendItem[] = currentList.map((c) => {
+    const prevKey = c.name.toLowerCase();
+    const prevData = prevMap.get(prevKey);
+    let previousScore: number | undefined = undefined;
+    let previousGrade: string | undefined = undefined;
+    let scoreChange: number | undefined = undefined;
+    let trend: "improved" | "declined" | "stable" | "new" = "new";
+
+    if (prevData !== undefined) {
+      previousScore = Math.round(prevData.score);
+      previousGrade = prevData.grade;
+      scoreChange = Math.round(c.score - prevData.score);
+      totalPrevSum += prevData.score;
+      prevCount++;
+
+      if (scoreChange >= 5) trend = "improved";
+      else if (scoreChange <= -5) trend = "declined";
+      else trend = "stable";
+    }
+
+    return {
+      subject: c.name,
+      score: Math.round(c.score),
+      previousScore,
+      scoreChange,
+      trend,
+      grade: c.grade || (c.score < 40 ? "F9" : c.score < 50 ? "E8" : "D7"),
+      previousGrade,
+      recommendation: getSubjectRemediationAdvice(c.name),
+    };
+  });
+
+  const previousAverageScore = prevCount > 0 ? Math.round(totalPrevSum / prevCount) : undefined;
+  const averageChange = previousAverageScore !== undefined ? averageScore - previousAverageScore : undefined;
+
+  let overallTrend: "improved" | "declined" | "stable" | "new" = "new";
+  if (averageChange !== undefined) {
+    if (averageChange >= 3) overallTrend = "improved";
+    else if (averageChange <= -3) overallTrend = "declined";
+    else overallTrend = "stable";
+  }
+
+  // Declining subjects (scoreChange <= -5)
+  const decliningSubjects = analyzedList.filter((s) => s.trend === "declined").sort((a, b) => (a.scoreChange || 0) - (b.scoreChange || 0));
+
+  // Improved subjects (scoreChange >= 5)
+  const improvedSubjects = analyzedList.filter((s) => s.trend === "improved").sort((a, b) => (b.scoreChange || 0) - (a.scoreChange || 0));
+
+  // Weak subjects: currentScore < 50 or failing grade
+  const weakList = analyzedList.filter((s) => {
+    const isFailingGrade = ["F9", "E8", "D7", "E", "F", "9", "8", "7", "WEAK", "FAIL", "NEEDS IMPROVEMENT"].includes(s.grade);
+    return s.score < 50 || isFailingGrade;
+  }).sort((a, b) => a.score - b.score);
+
+  let weakSubjects = weakList;
+  if (weakSubjects.length === 0 && averageScore < 60 && analyzedList.length > 2) {
+    weakSubjects = [...analyzedList].sort((a, b) => a.score - b.score).slice(0, 2);
+  }
+
+  // Strong subjects: currentScore >= 70 or high grade
+  const strongSubjects = analyzedList.filter((s) => {
+    const isHighGrade = ["A1", "B2", "B3", "A", "B", "1", "2", "3", "EXCELLENT", "VERY GOOD"].includes(s.grade);
+    return s.score >= 70 || isHighGrade;
+  }).sort((a, b) => b.score - a.score);
+
+  return {
+    weakSubjects,
+    decliningSubjects,
+    improvedSubjects,
+    strongSubjects,
+    averageScore,
+    previousAverageScore,
+    averageChange,
+    overallTrend,
+  };
+};
+
+/**
+ * Generates automated, vivid remarks comparing previous performance to current performance.
+ * Suitable for Admin and Class Teacher remarks.
+ */
 export const getAutoRemarks = (
   aggregate: number,
   isTeacher: boolean = false,
+  subjects?: any[],
+  previousSubjects?: any[],
 ) => {
   const agg = aggregate || 54;
-  let remark = "";
 
-  if (agg <= 10) {
-    remark = isTeacher
-      ? "An exceptionally brilliant student. Maintains high standards in all learning areas."
-      : "An outstanding academic record. Your consistent excellence across all subjects is highly commendable. Keep it up!";
-  } else if (agg <= 20) {
-    remark = isTeacher
-      ? "A very diligent and hardworking student. Shows great interest in all subjects."
-      : "A very strong overall performance. You have demonstrated high competence in most areas. Maintain this focus.";
-  } else if (agg <= 30) {
-    remark = isTeacher
-      ? "Good performance. Can do better if more attention is paid to details."
-      : "A good performance overall. However, there is still room to convert your potentials into higher grades with extra effort.";
-  } else if (agg <= 40) {
-    remark = isTeacher
-      ? "Average performance. Needs to be more serious with academic work."
-      : "Average performance. You need to put in more study hours, especially in your core subjects, to improve your standing.";
-  } else if (agg <= 50) {
-    remark = isTeacher
-      ? "Performance is below average. Requires intensive study and supervision."
-      : "Performance is below expectations. You are capable of better results if you minimize distractions and focus on your studies.";
-  } else {
-    remark = isTeacher
-      ? "Poor performance. Needs to repeat or seek remedial help."
-      : "A very weak performance this term. Intensive remedial support and a change in study habits are urgently required.";
+  if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
+    if (agg <= 10) {
+      return isTeacher
+        ? "An exceptionally brilliant student. Maintains high standards in all learning areas."
+        : "An outstanding academic record. Your consistent excellence across all subjects is highly commendable. Keep it up!";
+    } else if (agg <= 20) {
+      return isTeacher
+        ? "A very diligent and hardworking student. Shows great interest in all subjects."
+        : "A very strong overall performance. You have demonstrated high competence in most areas. Maintain this focus.";
+    } else if (agg <= 30) {
+      return isTeacher
+        ? "Good performance overall. Can achieve higher grades if more attention is paid to details."
+        : "A good performance overall. However, there is still room to convert your potentials into higher grades with extra effort.";
+    } else if (agg <= 40) {
+      return isTeacher
+        ? "Average performance. Needs to be more serious with academic work and revision."
+        : "Average performance. You need to put in more study hours, especially in core subjects, to improve your standing.";
+    } else if (agg <= 50) {
+      return isTeacher
+        ? "Performance is below average. Requires intensive study and home supervision."
+        : "Performance is below expectations. Minimizing distractions and focusing on weak areas will yield better results.";
+    } else {
+      return isTeacher
+        ? "Poor performance this term. Urgent remedial support required across subjects."
+        : "A very weak performance this term. Intensive remedial support and a change in study habits are urgently required.";
+    }
   }
-  return remark;
+
+  const analysis = analyzeSubjectPerformance(subjects, previousSubjects);
+  const { weakSubjects, decliningSubjects, improvedSubjects, strongSubjects, averageScore, averageChange } = analysis;
+
+  const improvedStr = improvedSubjects.length > 0
+    ? improvedSubjects.slice(0, 2).map((s) => `${s.subject} (${s.score}%, +${s.scoreChange}%)`).join(", ")
+    : "";
+
+  const decliningStr = decliningSubjects.length > 0
+    ? decliningSubjects.slice(0, 3).map((s) => `${s.subject} (dropped from ${s.previousScore}% to ${s.score}%)`).join(", ")
+    : "";
+
+  const weakStr = weakSubjects.length > 0
+    ? weakSubjects.map((s) => `${s.subject} (${s.score}%)`).join(", ")
+    : "";
+
+  const strongStr = strongSubjects.length > 0
+    ? strongSubjects.slice(0, 3).map((s) => `${s.subject} (${s.score}%)`).join(", ")
+    : "";
+
+  if (isTeacher) {
+    let msg = "";
+    if (decliningSubjects.length > 0) {
+      if (improvedSubjects.length > 0) {
+        msg += `Commendable growth achieved in ${improvedStr}. `;
+      }
+      msg += `However, a noticeable drop in performance is observed in ${decliningStr}. Urgent action required: mandatory daily problem-solving drills, extra homework supervision, and targeted remedial sessions.`;
+      return msg;
+    } else if (weakSubjects.length > 0) {
+      if (strongSubjects.length > 0) {
+        msg += `Demonstrates commendable effort in ${strongStr}. `;
+      }
+      msg += `However, struggles significantly in ${weakStr}. Recommended Action: Enrollment in after-school remedial guidance, daily problem-solving drills, and structured home study.`;
+      return msg;
+    } else if (improvedSubjects.length > 0) {
+      return `Impressive academic growth this term with an overall average increase of +${averageChange}%, featuring strong gains in ${improvedStr}. Keep up the excellent momentum!`;
+    } else if (strongSubjects.length > 0) {
+      return `An outstanding and highly disciplined student. Consistently excels across learning areas, especially in ${strongStr}. Keep up the exemplary performance!`;
+    } else {
+      return `Satisfactory effort shown overall with an average score of ${averageScore}%. Encouraged to maintain steady study habits and aim higher next term.`;
+    }
+  } else {
+    // Admin Remarks
+    let msg = "";
+    if (decliningSubjects.length > 0) {
+      if (improvedSubjects.length > 0) {
+        msg += `Praiseworthy progress recorded in ${improvedStr}. `;
+      }
+      msg += `However, comparative evaluation reveals a sharp decline in ${decliningStr}. Immediate parent-teacher collaboration and daily supervised home study are strongly advised to reverse this trend.`;
+      return msg;
+    } else if (weakSubjects.length > 0) {
+      if (strongSubjects.length > 0) {
+        msg += `Impressive results achieved in ${strongStr}. `;
+      }
+      msg += `However, urgent academic focus is required in ${weakStr}. With daily supervised practice, teacher check-ins, and active parent monitoring in these specific subjects, top honors can be achieved next term.`;
+      return msg;
+    } else if (improvedSubjects.length > 0) {
+      return `A commendable academic upward trend this term (+${averageChange}% average gain), highlighted by notable progress in ${improvedStr}. Consistently building solid academic mastery.`;
+    } else if (strongSubjects.length > 0) {
+      return `An exceptional academic record with strong mastery in ${strongStr}. Demonstrates high standards of academic discipline and excellence across all subjects.`;
+    } else {
+      return `A fair performance this term with an overall average of ${averageScore}%. Regular home revision and active participation in class activities are recommended for further progress.`;
+    }
+  }
 };
 
 /**

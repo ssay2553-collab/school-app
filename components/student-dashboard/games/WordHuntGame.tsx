@@ -12,6 +12,7 @@ import { safeSpeak, safeStop } from "../../../utils/safeSpeech";
 import SVGIcon from "../../SVGIcon";
 import { usePersistedState } from "../../../hooks/student-dashboard/usePersistedState";
 import { WORD_DATA, REMARKS, WRONG_REMARKS } from "./GameConstants";
+import { CelebrationModal } from "./CelebrationModal";
 import { SHADOWS } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
 import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
@@ -96,20 +97,16 @@ export const WordHuntGame: React.FC<WordHuntGameProps> = ({ onExit }) => {
 
   if (showSummary)
     return (
-      <View style={styles.summaryContainer}>
-        <Text style={styles.summaryTitle}>
-          {score >= 4 ? "Well Done! 🌟" : "Good Try! 👍"}
-        </Text>
-        <Text style={styles.summaryText}>You found {score} / 5 words.</Text>
-        <TouchableOpacity style={styles.summaryButton} onPress={handleNextLevel}>
-          <Text style={styles.summaryButtonText}>
-            {score >= 4 ? "Next Level" : "Retry Level"}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.exitButton} onPress={onExit}>
-          <Text style={styles.exitButtonText}>Back to Menu</Text>
-        </TouchableOpacity>
-      </View>
+      <CelebrationModal
+        visible={showSummary}
+        isVictory={score >= 4}
+        isPerfectScore={score === words.length}
+        title={score >= 4 ? "WELL DONE! 🌟" : "GOOD TRY! 👍"}
+        subtitle={`Word Hunt Level ${level} • Found ${score} / ${words.length} Words`}
+        scoreText={`${score}/${words.length} pts`}
+        onPlayAgain={handleNextLevel}
+        onExit={onExit}
+      />
     );
 
   if (!words[index]) return <ActivityIndicator color="#fff" />;

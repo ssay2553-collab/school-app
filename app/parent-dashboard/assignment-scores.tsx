@@ -52,6 +52,25 @@ interface AssignmentDetails {
 
 const PAGE_SIZE = 10;
 
+const formatResponseText = (val: any): string => {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (typeof val === "object") {
+    if (val.value !== undefined && typeof val.value !== "object") return String(val.value);
+    if (val.text !== undefined && typeof val.text !== "object") return String(val.text);
+    if (val.name !== undefined && typeof val.name !== "object") return String(val.name);
+    if (val.title !== undefined && typeof val.title !== "object") return String(val.title);
+    if (val.url !== undefined && typeof val.url !== "object") return String(val.url);
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return "[Object]";
+    }
+  }
+  return String(val);
+};
+
 export default function AssignmentScores() {
   const { appUser } = useAuth();
   const router = useRouter();
@@ -170,13 +189,17 @@ export default function AssignmentScores() {
   const renderScoreItem = ({ item, index }: { item: ScoreRecord; index: number }) => {
     const isExpanded = expandedId === item.id;
     const details = assignmentMeta[item.assignmentId];
-    
+    const safeTitle = formatResponseText(item.assignmentTitle || "Class Assignment");
+    const safeSubject = formatResponseText(item.subjectId || "");
+    const safeStudentName = formatResponseText(item.studentName || "");
+    const safeMarks = typeof item.marks === "object" ? (item.marks as any)?.value ?? 0 : (item.marks ?? 0);
+
     return (
       <Animatable.View animation="fadeInUp" delay={Math.min(index, 8) * 50} key={item.id} style={styles.card}>
         <TouchableOpacity onPress={() => toggleExpand(item)} activeOpacity={0.8}>
           <View style={styles.cardHeader}>
             <View style={[styles.subjectBadge, { backgroundColor: COLORS.primary + "15" }]}>
-              <Text style={[styles.subjectText, { color: COLORS.primary }]}>{item.subjectId}</Text>
+              <Text style={[styles.subjectText, { color: COLORS.primary }]}>{safeSubject}</Text>
             </View>
             <View style={styles.headerRight}>
               <Text style={styles.dateText}>{moment(parseDateSafely(item.markedAt) || item.markedAt).format("DD MMM, YYYY")}</Text>
@@ -184,13 +207,13 @@ export default function AssignmentScores() {
             </View>
           </View>
 
-          <Text style={styles.titleText}>{item.assignmentTitle || "Class Assignment"}</Text>
-          <Text style={styles.studentName}>Student: {item.studentName}</Text>
+          <Text style={styles.titleText}>{safeTitle}</Text>
+          <Text style={styles.studentName}>Student: {safeStudentName}</Text>
 
           <View style={styles.scoreRow}>
             <Text style={styles.scoreLabel}>Final Grade</Text>
             <View style={[styles.scoreBox, { backgroundColor: COLORS.primary }]}>
-              <Text style={styles.scoreValue}>{item.marks}</Text>
+              <Text style={styles.scoreValue}>{safeMarks}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -201,21 +224,25 @@ export default function AssignmentScores() {
               <Text style={styles.infoNote}>Detailed review is only available for interactive assignments.</Text>
             ) : fetchingDetails && !details ? (
               <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 15 }} />
-            ) : details ? (
+            ) : details && Array.isArray(details.questions) ? (
               <View style={styles.reviewList}>
                 <Text style={styles.reviewTitle}>QUESTIONS & ANSWERS</Text>
                 {details.questions.map((q, qIdx) => {
-                  const score = item.questionScores?.[qIdx] ?? 0;
-                  const response = item.responses?.[qIdx] || "Not answered";
+                  const rawScore = item.questionScores?.[qIdx];
+                  const scoreVal = typeof rawScore === "object" ? (rawScore as any)?.value ?? 0 : (rawScore ?? 0);
+                  const rawResponse = item.responses?.[qIdx];
+                  const responseText = rawResponse !== undefined ? formatResponseText(rawResponse) || "Not answered" : "Not answered";
+                  const questionText = formatResponseText(q?.text || q);
+
                   return (
                     <View key={qIdx} style={styles.reviewItem}>
-                      <Text style={styles.questionText}>{qIdx + 1}. {q.text}</Text>
+                      <Text style={styles.questionText}>{qIdx + 1}. {questionText}</Text>
                       <View style={styles.answerBox}>
                         <Text style={styles.answerLabel}>Child's Response:</Text>
-                        <Text style={styles.answerText}>{response}</Text>
+                        <Text style={styles.answerText}>{responseText}</Text>
                       </View>
                       <View style={styles.scoreBadge}>
-                        <Text style={styles.scoreBadgeText}>Points: {score}</Text>
+                        <Text style={styles.scoreBadgeText}>Points: {scoreVal}</Text>
                       </View>
                     </View>
                   );

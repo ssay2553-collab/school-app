@@ -8,7 +8,6 @@ import {
   FlatList,
   Linking,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -19,6 +18,7 @@ import {
   BackHandler,
   Platform,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { TierProtectedRoute } from "../../components/TierProtectedRoute";
@@ -418,6 +418,7 @@ export default function MarkAssignment() {
     updateFeedback,
     subjects,
   } = useMarkAssignment();
+  const insets = useSafeAreaInsets();
   const isNavigating = useRef(false);
 
   const handleBack = useCallback(() => {
@@ -506,7 +507,7 @@ export default function MarkAssignment() {
 
   return (
     <TierProtectedRoute featureId="teacher_grading">
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar barStyle="light-content" />
 
       <View style={styles.headerArea}>
@@ -532,6 +533,34 @@ export default function MarkAssignment() {
         ListHeaderComponent={
           <Animatable.View animation="fadeInDown" duration={500} style={styles.configCard}>
             <Text style={styles.sectionLabel}>GRADING CONFIGURATION</Text>
+
+            {assignments.length > 0 && (
+              <View style={styles.summaryBar}>
+                {(() => {
+                  const totalUnmarked = assignments.reduce((acc, a) => acc + (a.unmarkedCount || 0), 0);
+                  const countWithPending = assignments.filter((a) => (a.unmarkedCount || 0) > 0).length;
+
+                  if (totalUnmarked > 0) {
+                    return (
+                      <View style={styles.summaryBadgePending}>
+                        <SVGIcon name="alert-circle" size={16} color="#D97706" />
+                        <Text style={styles.summaryTextPending}>
+                          {totalUnmarked} unmarked submission{totalUnmarked > 1 ? "s" : ""} pending across {countWithPending} assignment{countWithPending > 1 ? "s" : ""}
+                        </Text>
+                      </View>
+                    );
+                  }
+                  return (
+                    <View style={styles.summaryBadgeDone}>
+                      <SVGIcon name="checkmark-circle" size={16} color="#059669" />
+                      <Text style={styles.summaryTextDone}>
+                        All active assignments in this subject have been graded!
+                      </Text>
+                    </View>
+                  );
+                })()}
+              </View>
+            )}
 
             <Text style={styles.label}>TARGET CLASS</Text>
             <ScrollView
@@ -612,28 +641,70 @@ export default function MarkAssignment() {
                   style={{ marginLeft: 10 }}
                 />
               ) : assignments.length > 0 ? (
-                assignments.map((a) => (
-                  <TouchableOpacity
-                    key={a.id}
-                    onPress={() => setSelectedAssignment(a)}
-                    style={[
-                      styles.bubble,
-                      selectedAssignment?.id === a.id && {
-                        backgroundColor: COLORS.secondary,
-                        borderColor: COLORS.secondary,
-                      },
-                    ]}
-                  >
-                    <Text
+                assignments.map((a) => {
+                  const isSelected = selectedAssignment?.id === a.id;
+                  const count = a.unmarkedCount || 0;
+                  return (
+                    <TouchableOpacity
+                      key={a.id}
+                      onPress={() => setSelectedAssignment(a)}
                       style={[
-                        styles.bubbleText,
-                        selectedAssignment?.id === a.id && { color: "#fff" },
+                        styles.bubble,
+                        styles.assignmentBubble,
+                        isSelected && {
+                          backgroundColor: COLORS.secondary,
+                          borderColor: COLORS.secondary,
+                        },
                       ]}
                     >
-                      {a.title}
-                    </Text>
-                  </TouchableOpacity>
-                ))
+                      <Text
+                        style={[
+                          styles.bubbleText,
+                          isSelected && { color: "#fff" },
+                        ]}
+                      >
+                        {a.title}
+                      </Text>
+                      {count > 0 ? (
+                        <View
+                          style={[
+                            styles.unmarkedBadge,
+                            isSelected
+                              ? styles.unmarkedBadgeSelected
+                              : styles.unmarkedBadgeUnselected,
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.unmarkedBadgeText,
+                              isSelected
+                                ? styles.unmarkedBadgeTextSelected
+                                : styles.unmarkedBadgeTextUnselected,
+                            ]}
+                          >
+                            {count} pending
+                          </Text>
+                        </View>
+                      ) : (
+                        <View
+                          style={[
+                            styles.unmarkedBadgeDone,
+                            isSelected && { backgroundColor: "rgba(255,255,255,0.2)" },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.unmarkedBadgeDoneText,
+                              isSelected && { color: "#fff" },
+                            ]}
+                          >
+                            ✓ 0
+                          </Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })
               ) : (
                 <Text style={[styles.emptyHint, { color: COLORS.secondary, fontWeight: '700' }]}>
                   {selectedSubject ? "No assignments found for this subject" : "Select a subject to view assignments"}
@@ -645,7 +716,7 @@ export default function MarkAssignment() {
         data={submissions}
         keyExtractor={(item) => item.id}
         renderItem={renderSubmission}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom + 20, 40) }]}
         showsVerticalScrollIndicator={false}
         initialNumToRender={5}
         maxToRenderPerBatch={5}
@@ -1138,5 +1209,77 @@ const styles = StyleSheet.create({
     color: "#64748B",
     fontSize: 14,
     lineHeight: 22,
+  },
+  assignmentBubble: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  unmarkedBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  unmarkedBadgeUnselected: {
+    backgroundColor: "#FEE2E2",
+  },
+  unmarkedBadgeSelected: {
+    backgroundColor: "#FFF",
+  },
+  unmarkedBadgeText: {
+    fontSize: 10,
+    fontWeight: "900",
+  },
+  unmarkedBadgeTextUnselected: {
+    color: "#EF4444",
+  },
+  unmarkedBadgeTextSelected: {
+    color: COLORS.secondary,
+  },
+  unmarkedBadgeDone: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: "#E2E8F0",
+  },
+  unmarkedBadgeDoneText: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#64748B",
+  },
+  summaryBar: {
+    marginBottom: 12,
+  },
+  summaryBadgePending: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEF3C7",
+    borderColor: "#FCD34D",
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  summaryTextPending: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#B45309",
+  },
+  summaryBadgeDone: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#ECFDF5",
+    borderColor: "#A7F3D0",
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  summaryTextDone: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#047857",
   },
 });

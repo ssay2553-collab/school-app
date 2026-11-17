@@ -17,6 +17,9 @@ import { WordHuntGame } from "../../components/student-dashboard/games/WordHuntG
 import { ScrambleGame } from "../../components/student-dashboard/games/ScrambleGame";
 import { WritingGame } from "../../components/student-dashboard/games/WritingGame";
 import { MathSprintGame } from "../../components/student-dashboard/games/MathSprintGame";
+import { IdiomGame } from "../../components/student-dashboard/games/IdiomGame";
+import { FormWordsGame } from "../../components/student-dashboard/games/FormWordsGame";
+import { SpellingBeeGame } from "../../components/student-dashboard/games/SpellingBeeGame";
 import { MenuCard } from "../../components/student-dashboard/games/MenuCard";
 import { Scoreboard } from "../../components/student-dashboard/games/Scoreboard";
 import { useRef } from "react";
@@ -38,6 +41,12 @@ export default function GamesScreen() {
         return <MathSprintGame onExit={() => setMode("menu")} />;
       case "writing":
         return <WritingGame onExit={() => setMode("menu")} />;
+      case "idioms":
+        return <IdiomGame onExit={() => setMode("menu")} />;
+      case "formwords":
+        return <FormWordsGame onExit={() => setMode("menu")} />;
+      case "spelling":
+        return <SpellingBeeGame onExit={() => setMode("menu")} />;
       case "scoreboard":
         return <Scoreboard onBack={() => setMode("menu")} />;
       default:
@@ -116,6 +125,24 @@ export default function GamesScreen() {
               icon="create"
               color="#EC4899"
               onPress={() => setMode("writing")}
+            />
+            <MenuCard
+              title="Idiom Quest"
+              icon="sparkles"
+              color="#A855F7"
+              onPress={() => setMode("idioms")}
+            />
+            <MenuCard
+              title="Form Words"
+              icon="flash"
+              color="#2563EB"
+              onPress={() => setMode("formwords")}
+            />
+            <MenuCard
+              title="Spelling Bee"
+              icon="mic"
+              color="#D97706"
+              onPress={() => setMode("spelling")}
             />
             <MenuCard
               title="Scoreboard"

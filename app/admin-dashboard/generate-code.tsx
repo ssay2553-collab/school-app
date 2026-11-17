@@ -26,6 +26,7 @@ import { db } from '../../firebaseConfig';
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import SVGIcon from "../../components/SVGIcon";
 import { sortClasses } from "../../lib/classHelpers";
+import { isAdminUser } from "../../utils/authUnify";
 
 interface ClassItem {
   id: string;
@@ -63,7 +64,7 @@ const GenerateCodeScreen = () => {
   const cardBg = "#FFFFFF";
 
   // GRANT ACCESS TO ALL ADMIN USERS
-  const isAuthorized = useMemo(() => appUser?.role?.toLowerCase() === 'admin', [appUser]);
+  const isAuthorized = useMemo(() => isAdminUser(appUser), [appUser]);
 
   useEffect(() => {
     if (!isAuthorized) return;

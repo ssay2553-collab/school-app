@@ -12,6 +12,7 @@ import { safeSpeak, safeStop } from "../../../utils/safeSpeech";
 import SVGIcon from "../../SVGIcon";
 import { usePersistedState } from "../../../hooks/student-dashboard/usePersistedState";
 import { MATH_SPRINT_DATA, REMARKS, WRONG_REMARKS, MathQuestion } from "./GameConstants";
+import { CelebrationModal } from "./CelebrationModal";
 import { SHADOWS } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
 import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
@@ -182,25 +183,16 @@ export const MathSprintGame: React.FC<MathSprintGameProps> = ({ onExit }) => {
 
   if (showSummary) {
     return (
-      <View style={styles.summaryContainer}>
-        <Text style={styles.summaryTitle}>
-          {score >= 4 ? "Sprint Completed! ⚡🎉" : "Keep Practicing! 💪"}
-        </Text>
-        <Text style={styles.summaryText}>
-          You scored {score} / {questions.length} correct!
-        </Text>
-        {score >= 4 ? (
-          <Text style={styles.summaryBadge}>Level {level} Unlocked! 🚀</Text>
-        ) : null}
-        <TouchableOpacity style={styles.summaryButton} onPress={handleNextLevel}>
-          <Text style={styles.summaryButtonText}>
-            {score >= 4 ? "Next Level ➡️" : "Retry Sprint 🔄"}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.exitButton} onPress={onExit}>
-          <Text style={styles.exitButtonText}>Back to Menu</Text>
-        </TouchableOpacity>
-      </View>
+      <CelebrationModal
+        visible={showSummary}
+        isVictory={score >= 4}
+        isPerfectScore={score === questions.length}
+        title={score >= 4 ? "SPRINT COMPLETED! ⚡" : "KEEP PRACTICING! 💪"}
+        subtitle={`Math Sprint Level ${level} • ${score} / ${questions.length} Correct`}
+        scoreText={`${score}/${questions.length} pts`}
+        onPlayAgain={handleNextLevel}
+        onExit={onExit}
+      />
     );
   }
 

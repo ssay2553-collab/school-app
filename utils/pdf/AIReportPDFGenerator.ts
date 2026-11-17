@@ -1,6 +1,25 @@
 import { rgb } from "pdf-lib";
 import { BasePDFGenerator, FONT_SIZE, MARGIN, PAGE_WIDTH, A4_HEIGHT, A4_WIDTH } from "./BasePDFGenerator";
-import { PDFGenerationOptions } from "./types";
+import { TableColumn } from "./types";
+
+export interface FeeItemDetail {
+  name: string;
+  billed: number;
+  paid: number;
+  discount: number;
+  balance: number;
+  collectionEfficiency: number;
+}
+
+export interface DailyPaymentsDetail {
+  feedingTotal: number;
+  feedingCount: number;
+  busTotal: number;
+  busCount: number;
+  extraTotal: number;
+  extraCount: number;
+  totalDailyAuxiliary: number;
+}
 
 export interface AIReportPDFData {
   title: string;
@@ -10,10 +29,11 @@ export interface AIReportPDFData {
   keyStats: { label: string; value: string; change?: string }[];
   highlights: string[];
   recommendations: string[];
+  feeItemsBreakdown?: FeeItemDetail[];
+  dailyPaymentsBreakdown?: DailyPaymentsDetail;
 }
 
 export class AIReportPDFGenerator extends BasePDFGenerator {
-  // Set useAutoHeader to false so the letterhead ONLY draws once on Page 1
   protected useAutoHeader = false;
 
   protected drawHeader() {
@@ -119,8 +139,8 @@ export class AIReportPDFGenerator extends BasePDFGenerator {
 
     // Executive Summary Box
     if (data.executiveSummary) {
-      this.ensureSpace(50);
-      const summaryBoxHeight = 45;
+      this.ensureSpace(55);
+      const summaryBoxHeight = 50;
 
       this.currentPage.drawRectangle({
         x: MARGIN,
@@ -156,7 +176,7 @@ export class AIReportPDFGenerator extends BasePDFGenerator {
 
     // Key Stats Grid
     if (data.keyStats && data.keyStats.length > 0) {
-      this.ensureSpace(40);
+      this.ensureSpace(45);
       const cardWidth = (PAGE_WIDTH - 12) / Math.min(data.keyStats.length, 4);
       const cardHeight = 36;
       let xOffset = MARGIN;
@@ -183,7 +203,7 @@ export class AIReportPDFGenerator extends BasePDFGenerator {
         this.currentPage.drawText(this.sanitizeText(stat.value), {
           x: xOffset + 6,
           y: this.currentY - 26,
-          size: 11,
+          size: 10.5,
           font: this.boldFont,
           color: rgb(0.1, 0.15, 0.25),
         });
@@ -194,6 +214,9 @@ export class AIReportPDFGenerator extends BasePDFGenerator {
       this.currentY -= cardHeight + 14;
     }
 
+    let renderedFeeTable = false;
+    let renderedAuxTable = false;
+
     // Markdown Content Sections
     const lines = (data.markdownContent || "").split("\n");
     for (let i = 0; i < lines.length; i++) {
@@ -203,7 +226,83 @@ export class AIReportPDFGenerator extends BasePDFGenerator {
         continue;
       }
 
+      // Skip markdown table border/header markup lines since we draw real tables programmatically
+      if (line.startsWith("|") || line.includes("---")) {
+        continue;
+      }
+
       const cleanLine = line.replace(/\*\*/g, "");
+
+      // Check if we should render Fee Ledger Table strictly at Section 9.1
+      if (!renderedFeeTable && data.feeItemsBreakdown && data.feeItemsBreakdown.length > 0 && (cleanLine.includes("9.1") || cleanLine.includes("Itemized Fee Ledger Breakdown"))) {
+        this.ensureSpace(20);
+        this.drawText("ITEMIZED FEE LEDGER BREAKDOWN & CATEGORY ANALYSIS", MARGIN, {
+          size: 9.5,
+          font: this.boldFont,
+          color: this.secondaryColor,
+        });
+        this.currentY -= 8;
+
+        const feeColumns: TableColumn[] = [
+          { header: "Fee Category", width: 130, align: "left" },
+          { header: "Billed (GHS)", width: 75, align: "right" },
+          { header: "Paid (GHS)", width: 75, align: "right" },
+          { header: "Discount", width: 65, align: "right" },
+          { header: "Balance", width: 75, align: "right" },
+          { header: "Eff %", width: 55, align: "right" },
+        ];
+
+        const feeRows = data.feeItemsBreakdown.map((item) => [
+          item.name,
+          `₵${item.billed.toLocaleString()}`,
+          `₵${item.paid.toLocaleString()}`,
+          `₵${item.discount.toLocaleString()}`,
+          `₵${item.balance.toLocaleString()}`,
+          `${item.collectionEfficiency}%`,
+        ]);
+
+        this.drawTable(MARGIN, feeColumns, feeRows, {
+          headerBgColor: this.primaryColor,
+          alternateRowColor: rgb(0.97, 0.98, 1),
+          rowHeight: 18,
+        });
+        renderedFeeTable = true;
+        this.currentY -= 10;
+        continue;
+      }
+
+      // Check if we should render Daily Auxiliary Table strictly at Section 9.2
+      if (!renderedAuxTable && data.dailyPaymentsBreakdown && data.dailyPaymentsBreakdown.totalDailyAuxiliary > 0 && (cleanLine.includes("9.2") || cleanLine.includes("Daily Auxiliary Payments"))) {
+        this.ensureSpace(20);
+        this.drawText("DAILY FINANCIAL PAYMENTS & AUXILIARY ALLOCATIONS", MARGIN, {
+          size: 9.5,
+          font: this.boldFont,
+          color: this.secondaryColor,
+        });
+        this.currentY -= 8;
+
+        const auxColumns: TableColumn[] = [
+          { header: "Auxiliary Category", width: 220, align: "left" },
+          { header: "Total Collected (GHS)", width: 140, align: "right" },
+          { header: "Activity Logs Count", width: 115, align: "right" },
+        ];
+
+        const auxRows = [
+          ["Feeding Fees Allocation", `₵${data.dailyPaymentsBreakdown.feedingTotal.toLocaleString()}`, `${data.dailyPaymentsBreakdown.feedingCount} logs`],
+          ["Bus & Transportation Fees", `₵${data.dailyPaymentsBreakdown.busTotal.toLocaleString()}`, `${data.dailyPaymentsBreakdown.busCount} logs`],
+          ["Extra Classes & Enrichment", `₵${data.dailyPaymentsBreakdown.extraTotal.toLocaleString()}`, `${data.dailyPaymentsBreakdown.extraCount} logs`],
+          ["Total Daily Auxiliary Revenue", `₵${data.dailyPaymentsBreakdown.totalDailyAuxiliary.toLocaleString()}`, "Combined"],
+        ];
+
+        this.drawTable(MARGIN, auxColumns, auxRows, {
+          headerBgColor: this.secondaryColor,
+          alternateRowColor: rgb(0.97, 0.98, 1),
+          rowHeight: 18,
+        });
+        renderedAuxTable = true;
+        this.currentY -= 10;
+        continue;
+      }
 
       if (cleanLine.startsWith("## ")) {
         this.ensureSpace(24);
@@ -225,33 +324,33 @@ export class AIReportPDFGenerator extends BasePDFGenerator {
           maxWidth: PAGE_WIDTH - 20,
         });
         this.currentY -= 10;
-      } else if (cleanLine.includes("*Suggestion:*") || cleanLine.includes("Suggestion:")) {
-        this.ensureSpace(30);
-        const sugText = cleanLine.replace(/\*Suggestion:\*|Suggestion:/g, "").trim();
+      } else if (cleanLine.includes("*Intelligent Suggestion:*") || cleanLine.includes("*Suggestion:*") || cleanLine.includes("Suggestion:")) {
+        this.ensureSpace(32);
+        const sugText = cleanLine.replace(/\*Intelligent Suggestion:\*|\*Suggestion:\*|Suggestion:/g, "").trim();
 
         this.currentPage.drawRectangle({
           x: MARGIN,
-          y: this.currentY - 26,
+          y: this.currentY - 28,
           width: PAGE_WIDTH,
-          height: 26,
+          height: 28,
           color: rgb(1, 0.98, 0.92),
           borderColor: rgb(0.96, 0.72, 0.2),
           borderWidth: 1,
         });
 
-        this.drawText("SUGGESTION:", MARGIN + 6, {
+        this.drawText("RECOMMENDATION / INSIGHT:", MARGIN + 6, {
           size: 7.5,
           font: this.boldFont,
           color: rgb(0.7, 0.35, 0.05),
         });
 
-        this.drawText(this.sanitizeText(sugText), MARGIN + 70, {
+        this.drawText(this.sanitizeText(sugText), MARGIN + 120, {
           size: 7.5,
           font: this.font,
           color: rgb(0.45, 0.2, 0.05),
-          maxWidth: PAGE_WIDTH - 80,
+          maxWidth: PAGE_WIDTH - 130,
         });
-        this.currentY -= 32;
+        this.currentY -= 34;
       } else {
         this.ensureSpace(12);
         this.drawText(this.sanitizeText(cleanLine), MARGIN, {
@@ -266,25 +365,25 @@ export class AIReportPDFGenerator extends BasePDFGenerator {
 
     // Strategic Recommendations
     if (data.recommendations && data.recommendations.length > 0) {
-      this.ensureSpace(60);
+      this.ensureSpace(70);
       this.currentY -= 10;
-      this.drawSectionHeader("STRATEGIC RECOMMENDATIONS");
+      this.drawSectionHeader("PRIORITIZED STRATEGIC RECOMMENDATIONS");
 
       data.recommendations.forEach((rec, rIdx) => {
         const cleanRec = rec.replace(/\*\*/g, "");
-        this.ensureSpace(12);
+        this.ensureSpace(14);
         this.drawText(this.sanitizeText(`${rIdx + 1}. ${cleanRec}`), MARGIN + 8, {
           size: 8.5,
           font: this.boldFont,
           color: rgb(0.1, 0.4, 0.2),
           maxWidth: PAGE_WIDTH - 16,
         });
-        this.currentY -= 12;
+        this.currentY -= 14;
       });
     }
 
     // Official Sign-Off Box
-    this.ensureSpace(100);
+    this.ensureSpace(105);
     this.currentY -= 15;
     const signoffHeight = 85;
 
@@ -357,6 +456,7 @@ export class AIReportPDFGenerator extends BasePDFGenerator {
       color: rgb(0.5, 0.5, 0.6),
     });
 
+    this.drawPageNumbers();
     return await this.savePdf();
   }
 }

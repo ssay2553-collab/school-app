@@ -9,6 +9,10 @@ const GAME_KEYS = [
   "@math_level",
   "@writing_count",
   "@unlocked_stickers",
+  "@formwords_score",
+  "@idioms_score",
+  "@spelling_score",
+  "@bonus_points",
 ];
 
 export const isUid = (str?: string): boolean => {
@@ -28,10 +32,31 @@ export const getStudentNameFromUser = (user: any): string => {
   return "Super Student";
 };
 
-export const syncAchievementsToCloud = async (studentId: string, displayName?: string, classId?: string) => {
+export const addGamePoints = async (points: number) => {
+  if (!points || points <= 0) return;
+  try {
+    const existing = await AsyncStorage.getItem("@bonus_points");
+    const currentBonus = existing ? JSON.parse(existing) : 0;
+    const newBonus = currentBonus + points;
+    await AsyncStorage.setItem("@bonus_points", JSON.stringify(newBonus));
+  } catch (e) {
+    console.error("Error adding game points:", e);
+  }
+};
+
+export const syncAchievementsToCloud = async (
+  studentId: string,
+  displayName?: string,
+  classId?: string,
+  pointsEarned?: number
+) => {
   if (!studentId) return;
 
   try {
+    if (pointsEarned && pointsEarned > 0) {
+      await addGamePoints(pointsEarned);
+    }
+
     const cleanName = (displayName && !isUid(displayName)) ? displayName.trim() : "Super Student";
     const data: Record<string, any> = {
       updatedAt: serverTimestamp(),
@@ -48,10 +73,11 @@ export const syncAchievementsToCloud = async (studentId: string, displayName?: s
         const parsed = JSON.parse(value);
         data[key.replace("@", "")] = parsed;
 
-        // Simple scoring algorithm for leaderboard
-        if (key === "@writing_count") totalScore += parsed * 2;
-        else if (key === "@unlocked_stickers") totalScore += parsed.length * 10;
-        else totalScore += (parsed - 1) * 50; // Levels
+        // Scoring algorithm for leaderboard
+        if (key === "@writing_count") totalScore += (parsed || 0) * 2;
+        else if (key === "@unlocked_stickers") totalScore += Array.isArray(parsed) ? parsed.length * 10 : 0;
+        else if (key === "@bonus_points" || key === "@formwords_score" || key === "@idioms_score" || key === "@spelling_score") totalScore += (parsed || 0);
+        else totalScore += Math.max(0, ((parsed || 1) - 1) * 50); // Levels
       }
     }
 
@@ -59,7 +85,7 @@ export const syncAchievementsToCloud = async (studentId: string, displayName?: s
 
     if (Object.keys(data).length > 3) {
       await setDoc(doc(db, "gameAchievements", studentId), data, { merge: true });
-      console.log("Achievements synced to cloud");
+      console.log("Achievements & Leaderboard score synced to cloud:", totalScore);
     }
   } catch (error) {
     console.error("Error syncing achievements:", error);

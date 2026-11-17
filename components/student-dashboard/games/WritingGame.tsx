@@ -15,6 +15,7 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import SVGIcon from "../../SVGIcon";
 import { WRITING_DATA, REMARKS, PEN_COLORS } from "./GameConstants";
+import { CelebrationModal } from "./CelebrationModal";
 import { SHADOWS } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
 import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
@@ -372,16 +373,15 @@ export const WritingGame: React.FC<WritingGameProps> = ({ onExit }) => {
         )}
 
         {newSticker && (
-          <Animatable.View animation="zoomInUp" style={styles.stickerPopup}>
-            <Text style={styles.stickerPopupLabel}>New Sticker! 🎉</Text>
-            <Text style={styles.stickerPopupEmoji}>{newSticker}</Text>
-            <TouchableOpacity
-              style={styles.stickerCloseBtn}
-              onPress={() => setNewSticker(null)}
-            >
-              <Text style={styles.stickerCloseText}>Yay! ✨</Text>
-            </TouchableOpacity>
-          </Animatable.View>
+          <CelebrationModal
+            visible={!!newSticker}
+            title="NEW STICKER UNLOCKED! 🎉"
+            subtitle={`You earned the ${newSticker} sticker for tracing!`}
+            scoreText={newSticker}
+            isVictory={true}
+            onPlayAgain={() => setNewSticker(null)}
+            onExit={() => setNewSticker(null)}
+          />
         )}
 
         <View style={styles.controls}>

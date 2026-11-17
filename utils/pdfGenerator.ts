@@ -182,7 +182,7 @@ export async function generateAIReportPDF(
   return generator.generate(dataToGenerator(report));
 }
 
-function dataToGenerator(report: AIReportPDFData): AIReportPDFData {
+function dataToGenerator(report: AIReportPDFData & { feeItemsBreakdown?: any; dailyPaymentsBreakdown?: any }): AIReportPDFData {
   return {
     title: report.title,
     generatedAt: report.generatedAt,
@@ -191,6 +191,8 @@ function dataToGenerator(report: AIReportPDFData): AIReportPDFData {
     keyStats: report.keyStats || [],
     highlights: report.highlights || [],
     recommendations: report.recommendations || [],
+    feeItemsBreakdown: report.feeItemsBreakdown,
+    dailyPaymentsBreakdown: report.dailyPaymentsBreakdown,
   };
 }
 

@@ -11,6 +11,7 @@ import { safeSpeak, safeStop } from "../../../utils/safeSpeech";
 import SVGIcon from "../../SVGIcon";
 import { usePersistedState } from "../../../hooks/student-dashboard/usePersistedState";
 import { QUIZ_DATA, REMARKS, WRONG_REMARKS } from "./GameConstants";
+import { CelebrationModal } from "./CelebrationModal";
 import { SHADOWS } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
 import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
@@ -110,22 +111,16 @@ export const QuizGame: React.FC<QuizGameProps> = ({ onExit }) => {
 
   if (showSummary)
     return (
-      <View style={styles.summaryContainer}>
-        <Text style={styles.summaryTitle}>
-          {score >= 4 ? "Level Clear! 🎉" : "Try Again! 💪"}
-        </Text>
-        <Text style={styles.summaryText}>
-          You got {score} / {questions.length} correct!
-        </Text>
-        <TouchableOpacity style={styles.summaryButton} onPress={handleNextLevel}>
-          <Text style={styles.summaryButtonText}>
-            {score >= 4 ? "Next Level" : "Retry Level"}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.exitButton} onPress={onExit}>
-          <Text style={styles.exitButtonText}>Back to Menu</Text>
-        </TouchableOpacity>
-      </View>
+      <CelebrationModal
+        visible={showSummary}
+        isVictory={score >= 4}
+        isPerfectScore={score === questions.length}
+        title={score >= 4 ? "LEVEL CLEAR! 🎉" : "TRY AGAIN! 💪"}
+        subtitle={`Quiz Level ${level} • ${score} / ${questions.length} Correct`}
+        scoreText={`${score}/${questions.length} pts`}
+        onPlayAgain={handleNextLevel}
+        onExit={onExit}
+      />
     );
 
   const q = questions[index];

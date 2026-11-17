@@ -1,5 +1,6 @@
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
+import { SubjectDiagnosticsCard } from "./SubjectDiagnosticsCard";
 
 interface Props {
   primary: string;
@@ -17,6 +18,7 @@ interface Props {
   teacherRemarks: string;
   adminRemarks: string;
   adminSig: any;
+  previousSubjectsData?: any[];
 }
 
 export const MockPreview: React.FC<Props> = ({
@@ -35,6 +37,7 @@ export const MockPreview: React.FC<Props> = ({
   teacherRemarks,
   adminRemarks,
   adminSig,
+  previousSubjectsData,
 }) => {
   const mockTitle = "MOCK";
 
@@ -109,6 +112,8 @@ export const MockPreview: React.FC<Props> = ({
       </View>
 
       <View style={styles.paperRemarksSection}>
+        <SubjectDiagnosticsCard subjectsData={subjectsData} previousSubjectsData={previousSubjectsData} primary={primary} />
+
         {adminRemarks ? (
           <View style={styles.remarksBox}>
             <View style={styles.remarksHeader}>

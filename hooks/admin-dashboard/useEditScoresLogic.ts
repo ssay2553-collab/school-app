@@ -3,6 +3,7 @@ import {
     deleteDoc,
     doc,
     getDoc,
+    getDocs,
     getDocsFromServer,
     query,
     serverTimestamp,
@@ -596,51 +597,53 @@ export const useEditScoresLogic = ({
         });
       }
 
-      // Notify parents of updated/approved scores
-      try {
-        const studentIdsToNotify = studentsToSave.map((s) => s.studentId);
-        if (studentIdsToNotify.length > 0) {
-          const qUsers = query(
-            collection(db, "users"),
-            where("__name__", "in", studentIdsToNotify.slice(0, 30)),
-          );
-          const snapUsers = await getDocsFromServer(qUsers);
-          const adminName = appUser?.displayName || "School Admin";
+      // Notify parents of updated/approved scores (non-blocking background task)
+      (async () => {
+        try {
+          const studentIdsToNotify = studentsToSave.map((s) => s.studentId);
+          if (studentIdsToNotify.length > 0) {
+            const qUsers = query(
+              collection(db, "users"),
+              where("__name__", "in", studentIdsToNotify.slice(0, 30)),
+            );
+            const snapUsers = await getDocs(qUsers);
+            const adminName = appUser?.displayName || "School Admin";
 
-          snapUsers.docs.forEach((uDoc) => {
-            const uData = uDoc.data();
-            const parentUids = uData?.parentUids;
-            if (Array.isArray(parentUids) && parentUids.length > 0) {
-              const studentName =
-                `${uData.profile?.firstName || ""} ${uData.profile?.lastName || ""}`.trim() ||
-                "Your ward";
-              parentUids.forEach((parentId) => {
-                sendNotification({
-                  recipientId: parentId,
-                  senderId: appUser?.uid || "admin",
-                  senderName: adminName,
-                  type: "score",
-                  title: "New Exam Report Available 📊",
-                  body: `${studentName}'s ${selectedReportType} score for ${selectedSubject} (${term}, ${selectedYear}) has been published.`,
-                  data: {
-                    studentId: uDoc.id,
-                    classId: selectedClassId,
-                    subject: selectedSubject,
-                    academicYear: selectedYear,
-                    term,
-                    reportType: selectedReportType,
-                  },
+            snapUsers.docs.forEach((uDoc) => {
+              const uData = uDoc.data();
+              const parentUids = uData?.parentUids;
+              if (Array.isArray(parentUids) && parentUids.length > 0) {
+                const studentName =
+                  `${uData.profile?.firstName || ""} ${uData.profile?.lastName || ""}`.trim() ||
+                  "Your ward";
+                parentUids.forEach((parentId) => {
+                  sendNotification({
+                    recipientId: parentId,
+                    senderId: appUser?.uid || "admin",
+                    senderName: adminName,
+                    type: "score",
+                    title: "New Exam Report Available 📊",
+                    body: `${studentName}'s ${selectedReportType} score for ${selectedSubject} (${term}, ${selectedYear}) has been published.`,
+                    data: {
+                      studentId: uDoc.id,
+                      classId: selectedClassId,
+                      subject: selectedSubject,
+                      academicYear: selectedYear,
+                      term,
+                      reportType: selectedReportType,
+                    },
+                  });
                 });
-              });
-            }
-          });
+              }
+            });
+          }
+        } catch (notifErr) {
+          console.error(
+            "Error sending score notifications to parents:",
+            notifErr,
+          );
         }
-      } catch (notifErr) {
-        console.error(
-          "Error sending score notifications to parents:",
-          notifErr,
-        );
-      }
+      })();
 
       if (isMounted.current) {
         initialDataRef.current = JSON.stringify(studentsToSave);

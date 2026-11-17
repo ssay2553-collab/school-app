@@ -24,6 +24,7 @@ import {
     View,
 } from "react-native";
 import { AcademicReportPreview } from "../../components/admin-dashboard/AcademicReportPreview";
+import { SubjectDiagnosticsCard } from "../../components/admin-dashboard/reports/SubjectDiagnosticsCard";
 import SVGIcon from "../../components/SVGIcon";
 import { TierProtectedRoute } from "../../components/TierProtectedRoute";
 import { SCHOOL_CONFIG } from "../../constants/Config";
@@ -108,6 +109,7 @@ export default function StudentAcademicReport() {
     studentName,
     className,
     subjectsData,
+    previousSubjectsData,
     adminRemarks,
     teacherRemarks,
     conduct,
@@ -128,6 +130,7 @@ export default function StudentAcademicReport() {
     classIdState,
     termBalance,
     isReportApproved,
+    studentPhoto,
   } = useAcademicRecordDetails({
     studentId: selectedChildId,
     term: selectedTerm,
@@ -464,36 +467,55 @@ export default function StudentAcademicReport() {
           subjectsData.length > 0 &&
           (selectedReportType !== "End of Term" ||
             (termBalance !== null && termBalance <= 0)) && (
-            <AcademicReportPreview
-              primary={primary}
-              schoolLogo={schoolLogo}
-              reportType={selectedReportType}
-              studentName={studentName}
-              className={className}
-              classIdState={classIdState}
-              academicYearState={selectedYear}
-              termState={selectedTerm}
-              overallPosition={overallPosition}
-              attendance={attendance}
-              isFullReport={isFullReport}
-              subjectsData={subjectsData}
-              TRS={TRS}
-              TAS={TAS}
-              AGGREGATE={AGGREGATE}
-              isPreschool={isPreschool}
-              conduct={conduct}
-              attitude={attitude}
-              interest={interest}
-              physicalDev={physicalDev}
-              preschoolAssessments={preschoolAssessments}
-              teacherRemarks={teacherRemarks}
-              adminRemarks={adminRemarks}
-              nextTermBegins={nextTermBegins}
-              promotedTo={promotedTo}
-              adminSig={adminSig}
-              isReportApproved={isReportApproved}
-              hideDownload={true}
-            />
+            <View>
+              <AcademicReportPreview
+                primary={primary}
+                schoolLogo={schoolLogo}
+                reportType={selectedReportType}
+                studentName={studentName}
+                className={className}
+                classIdState={classIdState}
+                academicYearState={selectedYear}
+                termState={selectedTerm}
+                overallPosition={overallPosition}
+                attendance={attendance}
+                isFullReport={isFullReport}
+                subjectsData={subjectsData}
+                previousSubjectsData={previousSubjectsData}
+                TRS={TRS}
+                TAS={TAS}
+                AGGREGATE={AGGREGATE}
+                isPreschool={isPreschool}
+                conduct={conduct}
+                attitude={attitude}
+                interest={interest}
+                physicalDev={physicalDev}
+                preschoolAssessments={preschoolAssessments}
+                teacherRemarks={teacherRemarks}
+                adminRemarks={adminRemarks}
+                nextTermBegins={nextTermBegins}
+                promotedTo={promotedTo}
+                adminSig={adminSig}
+                isReportApproved={isReportApproved}
+                hideDownload={true}
+                studentPhoto={studentPhoto}
+              />
+
+              <View style={{ paddingHorizontal: 15, marginTop: 10 }}>
+                <SubjectDiagnosticsCard
+                  subjectsData={subjectsData}
+                  previousSubjectsData={previousSubjectsData}
+                  primary={primary}
+                  isParentView={true}
+                  onChatTeacher={() => {
+                    router.push("/parent-dashboard/chat-with-teacher");
+                  }}
+                  onViewTopics={() => {
+                    router.push("/parent-dashboard/weekly-topics");
+                  }}
+                />
+              </View>
+            </View>
           )}
       </ScrollView>
 

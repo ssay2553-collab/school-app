@@ -30,12 +30,13 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import RichTextEditor, { RichTextEditorRef } from "../../components/RichTextEditor";
+import ShareNoteModal from "../../components/ShareNoteModal";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useToast } from "../../contexts/ToastContext";
-
+import { useNoteSharing, SharedNote } from "../../hooks/useNoteSharing";
 
 const NOTES_KEY = "@student_notes_v1";
 
@@ -60,6 +61,14 @@ export default function StudentNoteScreen() {
   const { showToast } = useToast();
   const isMounted = useRef(true);
 
+  const {
+    sharedNotes,
+    loadingShared,
+    fetchSharedNotes,
+    deleteSharedNote,
+  } = useNoteSharing();
+
+  const [mainTab, setMainTab] = useState<"mine" | "shared">("mine");
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [notes, setNotes] = useState<Note[]>([]);
@@ -68,6 +77,8 @@ export default function StudentNoteScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [shareNoteModalItem, setShareNoteModalItem] = useState<Note | null>(null);
+
   const editorRef = useRef<RichTextEditorRef>(null);
   const isNavigating = useRef(false);
 
@@ -179,23 +190,6 @@ export default function StudentNoteScreen() {
     };
   }, [loadLocalNotes, fetchFromFirestoreAndMerge]);
 
-  if (!appUser && !authLoading)
-    return (
-      <View style={styles.center}>
-        <Text>Please log in to use notes.</Text>
-      </View>
-    );
-
-  if (loading || authLoading)
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-
-  /* ---------------------------------------------
-     CRUD
-  --------------------------------------------- */
   const createLocalNote = async (htmlContent: string) => {
     if (!appUser) return;
 
@@ -319,11 +313,33 @@ export default function StudentNoteScreen() {
     setIsAdding(false);
   };
 
-  const filtered = notes
-    .filter(
-      (n) =>
-        n.title.toLowerCase().includes(search.toLowerCase()) ||
-        n.content.toLowerCase().includes(search.toLowerCase()),
+  const handleImportSharedNote = async (sharedNote: SharedNote) => {
+    setTitle(sharedNote.title);
+    await createLocalNote(sharedNote.content);
+    showToast({
+      message: "Shared note saved into your study notes!",
+      type: "success",
+    });
+  };
+
+  const filtered = notes.filter(
+    (n) =>
+      n.title.toLowerCase().includes(search.toLowerCase()) ||
+      n.content.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  if (!appUser && !authLoading)
+    return (
+      <View style={styles.center}>
+        <Text>Please log in to use notes.</Text>
+      </View>
+    );
+
+  if (loading || authLoading)
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
     );
 
   return (
@@ -380,6 +396,41 @@ export default function StudentNoteScreen() {
         )}
       </View>
 
+      {!isAdding && (
+        <View style={styles.segmentRow}>
+          <TouchableOpacity
+            style={[styles.segmentBtn, mainTab === "mine" && styles.segmentBtnActive]}
+            onPress={() => setMainTab("mine")}
+          >
+            <SVGIcon
+              name="document-text"
+              size={16}
+              color={mainTab === "mine" ? "#fff" : COLORS.primary}
+            />
+            <Text style={[styles.segmentBtnText, mainTab === "mine" && styles.segmentBtnTextActive]}>
+              My Notes ({notes.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.segmentBtn, mainTab === "shared" && styles.segmentBtnActive]}
+            onPress={() => {
+              setMainTab("shared");
+              fetchSharedNotes();
+            }}
+          >
+            <SVGIcon
+              name="share-social"
+              size={16}
+              color={mainTab === "shared" ? "#fff" : COLORS.primary}
+            />
+            <Text style={[styles.segmentBtnText, mainTab === "shared" && styles.segmentBtnTextActive]}>
+              Shared Notes ({sharedNotes.length})
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {isAdding ? (
         <View style={{ flex: 1 }}>
           <ScrollView
@@ -399,11 +450,12 @@ export default function StudentNoteScreen() {
               <RichTextEditor
                 ref={editorRef}
                 initialContent={content}
+                placeholder="Write your study note here..."
               />
             </View>
           </ScrollView>
         </View>
-      ) : (
+      ) : mainTab === "mine" ? (
         <View style={{ flex: 1 }}>
           <View style={styles.searchBox}>
             <SVGIcon
@@ -463,23 +515,11 @@ export default function StudentNoteScreen() {
                     {moment(item.updatedAt || item.createdAt).format("MMM DD, YYYY")}
                   </Text>
                   <View style={styles.footerActions}>
-                     <TouchableOpacity
-                      onPress={() => {
-                        if (isNavigating.current) return;
-                        isNavigating.current = true;
-                        router.push({
-                          pathname: "/student-dashboard/submit-note",
-                          params: {
-                            prefillNoteId: item.docId,
-                            prefillTitle: item.title,
-                            prefillContent: item.content
-                          }
-                        });
-                        setTimeout(() => { isNavigating.current = false; }, 500);
-                      }}
-                      style={{ marginRight: 15 }}
+                    <TouchableOpacity
+                      onPress={() => setShareNoteModalItem(item)}
+                      style={styles.shareIconBtn}
                     >
-                      <SVGIcon name="send" size={18} color={COLORS.primary} />
+                      <SVGIcon name="share-social-outline" size={18} color={COLORS.primary} />
                     </TouchableOpacity>
 
                     <TouchableOpacity
@@ -492,8 +532,7 @@ export default function StudentNoteScreen() {
                             {
                               text: "Delete",
                               style: "destructive",
-                              onPress: async () =>
-                                await deleteLocalNote(item.id),
+                              onPress: () => deleteLocalNote(item.id),
                             },
                           ],
                         );
@@ -507,7 +546,96 @@ export default function StudentNoteScreen() {
             )}
           />
         </View>
+      ) : (
+        <View style={{ flex: 1 }}>
+          {loadingShared ? (
+            <View style={styles.center}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            </View>
+          ) : sharedNotes.length > 0 ? (
+            <FlatList
+              data={sharedNotes}
+              keyExtractor={(i) => i.id}
+              numColumns={isLargeScreen ? 2 : 1}
+              columnWrapperStyle={isLargeScreen ? { gap: 16 } : null}
+              contentContainerStyle={{ paddingBottom: 100 }}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => {
+                const isSentByMe = item.senderId === appUser?.uid;
+                return (
+                  <View style={[styles.noteCard, isLargeScreen && { flex: 1, marginBottom: 0 }]}>
+                    <View style={styles.cardTop}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <View style={[styles.badge, isSentByMe ? styles.badgeSent : styles.badgeRecv]}>
+                        <Text style={[styles.badgeText, isSentByMe ? styles.badgeTextSent : styles.badgeTextRecv]}>
+                          {isSentByMe ? `Shared with ${item.targetName}` : `From ${item.senderName}`}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <Text numberOfLines={4} style={styles.cardContent}>
+                      {item.content.replace(/<[^>]*>?/gm, "")}
+                    </Text>
+
+                    <View style={styles.cardFooter}>
+                      <Text style={styles.dateText}>
+                        {moment(item.createdAt?.toMillis ? item.createdAt.toMillis() : Date.now()).format("MMM DD, YYYY")}
+                      </Text>
+                      <View style={styles.footerActions}>
+                        {!isSentByMe && (
+                          <TouchableOpacity
+                            style={styles.copyBtn}
+                            onPress={() => handleImportSharedNote(item)}
+                          >
+                            <SVGIcon name="download-outline" size={16} color={COLORS.primary} />
+                            <Text style={styles.copyBtnText}>Save to My Notes</Text>
+                          </TouchableOpacity>
+                        )}
+
+                        <TouchableOpacity
+                          onPress={() => {
+                            Alert.alert(
+                              "Remove Shared Note",
+                              "Remove this note from your shared list?",
+                              [
+                                { text: "Cancel", style: "cancel" },
+                                {
+                                  text: "Remove",
+                                  style: "destructive",
+                                  onPress: () => deleteSharedNote(item.id),
+                                },
+                              ]
+                            );
+                          }}
+                        >
+                          <SVGIcon name="trash-outline" size={18} color="#FF4D4D" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                );
+              }}
+            />
+          ) : (
+            <View style={styles.center}>
+              <SVGIcon name="share-social-outline" size={48} color="#CBD5E1" />
+              <Text style={styles.emptyTitle}>No Shared Notes Yet</Text>
+              <Text style={styles.emptySubText}>
+                Notes shared with you by teachers or classmates will appear here.
+              </Text>
+            </View>
+          )}
+        </View>
       )}
+
+      <ShareNoteModal
+        visible={!!shareNoteModalItem}
+        onClose={() => setShareNoteModalItem(null)}
+        note={shareNoteModalItem}
+        userRole="student"
+      />
     </View>
   );
 }
@@ -522,26 +650,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    padding: 20,
   },
   headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 16,
     marginTop: Platform.OS === "ios" ? 40 : 10,
-    gap: 15,
   },
   backBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: "#F8FAFC",
-    justifyContent: "center",
-    alignItems: "center",
-    ...SHADOWS.small,
+    paddingRight: 12,
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: "800",
     color: "#1A1C1E",
     flex: 1,
@@ -579,6 +701,35 @@ const styles = StyleSheet.create({
   addCircle: {
     padding: 4,
   },
+  segmentRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+  },
+  segmentBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: "#F1F5F9",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    gap: 8,
+  },
+  segmentBtnActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  segmentBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+  segmentBtnTextActive: {
+    color: "#fff",
+  },
   editorContainer: {
     flex: 1,
   },
@@ -596,39 +747,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFF",
     borderRadius: 15,
     marginBottom: 20,
-    minHeight: 1800,
+    minHeight: 500,
     overflow: "hidden",
     ...SHADOWS.small,
-  },
-  actionRow: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 30,
-  },
-  saveBtn: {
-    backgroundColor: COLORS.primary,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    ...SHADOWS.medium,
-  },
-  saveBtnText: {
-    color: "#FFF",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-  cancelBtn: {
-    backgroundColor: "#F1F3F5",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-  cancelBtnText: {
-    color: "#495057",
-    fontWeight: "700",
   },
   searchBox: {
     flexDirection: "row",
@@ -690,6 +811,56 @@ const styles = StyleSheet.create({
   footerActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 15,
+    gap: 12,
+  },
+  shareIconBtn: {
+    padding: 4,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeRecv: {
+    backgroundColor: "#FEF3C7",
+  },
+  badgeSent: {
+    backgroundColor: "#E0E7FF",
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  badgeTextRecv: {
+    color: "#B45309",
+  },
+  badgeTextSent: {
+    color: "#3730A3",
+  },
+  copyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: COLORS.primary + "10",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  copyBtnText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: COLORS.primary,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginTop: 12,
+  },
+  emptySubText: {
+    fontSize: 13,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 6,
   },
 });

@@ -51,6 +51,8 @@ interface AcademicReportPreviewProps {
   refreshing?: boolean;
   refresh?: () => void;
   hideDownload?: boolean;
+  studentPhoto?: string | null;
+  previousSubjectsData?: any[];
 }
 
 export const AcademicReportPreview: React.FC<AcademicReportPreviewProps> = (props) => {

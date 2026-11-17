@@ -14,6 +14,7 @@ import * as Haptics from "expo-haptics";
 import SVGIcon from "../../SVGIcon";
 import { usePersistedState } from "../../../hooks/student-dashboard/usePersistedState";
 import { SCRAMBLE_DATA, REMARKS, WRONG_REMARKS } from "./GameConstants";
+import { CelebrationModal } from "./CelebrationModal";
 import { SHADOWS, COLORS } from "../../../constants/theme";
 import { useAuth } from "../../../contexts/AuthContext";
 import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
@@ -348,39 +349,16 @@ export const ScrambleGame: React.FC<ScrambleGameProps> = ({ onExit }) => {
 
   if (showSummary) {
     return (
-      <View style={styles.summaryContainer}>
-        <Text style={styles.summaryTitle}>
-          {score >= 4 ? "BRILLIANT! ✨" : "KEEP TRYING! 💪"}
-        </Text>
-        <Text style={styles.summaryText}>
-          Unscrambled {score} / 5 words correctly!
-        </Text>
-
-        <View style={styles.summaryBadgesRow}>
-          <View style={styles.summaryBadge}>
-            <Text style={styles.summaryBadgeNum}>{score * 20} pts</Text>
-            <Text style={styles.summaryBadgeLabel}>SCORE</Text>
-          </View>
-          <View style={styles.summaryBadge}>
-            <Text style={styles.summaryBadgeNum}>Lvl {level}</Text>
-            <Text style={styles.summaryBadgeLabel}>LEVEL</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={styles.summaryButton}
-          onPress={handleNextLevel}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.summaryButtonText}>
-            {score >= 4 ? "NEXT LEVEL 🚀" : "TRY AGAIN 🔄"}
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.exitButton} onPress={onExit}>
-          <Text style={styles.exitButtonText}>Back to Games Menu</Text>
-        </TouchableOpacity>
-      </View>
+      <CelebrationModal
+        visible={showSummary}
+        isVictory={score >= 4}
+        isPerfectScore={score === stageItems.length}
+        title={score >= 4 ? "BRILLIANT! ✨" : "KEEP TRYING! 💪"}
+        subtitle={`Word Scramble Level ${level} • Unscrambled ${score} / ${stageItems.length} Words`}
+        scoreText={`${score * 20} pts`}
+        onPlayAgain={handleNextLevel}
+        onExit={onExit}
+      />
     );
   }
 

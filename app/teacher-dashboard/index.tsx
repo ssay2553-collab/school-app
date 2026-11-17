@@ -328,12 +328,11 @@ export default function TeacherDashboard() {
             featureId: "teacher_coding_robotics",
           },
           {
-            title: "Curriculum PDFs",
-            subtitle: "Offline library",
-            route: "/teacher-dashboard/curriculum-pdf-viewer",
-            icon: "document-text",
-            color: "#1565C0", // Warm Royal Blue
-            featureId: "teacher_curriculum_pdf",
+            title: "Dictionary Hub",
+            subtitle: "Definitions & Voice",
+            route: "/teacher-dashboard/dictionary",
+            icon: "book-outline",
+            color: "#00838F", // Warm Teal
           },
           {
             title: "Pedagogy & Resources",

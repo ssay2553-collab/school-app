@@ -126,6 +126,20 @@ export class AcademicReportGenerator extends BasePDFGenerator {
     const rowHeight = profileBoxHeight / 2;
     const labelHeight = 12;
 
+    let studentPhotoImg = null;
+    if (data.studentPhoto) {
+      try {
+        studentPhotoImg = await this.embedImage(data.studentPhoto);
+      } catch (e) {
+        console.error("Error embedding student photo in PDF:", e);
+      }
+    }
+
+    const photoWidth = studentPhotoImg ? 65 : 0;
+    const infoAreaWidth = PAGE_WIDTH - photoWidth;
+    const profileColWidth = infoAreaWidth / 3;
+    const startX = MARGIN + photoWidth;
+
     this.drawRect(MARGIN, PAGE_WIDTH, profileBoxHeight, {
       color: rgb(1, 1, 1),
       borderColor: rgb(0.85, 0.88, 0.92),
@@ -133,23 +147,32 @@ export class AcademicReportGenerator extends BasePDFGenerator {
     });
 
     const profileY = this.currentY;
-    const profileColWidth = PAGE_WIDTH / 3;
+
+    if (studentPhotoImg) {
+      this.currentPage.drawImage(studentPhotoImg, {
+        x: MARGIN + 4,
+        y: profileY - profileBoxHeight + 4,
+        width: photoWidth - 8,
+        height: profileBoxHeight - 8,
+      });
+      this.drawLine(startX, profileY, startX, profileY - profileBoxHeight, 1, rgb(0.85, 0.88, 0.92));
+    }
 
     // Shaded backgrounds for labels
     [0, rowHeight].forEach((offset) => {
       this.currentPage.drawRectangle({
-        x: MARGIN + 0.75,
+        x: startX + 0.75,
         y: profileY - offset - labelHeight,
-        width: PAGE_WIDTH - 1.5,
+        width: infoAreaWidth - 1.5,
         height: labelHeight,
         color: rgb(0.96, 0.97, 0.98),
       });
     });
 
     // Grid lines
-    this.drawLine(MARGIN + profileColWidth, profileY, MARGIN + profileColWidth, profileY - profileBoxHeight, 1, rgb(0.85, 0.88, 0.92));
-    this.drawLine(MARGIN + profileColWidth * 2, profileY, MARGIN + profileColWidth * 2, profileY - profileBoxHeight, 1, rgb(0.85, 0.88, 0.92));
-    this.drawLine(MARGIN, profileY - rowHeight, MARGIN + PAGE_WIDTH, profileY - rowHeight, 1, rgb(0.85, 0.88, 0.92));
+    this.drawLine(startX + profileColWidth, profileY, startX + profileColWidth, profileY - profileBoxHeight, 1, rgb(0.85, 0.88, 0.92));
+    this.drawLine(startX + profileColWidth * 2, profileY, startX + profileColWidth * 2, profileY - profileBoxHeight, 1, rgb(0.85, 0.88, 0.92));
+    this.drawLine(startX, profileY - rowHeight, startX + infoAreaWidth, profileY - rowHeight, 1, rgb(0.85, 0.88, 0.92));
 
     const drawField = (label: string, value: string, x: number, y: number) => {
       this.currentPage.drawText(label, {
@@ -204,14 +227,14 @@ export class AcademicReportGenerator extends BasePDFGenerator {
     };
 
     // Row 1
-    drawField("STUDENT NAME", data.studentName, MARGIN, profileY);
-    drawField("CLASS / GRADE", data.className, MARGIN + profileColWidth, profileY);
-    drawField("ACADEMIC YEAR", data.academicYear, MARGIN + (profileColWidth * 2), profileY);
+    drawField("STUDENT NAME", data.studentName, startX, profileY);
+    drawField("CLASS / GRADE", data.className, startX + profileColWidth, profileY);
+    drawField("ACADEMIC YEAR", data.academicYear, startX + (profileColWidth * 2), profileY);
 
     // Row 2
-    drawField("TERM / PERIOD", data.term, MARGIN, profileY - rowHeight);
-    drawField("OVERALL POSITION", data.overallPosition, MARGIN + profileColWidth, profileY - rowHeight);
-    drawField("ATTENDANCE", data.attendance || "N/A", MARGIN + (profileColWidth * 2), profileY - rowHeight);
+    drawField("TERM / PERIOD", data.term, startX, profileY - rowHeight);
+    drawField("OVERALL POSITION", data.overallPosition, startX + profileColWidth, profileY - rowHeight);
+    drawField("ATTENDANCE", data.attendance || "N/A", startX + (profileColWidth * 2), profileY - rowHeight);
 
     this.currentY -= (profileBoxHeight + 8);
 

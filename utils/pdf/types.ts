@@ -48,6 +48,7 @@ export interface AcademicReportData {
   promotedTo?: string;
   adminSig?: any;
   qrCode?: any;
+  studentPhoto?: string | null;
 }
 
 export interface FeeReportData {

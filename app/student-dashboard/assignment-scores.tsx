@@ -63,6 +63,25 @@ interface AssignmentDetails {
 
 const PAGE_SIZE = 10;
 
+const formatResponseText = (val: any): string => {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") return val;
+  if (typeof val === "number" || typeof val === "boolean") return String(val);
+  if (typeof val === "object") {
+    if (val.value !== undefined && typeof val.value !== "object") return String(val.value);
+    if (val.text !== undefined && typeof val.text !== "object") return String(val.text);
+    if (val.name !== undefined && typeof val.name !== "object") return String(val.name);
+    if (val.title !== undefined && typeof val.title !== "object") return String(val.title);
+    if (val.url !== undefined && typeof val.url !== "object") return String(val.url);
+    try {
+      return JSON.stringify(val);
+    } catch {
+      return "[Object]";
+    }
+  }
+  return String(val);
+};
+
 export default function AssignmentScores() {
   const { appUser } = useAuth();
   const { showToast } = useToast();
@@ -208,6 +227,10 @@ export default function AssignmentScores() {
       ? moment(parsedDate).format("MM/DD/YYYY")
       : "N/A";
 
+    const safeTitle = formatResponseText(item.assignmentTitle || "Assignment");
+    const safeSubject = formatResponseText(item.subjectId || "");
+    const safeMarks = typeof item.marks === "object" ? (item.marks as any)?.value ?? 0 : (item.marks ?? 0);
+
     return (
       <View style={styles.card}>
         <TouchableOpacity 
@@ -220,9 +243,9 @@ export default function AssignmentScores() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>
-              {item.assignmentTitle || "Assignment"}
+              {safeTitle}
             </Text>
-            <Text style={styles.subject}>{item.subjectId}</Text>
+            {safeSubject ? <Text style={styles.subject}>{safeSubject}</Text> : null}
             <Text style={styles.dateText}>Marked on: {displayDate}</Text>
           </View>
           <View style={styles.scoreAndExpand}>
@@ -233,7 +256,7 @@ export default function AssignmentScores() {
               ]}
             >
               <Text style={[styles.scoreText, { color: COLORS.primary }]}>
-                {item.marks}
+                {safeMarks}
               </Text>
               <Text style={[styles.scoreLabel, { color: COLORS.primary }]}>
                 Marks
@@ -257,7 +280,7 @@ export default function AssignmentScores() {
                     <Text style={styles.reviewHeader}>YOUR COMMENT</Text>
                     <View style={styles.docViewWrapper}>
                       <RichTextEditor
-                        initialContent={item.note}
+                        initialContent={typeof item.note === "string" ? item.note : formatResponseText(item.note)}
                         readOnly={true}
                       />
                     </View>
@@ -267,7 +290,7 @@ export default function AssignmentScores() {
                 <Text style={styles.reviewHeader}>SUBMITTED DOCUMENT</Text>
                 <View style={[styles.docViewWrapper, { minHeight: 400 }]}>
                   <RichTextEditor
-                    initialContent={item.contentHtml || ""}
+                    initialContent={typeof item.contentHtml === "string" ? item.contentHtml : formatResponseText(item.contentHtml || "")}
                     readOnly={true}
                   />
                 </View>
@@ -277,7 +300,7 @@ export default function AssignmentScores() {
                     <Text style={[styles.reviewHeader, { color: COLORS.primary }]}>TEACHER'S FEEDBACK</Text>
                     <View style={[styles.docViewWrapper, { borderColor: COLORS.primary + "40" }]}>
                       <RichTextEditor
-                        initialContent={item.feedback}
+                        initialContent={typeof item.feedback === "string" ? item.feedback : formatResponseText(item.feedback)}
                         readOnly={true}
                       />
                     </View>
@@ -286,21 +309,25 @@ export default function AssignmentScores() {
               </View>
             ) : fetchingDetails && !details ? (
               <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 10 }} />
-            ) : details ? (
+            ) : details && Array.isArray(details.questions) ? (
               <View style={styles.reviewList}>
                 <Text style={styles.reviewHeader}>QUESTION BREAKDOWN</Text>
                 {details.questions.map((q, idx) => {
-                  const score = item.questionScores?.[idx] ?? 0;
-                  const response = item.responses?.[idx] || "No response";
+                  const rawScore = item.questionScores?.[idx];
+                  const scoreVal = typeof rawScore === "object" ? (rawScore as any)?.value ?? 0 : (rawScore ?? 0);
+                  const rawResponse = item.responses?.[idx];
+                  const responseText = rawResponse !== undefined ? formatResponseText(rawResponse) || "No response" : "No response";
+                  const questionText = formatResponseText(q?.text || q);
+
                   return (
                     <View key={idx} style={styles.reviewItem}>
-                      <Text style={styles.qText}>{idx + 1}. {q.text}</Text>
+                      <Text style={styles.qText}>{idx + 1}. {questionText}</Text>
                       <View style={styles.responseRow}>
                         <Text style={styles.aLabel}>Your Answer:</Text>
-                        <Text style={styles.aText}>{response}</Text>
+                        <Text style={styles.aText}>{responseText}</Text>
                       </View>
                       <View style={styles.pointsBadge}>
-                        <Text style={styles.pointsText}>Score: {score}</Text>
+                        <Text style={styles.pointsText}>Score: {scoreVal}</Text>
                       </View>
                     </View>
                   );

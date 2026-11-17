@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -16,6 +15,7 @@ import {
   View,
   BackHandler,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Animatable from "react-native-animatable";
 import SVGIcon from "../../components/SVGIcon";
 import { COLORS, SHADOWS } from "../../constants/theme";
@@ -391,6 +391,7 @@ export default function UploadAssignment() {
   const router = useRouter();
   const { showToast } = useToast();
   const { appUser } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const {
     loading, fetchingMetadata, teacherClasses, selectedClassId, setSelectedClassId,
@@ -472,12 +473,12 @@ export default function UploadAssignment() {
   if (fetchingMetadata) return <View style={styles.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
       <StatusBar barStyle="light-content" />
       <Header onBack={handleBack} onOpenArchive={() => setShowSentModal(true)} />
 
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 12, paddingBottom: 100 }}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 12, paddingBottom: 100 + insets.bottom }}>
           
           <AssignmentDetailsCard
             title={title} setTitle={setTitle}
@@ -522,7 +523,7 @@ export default function UploadAssignment() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
         <TouchableOpacity style={[styles.submitBtn, loading && { opacity: 0.7 }]} onPress={onPost} disabled={loading || uploadingFile}>
           <LinearGradient colors={[COLORS.primary, "#4F46E5"]} style={styles.submitBtnGradient}>
             {loading || uploadingFile ? <ActivityIndicator color="#fff" /> : (

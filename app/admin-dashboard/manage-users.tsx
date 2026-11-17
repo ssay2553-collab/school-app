@@ -215,7 +215,7 @@ export default function ManageUsers() {
       >
         <FlatList
           data={loading ? [] : filteredUsers}
-          keyExtractor={(item) => item.uid}
+          keyExtractor={(item, index) => item?.uid || index.toString()}
           ListHeaderComponent={
             <View>
               <View style={styles.header}>
@@ -488,7 +488,7 @@ export default function ManageUsers() {
           initialNumToRender={10}
           maxToRenderPerBatch={10}
           windowSize={5}
-          removeClippedSubviews={false}
+          removeClippedSubviews={Platform.OS === "android"}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={() => {}} />
           }

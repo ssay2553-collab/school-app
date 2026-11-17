@@ -138,7 +138,7 @@ module.exports = ({ config }) => {
       logo: "./assets/EduEaz-Logo.png",
       hotline: "0554715716",
       fullName: "EduEaz Schools",
-      mottro: "Your Complete Digital System",
+      motto: "Your Complete Digital System",
       address: "GHANA",
       email: "edueazgh@gmail.com",
       primaryColor: "#148241",

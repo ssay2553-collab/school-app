@@ -230,6 +230,7 @@ export default function TeacherStudentAcademicReport() {
     reportStatus,
     refresh,
     refreshing,
+    studentPhoto,
   } = useAcademicRecordDetails({
     studentId: selectedStudentId,
     term: selectedTerm,
@@ -522,6 +523,7 @@ export default function TeacherStudentAcademicReport() {
             refreshing={refreshing}
             refresh={refresh}
             hideDownload={true}
+            studentPhoto={studentPhoto}
           />
         )}
       </ScrollView>

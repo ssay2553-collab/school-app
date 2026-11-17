@@ -163,8 +163,18 @@ export const UserCard = React.memo(({
 }, (prev, next) => {
   return prev.isSelected === next.isSelected &&
          prev.isSelectionActive === next.isSelectionActive &&
-         prev.user === next.user &&
-         prev.allClasses === next.allClasses &&
+         prev.user.uid === next.user.uid &&
+         prev.user.status === next.user.status &&
+         prev.user.signupCode === next.user.signupCode &&
+         prev.user.classId === next.user.classId &&
+         prev.user.walletBalance === next.user.walletBalance &&
+         prev.user.dailyArrears === next.user.dailyArrears &&
+         prev.user.canCreateNews === next.user.canCreateNews &&
+         prev.user.onScholarship === next.user.onScholarship &&
+         prev.user.profile?.firstName === next.user.profile?.firstName &&
+         prev.user.profile?.lastName === next.user.profile?.lastName &&
+         prev.user.profile?.profileImage === next.user.profile?.profileImage &&
+         prev.allClasses.length === next.allClasses.length &&
          prev.onToggleArchive === next.onToggleArchive;
 });
 

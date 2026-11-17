@@ -35,18 +35,24 @@ export const parseDeadlineDate = (dl: any): Date | null => {
   if (!dl) return null;
   if (typeof dl.toDate === "function") return dl.toDate();
   if (dl instanceof Date) return dl;
-  if (dl.seconds !== undefined) return new Date(dl.seconds * 1000);
-  const parsed = new Date(dl);
-  return !isNaN(parsed.getTime()) ? parsed : null;
+  if (typeof dl === "object" && dl.seconds !== undefined) return new Date(dl.seconds * 1000);
+  if (typeof dl === "string" || typeof dl === "number") {
+    const parsed = new Date(dl);
+    return !isNaN(parsed.getTime()) ? parsed : null;
+  }
+  return null;
 };
 
 export interface Assignment {
   id: string;
   title: string;
-  deadline?: Timestamp;
+  deadline?: any;
+  dueDate?: any;
+  due?: any;
   type?: "mcq" | "short_answer" | "preschool" | "mathematics";
   questions?: Question[];
   subjectId: string;
+  unmarkedCount?: number;
 }
 
 export interface Submission {
@@ -343,25 +349,44 @@ export const useMarkAssignment = () => {
         }
 
         const now = Date.now();
-        const data = rawAssignments.filter((a) => {
-          const deadlineDate = parseDeadlineDate(a.deadline);
-          const isPastDue = deadlineDate
-            ? deadlineDate.getTime() < now
-            : false;
-          const pendingCount = pendingCountMap.get(a.id) || 0;
+        const data = rawAssignments
+          .map((a) => ({
+            ...a,
+            unmarkedCount: pendingCountMap.get(a.id) || 0,
+          }))
+          .filter((a) => {
+            const deadlineDate = parseDeadlineDate(a.deadline || a.dueDate || a.due);
+            const isPastDue = deadlineDate
+              ? deadlineDate.getTime() < now
+              : false;
+            const pendingCount = a.unmarkedCount || 0;
 
-          // Remove assignment from header if due date has passed AND there are no pending unmarked submissions
-          if (isPastDue && pendingCount === 0) {
-            return false;
+            // Remove assignment from header if due date has passed AND there are no pending unmarked submissions
+            if (isPastDue && pendingCount === 0) {
+              return false;
+            }
+            return true;
+          });
+
+        // Sort assignments so those with pending unmarked submissions (unmarkedCount > 0) appear first
+        data.sort((a, b) => {
+          const aCount = a.unmarkedCount || 0;
+          const bCount = b.unmarkedCount || 0;
+          if ((bCount > 0) !== (aCount > 0)) {
+            return (bCount > 0 ? 1 : 0) - (aCount > 0 ? 1 : 0);
           }
-          return true;
+          return bCount - aCount;
         });
 
         if (isMounted.current) {
           if (isFirstLoad) {
             setAssignments(data);
-            if (data.length > 0) setSelectedAssignment(data[0]);
-            else setSelectedAssignment(null);
+            if (data.length > 0) {
+              const firstWithPending = data.find((a) => (a.unmarkedCount || 0) > 0) || data[0];
+              setSelectedAssignment(firstWithPending);
+            } else {
+              setSelectedAssignment(null);
+            }
           } else {
             setAssignments((prev) => {
               const existingIds = new Set(prev.map((p) => p.id));
@@ -606,28 +631,44 @@ export const useMarkAssignment = () => {
         if (isMounted.current) {
           setSubmissions((prev) => {
             const nextSubmissions = prev.filter((s) => s.id !== sub.id);
+            const newUnmarkedCount = nextSubmissions.length;
 
-            // If no more unmarked submissions remain for this assignment and its deadline is past, remove it from assignments list
-            if (nextSubmissions.length === 0 && selectedAssignment) {
-              const deadlineDate = parseDeadlineDate(selectedAssignment.deadline);
-              const isPastDue = deadlineDate
-                ? deadlineDate.getTime() < Date.now()
-                : false;
+            setAssignments((prevAssignments) => {
+              const currentAssignId = selectedAssignment?.id;
+              if (!currentAssignId) return prevAssignments;
 
-              if (isPastDue) {
-                setAssignments((prevAssignments) => {
-                  const updated = prevAssignments.filter(
-                    (a) => a.id !== selectedAssignment.id,
-                  );
-                  if (updated.length > 0) {
-                    setSelectedAssignment(updated[0]);
-                  } else {
-                    setSelectedAssignment(null);
+              const updatedAssignments = prevAssignments
+                .map((a) => {
+                  if (a.id === currentAssignId) {
+                    return { ...a, unmarkedCount: newUnmarkedCount };
                   }
-                  return updated;
+                  return a;
+                })
+                .filter((a) => {
+                  const deadlineDate = parseDeadlineDate(a.deadline || a.dueDate || a.due);
+                  const isPastDue = deadlineDate
+                    ? deadlineDate.getTime() < Date.now()
+                    : false;
+
+                  // Remove assignment if due date has passed AND there are no pending unmarked submissions
+                  if (isPastDue && (a.unmarkedCount || 0) === 0) {
+                    return false;
+                  }
+                  return true;
                 });
+
+              // If current selected assignment was removed because it's past due and has 0 unmarked submissions left
+              const isStillPresent = updatedAssignments.some((a) => a.id === currentAssignId);
+              if (!isStillPresent) {
+                const nextAssign =
+                  updatedAssignments.find((a) => (a.unmarkedCount || 0) > 0) ||
+                  updatedAssignments[0] ||
+                  null;
+                setSelectedAssignment(nextAssign);
               }
-            }
+
+              return updatedAssignments;
+            });
 
             return nextSubmissions;
           });

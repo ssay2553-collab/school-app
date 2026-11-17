@@ -7,7 +7,7 @@ import {
   where,
 } from "firebase/firestore";
 import moment from "moment";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -104,7 +104,11 @@ export default function DailyFinancials() {
   const canViewExtraClasses =
     canAccessAllClasses || extraClassesPermission !== "deny";
 
+  const isNavigating = useRef(false);
+
   const handleBack = () => {
+    if (isNavigating.current) return;
+    isNavigating.current = true;
     if (appUser?.role === "admin") {
       router.replace("/admin-dashboard");
     } else if (appUser?.role === "teacher") {
@@ -114,6 +118,7 @@ export default function DailyFinancials() {
     } else {
       router.back();
     }
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   useEffect(() => {
@@ -335,6 +340,7 @@ export default function DailyFinancials() {
   const canAccessStats = isSuperAdmin || teacherClasses.length > 0;
 
   const handleCategoryPress = (route: string) => {
+    if (isNavigating.current) return;
     if (opStatus.isBlocked) {
       showToast({
         message: `Daily Financials Paused: ${opStatus.statusTitle}. Fee collection is disabled on off-days.`,
@@ -342,7 +348,9 @@ export default function DailyFinancials() {
       });
       return;
     }
+    isNavigating.current = true;
     router.push(route as any);
+    setTimeout(() => { isNavigating.current = false; }, 500);
   };
 
   const renderCategoryCard = (
@@ -514,7 +522,7 @@ export default function DailyFinancials() {
           {/* Summary Stats */}
           {canAccessStats && (
             <>
-              <View style={styles.summaryRow}>
+              <View style={styles.summaryGrid}>
                 <View style={styles.summaryCard}>
                   <Text style={styles.summaryValue}>{stats.totalStudents}</Text>
                   <Text style={styles.summaryLabel}>Total Students</Text>
@@ -556,11 +564,8 @@ export default function DailyFinancials() {
 
               <View
                 style={[
-                  styles.summaryCard,
+                  styles.summaryCardFull,
                   {
-                    marginHorizontal: 16,
-                    marginBottom: 16,
-                    marginTop: 16,
                     backgroundColor: VIBE.primary + "08",
                   },
                 ]}
@@ -702,14 +707,24 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   classChipText: { fontSize: 13, fontWeight: "600", color: VIBE.muted },
-  summaryRow: {
+  summaryGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
     paddingHorizontal: 20,
     marginTop: 20,
   },
   summaryCard: {
-    flex: 1,
+    width: "48%",
+    backgroundColor: VIBE.surface,
+    padding: 16,
+    borderRadius: 20,
+    alignItems: "flex-start",
+    ...SHADOWS.medium,
+  },
+  summaryCardFull: {
+    marginHorizontal: 20,
+    marginTop: 12,
     backgroundColor: VIBE.surface,
     padding: 16,
     borderRadius: 20,

@@ -463,7 +463,10 @@ export default function GeneralReportGenerator() {
                       numberOfLines={4}
                     />
 
-                    <Text style={styles.inputLabel}>Main Report Content & Details</Text>
+                    <Text style={styles.inputLabel}>Main Report Content & Details (Enhance qualitative sections & fill placeholders)</Text>
+                    <Text style={{ fontSize: 11, color: "#475569", marginBottom: 6, fontStyle: "italic" }}>
+                      💡 Note: Financial metrics remain bound to live system source-of-truth records for audit integrity. You can freely enhance or add custom outcomes, teacher performance notes, parent communication logs, and infrastructure details below.
+                    </Text>
                     <TextInput
                       style={[styles.textInput, styles.largeMultilineInput]}
                       value={editedMarkdownContent}
@@ -971,12 +974,16 @@ const styles = StyleSheet.create({
     color: "#0F172A",
   },
   multilineInput: {
-    minHeight: 80,
+    minHeight: 120,
     textAlignVertical: "top",
+    fontSize: 14,
+    lineHeight: 20,
   },
   largeMultilineInput: {
-    minHeight: 180,
+    minHeight: 380,
     textAlignVertical: "top",
+    fontSize: 14,
+    lineHeight: 22,
   },
   recHeaderRow: {
     flexDirection: "row",

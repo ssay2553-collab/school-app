@@ -461,14 +461,14 @@ export default function ManageFees() {
             individualBillOverrides,
             selectedStudentUids,
           }}
-          keyExtractor={(item) => item.uid}
+          keyExtractor={(item, index) => item?.uid || index.toString()}
           onEndReached={() => fetchStudents(false)}
           renderItem={renderStudentItem}
           contentContainerStyle={styles.flatListContent}
           initialNumToRender={10}
           maxToRenderPerBatch={10}
           windowSize={5}
-          removeClippedSubviews={Platform.OS === "android"}
+          removeClippedSubviews={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

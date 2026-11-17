@@ -91,6 +91,8 @@ export const useAcademicRecordDetails = (
   const [isReportApproved, setIsReportApproved] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [termBalance, setTermBalance] = useState<number | null>(null);
+  const [studentPhoto, setStudentPhoto] = useState<string | null>(null);
+  const [previousSubjectsData, setPreviousSubjectsData] = useState<any[]>([]);
 
   const schoolId = (
     Constants.expoConfig?.extra?.schoolId || "afahjoy"
@@ -124,6 +126,20 @@ export const useAcademicRecordDetails = (
     setTermBalance(null);
 
     try {
+      let studentPhotoVal = null;
+      try {
+        const userSnap = await getDoc(doc(db, "users", studentId));
+        if (userSnap.exists()) {
+          const uData = userSnap.data() as any;
+          studentPhotoVal = uData.profile?.profileImage || uData.profileImage || null;
+        }
+      } catch (e) {
+        console.error("Error fetching student photo:", e);
+      }
+      if (isMounted.current) {
+        setStudentPhoto(studentPhotoVal);
+      }
+
       // 1. Fetch Fee Status for this specific term
       const yearSlug = academicYearState.replace(/\//g, "-");
       const termSlug = termState.replace(/\s+/g, "");
@@ -452,10 +468,42 @@ export const useAcademicRecordDetails = (
         finalReportStatus = r?.status || "pending";
       }
 
+      // 3. Fetch previous report for trend comparison
+      let prevSubjects: any[] = [];
+      try {
+        const qPrev = query(
+          collection(db, "student-reports"),
+          where("studentId", "==", studentId),
+          where("status", "in", ["approved", "partially_approved"]),
+        );
+        const prevSnap = await getDocs(qPrev);
+        if (!prevSnap.empty) {
+          const pastReports = prevSnap.docs
+            .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() as any) }))
+            .filter((p) => p.id !== reportId && Array.isArray(p.subjectsData) && p.subjectsData.length > 0);
+
+          pastReports.sort((a, b) => {
+            if (a.academicYear !== b.academicYear)
+              return b.academicYear.localeCompare(a.academicYear);
+            if (a.term !== b.term) return b.term.localeCompare(a.term);
+            return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+          });
+
+          if (pastReports.length > 0) {
+            prevSubjects = pastReports[0].subjectsData || [];
+          }
+        }
+      } catch (prevErr) {
+        console.log("Error fetching previous report for comparison:", prevErr);
+      }
+
       if (isMounted.current) {
         setIsReportApproved(finalReportApproved);
         setReportStatus(finalReportStatus);
+        setPreviousSubjectsData(prevSubjects);
       }
+
+      const activeSubjects = subjectsData;
 
       if (r && isMounted.current) {
         // Respect overrides from student-reports (Works for ALL report types)
@@ -477,14 +525,14 @@ export const useAcademicRecordDetails = (
         if (r.adminRemarks) {
           setAdminRemarks(r.adminRemarks);
         } else {
-          setAdminRemarks(getAutoRemarks(localAggregate, false));
+          setAdminRemarks(getAutoRemarks(localAggregate, false, activeSubjects, prevSubjects));
         }
 
         if (isFullReport) {
           if (r.teacherRemarks) {
             setTeacherRemarks(r.teacherRemarks);
           } else if (!teacherRemarks) {
-            setTeacherRemarks(getAutoRemarks(localAggregate, true));
+            setTeacherRemarks(getAutoRemarks(localAggregate, true, activeSubjects, prevSubjects));
           }
 
           if (r.nextTermBegins) {
@@ -495,10 +543,10 @@ export const useAcademicRecordDetails = (
         }
       } else if (isMounted.current) {
         // If report record doesn't exist, set auto remarks
-        setAdminRemarks(getAutoRemarks(localAggregate, false));
+        setAdminRemarks(getAutoRemarks(localAggregate, false, activeSubjects, prevSubjects));
         if (isFullReport) {
           if (!teacherRemarks) {
-            setTeacherRemarks(getAutoRemarks(localAggregate, true));
+            setTeacherRemarks(getAutoRemarks(localAggregate, true, activeSubjects, prevSubjects));
           }
           if (acadConfig.nextTermBegins)
             setNextTermBegins(acadConfig.nextTermBegins);
@@ -577,6 +625,7 @@ export const useAcademicRecordDetails = (
           nextTermBegins: nextTermBegins || "TBA",
           promotedTo,
           isPreschool,
+          studentPhoto,
         },
         SCHOOL_CONFIG.fullName,
         SCHOOL_CONFIG.hotline,
@@ -599,6 +648,7 @@ export const useAcademicRecordDetails = (
     studentName,
     className,
     subjectsData,
+    previousSubjectsData,
     adminRemarks,
     teacherRemarks,
     conduct,
@@ -626,5 +676,6 @@ export const useAcademicRecordDetails = (
     refreshing,
     refresh,
     termBalance,
+    studentPhoto,
   };
 };

@@ -36,6 +36,7 @@ import NewsCard from "../../components/news/NewsCard";
 import { parseDateSafely } from "../../lib/classHelpers";
 import { COLORS, SHADOWS } from "../../constants/theme";
 import { useAuth } from "../../contexts/AuthContext";
+import { isAdminUser } from "../../utils/authUnify";
 import { db, functions } from "../../firebaseConfig";
 import { Audience, NewsItem } from "../../types/news";
 import SVGIcon from "../../components/SVGIcon";
@@ -99,7 +100,7 @@ export default function NewsCenter() {
   const brandPrimary = SCHOOL_CONFIG.brandPrimary;
   const brandSecondary = SCHOOL_CONFIG.brandSecondary;
 
-  const canPostNews = appUser?.role === "admin";
+  const canPostNews = isAdminUser(appUser);
   const [mode, setMode] = useState<"view" | "create" | "edit">("view");
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -113,7 +114,7 @@ export default function NewsCenter() {
         (docSnap) => ({ id: docSnap.id, ...(docSnap.data() as any) }) as NewsItem,
       );
       // For Admin, show all news. For others, filter.
-      const filtered = appUser.role === "admin"
+      const filtered = isAdminUser(appUser)
         ? list
         : list.filter((n) => n.audience === "all" || n.audience === appUser.role);
 

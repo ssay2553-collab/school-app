@@ -41,7 +41,7 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
     const lastHtml = useRef(initialContent);
     const isFirstMount = useRef(true);
     const isMounted = useRef(true);
-    const [webViewHeight, setWebViewHeight] = useState(initialContent ? 1800 : 1500);
+    const [webViewHeight, setWebViewHeight] = useState(initialContent ? 600 : 500);
 
     useEffect(() => {
       isMounted.current = true;
@@ -93,31 +93,46 @@ const RichTextEditor = forwardRef<RichTextEditorRef, Props>(
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: #fff;
 }
 .toolbar {
   display:${readOnly ? "none" : "flex"};
   flex-wrap: wrap;
-  padding:8px;
-  border-bottom:1px solid #ddd;
-  background:#fafafa;
-  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #E2E8F0;
+  background: #F8FAFC;
+  gap: 6px;
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 button {
-  padding:6px 10px;
-  border: 1px solid #ccc;
-  background: #fff;
-  border-radius: 4px;
+  padding: 6px 10px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  border-radius: 6px;
   cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  transition: all 0.15s ease;
 }
-button:active { background: #eee; }
+button:hover {
+  background: #F1F5F9;
+  border-color: #94A3B8;
+}
+button:active {
+  background: #E2E8F0;
+}
 #editor {
-  padding:12px;
-  outline:none;
-  min-height: 1500px;
+  padding: 15px;
+  outline: none;
+  min-height: 400px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #1E293B;
 }
 
 /* Highlight */
@@ -325,7 +340,7 @@ if(!window.ReactNativeWebView){
           <iframe
             id="rte-frame"
             srcDoc={htmlContent}
-            style={{ flex: 1, border: "none", width: '100%', height: '100%' }}
+            style={{ flex: 1, border: "none", width: '100%', height: '100%', minHeight: '500px' }}
           />
         </View>
       );
@@ -353,7 +368,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    minHeight: 1500,
+    minHeight: 500,
     height: Platform.OS === "web" ? "100%" : undefined,
   },
 });

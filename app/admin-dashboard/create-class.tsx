@@ -28,6 +28,7 @@ import { COLORS, SHADOWS } from "../../constants/theme";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { useAuth } from "../../contexts/AuthContext";
 import { useToast } from "../../contexts/ToastContext";
+import { isAdminUser } from "../../utils/authUnify";
 import { db } from "../../firebaseConfig";
 
 type ClassItem = {
@@ -79,8 +80,8 @@ export default function ClassManagementScreen() {
 
   const levels = ["A", "B", "C", "D", 1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-  // GRANT ACCESS TO ALL ADMIN USERS (Proprietor, Headmaster, etc. all have role === 'admin')
-  const isAuthorized = useMemo(() => appUser?.role?.toLowerCase() === 'admin', [appUser]);
+  // GRANT ACCESS TO ALL ADMIN USERS (Proprietor, Headmaster, etc.)
+  const isAuthorized = useMemo(() => isAdminUser(appUser), [appUser]);
 
   const fetchData = useCallback(async () => {
     if (!isAuthorized) return;

@@ -1,6 +1,7 @@
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { SCHOOL_CONFIG } from "../../../constants/Config";
+import { SubjectDiagnosticsCard } from "./SubjectDiagnosticsCard";
 
 interface Props {
   primary: string;
@@ -26,6 +27,8 @@ interface Props {
   isPreschool: boolean;
   preschoolAssessments?: Record<string, string>;
   physicalDev?: any;
+  studentPhoto?: string | null;
+  previousSubjectsData?: any[];
 }
 
 export const EndOfTermPreview: React.FC<Props> = ({
@@ -52,6 +55,8 @@ export const EndOfTermPreview: React.FC<Props> = ({
   isPreschool,
   preschoolAssessments,
   physicalDev,
+  studentPhoto,
+  previousSubjectsData,
 }) => {
   return (
     <View>
@@ -59,7 +64,13 @@ export const EndOfTermPreview: React.FC<Props> = ({
         <Text style={styles.reportTitleText}>TERMINAL PROGRESS REPORT</Text>
       </View>
 
-      <View style={styles.paperInfoGrid}>
+      <View style={{ flexDirection: "row", marginBottom: 20, gap: 10 }}>
+        {studentPhoto ? (
+          <View style={{ width: 75, height: 90, borderWidth: 1, borderColor: "#CBD5E1", borderRadius: 4, overflow: "hidden", backgroundColor: "#F8FAFC", justifyContent: "center", alignItems: "center" }}>
+            <Image source={{ uri: studentPhoto }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+          </View>
+        ) : null}
+        <View style={[styles.paperInfoGrid, { flex: 1, marginBottom: 0 }]}>
         {[
           { label: "STUDENT NAME", value: studentName },
           { label: "CLASS / GRADE", value: className || classIdState },
@@ -79,6 +90,7 @@ export const EndOfTermPreview: React.FC<Props> = ({
             </View>
           </View>
         ))}
+      </View>
       </View>
 
       <View style={styles.paperTable}>
@@ -185,6 +197,8 @@ export const EndOfTermPreview: React.FC<Props> = ({
             </View>
           </View>
         )}
+
+        <SubjectDiagnosticsCard subjectsData={subjectsData} previousSubjectsData={previousSubjectsData} primary={primary} />
 
         <View style={styles.remarksBox}>
           <View style={styles.remarksHeader}>

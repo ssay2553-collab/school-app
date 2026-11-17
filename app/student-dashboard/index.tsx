@@ -151,6 +151,20 @@ export default function StudentDashboard() {
           color: "#6366F1",
           path: "/coding-robotics",
         },
+        {
+          title: "Dictionary Hub",
+          subtitle: "Meanings & Audio",
+          icon: "book-outline",
+          color: "#FF6B6B",
+          path: "/student-dashboard/dictionary",
+        },
+        {
+          title: "Idiom Quest",
+          subtitle: "Master 300+ Idioms & Quiz",
+          icon: "sparkles",
+          color: "#A55EEA",
+          path: "/student-dashboard/idioms",
+        },
       ],
     },
     {

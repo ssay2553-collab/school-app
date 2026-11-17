@@ -47,6 +47,7 @@ export default function ViewAcademicRecordDetails() {
     studentName,
     className,
     subjectsData,
+    previousSubjectsData,
     adminRemarks,
     teacherRemarks,
     conduct,
@@ -73,6 +74,7 @@ export default function ViewAcademicRecordDetails() {
     refresh,
     isReportApproved,
     reportStatus,
+    studentPhoto,
   } = useAcademicRecordDetails();
 
   return (
@@ -171,6 +173,7 @@ export default function ViewAcademicRecordDetails() {
           attendance={attendance}
           isFullReport={isFullReport}
           subjectsData={subjectsData}
+          previousSubjectsData={previousSubjectsData}
           TRS={TRS}
           TAS={TAS}
           AGGREGATE={AGGREGATE}
@@ -190,6 +193,7 @@ export default function ViewAcademicRecordDetails() {
           generatePDF={generatePDF}
           refreshing={refreshing}
           refresh={refresh}
+          studentPhoto={studentPhoto}
         />
       )}
     </SafeAreaView>

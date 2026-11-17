@@ -158,3 +158,32 @@ export const fetchUserDocAndData = async (
   return { userDoc: null, userData: null, docId: null };
 };
 
+/**
+ * Robustly checks if a user (AppUser or Firestore data) has administrative privileges.
+ */
+export const isAdminUser = (user: any): boolean => {
+  if (!user) return false;
+  const role = (user.role || user.profile?.role || "").toLowerCase().trim();
+  const adminRole = (user.adminRole || user.profile?.adminRole || "").toLowerCase().trim();
+  const permissions = user.permissions || user.profile?.permissions || {};
+
+  return (
+    role.includes("admin") ||
+    role.includes("super") ||
+    role === "manager" ||
+    adminRole !== "" ||
+    role === "staff" ||
+    role === "proprietor" ||
+    role === "proprietress" ||
+    role === "principal" ||
+    role === "headmaster" ||
+    role === "headmistress" ||
+    role === "bursar" ||
+    role === "accountant" ||
+    role === "coordinator" ||
+    permissions['manage-users'] === 'full' ||
+    permissions['manage-fees'] === 'full'
+  );
+};
+
+

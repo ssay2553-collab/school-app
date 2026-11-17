@@ -18,7 +18,7 @@ export const WRONG_REMARKS = [
   "Keep your chin up! You can do it! ⭐",
 ];
 
-export type GameMode = "menu" | "quiz" | "word" | "memory" | "math" | "scramble" | "writing" | "scoreboard";
+export type GameMode = "menu" | "quiz" | "word" | "memory" | "math" | "scramble" | "writing" | "scoreboard" | "idioms" | "formwords" | "spelling";
 
 export const GAME_BG = {
   quiz: "#0EA5E9",
@@ -27,6 +27,9 @@ export const GAME_BG = {
   math: "#8B5CF6",
   scramble: "#F43F5E",
   writing: "#EC4899",
+  idioms: "#A855F7",
+  formwords: "#2563EB",
+  spelling: "#D97706",
   menu: "#FDFDFD",
   scoreboard: "#F8FAFC",
 };
@@ -1216,4 +1219,87 @@ export const MATH_SPRINT_DATA: MathQuestion[] = [
   { question: "Solve for x: 3x / 4 = 15", options: ["15", "18", "20", "25"], answer: "20", level: 10 },
   { question: "40% of 250 =", options: ["80", "90", "100", "110"], answer: "100", level: 10 },
 ];
+
+export interface SpellingWord {
+  word: string;
+  hint: string;
+  level: number;
+}
+
+export const SPELLING_WORDS_POOL: SpellingWord[] = [
+  // Level 1 (Lower Primary / Basic 1-3)
+  { word: "BOOK", hint: "Something you read with pages", level: 1 },
+  { word: "CAT", hint: "A furry pet that meows", level: 1 },
+  { word: "DOG", hint: "A loyal pet that barks", level: 1 },
+  { word: "TREE", hint: "A tall plant with leaves and branches", level: 1 },
+  { word: "FISH", hint: "An animal that swims in water", level: 1 },
+  { word: "MILK", hint: "A white healthy drink from cows", level: 1 },
+  { word: "BALL", hint: "A round toy used in games", level: 1 },
+  { word: "APPLE", hint: "A sweet red or green fruit", level: 1 },
+  { word: "SCHOOL", hint: "Where children go to learn", level: 1 },
+  { word: "WATER", hint: "Clear liquid we drink when thirsty", level: 1 },
+  { word: "PENCIL", hint: "Tool used for writing or drawing", level: 1 },
+  { word: "HOUSE", hint: "A building where people live", level: 1 },
+  { word: "SHIRT", hint: "Clothing worn on the upper body", level: 1 },
+  { word: "CHAIR", hint: "Furniture you sit on", level: 1 },
+  { word: "DOOR", hint: "Opening to enter a room", level: 1 },
+  { word: "SUN", hint: "Bright star that gives us daylight", level: 1 },
+  { word: "MOON", hint: "Bright object in the night sky", level: 1 },
+  { word: "STAR", hint: "Twinkling light in the night sky", level: 1 },
+
+  // Level 2 (Upper Primary / Basic 4-6)
+  { word: "FRIEND", hint: "Someone you like and trust", level: 2 },
+  { word: "GARDEN", hint: "Plot of ground for growing flowers or vegetables", level: 2 },
+  { word: "ORANGE", hint: "A round citrus fruit of an orange color", level: 2 },
+  { word: "BRIDGE", hint: "Structure built over a river or road", level: 2 },
+  { word: "MONKEY", hint: "Primate that climbs trees and eats bananas", level: 2 },
+  { word: "DOCTOR", hint: "Medical professional who treats sick people", level: 2 },
+  { word: "FLOWER", hint: "The colorful blossom of a plant", level: 2 },
+  { word: "WINTER", hint: "The coldest season of the year", level: 2 },
+  { word: "BOTTLE", hint: "Container for holding liquids", level: 2 },
+  { word: "CANDLE", hint: "Wax stick with a wick that gives light", level: 2 },
+  { word: "MIRROR", hint: "Glass surface that reflects images", level: 2 },
+  { word: "WINDOW", hint: "Opening in a wall with glass for light", level: 2 },
+  { word: "POCKET", hint: "Small pouch sewn into clothing", level: 2 },
+  { word: "TEACHER", hint: "Person who helps students learn", level: 2 },
+  { word: "WEATHER", hint: "State of the atmosphere day to day", level: 2 },
+  { word: "JOURNEY", hint: "An act of traveling from one place to another", level: 2 },
+  { word: "PICTURE", hint: "Painting, drawing, or photograph", level: 2 },
+  { word: "BLANKET", hint: "Warm covering used on a bed", level: 2 },
+
+  // Level 3 (JHS / Junior High)
+  { word: "ATMOSPHERE", hint: "Layers of gases surrounding the Earth", level: 3 },
+  { word: "GOVERNMENT", hint: "System governing a country or state", level: 3 },
+  { word: "PHOTOSYNTHESIS", hint: "How plants make food from sunlight", level: 3 },
+  { word: "TECHNOLOGY", hint: "Application of scientific knowledge", level: 3 },
+  { word: "MAGNIFICENT", hint: "Extremely beautiful, elaborate, or impressive", level: 3 },
+  { word: "ARCHITECTURE", hint: "The art and science of designing buildings", level: 3 },
+  { word: "CONSTITUTION", hint: "Fundamental laws and principles of a nation", level: 3 },
+  { word: "ECOSYSTEM", hint: "Biological community of interacting organisms", level: 3 },
+  { word: "ELECTRICITY", hint: "Form of energy resulting from charged particles", level: 3 },
+  { word: "EXPEDITION", hint: "Journey undertaken for a specific purpose", level: 3 },
+  { word: "GENERATION", hint: "All people born and living about the same time", level: 3 },
+  { word: "HYPOTHESIS", hint: "Proposed explanation made on limited evidence", level: 3 },
+  { word: "INSTITUTION", hint: "Society or organization founded for a purpose", level: 3 },
+  { word: "NAVIGATION", hint: "Process of plotting and directing a course", level: 3 },
+  { word: "PERSPECTIVE", hint: "A particular attitude or point of view", level: 3 },
+  { word: "QUOTATION", hint: "A group of words taken from a text or speech", level: 3 },
+  { word: "REBELLION", hint: "An act of armed resistance to an established government", level: 3 },
+  { word: "SANCTUARY", hint: "Nature reserve or place of safety", level: 3 },
+
+  // Level 4 (Advanced)
+  { word: "PHARMACEUTICAL", hint: "Relating to medicinal drugs and pharmacy", level: 4 },
+  { word: "CHARACTERISTIC", hint: "A typical feature or quality of a person or thing", level: 4 },
+  { word: "BIODIVERSITY", hint: "Variety of plant and animal life in a habitat", level: 4 },
+  { word: "CONSTELLATION", hint: "A group of stars forming a recognizable pattern", level: 4 },
+  { word: "ENCYCLOPEDIA", hint: "A book or set of books giving information on subjects", level: 4 },
+  { word: "THERMODYNAMICS", hint: "Branch of physics dealing with heat and energy", level: 4 },
+  { word: "PALEONTOLOGY", hint: "Scientific study of fossilized plants and animals", level: 4 },
+  { word: "OBSERVATORY", hint: "Room or building equipped for observing astronomy", level: 4 },
+  { word: "SUBTERRANEAN", hint: "Existing, occurring, or done under the earth's surface", level: 4 },
+  { word: "RENAISSANCE", hint: "The revival of art and literature in the 14th-17th centuries", level: 4 },
+  { word: "CARTOGRAPHY", hint: "The science or practice of drawing maps", level: 4 },
+  { word: "BIOCHEMISTRY", hint: "The branch of science concerned with chemical processes", level: 4 },
+];
+
 

@@ -415,10 +415,10 @@ export function useViewAcademicRecords() {
       if (isMounted.current) console.log("Error fetching behavioral defaults:", e);
     }
 
-    // Auto-generate admin remarks based on OVERALL Aggregate performance
+    // Auto-generate admin remarks based on OVERALL Aggregate performance and subject breakdown
     const agg = student.aggregate || 54;
-    const autoAdminRemarks = getAutoRemarks(agg, false);
-    const autoTeacherRemarks = getAutoRemarks(agg, true);
+    const autoAdminRemarks = getAutoRemarks(agg, false, (student as any).subjects);
+    const autoTeacherRemarks = getAutoRemarks(agg, true, (student as any).subjects);
 
     if (isMounted.current) {
       setAdminRemarks(autoAdminRemarks);
@@ -559,8 +559,8 @@ export function useViewAcademicRecords() {
         const existingData = reportSnap.exists() ? reportSnap.data() : {};
 
         const agg = student.aggregate || 54;
-        const autoAdminRemarks = getAutoRemarks(agg, false);
-        const autoTeacherRemarks = getAutoRemarks(agg, true);
+        const autoAdminRemarks = getAutoRemarks(agg, false, (student as any).subjects);
+        const autoTeacherRemarks = getAutoRemarks(agg, true, (student as any).subjects);
 
         const existingStatus = (existingData as any).status || "approved";
 

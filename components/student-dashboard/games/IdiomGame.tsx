@@ -26,7 +26,7 @@ import { CelebrationModal } from "./CelebrationModal";
 import { SHADOWS } from "../../../constants/theme";
 import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
 
-// Expanded Master Idioms Pool (60+ idioms to guarantee zero repetition across 30 questions per encounter)
+// Expanded Master Idioms Pool (60+ idioms to guarantee zero repetition across questions per encounter)
 const MASTER_IDIOMS = [
   { phrase: "A blessing in disguise", meaning: "A good thing that seemed bad at first.", example: "Missing the bus was a blessing in disguise." },
   { phrase: "A fish out of water", meaning: "Someone who feels uncomfortable in unfamiliar surroundings.", example: "He felt like a fish out of water at the new school." },
@@ -88,11 +88,12 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
   const { appUser } = useAuth();
   const [gameState, setGameState] = useState<"menu" | "playing" | "round_summary" | "final_summary" | "defeat_summary" | "tie_summary">("menu");
 
-  // Game structure: 3 Rounds, 10 questions per round = 30 unique questions total per encounter (5 for each student / turn)
+  // Game structure: 3 Rounds, 5 questions per round
   const [currentRound, setCurrentRound] = useState(1);
   const [roundQuestions, setRoundQuestions] = useState<any[]>([]);
   const [currentQIndex, setCurrentQIndex] = useState(0);
 
+  const [timeLeft, setTimeLeft] = useState(90);
   const [score, setScore] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [remark, setRemark] = useState<string | null>(null);
@@ -109,9 +110,10 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
   const [loadingMatch, setLoadingMatch] = useState(false);
   const [isMultiplayer, setIsMultiplayer] = useState(false);
 
-  // Generate 15 unique questions divided into 3 rounds of 5 questions each with Easy, Moderate, Difficult progression
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Generate 15 unique questions divided into 3 rounds of 5 questions each
   const prepareGameQuestions = () => {
-    // Easy (first 20 idioms), Moderate (middle 20 idioms), Difficult (last 20 idioms)
     const easyPool = [...MASTER_IDIOMS.slice(0, 20)].sort(() => 0.5 - Math.random()).slice(0, 5);
     const modPool = [...MASTER_IDIOMS.slice(20, 40)].sort(() => 0.5 - Math.random()).slice(0, 5);
     const diffPool = [...MASTER_IDIOMS.slice(40)].sort(() => 0.5 - Math.random()).slice(0, 5);
@@ -149,6 +151,7 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
     setRoundQuestions(rounds[0]);
     setCurrentRound(1);
     setCurrentQIndex(0);
+    setTimeLeft(90);
     setScore(0);
     setPcScore(0);
     setSelectedOption(null);
@@ -163,12 +166,92 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
 
   const currentQ = roundQuestions[currentQIndex];
 
+  // Question Timer Effect (90s countdown per question)
+  useEffect(() => {
+    if (gameState === "playing" && currentQ && selectedOption === null) {
+      setTimeLeft(90);
+      timerRef.current = setInterval(() => {
+        setTimeLeft(prev => {
+          if (prev <= 1) {
+            if (timerRef.current) clearInterval(timerRef.current);
+            handleTimeout();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [gameState, currentQIndex, currentRound, currentQ, selectedOption]);
+
+  // Timeout Handler: If user fails to answer in 90s, award +10 points to PC in solo mode!
+  const handleTimeout = () => {
+    if (selectedOption !== null) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    setSelectedOption("TIMEOUT_EXPIRED");
+
+    if (!isMultiplayer) {
+      setRemark("Time's Up! ⌛ PC awarded +10 points!");
+      setPcScore(p => p + 10);
+    } else {
+      setRemark("Time's Up! ⌛ Question expired.");
+    }
+
+    setTimeout(() => {
+      advanceToNextQuestion(score);
+    }, 1500);
+  };
+
+  // Helper to advance to next question or round summary
+  const advanceToNextQuestion = (userFinalScore: number) => {
+    setSelectedOption(null);
+    setRemark(null);
+    if (currentQIndex + 1 < roundQuestions.length) {
+      setCurrentQIndex(c => c + 1);
+    } else {
+      // Round complete (5 questions finished)
+      if (currentRound < 3) {
+        setGameState("round_summary");
+      } else {
+        if (appUser?.uid) {
+          syncAchievementsToCloud(appUser.uid, getStudentNameFromUser(appUser), appUser.classId, userFinalScore);
+        }
+
+        if (isMultiplayer && matchId && appUser?.uid) {
+          updateDoc(doc(db, "idiom_battles", matchId), {
+            status: "finished",
+            [`scores.${appUser.uid}`]: userFinalScore,
+          }).catch(err => console.error(err));
+        }
+
+        const oppFinal = isMultiplayer ? opponentScore : pcScore;
+        if (userFinalScore > oppFinal) {
+          setGameState("final_summary");
+          Speech.speak("Congratulations! You won the Idiom Quest championship!", { language: 'en' });
+        } else if (userFinalScore === oppFinal) {
+          setGameState("tie_summary");
+          Speech.speak("Incredible battle! It is a draw!", { language: 'en' });
+        } else {
+          setGameState("defeat_summary");
+          Speech.speak("Good effort! You played brilliantly.", { language: 'en' });
+        }
+      }
+    }
+  };
+
+  // Option selection handler
   const handleSelectOption = (option: string) => {
     if (selectedOption !== null) return;
+    if (timerRef.current) clearInterval(timerRef.current);
     setSelectedOption(option);
+
     const correct = option === currentQ.correctMeaning;
+    const userFinalScore = correct ? score + 10 : score;
     if (correct) {
-      setScore(s => s + 10);
+      setScore(userFinalScore);
       const randRemark = REMARKS[Math.floor(Math.random() * REMARKS.length)];
       setRemark(randRemark);
     } else {
@@ -184,49 +267,15 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
       }
     }
 
-    setTimeout(() => {
-      setSelectedOption(null);
-      setRemark(null);
-      if (currentQIndex + 1 < roundQuestions.length) {
-        setCurrentQIndex(c => c + 1);
-      } else {
-        // Round complete (5 questions finished)
-        if (currentRound < 3) {
-          setGameState("round_summary");
-        } else {
-          const finalScore = score + (correct ? 10 : 0);
-
-          if (appUser?.uid) {
-            syncAchievementsToCloud(appUser.uid, getStudentNameFromUser(appUser), appUser.classId, finalScore);
-          }
-
-          if (isMultiplayer && matchId && appUser?.uid) {
-            updateDoc(doc(db, "idiom_battles", matchId), {
-              status: "finished",
-              [`scores.${appUser.uid}`]: finalScore,
-            }).catch(err => console.error(err));
-          }
-
-          const oppFinal = isMultiplayer ? opponentScore : pcScore;
-          if (finalScore > oppFinal) {
-            setGameState("final_summary");
-            Speech.speak("Congratulations! You won the Idiom Quest championship!", { language: 'en' });
-          } else if (finalScore === oppFinal) {
-            setGameState("tie_summary");
-            Speech.speak("Incredible battle! It is a draw!", { language: 'en' });
-          } else {
-            setGameState("defeat_summary");
-            Speech.speak("Good effort! You played brilliantly.", { language: 'en' });
-          }
-        }
-      }
-    }, 1500);
-
     if (isMultiplayer && matchId && appUser?.uid) {
       updateDoc(doc(db, "idiom_battles", matchId), {
-        [`scores.${appUser.uid}`]: score + (correct ? 10 : 0),
+        [`scores.${appUser.uid}`]: userFinalScore,
       }).catch(err => console.error(err));
     }
+
+    setTimeout(() => {
+      advanceToNextQuestion(userFinalScore);
+    }, 1500);
   };
 
   // Create Multiplayer Room
@@ -301,6 +350,7 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
 
       setCurrentRound(1);
       setCurrentQIndex(0);
+      setTimeLeft(90);
       setScore(0);
       setGameState("playing");
     } catch (err) {
@@ -326,6 +376,7 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
         }
         setCurrentRound(1);
         setCurrentQIndex(0);
+        setTimeLeft(90);
         setScore(0);
         setGameState("playing");
       }
@@ -374,7 +425,7 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
             <SVGIcon name="sparkles" size={48} color="#A855F7" />
             <Text style={styles.bannerTitle}>Idiom Quest Championship</Text>
             <Text style={styles.bannerSub}>
-              3 Rounds • 10 Questions per Round (30 Unique Idioms Total) • Head-to-Head Multiplayer!
+              3 Rounds • 5 Questions per Round • 90 Seconds per Question • Head-to-Head Multiplayer!
             </Text>
           </View>
 
@@ -439,6 +490,10 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>ROUND {currentRound}/3</Text>
               <Text style={[styles.statValue, { color: "#7C3AED" }]}>Q {currentQIndex + 1}/5</Text>
+            </View>
+            <View style={styles.statBox}>
+              <Text style={styles.statLabel}>TIME LEFT</Text>
+              <Text style={[styles.statValue, timeLeft <= 15 && { color: "#EF4444" }]}>{timeLeft}s</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>MY SCORE</Text>
@@ -510,6 +565,7 @@ export function IdiomGame({ onExit }: IdiomGameProps) {
               setCurrentRound(nextRound);
               setRoundQuestions(allRounds[nextRound - 1]);
               setCurrentQIndex(0);
+              setTimeLeft(90);
               setSelectedOption(null);
               setRemark(null);
               setGameState("playing");
@@ -667,15 +723,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
-    padding: 12,
+    padding: 10,
     alignItems: "center",
-    marginHorizontal: 4,
+    marginHorizontal: 2,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     ...SHADOWS.small,
   },
-  statLabel: { fontSize: 10, fontWeight: "800", color: "#64748B" },
-  statValue: { fontSize: 18, fontWeight: "900", marginTop: 2 },
+  statLabel: { fontSize: 9, fontWeight: "800", color: "#64748B" },
+  statValue: { fontSize: 16, fontWeight: "900", marginTop: 2 },
   quizQuestionCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 20,

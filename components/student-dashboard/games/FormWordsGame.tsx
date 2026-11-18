@@ -24,6 +24,7 @@ import SVGIcon from "../../SVGIcon";
 import { SHADOWS } from "../../../constants/theme";
 import { CelebrationModal } from "./CelebrationModal";
 import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
+import { canFormWord, isDictionaryWord, getValidSubWords } from "./FormWordsDictionary";
 
 const BASE_WORDS_POOL = [
   { word: "EXPERIMENT", hint: "A scientific test" },
@@ -65,7 +66,6 @@ const BASE_WORDS_POOL = [
   { word: "SUBTERRANEAN", hint: "Existing beneath the earth" },
   { word: "THERMODYNAMICS", hint: "Physics of heat and energy" },
   { word: "TRIGONOMETRY", hint: "Branch of mathematics" },
-  { word: "ZOOLOGY", hint: "Scientific study of animals" },
 ];
 
 interface FormWordsGameProps {
@@ -74,12 +74,11 @@ interface FormWordsGameProps {
 
 export function FormWordsGame({ onExit }: FormWordsGameProps) {
   const { appUser } = useAuth();
-  const [gameState, setGameState] = useState<"menu" | "playing" | "word_transition" | "round_summary" | "final_summary" | "defeat_summary" | "tie_summary">("menu");
+  const [gameState, setGameState] = useState<"menu" | "playing" | "round_summary" | "final_summary" | "defeat_summary" | "tie_summary">("menu");
 
-  // Game Rounds configuration (3 Rounds, 2 unique words per round = 6 unique words total per encounter)
+  // Game Rounds configuration (3 Rounds, 1 unique base word per round = 3 unique words total)
   const [currentRound, setCurrentRound] = useState(1);
   const [roundWords, setRoundWords] = useState<{ word: string; hint: string }[]>([]);
-  const [currentWordIndex, setCurrentWordIndex] = useState(0);
 
   const [timeLeft, setTimeLeft] = useState(90);
   const [inputWord, setInputWord] = useState("");
@@ -105,32 +104,13 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Helper: check if a word can be formed from base word
-  const canFormWord = (word: string, base: string) => {
-    const cleanWord = word.toUpperCase().trim();
-    const cleanBase = base.toUpperCase();
-    if (cleanWord.length < 2) return false;
-
-    const baseCounts: Record<string, number> = {};
-    for (const char of cleanBase) {
-      baseCounts[char] = (baseCounts[char] || 0) + 1;
-    }
-
-    for (const char of cleanWord) {
-      if (!baseCounts[char] || baseCounts[char] <= 0) return false;
-      baseCounts[char]--;
-    }
-    return true;
-  };
-
   // Start Solo Game vs PC
   const startSoloGame = () => {
     setIsMultiplayer(false);
-    // 3 Rounds, 2 unique base words per round = 6 words total
-    const shuffledUnique = [...BASE_WORDS_POOL].sort(() => 0.5 - Math.random()).slice(0, 6);
+    // 3 Rounds, 1 unique base word per round = 3 words total
+    const shuffledUnique = [...BASE_WORDS_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
     setRoundWords(shuffledUnique);
     setCurrentRound(1);
-    setCurrentWordIndex(0);
     setTotalScore(0);
     setRoundScore(0);
     setPcTotalScore(0);
@@ -142,38 +122,51 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
     setGameState("playing");
   };
 
-  // Timer effect for round
+  // Timer effect for round & competitive PC Opponent AI
   useEffect(() => {
     if (gameState === "playing") {
       timerRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
             if (timerRef.current) clearInterval(timerRef.current);
-            handleEndWordOrRound();
+            handleEndRound();
             return 0;
           }
           return prev - 1;
         });
       }, 1000);
 
-      // PC Opponent AI timer simulation (Round 1: Easy - 8s, Round 2: Moderate - 5s, Round 3: Difficult - 3s)
+      // Competitive PC Opponent AI timer simulation
+      // Round 1 (Easy): Every 10s per word
+      // Round 2 (Moderate): Every 7s per word
+      // Round 3 (Difficult): Every 7s per word
       let pcInterval: NodeJS.Timeout | null = null;
       if (!isMultiplayer) {
-        const pcIntervalMs = currentRound === 1 ? 8000 : currentRound === 2 ? 5000 : 3000;
+        const pcIntervalMs = currentRound === 1 ? 10000 : 7000;
         pcInterval = setInterval(() => {
-          const activeWordIndex = (currentRound - 1) * 2 + currentWordIndex;
-          const currentBase = roundWords[activeWordIndex]?.word || "EXPERIMENT";
-          const possibleWords = ["TEN", "PET", "NET", "MEN", "TIME", "PENT", "RENT", "ENTER", "MINT", "RICE", "TENT", "ART", "CAR", "PART", "MAP", "TEAM"];
-          const valid = possibleWords.filter(w =>
-            canFormWord(w, currentBase) &&
+          const currentBaseStr = roundWords[currentRound - 1]?.word || "EXPERIMENT";
+          const allSubwords = getValidSubWords(currentBaseStr);
+
+          // Filter out words already submitted by PC or by user
+          const validForPc = allSubwords.filter(w =>
             !pcWords.includes(w) &&
             !foundWords.includes(w)
           );
-          if (valid.length > 0) {
-            const chosen = valid[Math.floor(Math.random() * valid.length)];
+
+          if (validForPc.length > 0) {
+            // Select a word. In Round 3 (Difficult), favor longer/higher scoring words if available
+            let chosen: string;
+            if (currentRound === 3 && validForPc.some(w => w.length >= 5)) {
+              const longWords = validForPc.filter(w => w.length >= 5);
+              chosen = longWords[Math.floor(Math.random() * longWords.length)];
+            } else {
+              chosen = validForPc[Math.floor(Math.random() * validForPc.length)];
+            }
+
             setPcWords(p => [chosen, ...p]);
-            setPcRoundScore(s => s + chosen.length * 2);
-            setPcTotalScore(s => s + chosen.length * 2);
+            const pts = chosen.length * 2;
+            setPcRoundScore(s => s + pts);
+            setPcTotalScore(s => s + pts);
           }
         }, pcIntervalMs);
       }
@@ -183,60 +176,62 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
         if (pcInterval) clearInterval(pcInterval);
       };
     }
-  }, [gameState, currentRound, currentWordIndex, roundWords, foundWords, pcWords, isMultiplayer]);
+  }, [gameState, currentRound, roundWords, foundWords, pcWords, isMultiplayer]);
 
-  const handleEndWordOrRound = () => {
-    if (currentWordIndex === 0) {
-      setGameState("word_transition");
-      Speech.speak(`Word 1 of Round ${currentRound} complete! Get ready for Word 2!`, { language: 'en' });
+  const handleEndRound = () => {
+    if (currentRound < 3) {
+      setGameState("round_summary");
+      Speech.speak(`Round ${currentRound} complete!`, { language: 'en' });
     } else {
-      if (currentRound < 3) {
-        setGameState("round_summary");
-        Speech.speak(`Round ${currentRound} complete!`, { language: 'en' });
+      if (appUser?.uid) {
+        syncAchievementsToCloud(appUser.uid, getStudentNameFromUser(appUser), appUser.classId, totalScore);
+      }
+
+      if (isMultiplayer && matchId && appUser?.uid) {
+        updateDoc(doc(db, "word_battles", matchId), {
+          status: "finished",
+          [`scores.${appUser.uid}`]: totalScore,
+        }).catch(err => console.error(err));
+      }
+
+      const opponentScoreFinal = isMultiplayer ? opponentTotalScore : pcTotalScore;
+      if (totalScore > opponentScoreFinal) {
+        setGameState("final_summary");
+        Speech.speak("Congratulations! You won the championship!", { language: 'en' });
+      } else if (totalScore === opponentScoreFinal) {
+        setGameState("tie_summary");
+        Speech.speak("Incredible battle! It is a draw!", { language: 'en' });
       } else {
-        if (appUser?.uid) {
-          syncAchievementsToCloud(appUser.uid, getStudentNameFromUser(appUser), appUser.classId, totalScore);
-        }
-
-        if (isMultiplayer && matchId && appUser?.uid) {
-          updateDoc(doc(db, "word_battles", matchId), {
-            status: "finished",
-            [`scores.${appUser.uid}`]: totalScore,
-          }).catch(err => console.error(err));
-        }
-
-        const opponentScoreFinal = isMultiplayer ? opponentTotalScore : pcTotalScore;
-        if (totalScore > opponentScoreFinal) {
-          setGameState("final_summary");
-          Speech.speak("Congratulations! You won the championship!", { language: 'en' });
-        } else if (totalScore === opponentScoreFinal) {
-          setGameState("tie_summary");
-          Speech.speak("Incredible battle! It is a draw!", { language: 'en' });
-        } else {
-          setGameState("defeat_summary");
-          Speech.speak("Good effort! You fought a great battle.", { language: 'en' });
-        }
+        setGameState("defeat_summary");
+        Speech.speak("Good effort! You fought a great battle.", { language: 'en' });
       }
     }
   };
 
-  // Submit word
+  // Submit word with strict dictionary validation
   const handleSumbitWord = () => {
     const clean = inputWord.toUpperCase().trim();
     if (!clean) return;
 
-    const activeWordIndex = (currentRound - 1) * 2 + currentWordIndex;
-    const currentBase = roundWords[activeWordIndex]?.word || "";
+    const currentBase = roundWords[currentRound - 1]?.word || "";
 
-    // Rule: Wrong word rejection
+    // Rule 1: Letter availability check
     if (!canFormWord(clean, currentBase)) {
-      setFeedbackMsg({ text: `Wrong word! "${clean}" cannot be formed.`, type: "error" });
+      setFeedbackMsg({ text: `Wrong letters! "${clean}" cannot be formed from "${currentBase}".`, type: "error" });
       setInputWord("");
       setTimeout(() => setFeedbackMsg(null), 3000);
       return;
     }
 
-    // Rule: Already found by user
+    // Rule 2: Strict English Dictionary check
+    if (!isDictionaryWord(clean, currentBase)) {
+      setFeedbackMsg({ text: `Invalid word! "${clean}" is not a valid English word.`, type: "error" });
+      setInputWord("");
+      setTimeout(() => setFeedbackMsg(null), 3000);
+      return;
+    }
+
+    // Rule 3: Already found by user
     if (foundWords.includes(clean)) {
       setFeedbackMsg({ text: `You already found "${clean}"!`, type: "warning" });
       setInputWord("");
@@ -244,7 +239,7 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
       return;
     }
 
-    // Rule: Unique word rule against opponent / PC
+    // Rule 4: Unique word rule against opponent / PC
     const takenByOpponent = isMultiplayer ? opponentWords.includes(clean) : pcWords.includes(clean);
     if (takenByOpponent) {
       setFeedbackMsg({ text: `Word already taken! Opponent already submitted "${clean}".`, type: "warning" });
@@ -281,7 +276,7 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
       const code = Math.floor(1000 + Math.random() * 9000).toString();
       setRoomCode(code);
       setIsHost(true);
-      const shuffledUnique = [...BASE_WORDS_POOL].sort(() => 0.5 - Math.random()).slice(0, 6);
+      const shuffledUnique = [...BASE_WORDS_POOL].sort(() => 0.5 - Math.random()).slice(0, 3);
       setRoundWords(shuffledUnique);
 
       const matchRef = doc(db, "word_battles", code);
@@ -331,7 +326,7 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
         return;
       }
 
-      setRoundWords(data.roundWords || [...BASE_WORDS_POOL].slice(0, 6));
+      setRoundWords(data.roundWords || [...BASE_WORDS_POOL].slice(0, 3));
       setIsHost(false);
       setMatchId(roomCode.trim());
 
@@ -344,7 +339,6 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
       });
 
       setCurrentRound(1);
-      setCurrentWordIndex(0);
       setTimeLeft(90);
       setFoundWords([]);
       setTotalScore(0);
@@ -369,7 +363,6 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
 
       if (gameState === "menu" && data.status === "playing") {
         setCurrentRound(1);
-        setCurrentWordIndex(0);
         setTimeLeft(90);
         setFoundWords([]);
         setTotalScore(0);
@@ -406,8 +399,7 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
     return () => unsub();
   }, [matchId, gameState, isHost, totalScore]);
 
-  const activeWordIndex = (currentRound - 1) * 2 + currentWordIndex;
-  const currentBase = roundWords[activeWordIndex] || { word: "EXPERIMENT", hint: "A scientific test" };
+  const currentBase = roundWords[currentRound - 1] || { word: "EXPERIMENT", hint: "A scientific test" };
 
   return (
     <View style={styles.container}>
@@ -427,7 +419,7 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
             <SVGIcon name="flash" size={48} color="#2563EB" />
             <Text style={styles.bannerTitle}>Word Builder Championship</Text>
             <Text style={styles.bannerSub}>
-              3 Rounds • 2 Unique Words per Round (40+ Word Bank) • 90 Seconds each.
+              3 Rounds • 1 Word per Round (40+ Word Bank) • 90 Seconds per Round.
             </Text>
           </View>
 
@@ -491,8 +483,8 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
           {/* STATS BAR */}
           <View style={styles.statsBar}>
             <View style={styles.statBox}>
-              <Text style={styles.statLabel}>ROUND {currentRound}/3</Text>
-              <Text style={[styles.statValue, { color: "#7C3AED" }]}>Word {currentWordIndex + 1}/2</Text>
+              <Text style={styles.statLabel}>ROUND</Text>
+              <Text style={[styles.statValue, { color: "#7C3AED" }]}>{currentRound}/3</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statLabel}>TIME LEFT</Text>
@@ -511,11 +503,11 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
             <Text style={styles.baseWordSub}>Form unique words using these letters!</Text>
             <TouchableOpacity
               style={styles.skipWordBtn}
-              onPress={handleEndWordOrRound}
+              onPress={handleEndRound}
               activeOpacity={0.8}
             >
               <Text style={styles.skipWordBtnText}>
-                {currentWordIndex === 0 ? "Done with Word 1? Go to Word 2 ➡️" : "Done with Word 2? Finish Round 🎯"}
+                {currentRound < 3 ? `Done with Round ${currentRound}? Go to Round ${currentRound + 1} ➡️` : "Finish Championship 🎯"}
               </Text>
             </TouchableOpacity>
           </View>
@@ -589,52 +581,24 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
         </ScrollView>
       )}
 
-      {/* WORD TRANSITION STATE (BETWEEN WORD 1 AND WORD 2 IN SAME ROUND) */}
-      {gameState === "word_transition" && (
-        <View style={styles.summaryContainer}>
-          <SVGIcon name="swap-horizontal" size={64} color="#7C3AED" />
-          <Text style={styles.summaryTitle}>Word 1 Complete! 🎯</Text>
-          <Text style={styles.summarySub}>
-            Word 1 of Round {currentRound} is finished! You found {foundWords.length} word(s) and scored {roundScore} points so far.
-          </Text>
-
-          <View style={styles.nextWordPreviewBox}>
-            <Text style={styles.nextWordPreviewLabel}>UP NEXT IN ROUND {currentRound}:</Text>
-            <Text style={styles.nextWordPreviewTitle}>Word 2 of 2</Text>
-            <Text style={styles.nextWordPreviewHint}>
-              💡 Hint Preview: "{roundWords[(currentRound - 1) * 2 + 1]?.hint || "Get ready to form words!"}"
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.playAgainBtn, { backgroundColor: "#7C3AED" }]}
-            onPress={() => {
-              setCurrentWordIndex(1);
-              setTimeLeft(90);
-              setFoundWords([]);
-              setGameState("playing");
-            }}
-          >
-            <Text style={styles.playAgainBtnText}>Start Word 2 Now 🚀</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {/* ROUND SUMMARY STATE */}
       {gameState === "round_summary" && (
         <View style={styles.summaryContainer}>
           <SVGIcon name="flag" size={56} color="#3B82F6" />
           <Text style={styles.summaryTitle}>Round {currentRound} Complete! 🎯</Text>
-          <Text style={styles.summarySub}>Get ready for Round {currentRound + 1}!</Text>
+          <Text style={styles.summarySub}>
+            You found {foundWords.length} word(s) in Round {currentRound}! Get ready for Round {currentRound + 1}.
+          </Text>
 
           <TouchableOpacity
             style={styles.playAgainBtn}
             onPress={() => {
               setCurrentRound(r => r + 1);
-              setCurrentWordIndex(0);
               setTimeLeft(90);
               setFoundWords([]);
+              setPcWords([]);
               setRoundScore(0);
+              setPcRoundScore(0);
               setGameState("playing");
             }}
           >
@@ -826,35 +790,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#2563EB",
   },
-  nextWordPreviewBox: {
-    backgroundColor: "#F3E8FF",
-    borderWidth: 1,
-    borderColor: "#C084FC",
-    borderRadius: 16,
-    padding: 16,
-    width: "100%",
-    alignItems: "center",
-    marginVertical: 20,
-  },
-  nextWordPreviewLabel: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#7E22CE",
-    letterSpacing: 1,
-  },
-  nextWordPreviewTitle: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#581C87",
-    marginTop: 4,
-  },
-  nextWordPreviewHint: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#6B21A8",
-    marginTop: 6,
-    textAlign: "center",
-  },
   feedbackBanner: {
     padding: 12,
     borderRadius: 12,
@@ -925,7 +860,7 @@ const styles = StyleSheet.create({
     padding: 30,
   },
   summaryTitle: { fontSize: 26, fontWeight: "900", color: "#1E293B", marginTop: 16 },
-  summarySub: { fontSize: 15, color: "#64748B", marginTop: 8, marginBottom: 30 },
+  summarySub: { fontSize: 15, color: "#64748B", marginTop: 8, marginBottom: 30, textAlign: "center" },
   playAgainBtn: {
     backgroundColor: "#2563EB",
     paddingHorizontal: 30,

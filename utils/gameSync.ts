@@ -81,6 +81,18 @@ export const syncAchievementsToCloud = async (
       }
     }
 
+    // Read existing Firestore document to prevent overwriting higher scores with lower local scores
+    const docSnap = await getDoc(doc(db, "gameAchievements", studentId));
+    if (docSnap.exists()) {
+      const existingData = docSnap.data();
+      if (existingData.totalScore && existingData.totalScore > totalScore) {
+        totalScore = existingData.totalScore;
+      }
+      if (existingData.studentName && existingData.studentName !== "Super Student" && cleanName === "Super Student") {
+        data.studentName = existingData.studentName;
+      }
+    }
+
     data.totalScore = totalScore;
 
     if (Object.keys(data).length > 3) {

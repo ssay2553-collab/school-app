@@ -184,7 +184,13 @@ function hasScreenPermission(screen, level) {
     }
 
     function isParent() {
-      return userData() != null && userData().role == 'parent';
+      return userData() != null && (
+        userData().get('role', '') == 'parent' ||
+        userData().get(['profile', 'role'], '') == 'parent' ||
+        userData().get('assignedRoles', []).hasAny(['parent', 'Parent']) ||
+        userData().get('childrenIds', []).size() > 0 ||
+        userData().get(['profile', 'childrenIds'], []).size() > 0
+      );
     }
 
     function isParentOf(studentId) {

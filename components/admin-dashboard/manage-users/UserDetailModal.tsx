@@ -8,6 +8,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from "react-native";
@@ -49,6 +50,7 @@ interface UserDetailModalProps {
   onRunFinanceCleanup?: (user: User) => void;
   isFinanceCleaning?: boolean;
   onResetPassword?: (user: User) => void;
+  onLinkStudentByCode?: (userUid: string, linkCode: string) => void;
 }
 
 export const UserDetailModal: React.FC<UserDetailModalProps> = ({
@@ -79,8 +81,11 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
   onRunFinanceCleanup,
   isFinanceCleaning,
   onResetPassword,
+  onLinkStudentByCode,
 }) => {
   if (!user) return null;
+
+  const [parentCodeInput, setParentCodeInput] = React.useState("");
 
   const formatDate = (date: any) => {
     if (!date) return "N/A";
@@ -736,6 +741,54 @@ export const UserDetailModal: React.FC<UserDetailModalProps> = ({
                         )}
                       </View>
                     ))}
+                  </View>
+                </View>
+              )}
+
+              {user.role !== "student" && user.role !== "parent" && (
+                <View style={styles.infoSection}>
+                  <Text style={styles.infoLabel}>Link Child (Parent Link Code)</Text>
+                  <Text style={{ fontSize: 12, color: "#64748B", marginBottom: 8 }}>
+                    Enter student's 6-digit parent link code to link them to this staff/admin account
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <TextInput
+                      style={{
+                        flex: 1,
+                        height: 44,
+                        borderWidth: 1,
+                        borderColor: "#E2E8F0",
+                        borderRadius: 10,
+                        paddingHorizontal: 12,
+                        backgroundColor: "#F8FAFC",
+                        color: "#1E293B",
+                        fontWeight: "700",
+                        fontSize: 13,
+                      }}
+                      placeholder="E.G. AB12CD"
+                      placeholderTextColor="#94A3B8"
+                      value={parentCodeInput}
+                      onChangeText={setParentCodeInput}
+                      autoCapitalize="characters"
+                      maxLength={6}
+                    />
+                    <TouchableOpacity
+                      style={{
+                        backgroundColor: COLORS.primary,
+                        paddingHorizontal: 16,
+                        borderRadius: 10,
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                      onPress={() => {
+                        if (onLinkStudentByCode && user) {
+                          onLinkStudentByCode(user.uid, parentCodeInput);
+                          setParentCodeInput("");
+                        }
+                      }}
+                    >
+                      <Text style={{ color: "#fff", fontWeight: "900", fontSize: 12 }}>LINK</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               )}

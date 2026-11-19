@@ -28,6 +28,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { db } from "../../firebaseConfig";
 import { useAcademicConfig } from "../../hooks/useAcademicConfig";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
+import { isDualRoleTeacherParent } from "../../utils/authUnify";
 
 import { AdminEventStats } from "../../components/admin-dashboard/AdminEventStats";
 import DashboardHeader from "../../components/DashboardHeader";
@@ -397,6 +398,8 @@ export default function ParentDashboard() {
           roleTag="Parent"
           onProfilePress={() => router.push("/parent-dashboard/settings")}
           onSettingsPress={() => router.push("/parent-dashboard/settings")}
+          showTeacherButton={isDualRoleTeacherParent(appUser)}
+          onTeacherDashboardPress={() => router.push("/teacher-dashboard")}
         >
           <Animatable.View animation="fadeInUp" delay={400} style={styles.headerContactInfo}>
               <View style={styles.headerContactItem}>

@@ -24,7 +24,7 @@ import SVGIcon from "../../SVGIcon";
 import { SHADOWS } from "../../../constants/theme";
 import { CelebrationModal } from "./CelebrationModal";
 import { syncAchievementsToCloud, getStudentNameFromUser } from "../../../utils/gameSync";
-import { canFormWord, isDictionaryWord, getValidSubWords } from "./FormWordsDictionary";
+import { canFormWord, isDictionaryWord, isDictionaryWordAsync, getValidSubWords } from "./FormWordsDictionary";
 
 const BASE_WORDS_POOL = [
   { word: "EXPERIMENT", hint: "A scientific test" },
@@ -209,7 +209,7 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
   };
 
   // Submit word with strict dictionary validation
-  const handleSumbitWord = () => {
+  const handleSumbitWord = async () => {
     const clean = inputWord.toUpperCase().trim();
     if (!clean) return;
 
@@ -223,8 +223,9 @@ export function FormWordsGame({ onExit }: FormWordsGameProps) {
       return;
     }
 
-    // Rule 2: Strict English Dictionary check
-    if (!isDictionaryWord(clean, currentBase)) {
+    // Rule 2: Strict English Dictionary check (Offline + Online Fallback)
+    const isValid = await isDictionaryWordAsync(clean, currentBase);
+    if (!isValid) {
       setFeedbackMsg({ text: `Invalid word! "${clean}" is not a valid English word.`, type: "error" });
       setInputWord("");
       setTimeout(() => setFeedbackMsg(null), 3000);

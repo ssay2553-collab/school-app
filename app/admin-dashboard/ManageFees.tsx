@@ -19,7 +19,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ClassSelectorModal } from "../../components/admin-dashboard/ClassSelectorModal";
 import { FeeBulkActionStrip } from "../../components/admin-dashboard/FeeBulkActionStrip";
 import { FeeConfirmModal } from "../../components/admin-dashboard/FeeConfirmModal";
-import { FeeDailyTransactionsModal } from "../../components/admin-dashboard/FeeDailyTransactionsModal";
 import { FeeHeader } from "../../components/admin-dashboard/FeeHeader";
 import { FeeModeTabs } from "../../components/admin-dashboard/FeeModeTabs";
 import { FeePaymentModal } from "../../components/admin-dashboard/FeePaymentModal";
@@ -177,6 +176,22 @@ export default function ManageFees() {
   }, [appUser, canView]);
 
   useEffect(() => {
+    if (appUser && canView && !canEdit && isMounted.current) {
+      if (!isNavigating.current) {
+        isNavigating.current = true;
+        router.replace({
+          pathname: "/admin-dashboard/FeeReports",
+          params: {
+            classId: selectedClassId || "all",
+            academicYear: academicYear || "",
+            term: term || "",
+          },
+        });
+      }
+    }
+  }, [appUser, canView, canEdit, selectedClassId, academicYear, term]);
+
+  useEffect(() => {
     const onBackPress = () => {
       if (selectorModal.visible) {
         setSelectorModal({ visible: false, type: null });
@@ -294,6 +309,20 @@ export default function ManageFees() {
     );
   }
 
+  if (canView && !canEdit) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="dark-content" />
+        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+          <ActivityIndicator size="large" color={primaryBrand} />
+          <Text style={{ marginTop: 12, color: "#64748B", fontWeight: "600" }}>
+            Loading Financial Reports...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
       <StatusBar barStyle="dark-content" />
@@ -341,7 +370,17 @@ export default function ManageFees() {
                   }, 500);
                 }}
                 onRefresh={handleRefresh}
-                onShowDaily={() => setDailyModalVisible(true)}
+                onShowDaily={() => {
+                  if (isNavigating.current) return;
+                  isNavigating.current = true;
+                  router.push({
+                    pathname: "/admin-dashboard/FeeDailyTransactions",
+                    params: { academicYear, term },
+                  });
+                  setTimeout(() => {
+                    isNavigating.current = false;
+                  }, 500);
+                }}
                 onNormalize={handleNormalizeDiscounts}
                 isSuperAdmin={isSuperAdmin}
                 inconsistentCount={inconsistentCount}
@@ -590,15 +629,6 @@ export default function ManageFees() {
         onCancel={() => setDiscountModalVisible(false)}
         confirmColor={VIBE.success}
         loading={saving}
-      />
-
-      <FeeDailyTransactionsModal
-        visible={dailyModalVisible}
-        onClose={() => setDailyModalVisible(false)}
-        selectedDate={selectedDailyDate}
-        onDateChange={setSelectedDailyDate}
-        dailyPayments={dailyPayments}
-        loading={loadingDaily}
       />
 
       <FeeAddDiscountModal

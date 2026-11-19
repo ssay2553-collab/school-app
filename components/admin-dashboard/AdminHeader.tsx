@@ -22,6 +22,8 @@ interface AdminHeaderProps {
   onSettingsPress: () => void;
   onTeacherDashboardPress: () => void;
   showTeacherButton: boolean;
+  onParentDashboardPress?: () => void;
+  showParentButton?: boolean;
   children?: React.ReactNode;
 }
 
@@ -34,6 +36,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   onSettingsPress,
   onTeacherDashboardPress,
   showTeacherButton,
+  onParentDashboardPress,
+  showParentButton,
   children,
 }) => {
   return (
@@ -78,7 +82,9 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               )}
             </TouchableOpacity>
             <View style={{ marginLeft: isSmallScreen ? 10 : 15, flex: 1 }}>
-              <Text style={styles.welcomeText}>WELCOME BACK, CHIEF! 🛡️</Text>
+              <Text style={styles.welcomeText}>
+                WELCOME BACK, {(appUser?.adminRole || "SUPER ADMIN").toUpperCase()}! 🛡️
+              </Text>
               <Text
                 style={[
                   styles.adminName,
@@ -100,6 +106,24 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
           </View>
 
           <View style={styles.headerActions}>
+            {showParentButton && (
+              <TouchableOpacity
+                onPress={onParentDashboardPress}
+                activeOpacity={0.7}
+                style={[
+                  styles.actionBtn,
+                  {
+                    width: "auto",
+                    paddingHorizontal: 8,
+                    flexDirection: "row",
+                    gap: 4,
+                  },
+                ]}
+              >
+                <SVGIcon name="people" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>PARENT</Text>
+              </TouchableOpacity>
+            )}
             {showTeacherButton && (
               <TouchableOpacity
                 onPress={onTeacherDashboardPress}
@@ -108,22 +132,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   styles.actionBtn,
                   {
                     width: "auto",
-                    paddingHorizontal: 10,
+                    paddingHorizontal: 8,
                     flexDirection: "row",
-                    gap: 6,
+                    gap: 4,
                   },
                 ]}
               >
-                <SVGIcon name="school" size={20} color="#fff" />
-                <Text
-                  style={{
-                    color: "#fff",
-                    fontSize: 10,
-                    fontWeight: "900",
-                  }}
-                >
-                  TEACHER
-                </Text>
+                <SVGIcon name="school" size={16} color="#fff" />
+                <Text style={styles.actionBtnText}>TEACHER</Text>
               </TouchableOpacity>
             )}
             <NotificationBell color="#fff" size={22} />
@@ -234,5 +250,10 @@ const styles = StyleSheet.create({
       web: { cursor: 'pointer' } as any,
       default: {}
     }),
+  },
+  actionBtnText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "900",
   },
 });

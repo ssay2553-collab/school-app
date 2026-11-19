@@ -86,9 +86,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             phone: data.profile?.phone,
             profileImage:
               data.profile?.profileImage ??
+              data.profile?.photoURL ??
               data.photoURL ??
-              data.profile?.photoURL,
-            photoURL: data.profile?.photoURL ?? data.photoURL,
+              data.profileImage,
+            photoURL:
+              data.profile?.photoURL ??
+              data.profile?.profileImage ??
+              data.photoURL ??
+              data.profileImage,
             faceBaselineImage: data.profile?.faceBaselineImage,
             signatureUrl: data.profile?.signatureUrl,
             bio: data.profile?.bio,
@@ -153,9 +158,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             phone: data.profile?.phone,
             profileImage:
               data.profile?.profileImage ??
+              data.profile?.photoURL ??
               data.photoURL ??
-              data.profile?.photoURL,
-            photoURL: data.profile?.photoURL ?? data.photoURL,
+              data.profileImage,
+            photoURL:
+              data.profile?.photoURL ??
+              data.profile?.profileImage ??
+              data.photoURL ??
+              data.profileImage,
             faceBaselineImage: data.profile?.faceBaselineImage,
             signatureUrl: data.profile?.signatureUrl,
             bio: data.profile?.bio,
@@ -281,9 +291,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             phone: data.profile?.phone,
             profileImage:
               data.profile?.profileImage ??
+              data.profile?.photoURL ??
               data.photoURL ??
-              data.profile?.photoURL,
-            photoURL: data.profile?.photoURL ?? data.photoURL,
+              data.profileImage,
+            photoURL:
+              data.profile?.photoURL ??
+              data.profile?.profileImage ??
+              data.photoURL ??
+              data.profileImage,
             faceBaselineImage: data.profile?.faceBaselineImage,
             signatureUrl: data.profile?.signatureUrl,
             bio: data.profile?.bio,

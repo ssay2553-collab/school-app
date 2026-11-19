@@ -23,6 +23,8 @@ interface DashboardHeaderProps {
   onSettingsPress: () => void;
   onTeacherDashboardPress?: () => void;
   showTeacherButton?: boolean;
+  onParentDashboardPress?: () => void;
+  showParentButton?: boolean;
   onAdminDashboardPress?: () => void;
   showAdminButton?: boolean;
   welcomeText: string;
@@ -40,6 +42,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   onSettingsPress,
   onTeacherDashboardPress,
   showTeacherButton,
+  onParentDashboardPress,
+  showParentButton,
   onAdminDashboardPress,
   showAdminButton,
   welcomeText,
@@ -122,7 +126,25 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
           </View>
 
           <View style={styles.headerActions}>
-             {showAdminButton && (
+            {showParentButton && (
+              <TouchableOpacity
+                onPress={onParentDashboardPress}
+                activeOpacity={0.7}
+                style={[
+                  styles.actionBtn,
+                  {
+                    width: "auto",
+                    paddingHorizontal: 10,
+                    flexDirection: "row",
+                    gap: 6,
+                  },
+                ]}
+              >
+                <SVGIcon name="people" size={20} color="#fff" />
+                <Text style={styles.actionBtnText}>PARENT</Text>
+              </TouchableOpacity>
+            )}
+            {showAdminButton && (
               <TouchableOpacity
                 onPress={onAdminDashboardPress}
                 activeOpacity={0.7}

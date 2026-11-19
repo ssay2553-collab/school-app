@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
     BackHandler,
+    TextInput,
 } from "react-native";
 import * as Animatable from "react-native-animatable";
 
@@ -17,15 +18,19 @@ import SVGIcon from "../../components/SVGIcon";
 import { SCHOOL_CONFIG } from "../../constants/Config";
 import { SHADOWS } from "../../constants/theme";
 import { auth, db } from "../../firebaseConfig";
-import { doc, updateDoc, deleteField } from "firebase/firestore";
+import { doc, updateDoc, deleteField, collection, query, where, getDocs, arrayUnion, writeBatch } from "firebase/firestore";
 import { useToast } from "../../contexts/ToastContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { useRef } from "react";
 
 export default function SettingsScreen() {
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkCode, setLinkCode] = useState("");
   const router = useRouter();
   const { showToast } = useToast();
+  const { appUser } = useAuth();
   const isNavigating = useRef(false);
 
   const handleBack = useCallback(() => {
@@ -49,6 +54,72 @@ export default function SettingsScreen() {
 
   const primary = SCHOOL_CONFIG.primaryColor;
 
+  const handleLinkStudent = async () => {
+    if (!linkCode.trim()) {
+      return showToast({ message: "Please enter a student link code.", type: "error" });
+    }
+
+    if (!appUser) return;
+
+    try {
+      setLinkLoading(true);
+      const code = linkCode.trim().toUpperCase();
+
+      const studentsRef = collection(db, "users");
+      const q = query(
+        studentsRef,
+        where("role", "==", "student"),
+        where("parentLinkCode", "==", code),
+        where("status", "in", ["active", "pending_activation"])
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        showToast({ message: "No student found with this link code.", type: "error" });
+        return;
+      }
+
+      const studentDoc = querySnapshot.docs[0];
+      const studentData = studentDoc.data() as any;
+      const studentId = studentDoc.id;
+
+      if (appUser.childrenIds?.includes(studentId)) {
+        showToast({ message: "You are already linked to this student.", type: "info" });
+        return;
+      }
+
+      const currentParents = studentData.parentUids || [];
+      if (currentParents.length >= 2) {
+        showToast({ message: "This student already has 2 parents linked.", type: "error" });
+        return;
+      }
+
+      const batch = writeBatch(db);
+
+      batch.update(doc(db, "users", appUser.uid), {
+        childrenIds: arrayUnion(studentId),
+        childrenClassIds: arrayUnion(studentData.classId),
+      });
+
+      batch.update(doc(db, "users", studentId), {
+        parentUids: arrayUnion(appUser.uid),
+      });
+
+      await batch.commit();
+
+      showToast({
+        message: `Successfully linked to ${studentData.profile?.firstName || "student"}.`,
+        type: "success",
+      });
+      setLinkCode("");
+    } catch (error: any) {
+      console.error(error);
+      showToast({ message: error.message, type: "error" });
+    } finally {
+      setLinkLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
@@ -68,8 +139,7 @@ export default function SettingsScreen() {
             }
 
             await signOut(auth);
-            // Redirect to root hub instead of /login
-            router.replace("/"); 
+            router.replace("/");
           } catch (error: any) {
             showToast({ message: error.message, type: "error" });
           } finally {
@@ -162,12 +232,51 @@ export default function SettingsScreen() {
         </Text>
       </View>
 
+      {/* Link Student Section */}
+      <Animatable.View
+        animation="fadeInUp"
+        duration={600}
+        style={styles.section}
+      >
+        <Text style={styles.sectionTitle}>Student Connection (Parent)</Text>
+        <View style={styles.card}>
+          <View style={{ padding: 16 }}>
+            <Text style={styles.cardTitle}>Link Your Child</Text>
+            <Text style={styles.cardSubtitle}>
+              Enter the unique 6-digit code from your child's student dashboard to enable parent access
+            </Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="E.G. AB12CD"
+                value={linkCode}
+                onChangeText={setLinkCode}
+                autoCapitalize="characters"
+                maxLength={6}
+                placeholderTextColor="#94A3B8"
+              />
+              <TouchableOpacity
+                style={[styles.linkBtn, { backgroundColor: primary }]}
+                onPress={handleLinkStudent}
+                disabled={linkLoading}
+              >
+                {linkLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <SVGIcon name="link" size={20} color="#fff" />
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Animatable.View>
+
       {settingsOptions.map((section, idx) => (
         <Animatable.View
           key={section.title}
           animation="fadeInUp"
           duration={600}
-          delay={idx * 100}
+          delay={(idx + 1) * 100}
           style={styles.section}
         >
           <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -242,6 +351,41 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     ...SHADOWS.medium,
     overflow: "hidden",
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: "#64748B",
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  inputContainer: {
+    flexDirection: "row",
+    gap: 10,
+    alignItems: "center",
+  },
+  input: {
+    flex: 1,
+    height: 48,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    backgroundColor: "#F8FAFC",
+    color: "#1E293B",
+    fontWeight: "700",
+  },
+  linkBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
   itemRow: {
     flexDirection: "row",

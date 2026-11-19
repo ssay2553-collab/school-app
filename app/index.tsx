@@ -22,6 +22,7 @@ import { getSchoolLogo } from "../constants/Logos";
 import { COLORS, SHADOWS } from "../constants/theme";
 import { useAuth } from "../contexts/AuthContext";
 import { getTeacherClasses } from "../lib/classHelpers";
+import { isDualRoleTeacherParent } from "../utils/authUnify";
 
 export default function WelcomeScreen() {
   const router = useRouter();
@@ -54,6 +55,7 @@ export default function WelcomeScreen() {
       const adminRole = (appUser.adminRole || "").toLowerCase();
 
       const isAdmin = role.includes("admin") || adminRole !== "";
+      const isDualRole = isDualRoleTeacherParent(appUser);
       const isTeacher =
         role === "teacher" ||
         role === "staff" ||
@@ -64,7 +66,7 @@ export default function WelcomeScreen() {
 
       if (isAdmin) {
         return router.replace("/admin-dashboard");
-      } else if (isTeacher) {
+      } else if (isDualRole || isTeacher) {
         return router.replace("/teacher-dashboard");
       } else if (isStudent) {
         return router.replace("/student-dashboard");

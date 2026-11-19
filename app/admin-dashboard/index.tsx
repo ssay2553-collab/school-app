@@ -18,6 +18,7 @@ import { AdminMenuCard } from "../../components/admin-dashboard/AdminMenuCard";
 import DashboardHeader from "../../components/DashboardHeader";
 import { useAdminDashboard } from "../../hooks/admin-dashboard/useAdminDashboard";
 import StationaryBackground from "../../components/StationaryBackground";
+import { isDualRoleTeacherParent } from "../../utils/authUnify";
 
 let lastDashboardScrollY = 0;
 
@@ -305,6 +306,8 @@ export default function AdminDashboard() {
             (appUser?.assignedRoles?.includes("Teacher") ||
               getTeacherClasses(appUser).length > 0)
           }
+          showParentButton={isDualRoleTeacherParent(appUser)}
+          onParentDashboardPress={() => router.push("/parent-dashboard")}
         >
           <AdminEventStats
             upcomingEvents={upcomingEvents}

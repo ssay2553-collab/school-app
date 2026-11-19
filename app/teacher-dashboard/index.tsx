@@ -37,6 +37,7 @@ import { useSchoolOperations } from "../../hooks/useSchoolOperations";
 import useUnreadCounts from "../../hooks/useUnreadCounts";
 import { useUpcomingEvents } from "../../hooks/useUpcomingEvents";
 import { getTeacherClasses } from "../../lib/classHelpers";
+import { isDualRoleTeacherParent } from "../../utils/authUnify";
 
 export default function TeacherDashboard() {
   const router = useRouter();
@@ -493,6 +494,8 @@ export default function TeacherDashboard() {
           onSettingsPress={() => router.push("/teacher-dashboard/settings")}
           onAdminDashboardPress={() => router.push("/admin-dashboard")}
           showAdminButton={appUser?.role === "admin"}
+          showParentButton={isDualRoleTeacherParent(appUser)}
+          onParentDashboardPress={() => router.push("/parent-dashboard")}
         >
           {isAlertVisible && (
             <Animatable.View

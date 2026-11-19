@@ -186,4 +186,62 @@ export const isAdminUser = (user: any): boolean => {
   );
 };
 
+/**
+ * Robustly checks if a user is a teacher or staff.
+ */
+export const isTeacherUser = (user: any): boolean => {
+  if (!user) return false;
+  const role = (user.role || user.profile?.role || "").toLowerCase().trim();
+  const assignedRoles = user.assignedRoles || user.profile?.assignedRoles || [];
+  return (
+    role === "teacher" ||
+    role === "staff" ||
+    assignedRoles.includes("teacher") ||
+    assignedRoles.includes("staff") ||
+    (user.classes && user.classes.length > 0) ||
+    (user.subjects && user.subjects.length > 0)
+  );
+};
+
+/**
+ * Robustly checks if a user is a parent.
+ */
+export const isParentUser = (user: any): boolean => {
+  if (!user) return false;
+  const role = (user.role || user.profile?.role || "").toLowerCase().trim();
+  const assignedRoles = user.assignedRoles || user.profile?.assignedRoles || [];
+  const childrenIds = user.childrenIds || user.profile?.childrenIds || [];
+  return (
+    role === "parent" ||
+    assignedRoles.includes("parent") ||
+    childrenIds.length > 0
+  );
+};
+
+/**
+ * Checks if a user is both a teacher and a parent (dual-role).
+ */
+export const isDualRoleTeacherParent = (user: any): boolean => {
+  if (!user) return false;
+  return isTeacherUser(user) && isParentUser(user);
+};
+
+/**
+ * Robustly retrieves the profile image URL for any user object, doc, or profile data,
+ * checking all possible field variations across platforms and roles.
+ */
+export const getProfileImageUrl = (userOrProfile: any): string | undefined => {
+  if (!userOrProfile) return undefined;
+  const profile = userOrProfile.profile || userOrProfile;
+  return (
+    profile?.profileImage ||
+    profile?.photoURL ||
+    userOrProfile.photoURL ||
+    userOrProfile.profileImage ||
+    profile?.profile_image ||
+    undefined
+  );
+};
+
+
 

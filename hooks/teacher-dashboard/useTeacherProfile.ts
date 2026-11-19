@@ -449,6 +449,7 @@ export const useTeacherProfile = () => {
         "profile.profileImage": finalUrl,
         "profile.photoURL": finalUrl,
         photoURL: finalUrl,
+        profileImage: finalUrl,
       };
 
       if (appUser?.uid) {

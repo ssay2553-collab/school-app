@@ -580,8 +580,13 @@ export const ENGLISH_DICTIONARY_SET = new Set<string>(
 );
 
 /**
+ * Cache for dynamically validated online words during gameplay
+ */
+export const ONLINE_VALIDATED_WORDS_CACHE = new Set<string>();
+
+/**
  * Validates if a user-entered word is a strictly correct English word
- * AND can be formed from the current base word.
+ * AND can be formed from the current base word (Synchronous).
  */
 export const isDictionaryWord = (
   word: string,
@@ -591,19 +596,79 @@ export const isDictionaryWord = (
   const cleanWord = word.toUpperCase().trim();
   const cleanBase = baseWord.toUpperCase().trim();
 
-  // Safeguard 1: Must pass strict letter frequency composition check
   if (!canFormWord(cleanWord, cleanBase, minLength)) return false;
-
-  // Safeguards 4 & 5: Check master English dictionary set (US & UK)
+  if (cleanWord.length <= 3 && ENGLISH_DICTIONARY_SET.has(cleanWord)) return true;
   if (ENGLISH_DICTIONARY_SET.has(cleanWord)) return true;
+  if (ONLINE_VALIDATED_WORDS_CACHE.has(cleanWord)) return true;
 
-  // Safeguard 7: Check audited explicit sub-words list for the base word
   const explicitSubwords = AUDITED_BASE_WORD_SUBWORDS[cleanBase];
   if (explicitSubwords) {
     const cleanExplicit = explicitSubwords.map((w) => w.toUpperCase());
     if (cleanExplicit.includes(cleanWord)) {
       return true;
     }
+  }
+
+  return false;
+};
+
+/**
+ * Asynchronous Dictionary Validation with Online Fallback
+ * 1. Strictly validates letter availability (canFormWord) first.
+ * 2. Checks local offline dictionary / cache.
+ * 3. Falls back to Free Dictionary API if network is available.
+ */
+export const isDictionaryWordAsync = async (
+  word: string,
+  baseWord: string,
+  minLength: number = DEFAULT_MIN_WORD_LENGTH
+): Promise<boolean> => {
+  const cleanWord = word.toUpperCase().trim();
+  const cleanBase = baseWord.toUpperCase().trim();
+
+  // Safeguard 1: Must pass strict letter frequency composition check first
+  if (!canFormWord(cleanWord, cleanBase, minLength)) return false;
+
+  // Check local offline dictionary or cache
+  if (
+    ENGLISH_DICTIONARY_SET.has(cleanWord) ||
+    ONLINE_VALIDATED_WORDS_CACHE.has(cleanWord)
+  ) {
+    return true;
+  }
+
+  // Check explicit subwords
+  const explicitSubwords = AUDITED_BASE_WORD_SUBWORDS[cleanBase];
+  if (explicitSubwords) {
+    const cleanExplicit = explicitSubwords.map((w) => w.toUpperCase());
+    if (cleanExplicit.includes(cleanWord)) {
+      return true;
+    }
+  }
+
+  // Online Dictionary Fallback API (Free Dictionary API)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const response = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(
+        cleanWord.toLowerCase()
+      )}`,
+      { signal: controller.signal }
+    );
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        ONLINE_VALIDATED_WORDS_CACHE.add(cleanWord);
+        return true;
+      }
+    }
+  } catch (err) {
+    // Offline or request timeout / network error - fallback gracefully
+    console.log("Online dictionary lookup skipped/failed:", err);
   }
 
   return false;

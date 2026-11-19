@@ -88,7 +88,7 @@ export const styles = StyleSheet.create({
   searchStrip: {
     flexDirection: "row",
     paddingHorizontal: 15,
-    marginTop: -20,
+    marginTop: 10,
     alignItems: "center",
     gap: 8,
     marginBottom: 12,

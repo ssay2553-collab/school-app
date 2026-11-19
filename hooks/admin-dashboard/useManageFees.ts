@@ -33,9 +33,17 @@ export const useManageFees = ({
 
   // ACCESS CONTROL LOGIC
   const currentUserRole = appUser?.adminRole?.toLowerCase() || "";
-  const isSuperAdmin = useMemo(() => [
+
+  // Supreme root owners who cannot be restricted by permissions
+  const isSupremeOwner = useMemo(() => [
     "proprietor",
     "proprietress",
+    "super admin",
+    "superadmin",
+  ].includes(currentUserRole), [currentUserRole]);
+
+  // Operational admin roles that default to full access unless explicitly restricted by management in Manage Users
+  const isDefaultFullRole = useMemo(() => [
     "manager",
     "headmaster",
     "headmistress",
@@ -44,19 +52,21 @@ export const useManageFees = ({
     "accountant",
     "bursar",
     "admin",
-    "super admin",
-    "superadmin",
   ].includes(currentUserRole), [currentUserRole]);
 
-  const feePermission = appUser?.permissions?.["manage-fees"] || "deny";
+  const explicitPermission = appUser?.permissions?.["manage-fees"];
+  const feePermission = explicitPermission || (isSupremeOwner || isDefaultFullRole ? "full" : "deny");
+
+  const isSuperAdmin = useMemo(() => isSupremeOwner || isDefaultFullRole, [isSupremeOwner, isDefaultFullRole]);
+
   const canView = useMemo(() =>
-    isSuperAdmin ||
+    isSupremeOwner ||
     feePermission === "full" ||
     feePermission === "view" ||
-    feePermission === "edit", [isSuperAdmin, feePermission]);
+    feePermission === "edit", [isSupremeOwner, feePermission]);
 
   const canEdit = useMemo(() =>
-    isSuperAdmin || feePermission === "full" || feePermission === "edit", [isSuperAdmin, feePermission]);
+    isSupremeOwner || feePermission === "full" || feePermission === "edit", [isSupremeOwner, feePermission]);
 
   const [activeMode, setActiveMode] = useState<"billing" | "payment" | "discounts">("payment");
   const [searchQuery, setSearchQuery] = useState("");

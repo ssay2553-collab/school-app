@@ -135,6 +135,7 @@ export default function ManageUsers() {
     openPromoteRepeat,
     runFinanceCleanup,
     isFinanceCleaning,
+    handleLinkStudentByCode,
   } = useManageUsers({ appUser, acadConfig, showToast, router });
 
   const [pendingResetRequests, setPendingResetRequests] = useState<any[]>([]);
@@ -578,6 +579,7 @@ export default function ManageUsers() {
           onToggleArchive={handleToggleArchiveStatus}
           onRunFinanceCleanup={(u) => runFinanceCleanup(u.uid)}
           isFinanceCleaning={isFinanceCleaning}
+          onLinkStudentByCode={handleLinkStudentByCode}
           onViewAttendance={(u) => {
             if (isNavigating.current) return;
             isNavigating.current = true;

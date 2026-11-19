@@ -701,6 +701,82 @@ export function useManageUsers({
     }
   };
 
+  const handleLinkStudentByCode = async (targetUserUid: string, linkCode: string) => {
+    if (!linkCode.trim()) {
+      showToast?.({ message: "Please enter a student link code.", type: "error" });
+      return;
+    }
+    setUpdating(true);
+    try {
+      const code = linkCode.trim().toUpperCase();
+      const studentsRef = collection(db, "users");
+      const q = query(
+        studentsRef,
+        where("role", "==", "student"),
+        where("parentLinkCode", "==", code),
+        where("status", "in", ["active", "pending_activation"])
+      );
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        showToast?.({ message: "No student found with this link code.", type: "error" });
+        return;
+      }
+
+      const studentDoc = querySnapshot.docs[0];
+      const studentData = studentDoc.data() as any;
+      const studentId = studentDoc.id;
+
+      const targetUserDocRef = doc(db, "users", targetUserUid);
+      const targetUserSnap = await getDoc(targetUserDocRef);
+      if (!targetUserSnap.exists()) {
+        showToast?.({ message: "Target user not found.", type: "error" });
+        return;
+      }
+      const targetUserData = targetUserSnap.data() as any;
+      const existingChildren = targetUserData.childrenIds || [];
+
+      if (existingChildren.includes(studentId)) {
+        showToast?.({ message: "User is already linked to this student.", type: "info" });
+        return;
+      }
+
+      const currentParents = studentData.parentUids || [];
+      if (currentParents.length >= 2) {
+        showToast?.({ message: "This student already has 2 parents linked.", type: "error" });
+        return;
+      }
+
+      const batch = writeBatch(db);
+      batch.update(targetUserDocRef, {
+        childrenIds: arrayUnion(studentId),
+        childrenClassIds: arrayUnion(studentData.classId),
+      });
+      batch.update(doc(db, "users", studentId), {
+        parentUids: arrayUnion(targetUserUid),
+      });
+      await batch.commit();
+
+      showToast?.({
+        message: `Successfully linked ${studentData.profile?.firstName || "student"} to user.`,
+        type: "success",
+      });
+      if (viewingUser && viewingUser.uid === targetUserUid) {
+        setViewingUser({
+          ...viewingUser,
+          childrenIds: [...(viewingUser.childrenIds || []), studentId],
+        });
+      }
+      if (viewingUser) {
+        fetchLinkedUsers(viewingUser);
+      }
+    } catch (err: any) {
+      showToast?.({ message: err.message || "Failed to link student.", type: "error" });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleUpdatePermissions = async () => {
     if (!assignmentModal.target) return;
     setUpdating(true);
@@ -2346,5 +2422,6 @@ export function useManageUsers({
     },
     runFinanceCleanup,
     isFinanceCleaning,
+    handleLinkStudentByCode,
   };
 }

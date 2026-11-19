@@ -101,7 +101,18 @@ export default function StudentCharges() {
               <Text style={styles.headerTitle}>Student Charges</Text>
               <Text style={styles.headerSub}>BILLING HUB</Text>
             </View>
-            <View style={{ width: 44 }} />
+            <TouchableOpacity
+              onPress={() => {
+                if (isNavigating.current) return;
+                isNavigating.current = true;
+                router.push("/admin-dashboard/ManageFees");
+                setTimeout(() => { isNavigating.current = false; }, 500);
+              }}
+              style={styles.headerIconBtn}
+              activeOpacity={0.7}
+            >
+              <SVGIcon name="cash" size={22} color="#fff" />
+            </TouchableOpacity>
           </View>
         </LinearGradient>
       </View>
